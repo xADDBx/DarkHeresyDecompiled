@@ -40,9 +40,9 @@ public class GpuCrowdController
 			{
 				continue;
 			}
-			if (gpuCrowd.CrowdVfx.HasBool("Shadows Enable"))
+			if (gpuCrowd.CrowdVfx.HasBool("True Shadows"))
 			{
-				if (gpuCrowd.CrowdVfx.GetBool("Shadows Enable") != withShadows)
+				if (gpuCrowd.CrowdVfx.GetBool("True Shadows") != withShadows)
 				{
 					continue;
 				}

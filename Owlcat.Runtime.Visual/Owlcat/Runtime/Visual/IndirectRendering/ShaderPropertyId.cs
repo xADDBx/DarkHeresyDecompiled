@@ -56,6 +56,8 @@ public static class ShaderPropertyId
 
 	public static readonly int _IndirectInstancingShapeCullingParams = Shader.PropertyToID("_IndirectInstancingShapeCullingParams");
 
+	public static readonly int _IndirectInstancingTintColor = Shader.PropertyToID("_IndirectInstancingTintColor");
+
 	public static readonly int _IndirectInstanceData_BakedGI = Shader.PropertyToID("_IndirectInstanceData_BakedGI");
 
 	public static readonly int _IndirectInstanceData_Shadowmask = Shader.PropertyToID("_IndirectInstanceData_Shadowmask");

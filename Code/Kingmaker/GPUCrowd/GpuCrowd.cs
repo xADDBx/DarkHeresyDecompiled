@@ -16,11 +16,29 @@ public class GpuCrowd : MonoBehaviour
 		Target
 	}
 
-	public const string ObjectsCountFieldName = "ObjectsCount";
+	public const string ObjectsCountFieldIntId = "ObjectsCount";
 
-	public const string NumberOfSystemsFieldName = "NumberOfSystems";
+	public const string NumberOfSystemsIntId = "NumberOfSystems";
 
-	public const string ShadowsEnableFieldName = "Shadows Enable";
+	public const string SimpleShadowsEnableBoolId = "Simple Shadows Enable";
+
+	public const string TrueShadowsBoolId = "True Shadows";
+
+	public static int PositionMapTextureId = Shader.PropertyToID("PositionMap");
+
+	public static int RotationMapTextureId = Shader.PropertyToID("RotationMap");
+
+	public static int ScaleMapTextureId = Shader.PropertyToID("ScaleMap");
+
+	public static int SkinningTextureTextureId = Shader.PropertyToID("SkinningTexture");
+
+	public static int CreatureMeshMeshId = Shader.PropertyToID("CreatureMesh");
+
+	public static int UpdatePositionFromTextureBoolId = Shader.PropertyToID("UpdatePositionFromTexture");
+
+	public static int UpdateScaleFromTextureBoolId = Shader.PropertyToID("UpdateScaleFromTexture");
+
+	public static int RotationFromMapBoolId = Shader.PropertyToID("RotationFromMap");
 
 	public const float EMITTER_GRID_CELL_SIZE = 5f;
 

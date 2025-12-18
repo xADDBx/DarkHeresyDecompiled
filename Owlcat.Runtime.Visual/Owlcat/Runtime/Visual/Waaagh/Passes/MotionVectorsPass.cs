@@ -52,7 +52,7 @@ public class MotionVectorsPass : ScriptableRenderPass
 		WaaaghRendererListData rendererListData = frameData.Get<WaaaghRendererListData>();
 		RenderGraph renderGraph = waaaghRenderingData.RenderGraph;
 		PassData passData;
-		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<PassData>("Motion Vector Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.MotionVectorsPass), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\Passes\\MotionVectorsPass.cs", 46);
+		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<PassData>("Motion Vector Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.MotionVectorsPass), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\MotionVectorsPass.cs", 46);
 		TextureDesc desc = RenderingUtils.CreateTextureDesc("CameraMotionVectorsRT", waaaghCameraData.cameraTargetDescriptor);
 		desc.colorFormat = GraphicsFormat.R16G16_SFloat;
 		desc.filterMode = FilterMode.Bilinear;

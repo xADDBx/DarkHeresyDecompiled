@@ -130,29 +130,14 @@ public static class ModInitializer
 
 	public static void InitializeMods()
 	{
-		PrepareModUsageInfoFile();
-		if (CheckSteam())
-		{
-			SteamManager instance = SteamManager.Instance;
-			if (!SteamManager.Initialized)
-			{
-				return;
-			}
-			new SteamWorkshopIntegration(instance).Start();
-		}
-		InitializeUnityModManager();
-		InitializeOwlcatModManager();
-		GetUsedModsInfo();
 	}
 
 	public static void ApplyOwlcatModificationsContent()
 	{
-		OwlcatModificationsManager.Instance.ApplyModificationsContent();
 	}
 
 	public static void InitializeModsUI()
 	{
-		UnityModManagerAdapter.Instance.TryStartUI();
 	}
 
 	public static void GetUsedModsInfo()

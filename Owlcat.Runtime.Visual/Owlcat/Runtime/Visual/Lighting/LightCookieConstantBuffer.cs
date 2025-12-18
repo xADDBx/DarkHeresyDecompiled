@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Lighting;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Lighting\\LightCookieConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Lighting\\LightCookieConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
 public struct LightCookieConstantBuffer
 {
 	public const int MaxLightCookieCount = 128;

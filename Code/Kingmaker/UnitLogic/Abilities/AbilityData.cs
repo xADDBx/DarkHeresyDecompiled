@@ -140,6 +140,14 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	[CanBeNull]
 	private IAbilityVisibilityProvider[] m_CachedVisibilityProviders;
 
+	private GridNodeBase m_TargetGridNodeCached;
+
+	private GridNodeBase m_CasterGridNodeCached;
+
+	private bool m_CanTargetResultCached;
+
+	private UnavailabilityReasonType? m_UnavailabilityReasonTypeCached;
+
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "AbilityData",
@@ -1033,10 +1041,17 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	private bool CanTarget(TargetWrapper target, Vector3 casterPosition, out UnavailabilityReasonType? unavailabilityReason, Vector3? casterDirection)
 	{
 		GridNodeBase nearestNodeXZUnwalkable = casterPosition.GetNearestNodeXZUnwalkable();
+		if (target != null && target.NearestNode == m_TargetGridNodeCached && nearestNodeXZUnwalkable == m_CasterGridNodeCached)
+		{
+			unavailabilityReason = m_UnavailabilityReasonTypeCached;
+			return m_CanTargetResultCached;
+		}
+		m_CasterGridNodeCached = nearestNodeXZUnwalkable;
+		m_TargetGridNodeCached = target?.NearestNode;
 		int? casterDirection2 = ((casterDirection.HasValue && casterDirection.GetValueOrDefault().sqrMagnitude > 1E-06f) ? new int?(GraphHelper.GuessDirection(casterDirection.Value)) : null);
-		int distance;
-		LosCalculations.CoverType los;
-		return CanTargetFromNode(nearestNodeXZUnwalkable, null, target, out distance, out los, out unavailabilityReason, casterDirection2);
+		m_CanTargetResultCached = CanTargetFromNode(nearestNodeXZUnwalkable, null, target, out var _, out var _, out unavailabilityReason, casterDirection2);
+		m_UnavailabilityReasonTypeCached = unavailabilityReason;
+		return m_CanTargetResultCached;
 	}
 
 	public bool CanTargetFromNode(GridNodeBase casterNode, GridNodeBase targetNodeHint, TargetWrapper target, out int distance, out LosCalculations.CoverType los, int? casterDirection = null)

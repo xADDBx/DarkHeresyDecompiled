@@ -18,7 +18,7 @@ public abstract class ScriptableRasterPass<T> : ScriptableRenderPass where T : P
 	public sealed override void RecordRenderGraph(ContextContainer frameData)
 	{
 		T passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRasterRenderPass<T>(Name, out passData, ProfilingSamplerStorage<WaaaghProfileId>.Get(Name, ProfileId), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\Passes\\ScriptableRenderPass.cs", 157);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRasterRenderPass<T>(Name, out passData, ProfilingSamplerStorage<WaaaghProfileId>.Get(Name, ProfileId), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScriptableRenderPass.cs", 157);
 		Setup(rasterRenderGraphBuilder, passData, frameData);
 		rasterRenderGraphBuilder.SetRenderFunc(m_RenderFunc);
 	}

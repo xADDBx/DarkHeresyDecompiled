@@ -15,7 +15,7 @@ public class LocalVolumetricFogCullingPass : ScriptableRenderPass<LocalVolumetri
 {
 	private VolumetricLightingFeature m_Feature;
 
-	private ComputeShaderKernelDescriptor m_BuilFogTilesKernel;
+	private ComputeShaderKernelDescriptor? m_BuilFogTilesKernel;
 
 	public override string Name => "LocalVolumetricFogCullingPass";
 
@@ -23,7 +23,6 @@ public class LocalVolumetricFogCullingPass : ScriptableRenderPass<LocalVolumetri
 		: base(evt)
 	{
 		m_Feature = feature;
-		m_BuilFogTilesKernel = m_Feature.Resources.LocalVolumetricFogCullingCS.GetKernelDescriptor("BuildFogTiles");
 	}
 
 	protected override void Setup(RenderGraphBuilder builder, LocalVolumetricFogCullingPassData data, ContextContainer frameData)
@@ -31,6 +30,12 @@ public class LocalVolumetricFogCullingPass : ScriptableRenderPass<LocalVolumetri
 		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
 		WaaaghCameraData cameraData = frameData.Get<WaaaghCameraData>();
 		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
+		ComputeShaderKernelDescriptor valueOrDefault = m_BuilFogTilesKernel.GetValueOrDefault();
+		if (!m_BuilFogTilesKernel.HasValue)
+		{
+			valueOrDefault = m_Feature.Resources.LocalVolumetricFogCullingCS.GetKernelDescriptor("BuildFogTiles");
+			m_BuilFogTilesKernel = valueOrDefault;
+		}
 		data.ZBins = m_Feature.ZBins;
 		data.VisibleVolumeDataList = m_Feature.VisibleVolumeDataList;
 		data.VisibleVolumeBoundsList = m_Feature.VisibleVolumeBoundsList;
@@ -46,11 +51,11 @@ public class LocalVolumetricFogCullingPass : ScriptableRenderPass<LocalVolumetri
 		data.FogTilesBufferSize = m_Feature.FogTilesBuffer.count;
 		data.Atlas = LocalVolumetricFogManager.Instance.VolumeAtlas;
 		data.CullingShader = m_Feature.Resources.LocalVolumetricFogCullingCS;
-		data.BuildFogTilesKernelDesc = m_BuilFogTilesKernel;
+		data.BuildFogTilesKernelDesc = m_BuilFogTilesKernel.Value;
 		Vector4 fogClusteringParams = m_Feature.FogClusteringParams;
 		int x = (int)(fogClusteringParams.x * fogClusteringParams.y);
 		data.TileMinMaxZTexture = builder.ReadTexture(in waaaghResourceData.TilesMinMaxZTexture);
-		data.DispatchSize = new int3(RenderingUtils.DivRoundUp(x, (int)m_BuilFogTilesKernel.ThreadGroupSize.x), 1, math.max(1, RenderingUtils.DivRoundUp(data.VisibleVolumesCount, 32)));
+		data.DispatchSize = new int3(RenderingUtils.DivRoundUp(x, (int)m_BuilFogTilesKernel.Value.ThreadGroupSize.x), 1, math.max(1, RenderingUtils.DivRoundUp(data.VisibleVolumesCount, 32)));
 		data.ClusteringParams = fogClusteringParams;
 		data.ScreenProjMatrix = GetScreenProjMatrix(cameraData);
 	}

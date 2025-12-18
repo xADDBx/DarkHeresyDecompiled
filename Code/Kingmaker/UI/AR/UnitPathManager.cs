@@ -159,7 +159,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 			{
 				return Vector3.zero;
 			}
-			return Game.Instance.Controllers.ClickEventsController.WorldPosition - m_DecalOffset;
+			return Game.Instance.Controllers.ClickEventsController.GroundPosition - m_DecalOffset;
 		}
 	}
 

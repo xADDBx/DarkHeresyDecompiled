@@ -143,10 +143,12 @@ public class BodyAllocator : EntityAllocatorWithTransforms<AuthoringBase, BodyDe
 									{
 										value.SkinBufferRange = -1;
 										value.ParticleToVertexRange.x = -1;
-										if (MeshLocalVerticesSoA.TryAlloc(addedEntity.LayoutBase.BodyStructure.Particles.Count, out var offset12))
+										if (!MeshLocalVerticesSoA.TryAlloc(addedEntity.LayoutBase.BodyStructure.Particles.Count, out var offset12))
 										{
-											value.MeshLocalVerticesRange = new int2(offset12, addedEntity.LayoutBase.BodyStructure.Particles.Count);
+											AllocAfterGrowAssert();
+											return false;
 										}
+										value.MeshLocalVerticesRange = new int2(offset12, addedEntity.LayoutBase.BodyStructure.Particles.Count);
 									}
 								}
 								else

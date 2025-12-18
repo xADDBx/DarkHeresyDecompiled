@@ -7,7 +7,7 @@ public struct ParticleAttachmentDescriptorSoASlice
 {
 	public NativeSlice<int2> BodyParticlesRange;
 
-	public NativeSlice<float4x4> LocalToWorld;
-
 	public NativeSlice<int2> ParticleDataRange;
+
+	public NativeSlice<float4x4> LocalToWorld;
 }

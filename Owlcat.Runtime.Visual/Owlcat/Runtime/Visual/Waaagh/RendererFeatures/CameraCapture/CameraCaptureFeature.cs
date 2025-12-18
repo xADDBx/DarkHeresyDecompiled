@@ -97,7 +97,7 @@ public sealed class CameraCaptureFeature : ScriptableRendererFeature
 			RenderGraph renderGraph = frameData.Get<WaaaghRenderingData>().RenderGraph;
 			Results.Clear();
 			PassData passData;
-			RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\CameraCapture\\CameraCaptureFeature.cs", 299);
+			RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CameraCapture\\CameraCaptureFeature.cs", 299);
 			try
 			{
 				passData.Source = waaaghResourceData.CameraColorBuffer;

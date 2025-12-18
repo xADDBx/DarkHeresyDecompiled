@@ -100,7 +100,7 @@ public abstract class ScriptableRenderPass<T> : ScriptableRenderPass where T : P
 	public sealed override void RecordRenderGraph(ContextContainer frameData)
 	{
 		T passData;
-		using RenderGraphBuilder builder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<T>(Name, out passData, ProfilingSamplerStorage<WaaaghProfileId>.Get(Name, ProfileId), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\Passes\\ScriptableRenderPass.cs", 132);
+		using RenderGraphBuilder builder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<T>(Name, out passData, ProfilingSamplerStorage<WaaaghProfileId>.Get(Name, ProfileId), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScriptableRenderPass.cs", 132);
 		Setup(builder, passData, frameData);
 		builder.SetRenderFunc(m_RenderFunc);
 	}

@@ -15,11 +15,11 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipTemplateStat : TooltipBaseTemplate
 {
-	protected readonly StatTooltipData StatData;
+	protected readonly StatTooltipData m_StatData;
 
-	protected readonly string Name;
+	protected readonly string m_Name;
 
-	protected readonly string Desc;
+	protected readonly string m_Desc;
 
 	private readonly bool m_ShowCompanionStats;
 
@@ -27,31 +27,32 @@ public class TooltipTemplateStat : TooltipBaseTemplate
 	{
 		try
 		{
-			StatData = statData;
+			m_StatData = statData;
+			m_ShowCompanionStats = showCompanionStats;
 			string key = statData?.KeyWord;
-			BlueprintEncyclopediaGlossaryEntry glossaryEntry = UIUtilityEncyclopedy.GetGlossaryEntry(key);
 			BlueprintEncyclopediaEntry encyclopediaEntry = UIUtilityEncyclopedy.GetEncyclopediaEntry(key);
-			Name = string.Empty;
-			Desc = string.Empty;
+			m_Name = string.Empty;
+			m_Desc = string.Empty;
 			if (encyclopediaEntry != null)
 			{
-				string text = (from b in encyclopediaEntry?.GetTooltipInfo()?.Where((EncyclopediaEntryBlock b) => b.blockType == EncyclopediaEntryBlock.BlockType.Text && b.IsVisibleInTooltip)
+				string text = (from b in encyclopediaEntry.GetTooltipInfo()?.Where((EncyclopediaEntryBlock b) => b.blockType == EncyclopediaEntryBlock.BlockType.Text && b.IsVisibleInTooltip)
 					select b.GetDescription()?.Text).FirstOrDefault();
 				if (!string.IsNullOrWhiteSpace(text))
 				{
-					Desc = text;
+					m_Desc = text;
 				}
-				Name = encyclopediaEntry.Title;
+				m_Name = encyclopediaEntry.Title;
+				return;
 			}
+			BlueprintEncyclopediaGlossaryEntry glossaryEntry = UIUtilityEncyclopedy.GetGlossaryEntry(key);
 			if (glossaryEntry != null)
 			{
 				if (glossaryEntry.GetDescription().IsSet())
 				{
-					Desc = glossaryEntry.GetDescription();
+					m_Desc = glossaryEntry.GetDescription();
 				}
-				Name = glossaryEntry.Title;
+				m_Name = glossaryEntry.Title;
 			}
-			m_ShowCompanionStats = showCompanionStats;
 		}
 		catch (Exception arg)
 		{
@@ -61,7 +62,7 @@ public class TooltipTemplateStat : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(Name, TooltipTitleType.H1);
+		yield return new TooltipBrickTitle(m_Name, TooltipTitleType.H1);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -72,35 +73,35 @@ public class TooltipTemplateStat : TooltipBaseTemplate
 		AddTotalValue(list);
 		AddStatBonusesGroup(list);
 		AddCompanionsStats(list);
-		list.Add(new TooltipBrickText(Desc));
+		list.Add(new TooltipBrickText(m_Desc));
 		return list;
 	}
 
 	private void AddBonusValue(List<ITooltipBrick> result)
 	{
-		if (StatData.BonusValue.HasValue)
+		if (m_StatData.BonusValue.HasValue)
 		{
-			result.Add(new TooltipBrickIconValueStat(UIStrings.Instance.Tooltips.BonusValue, UIUtilityText.AddSign(StatData.BonusValue.Value)));
+			result.Add(new TooltipBrickIconValueStat(UIStrings.Instance.Tooltips.BonusValue, UIUtilityText.AddSign(m_StatData.BonusValue.Value)));
 			result.Add(new TooltipBrickSeparator(TooltipBrickElementType.Small));
 		}
 	}
 
 	private void AddTotalValue(List<ITooltipBrick> result)
 	{
-		result.Add(new TooltipBrickIconValueStat(StatData.TotalValueLabel, StatData.ModifiedValue.ToString()));
+		result.Add(new TooltipBrickIconValueStat(m_StatData.TotalValueLabel, m_StatData.ModifiedValue.ToString()));
 	}
 
 	private void AddStatBonusesGroup(List<ITooltipBrick> bricks)
 	{
-		if (StatData.Group != StatGroup.Skill && StatData.BaseValue != 0)
+		if (m_StatData.Group != StatGroup.Skill && m_StatData.BaseValue != 0)
 		{
-			bricks.Add(new TooltipBrickTextValue(UIStrings.Instance.Tooltips.BaseValue, StatData.BaseValue.ToString(), 1));
+			bricks.Add(new TooltipBrickTextValue(UIStrings.Instance.Tooltips.BaseValue, m_StatData.BaseValue.ToString(), 1));
 		}
-		if (!StatData.Breakdown.HasBonuses)
+		if (!m_StatData.Breakdown.HasBonuses)
 		{
 			return;
 		}
-		foreach (StatBonusEntry sortedBonuse in StatData.Breakdown.SortedBonuses)
+		foreach (StatBonusEntry sortedBonuse in m_StatData.Breakdown.SortedBonuses)
 		{
 			string value = UIUtilityText.AddSign(sortedBonuse.Bonus);
 			string empty = string.Empty;
@@ -121,7 +122,7 @@ public class TooltipTemplateStat : TooltipBaseTemplate
 
 	private void AddCompanionsStats(List<ITooltipBrick> bricks)
 	{
-		if (StatData == null || !m_ShowCompanionStats)
+		if (m_StatData == null || !m_ShowCompanionStats)
 		{
 			return;
 		}
@@ -143,10 +144,10 @@ public class TooltipTemplateStat : TooltipBaseTemplate
 
 	private void AddCharacterStatValue(List<ITooltipBrick> bricks, BaseUnitEntity character)
 	{
-		StatTooltipData statData = StatData;
+		StatTooltipData statData = m_StatData;
 		if (statData != null && statData.Type.HasValue)
 		{
-			string value = character.Stats.GetStat(StatData.Type.Value).ModifiedValue.ToString();
+			string value = character.Stats.GetStat(m_StatData.Type.Value).ModifiedValue.ToString();
 			bricks.Add(new TooltipBrickIconStatValue(character.CharacterName, value));
 		}
 	}

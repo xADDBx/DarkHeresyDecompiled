@@ -305,10 +305,16 @@ public class TooltipTemplateLevelUpAbility : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		List<ITooltipBrick> list = new List<ITooltipBrick>();
-		AddDescription(list, type);
-		AddAbilityModificationsDescription(list);
-		return list;
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+			GameLogContext.DescriptionFactBlueprint = BlueprintAbility;
+			GameLogContext.DescriptionAbility = m_AbilityData;
+			List<ITooltipBrick> list = new List<ITooltipBrick>();
+			AddDescription(list, type);
+			AddAbilityModificationsDescription(list);
+			return list;
+		}
 	}
 
 	private void AddAbilitiesWillBeLost(List<ITooltipBrick> bricks)

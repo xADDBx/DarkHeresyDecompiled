@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.Shadows;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\Shadows\\ShadowConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Shadows\\ShadowConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
 public struct ShadowConstantBuffer
 {
 	public const int MaxShadowEntriesCount = 128;

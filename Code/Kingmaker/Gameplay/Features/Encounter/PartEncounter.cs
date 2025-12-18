@@ -99,14 +99,6 @@ public sealed class PartEncounter : UnitPart, IHashable, IOwlPackable<PartEncoun
 			PFLog.Default.Log($"Encounter {Blueprint} was completed. Removing PartEncounter.");
 			RemoveSelf();
 		}
-		else if (!base.Owner.IsInCombat && !base.Owner.IsDead)
-		{
-			BlueprintEncounter.Group group = FindGroup();
-			if (group != null)
-			{
-				SetupSquad(group);
-			}
-		}
 	}
 
 	private void SetupSquad([NotNull] BlueprintEncounter.Group group)

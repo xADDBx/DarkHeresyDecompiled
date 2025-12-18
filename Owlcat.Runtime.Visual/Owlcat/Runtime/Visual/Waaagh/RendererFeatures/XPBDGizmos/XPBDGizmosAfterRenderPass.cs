@@ -133,7 +133,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordConstraintPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Constraints", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosConstraints), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 166);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Constraints", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosConstraints), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 166);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -214,7 +214,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordParticlesPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Particles", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosParticles), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 249);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Particles", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosParticles), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 249);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -239,7 +239,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordVelocitiesPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Velocities", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosVelocities), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 278);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Velocities", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosVelocities), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 278);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -263,7 +263,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordInertialForcesPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Inertial Forces", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosInertialForces), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 306);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Inertial Forces", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosInertialForces), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 306);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -282,7 +282,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordColliderAabbPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Collider Aabb", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosColliderAabb), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 361);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Collider Aabb", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosColliderAabb), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 361);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -306,7 +306,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordSimplexAabbPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Simplex Aabb", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosSimplexAabb), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 389);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Simplex Aabb", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosSimplexAabb), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 389);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -331,7 +331,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordColliderContactsPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Collider Contacts", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosColliderContacts), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 418);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Collider Contacts", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosColliderContacts), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 418);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -356,7 +356,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordContactNormalsPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Contact Normals", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosContactNormals), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 447);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Contact Normals", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosContactNormals), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 447);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -380,7 +380,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordVisibleBodyAabbsPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Visible Body Aabbs", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosVisibleBodyAabbs), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 476);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Visible Body Aabbs", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosVisibleBodyAabbs), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 476);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -408,7 +408,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordDrawNormalsPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Normals", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawNormals), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 509);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Normals", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawNormals), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 509);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -431,7 +431,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordDrawRestNormalsPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Rest Normals", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawRestNormals), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 536);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Rest Normals", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawRestNormals), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 536);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -454,7 +454,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordDrawDeformedVerticesPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Deformed Vertices", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawDeformedVertices), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 563);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Deformed Vertices", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawDeformedVertices), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 563);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;
@@ -475,7 +475,7 @@ public class XPBDGizmosAfterRenderPass : ScriptableRenderPass
 	private void RecordDrawSimplexContactsPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Simplex Contacts", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawSimplexContacts), ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 588);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Simplex Contacts", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosDrawSimplexContacts), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosAfterRenderPass.cs", 588);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;

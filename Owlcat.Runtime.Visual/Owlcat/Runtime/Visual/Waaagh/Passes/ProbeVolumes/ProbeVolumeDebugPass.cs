@@ -43,7 +43,7 @@ public class ProbeVolumeDebugPass : ScriptableRenderPass
 		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
 		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
 		PassData passData;
-		RenderGraphBuilder renderGraphBuilder = waaaghRenderingData.RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@01c4fcbc474f\\Runtime\\Waaagh\\Passes\\ProbeVolumes\\ProbeVolumeDebugPass.cs", 35);
+		RenderGraphBuilder renderGraphBuilder = waaaghRenderingData.RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ProbeVolumes\\ProbeVolumeDebugPass.cs", 35);
 		try
 		{
 			passData.ComputeShader = m_ComputeShader;

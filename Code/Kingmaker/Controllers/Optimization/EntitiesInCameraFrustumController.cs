@@ -38,6 +38,22 @@ public class EntitiesInCameraFrustumController : IControllerDisable, IController
 			Results_Closer = new NativeArray<bool>(bounds.Length, Allocator.TempJob);
 		}
 
+		public void Cleanup()
+		{
+			if (Planes.IsCreated)
+			{
+				Planes.Dispose();
+			}
+			if (Results.IsCreated)
+			{
+				Results.Dispose();
+			}
+			if (Results_Closer.IsCreated)
+			{
+				Results_Closer.Dispose();
+			}
+		}
+
 		public void Execute(int index)
 		{
 			Results[index] = TestPlanesAABB(index);
@@ -192,8 +208,7 @@ public class EntitiesInCameraFrustumController : IControllerDisable, IController
 				m_Entities[i].IsInCameraFrustum = jobData.Results[i];
 				m_Entities[i].IsInCameraFrustum_Closer = jobData.Results_Closer[i];
 			}
-			jobData.Planes.Dispose();
-			jobData.Results.Dispose();
+			jobData.Cleanup();
 			break;
 		}
 		}

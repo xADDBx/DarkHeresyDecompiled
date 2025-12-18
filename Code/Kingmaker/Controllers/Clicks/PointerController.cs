@@ -62,6 +62,8 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 
 	private Vector3 m_MouseDownWorldPosition;
 
+	private Vector3 m_MouseDownGroundPosition;
+
 	private float m_MouseButtonTime;
 
 	private bool m_MouseDrag;
@@ -86,9 +88,9 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 
 	public GameObject PointerOn { get; private set; }
 
-	public GameObject OvertipObject { get; private set; }
-
 	public Vector3 WorldPosition { get; private set; }
+
+	public Vector3 GroundPosition { get; private set; }
 
 	public bool GamePadConfirm { get; set; }
 
@@ -161,16 +163,18 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		bool flag = true;
 		Vector2 pointerPosition = PointerPosition;
 		Vector3 worldPosition = Vector3.zero;
+		Vector3? groundPosition = null;
 		GameObject resultGameObject = null;
 		IClickEventHandler resultHandler = null;
 		if (!InGui)
 		{
-			SelectClickObject(pointerPosition, out resultGameObject, out worldPosition, out resultHandler);
+			SelectClickObject(pointerPosition, out resultGameObject, out worldPosition, out groundPosition, out resultHandler);
 			m_SimulateClickHandler = resultHandler;
 			WorldPositionForSimulation = WorldPosition;
 			if (resultGameObject != null)
 			{
 				WorldPosition = worldPosition;
+				GroundPosition = groundPosition ?? worldPosition;
 			}
 		}
 		if (!Input.GetMouseButton(m_MouseDownButton) && m_MouseDown)
@@ -206,12 +210,16 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 					});
 				}
 			}
-			else if (flag && m_MouseDownHandler != null && m_MouseDownOn != null && m_MouseDownHandler.OnClick(m_MouseDownOn, m_MouseDownWorldPosition, m_MouseDownButton))
+			else if (flag && m_MouseDownHandler != null && m_MouseDownOn != null)
 			{
-				EventBus.RaiseEvent(delegate(IClickMarkHandler h)
+				Vector3 clickPosition = ((m_MouseDownHandler is ClickGroundHandler) ? m_MouseDownGroundPosition : m_MouseDownWorldPosition);
+				if (m_MouseDownHandler.OnClick(m_MouseDownOn, clickPosition, m_MouseDownButton))
 				{
-					h.OnClickHandled(m_MouseDownWorldPosition);
-				});
+					EventBus.RaiseEvent(delegate(IClickMarkHandler h)
+					{
+						h.OnClickHandled(clickPosition);
+					});
+				}
 			}
 			m_MouseDownOn = null;
 			m_MouseDrag = false;
@@ -253,6 +261,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 			m_MouseDownHandler = resultHandler;
 			m_MouseDownCoord = pointerPosition;
 			m_MouseDownWorldPosition = WorldPosition;
+			m_MouseDownGroundPosition = GroundPosition;
 			m_MouseButtonTime = Time.unscaledTime;
 		}
 		if (m_MouseDown && m_MouseDownButton == 1 && !TurnController.IsInTurnBasedCombat() && m_MouseDown && m_MouseDownButton == 1 && !TurnController.IsInTurnBasedCombat() && m_MouseDownHandler is IDragClickEventHandler dragClickEventHandler3 && m_MouseDownOn != null)
@@ -263,26 +272,6 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		{
 			MultiSelection?.Cancel();
 		}
-	}
-
-	public void ScrollBy2D(Vector2 scroll)
-	{
-		float num = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-		float cameraScrollMultiplier = Game.Instance.CurrentlyLoadedArea.CameraScrollMultiplier;
-		scroll *= num * cameraScrollMultiplier;
-		Vector3 vector = MainCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 1f));
-		Vector3 vector2 = MainCamera.ViewportToWorldPoint(new Vector3(1f, 0.5f, 1f));
-		Vector3 vector3 = MainCamera.ViewportToWorldPoint(new Vector3(0.5f, 1f, 1f));
-		vector2.y = vector.y;
-		vector3.y = vector.y;
-		Vector3 normalized = (vector2 - vector).normalized;
-		Vector3 normalized2 = (vector3 - vector).normalized;
-		WorldPosition += scroll.x * normalized + scroll.y * normalized2;
-	}
-
-	public void ScrollTo(Vector3 vec)
-	{
-		WorldPosition = vec;
 	}
 
 	public void SetPointerMode(PointerMode mode)
@@ -366,9 +355,10 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		}
 	}
 
-	public void SelectClickObject(Vector2 mousePosition, out GameObject resultGameObject, out Vector3 worldPosition, out IClickEventHandler resultHandler)
+	private void SelectClickObject(Vector2 mousePosition, out GameObject resultGameObject, out Vector3 worldPosition, out Vector3? groundPosition, out IClickEventHandler resultHandler)
 	{
 		worldPosition = Vector3.zero;
+		groundPosition = null;
 		resultGameObject = null;
 		resultHandler = null;
 		if (MainCamera == null)
@@ -390,12 +380,12 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 			}
 			Hits.Clear();
 		}
-		OvertipObject = null;
 		float num2 = 0f;
 		float num3 = float.MaxValue;
 		int num4 = -1;
 		int num5 = -1;
 		bool flag = false;
+		Vector3? vector = null;
 		for (int i = 0; i < num; i++)
 		{
 			RaycastHit raycastHit = m_Hits[i];
@@ -409,7 +399,11 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 			{
 				continue;
 			}
-			flag = flag || flag2;
+			if (flag2)
+			{
+				groundPosition = raycastHit.point;
+				flag = true;
+			}
 			IClickEventHandler clickEventHandler = null;
 			float num7 = 0f;
 			GameObject clickableObject = GetClickableObject(raycastHit);
@@ -418,26 +412,20 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 				for (int j = 0; j < m_ClickHandlers.Length; j++)
 				{
 					clickEventHandler = m_ClickHandlers[j];
-					if (clickEventHandler.GetMode() != Mode)
+					if (clickEventHandler.GetMode() == Mode)
 					{
-						continue;
-					}
-					try
-					{
-						HandlerPriorityResult priority = clickEventHandler.GetPriority(clickableObject, raycastHit.point);
-						num7 = priority.Priority;
-						if (priority.ShowOvertip)
+						try
 						{
-							OvertipObject = clickableObject;
+							num7 = clickEventHandler.GetPriority(clickableObject, raycastHit.point).Priority;
 						}
-					}
-					catch (Exception ex)
-					{
-						PFLog.Default.Exception(ex);
-					}
-					if (num7 > 0f)
-					{
-						break;
+						catch (Exception ex)
+						{
+							PFLog.Default.Exception(ex);
+						}
+						if (num7 > 0f)
+						{
+							break;
+						}
 					}
 				}
 			}
@@ -480,6 +468,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 			if (num8 >= num2)
 			{
 				worldPosition = raycastHit.point;
+				groundPosition = vector;
 				resultGameObject = clickableObject;
 				resultHandler = clickEventHandler;
 				num2 = num8;
@@ -575,7 +564,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		{
 			return 0.2f - h.distance * 0.0001f;
 		}
-		if (IsCover(gameObject) || IsThinCover(gameObject))
+		if (IsCover(gameObject) || IsThinCover(gameObject) || HasClickComponents(gameObject, out var _))
 		{
 			return 0.5f - h.distance * 0.0001f;
 		}
@@ -615,32 +604,6 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		finally
 		{
 			SimulatingClick = false;
-		}
-	}
-
-	public void UpdateSelectedClickHandler()
-	{
-		float num = 0f;
-		for (int i = 0; i < m_ClickHandlers.Length; i++)
-		{
-			IClickEventHandler clickEventHandler = m_ClickHandlers[i];
-			if (clickEventHandler.GetMode() == Mode)
-			{
-				try
-				{
-					num = clickEventHandler.GetPriority(PointerOn, WorldPosition).Priority;
-				}
-				catch (Exception ex)
-				{
-					PFLog.Default.Exception(ex);
-				}
-				if (num > 0f)
-				{
-					m_MouseDownHandler = clickEventHandler;
-					m_SimulateClickHandler = clickEventHandler;
-					break;
-				}
-			}
 		}
 	}
 

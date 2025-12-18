@@ -309,27 +309,7 @@ public class Game : IGameDoStartMode, IGameDoStopMode, IGameDoSwitchCutsceneLock
 		}
 	}
 
-	public static ControllerModeType? ControllerOverride
-	{
-		get
-		{
-			string text = BuildModeUtility.Data?.ForceControllerMode;
-			if (string.IsNullOrEmpty(text))
-			{
-				return null;
-			}
-			if (text.ToLower() == "gamepad")
-			{
-				return ControllerModeType.Gamepad;
-			}
-			if (text.ToLower() == "mouse")
-			{
-				return ControllerModeType.Mouse;
-			}
-			PFLog.Default.Error("Strange value in ForceControllerMode in startup.json - defaulting to mouse");
-			return ControllerModeType.Mouse;
-		}
-	}
+	public static ControllerModeType? ControllerOverride => ControllerModeType.Mouse;
 
 	[NotNull]
 	public Player Player => Player.Ref.Entity;
@@ -581,18 +561,13 @@ public class Game : IGameDoStartMode, IGameDoStopMode, IGameDoSwitchCutsceneLock
 
 	private void InitializeControllerMode()
 	{
-		if (!DontChangeController)
-		{
-			ControllerMode = (UtilsConsole.GamepadIsConnected ? ControllerModeType.Gamepad : ControllerModeType.Mouse);
-		}
-		if (ControllerOverride.HasValue)
-		{
-			ControllerMode = ControllerOverride.Value;
-		}
+		ControllerMode = ControllerModeType.Mouse;
 	}
 
 	public static void DoAutoDetectControllerMode()
 	{
+		Instance.ControllerMode = ControllerModeType.Mouse;
+		DontChangeController = true;
 		if (Application.isConsolePlatform && !Application.isEditor)
 		{
 			if (EventSystem.current != null)

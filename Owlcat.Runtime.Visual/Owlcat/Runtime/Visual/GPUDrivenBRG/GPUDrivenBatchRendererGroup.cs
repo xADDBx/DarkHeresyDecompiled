@@ -1523,18 +1523,19 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			{
 				continue;
 			}
-			ModifyVisibilityInfo(item.IndexAllocation).VisibilityFlags = GetVisibilityFlags(in rendererDesc, in rendererParams);
-			ref InstanceMetadata reference = ref UnsafeCollectionExtensions.ElementAsRef(in m_InstanceMetadata, item.IndexAllocation.Index);
-			reference.RendererInstanceID = rendererDesc.InstanceID;
-			reference.SubmeshIndex = i;
-			reference.GameObjectInstanceID = rendererDesc.GetGameObjectInstanceID(in rendererParams);
-			reference.SceneIndex = GetSceneIndex(in rendererDesc, in rendererParams);
-			ref GPUDrivenRendererGroupPool.RendererGroup reference2 = ref RendererGroupPool.Get(item.RendererGroupIndex);
+			ref GPUDrivenVisibilityInfo reference = ref ModifyVisibilityInfo(item.IndexAllocation);
+			reference.VisibilityFlags = UpdateVisibilityFlags(reference.VisibilityFlags, in rendererDesc, in rendererParams);
+			ref InstanceMetadata reference2 = ref UnsafeCollectionExtensions.ElementAsRef(in m_InstanceMetadata, item.IndexAllocation.Index);
+			reference2.RendererInstanceID = rendererDesc.InstanceID;
+			reference2.SubmeshIndex = i;
+			reference2.GameObjectInstanceID = rendererDesc.GetGameObjectInstanceID(in rendererParams);
+			reference2.SceneIndex = GetSceneIndex(in rendererDesc, in rendererParams);
+			ref GPUDrivenRendererGroupPool.RendererGroup reference3 = ref RendererGroupPool.Get(item.RendererGroupIndex);
 			GPUDrivenRendererGroupPool.RendererSettings rendererSettings = GPUDrivenRendererGroupPool.RendererSettings.From(in rendererDesc, in rendererParams, m_RendererSettingsCreationInfo);
-			GPUDrivenRendererGroupPool.RendererSettings rendererSettings2 = reference2.Key.RendererSettings;
+			GPUDrivenRendererGroupPool.RendererSettings rendererSettings2 = reference3.Key.RendererSettings;
 			if (!rendererSettings2.Equals(rendererSettings))
 			{
-				GPUDrivenRendererGroupPool.RendererGroupKey groupKey = reference2.Key;
+				GPUDrivenRendererGroupPool.RendererGroupKey groupKey = reference3.Key;
 				groupKey.RendererSettings = rendererSettings;
 				TryRegisterLightmappingMaterial(in groupKey);
 				if (RendererGroupPool.TryMigrateInstanceSimple(ref item, in groupKey))
@@ -1551,9 +1552,9 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 				}
 			}
 			int sortingOrder = rendererDesc.GetSortingOrder(in rendererParams);
-			if (sortingOrder != reference.SortingOrder)
+			if (sortingOrder != reference2.SortingOrder)
 			{
-				reference.SortingOrder = sortingOrder;
+				reference2.SortingOrder = sortingOrder;
 				ref GPUDrivenRendererGroupPool.RendererGroup rendererGroup = ref RendererGroupPool.Get(item.RendererGroupIndex);
 				RendererGroupPool.ScheduleSorting(ref rendererGroup);
 			}
@@ -1763,6 +1764,11 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 	}
 
 	private static GPUDrivenVisibilityFlags GetVisibilityFlags(in RendererDesc rendererDesc, in RendererParams rendererParams)
+	{
+		return rendererDesc.ExtraVisibilityFlags;
+	}
+
+	private static GPUDrivenVisibilityFlags UpdateVisibilityFlags(GPUDrivenVisibilityFlags oldVisibilityFlags, in RendererDesc rendererDesc, in RendererParams rendererParams)
 	{
 		return rendererDesc.ExtraVisibilityFlags;
 	}

@@ -99,9 +99,6 @@
     <Reference Include="Kingmaker.ResourceReplacementProvider">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\Kingmaker.ResourceReplacementProvider.dll</HintPath>
     </Reference>
-    <Reference Include="Steamworks.NET">
-      <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\Steamworks.NET.dll</HintPath>
-    </Reference>
     <Reference Include="GameCore.Mics.InterfaceServiceLocator.InterfaceServiceLocator">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\GameCore.Mics.InterfaceServiceLocator.InterfaceServiceLocator.dll</HintPath>
     </Reference>
@@ -255,6 +252,9 @@
     </Reference>
     <Reference Include="System.Net.Http">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\System.Net.Http.dll</HintPath>
+    </Reference>
+    <Reference Include="Steamworks.NET">
+      <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\Steamworks.NET.dll</HintPath>
     </Reference>
     <Reference Include="LocalizationShared">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\LocalizationShared.dll</HintPath>

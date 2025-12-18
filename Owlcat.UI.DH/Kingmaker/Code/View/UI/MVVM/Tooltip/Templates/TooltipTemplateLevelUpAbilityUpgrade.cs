@@ -2,8 +2,11 @@ using System.Collections.Generic;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic.Levelup;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
@@ -59,6 +62,11 @@ public class TooltipTemplateLevelUpAbilityUpgrade : TooltipBaseTemplate
 
 	private string GetDescription(IUIDataProvider ability)
 	{
-		return UIUtilityText.UpdateDescriptionWithUIProperties(ability?.Description ?? string.Empty, Caster);
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+			GameLogContext.DescriptionFactBlueprint = (BlueprintMechanicEntityFact)ability;
+			return UIUtilityText.UpdateDescriptionWithUIProperties(ability?.Description ?? string.Empty, Caster);
+		}
 	}
 }

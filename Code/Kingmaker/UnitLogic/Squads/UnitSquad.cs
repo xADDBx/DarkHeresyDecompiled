@@ -9,6 +9,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
+using Kingmaker.StateHasher.Hashers;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility;
@@ -63,8 +64,12 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		}
 	}
 
+	[JsonProperty]
+	[OwlPackInclude]
 	private readonly List<UnitReference> m_Units = new List<UnitReference>();
 
+	[JsonProperty]
+	[OwlPackInclude]
 	private UnitReference m_Leader;
 
 	[NotNull]
@@ -74,7 +79,7 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 	{
 		Name = "UnitSquad",
 		OldNames = null,
-		Fields = new FieldInfo[15]
+		Fields = new FieldInfo[17]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -90,7 +95,9 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 			new FieldInfo("m_OriginalBlueprint", typeof(BlueprintMechanicEntityFact)),
 			new FieldInfo("m_Blueprint", typeof(BlueprintMechanicEntityFact)),
 			new FieldInfo("MainFact", typeof(MechanicEntityFact)),
-			new FieldInfo("Id", typeof(string))
+			new FieldInfo("Id", typeof(string)),
+			new FieldInfo("m_Units", typeof(List<UnitReference>)),
+			new FieldInfo("m_Leader", typeof(UnitReference))
 		}
 	};
 
@@ -192,6 +199,19 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
 		result.Append(Id);
+		List<UnitReference> units = m_Units;
+		if (units != null)
+		{
+			for (int i = 0; i < units.Count; i++)
+			{
+				UnitReference obj = units[i];
+				Hash128 val2 = UnitReferenceHasher.GetHash128(ref obj);
+				result.Append(ref val2);
+			}
+		}
+		UnitReference obj2 = m_Leader;
+		Hash128 val3 = UnitReferenceHasher.GetHash128(ref obj2);
+		result.Append(ref val3);
 		return result;
 	}
 
@@ -230,6 +250,9 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		formatter.Field(13, "MainFact", ref value2, state);
 		string value3 = Id;
 		formatter.StringField(14, "Id", ref value3, state);
+		List<UnitReference> value4 = m_Units;
+		formatter.Field(15, "m_Units", ref value4, state);
+		formatter.Field(16, "m_Leader", ref m_Leader, state);
 		formatter.EndObject();
 	}
 
@@ -291,6 +314,12 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 				break;
 			case 14:
 				Id = formatter.ReadString(state);
+				break;
+			case 15:
+				Unsafe.AsRef(in m_Units) = formatter.ReadPackable<List<UnitReference>>(state);
+				break;
+			case 16:
+				m_Leader = formatter.ReadPackable<UnitReference>(state);
 				break;
 			}
 		}
