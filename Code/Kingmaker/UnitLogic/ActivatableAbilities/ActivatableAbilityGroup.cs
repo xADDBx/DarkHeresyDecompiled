@@ -1,0 +1,53 @@
+using System;
+
+namespace Kingmaker.UnitLogic.ActivatableAbilities;
+
+[Obsolete]
+public enum ActivatableAbilityGroup
+{
+	None,
+	BardicPerformance,
+	StyleStrike,
+	DivineWeaponProperty,
+	ArcaneWeaponProperty,
+	TrueMagus,
+	Judgment,
+	DebilitatingStrike,
+	CriticalFeat,
+	BarbarianStance,
+	MetamagicRod,
+	MagicArrows,
+	MagicBolts,
+	ChangeShape,
+	SerpentsFang,
+	RingOfCircumstances,
+	DuelistCripplingCritical,
+	WizardDivinationAura,
+	CombatStyle,
+	Wings,
+	TransmutationPhysicalEnhancement,
+	FormInfusion,
+	SubstanceInfusion,
+	ShroudOfWaterMode,
+	ElementalOverflow,
+	GatherPower,
+	HellknightEnchantment,
+	SpiritWeaponProperty,
+	AzataMythicPerformance,
+	AeonGaze,
+	MagicalItems,
+	SacredWeaponProperty,
+	SacredArmorProperty,
+	HunterAnimalFocus,
+	CombatManeuverStrike,
+	FeralTransformation,
+	DrovierAspect,
+	ChangeShapeKitsune,
+	MasterHealingTechnique,
+	ArcaneArmorProperty,
+	DemonMinorAspect,
+	DemonMajorAspect,
+	RagingTactician,
+	WitheringLife,
+	SpellDance
+}

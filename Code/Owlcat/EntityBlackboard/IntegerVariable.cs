@@ -1,0 +1,82 @@
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using OwlPack.Runtime;
+
+namespace Owlcat.EntityBlackboard;
+
+[OwlPackable(OwlPackableMode.Generate)]
+public class IntegerVariable : RuntimeVariable<int>, IOwlPackable<IntegerVariable>
+{
+	[OwlPackInclude]
+	private int m_Value;
+
+	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	{
+		Name = "IntegerVariable",
+		OldNames = null,
+		Fields = new FieldInfo[2]
+		{
+			new FieldInfo("Key", typeof(string)),
+			new FieldInfo("m_Value", typeof(int))
+		}
+	};
+
+	public override int Value
+	{
+		get
+		{
+			return m_Value;
+		}
+		set
+		{
+			m_Value = value;
+		}
+	}
+
+	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	{
+		IntegerVariable source = new IntegerVariable();
+		result = Unsafe.As<IntegerVariable, TPossiblyBase>(ref source);
+	}
+
+	public override void Serialize<TFormatter>(TFormatter formatter, SerializerState state)
+	{
+		(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
+		var (objectId, _) = orRegister;
+		if (orRegister.isRef)
+		{
+			formatter.ObjectRef(objectId);
+			return;
+		}
+		ushort type = state.TypeLibrary.RegisterType<IntegerVariable>(OwlPackTypeInfo);
+		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
+		formatter.StringField(0, "Key", ref Key, state);
+		formatter.UnmanagedField(1, "m_Value", ref m_Value, state);
+		formatter.EndObject();
+	}
+
+	public override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state)
+	{
+		state.References.Register(objectId, this);
+		TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<IntegerVariable>();
+		List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
+		formatter.EnterObject();
+		for (int i = 0; i < typeInfo.Fields.Length; i++)
+		{
+			formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
+			switch (mappingForType[fieldID])
+			{
+			case byte.MaxValue:
+				formatter.SkipField(size);
+				break;
+			case 0:
+				Key = formatter.ReadString(state);
+				break;
+			case 1:
+				m_Value = formatter.ReadUnmanaged<int>(state);
+				break;
+			}
+		}
+		formatter.LeaveObject();
+	}
+}

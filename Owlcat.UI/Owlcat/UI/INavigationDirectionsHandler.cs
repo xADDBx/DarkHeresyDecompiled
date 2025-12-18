@@ -1,0 +1,5 @@
+namespace Owlcat.UI;
+
+public interface INavigationDirectionsHandler : INavigationVerticalDirectionsHandler, INavigationUpDirectionHandler, IConsoleEntity, INavigationDownDirectionHandler, INavigationHorizontalDirectionsHandler, INavigationLeftDirectionHandler, INavigationRightDirectionHandler
+{
+}

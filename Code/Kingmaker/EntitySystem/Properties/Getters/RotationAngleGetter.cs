@@ -1,0 +1,44 @@
+using System;
+using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Owlcat.QA.Validation;
+using Owlcat.Runtime.Core.Utility;
+using UnityEngine;
+
+namespace Kingmaker.EntitySystem.Properties.Getters;
+
+[Serializable]
+[Obsolete]
+[TypeId("6c65a9a9d3c7dba45b61b518d00f0d87")]
+public class RotationAngleGetter : IntPropertyGetter
+{
+	[ValidateNotNull]
+	[SerializeReference]
+	public PositionEvaluator From;
+
+	[ValidateNotNull]
+	[SerializeReference]
+	public PositionEvaluator To;
+
+	[SerializeField]
+	public bool Assume0as1;
+
+	protected override int GetBaseValue()
+	{
+		if (!From.TryGetValue(out var value) || !To.TryGetValue(out var value2))
+		{
+			return 0;
+		}
+		int num = (int)Vector3.SignedAngle(value, value2, Vector3.up);
+		if (num == 0 && Assume0as1)
+		{
+			num = 1;
+		}
+		return num;
+	}
+
+	protected override string GetInnerCaption(bool useLineBreaks)
+	{
+		return $"Rotation angle from {From} to {To}";
+	}
+}

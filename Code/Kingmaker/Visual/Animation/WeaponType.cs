@@ -1,0 +1,36 @@
+namespace Kingmaker.Visual.Animation;
+
+public enum WeaponType
+{
+	Fist,
+	Knife,
+	OneHandedSword,
+	OneHandedAxe,
+	OneHandedHammer,
+	PistolBase,
+	PistolFlamer,
+	PistolLaser,
+	PistolPlasma,
+	Shield,
+	TwoHandedAxe,
+	TwoHandedHammer,
+	TwoHandedSword,
+	Staff,
+	RifleHipBase,
+	RifleHipFlamer,
+	RifleHipPlasma,
+	RifleShoulderBase,
+	RifleShoulderLaser,
+	HeavyHipBase,
+	HeavyHipFlamer,
+	HeavyHipLaser,
+	HeavyHipPlasma,
+	HeavyShoulder,
+	EldarRifleHipBase,
+	EldarRifleHipLaser,
+	EldarRifleShoulderBase,
+	EldarRifleShoulderLaser,
+	EldarHeavyHip,
+	EldarHeavyShoulder,
+	Creature
+}

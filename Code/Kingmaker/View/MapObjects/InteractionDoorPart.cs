@@ -1,0 +1,518 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using Core.Cheats;
+using Kingmaker.Controllers;
+using Kingmaker.Designers;
+using Kingmaker.Designers.EventConditionActionSystem.ContextData;
+using Kingmaker.ElementsSystem;
+using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Framework.Pathfinding;
+using Kingmaker.Interaction;
+using Kingmaker.PubSubSystem;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.Sound.Base;
+using Kingmaker.View.MapObjects.InteractionComponentBase;
+using Kingmaker.View.MapObjects.InteractionRestrictions;
+using Newtonsoft.Json;
+using Owlcat.Runtime.Core.Utility;
+using OwlPack.Runtime;
+using Pathfinding;
+using StateHasher.Core;
+using UnityEngine;
+using UnityEngine.Playables;
+using UnityEngine.Timeline;
+
+namespace Kingmaker.View.MapObjects;
+
+[OwlPackable(OwlPackableMode.Generate)]
+public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHasInteractionVariantActors, IUpdatable, IInterpolatable, IHashable, IOwlPackable<InteractionDoorPart>
+{
+	private const float OpenSpeed = 1f;
+
+	private const float CloseSpeed = -1f;
+
+	private const int PlayableIndex = 0;
+
+	private Animator m_Animator;
+
+	private PlayableDirector m_PlayableDirector;
+
+	private float m_PreviousTime;
+
+	private float m_CurrentTime;
+
+	private bool m_IsPlayableDirectorAttached;
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_State;
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_Inited;
+
+	[OwlPackInclude]
+	private bool m_OnOpenActionsHasBeenRun;
+
+	[OwlPackInclude]
+	private bool m_OnCloseActionsHasBeenRun;
+
+	private bool WasAnimationFinished = true;
+
+	private bool m_InteractThroughVariants;
+
+	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	{
+		Name = "InteractionDoorPart",
+		OldNames = null,
+		Fields = new FieldInfo[9]
+		{
+			new FieldInfo("SourceType", typeof(string)),
+			new FieldInfo("AlreadyUnlocked", typeof(bool)),
+			new FieldInfo("AlreadyVisited", typeof(bool)),
+			new FieldInfo("m_LastCombatRoundInteractionAttempt", typeof(int)),
+			new FieldInfo("m_Enabled", typeof(bool)),
+			new FieldInfo("m_State", typeof(bool)),
+			new FieldInfo("m_Inited", typeof(bool)),
+			new FieldInfo("m_OnOpenActionsHasBeenRun", typeof(bool)),
+			new FieldInfo("m_OnCloseActionsHasBeenRun", typeof(bool))
+		}
+	};
+
+	public bool IsOpen => m_State;
+
+	public bool IsAnimationFinished
+	{
+		get
+		{
+			if (!m_IsPlayableDirectorAttached)
+			{
+				return true;
+			}
+			if (!(m_PlayableDirector.playableGraph.GetRootPlayable(0).GetSpeed() > 0.0))
+			{
+				return m_CurrentTime <= 0f;
+			}
+			return m_CurrentTime >= base.Settings.ObstacleAnimation.length;
+		}
+	}
+
+	public override bool InteractThroughVariants
+	{
+		get
+		{
+			if (m_InteractThroughVariants && !base.AlreadyUnlocked)
+			{
+				return !m_State;
+			}
+			return false;
+		}
+	}
+
+	public float OvertipCorrection => 0f;
+
+	protected override UIInteractionType GetDefaultUIType()
+	{
+		return UIInteractionType.Action;
+	}
+
+	protected override void OnViewDidAttach()
+	{
+		base.OnViewDidAttach();
+		base.View.FogOfWarFudgeRadius = 0.5f;
+		m_Animator = base.View.Or(null)?.GetComponentInChildren<Animator>();
+		if (m_Animator != null)
+		{
+			m_Animator.fireEvents = true;
+		}
+		StaticRendererLink[] array = base.View.Or(null)?.GetComponents<StaticRendererLink>();
+		if (array != null)
+		{
+			StaticRendererLink[] array2 = array;
+			for (int i = 0; i < array2.Length; i++)
+			{
+				array2[i].DoLink();
+			}
+		}
+		m_Animator.Or(null)?.Update(0f);
+		AttachPlayableDirector();
+		if (!m_Inited)
+		{
+			m_Inited = true;
+			if (base.Settings.OpenByDefault)
+			{
+				Open();
+			}
+		}
+		if ((bool)base.Settings.HideWhenOpen)
+		{
+			Renderer renderer = base.Settings.HideWhenOpen.FindLinkedTransform()?.GetComponent<Renderer>();
+			if ((bool)renderer)
+			{
+				renderer.enabled = !m_State;
+			}
+		}
+		SetNavmeshCutState();
+		SetGridObstacleState();
+	}
+
+	protected override void OnDetach()
+	{
+		DetachPlayableDirector();
+	}
+
+	protected override void OnInteract(BaseUnitEntity user)
+	{
+		Open(user);
+	}
+
+	public override void HandleDestructionSuccess(MapObjectView mapObjectView)
+	{
+		base.HandleDestructionSuccess(mapObjectView);
+		Open();
+	}
+
+	public void Open(BaseUnitEntity user = null)
+	{
+		PlayOpen();
+		m_State = !m_State;
+		if ((bool)base.Settings.HideWhenOpen)
+		{
+			Renderer renderer = base.Settings.HideWhenOpen.FindLinkedTransform()?.GetComponent<Renderer>();
+			if ((bool)renderer)
+			{
+				renderer.enabled = !m_State;
+			}
+		}
+		string text = (m_State ? base.Settings.OpenSound : base.Settings.CloseSound);
+		if (!string.IsNullOrEmpty(text))
+		{
+			SoundEventsManager.PostEvent(text, base.View.Or(null)?.gameObject);
+		}
+		if (base.Settings.DisableOnOpen)
+		{
+			Enabled = false;
+		}
+		EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+		{
+			h.HandleObjectInteractChanged();
+		}, isCheckRuntime: true);
+		SetNavmeshCutState();
+		if (IsOpen)
+		{
+			if (base.Settings.DoOpenActionsOnce && m_OnOpenActionsHasBeenRun)
+			{
+				return;
+			}
+			m_OnOpenActionsHasBeenRun = true;
+			ActionsHolder actionsHolder = base.Settings.OnOpenActions?.Get();
+			if (actionsHolder == null || !actionsHolder.HasActions)
+			{
+				return;
+			}
+			using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
+			{
+				using (ContextData<InteractingUnitData>.Request().Setup(user))
+				{
+					actionsHolder.Run();
+					return;
+				}
+			}
+		}
+		if (base.Settings.DoCloseActionsOnce && m_OnCloseActionsHasBeenRun)
+		{
+			return;
+		}
+		m_OnCloseActionsHasBeenRun = true;
+		ActionsHolder actionsHolder2 = base.Settings.OnCloseActions?.Get();
+		if (actionsHolder2 == null || !actionsHolder2.HasActions)
+		{
+			return;
+		}
+		using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
+		{
+			using (ContextData<InteractingUnitData>.Request().Setup(user))
+			{
+				actionsHolder2.Run();
+			}
+		}
+	}
+
+	private void SetNavmeshCutState()
+	{
+		List<NavmeshCut> list = ((base.Settings.NavmeshCutAction == InteractionDoorSettings.NavMeshCutActionSettings.DoNotTouchNavmeshCut) ? null : base.View.Or(null)?.NavmeshCuts);
+		if (list == null)
+		{
+			return;
+		}
+		foreach (NavmeshCut item in list)
+		{
+			item.enabled = base.Settings.NavmeshCutAction == InteractionDoorSettings.NavMeshCutActionSettings.EnableNavmeshCutWhenOpen == m_State;
+		}
+	}
+
+	private void SetGridObstacleState()
+	{
+		List<GridObstacle> list = ((base.Settings.GridObstacleAction == InteractionDoorSettings.GridObstacleActionSettings.DoNotTouchGridObstacle) ? null : base.View.Or(null)?.GridObstacles);
+		if (list == null)
+		{
+			return;
+		}
+		foreach (GridObstacle item in list)
+		{
+			item.enabled = base.Settings.GridObstacleAction == InteractionDoorSettings.GridObstacleActionSettings.EnableGridObstacleWhenOpen == m_State;
+		}
+	}
+
+	public bool GetState()
+	{
+		return m_State;
+	}
+
+	IEnumerable<IInteractionVariantActor> IHasInteractionVariantActors.GetInteractionVariantActors()
+	{
+		if (Type == InteractionType.Direct || !InteractThroughVariants)
+		{
+			return null;
+		}
+		EntityPartsManager.PartsByTypeEnumerable<IInteractionVariantActor> all = base.View.Data.Parts.GetAll<IInteractionVariantActor>();
+		if (all.Any((IInteractionVariantActor x) => x is KeyRestrictionPart && x.CheckRestriction(GameHelper.GetPlayerCharacter())))
+		{
+			return null;
+		}
+		return all.Where((IInteractionVariantActor x) => !(x is KeyRestrictionPart)).DefaultIfEmpty();
+	}
+
+	protected override void ConfigureRestrictions()
+	{
+		SleightOfHandRestriction component = base.View.GetComponent<SleightOfHandRestriction>();
+		if (component != null)
+		{
+			base.Settings.SetShowOvertipOverride(value: false);
+			component.Settings.InteractOnlyWithToolIfFailed = true;
+			base.View.Data.Parts.GetOrCreate<SleightOfHandMultikeyItemRestrictionPart>().Settings.CopyDCData(component.Settings);
+			base.View.Data.Parts.GetOrCreate<DemolitionMeltaChargeRestrictionPart>().Settings.CopyDCData(component.Settings);
+			m_InteractThroughVariants = true;
+		}
+		LoreXenosRestriction component2 = base.View.GetComponent<LoreXenosRestriction>();
+		if (component2 != null)
+		{
+			base.Settings.SetShowOvertipOverride(value: false);
+			component2.Settings.InteractOnlyWithToolIfFailed = true;
+			base.View.Data.Parts.GetOrCreate<LoreXenosMultikeyItemRestrictionPart>().Settings.CopyDCData(component2.Settings);
+			m_InteractThroughVariants = true;
+		}
+	}
+
+	void IUpdatable.Tick(float delta)
+	{
+		if (m_PlayableDirector.state != 0)
+		{
+			m_PreviousTime = m_CurrentTime;
+			m_CurrentTime += ((m_PlayableDirector.playableGraph.GetRootPlayable(0).GetSpeed() > 0.0) ? delta : (0f - delta));
+			m_PlayableDirector.time = m_PreviousTime;
+			m_PlayableDirector.Evaluate();
+			if (WasAnimationFinished && !IsAnimationFinished)
+			{
+				WasAnimationFinished = false;
+			}
+			else if (!WasAnimationFinished && IsAnimationFinished)
+			{
+				WasAnimationFinished = true;
+				OnAnimationFinished();
+			}
+			if (WasAnimationFinished && IsAnimationFinished)
+			{
+				m_PlayableDirector.Pause();
+			}
+		}
+	}
+
+	private void OnAnimationFinished()
+	{
+		SetGridObstacleState();
+		m_PlayableDirector.Pause();
+	}
+
+	void IInterpolatable.Tick(float progress)
+	{
+		if (m_PlayableDirector.state != 0)
+		{
+			float num = Mathf.LerpUnclamped(m_PreviousTime, m_CurrentTime, progress);
+			if (!(Math.Abs((double)num - m_PlayableDirector.time) < 0.0001))
+			{
+				m_PlayableDirector.time = num;
+				m_PlayableDirector.Evaluate();
+			}
+		}
+	}
+
+	private bool AttachPlayableDirector()
+	{
+		if (base.Owner.View == null || m_Animator == null || !base.View.gameObject.activeInHierarchy)
+		{
+			return false;
+		}
+		m_PlayableDirector = base.Owner.View.gameObject.EnsureComponent<PlayableDirector>();
+		m_PlayableDirector.timeUpdateMode = DirectorUpdateMode.Manual;
+		TimelineAsset timelineAsset = m_PlayableDirector.playableAsset as TimelineAsset;
+		if (timelineAsset == null)
+		{
+			timelineAsset = ScriptableObject.CreateInstance<TimelineAsset>();
+			m_PlayableDirector.playableAsset = timelineAsset;
+		}
+		AnimationTrack animationTrack = timelineAsset.CreateTrack<AnimationTrack>(null, "AnimationTrack");
+		TimelineClip timelineClip = animationTrack.CreateClip(base.Settings.ObstacleAnimation);
+		if (timelineClip.animationClip.hasGenericRootTransform)
+		{
+			animationTrack.position = m_Animator.transform.position;
+			animationTrack.rotation = m_Animator.transform.rotation;
+		}
+		m_PlayableDirector.SetGenericBinding(animationTrack, m_Animator);
+		m_Animator.runtimeAnimatorController = null;
+		m_Animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+		m_PlayableDirector.time = (m_State ? timelineClip.duration : 0.0);
+		m_CurrentTime = (float)m_PlayableDirector.time;
+		m_PreviousTime = m_CurrentTime;
+		m_PlayableDirector.Play();
+		m_PlayableDirector.playableGraph.GetRootPlayable(0).SetSpeed(m_State ? 1f : (-1f));
+		Game.Instance.Controllers.DoorUpdateController.Add(this);
+		Game.Instance.Controllers.InterpolationController.Add(this);
+		m_IsPlayableDirectorAttached = true;
+		return true;
+	}
+
+	private void DetachPlayableDirector()
+	{
+		if (m_IsPlayableDirectorAttached)
+		{
+			m_IsPlayableDirectorAttached = false;
+			Game.Instance.Controllers.DoorUpdateController.Remove(this);
+			Game.Instance.Controllers.InterpolationController.Remove(this);
+			if (!(m_PlayableDirector == null) && m_PlayableDirector.playableGraph.IsValid())
+			{
+				m_PlayableDirector.playableGraph.Destroy();
+			}
+		}
+	}
+
+	private void PlayOpen()
+	{
+		if (m_IsPlayableDirectorAttached || AttachPlayableDirector())
+		{
+			float num = (m_State ? (-1f) : 1f);
+			m_PlayableDirector.time = Mathf.Clamp((float)m_PlayableDirector.time, 0f, base.Settings.ObstacleAnimation.length);
+			m_CurrentTime = (float)m_PlayableDirector.time;
+			m_PreviousTime = m_CurrentTime;
+			m_PlayableDirector.Play();
+			m_PlayableDirector.playableGraph.GetRootPlayable(0).SetSpeed(num);
+		}
+	}
+
+	[Cheat(Name = "toggle_door", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ToggleDoor(string name, bool newState)
+	{
+		foreach (InteractionDoorPart item in from mapObj in Game.Instance.EntityPools.MapObjects
+			where mapObj.IsInGame
+			where (bool)mapObj.View && mapObj.View.name.Contains(name, StringComparison.InvariantCultureIgnoreCase)
+			let doorPart = mapObj.GetOptional<InteractionDoorPart>()
+			where doorPart != null
+			where doorPart.IsOpen != newState
+			select doorPart)
+		{
+			item.Open();
+		}
+	}
+
+	public override Hash128 GetHash128()
+	{
+		Hash128 result = default(Hash128);
+		Hash128 val = base.GetHash128();
+		result.Append(ref val);
+		result.Append(ref m_State);
+		result.Append(ref m_Inited);
+		return result;
+	}
+
+	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	{
+		InteractionDoorPart source = new InteractionDoorPart();
+		result = Unsafe.As<InteractionDoorPart, TPossiblyBase>(ref source);
+	}
+
+	public override void Serialize<TFormatter>(TFormatter formatter, SerializerState state)
+	{
+		(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
+		var (objectId, _) = orRegister;
+		if (orRegister.isRef)
+		{
+			formatter.ObjectRef(objectId);
+			return;
+		}
+		ushort type = state.TypeLibrary.RegisterType<InteractionDoorPart>(OwlPackTypeInfo);
+		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
+		string value = base.SourceType;
+		formatter.StringField(0, "SourceType", ref value, state);
+		bool value2 = base.AlreadyUnlocked;
+		formatter.UnmanagedField(1, "AlreadyUnlocked", ref value2, state);
+		bool value3 = AlreadyVisited;
+		formatter.UnmanagedField(2, "AlreadyVisited", ref value3, state);
+		formatter.UnmanagedField(3, "m_LastCombatRoundInteractionAttempt", ref m_LastCombatRoundInteractionAttempt, state);
+		formatter.UnmanagedField(4, "m_Enabled", ref m_Enabled, state);
+		formatter.UnmanagedField(5, "m_State", ref m_State, state);
+		formatter.UnmanagedField(6, "m_Inited", ref m_Inited, state);
+		formatter.UnmanagedField(7, "m_OnOpenActionsHasBeenRun", ref m_OnOpenActionsHasBeenRun, state);
+		formatter.UnmanagedField(8, "m_OnCloseActionsHasBeenRun", ref m_OnCloseActionsHasBeenRun, state);
+		formatter.EndObject();
+	}
+
+	public override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state)
+	{
+		state.References.Register(objectId, this);
+		TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<InteractionDoorPart>();
+		List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
+		formatter.EnterObject();
+		for (int i = 0; i < typeInfo.Fields.Length; i++)
+		{
+			formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
+			switch (mappingForType[fieldID])
+			{
+			case byte.MaxValue:
+				formatter.SkipField(size);
+				break;
+			case 0:
+				base.SourceType = formatter.ReadString(state);
+				break;
+			case 1:
+				base.AlreadyUnlocked = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 2:
+				AlreadyVisited = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 3:
+				m_LastCombatRoundInteractionAttempt = formatter.ReadUnmanaged<int>(state);
+				break;
+			case 4:
+				m_Enabled = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 5:
+				m_State = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 6:
+				m_Inited = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 7:
+				m_OnOpenActionsHasBeenRun = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 8:
+				m_OnCloseActionsHasBeenRun = formatter.ReadUnmanaged<bool>(state);
+				break;
+			}
+		}
+		formatter.LeaveObject();
+	}
+}

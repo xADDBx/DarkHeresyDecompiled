@@ -1,0 +1,36 @@
+using System;
+using Kingmaker.ElementsSystem;
+using Kingmaker.Enums;
+using Kingmaker.UnitLogic.Mechanics.Actions;
+using Kingmaker.UnitLogic.Parts;
+using Owlcat.Runtime.Core.Utility;
+
+namespace Kingmaker.Mechanics.Actions;
+
+[TypeId("7209261a10a047579fdaa45e3735454d")]
+public class ContextActionSetDestructionStage : ContextAction
+{
+	public DestructionStage Stage;
+
+	public override string GetCaption()
+	{
+		return $"Set destruction stage to {Stage}";
+	}
+
+	protected override void RunAction()
+	{
+		if (base.Target.Entity == null)
+		{
+			Element.LogError(this, "Target unit is missing");
+			return;
+		}
+		PartHealth required = base.Target.Entity.GetRequired<PartHealth>();
+		int num = required.HitPoints;
+		required.SetHitPointsLeft(Stage switch
+		{
+			DestructionStage.Whole => num, 
+			DestructionStage.Destroyed => 0, 
+			_ => throw new ArgumentException(string.Format("Invalid value {0} of {1}", Stage, "Stage")), 
+		});
+	}
+}

@@ -1,0 +1,71 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using JetBrains.Annotations;
+using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Tutorial;
+using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.ElementsSystem;
+using Owlcat.Runtime.Core.Utility;
+using UnityEngine;
+using UnityEngine.Serialization;
+
+namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
+
+[Obsolete]
+[TypeId("63fc49aa6614e7645b095808e101c23d")]
+public class ShowTutorial : GameAction
+{
+	[NotNull]
+	[SerializeField]
+	[FormerlySerializedAs("Pages")]
+	private BlueprintTutorialPageReference[] m_Pages = new BlueprintTutorialPageReference[0];
+
+	public float Delay;
+
+	public ReferenceArrayProxy<BlueprintTutorialPage> Pages
+	{
+		get
+		{
+			BlueprintReference<BlueprintTutorialPage>[] pages = m_Pages;
+			return pages;
+		}
+	}
+
+	public override string GetCaption()
+	{
+		IEnumerable<string> values = from p in Pages
+			where p != null
+			select p.ToString();
+		string text = string.Join(", ", values);
+		return "Show Tutorial (" + text + ")";
+	}
+
+	protected override void RunAction()
+	{
+		if (Delay <= 0f)
+		{
+			ShowTutorialPage();
+		}
+		else
+		{
+			MainThreadDispatcher.StartCoroutine(ShowTutorialCoroutine());
+		}
+	}
+
+	private IEnumerator ShowTutorialCoroutine()
+	{
+		yield return new WaitForSecondsRealtime(Delay);
+		ShowTutorialPage();
+	}
+
+	private void ShowTutorialPage()
+	{
+		BlueprintTutorialPage blueprintTutorialPage = Pages.FirstOrDefault((BlueprintTutorialPage p) => p != null);
+		if (blueprintTutorialPage != null && blueprintTutorialPage.Conditions.Check())
+		{
+			Pages.Where((BlueprintTutorialPage p) => p != null).ToArray();
+		}
+	}
+}

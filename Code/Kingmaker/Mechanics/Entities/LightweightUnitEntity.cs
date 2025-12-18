@@ -1,0 +1,318 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Kingmaker.Blueprints;
+using Kingmaker.Controllers.Optimization;
+using Kingmaker.Controllers.TurnBased;
+using Kingmaker.EntitySystem;
+using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Kingmaker.UnitLogic.Commands;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Facts;
+using Kingmaker.UnitLogic.Parts;
+using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.Utility.StatefulRandom;
+using Kingmaker.View;
+using Kingmaker.View.Mechanics.Entities;
+using OwlPack.Runtime;
+using StateHasher.Core;
+using UnityEngine;
+
+namespace Kingmaker.Mechanics.Entities;
+
+[OwlPackable(OwlPackableMode.Generate)]
+public sealed class LightweightUnitEntity : AbstractUnitEntity, IHashable, IOwlPackable<LightweightUnitEntity>
+{
+	private List<FakeBuff> m_FakeBuffs = new List<FakeBuff>();
+
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	{
+		Name = "LightweightUnitEntity",
+		OldNames = null,
+		Fields = new FieldInfo[20]
+		{
+			new FieldInfo("UniqueId", typeof(string)),
+			new FieldInfo("m_IsInGame", typeof(bool)),
+			new FieldInfo("m_Position", typeof(Vector3)),
+			new FieldInfo("m_Orientation", typeof(float)),
+			new FieldInfo("m_InitialPosition", typeof(Vector3?)),
+			new FieldInfo("m_InitialOrientation", typeof(float?)),
+			new FieldInfo("Facts", typeof(EntityFactsManager)),
+			new FieldInfo("Parts", typeof(EntityPartsManager)),
+			new FieldInfo("m_IsRevealed", typeof(bool)),
+			new FieldInfo("m_ViewHandlingOnDisposePolicyOverride", typeof(ViewHandlingOnDisposePolicyType?)),
+			new FieldInfo("m_Initiative", typeof(Initiative)),
+			new FieldInfo("m_OriginalBlueprint", typeof(BlueprintMechanicEntityFact)),
+			new FieldInfo("m_Blueprint", typeof(BlueprintMechanicEntityFact)),
+			new FieldInfo("MainFact", typeof(MechanicEntityFact)),
+			new FieldInfo("SpawnPosition", typeof(Vector3)),
+			new FieldInfo("HoldState", typeof(bool)),
+			new FieldInfo("DesiredOrientation", typeof(float)),
+			new FieldInfo("Random", typeof(StatefulRandom)),
+			new FieldInfo("FlyHeight", typeof(float)),
+			new FieldInfo("m_SelectedVoGuid", typeof(string))
+		}
+	};
+
+	public override PartUnitAsks Asks => GetRequired<PartUnitAsks>();
+
+	public override PartUnitViewSettings ViewSettings => GetRequired<PartUnitViewSettings>();
+
+	public override PartHealth Health => GetRequired<PartHealth>();
+
+	public override string Name => base.Blueprint.CharacterName;
+
+	public override bool IsAffectedByFogOfWar => true;
+
+	public override bool AlwaysRevealedInFogOfWar => false;
+
+	public override bool IsExtra => true;
+
+	public LightweightUnitEntity(JsonConstructorMark _)
+		: base(_)
+	{
+	}
+
+	public LightweightUnitEntity(string uniqueId, bool isInGame, BlueprintUnit blueprint)
+		: base(uniqueId, isInGame, blueprint)
+	{
+	}
+
+	protected LightweightUnitEntity()
+	{
+	}
+
+	protected override void OnCreateParts()
+	{
+		base.OnCreateParts();
+		GetOrCreate<PartStatsContainer>();
+		GetOrCreate<PartUnitCommands>();
+		GetOrCreate<PartMovable>();
+		GetOrCreate<PartUnitAsks>();
+		GetOrCreate<PartUnitViewSettings>();
+		GetOrCreate<PartLifeState>();
+		GetOrCreate<PartHealth>();
+		GetOrCreate<EntityBoundsPart>();
+	}
+
+	public void CreateView(UnitEntityView prefab, Vector3 position, Quaternion rotation)
+	{
+		UnitEntityView unitEntityView = UnityEngine.Object.Instantiate(prefab, position, rotation);
+		GameObject gameObject = unitEntityView.gameObject;
+		if (gameObject.TryGetComponent(typeof(AbstractUnitEntityView), out var component))
+		{
+			UnityEngine.Object.DestroyImmediate(component);
+		}
+		LightweightUnitEntityView lightweightUnitEntityView = gameObject.AddComponent<LightweightUnitEntityView>();
+		lightweightUnitEntityView.SoftColliderPlaceholder = unitEntityView.SoftColliderPlaceholder;
+		lightweightUnitEntityView.RigidbodyController = unitEntityView.RigidbodyController;
+		lightweightUnitEntityView.Footprints = unitEntityView.Footprints ?? Array.Empty<GameObject>();
+		UnityEngine.Object.DestroyImmediate(unitEntityView);
+		AttachView(lightweightUnitEntityView);
+		if (string.IsNullOrEmpty(lightweightUnitEntityView.UniqueId))
+		{
+			lightweightUnitEntityView.UniqueId = base.UniqueId;
+		}
+		lightweightUnitEntityView.MarkCreatedAtRuntime();
+	}
+
+	protected override IEntityViewBase CreateViewForData()
+	{
+		UnitEntityView unitEntityView = ViewSettings.Instantiate();
+		if (unitEntityView == null)
+		{
+			return null;
+		}
+		GameObject gameObject = unitEntityView.gameObject;
+		if (gameObject.TryGetComponent(typeof(AbstractUnitEntityView), out var component))
+		{
+			UnityEngine.Object.DestroyImmediate(component);
+		}
+		LightweightUnitEntityView lightweightUnitEntityView = gameObject.AddComponent<LightweightUnitEntityView>();
+		lightweightUnitEntityView.SoftColliderPlaceholder = unitEntityView.SoftColliderPlaceholder;
+		lightweightUnitEntityView.RigidbodyController = unitEntityView.RigidbodyController;
+		lightweightUnitEntityView.Footprints = unitEntityView.Footprints ?? Array.Empty<GameObject>();
+		UnityEngine.Object.DestroyImmediate(unitEntityView);
+		lightweightUnitEntityView.MarkCreatedAtRuntime();
+		return lightweightUnitEntityView;
+	}
+
+	public override void MarkExtra()
+	{
+	}
+
+	public void PlayBuffFx(BlueprintBuff blueprint)
+	{
+		FakeBuff fakeBuff = FakeBuff.Create(this, blueprint);
+		m_FakeBuffs.Add(fakeBuff);
+		fakeBuff.PlayFx();
+	}
+
+	public void RemoveBuffFx(BlueprintBuff blueprint)
+	{
+		FakeBuff fakeBuff = m_FakeBuffs.FirstOrDefault((FakeBuff buff) => buff.Blueprint == blueprint);
+		if (fakeBuff != null)
+		{
+			m_FakeBuffs.Remove(fakeBuff);
+			fakeBuff.Clear();
+		}
+	}
+
+	protected override void OnDestroy()
+	{
+		ClearFakeBuffs();
+		base.OnDestroy();
+	}
+
+	protected override void OnDispose()
+	{
+		ClearFakeBuffs();
+		base.OnDispose();
+	}
+
+	private void ClearFakeBuffs()
+	{
+		for (int i = 0; i < m_FakeBuffs.Count; i++)
+		{
+			m_FakeBuffs[i].Clear();
+		}
+		m_FakeBuffs.Clear();
+	}
+
+	public override Hash128 GetHash128()
+	{
+		Hash128 result = default(Hash128);
+		Hash128 val = base.GetHash128();
+		result.Append(ref val);
+		return result;
+	}
+
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	{
+		LightweightUnitEntity source = new LightweightUnitEntity();
+		result = Unsafe.As<LightweightUnitEntity, TPossiblyBase>(ref source);
+	}
+
+	public override void Serialize<TFormatter>(TFormatter formatter, SerializerState state)
+	{
+		(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
+		var (objectId, _) = orRegister;
+		if (orRegister.isRef)
+		{
+			formatter.ObjectRef(objectId);
+			return;
+		}
+		ushort type = state.TypeLibrary.RegisterType<LightweightUnitEntity>(OwlPackTypeInfo);
+		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
+		string value = base.UniqueId;
+		formatter.StringField(0, "UniqueId", ref value, state);
+		formatter.UnmanagedField(1, "m_IsInGame", ref m_IsInGame, state);
+		formatter.Field(2, "m_Position", ref m_Position, state);
+		formatter.UnmanagedField(3, "m_Orientation", ref m_Orientation, state);
+		formatter.NullableField(4, "m_InitialPosition", ref m_InitialPosition, state);
+		formatter.UnmanagedNullableField(5, "m_InitialOrientation", ref m_InitialOrientation, state);
+		formatter.Field(6, "Facts", ref Facts, state);
+		formatter.Field(7, "Parts", ref Parts, state);
+		formatter.UnmanagedField(8, "m_IsRevealed", ref m_IsRevealed, state);
+		formatter.EnumNullableField(9, "m_ViewHandlingOnDisposePolicyOverride", ref m_ViewHandlingOnDisposePolicyOverride, state);
+		formatter.Field(10, "m_Initiative", ref m_Initiative, state);
+		formatter.Field(11, "m_OriginalBlueprint", ref m_OriginalBlueprint, state);
+		formatter.Field(12, "m_Blueprint", ref m_Blueprint, state);
+		MechanicEntityFact value2 = base.MainFact;
+		formatter.Field(13, "MainFact", ref value2, state);
+		Vector3 value3 = base.SpawnPosition;
+		formatter.Field(14, "SpawnPosition", ref value3, state);
+		bool value4 = base.HoldState;
+		formatter.UnmanagedField(15, "HoldState", ref value4, state);
+		float value5 = base.DesiredOrientation;
+		formatter.UnmanagedField(16, "DesiredOrientation", ref value5, state);
+		StatefulRandom value6 = base.Random;
+		formatter.Field(17, "Random", ref value6, state);
+		float value7 = base.FlyHeight;
+		formatter.UnmanagedField(18, "FlyHeight", ref value7, state);
+		formatter.StringField(19, "m_SelectedVoGuid", ref m_SelectedVoGuid, state);
+		formatter.EndObject();
+	}
+
+	public override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state)
+	{
+		state.References.Register(objectId, this);
+		TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<LightweightUnitEntity>();
+		List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
+		formatter.EnterObject();
+		for (int i = 0; i < typeInfo.Fields.Length; i++)
+		{
+			formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
+			switch (mappingForType[fieldID])
+			{
+			case byte.MaxValue:
+				formatter.SkipField(size);
+				break;
+			case 0:
+				base.UniqueId = formatter.ReadString(state);
+				break;
+			case 1:
+				m_IsInGame = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 2:
+				m_Position = formatter.ReadPackable<Vector3>(state);
+				break;
+			case 3:
+				m_Orientation = formatter.ReadUnmanaged<float>(state);
+				break;
+			case 4:
+				m_InitialPosition = formatter.ReadNullablePackable<Vector3>(state);
+				break;
+			case 5:
+				m_InitialOrientation = formatter.ReadNullableUnmanaged<float>(state);
+				break;
+			case 6:
+				Facts = formatter.ReadPackable<EntityFactsManager>(state);
+				break;
+			case 7:
+				Parts = formatter.ReadPackable<EntityPartsManager>(state);
+				break;
+			case 8:
+				m_IsRevealed = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 9:
+				m_ViewHandlingOnDisposePolicyOverride = formatter.ReadNullableEnum<ViewHandlingOnDisposePolicyType>(state);
+				break;
+			case 10:
+				m_Initiative = formatter.ReadPackable<Initiative>(state);
+				break;
+			case 11:
+				m_OriginalBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				break;
+			case 12:
+				m_Blueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				break;
+			case 13:
+				base.MainFact = formatter.ReadPackable<MechanicEntityFact>(state);
+				break;
+			case 14:
+				base.SpawnPosition = formatter.ReadPackable<Vector3>(state);
+				break;
+			case 15:
+				base.HoldState = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 16:
+				base.DesiredOrientation = formatter.ReadUnmanaged<float>(state);
+				break;
+			case 17:
+				base.Random = formatter.ReadPackable<StatefulRandom>(state);
+				break;
+			case 18:
+				base.FlyHeight = formatter.ReadUnmanaged<float>(state);
+				break;
+			case 19:
+				m_SelectedVoGuid = formatter.ReadString(state);
+				break;
+			}
+		}
+		formatter.LeaveObject();
+	}
+}

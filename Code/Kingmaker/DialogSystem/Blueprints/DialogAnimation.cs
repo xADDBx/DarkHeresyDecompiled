@@ -1,0 +1,37 @@
+namespace Kingmaker.DialogSystem.Blueprints;
+
+public enum DialogAnimation
+{
+	None = 0,
+	Neutral = 1,
+	Angry = 2,
+	Bow = 3,
+	Hail = 4,
+	Laugh = 5,
+	PointBehind = 6,
+	PointForward = 7,
+	PointLeft = 8,
+	PointRight = 9,
+	ShowTheDirection = 10,
+	Wave = 11,
+	Whisper = 12,
+	Despair = 13,
+	Asking = 14,
+	Applause = 15,
+	Shrug = 16,
+	CalmShort01 = 17,
+	CalmShort02 = 18,
+	CalmShort03 = 19,
+	CalmShort04 = 20,
+	CalmShort05 = 21,
+	HeadNo = 22,
+	HeadYes = 23,
+	HeadScratch = 24,
+	HandsOnHips = 25,
+	DialogCalmLong01 = 26,
+	DialogCalmLong05 = 27,
+	Salute01 = 28,
+	SpitOnTheFloor = 29,
+	CoughAndRetort = 30,
+	Custom = -1
+}

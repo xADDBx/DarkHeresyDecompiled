@@ -1,0 +1,85 @@
+using System.Collections.Generic;
+using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.View.UI.Components.Text.ScrambledTextMeshPro;
+using Kingmaker.UI.Common.Animations;
+using Kingmaker.UI.Sound;
+using Owlcat.UI;
+using R3;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
+
+namespace Kingmaker.Code.UI.MVVM;
+
+public class ShipNameAndPortraitPCView : CharInfoComponentView<ShipNameAndPortraitVM>
+{
+	[SerializeField]
+	private ScrambledTMP m_StarShipName;
+
+	[SerializeField]
+	private Image m_StarShipImage;
+
+	[SerializeField]
+	private TextMeshProUGUI m_InformationLabel;
+
+	[SerializeField]
+	private TextMeshProUGUI m_StarShipDescription;
+
+	[SerializeField]
+	private FadeAnimator m_ShipPartAnimator;
+
+	[SerializeField]
+	private OwlcatButton m_NextButton;
+
+	[SerializeField]
+	private OwlcatButton m_PrevButton;
+
+	public override void Initialize()
+	{
+		base.Initialize();
+		m_ShipPartAnimator.Initialize();
+		m_InformationLabel.text = UIStrings.Instance.CommonTexts.Information;
+	}
+
+	protected override void OnBind()
+	{
+		base.OnBind();
+		if (base.ViewModel.StarShipImage != null)
+		{
+			m_StarShipImage.sprite = base.ViewModel.StarShipImage;
+		}
+		if (base.ViewModel.StarShipName != null)
+		{
+			m_StarShipName.SetText(string.Empty, base.ViewModel.StarShipName);
+		}
+		if (base.ViewModel.StarShipDescription != null)
+		{
+			m_StarShipDescription.text = base.ViewModel.StarShipDescription;
+			m_StarShipDescription.SetLinkTooltip(null, null, new TooltipConfig(InfoCallPCMethod.RightMouseButton, InfoCallConsoleMethod.LongRightStickButton, isGlossary: true, isEncyclopedia: false, null, 0, 0, 0, new List<Vector2>
+			{
+				new Vector2(1f, 0.5f)
+			})).AddTo(this);
+		}
+		m_NextButton.SetInteractable(state: false);
+		m_PrevButton.SetInteractable(state: false);
+	}
+
+	protected override void OnUnbind()
+	{
+		base.OnUnbind();
+		m_NextButton.SetInteractable(state: true);
+		m_PrevButton.SetInteractable(state: true);
+	}
+
+	protected override void OnShow()
+	{
+		m_ShipPartAnimator.AppearAnimation();
+	}
+
+	protected override void OnHide(UnityAction onHideCallback = null)
+	{
+		UISounds.Instance.Sounds.Character.CharacterStatsHide.Play();
+		m_ShipPartAnimator.DisappearAnimation();
+	}
+}

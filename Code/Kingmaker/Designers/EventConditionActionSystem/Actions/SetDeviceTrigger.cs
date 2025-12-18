@@ -1,0 +1,34 @@
+using System;
+using Kingmaker.Blueprints.Attributes;
+using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Persistence.Versioning;
+using Kingmaker.View.MapObjects;
+using Owlcat.QA.Validation;
+using Owlcat.Runtime.Core.Utility;
+using UnityEngine;
+
+namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
+
+[Obsolete]
+[ComponentName("Actions/SetDeviceTrigger")]
+[AllowMultipleComponents]
+[PlayerUpgraderAllowed(true)]
+[TypeId("0da3c9d6ff7f23f4b878b95dd45fe596")]
+public class SetDeviceTrigger : GameAction
+{
+	[ValidateNotNull]
+	[SerializeReference]
+	public MapObjectEvaluator Device;
+
+	public string Trigger;
+
+	public override string GetCaption()
+	{
+		return $"Set device trigger ({Device}:{Trigger})";
+	}
+
+	protected override void RunAction()
+	{
+		Device.GetValue().GetOptional<InteractionDevicePart>()?.SetTrigger(Trigger);
+	}
+}
