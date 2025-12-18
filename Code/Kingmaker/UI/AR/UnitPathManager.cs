@@ -155,11 +155,22 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	{
 		get
 		{
-			if (Game.Instance.Controllers.ClickEventsController == null)
+			Vector3 vector = Vector3.zero;
+			PointerController clickEventsController = Game.Instance.Controllers.ClickEventsController;
+			if (clickEventsController != null)
 			{
-				return Vector3.zero;
+				vector = Game.Instance.Controllers.ClickEventsController.GroundPosition - m_DecalOffset;
+				GridNodeBase nearestNodeXZ = vector.GetNearestNodeXZ();
+				if (clickEventsController.Mode == PointerMode.Ability && clickEventsController.PointerOn != null)
+				{
+					TargetWrapper targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, clickEventsController.WorldPosition);
+					if (targetForDesiredPosition?.Entity != null && !targetForDesiredPosition.Entity.GetOccupiedNodes().Contains(nearestNodeXZ))
+					{
+						vector = targetForDesiredPosition.Point;
+					}
+				}
 			}
-			return Game.Instance.Controllers.ClickEventsController.GroundPosition - m_DecalOffset;
+			return vector;
 		}
 	}
 

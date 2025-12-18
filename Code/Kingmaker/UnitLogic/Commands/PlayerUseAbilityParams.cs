@@ -117,7 +117,7 @@ public sealed class PlayerUseAbilityParams : UnitUseAbilityParams, IOwlPackable<
 			}
 		}
 		base.Ability = abilityData;
-		AbilityUsageMetricsEvent abilityUsageMetricsEvent = Metrics.Ability.Id(m_AbilityId).Caster(abilityData.Caster.Blueprint.AssetGuid);
+		AbilityUsageMetricsEvent abilityUsageMetricsEvent = Metrics.Ability.Id(abilityData.Blueprint.AssetGuid).Caster(abilityData.Caster.Blueprint.AssetGuid);
 		PartAbilityModifiers optional = abilityData.Caster.Parts.GetOptional<PartAbilityModifiers>();
 		abilityUsageMetricsEvent.Modifiers((optional != null) ? (from m in optional.AddedModifiers
 			where m.IsAddedManually
