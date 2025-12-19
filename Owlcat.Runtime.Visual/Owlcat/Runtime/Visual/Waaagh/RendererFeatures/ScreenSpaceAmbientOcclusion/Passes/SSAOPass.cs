@@ -162,7 +162,7 @@ public class SSAOPass : ScriptableRenderPass
 		CreateRenderTextureHandles(renderGraph, cameraData, out var aoTexture, out var blurTexture, out var finalTexture);
 		SetupKeywordsAndParameters(ref m_Settings, cameraData);
 		SSAOPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<SSAOPassData>("SSAO", out passData, m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\ScreenSpaceAmbientOcclusion\\Passes\\SSAOPass.cs", 168);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<SSAOPassData>("SSAO", out passData, m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\ScreenSpaceAmbientOcclusion\\Passes\\SSAOPass.cs", 168);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		InitSSAOPassData(ref passData);

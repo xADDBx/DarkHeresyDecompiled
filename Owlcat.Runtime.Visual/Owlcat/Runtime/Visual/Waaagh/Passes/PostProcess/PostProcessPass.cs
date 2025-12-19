@@ -732,7 +732,7 @@ public class PostProcessPass : ScriptableRenderPass
 		}
 		bool flag9 = flag8 && waaaghCameraData.IsSTPEnabled();
 		ProfilingSampler sampler = ProfilingSampler.Get(WaaaghProfileId.RenderPostProcess);
-		waaaghRenderingData.RenderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 360);
+		waaaghRenderingData.RenderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 360);
 		if (num)
 		{
 			RenderStopNaN(waaaghRenderingData.RenderGraph, waaaghCameraData.cameraTargetDescriptor, in activeCameraColor, out var stopNaNTarget);
@@ -827,7 +827,7 @@ public class PostProcessPass : ScriptableRenderPass
 		TextureHandle lutTexture = waaaghResourceData.ColorGradingLUT;
 		TextureHandle overlayUITexture = waaaghResourceData.OverlayUITexture;
 		RenderUberPost(waaaghRenderingData.RenderGraph, waaaghCameraData, waaaghPostProcessingData, in activeCameraColor, in destTexture, in lutTexture, in overlayUITexture, flag11, isAlphaOutputEnabled);
-		waaaghRenderingData.RenderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 507);
+		waaaghRenderingData.RenderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 507);
 	}
 
 	public void RenderStopNaN(RenderGraph renderGraph, RenderTextureDescriptor cameraTargetDescriptor, in TextureHandle activeCameraColor, out TextureHandle stopNaNTarget)
@@ -835,7 +835,7 @@ public class PostProcessPass : ScriptableRenderPass
 		RenderTextureDescriptor compatibleDescriptor = GetCompatibleDescriptor(cameraTargetDescriptor, cameraTargetDescriptor.width, cameraTargetDescriptor.height, cameraTargetDescriptor.graphicsFormat);
 		stopNaNTarget = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, "_StopNaNsTarget", clear: true, FilterMode.Bilinear);
 		StopNaNsPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<StopNaNsPassData>("Stop NaNs", out passData, ProfilingSampler.Get(WaaaghProfileId.StopNaNs), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 528);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<StopNaNsPassData>("Stop NaNs", out passData, ProfilingSampler.Get(WaaaghProfileId.StopNaNs), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 528);
 		passData.stopNaNTarget = stopNaNTarget;
 		rasterRenderGraphBuilder.SetRenderAttachment(stopNaNTarget, 0, AccessFlags.ReadWrite);
 		passData.sourceTexture = activeCameraColor;
@@ -862,7 +862,7 @@ public class PostProcessPass : ScriptableRenderPass
 		TextureHandle input2 = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor4, "_BlendTexture", clear: true);
 		Material subpixelMorphologicalAntialiasing = m_Materials.SubpixelMorphologicalAntialiasing;
 		SMAASetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<SMAASetupPassData>("SMAA Material Setup", out passData, ProfilingSampler.Get(WaaaghProfileId.SMAAMaterialSetup), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 602))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<SMAASetupPassData>("SMAA Material Setup", out passData, ProfilingSampler.Get(WaaaghProfileId.SMAAMaterialSetup), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 602))
 		{
 			passData.metrics = new Vector4(1f / (float)m_Descriptor.width, 1f / (float)m_Descriptor.height, m_Descriptor.width, m_Descriptor.height);
 			passData.areaTexture = m_Resources.Textures.SmaaAreaTex;
@@ -895,7 +895,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		SMAAPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Edge Detection", out passData2, ProfilingSampler.Get(WaaaghProfileId.SMAAEdgeDetection), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 643))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Edge Detection", out passData2, ProfilingSampler.Get(WaaaghProfileId.SMAAEdgeDetection), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 643))
 		{
 			passData2.destinationTexture = input;
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);
@@ -916,7 +916,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		SMAAPassData passData3;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Blend weights", out passData3, ProfilingSampler.Get(WaaaghProfileId.SMAABlendWeight), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 666))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Blend weights", out passData3, ProfilingSampler.Get(WaaaghProfileId.SMAABlendWeight), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 666))
 		{
 			passData3.destinationTexture = input2;
 			rasterRenderGraphBuilder3.SetRenderAttachment(input2, 0);
@@ -935,7 +935,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		SMAAPassData passData4;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Neighborhood blending", out passData4, ProfilingSampler.Get(WaaaghProfileId.SMAANeighborhoodBlend), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 688);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Neighborhood blending", out passData4, ProfilingSampler.Get(WaaaghProfileId.SMAANeighborhoodBlend), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 688);
 		rasterRenderGraphBuilder4.AllowGlobalStateModification(value: true);
 		passData4.destinationTexture = SMAATarget;
 		rasterRenderGraphBuilder4.SetRenderAttachment(SMAATarget, 0);
@@ -978,7 +978,7 @@ public class PostProcessPass : ScriptableRenderPass
 		int num2 = m_Descriptor.width / num;
 		int height = m_Descriptor.height / num;
 		DoFGaussianSetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFGaussianSetupPassData>("Setup DoF passes", out passData, ProfilingSampler.Get(WaaaghProfileId.SetupDoF), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 764))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFGaussianSetupPassData>("Setup DoF passes", out passData, ProfilingSampler.Get(WaaaghProfileId.SetupDoF), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 764))
 		{
 			float value = m_DepthOfField.gaussianStart.value;
 			float y = Mathf.Max(value, m_DepthOfField.gaussianEnd.value);
@@ -1014,7 +1014,7 @@ public class PostProcessPass : ScriptableRenderPass
 		RenderTextureDescriptor compatibleDescriptor4 = GetCompatibleDescriptor(m_Descriptor, num2, height, m_DefaultColorFormat);
 		TextureHandle input4 = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor4, "_PongTexture", clear: true, FilterMode.Bilinear);
 		DoFGaussianPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Compute CoC", out passData2, ProfilingSampler.Get(WaaaghProfileId.DOFComputeCOC), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 813))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Compute CoC", out passData2, ProfilingSampler.Get(WaaaghProfileId.DOFComputeCOC), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 813))
 		{
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);
 			passData2.sourceTexture = source;
@@ -1034,7 +1034,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFGaussianPassData passData3;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, ProfilingSampler.Get(WaaaghProfileId.DOFDownscalePrefilter), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 838))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, ProfilingSampler.Get(WaaaghProfileId.DOFDownscalePrefilter), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 838))
 		{
 			rasterRenderGraphBuilder3.SetRenderAttachment(input2, 0);
 			rasterRenderGraphBuilder3.SetRenderAttachment(input3, 1);
@@ -1059,7 +1059,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFGaussianPassData passData4;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur H", out passData4, ProfilingSampler.Get(WaaaghProfileId.DOFBlurH), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 866))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur H", out passData4, ProfilingSampler.Get(WaaaghProfileId.DOFBlurH), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 866))
 		{
 			rasterRenderGraphBuilder4.SetRenderAttachment(input4, 0);
 			rasterRenderGraphBuilder4.AllowGlobalStateModification(value: true);
@@ -1079,7 +1079,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFGaussianPassData passData5;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur V", out passData5, ProfilingSampler.Get(WaaaghProfileId.DOFBlurV), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 889))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur V", out passData5, ProfilingSampler.Get(WaaaghProfileId.DOFBlurV), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 889))
 		{
 			rasterRenderGraphBuilder5.SetRenderAttachment(input3, 0);
 			rasterRenderGraphBuilder5.AllowGlobalStateModification(value: true);
@@ -1099,7 +1099,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFGaussianPassData passData6;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Composite", out passData6, ProfilingSampler.Get(WaaaghProfileId.DOFComposite), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 912);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Composite", out passData6, ProfilingSampler.Get(WaaaghProfileId.DOFComposite), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 912);
 		rasterRenderGraphBuilder6.SetRenderAttachment(destination, 0);
 		rasterRenderGraphBuilder6.AllowGlobalStateModification(value: true);
 		passData6.sourceTexture = source;
@@ -1128,7 +1128,7 @@ public class PostProcessPass : ScriptableRenderPass
 		int num2 = m_Descriptor.width / num;
 		int num3 = m_Descriptor.height / num;
 		DoFBokehSetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFBokehSetupPassData>("Setup DoF passes", out passData, ProfilingSampler.Get(WaaaghProfileId.SetupDoF), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 967))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFBokehSetupPassData>("Setup DoF passes", out passData, ProfilingSampler.Get(WaaaghProfileId.SetupDoF), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 967))
 		{
 			float num4 = m_DepthOfField.focalLength.value / 1000f;
 			float num5 = m_DepthOfField.focalLength.value / m_DepthOfField.aperture.value;
@@ -1174,7 +1174,7 @@ public class PostProcessPass : ScriptableRenderPass
 		RenderTextureDescriptor compatibleDescriptor3 = GetCompatibleDescriptor(m_Descriptor, num2, num3, GraphicsFormat.R16G16B16A16_SFloat);
 		TextureHandle input3 = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor3, "_PongTexture", clear: true, FilterMode.Bilinear);
 		DoFBokehPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Compute CoC", out passData2, ProfilingSampler.Get(WaaaghProfileId.DOFComputeCOC), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1028))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Compute CoC", out passData2, ProfilingSampler.Get(WaaaghProfileId.DOFComputeCOC), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1028))
 		{
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);
 			passData2.sourceTexture = source;
@@ -1194,7 +1194,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFBokehPassData passData3;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, ProfilingSampler.Get(WaaaghProfileId.DOFDownscalePrefilter), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1053))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, ProfilingSampler.Get(WaaaghProfileId.DOFDownscalePrefilter), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1053))
 		{
 			rasterRenderGraphBuilder3.SetRenderAttachment(input2, 0);
 			rasterRenderGraphBuilder3.AllowGlobalStateModification(value: true);
@@ -1214,7 +1214,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFBokehPassData passData4;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Bokeh Blur", out passData4, ProfilingSampler.Get(WaaaghProfileId.DOFBlurBokeh), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1076))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Bokeh Blur", out passData4, ProfilingSampler.Get(WaaaghProfileId.DOFBlurBokeh), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1076))
 		{
 			rasterRenderGraphBuilder4.SetRenderAttachment(input3, 0);
 			passData4.sourceTexture = input2;
@@ -1230,7 +1230,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFBokehPassData passData5;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Post-filtering", out passData5, ProfilingSampler.Get(WaaaghProfileId.DOFPostFilter), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1095))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Post-filtering", out passData5, ProfilingSampler.Get(WaaaghProfileId.DOFPostFilter), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1095))
 		{
 			rasterRenderGraphBuilder5.SetRenderAttachment(input2, 0);
 			passData5.sourceTexture = input3;
@@ -1246,7 +1246,7 @@ public class PostProcessPass : ScriptableRenderPass
 			});
 		}
 		DoFBokehPassData passData6;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Composite", out passData6, ProfilingSampler.Get(WaaaghProfileId.DOFComposite), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1115);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Composite", out passData6, ProfilingSampler.Get(WaaaghProfileId.DOFComposite), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1115);
 		rasterRenderGraphBuilder6.SetRenderAttachment(destination, 0);
 		rasterRenderGraphBuilder6.AllowGlobalStateModification(value: true);
 		passData6.sourceTexture = source;
@@ -1317,7 +1317,7 @@ public class PostProcessPass : ScriptableRenderPass
 		int value2 = (int)m_MotionBlur.quality.value;
 		value2 += ((value == MotionBlurMode.CameraAndObjects) ? 3 : 0);
 		MotionBlurPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur", out passData, ProfilingSampler.Get(WaaaghProfileId.MotionBlur), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1232);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur", out passData, ProfilingSampler.Get(WaaaghProfileId.MotionBlur), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1232);
 		rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		passData.destinationTexture = destination;
 		rasterRenderGraphBuilder.SetRenderAttachment(destination, 0);
@@ -1373,7 +1373,7 @@ public class PostProcessPass : ScriptableRenderPass
 		radialBlur.SetFloat(k_ShaderPropertyId_RadialBlurStrength, m_RadialBlur.Strength.value);
 		radialBlur.SetFloat(k_ShaderPropertyId_RadialBlurWidth, m_RadialBlur.Width.value);
 		RadialBlurPassData passData2;
-		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<RadialBlurPassData>("Radial Blur", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1338);
+		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<RadialBlurPassData>("Radial Blur", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1338);
 		passData2.Source = renderGraphBuilder.ReadTexture(in source);
 		passData2.Destination = renderGraphBuilder.WriteTexture(in destination);
 		passData2.Material = radialBlur;
@@ -1396,7 +1396,7 @@ public class PostProcessPass : ScriptableRenderPass
 		float num = value;
 		float w = Mathf.Lerp(1f, Mathf.Clamp01(value2), m_PaniniProjection.cropToFit.value);
 		PaniniProjectionPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PaniniProjectionPassData>("Panini Projection", out passData, ProfilingSampler.Get(WaaaghProfileId.PaniniProjection), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1385);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PaniniProjectionPassData>("Panini Projection", out passData, ProfilingSampler.Get(WaaaghProfileId.PaniniProjection), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1385);
 		rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		passData.destinationTexture = destination;
 		rasterRenderGraphBuilder.SetRenderAttachment(destination, 0);
@@ -1438,7 +1438,7 @@ public class PostProcessPass : ScriptableRenderPass
 	public void UberPostSetupBloomPass(RenderGraph rendergraph, in TextureHandle bloomTexture, Material uberMaterial)
 	{
 		UberSetupBloomPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, ProfilingSampler.Get(WaaaghProfileId.UberPostSetupBloomPass), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1476);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, ProfilingSampler.Get(WaaaghProfileId.UberPostSetupBloomPass), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1476);
 		Color color = m_Bloom.tint.value.linear;
 		float num = ColorUtils.Luminance(in color);
 		color = ((num > 0f) ? (color * (1f / num)) : Color.white);
@@ -1546,7 +1546,7 @@ public class PostProcessPass : ScriptableRenderPass
 			}
 		}
 		BloomPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<BloomPassData>("Bloom", out passData, ProfilingSampler.Get(WaaaghProfileId.Bloom), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1656);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<BloomPassData>("Bloom", out passData, ProfilingSampler.Get(WaaaghProfileId.Bloom), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1656);
 		passData.mipCount = num4;
 		passData.material = m_Materials.Bloom;
 		passData.upsampleMaterials = m_Materials.bloomUpsample;
@@ -1631,7 +1631,7 @@ public class PostProcessPass : ScriptableRenderPass
 			reference2 = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, m_BloomMipUp[i].name, clear: false, FilterMode.Bilinear);
 		}
 		BloomEnhancedPassData passData2;
-		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<BloomEnhancedPassData>("Bloom Enhanced", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1795);
+		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<BloomEnhancedPassData>("Bloom Enhanced", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1795);
 		passData2.Source = renderGraphBuilder.ReadTexture(in source);
 		passData2.Material = m_Materials.BloomEnhanced;
 		passData2.BloomMipDown = _BloomMipDown;
@@ -1669,7 +1669,7 @@ public class PostProcessPass : ScriptableRenderPass
 	private void UberPostSetupBloomEnhancedPass(RenderGraph rendergraph, in TextureHandle bloomTexture, Material uberMaterial)
 	{
 		UberSetupBloomPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, ProfilingSampler.Get(WaaaghProfileId.UberPostSetupBloomPass), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1846);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, ProfilingSampler.Get(WaaaghProfileId.UberPostSetupBloomPass), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1846);
 		Color color = m_BloomEnhanced.tint.value.linear;
 		float num = ColorUtils.Luminance(in color);
 		color = ((num > 0f) ? (color * (1f / num)) : Color.white);
@@ -1749,7 +1749,7 @@ public class PostProcessPass : ScriptableRenderPass
 		cameraData.cameraTargetDescriptor.width = newCameraTargetSize.x;
 		cameraData.cameraTargetDescriptor.height = newCameraTargetSize.y;
 		UpdateCameraResolutionPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateCameraResolutionPassData>("Update Camera Resolution", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1980);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateCameraResolutionPassData>("Update Camera Resolution", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 1980);
 		passData.newCameraTargetSize = newCameraTargetSize;
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
@@ -1781,7 +1781,7 @@ public class PostProcessPass : ScriptableRenderPass
 			return;
 		}
 		LensFlarePassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<LensFlarePassData>("Lens Flare Compute Occlusion", out passData, ProfilingSampler.Get(WaaaghProfileId.LensFlareDataDrivenComputeOcclusion), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2047);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<LensFlarePassData>("Lens Flare Compute Occlusion", out passData, ProfilingSampler.Get(WaaaghProfileId.LensFlareDataDrivenComputeOcclusion), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2047);
 		_ = LensFlareCommonSRP.occlusionRT;
 		TextureHandle input = (passData.destinationTexture = renderGraph.ImportTexture(LensFlareCommonSRP.occlusionRT));
 		unsafeRenderGraphBuilder.UseTexture(in input, AccessFlags.Write);
@@ -1817,7 +1817,7 @@ public class PostProcessPass : ScriptableRenderPass
 	public void RenderLensFlareDataDriven(RenderGraph renderGraph, WaaaghResourceData resourceData, WaaaghCameraData cameraData, in TextureHandle destination)
 	{
 		LensFlarePassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<LensFlarePassData>("Lens Flare Data Driven Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.LensFlareDataDriven), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2146);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<LensFlarePassData>("Lens Flare Data Driven Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.LensFlareDataDriven), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2146);
 		passData.destinationTexture = destination;
 		unsafeRenderGraphBuilder.UseTexture(in destination, AccessFlags.Write);
 		passData.sourceDescriptor = m_Descriptor;
@@ -1870,7 +1870,7 @@ public class PostProcessPass : ScriptableRenderPass
 		TextureHandle input2 = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, "_StreakTmpTexture2", clear: true, FilterMode.Bilinear);
 		TextureHandle input3 = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, "Lens Flare Screen Space Result", clear: true, FilterMode.Bilinear);
 		LensFlareScreenSpacePassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<LensFlareScreenSpacePassData>("Lens Flare Screen Space Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.LensFlareScreenSpace), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2268);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<LensFlareScreenSpacePassData>("Lens Flare Screen Space Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.LensFlareScreenSpace), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2268);
 		passData.destinationTexture = destination;
 		unsafeRenderGraphBuilder.UseTexture(in destination, AccessFlags.Write);
 		passData.streakTmpTexture = input;
@@ -1981,7 +1981,7 @@ public class PostProcessPass : ScriptableRenderPass
 			RenderTextureDescriptor compatibleDescriptor = GetCompatibleDescriptor();
 			TextureHandle textureHandle = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, "UberPostSwapBuffer", clear: false, FilterMode.Bilinear);
 			UberPostPassData passData;
-			using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<UberPostPassData>("Postprocessing Uber Swap Copy", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2523))
+			using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<UberPostPassData>("Postprocessing Uber Swap Copy", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2523))
 			{
 				rasterRenderGraphBuilder.UseTexture(in sourceTexture);
 				passData.sourceTexture = sourceTexture;
@@ -1997,7 +1997,7 @@ public class PostProcessPass : ScriptableRenderPass
 			input2 = textureHandle;
 		}
 		UberPostPassData passData2;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<UberPostPassData>("Postprocessing Uber Post Pass", out passData2, ProfilingSampler.Get(WaaaghProfileId.UberPost), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2541);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<UberPostPassData>("Postprocessing Uber Post Pass", out passData2, ProfilingSampler.Get(WaaaghProfileId.UberPost), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\PostProcessPass.cs", 2541);
 		rasterRenderGraphBuilder2.AllowGlobalStateModification(value: true);
 		passData2.destinationTexture = destTexture;
 		rasterRenderGraphBuilder2.SetRenderAttachment(destTexture, 0);

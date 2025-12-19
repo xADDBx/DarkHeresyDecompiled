@@ -64,16 +64,10 @@ public class SkinnedMeshBody : MeshBodyBase
 
 	private void EnsureVertexBuffer()
 	{
+		DisposeVertexBuffer();
 		if (base.isActiveAndEnabled && NeedUpdateSkin)
 		{
-			if (m_VertexBuffer == null || !m_VertexBuffer.IsValid())
-			{
-				m_VertexBuffer = m_SkinnedMeshRenderer.GetVertexBuffer();
-			}
-		}
-		else
-		{
-			DisposeVertexBuffer();
+			m_VertexBuffer = m_SkinnedMeshRenderer.GetVertexBuffer();
 		}
 	}
 

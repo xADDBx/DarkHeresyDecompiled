@@ -281,7 +281,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
 		RenderGraph renderGraph = waaaghRenderingData.RenderGraph;
 		ProfilingSampler sampler = ProfilingSampler.Get(WaaaghProfileId.SSR);
-		renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 209);
+		renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 209);
 		int2 @int = new int2(waaaghCameraData.cameraTargetDescriptor.width, waaaghCameraData.cameraTargetDescriptor.height);
 		int minDepthLevel = 0;
 		switch (m_Settings.Quality.value)
@@ -338,12 +338,12 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 		RawColorHistory rawColorHistory = waaaghCameraData.historyManager?.GetHistoryForRead<RawColorHistory>();
 		if (rawColorHistory == null)
 		{
-			renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 276);
+			renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 276);
 			return;
 		}
 		TextureHandle input3 = waaaghRenderingData.RenderGraph.ImportTexture(rawColorHistory.GetCurrentTexture());
 		RayTracingPassData passData2;
-		using (RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<RayTracingPassData>("Ray Trace", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 284))
+		using (RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<RayTracingPassData>("Ray Trace", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 284))
 		{
 			passData2.SsrHitPointRT = renderGraphBuilder.WriteTexture(in input);
 			passData2.CameraNormalsRT = renderGraphBuilder.ReadTexture(in waaaghResourceData.CameraNormalsRT);
@@ -373,7 +373,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 			});
 		}
 		ReprojectionPassData passData3;
-		using (RenderGraphBuilder renderGraphBuilder2 = renderGraph.AddRenderPass<ReprojectionPassData>("Reprojection", out passData3, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 326))
+		using (RenderGraphBuilder renderGraphBuilder2 = renderGraph.AddRenderPass<ReprojectionPassData>("Reprojection", out passData3, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 326))
 		{
 			passData3.SsrRT = renderGraphBuilder2.WriteTexture(in waaaghResourceData.SsrRT);
 			passData3.SsrHitPointRT = renderGraphBuilder2.ReadTexture(in input);
@@ -394,7 +394,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 		if (value8)
 		{
 			AccumulationPassData passData4;
-			using (RenderGraphBuilder renderGraphBuilder3 = renderGraph.AddRenderPass<AccumulationPassData>("Accumulation", out passData4, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 359))
+			using (RenderGraphBuilder renderGraphBuilder3 = renderGraph.AddRenderPass<AccumulationPassData>("Accumulation", out passData4, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 359))
 			{
 				passData4.CameraMotionVectorsRT = renderGraphBuilder3.ReadTexture(in waaaghResourceData.CameraMotionVectorsRT);
 				passData4.SsrHitPointRT = renderGraphBuilder3.ReadTexture(in input);
@@ -415,7 +415,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 			if (value6)
 			{
 				BlurPassData passData5;
-				using RenderGraphBuilder renderGraphBuilder4 = renderGraph.AddRenderPass<BlurPassData>("Blur", out passData5, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 392);
+				using RenderGraphBuilder renderGraphBuilder4 = renderGraph.AddRenderPass<BlurPassData>("Blur", out passData5, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 392);
 				passData5.SsrRT = renderGraphBuilder4.ReadWriteTexture(in waaaghResourceData.SsrRT);
 				passData5.SsrHitPointRT = renderGraphBuilder4.ReadTexture(in input);
 				passData5.CameraNormalsRT = renderGraphBuilder4.ReadTexture(in waaaghResourceData.CameraNormalsRT);
@@ -431,7 +431,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 		else
 		{
 			SsrPyramidPassData passData6;
-			using (RenderGraphBuilder renderGraphBuilder5 = renderGraph.AddRenderPass<SsrPyramidPassData>("Ssr Pyramid", out passData6, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 421))
+			using (RenderGraphBuilder renderGraphBuilder5 = renderGraph.AddRenderPass<SsrPyramidPassData>("Ssr Pyramid", out passData6, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 421))
 			{
 				TextureDesc desc2 = RenderingUtils.CreateTextureDesc("SsrPyramidMipsRT", ssrHistory.Descriptor);
 				desc2.autoGenerateMips = false;
@@ -454,7 +454,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 				});
 			}
 			AccumulationPassData passData7;
-			using RenderGraphBuilder renderGraphBuilder6 = renderGraph.AddRenderPass<AccumulationPassData>("Accumulation", out passData7, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 457);
+			using RenderGraphBuilder renderGraphBuilder6 = renderGraph.AddRenderPass<AccumulationPassData>("Accumulation", out passData7, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 457);
 			passData7.CameraMotionVectorsRT = renderGraphBuilder6.ReadTexture(in waaaghResourceData.CameraMotionVectorsRT);
 			passData7.SsrHitPointRT = renderGraphBuilder6.ReadTexture(in input);
 			passData7.SsrRT = renderGraphBuilder6.WriteTexture(in waaaghResourceData.SsrRT);
@@ -471,7 +471,7 @@ public class ScreenSpaceReflectionsPass : ScriptableRenderPass
 				ExecuteAccumulation(passData, context);
 			});
 		}
-		renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 486);
+		renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ScreenSpaceReflectionsPass.cs", 486);
 	}
 
 	private static void ExecuteRayTrace(RayTracingPassData data, RenderGraphContext context)

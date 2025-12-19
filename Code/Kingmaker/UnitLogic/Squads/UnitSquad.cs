@@ -118,7 +118,7 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		}
 	}
 
-	public ReadonlyList<UnitReference> Units => m_Units.Where((UnitReference x) => x.Entity.ToBaseUnitEntity().IsInGame).ToList();
+	public ReadonlyList<UnitReference> Units => m_Units.Where((UnitReference x) => x.Entity?.ToBaseUnitEntity().IsInGame ?? false).ToList();
 
 	public int Count => Units.Count;
 

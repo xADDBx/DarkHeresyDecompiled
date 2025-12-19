@@ -122,7 +122,7 @@ public class BeforeTransparentPostProcessPass : ScriptableRenderPass
 		bool num = m_Sscs.IsActive();
 		bool flag = m_MaskedColorTransform.IsActive();
 		ProfilingSampler sampler = ProfilingSampler.Get(WaaaghProfileId.RenderBeforeTransparentPostProcess);
-		renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 84);
+		renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 84);
 		TextureHandle source = waaaghResourceData.CameraColorBuffer;
 		TextureHandle destination = TextureHandle.nullHandle;
 		if (num)
@@ -135,7 +135,7 @@ public class BeforeTransparentPostProcessPass : ScriptableRenderPass
 			Swap();
 		}
 		PostProcessPassDataBase passData2;
-		RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<PostProcessPassDataBase>("RenderBeforeTransparentPostProcess.FinalBlit", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 117);
+		RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<PostProcessPassDataBase>("RenderBeforeTransparentPostProcess.FinalBlit", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 117);
 		try
 		{
 			PostProcessPassDataBase postProcessPassDataBase = passData2;
@@ -158,7 +158,7 @@ public class BeforeTransparentPostProcessPass : ScriptableRenderPass
 		{
 			((IDisposable)renderGraphBuilder).Dispose();
 		}
-		renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 134);
+		renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 134);
 		TextureHandle GetDestination()
 		{
 			if (!destination.IsValid())
@@ -181,7 +181,7 @@ public class BeforeTransparentPostProcessPass : ScriptableRenderPass
 	private void RenderSSCS(RenderGraph renderGraph, WaaaghResourceData resources, TextureHandle source, TextureHandle destination)
 	{
 		SSCSPassData passData2;
-		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<SSCSPassData>("RenderBeforeTransparentPostProcess.SSCS", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 158);
+		using RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<SSCSPassData>("RenderBeforeTransparentPostProcess.SSCS", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 158);
 		passData2.Source = renderGraphBuilder.ReadWriteTexture(in source);
 		passData2.Destination = renderGraphBuilder.ReadWriteTexture(in destination);
 		passData2.Material = m_Materials.ScreenSpaceCloudShadows;
@@ -217,7 +217,7 @@ public class BeforeTransparentPostProcessPass : ScriptableRenderPass
 	private void RenderMaskedColorTransform(RenderGraph renderGraph, WaaaghResourceData resources, TextureHandle source, TextureHandle destination)
 	{
 		MaskedColorTransformPassData passData2;
-		RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<MaskedColorTransformPassData>("RenderBeforeTransparentPostProcess.MaskedColorTrasformPass", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 213);
+		RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<MaskedColorTransformPassData>("RenderBeforeTransparentPostProcess.MaskedColorTrasformPass", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\BeforeTransparentPostProcessPass.cs", 213);
 		try
 		{
 			MaskedColorTransformPassData maskedColorTransformPassData = passData2;

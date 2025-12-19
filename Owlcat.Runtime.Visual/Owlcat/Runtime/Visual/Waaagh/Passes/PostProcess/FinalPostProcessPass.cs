@@ -136,7 +136,7 @@ public class FinalPostProcessPass : ScriptableRenderPass
 		finalPass.shaderKeywords = null;
 		FinalBlitSettings settings = FinalBlitSettings.Create();
 		ProfilingSampler sampler = ProfilingSampler.Get(WaaaghProfileId.RenderPostProcessFinal);
-		renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 117);
+		renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 117);
 		m_EnableColorEncodingIfNeeded = true;
 		if (m_FilmGrain.IsActive())
 		{
@@ -220,13 +220,13 @@ public class FinalPostProcessPass : ScriptableRenderPass
 		TextureHandle postProcessingTarget = waaaghResourceData.CameraColorBuffer;
 		TextureHandle overlayUITexture = waaaghResourceData.OverlayUITexture;
 		RenderFinalBlit(renderGraph, waaaghCameraData, in source, in overlayUITexture, in postProcessingTarget, ref settings);
-		renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 262);
+		renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 262);
 	}
 
 	public void RenderFinalSetup(RenderGraph renderGraph, WaaaghCameraData cameraData, in TextureHandle source, in TextureHandle destination, ref FinalBlitSettings settings)
 	{
 		PostProcessingFinalSetupPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalSetupPassData>("Postprocessing Final Setup Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.FinalSetup), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 276);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalSetupPassData>("Postprocessing Final Setup Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.FinalSetup), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 276);
 		Material scalingSetup = m_Materials.ScalingSetup;
 		if (settings.isFxaaEnabled)
 		{
@@ -264,7 +264,7 @@ public class FinalPostProcessPass : ScriptableRenderPass
 	{
 		m_Materials.Easu.shaderKeywords = null;
 		PostProcessingFinalFSRScalePassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalFSRScalePassData>("Postprocessing Final FSR Scale Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.FinalFSRScale), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 326);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalFSRScalePassData>("Postprocessing Final FSR Scale Pass", out passData, ProfilingSampler.Get(WaaaghProfileId.FinalFSRScale), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 326);
 		rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		passData.destinationTexture = destination;
 		rasterRenderGraphBuilder.SetRenderAttachment(destination, 0);
@@ -299,7 +299,7 @@ public class FinalPostProcessPass : ScriptableRenderPass
 			RenderTextureDescriptor compatibleDescriptor = GetCompatibleDescriptor(cameraData.cameraTargetDescriptor, cameraData.cameraTargetDescriptor.width, cameraData.cameraTargetDescriptor.height, cameraData.cameraTargetDescriptor.graphicsFormat);
 			TextureHandle textureHandle = WaaaghRenderer.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, "FinalPostSwapBuffer", clear: false, FilterMode.Bilinear);
 			PostProcessingFinalBlitPassData passData;
-			using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Swap Copy", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 382))
+			using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Swap Copy", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 382))
 			{
 				rasterRenderGraphBuilder.UseTexture(in source);
 				passData.sourceTexture = source;
@@ -315,7 +315,7 @@ public class FinalPostProcessPass : ScriptableRenderPass
 			input = textureHandle;
 		}
 		PostProcessingFinalBlitPassData passData2;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Pass", out passData2, ProfilingSampler.Get(WaaaghProfileId.FinalPostBlit), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 400);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Pass", out passData2, ProfilingSampler.Get(WaaaghProfileId.FinalPostBlit), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\PostProcess\\FinalPostProcessPass.cs", 400);
 		rasterRenderGraphBuilder2.AllowGlobalStateModification(value: true);
 		passData2.destinationTexture = postProcessingTarget;
 		rasterRenderGraphBuilder2.SetRenderAttachment(postProcessingTarget, 0);

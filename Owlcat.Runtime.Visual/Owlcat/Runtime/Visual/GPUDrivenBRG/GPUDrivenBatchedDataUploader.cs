@@ -58,7 +58,7 @@ public class GPUDrivenBatchedDataUploader : IDisposable
 		public static readonly ProfilingSampler Flush = new ProfilingSampler("Batch Data Upload: Flush");
 	}
 
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\GPUDrivenBRG\\GPUDrivenBatchedDataUploader.cs", needAccessors = false)]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\GPUDrivenBRG\\GPUDrivenBatchedDataUploader.cs", needAccessors = false)]
 	public struct GPUDrivenUploadSegment
 	{
 		public uint SourceOffset;

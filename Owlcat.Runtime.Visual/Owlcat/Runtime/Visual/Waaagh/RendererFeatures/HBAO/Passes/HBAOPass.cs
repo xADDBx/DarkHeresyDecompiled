@@ -468,7 +468,7 @@ public class HBAOPass : ScriptableRenderPass
 		HBAOHistoryBuffer currentCameraHistoryBuffersRG = m_Feature.GetCurrentCameraHistoryBuffersRG(waaaghCameraData, m_Settings);
 		currentCameraHistoryBuffersRG?.historyRTSystem.SwapAndSetReferenceSize(aoDesc.width, aoDesc.height);
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<PassData>(Name, out passData, m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\HBAO\\Passes\\HBAOPass.cs", 402);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<PassData>(Name, out passData, m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\HBAO\\Passes\\HBAOPass.cs", 402);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		TextureHandle input = waaaghResourceData.CameraDepthBuffer;

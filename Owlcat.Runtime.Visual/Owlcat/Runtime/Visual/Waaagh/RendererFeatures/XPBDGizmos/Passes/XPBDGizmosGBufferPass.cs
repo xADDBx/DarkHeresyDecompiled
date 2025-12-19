@@ -55,7 +55,7 @@ public class XPBDGizmosGBufferPass : ScriptableRenderPass
 	private void RecordParticlesPass(RenderGraph renderGraph, WaaaghResourceData resources)
 	{
 		PassData passData;
-		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Particles", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosParticles), ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosGBufferPass.cs", 57);
+		using RenderGraphBuilder builder = renderGraph.AddRenderPass<PassData>("XPBD Gizmos Particles", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosParticles), ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\Passes\\XPBDGizmosGBufferPass.cs", 57);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = m_Feature.GizmosMaterial;

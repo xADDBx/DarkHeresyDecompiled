@@ -74,7 +74,7 @@ public class SetupProbeVolumesPass : ScriptableRenderPass
 	{
 		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
 		PassData passData;
-		using RenderGraphBuilder renderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\Passes\\ProbeVolumes\\SetupProbeVolumesPass.cs", 27);
+		using RenderGraphBuilder renderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\ProbeVolumes\\SetupProbeVolumesPass.cs", 27);
 		WaaaghPipelineAsset asset = WaaaghPipeline.Asset;
 		passData.SupportsProbeVolumes = waaaghCameraData.SupportsProbeVolumes;
 		passData.EnablesProbeVolumes = waaaghCameraData.EnablesProbeVolumes;

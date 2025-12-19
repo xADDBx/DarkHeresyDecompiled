@@ -94,7 +94,7 @@ public class CustomPostProcessPass : ScriptableRenderPass
 		WaaaghPostProcessingData waaaghPostProcessingData = frameData.Get<WaaaghPostProcessingData>();
 		MaterialLibrary materialsForCamera = GetMaterialsForCamera(waaaghCameraData.camera);
 		Owlcat.Runtime.Visual.Overrides.CustomPostProcess.CustomPostProcess component = VolumeManager.instance.stack.GetComponent<Owlcat.Runtime.Visual.Overrides.CustomPostProcess.CustomPostProcess>();
-		renderGraph.BeginProfilingSampler(m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 92);
+		renderGraph.BeginProfilingSampler(m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 92);
 		TextureDesc desc = RenderingUtils.CreateTextureDesc("CameraAfterPostProcessRT", waaaghCameraData.cameraTargetDescriptor);
 		desc.filterMode = FilterMode.Bilinear;
 		desc.wrapMode = TextureWrapMode.Clamp;
@@ -107,7 +107,7 @@ public class CustomPostProcessPass : ScriptableRenderPass
 			{
 				continue;
 			}
-			renderGraph.BeginProfilingSampler(m_EffectsProfilingSamplers[i], ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 126);
+			renderGraph.BeginProfilingSampler(m_EffectsProfilingSamplers[i], ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 126);
 			for (int j = 0; j < customPostProcessEffect.Passes.Count; j++)
 			{
 				CustomPostProcessEffectPass customPostProcessEffectPass = customPostProcessEffect.Passes[j];
@@ -116,7 +116,7 @@ public class CustomPostProcessPass : ScriptableRenderPass
 					continue;
 				}
 				CustomPostProcessPassData passData2;
-				RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<CustomPostProcessPassData>(customPostProcessEffectPass.Name, out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 136);
+				RenderGraphBuilder renderGraphBuilder = renderGraph.AddRenderPass<CustomPostProcessPassData>(customPostProcessEffectPass.Name, out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 136);
 				try
 				{
 					CustomPostProcessPassData customPostProcessPassData = passData2;
@@ -152,10 +152,10 @@ public class CustomPostProcessPass : ScriptableRenderPass
 				}
 				Swap();
 			}
-			renderGraph.EndProfilingSampler(m_EffectsProfilingSamplers[i], ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 167);
+			renderGraph.EndProfilingSampler(m_EffectsProfilingSamplers[i], ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 167);
 		}
 		CustomPostProcessPassData passData3;
-		RenderGraphBuilder renderGraphBuilder2 = renderGraph.AddRenderPass<CustomPostProcessPassData>("Final Blit", out passData3, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 171);
+		RenderGraphBuilder renderGraphBuilder2 = renderGraph.AddRenderPass<CustomPostProcessPassData>("Final Blit", out passData3, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 171);
 		try
 		{
 			CustomPostProcessPassData customPostProcessPassData3 = passData3;
@@ -178,7 +178,7 @@ public class CustomPostProcessPass : ScriptableRenderPass
 		{
 			((IDisposable)renderGraphBuilder2).Dispose();
 		}
-		renderGraph.EndProfilingSampler(m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@f3d4bf622f68\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 188);
+		renderGraph.EndProfilingSampler(m_ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\Passes\\CustomPostProcessPass.cs", 188);
 		TextureHandle GetDestination()
 		{
 			if (!destination.IsValid())
