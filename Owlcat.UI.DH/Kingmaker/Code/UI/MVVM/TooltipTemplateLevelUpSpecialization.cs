@@ -49,6 +49,7 @@ public class TooltipTemplateLevelUpSpecialization : TooltipBaseTemplate
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
+		AddDescription(list);
 		AddStatBonuses(list, StatTypeHelper.Attributes, UIStrings.Instance.CharGen.BackgroundStatsBonuses);
 		AddStatBonuses(list, StatTypeHelper.Skills, UIStrings.Instance.CharGen.BackgroundSkillsBonuses);
 		IEnumerable<AddFeaturesToLevelUp> components = m_Feature.GetComponents<AddFeaturesToLevelUp>();
@@ -83,9 +84,11 @@ public class TooltipTemplateLevelUpSpecialization : TooltipBaseTemplate
 		}
 		Sprite icon = blueprintUnitFact.Icon;
 		string acronym = ((icon == null) ? UIUtilityAbilities.GetAbilityAcronym(blueprintUnitFact.LocalizedName) : null);
+		TooltipTemplateFeature tooltipTemplateFeature = ((blueprintUnitFact is BlueprintFeature feature) ? new TooltipTemplateFeature(feature) : null);
 		string title = blueprintUnitFact.LocalizedName;
 		Sprite icon2 = icon;
-		return new TooltipBrickLevelUpFeatureData(title, null, acronym, null, null, null, icon2);
+		TooltipBaseTemplate tooltip = tooltipTemplateFeature;
+		return new TooltipBrickLevelUpFeatureData(title, null, acronym, null, null, null, icon2, iconWithFrame: true, default(Vector2), null, tooltip);
 	}
 
 	private void AddStatBonuses(List<ITooltipBrick> bricks, StatType[] types, string title)

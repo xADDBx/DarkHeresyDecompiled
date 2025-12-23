@@ -6,10 +6,10 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.GPUDrivenBRG;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs")]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs")]
 public static class GPUDrivenComputeShaders
 {
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs")]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs")]
 	[Flags]
 	public enum GPUCullingJobFlags
 	{
@@ -17,7 +17,7 @@ public static class GPUDrivenComputeShaders
 		TransparentMaterial = 1
 	}
 
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs", needAccessors = false)]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs", needAccessors = false)]
 	public struct GroupInfo
 	{
 		public uint MeshIndexStart;
@@ -31,7 +31,7 @@ public static class GPUDrivenComputeShaders
 		public uint InstanceIndexCount;
 	}
 
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs", needAccessors = false)]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs", needAccessors = false)]
 	public struct GPUCullingContext
 	{
 		public float4 CullingSphereLS;
@@ -85,7 +85,7 @@ public static class GPUDrivenComputeShaders
 		public float LOD_LODBias;
 	}
 
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs", needAccessors = false)]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\GPUDrivenBRG\\GPUDrivenComputeShaders.cs", needAccessors = false)]
 	public struct GPUCullingJob
 	{
 		public uint GroupIndex;

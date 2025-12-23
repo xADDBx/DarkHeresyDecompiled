@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.Shadows;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Shadows\\ShadowCopyCacheConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\Shadows\\ShadowCopyCacheConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
 [BurstCompile]
 public struct ShadowCopyCacheConstantBuffer
 {

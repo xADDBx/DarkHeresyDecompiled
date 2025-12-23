@@ -235,54 +235,55 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 
 	public string GetInterfaceName()
 	{
-		string result = string.Empty;
-		if (RootVM.Instance != null)
+		if (Instance.CommonVM?.VendorVM?.CurrentValue != null)
 		{
-			ReactiveProperty<ServiceWindowsPanelVM> windowsPanelVM = RootVM.Instance.WindowsPanelVM;
-			if (windowsPanelVM != null && !windowsPanelVM.IsDisposed)
+			if (Instance.CommonVM.VendorVM.CurrentValue.ActiveTab.CurrentValue == VendorWindowsTab.Trade)
 			{
-				ServiceWindowsPanelVM currentValue = windowsPanelVM.CurrentValue;
-				if (currentValue != null)
-				{
-					FullScreenUIType currentValue2 = currentValue.CurrentUIType.CurrentValue;
-					if (currentValue2 != 0)
-					{
-						result = currentValue2.ToString();
-					}
-					goto IL_00e2;
-				}
+				return "Vendor";
 			}
-			ReactiveProperty<DialogVM> dialogVM = RootVM.Instance.DialogVM;
-			if (dialogVM != null && !dialogVM.IsDisposed)
+			return Instance.CommonVM.VendorVM.CurrentValue.ActiveTab.CurrentValue.ToString();
+		}
+		if (RootVM.Instance == null)
+		{
+			return string.Empty;
+		}
+		ReactiveProperty<ServiceWindowsPanelVM> windowsPanelVM = RootVM.Instance.WindowsPanelVM;
+		if (windowsPanelVM != null && !windowsPanelVM.IsDisposed)
+		{
+			ServiceWindowsPanelVM currentValue = windowsPanelVM.CurrentValue;
+			if (currentValue != null)
 			{
-				DialogVM currentValue3 = dialogVM.CurrentValue;
-				if (currentValue3 != null)
+				FullScreenUIType currentValue2 = currentValue.CurrentUIType.CurrentValue;
+				if (currentValue2 != 0)
 				{
-					ReadOnlyReactiveProperty<bool> isVisible = currentValue3.IsVisible;
-					if (isVisible != null && isVisible.CurrentValue)
-					{
-						result = "Dialog";
-						goto IL_00e2;
-					}
-				}
-			}
-			LootContext lootContext = RootVM.Instance.LootContext;
-			if (lootContext != null && lootContext.IsShown)
-			{
-				result = "Loot";
-			}
-			else
-			{
-				ReactiveProperty<PreciseAttackVM> preciseAttackVM = RootVM.Instance.PreciseAttackVM;
-				if (preciseAttackVM != null && !preciseAttackVM.IsDisposed && preciseAttackVM.CurrentValue != null)
-				{
-					result = "PreciseShot";
+					return currentValue2.ToString();
 				}
 			}
 		}
-		goto IL_00e2;
-		IL_00e2:
-		return result;
+		ReactiveProperty<DialogVM> dialogVM = RootVM.Instance.DialogVM;
+		if (dialogVM != null && !dialogVM.IsDisposed)
+		{
+			DialogVM currentValue3 = dialogVM.CurrentValue;
+			if (currentValue3 != null)
+			{
+				ReadOnlyReactiveProperty<bool> isVisible = currentValue3.IsVisible;
+				if (isVisible != null && isVisible.CurrentValue)
+				{
+					return "Dialog";
+				}
+			}
+		}
+		LootContext lootContext = RootVM.Instance.LootContext;
+		if (lootContext != null && lootContext.IsShown)
+		{
+			return "Loot";
+		}
+		ReactiveProperty<PreciseAttackVM> preciseAttackVM = RootVM.Instance.PreciseAttackVM;
+		if (preciseAttackVM != null && !preciseAttackVM.IsDisposed && preciseAttackVM.CurrentValue != null)
+		{
+			return "PreciseShot";
+		}
+		return string.Empty;
 	}
 
 	public string GetTooltipData(TooltipData tooltipData)

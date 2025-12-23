@@ -2352,6 +2352,7 @@ public static class ClassesWithGuid
 		(typeof(UnitInventory), "ac0b2a9e4daea5c42b85d77e48d5a304"),
 		(typeof(UnitMaxHPPercent), "068be78f66154fd4389398a70aa0274d"),
 		(typeof(UnitPosition), "ac7da90e77cb5af44b778bfce17bb4aa"),
+		(typeof(UnitsCountInCombat), "92803e2005e9469d84831b1c7cb76cd3"),
 		(typeof(UnitsCountInScriptZone), "31dd684969ea477393d08b136c0d5d3f"),
 		(typeof(UnitTransform), "93a8e117c084af945a2d44ce45cfa786"),
 		(typeof(VirtualStash), "a2669f6dc5d84c6fa081f66d69c06056"),

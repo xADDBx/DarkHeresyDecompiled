@@ -78,6 +78,7 @@ public class TooltipBrickLevelUpHeaderView : TooltipBaseBrickView<TooltipBrickLe
 		m_SubheaderView?.Bind(base.ViewModel.SubheaderVM);
 		m_WidgetList?.gameObject.SetActive(base.ViewModel.AbilityData != null && base.ViewModel.AbilityData.RequiredStats != null);
 		m_AbilityPatternView?.gameObject.SetActive(base.ViewModel.AbilityData != null && base.ViewModel.AbilityData.BrickIconPattern != null);
+		this.SetTooltip(base.ViewModel.Data.Tooltip).AddTo(this);
 		if (!base.ViewModel.Data.CenteredHeader.IsNullOrEmpty())
 		{
 			m_CenteredHeader.text = base.ViewModel.Data.CenteredHeader;

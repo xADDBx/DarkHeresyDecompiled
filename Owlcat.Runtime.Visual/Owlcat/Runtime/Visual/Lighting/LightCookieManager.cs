@@ -263,7 +263,7 @@ public class LightCookieManager : IDisposable
 		public override void RecordRenderGraph(ContextContainer frameData)
 		{
 			PassData passData;
-			using RenderGraphBuilder renderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Lighting\\LightCookieManager.cs", 412);
+			using RenderGraphBuilder renderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Lighting\\LightCookieManager.cs", 412);
 			passData.hasAnyLightWithCookie = m_CookieDataList.Length > 0;
 			passData.atlasTexture = m_AtlasTexture;
 			passData.blitCookieTextures = m_BlitCookieTextures;

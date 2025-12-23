@@ -32,15 +32,10 @@ public abstract class StatusEffectBaseView : CharInfoFeatureSimpleBaseView
 	{
 		base.OnBind();
 		SetupDescription();
+		TextHelper.AppendTexts(m_Duration);
 		m_SourcePanel.SetActive(value: false);
 		m_DOTPanel.SetActive(value: false);
 		m_StackText.gameObject.SetActive(value: false);
-	}
-
-	protected override void BindViewImplementation()
-	{
-		base.BindViewImplementation();
-		TextHelper.AppendTexts(m_Duration);
 	}
 
 	private void SetupDescription()

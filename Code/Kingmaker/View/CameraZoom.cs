@@ -29,6 +29,8 @@ public class CameraZoom : MonoBehaviour
 
 	private Coroutine m_ZoomRoutine;
 
+	private float m_ZoomCoroutineExpireTime;
+
 	private CinemachineVirtualCamera m_VirtualCamera;
 
 	private float m_MainCameraCurrentFow;
@@ -103,7 +105,15 @@ public class CameraZoom : MonoBehaviour
 
 	public void TickZoom()
 	{
-		if (m_ZoomRoutine != null || ZoomLock || RecordLock)
+		if (m_ZoomRoutine != null)
+		{
+			if (Time.time < m_ZoomCoroutineExpireTime)
+			{
+				return;
+			}
+			m_ZoomRoutine = null;
+		}
+		if (ZoomLock || RecordLock)
 		{
 			return;
 		}
@@ -186,7 +196,7 @@ public class CameraZoom : MonoBehaviour
 	private IEnumerator ZoomToRoutine(float fromValue, float toValue, float time, AnimationCurve curve)
 	{
 		float start = Time.time;
-		float end = start + time;
+		float end = (m_ZoomCoroutineExpireTime = start + time);
 		while (Time.time < end)
 		{
 			yield return null;
@@ -196,8 +206,8 @@ public class CameraZoom : MonoBehaviour
 		}
 		m_PlayerScrollPosition = (m_ScrollPosition = (m_SmoothScrollPosition = toValue));
 		m_Camera.fieldOfView = Mathf.Lerp(FovMax, FovMin, CurrentNormalizePosition);
-		yield return null;
 		m_ZoomRoutine = null;
+		yield return null;
 	}
 
 	public void ResetZoom(float zoomTo)

@@ -114,7 +114,8 @@ public static class UnitCommandsRunner
 		}
 		if (!Game.Instance.Controllers.TurnController.TurnBasedModeActive)
 		{
-			PathfindingService.Instance.FindPathRT(unit.MovementAgent, interaction.Owner.Position, interaction.ApproachRadius.Cells().Meters, delegate(ForcedPath path)
+			float approachRadiousMeters = interaction.ApproachRadius.Cells().Meters;
+			PathfindingService.Instance.FindPathRT(unit.MovementAgent, interaction.Owner.Position, approachRadiousMeters, delegate(ForcedPath path)
 			{
 				if (path.error)
 				{
@@ -124,26 +125,29 @@ public static class UnitCommandsRunner
 				{
 					if (!unit.IsMovementLockedByGameModeOrCombat())
 					{
-						UnitMoveToParams unitMoveToParams = new UnitMoveToParams(path, interaction.Owner.Position, 0f)
+						if (path.vectorPath.Count > 2 || (path.vectorPath[1] - path.vectorPath[0]).sqrMagnitude > 1f || (path.vectorPath[0] - interaction.Owner.Position).magnitude > approachRadiousMeters - 1f)
 						{
-							IsSynchronized = true
-						};
-						if (unit.IsInPlayerParty && !unit.IsInCombat)
-						{
-							if ((interaction.Owner.Position - unit.Position).magnitude > (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistance)
+							UnitMoveToParams unitMoveToParams = new UnitMoveToParams(path, interaction.Owner.Position, approachRadiousMeters)
 							{
-								unitMoveToParams.MovementType = WalkSpeedType.Sprint;
-							}
-							else if ((interaction.Owner.Position - unit.Position).magnitude < (float)ConfigRoot.Instance.SystemMechanics.MaxWalkDistance)
+								IsSynchronized = true
+							};
+							if (unit.IsInPlayerParty && !unit.IsInCombat)
 							{
-								unitMoveToParams.MovementType = WalkSpeedType.Walk;
+								if ((interaction.Owner.Position - unit.Position).magnitude > (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistance)
+								{
+									unitMoveToParams.MovementType = WalkSpeedType.Sprint;
+								}
+								else if ((interaction.Owner.Position - unit.Position).magnitude < (float)ConfigRoot.Instance.SystemMechanics.MaxWalkDistance)
+								{
+									unitMoveToParams.MovementType = WalkSpeedType.Walk;
+								}
+								else
+								{
+									unitMoveToParams.MovementType = WalkSpeedType.Run;
+								}
 							}
-							else
-							{
-								unitMoveToParams.MovementType = WalkSpeedType.Run;
-							}
+							RunMoveCommand(unit, unitMoveToParams);
 						}
-						RunMoveCommand(unit, unitMoveToParams);
 						unit.Commands.AddToQueue(new UnitInteractWithObjectParams(interaction, variantActor)
 						{
 							IsSynchronized = true

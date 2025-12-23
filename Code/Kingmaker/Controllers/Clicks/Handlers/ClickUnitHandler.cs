@@ -267,11 +267,14 @@ public sealed class ClickUnitHandler : IClickEventHandler
 			}
 			else
 			{
-				UnitMoveToParams cmdParams = new UnitMoveToParams(path, targetUnit.ViewTransform.position, interaction.Distance)
+				if (path.vectorPath.Count > 2 || (path.vectorPath[1] - path.vectorPath[0]).sqrMagnitude > 1f || (path.vectorPath[0] - targetUnit.ViewTransform.position).magnitude > (float)interaction.Distance - 1f)
 				{
-					IsSynchronized = true
-				};
-				selectedUnit.Commands.Run(cmdParams);
+					UnitMoveToParams cmdParams = new UnitMoveToParams(path, targetUnit.ViewTransform.position, interaction.Distance)
+					{
+						IsSynchronized = true
+					};
+					selectedUnit.Commands.Run(cmdParams);
+				}
 				selectedUnit.Commands.AddToQueue(new UnitInteractWithUnitParams(targetUnit)
 				{
 					IsSynchronized = true

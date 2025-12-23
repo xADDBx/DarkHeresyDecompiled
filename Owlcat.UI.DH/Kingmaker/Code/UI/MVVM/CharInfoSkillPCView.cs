@@ -60,7 +60,7 @@ public class CharInfoSkillPCView : View<CharInfoStatVM>, IConsoleNavigationEntit
 		{
 			base.ViewModel.IsBattleSkill.Subscribe(m_BattleSkillIcon.SetActive).AddTo(this);
 		}
-		base.ViewModel.HasPenalties.CombineLatest(base.ViewModel.HasBonuses, (bool b, bool b1) => new { }).Subscribe(_ =>
+		base.ViewModel.HasPenalties.CombineLatest(base.ViewModel.HasBonuses, (bool _, bool _) => new { }).Subscribe(_ =>
 		{
 			SetBonuses();
 		}).AddTo(this);

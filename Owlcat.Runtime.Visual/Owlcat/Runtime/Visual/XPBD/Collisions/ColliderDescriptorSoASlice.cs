@@ -5,15 +5,15 @@ namespace Owlcat.Runtime.Visual.XPBD.Collisions;
 
 public struct ColliderDescriptorSoASlice
 {
-	public NativeSlice<int> Layer;
-
-	public NativeSlice<Aabb> PrevAabb;
+	public NativeSlice<ColliderShape> Shape;
 
 	public NativeSlice<AffineTransform> PrevTransform;
 
-	public NativeSlice<ColliderShape> Shape;
+	public NativeSlice<Aabb> PrevAabb;
 
-	public NativeSlice<AffineTransform> Transform;
+	public NativeSlice<int> Layer;
 
 	public NativeSlice<Aabb> Aabb;
+
+	public NativeSlice<AffineTransform> Transform;
 }

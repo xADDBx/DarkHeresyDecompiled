@@ -134,11 +134,10 @@ public sealed class DetectiveServoskullVisualChaser : MonoBehaviour, IAreaLoadin
 		if (num <= m_AlignWithAgentDistance)
 		{
 			m_VisualTransform.rotation = Quaternion.RotateTowards(m_VisualTransform.rotation, base.transform.rotation, AngularSpeed * deltaTime);
+			return;
 		}
-		else
-		{
-			m_VisualTransform.LookAt(position);
-		}
+		position.y = m_VisualTransform.position.y;
+		m_VisualTransform.LookAt(position, Vector3.up);
 	}
 
 	public void OnAreaScenesLoaded()

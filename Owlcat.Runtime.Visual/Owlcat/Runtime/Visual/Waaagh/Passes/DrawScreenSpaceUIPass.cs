@@ -38,11 +38,11 @@ public class DrawScreenSpaceUIPass : ScriptableRenderPass
 		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
 		TextureHandle input = ((m_Subset == UISubset.UIToolkit_UGUI) ? waaaghResourceData.CameraColorBuffer : waaaghResourceData.CameraResolveColorBuffer);
 		TextureHandle tex = ((m_Subset == UISubset.UIToolkit_UGUI) ? waaaghResourceData.CameraDepthBuffer : waaaghResourceData.CameraResolveDepthBuffer);
-		renderGraph.BeginProfilingSampler(base.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 49);
+		renderGraph.BeginProfilingSampler(base.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 49);
 		if ((m_Subset & UISubset.UIToolkit_UGUI) != 0)
 		{
 			PassData passData2;
-			using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PassData>("Draw UGUI Overlay", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 54);
+			using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PassData>("Draw UGUI Overlay", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 54);
 			rasterRenderGraphBuilder.SetRenderAttachment(input, 0);
 			rasterRenderGraphBuilder.SetRenderAttachmentDepth(tex);
 			PassData passData3 = passData2;
@@ -58,7 +58,7 @@ public class DrawScreenSpaceUIPass : ScriptableRenderPass
 		if ((m_Subset & UISubset.LowLevel) != 0)
 		{
 			UnsafePassData passData4;
-			using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UnsafePassData>("Draw IMGUI Overlay", out passData4, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 75);
+			using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UnsafePassData>("Draw IMGUI Overlay", out passData4, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 75);
 			passData4.ColorTarget = input;
 			unsafeRenderGraphBuilder.UseTexture(in input, AccessFlags.Write);
 			UnsafePassData unsafePassData = passData4;
@@ -72,6 +72,6 @@ public class DrawScreenSpaceUIPass : ScriptableRenderPass
 				context.cmd.DrawRendererList(passData.RendererList);
 			});
 		}
-		renderGraph.EndProfilingSampler(base.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@2c5e70bf14b9\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 91);
+		renderGraph.EndProfilingSampler(base.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\Passes\\DrawScreenSpaceUIPass.cs", 91);
 	}
 }
