@@ -72,6 +72,7 @@ public abstract class CharGenBackgroundBasePhaseVM<TViewModel> : CharGenPhaseBas
 		m_SelectionStateFeature = selectionStateFeature;
 		m_FeatureGroup = selectionStateFeature.Blueprint.Group;
 		base.BlueprintSelectionWithUI = selectionStateFeature.Blueprint;
+		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
 		SelectionGroup = new SelectionGroupRadioVM<TViewModel>(m_Items, m_SelectedItem).AddTo(this);
 		SelectedItem.Subscribe(HandleSelectedItem).AddTo(this);
 		SelectedItem.Subscribe(delegate(TViewModel value)

@@ -379,10 +379,7 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 
 	void IAreaLoadingStagesHandler.OnAreaLoadingComplete()
 	{
-		if (TurnController.IsInTurnBasedCombat())
-		{
-			MusicStateHandler.UpdateCombatMusicState();
-		}
+		MusicStateHandler.UpdateCombatMusicState();
 	}
 
 	void IAreaHandler.OnAreaBeginUnloading()

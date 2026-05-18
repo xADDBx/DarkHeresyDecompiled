@@ -45,10 +45,14 @@ public class SelectionStateVoice : SelectionState
 		if (Asks != null)
 		{
 			unit.Asks.SetCustom(Asks);
-			CharacterEntry characterEntry = VOSettings.Instance.VOCharactersMap.Characters.FirstOrDefault((CharacterEntry e) => e.Asks.Get() == Asks);
-			if (characterEntry != null)
+			string voGuidByAsks = VOSettings.Instance.GetVoGuidByAsks(Asks);
+			if (!string.IsNullOrEmpty(voGuidByAsks))
 			{
-				unit.SelectVoGuid(characterEntry.Guid);
+				unit.SelectVoGuid(voGuidByAsks);
+			}
+			if (unit.View != null)
+			{
+				unit.View.UpdateAsks();
 			}
 		}
 	}

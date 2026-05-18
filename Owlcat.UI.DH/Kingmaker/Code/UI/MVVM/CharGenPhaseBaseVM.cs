@@ -11,7 +11,7 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public abstract class CharGenPhaseBaseVM : SelectionGroupEntityVM
 {
-	private readonly ReactiveProperty<string> m_PhaseNextHint = new ReactiveProperty<string>();
+	private string m_PhaseNextHint = string.Empty;
 
 	private readonly ReactiveProperty<bool> m_ShowVisualSettings = new ReactiveProperty<bool>();
 
@@ -82,7 +82,7 @@ public abstract class CharGenPhaseBaseVM : SelectionGroupEntityVM
 
 	public ReadOnlyReactiveProperty<bool> ShowVisualSettings => m_ShowVisualSettings;
 
-	public ReadOnlyReactiveProperty<string> PhaseNextHint => m_PhaseNextHint;
+	public string PhaseNextHint => m_PhaseNextHint;
 
 	public virtual TooltipBaseTemplate NotCompletedReasonTooltip
 	{
@@ -108,10 +108,6 @@ public abstract class CharGenPhaseBaseVM : SelectionGroupEntityVM
 		AddDisposable(IsCompletedAndAvailable.Subscribe(delegate(bool completed)
 		{
 			m_NextPhase?.UpdateAvailableState(completed);
-			if (completed)
-			{
-				m_PhaseNextHint.Value = string.Empty;
-			}
 		}));
 	}
 
@@ -162,7 +158,7 @@ public abstract class CharGenPhaseBaseVM : SelectionGroupEntityVM
 
 	protected void SetPhaseHint(string hint)
 	{
-		m_PhaseNextHint.Value = hint;
+		m_PhaseNextHint = hint;
 	}
 
 	protected void SetShowVisualSettings(bool show)

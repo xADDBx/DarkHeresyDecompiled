@@ -30,6 +30,7 @@ public class CharGenPortraitPhaseVM : CharGenPhaseBaseVM, ICharGenPortraitSelect
 		base.HasSmallPortrait = true;
 		EventBus.Subscribe(this).AddTo(this);
 		base.BlueprintSelectionWithUI = blueprint;
+		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
 		m_SelectionStatePortrait = selectionStatePortrait;
 	}
 

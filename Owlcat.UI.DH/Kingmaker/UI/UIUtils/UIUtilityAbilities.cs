@@ -356,7 +356,7 @@ public static class UIUtilityAbilities
 		return localizedString;
 	}
 
-	private static string GetFactName(CalculatedPrerequisiteFact prerequisiteFact)
+	public static string GetFactName(CalculatedPrerequisiteFact prerequisiteFact)
 	{
 		string text = "<b>" + prerequisiteFact.Fact.Name + "</b>";
 		if (prerequisiteFact.Fact is BlueprintFeature blueprintFeature)

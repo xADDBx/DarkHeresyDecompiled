@@ -9,9 +9,9 @@ public class BodyVertexSoA : StructureOfArrays<BodyVertex>
 {
 	public NativeArray<float3> Normal;
 
-	public NativeArray<float3> Position;
-
 	public NativeArray<float3> RestNormal;
+
+	public NativeArray<float3> Position;
 
 	public override BodyVertex this[int index]
 	{
@@ -19,15 +19,15 @@ public class BodyVertexSoA : StructureOfArrays<BodyVertex>
 		{
 			BodyVertex result = default(BodyVertex);
 			result.Normal = Normal[index];
-			result.Position = Position[index];
 			result.RestNormal = RestNormal[index];
+			result.Position = Position[index];
 			return result;
 		}
 		set
 		{
 			Normal[index] = value.Normal;
-			Position[index] = value.Position;
 			RestNormal[index] = value.RestNormal;
+			Position[index] = value.Position;
 		}
 	}
 
@@ -45,32 +45,32 @@ public class BodyVertexSoA : StructureOfArrays<BodyVertex>
 	{
 		base.Resize(newSize);
 		Normal = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-		Position = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 		RestNormal = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+		Position = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 	}
 
 	public override void CopyTo(StructureOfArraysBase dst, int offset, int dstOffset, int length)
 	{
 		BodyVertexSoA bodyVertexSoA = (BodyVertexSoA)dst;
 		NativeArray<float3>.Copy(Normal, offset, bodyVertexSoA.Normal, dstOffset, length);
-		NativeArray<float3>.Copy(Position, offset, bodyVertexSoA.Position, dstOffset, length);
 		NativeArray<float3>.Copy(RestNormal, offset, bodyVertexSoA.RestNormal, dstOffset, length);
+		NativeArray<float3>.Copy(Position, offset, bodyVertexSoA.Position, dstOffset, length);
 	}
 
 	public override void Dispose()
 	{
 		base.Dispose();
 		Normal.Dispose();
-		Position.Dispose();
 		RestNormal.Dispose();
+		Position.Dispose();
 	}
 
 	public BodyVertexSoASlice GetSlice(int offset, int count)
 	{
 		BodyVertexSoASlice result = default(BodyVertexSoASlice);
 		result.Normal = new NativeSlice<float3>(Normal, offset, count);
-		result.Position = new NativeSlice<float3>(Position, offset, count);
 		result.RestNormal = new NativeSlice<float3>(RestNormal, offset, count);
+		result.Position = new NativeSlice<float3>(Position, offset, count);
 		return result;
 	}
 }

@@ -4,7 +4,6 @@ using Code.View.UI.MVVM;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.GameCommands;
@@ -14,6 +13,7 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.CharGen;
+using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Levelup.Selections.CharacterName;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Owlcat.UI;
@@ -48,6 +48,10 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 		base.HasSmallPortrait = true;
 		m_SelectionStateCharacterName = selectionStateName;
 		m_PhaseName.Value = ((BlueprintCharacterNameSelection)selectionStateName.Blueprint).Title;
+		if (selectionStateName.Blueprint is BlueprintSelectionWithUI blueprintSelectionWithUI)
+		{
+			SetPhaseHint(blueprintSelectionWithUI.CallToAction?.Text ?? string.Empty);
+		}
 		CreateTooltipSystem();
 	}
 
@@ -80,10 +84,6 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 		}
 		CharGenNameVM = new CharGenNameVM(m_CharGenContext.CurrentUnit, m_CharGenContext.LevelUpManager, GetRandomName, SetName).AddTo(this);
 		BackgroundFeaturesVM = new SummaryBackgroundFeaturesVM(m_CharGenContext.CurrentUnit, m_CharGenContext.LevelUpManager).AddTo(this);
-		CharGenNameVM.CurrentDisplayName.Subscribe(delegate
-		{
-			UpdateHint();
-		}).AddTo(this);
 		m_CharGenContext.CurrentUnit.Subscribe(delegate(BaseUnitEntity unit)
 		{
 			PregenUnitComponent component = unit.Blueprint.GetComponent<PregenUnitComponent>();
@@ -124,18 +124,6 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 	{
 		Gender gender = ((UnityEngine.Random.Range(0, 2) != 0) ? Gender.Female : Gender.Male);
 		return BlueprintCharGenRoot.Instance.PregenCharacterNames.GetRandomName(Race.Human, gender, m_CharGenContext.CharGenConfig.Mode, CharGenNameVM.CurrentDisplayName.CurrentValue);
-	}
-
-	private void UpdateHint()
-	{
-		if (!string.IsNullOrEmpty(CharGenNameVM.CurrentDisplayName.CurrentValue))
-		{
-			SetPhaseHint(string.Empty);
-		}
-		else
-		{
-			SetPhaseHint(UIStrings.Instance.CharGen.ChooseName.Text);
-		}
 	}
 
 	public override void InterruptChargen(Action onComplete)

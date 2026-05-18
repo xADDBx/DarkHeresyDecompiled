@@ -35,6 +35,7 @@ public class CharGenCareerPhaseVM : CharGenPhaseBaseVM
 		m_PhaseName.Value = selectionState.Blueprint.Title;
 		base.DisplayMode = CharGenDisplayMode.PortraitOnly;
 		base.BlueprintSelectionWithUI = selectionState.Blueprint;
+		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
 		InfoVM = infoSectionVM;
 		SelectionGroup = new SelectionGroupRadioVM<CharGenCareerSelectionItemVM>(m_Items, m_SelectedItem).AddTo(this);
 		SelectedItem.Subscribe(HandleSelectedItem).AddTo(this);

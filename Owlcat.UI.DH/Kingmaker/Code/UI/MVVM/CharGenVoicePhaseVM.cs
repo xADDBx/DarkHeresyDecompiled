@@ -62,6 +62,7 @@ public class CharGenVoicePhaseVM : CharGenPhaseBaseVM, ICharGenAppearancePhaseVo
 		m_SelectionState = selectionState;
 		m_Blueprint = blueprint;
 		base.BlueprintSelectionWithUI = blueprint;
+		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
 		m_PhaseName.Value = blueprint.Title;
 		CreateVoiceItems();
 		VoiceSelector = new SelectionGroupRadioVM<CharGenVoiceItemVM>(m_VoiceItems, m_SelectedVoiceVM).AddTo(this);
@@ -130,6 +131,7 @@ public class CharGenVoicePhaseVM : CharGenPhaseBaseVM, ICharGenAppearancePhaseVo
 		}
 		m_SelectedVoiceVM.Value = charGenVoiceItemVM;
 		m_SelectionState.SelectVoice(charGenVoiceItemVM.Asks);
+		m_SelectionState.Manager.PreviewUnit?.SelectVoGuid(charGenVoiceItemVM.VoGuid);
 		charGenVoiceItemVM.Asks.PlayPreview();
 		m_IsSelectedManually = true;
 		UpdateIsCompleted();

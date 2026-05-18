@@ -91,4 +91,18 @@ public class VOSettings : BlueprintScriptableObject
 		}
 		return null;
 	}
+
+	[CanBeNull]
+	public string GetVoGuidByAsks([CanBeNull] BlueprintUnitAsksList asks)
+	{
+		if (asks == null)
+		{
+			return null;
+		}
+		if (VOCharactersMap.AsksAssetGuidToVoGuidMap.TryGetValue(asks.AssetGuid, out var value))
+		{
+			return value;
+		}
+		return null;
+	}
 }

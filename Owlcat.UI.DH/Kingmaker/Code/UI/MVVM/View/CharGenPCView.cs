@@ -1,3 +1,4 @@
+using System;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Framework.Settings.UISettings;
 using Kingmaker.Code.View.Bridge.Enums;
@@ -46,9 +47,7 @@ public class CharGenPCView : CharGenView
 	[SerializeField]
 	private TextMeshProUGUI m_ToCharInfoLabel;
 
-	private readonly ReactiveProperty<string> m_NextButtonHint = new ReactiveProperty<string>(string.Empty);
-
-	private readonly CompositeDisposable m_CurrentPhaseDisposable = new CompositeDisposable();
+	private IDisposable m_NextButtonHintDisposable;
 
 	private bool m_IsShowed;
 
@@ -81,18 +80,17 @@ public class CharGenPCView : CharGenView
 		{
 			base.ViewModel.ToCharInfo();
 		}).AddTo(this);
-		base.ViewModel.CurrentPhaseVM.Subscribe(delegate(CharGenPhaseBaseVM phase)
+		base.ViewModel.CurrentPhaseVM.Subscribe(delegate
 		{
 			m_NextButtonLabel.text = (base.CurrentPhaseIsLast ? UIStrings.Instance.CharGen.Complete : UIStrings.Instance.CharGen.Next);
-			m_CurrentPhaseDisposable.Clear();
-			m_CurrentPhaseDisposable.Add(phase.PhaseNextHint.Subscribe(delegate(string value)
-			{
-				m_NextButtonHint.Value = value;
-			}));
 		}).AddTo(this);
 		m_CanGoNext.Subscribe(SetActiveNextPhaseButton).AddTo(this);
 		m_CanGoBack.Subscribe(SetActiveBackPhaseButton).AddTo(this);
-		m_NextButton.SetHint(m_NextButtonHint).AddTo(this);
+		m_CanGoNext.CombineLatest(base.ViewModel.NextButtonHint, (bool canGo, string hint) => (canGo: canGo, hint: hint)).Subscribe(delegate((bool canGo, string hint) value)
+		{
+			m_NextButtonHintDisposable?.Dispose();
+			m_NextButtonHintDisposable = (value.canGo ? null : m_NextButton.SetHint(value.hint));
+		}).AddTo(this);
 		m_NextButtonLabel.text = UIStrings.Instance.CharGen.Next;
 		m_BackButtonLabel.text = UIStrings.Instance.CharGen.Back;
 		m_ToCharInfoLabel.text = UIStrings.Instance.CharGen.ToCharacterInfo;
@@ -105,7 +103,7 @@ public class CharGenPCView : CharGenView
 	protected override void OnUnbind()
 	{
 		base.OnUnbind();
-		m_CurrentPhaseDisposable.Dispose();
+		m_NextButtonHintDisposable?.Dispose();
 	}
 
 	private void CheckCoopButtons(bool isMainCharacter)

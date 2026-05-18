@@ -3,6 +3,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework.VO;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.GameModes;
@@ -52,6 +53,8 @@ public class BookEventVM : ViewModel, IBookPageHandler, ISubscriber, IBookEventU
 
 	public readonly ObservableList<CueVM> HistoryCues = new ObservableList<CueVM>();
 
+	public DialogNotificationsVM Notifications { get; private set; }
+
 	private Sprite DefaultSprite => ConfigRoot.Instance.Dialog.DefaultBookEventPicture;
 
 	public ReadOnlyReactiveProperty<Sprite> EventPicture => m_EventPicture;
@@ -66,6 +69,7 @@ public class BookEventVM : ViewModel, IBookPageHandler, ISubscriber, IBookEventU
 	{
 		m_IsFirstCueInAllBookEvent = true;
 		EventBus.Subscribe(this).AddTo(this);
+		Notifications = new DialogNotificationsVM(DialogUIType.BookEvent).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
 			OnUpdate();

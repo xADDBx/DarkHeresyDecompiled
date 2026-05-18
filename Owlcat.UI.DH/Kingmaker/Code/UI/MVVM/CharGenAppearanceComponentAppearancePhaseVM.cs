@@ -287,6 +287,10 @@ public class CharGenAppearanceComponentAppearancePhaseVM : CharGenPhaseBaseVM, I
 				m_SelectionStateGender.SelectGender(gender);
 				UpdateComponents();
 			}));
+			m_UpdateComponentsSubscription.Add(ObservableSubscribeExtensions.Subscribe(m_CharGenContext.Doll.UpdateCommand, delegate
+			{
+				ApplyDollState(m_CharGenContext.Doll);
+			}));
 		}
 	}
 

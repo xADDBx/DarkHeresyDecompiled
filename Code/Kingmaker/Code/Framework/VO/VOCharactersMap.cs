@@ -17,6 +17,8 @@ public class VOCharactersMap
 
 	private Dictionary<string, string> m_BlueprintUnitNameToVoGuidMap;
 
+	private Dictionary<string, string> m_AsksAssetGuidToVoGuidMap;
+
 	public Dictionary<string, CharacterEntry> VoGuidToCharacterEntryMap => m_VoGuidToCharacterEntryMap ?? (m_VoGuidToCharacterEntryMap = Characters.ToDictionary((CharacterEntry c) => c.Guid, (CharacterEntry c) => c));
 
 	public Dictionary<string, string> BlueprintUnitNameToVoGuidMap
@@ -42,6 +44,25 @@ public class VOCharactersMap
 		}
 	}
 
+	public Dictionary<string, string> AsksAssetGuidToVoGuidMap
+	{
+		get
+		{
+			if (m_AsksAssetGuidToVoGuidMap == null)
+			{
+				m_AsksAssetGuidToVoGuidMap = new Dictionary<string, string>();
+				foreach (CharacterEntry character in Characters)
+				{
+					if (character.Asks != null && !string.IsNullOrEmpty(character.Asks.Guid))
+					{
+						m_AsksAssetGuidToVoGuidMap[character.Asks.Guid] = character.Guid;
+					}
+				}
+			}
+			return m_AsksAssetGuidToVoGuidMap;
+		}
+	}
+
 	public List<BlueprintUnitReference> GetUsagesOfVoId(string guid)
 	{
 		if (!VoGuidToCharacterEntryMap.TryGetValue(guid, out var value))
@@ -55,5 +76,6 @@ public class VOCharactersMap
 	{
 		m_BlueprintUnitNameToVoGuidMap = null;
 		m_VoGuidToCharacterEntryMap = null;
+		m_AsksAssetGuidToVoGuidMap = null;
 	}
 }

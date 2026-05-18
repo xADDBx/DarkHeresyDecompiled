@@ -25,6 +25,7 @@ public class CharGenLevelUpBaseSelectionPhaseVM<TSelectorItem> : CharGenLevelUpB
 	{
 		SelectionFeature = selectionFeature;
 		base.BlueprintSelectionWithUI = selectionFeature?.Blueprint;
+		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
 		m_PhaseName.Value = base.BlueprintSelectionWithUI?.Title;
 		UnitSaveData = Game.Instance.Player.UISettings.ChargenData.GetDataForUnit(base.Unit?.Blueprint.AssetGuidThreadSafe);
 	}

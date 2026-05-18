@@ -50,6 +50,8 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	private readonly ReactiveProperty<bool> m_CurrentPhaseIsCompleted = new ReactiveProperty<bool>();
 
+	private readonly ReactiveProperty<string> m_NextButtonHint = new ReactiveProperty<string>(string.Empty);
+
 	private readonly ReactiveProperty<bool> m_ShouldShowVisualSettings = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<bool> m_IsInCharscreen = new ReactiveProperty<bool>();
@@ -106,6 +108,8 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	public ReadOnlyReactiveProperty<bool> CurrentPhaseIsCompleted => m_CurrentPhaseIsCompleted;
 
+	public ReadOnlyReactiveProperty<string> NextButtonHint => m_NextButtonHint;
+
 	public ReadOnlyReactiveProperty<bool> ShouldShowVisualSettings => m_ShouldShowVisualSettings;
 
 	public ReadOnlyReactiveProperty<bool> IsInCharscreen => m_IsInCharscreen;
@@ -149,6 +153,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 			HideVisualSettings();
 			if (phase != null)
 			{
+				m_NextButtonHint.Value = phase.PhaseNextHint;
 				phase.IsCompletedAndAvailable.Subscribe(delegate(bool value)
 				{
 					m_CurrentPhaseIsCompleted.Value = value;
@@ -502,6 +507,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 	{
 		m_PhaseSubscriptions.Clear();
 		m_CurrentPhaseIsCompleted.Value = false;
+		m_NextButtonHint.Value = string.Empty;
 	}
 
 	private void UpdateChargenMusicState(CharGenPhaseBaseVM phase)

@@ -29,8 +29,11 @@ public class ContextValueModifier : ContextValue
 	{
 		if (Enabled)
 		{
-			int value = Calculate(EvalContext.Current);
-			manager.Add(value, sourceFact, descriptor);
+			int num = Calculate(EvalContext.Current);
+			if (num != 0)
+			{
+				manager.Add(num, sourceFact, descriptor);
+			}
 		}
 	}
 
@@ -38,8 +41,11 @@ public class ContextValueModifier : ContextValue
 	{
 		if (Enabled)
 		{
-			int value = Calculate(EvalContext.Current);
-			target.Add(Type, value, sourceFact, descriptor);
+			int num = Calculate(EvalContext.Current);
+			if (num != 0)
+			{
+				target.Add(Type, num, sourceFact, descriptor);
+			}
 		}
 	}
 

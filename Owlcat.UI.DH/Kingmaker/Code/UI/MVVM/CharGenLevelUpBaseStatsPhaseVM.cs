@@ -1,5 +1,4 @@
 using System.Linq;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.PubSubSystem;
@@ -31,13 +30,10 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 	{
 		SelectionStats = selectionStats;
 		base.BlueprintSelectionWithUI = selectionStats.Blueprint;
+		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
 		CreateItemList();
 		m_PhaseName.Value = selectionStats.Blueprint.Title;
 		base.DisplayMode = ((charGenContext.CharGenConfig.Mode != CharGenMode.LevelUp) ? CharGenDisplayMode.DollOnly : CharGenDisplayMode.PortraitOnly);
-		m_RemainingPoints.Subscribe(delegate
-		{
-			UpdateHint();
-		}).AddTo(this);
 	}
 
 	private void OnPointsChanged(CharGenLevelUpCharacteristicsItemVM item, bool isAdding)
@@ -107,21 +103,6 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 			base.SelectedItem.CurrentValue.UpdatePointsState();
 		}
 		m_PrevSelectedItem = base.SelectedItem.CurrentValue;
-	}
-
-	private void UpdateHint()
-	{
-		if (IsInChargen)
-		{
-			if (RemainingPoints.CurrentValue == 0)
-			{
-				SetPhaseHint(string.Empty);
-			}
-			else
-			{
-				SetPhaseHint(UIStrings.Instance.CharGen.SpreadOutPointsHint.Text);
-			}
-		}
 	}
 
 	protected override void CreateItemList()

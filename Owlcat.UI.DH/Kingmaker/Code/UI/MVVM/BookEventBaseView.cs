@@ -49,6 +49,10 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 	[SerializeField]
 	protected ScrollRectExtended m_AnswersScrollRect;
 
+	[Header("Notifications")]
+	[SerializeField]
+	private DialogNotificationsView m_NotificationsView;
+
 	[Header("Picture page")]
 	[SerializeField]
 	private Image m_Picture;
@@ -93,6 +97,7 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 	protected override void OnBind()
 	{
 		m_LastHistoryCueIndex = -1;
+		m_NotificationsView?.Bind(base.ViewModel.Notifications);
 		Show();
 		base.ViewModel.EventPicture.Select((Sprite ev) => ev != null).Subscribe(delegate
 		{
@@ -136,6 +141,7 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 
 	protected override void OnUnbind()
 	{
+		m_NotificationsView?.Unbind();
 		Hide();
 	}
 
