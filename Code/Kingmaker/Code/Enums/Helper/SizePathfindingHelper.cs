@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.Designers.EventConditionActionSystem.Actions;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
 using Kingmaker.Pathfinding;
@@ -44,7 +45,16 @@ public static class SizePathfindingHelper
 
 	public static Vector3 GetSizePositionOffset(MechanicEntity entity)
 	{
-		return GetSizePositionOffset(entity, Game.Instance.Controllers.TurnController.TurnBasedModeActive);
+		bool flag = Game.Instance.Controllers.TurnController.TurnBasedModeActive;
+		if (!flag && entity is BaseUnitEntity baseUnitEntity)
+		{
+			PartPreventSnapToGrid optional = baseUnitEntity.GetOptional<PartPreventSnapToGrid>();
+			if (optional != null && optional.UseCombatOffset)
+			{
+				flag = true;
+			}
+		}
+		return GetSizePositionOffset(entity, flag);
 	}
 
 	public static Vector3 GetSizePositionOffset(MechanicEntity entity, bool inBattle)

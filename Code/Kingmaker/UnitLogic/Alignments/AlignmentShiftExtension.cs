@@ -33,7 +33,7 @@ public static class AlignmentShiftExtension
 		return Game.Instance.Player.MainCharacterOriginalEntity.Alignment.GetAlignmentRank(axis);
 	}
 
-	public static int GetAlignmentMarkRankIndex(AlignmentAxis alignmentAxis, int currentRank)
+	public static int GetAlignmentRankIndex(AlignmentAxis alignmentAxis, int currentRank)
 	{
 		return ConfigRoot.Instance.AlignmentMarksRoot.GetMarkForRank(alignmentAxis, currentRank);
 	}

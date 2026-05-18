@@ -1,7 +1,7 @@
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Owlcat.UI;
 using R3;
 
@@ -36,11 +36,11 @@ public class CharInfoGlossaryStatVM : CharInfoComponentVM
 	{
 		if (Stat != 0)
 		{
-			ModifiableValue stat = Unit.CurrentValue.Stats.GetStat(Stat);
-			if (stat != null)
+			BaseUnitEntity currentValue = Unit.CurrentValue;
+			if (currentValue != null)
 			{
-				m_StatValue.Value = stat.ModifiedValue;
-				m_Tooltip.Value = new TooltipTemplateStat(new StatTooltipData(stat));
+				m_StatValue.Value = currentValue.Actor.GetStat(Stat, null, default(StatContext), "UpdateStat");
+				m_Tooltip.Value = new TooltipTemplateStat(StatTooltipData.FromActor(currentValue, Stat));
 			}
 		}
 	}

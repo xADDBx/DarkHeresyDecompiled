@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Persistence.Versioning;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.View.MapObjects.SriptZones;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -22,10 +23,9 @@ public class IsScriptZoneActive : Condition
 
 	protected override bool CheckCondition()
 	{
-		ScriptZone scriptZone = ScriptZone.FindView() as ScriptZone;
-		if ((bool)scriptZone)
+		if (ScriptZone.FindData() is ScriptZoneEntity scriptZoneEntity)
 		{
-			return scriptZone.IsActive;
+			return scriptZoneEntity.IsActive;
 		}
 		return false;
 	}

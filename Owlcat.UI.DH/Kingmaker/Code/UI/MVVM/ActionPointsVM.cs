@@ -6,7 +6,7 @@ using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.GameModes;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -14,8 +14,9 @@ using Kingmaker.UI.AR;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Commands.Base;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.UnitLogic.Interaction;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
+using Kingmaker.View.Mechanics.Entities;
 using Owlcat.UI;
 using Pathfinding;
 using R3;
@@ -23,7 +24,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubscriber, IAbilityTargetHoverUIHandler, IUnitCommandEndHandler, ISubscriber<IMechanicEntity>, IUnitCommandStartHandler, IUnitCommandActHandler, IUnitRunCommandHandler, IUnitPathManagerHandler, ITurnStartHandler, IInterruptTurnStartHandler, IInteractionObjectUIHandler, ISubscriber<IMapObjectEntity>, IDirectInteractionObjectUIHandler, ITurnBasedModeHandler, IUnitSpentActionPoints, IUnitGainActionPoints, IUnitSpentMovementPoints, IUnitGainMovementPoints
+public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubscriber, IAbilityTargetHoverUIHandler, IUnitCommandEndHandler, ISubscriber<IMechanicEntity>, IUnitCommandStartHandler, IUnitCommandActHandler, IUnitRunCommandHandler, IUnitPathManagerHandler, ITurnStartHandler, IInterruptTurnStartHandler, IInteractionObjectUIHandler, ISubscriber<IMapObjectEntity>, IDirectInteractionObjectUIHandler, ITurnBasedModeHandler, IUnitSpentActionPoints, IUnitGainActionPoints, IUnitSpentMovementPoints, IUnitGainMovementPoints, IUnitDirectHoverUIHandler
 {
 	private readonly MechanicEntityUIWrapper m_UnitUIWrapper;
 
@@ -33,13 +34,15 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 
 	private AbstractInteractionPart m_Interaction;
 
+	private IUnitInteraction m_UnitInteraction;
+
 	private readonly ReactiveProperty<bool> m_AbilitySelected = new ReactiveProperty<bool>();
 
-	private readonly string m_APColor = "<color=#" + ColorUtility.ToHtmlStringRGB(UIConfig.Instance.TooltipColors.ActionPoints) + ">";
+	private readonly string m_APColor = "<color=#" + ColorUtility.ToHtmlStringRGB((Color)UIConfig.Instance.TooltipColors.ActionPoints) + ">";
 
-	private readonly string m_MPColor = "<color=#" + ColorUtility.ToHtmlStringRGB(UIConfig.Instance.TooltipColors.MovePoints) + ">";
+	private readonly string m_MPColor = "<color=#" + ColorUtility.ToHtmlStringRGB((Color)UIConfig.Instance.TooltipColors.MovePoints) + ">";
 
-	private readonly string m_NotEnoughColor = "<color=#" + ColorUtility.ToHtmlStringRGB(UIConfig.Instance.TooltipColors.NotEnoughPoints) + ">";
+	private readonly string m_NotEnoughColor = "<color=#" + ColorUtility.ToHtmlStringRGB((Color)UIConfig.Instance.TooltipColors.NotEnoughPoints) + ">";
 
 	private string m_ColorEnd = "</color>";
 
@@ -82,21 +85,18 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 		EventBus.Subscribe(this).AddTo(this);
 		CostAP.CombineLatest(CostMP, m_AbilitySelected, (int ap, int mp, bool _) => new { ap, mp }).Subscribe(value =>
 		{
-			if (!(Game.Instance.CurrentModeType == GameModeType.SpaceCombat))
+			float mp2 = value.mp;
+			int ap2 = Mathf.RoundToInt(value.ap);
+			bool noMove = false;
+			bool setForce = false;
+			AbilityData abilityData = m_SelectedAbility ?? m_HoveredAbility;
+			if (abilityData != null)
 			{
-				float mp2 = value.mp;
-				int ap2 = Mathf.RoundToInt(value.ap);
-				bool noMove = false;
-				bool setForce = false;
-				AbilityData abilityData = m_SelectedAbility ?? m_HoveredAbility;
-				if (abilityData != null)
-				{
-					mp2 = UnitPathManager.Instance.MemorizedPathCost;
-					noMove = abilityData.ClearMPAfterUse;
-					setForce = abilityData.TargetAnchor == AbilityTargetAnchor.Owner || m_SelectedAbility != null;
-				}
-				SetCursorTexts(mp2, ap2, noMove, setForce);
+				mp2 = UnitPathManager.Instance.MemorizedPathCost;
+				noMove = abilityData.ClearMPAfterUse;
+				setForce = abilityData.TargetAnchor == AbilityTargetAnchor.Owner || m_SelectedAbility != null;
 			}
+			SetCursorTexts(mp2, ap2, noMove, setForce);
 		}).AddTo(this);
 	}
 
@@ -171,7 +171,8 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 	{
 		CalculateAPCost(m_SelectedAbility ?? m_HoveredAbility);
 		CalculateAPCost(m_Interaction);
-		if (m_SelectedAbility == null && m_HoveredAbility == null && m_Interaction == null)
+		CalculateAPCost(m_UnitInteraction);
+		if (m_SelectedAbility == null && m_HoveredAbility == null && m_Interaction == null && m_UnitInteraction == null)
 		{
 			ClearAPCost();
 			ClearACCost();
@@ -194,6 +195,15 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 		if (m_UnitUIWrapper.MechanicEntity != null && interaction != null)
 		{
 			m_CostAP.Value = interaction.ActionPointsCost;
+			m_PredictedAP.Value = CurrentAP.CurrentValue - CostAP.CurrentValue;
+		}
+	}
+
+	private void CalculateAPCost(IUnitInteraction unitInteraction)
+	{
+		if (m_UnitUIWrapper.MechanicEntity != null && unitInteraction != null)
+		{
+			m_CostAP.Value = unitInteraction.ActionCost;
 			m_PredictedAP.Value = CurrentAP.CurrentValue - CostAP.CurrentValue;
 		}
 	}
@@ -282,7 +292,7 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 		}
 	}
 
-	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO)
+	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO, bool hasThreats)
 	{
 		HandleCurrentNodeChanged(cost);
 	}
@@ -382,7 +392,7 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 		}
 	}
 
-	public void HandleUnitGainActionPoints(int actionPoints, MechanicsContext context)
+	public void HandleUnitGainActionPoints(int actionPoints, IEvalContext context)
 	{
 		if (ShouldHandle())
 		{
@@ -398,11 +408,24 @@ public class ActionPointsVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubs
 		}
 	}
 
-	public void HandleUnitGainMovementPoints(float movementPoints, MechanicsContext context)
+	public void HandleUnitGainMovementPoints(float movementPoints, IEvalContext context)
 	{
 		if (ShouldHandle())
 		{
 			UpdateActionPointsFromAction();
 		}
+	}
+
+	public void HandleHoverChange(AbstractUnitEntityView unitEntityView, bool isHover, bool isDirect)
+	{
+		if (unitEntityView == null || !isHover)
+		{
+			m_UnitInteraction = null;
+		}
+		else
+		{
+			m_UnitInteraction = UtilityUnit.GetUnitInteractionFrom(unitEntityView.Data);
+		}
+		CalculateAPCost();
 	}
 }

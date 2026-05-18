@@ -1,18 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using DG.Tweening;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Controllers.Clicks;
-using Kingmaker.Controllers.MapObjects;
-using Kingmaker.Controllers.Optimization;
-using Kingmaker.Controllers.Units;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
-using Kingmaker.Gameplay.Parts;
+using Kingmaker.Sound.Base;
 using Kingmaker.UnitLogic.Parts;
-using Kingmaker.View.MapObjects.InteractionComponentBase;
+using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.DayNightCycle;
 using Owlcat.Runtime.Visual.Lighting;
 using UnityEngine;
@@ -82,10 +75,6 @@ public class UnitFlashlight : MonoBehaviour
 		};
 	}
 
-	private UnitPartFlashlight m_Part;
-
-	private BaseUnitEntity m_Owner;
-
 	[SerializeField]
 	private GameObject m_OnState;
 
@@ -94,7 +83,7 @@ public class UnitFlashlight : MonoBehaviour
 
 	[Space]
 	[SerializeField]
-	private Transform m_FlashlightBone;
+	private Transform m_RotatingBone;
 
 	[Space]
 	[SerializeField]
@@ -106,37 +95,46 @@ public class UnitFlashlight : MonoBehaviour
 	[SerializeField]
 	private Light m_PointLight;
 
-	private Vector3 m_LastFlashlightTarget;
+	private DetectiveServoskullFlashlightController m_FlashlightController;
+
+	private UnitPartFlashlight m_Part;
+
+	private BaseUnitEntity m_Owner;
 
 	private bool m_IsOn;
 
-	private PartyAwarenessController m_AwarenessController;
-
-	private FlashlightState m_State;
+	private Vector3 m_LastFlashlightTarget;
 
 	private Tweener? m_RotatingTween;
 
 	private Tweener? m_ResettingTween;
 
-	private DetectiveServoskullRoot? Settings => ConfigRoot.Instance.DetectiveServoskull;
+	private FlashlightState m_ProcessedState;
+
+	private DetectiveServoskullRoot Settings => ConfigRoot.Instance.DetectiveServoskull;
 
 	private void Awake()
 	{
-		m_AwarenessController = Game.Instance.GetController<PartyAwarenessController>();
-		m_Owner = base.transform.GetComponentInParent<UnitEntityView>()?.EntityData;
-		UnitPartFlashlight unitPartFlashlight = m_Owner?.GetOptional<UnitPartFlashlight>();
-		if (unitPartFlashlight != null)
+		Character componentInParent = GetComponentInParent<Character>();
+		if ((object)componentInParent == null || !componentInParent.DisplayOptions.IsInDollRoom)
 		{
-			m_Part = unitPartFlashlight;
-			bool isFlashlightEnabled = m_Part.IsFlashlightEnabled;
-			m_OnState.SetActive(isFlashlightEnabled);
-			m_OffState.SetActive(!isFlashlightEnabled);
-		}
-		else
-		{
-			m_OnState.SetActive(value: false);
-			m_OffState.SetActive(value: true);
-			m_IsOn = false;
+			m_FlashlightController = Game.Instance.Controllers.ServoskullFlashlightController;
+			m_Owner = base.transform.GetComponentInParent<UnitEntityView>()?.EntityData;
+			UnitPartFlashlight unitPartFlashlight = m_Owner?.GetOptional<UnitPartFlashlight>();
+			if (unitPartFlashlight != null)
+			{
+				m_Part = unitPartFlashlight;
+				bool isFlashlightEnabled = m_Part.IsFlashlightEnabled;
+				m_OnState.SetActive(isFlashlightEnabled);
+				m_OffState.SetActive(!isFlashlightEnabled);
+				m_FlashlightController.Setup(m_Owner, m_Part, GetForwardPoint);
+			}
+			else
+			{
+				m_OnState.SetActive(value: false);
+				m_OffState.SetActive(value: true);
+				m_IsOn = false;
+			}
 		}
 	}
 
@@ -155,164 +153,64 @@ public class UnitFlashlight : MonoBehaviour
 			if (m_IsOn)
 			{
 				LightController.Active?.ApplyFlashlightConfig(this);
+				string flashlightOnSound = Settings.FlashlightOnSound;
+				if (!string.IsNullOrEmpty(flashlightOnSound))
+				{
+					SoundEventsManager.PostEvent(flashlightOnSound, base.gameObject);
+				}
+			}
+			else
+			{
+				string flashlightOffSound = Settings.FlashlightOffSound;
+				if (!string.IsNullOrEmpty(flashlightOffSound))
+				{
+					SoundEventsManager.PostEvent(flashlightOffSound, base.gameObject);
+				}
 			}
 		}
 		if (!m_IsOn)
 		{
-			m_State = FlashlightState.NotActive;
+			m_ProcessedState = FlashlightState.NotActive;
 			return;
 		}
-		switch ((FlashlightState)(m_Part.ForcedLookAtPosition.HasValue ? 3 : ((!m_Owner.MovementAgent.IsReallyMoving) ? 1 : 2)))
+		switch (m_FlashlightController.State)
 		{
 		case FlashlightState.LookingTowards:
-			if (m_State != FlashlightState.LookingTowards)
+			if (m_ProcessedState != FlashlightState.LookingTowards)
 			{
 				PointTowards();
-				m_State = FlashlightState.LookingTowards;
+				m_ProcessedState = FlashlightState.LookingTowards;
 			}
-			UpdateObjectsAtTargetAndNearOwner(m_FlashlightBone.position + m_FlashlightBone.forward * Settings.FlashlightRadius);
 			break;
 		case FlashlightState.FollowingCursor:
-			PointToTarget(PointerController.WorldPositionForSimulation, lockByVertical: true);
-			UpdateObjectsAtTargetAndNearOwner(PointerController.WorldPositionForSimulation);
-			m_State = FlashlightState.FollowingCursor;
+			PointToTarget(m_FlashlightController.TargetPoint);
+			m_ProcessedState = FlashlightState.FollowingCursor;
 			break;
 		case FlashlightState.ForcedLookAtPosition:
-			PointToTarget(m_Part.ForcedLookAtPosition.Value);
-			UpdateObjectsAtTargetAndNearOwner(m_Part.ForcedLookAtPosition.Value);
-			m_State = FlashlightState.ForcedLookAtPosition;
+			PointToTarget(m_FlashlightController.TargetPoint);
+			m_ProcessedState = FlashlightState.ForcedLookAtPosition;
 			break;
 		}
 	}
 
-	private void UpdateHighlightNearObjects()
+	private Vector3 GetForwardPoint()
 	{
-		HashSet<MapObjectEntity> hashSet = new HashSet<MapObjectEntity>();
-		foreach (MapObjectEntity mapObject in Game.Instance.EntityPools.MapObjects)
-		{
-			if (mapObject.FlashlightOwnerNear)
-			{
-				mapObject.FlashlightOwnerNear = false;
-				hashSet.Add(mapObject);
-			}
-		}
-		foreach (Entity item in EntityBoundsHelper.FindEntitiesInRange(m_Part.Owner.Position, Settings.FlashlightHolderRadius))
-		{
-			if (item is MapObjectEntity mapObjectEntity && !item.IsInFogOfWar && m_Owner.HasLOS(mapObjectEntity) && !mapObjectEntity.FlashlightOwnerNear)
-			{
-				mapObjectEntity.FlashlightOwnerNear = true;
-				hashSet.Add(mapObjectEntity);
-			}
-		}
-		foreach (MapObjectEntity item2 in hashSet)
-		{
-			if (item2.FlashlightOwnerNear)
-			{
-				TryTriggerAwareness(item2);
-			}
-			item2.View.UpdateHighlight();
-		}
+		return m_RotatingBone.position + m_RotatingBone.forward * Settings.FlashlightRadius;
 	}
 
 	private void PointTowards()
 	{
 		m_RotatingTween.Kill();
-		m_ResettingTween = m_FlashlightBone.DOLocalRotate(Vector3.zero, Settings.FlashlightTargetingTime);
+		m_ResettingTween = m_RotatingBone.DOLocalRotate(Vector3.zero, Settings.FlashlightTargetingTime);
 	}
 
-	private void PointToTarget(Vector3 target, bool lockByVertical = false)
+	private void PointToTarget(Vector3 target)
 	{
 		if (m_Part.IsFlashlightEnabled && !(Vector3.Distance(m_LastFlashlightTarget, target) < Settings.FlashlightThreshold))
 		{
 			m_LastFlashlightTarget = target;
 			m_ResettingTween.Kill();
-			m_RotatingTween = m_FlashlightBone.DOLookAt(target, Settings.FlashlightTargetingTime, AxisConstraint.Y);
-			UpdateObjectsAtTargetAndNearOwner(target);
-		}
-	}
-
-	private void UpdateObjectsAtTargetAndNearOwner(Vector3 target)
-	{
-		List<MapObjectEntity> list = new List<MapObjectEntity>();
-		foreach (MapObjectEntity mapObject in Game.Instance.EntityPools.MapObjects)
-		{
-			PartAwarenessCheck awarenessCheck = mapObject.AwarenessCheck;
-			if (awarenessCheck != null)
-			{
-				awarenessCheck.IsRevealedByFlashlight = false;
-			}
-			if (!mapObject.SuppressedByFlashlight)
-			{
-				mapObject.SuppressedByFlashlight = true;
-				list.Add(mapObject);
-			}
-			if (mapObject.FlashlightOwnerNear)
-			{
-				mapObject.FlashlightOwnerNear = false;
-				list.Add(mapObject);
-			}
-		}
-		List<Entity> list2 = EntityBoundsHelper.FindEntitiesInRange(target, Settings.FlashlightRadius);
-		foreach (Entity item in EntityBoundsHelper.FindEntitiesInRange(m_Part.Owner.Position, Settings.FlashlightHolderRadius))
-		{
-			if (item is MapObjectEntity mapObjectEntity && !item.IsInFogOfWar && m_Owner.HasLOS(mapObjectEntity) && !mapObjectEntity.FlashlightOwnerNear)
-			{
-				mapObjectEntity.FlashlightOwnerNear = true;
-				list.Add(mapObjectEntity);
-			}
-		}
-		foreach (Entity item2 in list2)
-		{
-			if (item2 is MapObjectEntity mapObjectEntity2 && !item2.IsInFogOfWar && m_Owner.HasLOS(mapObjectEntity2))
-			{
-				if (mapObjectEntity2.SuppressedByFlashlight)
-				{
-					mapObjectEntity2.SuppressedByFlashlight = false;
-					list.Add(mapObjectEntity2);
-				}
-				TryTriggerAwareness(mapObjectEntity2);
-			}
-		}
-		foreach (MapObjectEntity item3 in list)
-		{
-			item3.View.UpdateHighlight();
-		}
-	}
-
-	private void TryTriggerAwareness(MapObjectEntity mapObject)
-	{
-		PartAwarenessCheck optional = mapObject.GetOptional<PartAwarenessCheck>();
-		if (optional == null || !optional.Settings.HiddenInDarkness)
-		{
-			return;
-		}
-		optional.IsRevealedByFlashlight = true;
-		AbstractInteractionPart abstractInteractionPart = mapObject.Interactions.FirstOrDefault((AbstractInteractionPart i) => i.Type == InteractionType.Flashlight);
-		if (!optional.IsPassed)
-		{
-			m_AwarenessController.ForceUpdateMapObject(mapObject);
-			if (optional.IsPassed && abstractInteractionPart != null)
-			{
-				UnitCommandsRunner.DirectInteract(m_Owner, abstractInteractionPart);
-			}
-		}
-		else if (optional.IsPassed() && abstractInteractionPart != null && !abstractInteractionPart.AlreadyVisited)
-		{
-			UnitCommandsRunner.DirectInteract(m_Owner, abstractInteractionPart);
-		}
-	}
-
-	private void OnDrawGizmosSelected()
-	{
-		if (m_State == FlashlightState.FollowingCursor)
-		{
-			Gizmos.DrawLine(m_FlashlightBone.position, PointerController.WorldPositionForSimulation);
-			Gizmos.DrawWireSphere(PointerController.WorldPositionForSimulation, Settings.FlashlightRadius);
-		}
-		else if (m_State == FlashlightState.LookingTowards)
-		{
-			Gizmos.DrawLine(m_FlashlightBone.position, m_FlashlightBone.position + m_FlashlightBone.forward * Settings.FlashlightRadius);
-			Gizmos.DrawWireSphere(m_FlashlightBone.position + m_FlashlightBone.forward * Settings.FlashlightRadius, Settings.FlashlightRadius);
+			m_RotatingTween = m_RotatingBone.DOLookAt(target, Settings.FlashlightTargetingTime, AxisConstraint.Y);
 		}
 	}
 
@@ -354,6 +252,49 @@ public class UnitFlashlight : MonoBehaviour
 				owlcatAdditionalLightData2.VolumetricLighting = flashlightConfig.PointVolumetricEnabled;
 				owlcatAdditionalLightData2.VolumetricIntensity = flashlightConfig.PointVolumetricIntensity;
 			}
+		}
+	}
+
+	private void OnDrawGizmosSelected()
+	{
+		if (m_Owner != null && m_FlashlightController != null)
+		{
+			Vector3 targetPoint = m_FlashlightController.TargetPoint;
+			Vector3 eyePosition = m_Owner.EyePosition;
+			if (m_ProcessedState == FlashlightState.FollowingCursor || m_ProcessedState == FlashlightState.LookingTowards || m_ProcessedState == FlashlightState.ForcedLookAtPosition)
+			{
+				Gizmos.DrawLine(m_RotatingBone.position, targetPoint);
+				Gizmos.DrawWireSphere(targetPoint, Settings.FlashlightRadius);
+				DrawWireTriangularPrism(eyePosition, targetPoint, Settings.FlashlightRadius);
+			}
+		}
+	}
+
+	private static void DrawWireTriangularPrism(Vector3 eye, Vector3 target, float radius)
+	{
+		Vector2 vector = new Vector2(target.x - eye.x, target.z - eye.z);
+		float magnitude = vector.magnitude;
+		if (!(magnitude < float.Epsilon))
+		{
+			Vector2 vector2 = vector / magnitude;
+			Vector3 vector3 = new Vector3(0f - vector2.y, 0f, vector2.x);
+			float y = eye.y - radius;
+			float y2 = eye.y + radius;
+			Vector3 vector4 = new Vector3(eye.x, y, eye.z);
+			Vector3 vector5 = new Vector3(eye.x, y2, eye.z);
+			Vector3 vector6 = new Vector3(target.x, y, target.z) + vector3 * radius;
+			Vector3 vector7 = new Vector3(target.x, y2, target.z) + vector3 * radius;
+			Vector3 vector8 = new Vector3(target.x, y, target.z) - vector3 * radius;
+			Vector3 vector9 = new Vector3(target.x, y2, target.z) - vector3 * radius;
+			Gizmos.DrawLine(vector4, vector6);
+			Gizmos.DrawLine(vector6, vector8);
+			Gizmos.DrawLine(vector8, vector4);
+			Gizmos.DrawLine(vector5, vector7);
+			Gizmos.DrawLine(vector7, vector9);
+			Gizmos.DrawLine(vector9, vector5);
+			Gizmos.DrawLine(vector4, vector5);
+			Gizmos.DrawLine(vector6, vector7);
+			Gizmos.DrawLine(vector8, vector9);
 		}
 	}
 }

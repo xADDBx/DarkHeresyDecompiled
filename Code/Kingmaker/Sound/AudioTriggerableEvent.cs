@@ -3,25 +3,25 @@ using UnityEngine;
 
 namespace Kingmaker.Sound;
 
-internal class AudioTriggerableEvent : AkAudioTriggerable
+public class AudioTriggerableEvent : AkAudioTriggerable
 {
 	[SerializeField]
-	private AkEventReference m_Event;
+	protected AkEventReference m_Event;
 
 	[SerializeField]
-	private bool m_ActionMode;
-
-	[SerializeField]
-	[ShowIf("m_ActionMode")]
-	private AkActionOnEventType m_Action;
+	protected bool m_ActionMode;
 
 	[SerializeField]
 	[ShowIf("m_ActionMode")]
-	private float m_TransitionDuration;
+	protected AkActionOnEventType m_Action;
 
 	[SerializeField]
 	[ShowIf("m_ActionMode")]
-	private AkCurveInterpolation m_CurveInterpolation = AkCurveInterpolation.AkCurveInterpolation_Linear;
+	protected float m_TransitionDuration;
+
+	[SerializeField]
+	[ShowIf("m_ActionMode")]
+	protected AkCurveInterpolation m_CurveInterpolation = AkCurveInterpolation.AkCurveInterpolation_Linear;
 
 	public override void OnTrigger()
 	{

@@ -1,18 +1,16 @@
-using System;
 using JetBrains.Annotations;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Enums;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
-using Kingmaker.Settings;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.Utility;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "buff applier", Target = "buff target")]
 public class RuleCalculateCanApplyBuff : RulebookEvent
 {
 	public readonly MechanicsContext Context;
@@ -38,25 +36,15 @@ public class RuleCalculateCanApplyBuff : RulebookEvent
 
 	public override void OnTrigger(RulebookEventContext context)
 	{
-		if (!CanApply)
+		if (CanApply)
 		{
-			return;
-		}
-		if (Context.MaybeCaster != null && Context.MaybeCaster != base.Initiator && Context.MaybeCaster.IsAttackingGreenNPC(base.Initiator))
-		{
-			CanApply = false;
-		}
-		else if ((bool)Immunity)
-		{
-			CanApply = false;
-		}
-		else if (base.Initiator.IsPlayerFaction && Blueprint.IsHardCrowdControl)
-		{
-			HardCrowdControlDurationLimit value = SettingsRoot.Difficulty.HardCrowdControlOnPartyMaxDurationRounds.GetValue();
-			if (value != HardCrowdControlDurationLimit.Unlimited)
+			if (Context.MaybeCaster != null && Context.MaybeCaster != base.Initiator && Context.MaybeCaster.IsAttackingGreenNPC(base.Initiator))
 			{
-				Rounds rounds = value.ToRounds();
-				Duration = (Duration.Rounds.HasValue ? new Rounds(Math.Min(Duration.Rounds.Value.Value, rounds.Value)) : rounds);
+				CanApply = false;
+			}
+			else if ((bool)Immunity)
+			{
+				CanApply = false;
 			}
 		}
 	}

@@ -1,11 +1,7 @@
-using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.Blueprints.Base;
 using Kingmaker.Enums;
-using Kingmaker.ResourceLinks;
-using Kingmaker.UnitLogic.Levelup.CharGen;
-using Kingmaker.View.Animation;
+using Kingmaker.UnitLogic.Customization;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using UnityEngine;
@@ -30,22 +26,9 @@ public class BlueprintRace : BlueprintFeature
 	[FormerlySerializedAs("Features")]
 	private BlueprintFeatureBaseReference[] m_Features = new BlueprintFeatureBaseReference[0];
 
-	[NotNull]
+	[CanBeNull]
 	[SerializeField]
-	[FormerlySerializedAs("Presets")]
-	private BlueprintRaceVisualPresetReference[] m_Presets = new BlueprintRaceVisualPresetReference[0];
-
-	[NotNull]
-	public CustomizationOptions MaleOptions = new CustomizationOptions();
-
-	[NotNull]
-	public CustomizationOptions FemaleOptions = new CustomizationOptions();
-
-	[NotNull]
-	public UnitAnimationSettings MaleSpeedSettings;
-
-	[NotNull]
-	public UnitAnimationSettings FemaleSpeedSettings;
+	private BlueprintRaceAppearanceReference m_Appearance;
 
 	public ReferenceArrayProxy<BlueprintFeatureBase> Features
 	{
@@ -56,32 +39,6 @@ public class BlueprintRace : BlueprintFeature
 		}
 	}
 
-	public ReferenceArrayProxy<BlueprintRaceVisualPreset> Presets
-	{
-		get
-		{
-			BlueprintReference<BlueprintRaceVisualPreset>[] presets = m_Presets;
-			return presets;
-		}
-	}
-
-	public UnitAnimationSettings GetSpeedSettings(Gender gender)
-	{
-		return gender switch
-		{
-			Gender.Male => MaleSpeedSettings, 
-			Gender.Female => FemaleSpeedSettings, 
-			_ => throw new ArgumentOutOfRangeException("gender", gender, null), 
-		};
-	}
-
 	[CanBeNull]
-	public EquipmentEntityLink GetTail(Gender gender, int skinRampIndex)
-	{
-		if (gender != 0)
-		{
-			return FemaleOptions.GetTail(skinRampIndex);
-		}
-		return MaleOptions.GetTail(skinRampIndex);
-	}
+	public BlueprintRaceAppearance Appearance => m_Appearance?.Get();
 }

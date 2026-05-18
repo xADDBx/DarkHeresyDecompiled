@@ -19,7 +19,7 @@ public sealed class TooltipTemplateModifiers : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return CombatLogTooltipService.CreateTooltipBrickText(_modifiersList.LocalizedTitle + " = " + _modifiersList.TitleValue);
+		yield return CombatLogTooltipService.CreateBrickText(_modifiersList.LocalizedTitle + " = " + _modifiersList.TitleValue);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -30,7 +30,7 @@ public sealed class TooltipTemplateModifiers : TooltipBaseTemplate
 			{
 				continue;
 			}
-			yield return CombatLogTooltipService.CreateTooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifier.LocalizedName, modifier.Value, 0, isResultValue: true));
+			yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs(modifier.LocalizedName, modifier.Value, 0, isResultValue: true));
 			IReadonlyModifiersComposite details = modifier.Details;
 			if (details == null || details.List.Count <= 0)
 			{
@@ -41,7 +41,7 @@ public sealed class TooltipTemplateModifiers : TooltipBaseTemplate
 				if (!item.Zero)
 				{
 					TooltipModifiersUtility.ModifierDescription modifierDescription = new TooltipModifiersUtility.ModifierDescription(item);
-					yield return CombatLogTooltipService.CreateTooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifierDescription.LocalizedName, modifierDescription.Value, 1, isResultValue: true));
+					yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs(modifierDescription.LocalizedName, modifierDescription.Value, 1, isResultValue: true));
 				}
 			}
 		}

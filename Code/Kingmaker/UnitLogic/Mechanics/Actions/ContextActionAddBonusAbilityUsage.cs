@@ -1,11 +1,11 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.UnitLogic.Abilities;
+using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
@@ -20,6 +20,9 @@ public class ContextActionAddBonusAbilityUsage : ContextAction
 	[SerializeField]
 	[CanBeNull]
 	private RestrictionsHolder.Reference m_Restriction;
+
+	[SerializeField]
+	private bool m_IgnoreAbilityRestrictionForUsage;
 
 	[SerializeField]
 	private PropertyCalculator m_Count;
@@ -43,13 +46,7 @@ public class ContextActionAddBonusAbilityUsage : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicsContext current = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current == null)
-		{
-			Logger.Error(this, "Unable to add bonus ability usage: no context found");
-			return;
-		}
-		MechanicEntity mechanicEntity = (m_ToTarget ? base.Target.Entity : current.MaybeCaster);
+		MechanicEntity mechanicEntity = (m_ToTarget ? base.Target.Entity : base.Context.Caster);
 		if (mechanicEntity == null)
 		{
 			Logger.Error(this, "Unable to add bonus ability usage: target is null");
@@ -60,38 +57,32 @@ public class ContextActionAddBonusAbilityUsage : ContextAction
 			Logger.Error(this, "Unable to add bonus ability usage: target is not BaseUnitEntity");
 			return;
 		}
-		PropertyContext valueCalculationContext = GetValueCalculationContext(baseUnitEntity);
+		MechanicEntity currentEntity = (MechanicEntity)(((object)base.Context.AreaEffect) ?? ((object)baseUnitEntity));
 		EntityFactSource source = GetSource(baseUnitEntity);
-		int value = m_Count.GetValue(valueCalculationContext);
-		int value2 = m_CostBonus.GetValue(valueCalculationContext);
-		baseUnitEntity.GetOrCreate<UnitPartBonusAbility>().AddBonusAbility(source, value, value2, m_Restriction);
-	}
-
-	private PropertyContext GetValueCalculationContext(BaseUnitEntity unit)
-	{
-		AreaEffectEntity current = SimpleContextData<AreaEffectEntity, MechanicsContext.Scope.AreaEffect>.Current;
-		if (current != null)
-		{
-			return new PropertyContext(current, base.Context);
-		}
-		return new PropertyContext(unit, base.Context);
+		int value = m_Count.GetValue(currentEntity, base.Context);
+		int value2 = m_CostBonus.GetValue(currentEntity, base.Context);
+		baseUnitEntity.GetOrCreate<UnitPartBonusAbility>().AddBonusAbility(source, value, value2, m_Restriction, m_IgnoreAbilityRestrictionForUsage);
 	}
 
 	private EntityFactSource GetSource(BaseUnitEntity unit)
 	{
-		AreaEffectEntity current = SimpleContextData<AreaEffectEntity, MechanicsContext.Scope.AreaEffect>.Current;
-		if (current != null)
+		AreaEffectEntity areaEffect = base.Context.AreaEffect;
+		if (areaEffect != null)
 		{
-			return new EntityFactSource(current);
+			return new EntityFactSource(areaEffect);
 		}
-		MechanicsContext current2 = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current2 is AbilityExecutionContext abilityExecutionContext)
+		AbilityExecutionContext abilityContext = base.AbilityContext;
+		if (abilityContext != null)
 		{
-			return new EntityFactSource(abilityExecutionContext.AbilityBlueprint);
+			BlueprintAbility abilityBlueprint = abilityContext.AbilityBlueprint;
+			if (abilityBlueprint != null)
+			{
+				return new EntityFactSource(abilityBlueprint);
+			}
 		}
-		if (current2 != null)
+		if (base.Context.Blueprint != null)
 		{
-			return new EntityFactSource(current2.Blueprint);
+			return new EntityFactSource(base.Context.Blueprint);
 		}
 		return new EntityFactSource(unit);
 	}

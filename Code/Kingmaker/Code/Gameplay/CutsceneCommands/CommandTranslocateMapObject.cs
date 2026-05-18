@@ -26,30 +26,39 @@ public class CommandTranslocateMapObject : CommandBase
 	[SerializeField]
 	public bool ChangeRotation;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		IEntityViewBase entityViewBase = TargetPosition.FindView();
-		if (MapObject.TryGetValue(out var value) && entityViewBase != null)
+		IEntityView entityView = TargetPosition.FindView();
+		if (MapObject.TryGetValue(out var value) && entityView != null)
 		{
-			value.Position = entityViewBase.ViewTransform.position;
+			value.Position = entityView.ViewTransform.position;
 			if (ChangeRotation)
 			{
-				value.View.ViewTransform.rotation = entityViewBase.ViewTransform.rotation;
+				value.View.ViewTransform.rotation = entityView.ViewTransform.rotation;
 			}
+			return CommandResult.Success;
 		}
-		else
-		{
-			Logger.Error($"{this}: Failed to translocate {MapObject} to position position {TargetPosition}. Evaluator error");
-		}
+		return CommandResult.FailWithReport($"{this}: Failed to translocate {MapObject} to position position {TargetPosition}. Evaluator error");
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)

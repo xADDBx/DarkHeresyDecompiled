@@ -7,5 +7,7 @@ public enum CaseItemIssueType
 	Item,
 	Companion,
 	Study,
-	Reconstruction
+	Reconstruction,
+	Exploration,
+	Unit
 }

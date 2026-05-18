@@ -2,10 +2,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Items;
+using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
@@ -158,14 +161,32 @@ public abstract class PartItemsCollection : EntityPart, IItemsCollection, IEnume
 		return Collection.Add(newItem, noAutoMerge);
 	}
 
-	public void Add(BlueprintItem newBpItem, int count, Action<ItemEntity> callback = null, bool noAutoMerge = false)
+	public void Add(BlueprintItem newBpItem, int count, Action<ItemEntity> callback = null, bool noAutoMerge = false, int? equipmentCR = null)
 	{
-		Collection.Add(newBpItem, count, callback);
+		Collection.Add(newBpItem, count, callback, noAutoMerge, equipmentCR);
 	}
 
-	public ItemEntity Add(BlueprintItem newBpItem)
+	public ItemEntity Add(BlueprintItem newBpItem, int? equipmentCR = null)
 	{
-		return Collection.Add(newBpItem);
+		return Collection.Add(newBpItem, equipmentCR);
+	}
+
+	public void AddStartingInventory(BlueprintUnit originalBlueprint)
+	{
+		if ((bool)ContextData<UnitHelper.DoNotCreateItems>.Current)
+		{
+			return;
+		}
+		using (ProfileScope.New("Add Item"))
+		{
+			using (ContextData<ItemsCollection.SuppressEvents>.Request())
+			{
+				foreach (BlueprintItem item in originalBlueprint.StartingInventory.NotNull())
+				{
+					Collection.Add(item);
+				}
+			}
+		}
 	}
 
 	public ItemEntity Remove(ItemEntity item, int? count = null)

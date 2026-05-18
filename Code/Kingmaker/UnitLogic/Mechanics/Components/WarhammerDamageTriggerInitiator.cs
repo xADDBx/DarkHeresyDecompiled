@@ -6,6 +6,7 @@ using Kingmaker.Designers.Mechanics.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -46,16 +47,16 @@ public class WarhammerDamageTriggerInitiator : WarhammerDamageTrigger, IInitiato
 			{
 				if (PropertyToSave == KillTrigger.PropertyParameter.EnemyDifficulty)
 				{
-					base.Context[ContextPropertyName] = ((int?)(rule.Target as UnitEntity)?.Blueprint.DifficultyType).GetValueOrDefault();
+					EvalContext.Current[ContextPropertyName] = ((int?)(rule.Target as UnitEntity)?.Blueprint.DifficultyType).GetValueOrDefault();
 				}
 				if (PropertyToSave == KillTrigger.PropertyParameter.Damage)
 				{
-					base.Context[ContextPropertyName] = rule.ResultValue;
+					EvalContext.Current[ContextPropertyName] = rule.ResultValue;
 				}
 				if (PropertyToSave == KillTrigger.PropertyParameter.DamageOverflow)
 				{
 					int hPBeforeDamage = rule.HPBeforeDamage;
-					base.Context[ContextPropertyName] = Math.Max(rule.ResultValue - hPBeforeDamage, 0);
+					EvalContext.Current[ContextPropertyName] = Math.Max(rule.ResultValue - hPBeforeDamage, 0);
 				}
 			}
 			ActionList actions = Actions;

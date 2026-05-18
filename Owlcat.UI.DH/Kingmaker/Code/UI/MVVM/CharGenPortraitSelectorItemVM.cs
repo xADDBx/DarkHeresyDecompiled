@@ -63,8 +63,4 @@ public class CharGenPortraitSelectorItemVM : SelectionGroupEntityVM
 	protected override void DoSelectMe()
 	{
 	}
-
-	protected override void DisposeImplementation()
-	{
-	}
 }

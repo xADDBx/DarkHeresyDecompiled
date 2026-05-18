@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Code.Gameplay.Blueprints;
-using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
@@ -17,9 +16,13 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IEventTag<IUnitBuffHandler, EntitySubscriber>, IUnitBuffHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEntitySubscriber, ITurnStartHandler, ISubscriber<IMechanicEntity>, ICriticalEffectStageChanged
+public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IEventTag<IUnitBuffHandler, EntitySubscriber>, IUnitBuffHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEntitySubscriber, ICriticalEffectStageChanged, ISubscriber<IMechanicEntity>
 {
-	private readonly ReactiveCommand<Unit> m_CheckSpecialComplete = new ReactiveCommand<Unit>();
+	private readonly EntityStatusEffectsVM m_StatusEffects;
+
+	private readonly EntityCriticalEffectsVM m_CriticalEffects;
+
+	private readonly EntityDOTEffectsVM m_DotEffects;
 
 	private readonly ObservableList<BuffVM> m_Buffs = new ObservableList<BuffVM>();
 
@@ -27,19 +30,11 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 
 	private IDisposable m_Subscription;
 
-	private EntityStatusEffectsVM m_StatusEffects;
+	private MechanicEntityUIState m_EntityUIState;
 
-	private EntityCriticalEffectsVM m_CriticalEffects;
-
-	private EntityDOTEffectsVM m_DotEffects;
-
-	private MechanicEntity m_Unit;
-
-	public MechanicEntityUIState MechanicEntityUIState { get; private set; }
+	private MechanicEntity Unit => m_EntityUIState?.MechanicEntity.MechanicEntity;
 
 	public ReadOnlyReactiveProperty<TooltipBaseTemplate> BuffsTooltip => m_BuffsTooltip;
-
-	public Observable<Unit> CheckSpecialComplete => m_CheckSpecialComplete;
 
 	public IObservableCollection<BuffVM> Buffs => m_Buffs;
 
@@ -66,34 +61,24 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 
 	public IEntity GetSubscribingEntity()
 	{
-		return m_Unit;
+		return Unit;
 	}
 
 	public void SetUnitData(MechanicEntity unit)
 	{
 		m_Subscription?.Dispose();
 		m_BuffsTooltip.Value = null;
-		MechanicEntityUIState = null;
-		m_Unit = unit;
+		m_EntityUIState = null;
 		if (unit != null)
 		{
-			MechanicEntityUIState = UnitUIStateHolder.Instance.GetOrCreateUnitState(unit);
-			m_BuffsTooltip.Value = new TooltipTemplateBuffs(m_Unit);
+			m_EntityUIState = UnitUIStateHolder.Instance.GetOrCreateUnitState(unit);
+			m_BuffsTooltip.Value = new TooltipTemplateBuffs(Unit, null, BuffGroupFlags.All | BuffGroupFlags.HideEmptyGroup);
 			m_StatusEffects.SetTargetEntity(unit);
 			m_CriticalEffects.SetTargetEntity(unit);
 			m_DotEffects.SetTargetEntity(unit);
 			m_Subscription = EventBus.Subscribe(this);
 		}
 		UpdateData();
-	}
-
-	public void ClearBuffs()
-	{
-		m_Buffs.ForEach(delegate(BuffVM vm)
-		{
-			vm.Dispose();
-		});
-		m_Buffs.Clear();
 	}
 
 	public void SortBuffs()
@@ -108,11 +93,11 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 	public void UpdateData()
 	{
 		ClearBuffs();
-		if (m_Unit == null)
+		if (Unit == null)
 		{
 			return;
 		}
-		foreach (Buff buff in m_Unit.Buffs)
+		foreach (Buff buff in Unit.Buffs)
 		{
 			if (!buff.Blueprint.IsHiddenInUI && !Buffs.Any((BuffVM b) => b.Buff == buff))
 			{
@@ -123,7 +108,7 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 
 	void IUnitBuffHandler.HandleBuffDidAdded(Buff buff, MechanicEntity caster)
 	{
-		if (m_Unit != null && m_Unit == buff.Owner)
+		if (Unit != null && Unit == buff.Owner)
 		{
 			if (!buff.Blueprint.IsHiddenInUI)
 			{
@@ -136,7 +121,7 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 
 	void IUnitBuffHandler.HandleBuffDidRemoved(Buff buff, MechanicEntity caster)
 	{
-		if (m_Unit != null && m_Unit == buff.Owner)
+		if (Unit != null && Unit == buff.Owner)
 		{
 			BuffVM buffVM = Buffs.FirstOrDefault((BuffVM b) => b.Buff == buff);
 			if (buffVM != null)
@@ -146,6 +131,10 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 			}
 			m_DotEffects.HandleBuffRemoved(buff);
 			m_StatusEffects.HandleBuffRemoved(buff);
+			if (m_Buffs.Count == 0)
+			{
+				m_CriticalEffects.HandleCriticalEffectsCleared();
+			}
 		}
 	}
 
@@ -159,22 +148,9 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 		m_DotEffects.HandleBuffRankDecreased(buff);
 	}
 
-	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
-	{
-		if (!isTurnBased)
-		{
-			return;
-		}
-		foreach (BuffVM buff in Buffs)
-		{
-			buff.CheckSpecial();
-		}
-		m_CheckSpecialComplete.Execute();
-	}
-
 	void ICriticalEffectStageChanged.HandleCriticalEffectStageChanged(BlueprintBodyPart bodyPart, int previous, int current)
 	{
-		if (m_Unit == EventInvokerExtensions.MechanicEntity)
+		if (Unit == EventInvokerExtensions.MechanicEntity)
 		{
 			m_CriticalEffects.HandleCriticalEffectStageChanged(bodyPart, current);
 		}
@@ -185,5 +161,14 @@ public class UnitBuffBlockVM : ViewModel, IUnitBuffHandler<EntitySubscriber>, IE
 		m_Subscription?.Dispose();
 		m_Subscription = null;
 		ClearBuffs();
+	}
+
+	private void ClearBuffs()
+	{
+		m_Buffs.ForEach(delegate(BuffVM vm)
+		{
+			vm.Dispose();
+		});
+		m_Buffs.Clear();
 	}
 }

@@ -12,6 +12,11 @@ public abstract class TooltipBaseTemplate
 	{
 	}
 
+	public virtual IEnumerable<ITooltipBrick> GetCover(TooltipTemplateType type)
+	{
+		yield break;
+	}
+
 	public virtual IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
 		yield break;

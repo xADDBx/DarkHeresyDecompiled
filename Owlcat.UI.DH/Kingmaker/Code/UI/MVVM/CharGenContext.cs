@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
@@ -12,26 +11,33 @@ using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.ResourceLinks;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.CharGen;
 using Kingmaker.UnitLogic.Levelup.Selections.Doll;
+using Kingmaker.UnitLogic.Parts;
 using Kingmaker.UnitLogic.Progression.Paths;
-using Kingmaker.Utility.DotNetExtensions;
 using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenContext : IDisposable, ICharGenDollStateHandler, ISubscriber, ICharGenTextureSelectorTabChangeHandler
 {
-	public readonly CharGenConfig CharGenConfig;
-
-	private readonly ReactiveProperty<BaseUnitEntity> m_CurrentUnit = new ReactiveProperty<BaseUnitEntity>();
-
 	private readonly ReactiveProperty<bool> m_IsCustomCharacter = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<LevelUpManager> m_LevelUpManager = new ReactiveProperty<LevelUpManager>();
 
-	private readonly List<IDisposable> m_Disposables = new List<IDisposable>();
+	private readonly CompositeDisposable m_Disposables = new CompositeDisposable();
+
+	private readonly SerialDisposable m_NextFrameSubscription = new SerialDisposable();
+
+	public readonly CharGenConfig CharGenConfig;
+
+	private readonly ReactiveProperty<BaseUnitEntity> m_CurrentUnit = new ReactiveProperty<BaseUnitEntity>();
+
+	public DollState Doll { get; private set; }
+
+	public int CurrentTattooSet { get; private set; }
 
 	public ReadOnlyReactiveProperty<BaseUnitEntity> CurrentUnit => m_CurrentUnit;
 
@@ -39,57 +45,66 @@ public class CharGenContext : IDisposable, ICharGenDollStateHandler, ISubscriber
 
 	public ReadOnlyReactiveProperty<LevelUpManager> LevelUpManager => m_LevelUpManager;
 
-	public DollState Doll { get; private set; }
-
-	public int CurrentTattooSet { get; private set; }
-
 	private BaseUnitEntity BaseChargenUnit => CharGenConfig.Unit;
 
 	public CharGenContext(CharGenConfig config)
 	{
 		CharGenConfig = config;
-		AddDisposable(EventBus.Subscribe(this));
-		void AddDisposable(IDisposable disposable)
-		{
-			m_Disposables.AddUnique(disposable);
-		}
+		EventBus.Subscribe(this).AddTo(m_Disposables);
+		m_NextFrameSubscription.AddTo(m_Disposables);
 	}
 
 	public void SetPregenUnit(BaseUnitEntity unit)
 	{
 		bool flag = unit != null;
-		BaseUnitEntity baseUnitEntity = (flag ? unit : BaseChargenUnit);
+		BaseUnitEntity charGenUnit = (flag ? unit : BaseChargenUnit);
 		Doll = new DollState();
 		m_IsCustomCharacter.Value = !flag;
-		m_CurrentUnit.Value = baseUnitEntity;
+		m_CurrentUnit.Value = charGenUnit;
 		if (flag)
 		{
-			PregenDollSettings component = baseUnitEntity.Blueprint.GetComponent<PregenDollSettings>();
+			RaceAppearanceOverride component = charGenUnit.Blueprint.GetComponent<RaceAppearanceOverride>();
 			if (component != null)
 			{
-				Doll.Setup(unit, component);
+				Doll.Setup(charGenUnit, component);
 			}
 		}
 		else
 		{
 			Doll.SetTrackPortrait(state: true);
-			Doll.UpdateMechanicsEntities(baseUnitEntity);
+			m_NextFrameSubscription.Disposable = ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
+			{
+				Doll.UpdateMechanicsEntities(charGenUnit);
+			});
 		}
 		BlueprintPath originPath = GetOriginPath(flag);
 		if (originPath == null)
 		{
-			m_LevelUpManager.Value = new LevelUpManager(baseUnitEntity, autoCommit: false);
+			m_LevelUpManager.Value = new LevelUpManager(charGenUnit, autoCommit: false);
 			return;
 		}
-		LevelUpManager.CurrentValue?.Dispose();
-		m_LevelUpManager.Value = new LevelUpManager(baseUnitEntity, originPath, autoCommit: false);
+		m_LevelUpManager.Value?.Dispose();
+		m_LevelUpManager.Value = new LevelUpManager(charGenUnit, originPath, autoCommit: false);
+	}
+
+	public void EnsureDollSet()
+	{
+		PartUnitViewSettings viewSettings = m_LevelUpManager.Value.TargetUnit.ViewSettings;
+		if (viewSettings != null && viewSettings.Doll == null)
+		{
+			DollData dollData = Doll?.CreateData();
+			if (dollData != null)
+			{
+				viewSettings.SetDoll(dollData);
+			}
+		}
 	}
 
 	public void CommitLevelUp()
 	{
 		if (m_LevelUpManager.Value != null)
 		{
-			m_LevelUpManager.Value.Commit();
+			Game.Instance.GameCommandQueue.CommitLvlUp(m_LevelUpManager.Value);
 			m_LevelUpManager.Value = null;
 		}
 	}
@@ -278,11 +293,7 @@ public class CharGenContext : IDisposable, ICharGenDollStateHandler, ISubscriber
 	public void Dispose()
 	{
 		LevelUpManager.CurrentValue?.Dispose();
-		foreach (IDisposable disposable in m_Disposables)
-		{
-			disposable.Dispose();
-		}
-		m_Disposables.Clear();
+		m_Disposables.Dispose();
 	}
 
 	public void HandleTextureSelectorTabChange(CharGenAppearancePageComponent type, int tabIndex)

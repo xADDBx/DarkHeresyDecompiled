@@ -27,10 +27,10 @@ internal struct BuildSurfaceJob
 		public NativeArray<CellUnion> cellArray;
 
 		[ReadOnly]
-		public NativeArray<ushort> cellAreaMaskArray;
+		public NativeArray<uint> cellAreaMaskArray;
 
 		[ReadOnly]
-		public NativeArray<ushort> chunkAreaMasks;
+		public NativeArray<uint> chunkAreaMasks;
 
 		[ReadOnly]
 		public StratagemBuffer stratagemBuffer;

@@ -10,15 +10,12 @@ public class TooltipData
 
 	public readonly ReactiveCommand<Unit> CloseCommand;
 
-	public ConsoleNavigationBehaviour OwnerNavigationBehaviour;
-
 	public TooltipBaseTemplate MainTemplate => m_Template;
 
-	public TooltipData(TooltipBaseTemplate template, TooltipConfig config, ReactiveCommand<Unit> closeCommand = null, ConsoleNavigationBehaviour ownerNavigationBehaviour = null)
+	public TooltipData(TooltipBaseTemplate template, TooltipConfig config, ReactiveCommand<Unit> closeCommand = null)
 	{
 		m_Template = template;
 		Config = config;
 		CloseCommand = closeCommand;
-		OwnerNavigationBehaviour = ownerNavigationBehaviour;
 	}
 }

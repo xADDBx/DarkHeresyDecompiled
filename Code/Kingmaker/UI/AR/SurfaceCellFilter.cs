@@ -6,11 +6,11 @@ namespace Kingmaker.UI.AR;
 [BurstCompile]
 internal readonly struct SurfaceCellFilter
 {
-	private readonly int m_StrictTestMask;
+	private readonly uint m_StrictTestMask;
 
-	private readonly int m_OptionalTestMask;
+	private readonly uint m_OptionalTestMask;
 
-	private readonly int m_StrictTestReference;
+	private readonly uint m_StrictTestReference;
 
 	private readonly CellBuffer m_CellBuffer;
 
@@ -25,7 +25,7 @@ internal readonly struct SurfaceCellFilter
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public bool Test(int cellIndex)
 	{
-		int areaMask = m_CellBuffer.GetAreaMask(cellIndex);
+		uint areaMask = m_CellBuffer.GetAreaMask(cellIndex);
 		if ((areaMask & m_StrictTestMask) != m_StrictTestReference)
 		{
 			return false;

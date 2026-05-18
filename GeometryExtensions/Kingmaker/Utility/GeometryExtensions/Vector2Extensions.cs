@@ -24,7 +24,7 @@ public static class Vector2Extensions
 
 	public static Vector2 RotateTowards(this Vector2 current, Vector2 target, float maxRadiansDelta, float maxMagnitudeDelta)
 	{
-		return Vector3.RotateTowards(current, target, maxRadiansDelta, maxMagnitudeDelta);
+		return Vector3.RotateTowards((Vector3)current, (Vector3)target, maxRadiansDelta, maxMagnitudeDelta);
 	}
 
 	public static bool IsDiagonal(this Vector2 a, Vector2 b)

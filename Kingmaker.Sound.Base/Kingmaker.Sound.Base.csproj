@@ -12,11 +12,11 @@
   <PropertyGroup />
   <ItemGroup />
   <ItemGroup>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
     <Reference Include="System.Text.Json">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\System.Text.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="AK.Wwise.Unity.API">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\AK.Wwise.Unity.API.dll</HintPath>
@@ -26,9 +26,6 @@
     </Reference>
     <Reference Include="Kingmaker.Visual.HitSystem.Base">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\Kingmaker.Visual.HitSystem.Base.dll</HintPath>
-    </Reference>
-    <Reference Include="OwlPack.Runtime">
-      <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\OwlPack.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Utility.UnityExtensions">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\Utility.UnityExtensions.dll</HintPath>

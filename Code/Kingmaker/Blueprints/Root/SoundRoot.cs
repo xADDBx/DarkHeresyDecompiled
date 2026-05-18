@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Gameplay.Controllers;
 using Kingmaker.Enums;
@@ -82,4 +83,9 @@ public class SoundRoot : BlueprintScriptableObject
 	public AkSwitchReference HugeCrowdSwitchSetting;
 
 	public SoundFx TemplateSoundEventsEmitter;
+
+	[AkEventReference]
+	public string NoArmorDefaultFoleySound;
+
+	public List<ItemSoundsSet> ItemSoundsMap = new List<ItemSoundsSet>();
 }

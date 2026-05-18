@@ -33,7 +33,7 @@ public class OvertipNameBlockPCView : View<LightweightOvertipNameBlockVM>
 	{
 		get
 		{
-			if (base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer.CurrentValue && !base.ViewModel.MechanicEntityUIState.HasHiddenCondition.CurrentValue)
+			if (base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer.CurrentValue && !base.ViewModel.MechanicEntityUIState.HideOvertip.CurrentValue)
 			{
 				return !base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead.CurrentValue;
 			}
@@ -63,7 +63,7 @@ public class OvertipNameBlockPCView : View<LightweightOvertipNameBlockVM>
 		{
 			m_MultiSelectable.SetActiveLayer(value ? "Enemy" : (base.ViewModel.MechanicEntityUIState.IsPlayer.CurrentValue ? "Party" : "Ally"));
 		}).AddTo(this);
-		base.ViewModel.MechanicEntityUIState.IsCurrentUnitTurn.CombineLatest(base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer, base.ViewModel.MechanicEntityUIState.HasHiddenCondition, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, (bool isCurrentUnitTurn, bool forceHotKeyPressed, bool isMouseOverUnit, bool isVisibleForPlayer, bool hasHiddenCondition, bool isDead) => new { isCurrentUnitTurn, forceHotKeyPressed, isMouseOverUnit, isVisibleForPlayer, hasHiddenCondition, isDead }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
+		base.ViewModel.MechanicEntityUIState.IsCurrentUnitTurn.CombineLatest(base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer, base.ViewModel.MechanicEntityUIState.HideOvertip, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, (bool isCurrentUnitTurn, bool forceHotKeyPressed, bool isMouseOverUnit, bool isVisibleForPlayer, bool hasHiddenCondition, bool isDead) => new { isCurrentUnitTurn, forceHotKeyPressed, isMouseOverUnit, isVisibleForPlayer, hasHiddenCondition, isDead }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
 		{
 			m_Animator.PlayAnimation(CheckVisibility);
 		})

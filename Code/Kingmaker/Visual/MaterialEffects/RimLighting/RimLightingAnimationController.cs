@@ -12,6 +12,8 @@ public class RimLightingAnimationController
 		public RimLightingMaterial Material;
 
 		public RimLightingMaterial.Snapshot Snapshot;
+
+		public int RendererId;
 	}
 
 	private bool m_Resetted;
@@ -22,13 +24,19 @@ public class RimLightingAnimationController
 
 	public List<RimLightingAnimationSettings> Animations = new List<RimLightingAnimationSettings>();
 
-	public void AddMaterial(RimLightingMaterial material)
+	public void AddMaterial(RimLightingMaterial material, int rendererId)
 	{
 		m_Entries.Add(new Entry
 		{
 			Material = material,
-			Snapshot = material.TakeSnapshot()
+			Snapshot = material.TakeSnapshot(),
+			RendererId = rendererId
 		});
+	}
+
+	public void ClearMaterial(int rendererId)
+	{
+		m_Entries.RemoveAll((Entry entry) => entry.RendererId == rendererId);
 	}
 
 	public void ClearMaterials()
@@ -83,8 +91,8 @@ public class RimLightingAnimationController
 		}
 		else if (!m_Resetted)
 		{
-			m_Resetted = true;
 			RevertToDefaults();
+			m_Resetted = true;
 		}
 	}
 

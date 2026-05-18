@@ -52,6 +52,29 @@ public abstract class ServiceWindowsPanelBaseView : View<ServiceWindowsPanelVM>,
 		}
 	};
 
+	protected override void OnBind()
+	{
+		base.ViewModel.CurrentUIType.Subscribe(delegate(FullScreenUIType value)
+		{
+			EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
+			{
+				h.HandleFullScreenUiChanged(state: true, value);
+			});
+			Game.Instance.RequestPauseUi(value != FullScreenUIType.LocalMap);
+			m_PreviousScreenType = m_CurrentScreenType;
+			m_CurrentScreenType = value;
+		}).AddTo(this);
+	}
+
+	protected override void OnUnbind()
+	{
+		Game.Instance.RequestPauseUi(isPaused: false);
+		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
+		{
+			h.HandleFullScreenUiChanged(state: false, base.ViewModel.CurrentUIType.CurrentValue);
+		});
+	}
+
 	Transition ITransitable.Show()
 	{
 		base.gameObject.SetActive(value: true);
@@ -77,29 +100,6 @@ public abstract class ServiceWindowsPanelBaseView : View<ServiceWindowsPanelVM>,
 
 	protected virtual void OnShowTransitionCompleted()
 	{
-	}
-
-	protected override void OnBind()
-	{
-		base.ViewModel.CurrentUIType.Subscribe(delegate(FullScreenUIType value)
-		{
-			EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
-			{
-				h.HandleFullScreenUiChanged(state: true, value);
-			});
-			Game.Instance.RequestPauseUi(value != FullScreenUIType.LocalMap);
-			m_PreviousScreenType = m_CurrentScreenType;
-			m_CurrentScreenType = value;
-		}).AddTo(this);
-	}
-
-	protected override void OnUnbind()
-	{
-		Game.Instance.RequestPauseUi(isPaused: false);
-		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
-		{
-			h.HandleFullScreenUiChanged(state: false, base.ViewModel.CurrentUIType.CurrentValue);
-		});
 	}
 
 	private void CompleteShowTransition()

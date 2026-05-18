@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Utility.DotNetExtensions;
 using ObservableCollections;
+using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -25,20 +26,23 @@ public abstract class OvertipsCollectionVM<TOvertipVM> : ViewModel where TOverti
 
 	protected virtual void Clear()
 	{
-		Overtips.ForEach(delegate(TOvertipVM o)
+		List<TOvertipVM> list = ListPool<TOvertipVM>.Claim();
+		list.AddRange(Overtips);
+		Overtips.Clear();
+		list.ForEach(delegate(TOvertipVM o)
 		{
 			o.Dispose();
 		});
-		Overtips.Clear();
+		ListPool<TOvertipVM>.Release(list);
 	}
 
-	protected virtual TOvertipVM GetOvertip(Entity entity)
+	protected TOvertipVM GetOvertip(Entity entity)
 	{
 		Func<TOvertipVM, bool> pred = (TOvertipVM vm) => OvertipGetter(vm, entity);
 		return Overtips.FirstOrDefault(pred);
 	}
 
-	protected virtual bool ContainsOvertip(Entity entity)
+	protected bool ContainsOvertip(Entity entity)
 	{
 		Func<TOvertipVM, bool> pred = (TOvertipVM vm) => OvertipGetter(vm, entity);
 		return Overtips.Contains(pred);
@@ -77,8 +81,8 @@ public abstract class OvertipsCollectionVM<TOvertipVM> : ViewModel where TOverti
 		TOvertipVM overtip = GetOvertip(entityData);
 		if (overtip != null)
 		{
-			overtip.Dispose();
 			Overtips.Remove(overtip);
+			overtip.Dispose();
 		}
 	}
 }

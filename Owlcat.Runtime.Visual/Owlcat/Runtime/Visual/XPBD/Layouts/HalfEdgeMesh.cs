@@ -101,7 +101,7 @@ public class HalfEdgeMesh
 		Vector3[] vertices = InputMesh.vertices;
 		for (int i = 0; i < vertices.Length; i++)
 		{
-			Vector3 vector = Vector3.Scale(vertices[i], Scale);
+			Vector3 vector = Vector3.Scale(vertices[i], (Vector3)Scale);
 			if (!dictionary.TryGetValue(vector, out var value))
 			{
 				value = default(Vertex);
@@ -163,8 +163,8 @@ public class HalfEdgeMesh
 				item.Index = Faces.Count;
 				item.HalfEdge = halfEdge.Index;
 				Faces.Add(item);
-				Area += Vector3.Cross(value3.Position - value2.Position, value4.Position - value2.Position).magnitude / 2f;
-				Volume += Vector3.Dot(Vector3.Cross(value2.Position, value3.Position), value4.Position) / 6f;
+				Area += Vector3.Cross((Vector3)(value3.Position - value2.Position), (Vector3)(value4.Position - value2.Position)).magnitude / 2f;
+				Volume += Vector3.Dot(Vector3.Cross((Vector3)value2.Position, (Vector3)value3.Position), (Vector3)value4.Position) / 6f;
 			}
 		}
 		foreach (KeyValuePair<Vector2Int, HalfEdge> item2 in dictionary2)
@@ -229,7 +229,7 @@ public class HalfEdgeMesh
 		for (int i = 0; i < Vertices.Count; i++)
 		{
 			Vector3 upwards = Vertices[HalfEdges[Vertices[i].HalfEdge].EndVertex].Position - Vertices[i].Position;
-			RestOrientations.Add(Quaternion.Inverse(Quaternion.LookRotation(RestNormals[i], upwards)));
+			RestOrientations.Add(Quaternion.Inverse(Quaternion.LookRotation((Vector3)RestNormals[i], upwards)));
 		}
 	}
 

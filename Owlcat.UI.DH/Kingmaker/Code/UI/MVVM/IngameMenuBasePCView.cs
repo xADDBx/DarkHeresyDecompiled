@@ -16,7 +16,7 @@ public abstract class IngameMenuBasePCView<TViewModel> : View<TViewModel> where 
 
 	protected override void OnBind()
 	{
-		base.ViewModel.ShouldShow.Subscribe(SwitchVisibility).AddTo(this);
+		base.ViewModel.ShouldShow.CombineLatest(base.ViewModel.IsForceHidden, (bool show, bool forceHidden) => show && !forceHidden).Subscribe(SwitchVisibility).AddTo(this);
 	}
 
 	protected override void OnUnbind()

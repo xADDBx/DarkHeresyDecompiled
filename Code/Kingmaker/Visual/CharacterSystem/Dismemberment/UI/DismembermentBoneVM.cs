@@ -39,6 +39,11 @@ public class DismembermentBoneVM : BaseDisposable, IViewModel, IBaseDisposable, 
 		DismembermentBone.SliceOrientationEuler.z = z;
 	}
 
+	internal void OnIncludeDescendantsChanged(bool value)
+	{
+		DismembermentBone.IncludeDescendants = value;
+	}
+
 	internal void OnRemove()
 	{
 		m_RemoveCallback?.Invoke(this);

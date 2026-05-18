@@ -15,7 +15,7 @@ namespace Kingmaker.Code._Legacy.Components;
 [TypeId("906ce4b44eea49fd915120cc94dd0ed9")]
 public sealed class AdditionalCombatObjectiveComponent : EntityFactComponentDelegate<AbstractUnitEntity>
 {
-	public SharedStringAsset Description;
+	public LocalizedString Description;
 
 	public HighlightType HighlightType;
 

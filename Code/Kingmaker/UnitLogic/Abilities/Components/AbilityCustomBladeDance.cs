@@ -110,7 +110,7 @@ public class AbilityCustomBladeDance : AbilityCustomLogic
 		}
 		RulePerformAttack rulePerformAttack = new RulePerformAttack(maybeCaster, target, context.Ability, burstIndex);
 		context.TriggerRule(rulePerformAttack);
-		if (maybeCaster is BaseUnitEntity attacker && target is BaseUnitEntity baseUnitEntity && baseUnitEntity.View != null && baseUnitEntity.View.HitFxManager != null)
+		if (maybeCaster is BaseUnitEntity attacker && target is BaseUnitEntity { View: not null } baseUnitEntity && baseUnitEntity.View.HitFxManager != null)
 		{
 			baseUnitEntity.View.HitFxManager.HandleMeleeAttackHit(attacker, AttackResult.Hit, crit: false, weapon);
 		}

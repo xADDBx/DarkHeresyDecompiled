@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Squads;
 using Owlcat.Runtime.Core.Utility;
 
@@ -13,7 +14,7 @@ public class CheckIsUnitInSquadGetter : BoolPropertyGetter, PropertyContextAcces
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetTargetByType(Target).GetOptional<PartSquad>() != null;
+		return EvalContext.Current.GetEntityByType(Target)?.GetOptional<PartSquad>() != null;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using Owlcat.Runtime.Core.Utility;
@@ -14,7 +15,7 @@ public class DamageTypeGetter : BoolPropertyGetter, PropertyContextAccessor.IRul
 
 	protected override bool GetBaseValue()
 	{
-		return (this.GetRule() as IDamageHolderRule)?.DamageType == DamageType;
+		return (EvalContext.Current.Rule as IDamageHolderRule)?.DamageType == DamageType;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

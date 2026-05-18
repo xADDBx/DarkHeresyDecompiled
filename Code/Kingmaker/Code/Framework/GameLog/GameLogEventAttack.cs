@@ -6,7 +6,6 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.Localization;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -122,7 +121,7 @@ public class GameLogEventAttack : GameLogRuleEvent<RulePerformAttack, GameLogEve
 			BaseUnitEntity initiatorUnit = rule.InitiatorUnit;
 			if (initiatorUnit != null && initiatorUnit.HasAssassinCareer)
 			{
-				AssassinLethality = ConfigRoot.Instance.SystemMechanics.AssassinLethalityProperty?.GetValue(new PropertyContext(null, rule.ConcreteInitiator.MainFact.Context));
+				AssassinLethality = ConfigRoot.Instance.SystemMechanics.AssassinLethalityProperty?.GetValue(rule.ConcreteInitiator, rule.ConcreteInitiator.MainFact.Context);
 			}
 		}
 		foreach (Tuple<BaseUnitEntity, List<MechanicsFeatureType>> item2 in new List<Tuple<BaseUnitEntity, List<MechanicsFeatureType>>>
@@ -183,8 +182,12 @@ public class GameLogEventAttack : GameLogRuleEvent<RulePerformAttack, GameLogEve
 
 	protected override bool TryHandleInnerEventInternal(GameLogEvent @event)
 	{
-		if (@event is GameLogRuleEvent<RuleDealDamage> gameLogRuleEvent && gameLogRuleEvent.Rule.Target == Target)
+		if (@event is GameLogRuleEvent<RuleDealDamage> gameLogRuleEvent)
 		{
+			if (gameLogRuleEvent.Rule.Target != Target)
+			{
+				return false;
+			}
 			if (m_TargetDamageList == null)
 			{
 				m_TargetDamageList = new List<GameLogRuleEvent<RuleDealDamage>>();

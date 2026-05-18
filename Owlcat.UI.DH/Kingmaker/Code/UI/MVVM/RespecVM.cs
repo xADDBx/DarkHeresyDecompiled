@@ -90,6 +90,6 @@ public class RespecVM : ViewModel
 		{
 			h.HandleOpenCharacterInfo(CharInfoPageType.LevelProgression, CurrentCharacterVM.CurrentValue?.Unit);
 		});
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Respec).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
+		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Respec).State(InterfaceMetricsEvent.InterfaceStates.Open).Send();
 	}
 }

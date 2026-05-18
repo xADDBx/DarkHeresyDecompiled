@@ -2,14 +2,14 @@ namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenCommonPhaseRoadmapView : CharGenPhaseRoadmapView<CharGenPhaseBaseVM>
 {
-	private bool isInited;
+	private bool m_IsInited;
 
 	protected override void BindViewImplementation()
 	{
-		if (!isInited)
+		if (!m_IsInited)
 		{
 			Initialize();
-			isInited = true;
+			m_IsInited = true;
 		}
 		base.BindViewImplementation();
 	}

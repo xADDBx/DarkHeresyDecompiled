@@ -1,9 +1,9 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Newtonsoft.Json;
@@ -17,10 +17,6 @@ namespace Kingmaker.EntitySystem;
 [OwlPackable(OwlPackableMode.Generate)]
 public abstract class EntityFactComponent : IDisposable, IEventBusLoopGuard, IHashable, IOwlPackable, IOwlPackable<EntityFactComponent>
 {
-	public class Scope : SimpleContextData<EntityFactComponent, Scope>
-	{
-	}
-
 	private static int s_NextInstanceID = 1;
 
 	private readonly int m_InstanceID;
@@ -38,6 +34,8 @@ public abstract class EntityFactComponent : IDisposable, IEventBusLoopGuard, IHa
 	public bool IsSubscribedOnEventBus { get; private set; }
 
 	public IEntity Owner => Fact.Owner;
+
+	protected IEntityEventBus EventBus => Fact.Owner.EventBus;
 
 	public bool IsActive
 	{
@@ -165,6 +163,21 @@ public abstract class EntityFactComponent : IDisposable, IEventBusLoopGuard, IHa
 			else if (Fact.IsSubscribedOnEventBus)
 			{
 				Subscribe();
+			}
+		}
+	}
+
+	public void DidActivate()
+	{
+		using (SetScope())
+		{
+			try
+			{
+				OnDidActivate();
+			}
+			catch (Exception ex)
+			{
+				PFLog.EntityFact.Exception(ex);
 			}
 		}
 	}
@@ -345,6 +358,10 @@ public abstract class EntityFactComponent : IDisposable, IEventBusLoopGuard, IHa
 	{
 	}
 
+	protected virtual void OnDidActivate()
+	{
+	}
+
 	protected virtual void OnAreaLoadingComplete()
 	{
 	}
@@ -353,7 +370,7 @@ public abstract class EntityFactComponent : IDisposable, IEventBusLoopGuard, IHa
 	{
 	}
 
-	public IDisposable RequestEventContext()
+	public EvalContext.StackFrameHandle RequestEventContext()
 	{
 		return SetScope();
 	}
@@ -372,9 +389,9 @@ public abstract class EntityFactComponent : IDisposable, IEventBusLoopGuard, IHa
 		return HashCode.Combine(typeof(EntityFactComponent), m_InstanceID);
 	}
 
-	public IDisposable SetScope()
+	public EvalContext.StackFrameHandle SetScope()
 	{
-		return DisposableBag.Claim(SimpleContextData<EntityFactComponent, Scope>.Set(this), Fact?.MaybeContext?.SetScope());
+		return EvalContext.PushFactComponent(this);
 	}
 
 	public virtual Hash128 GetHash128()

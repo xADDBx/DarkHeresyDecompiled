@@ -9,7 +9,7 @@ internal struct OutlineBuilder
 {
 	private readonly CellBuffer m_CellBuffer;
 
-	private readonly NativeArray<ushort> m_ChunkAreaMasks;
+	private readonly NativeArray<uint> m_ChunkAreaMasks;
 
 	private readonly float m_HalfCellSize;
 
@@ -23,7 +23,7 @@ internal struct OutlineBuilder
 
 	private byte m_IterationNumber;
 
-	public OutlineBuilder(CellBuffer cellBuffer, NativeArray<ushort> chunkAreaMasks, float halfCellSize, float turnSmoothDistance, NativeArray<BezierPoint> bezierPoints, NativeArray<byte> processStatusFlags, NativeList<OutlinePlotCommand> outlinePlotCommands)
+	public OutlineBuilder(CellBuffer cellBuffer, NativeArray<uint> chunkAreaMasks, float halfCellSize, float turnSmoothDistance, NativeArray<BezierPoint> bezierPoints, NativeArray<byte> processStatusFlags, NativeList<OutlinePlotCommand> outlinePlotCommands)
 	{
 		m_CellBuffer = cellBuffer;
 		m_ChunkAreaMasks = chunkAreaMasks;

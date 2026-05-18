@@ -30,11 +30,8 @@ public class ViewFactory : IViewFactory
 		if (prefab != null)
 		{
 			ViewFactoryPolicy policy = GetPolicy(prefab.GetType());
-			Transform parent = (string.IsNullOrEmpty(policy.Path) ? m_Root : m_Root.Find(policy.Path));
-			if (parent == null)
-			{
-				parent = m_Root;
-			}
+			Transform child;
+			Transform parent = ((!string.IsNullOrEmpty(policy.Path) && TryFind(m_Root, policy.Path, out child)) ? child : m_Root);
 			MonoBehaviour monoBehaviour = ((!policy.Flags.HasFlag(ViewFactoryPolicyFlag.DontInstantiateAsync)) ? (await WidgetPool.RetainAsync(prefab, parent, cancellationToken)) : WidgetPool.Retain(prefab, parent));
 			MonoBehaviour monoBehaviour2 = monoBehaviour;
 			if (cancellationToken.IsCancellationRequested)
@@ -53,6 +50,28 @@ public class ViewFactory : IViewFactory
 			throw new Exception($"Prefab {prefab} doesn't implement {typeof(IBindable<T>)}");
 		}
 		throw new Exception($"Prefab for {typeof(T)} not found");
+	}
+
+	private static bool TryFind(Transform transform, string path, out Transform child)
+	{
+		child = transform;
+		string[] array = path.Split('/');
+		foreach (string text in array)
+		{
+			if (text == "..")
+			{
+				child = child.parent;
+			}
+			else if (text != "." && text != "")
+			{
+				child = child.Find(text);
+			}
+			if (child == null)
+			{
+				break;
+			}
+		}
+		return child != null;
 	}
 
 	private int FindSiblingIndexFor<T>(Transform parent)

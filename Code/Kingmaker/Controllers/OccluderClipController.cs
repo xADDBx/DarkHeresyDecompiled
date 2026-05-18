@@ -28,24 +28,24 @@ public sealed class OccluderClipController : IControllerTick, IController, IUnit
 		InvalidateAllEntityViews();
 	}
 
-	void IViewAttachedHandler.OnViewAttached(IEntityViewBase view)
+	void IViewAttachedHandler.OnViewAttached(IEntityView view)
 	{
 		InvalidateEntityView(((EntityViewBase)view) as UnitEntityView);
 	}
 
 	void IUnitCombatHandler.HandleUnitJoinCombat()
 	{
-		InvalidateEntityView(EventInvokerExtensions.BaseUnitEntity.View);
+		InvalidateEntityView(EventInvokerExtensions.BaseUnitEntity.View.AsUnitEntityView());
 	}
 
 	void IUnitCombatHandler.HandleUnitLeaveCombat()
 	{
-		InvalidateEntityView(EventInvokerExtensions.BaseUnitEntity.View);
+		InvalidateEntityView(EventInvokerExtensions.BaseUnitEntity.View.AsUnitEntityView());
 	}
 
 	void IUnitFactionHandler.HandleFactionChanged()
 	{
-		InvalidateEntityView(EventInvokerExtensions.BaseUnitEntity.View);
+		InvalidateEntityView(EventInvokerExtensions.BaseUnitEntity.View.AsUnitEntityView());
 	}
 
 	void IUnitLifeStateChanged.HandleUnitLifeStateChanged(UnitLifeState prevLifeState)
@@ -53,7 +53,7 @@ public sealed class OccluderClipController : IControllerTick, IController, IUnit
 		BaseUnitEntity baseUnitEntity = EventInvokerExtensions.BaseUnitEntity;
 		if (baseUnitEntity != null)
 		{
-			InvalidateEntityView(baseUnitEntity.View);
+			InvalidateEntityView(baseUnitEntity.View.AsUnitEntityView());
 		}
 	}
 
@@ -76,7 +76,7 @@ public sealed class OccluderClipController : IControllerTick, IController, IUnit
 		}
 		foreach (BaseUnitEntity item in allBaseUnits)
 		{
-			InvalidateEntityView(item.View);
+			InvalidateEntityView(item.View.AsUnitEntityView());
 		}
 	}
 

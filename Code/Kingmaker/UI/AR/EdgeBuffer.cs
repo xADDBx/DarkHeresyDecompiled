@@ -48,4 +48,11 @@ internal struct EdgeBuffer
 	{
 		m_EdgeSegmentFlagArray[cellIndex] |= edgeSegment.Flag;
 	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	[Pure]
+	public bool IsRecorded(int cellIndex, CellEdgeSegment edgeSegment)
+	{
+		return (m_EdgeSegmentFlagArray[cellIndex] & edgeSegment.Flag) != 0;
+	}
 }

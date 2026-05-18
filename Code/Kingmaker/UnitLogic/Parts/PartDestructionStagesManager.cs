@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic.Mechanics;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -90,7 +92,7 @@ public class PartDestructionStagesManager : MechanicEntityPart, IHashable, IOwlP
 
 	private DestructionStage CalculateDestructionStage()
 	{
-		_ = (int)Health.HitPoints;
+		_ = (int)base.Owner.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "CalculateDestructionStage");
 		if (Health.HitPointsLeft <= 0)
 		{
 			return DestructionStage.Destroyed;

@@ -6,15 +6,17 @@ using Owlcat.UI;
 using R3;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
 public class ConclusionEntityView : View<ClueConclusionEntityVM>, IUIHighlighter, ISubscriber
 {
+	[FormerlySerializedAs("m_Name")]
 	[Header("Elements")]
 	[SerializeField]
-	private TMP_Text m_Name;
+	private TMP_Text m_ClueName;
 
 	[SerializeField]
 	private TMP_Text m_Description;
@@ -39,8 +41,8 @@ public class ConclusionEntityView : View<ClueConclusionEntityVM>, IUIHighlighter
 
 	protected override void OnBind()
 	{
-		m_Name.text = base.ViewModel.Name.Text;
-		m_Icon.sprite = base.ViewModel.Icon ?? m_DefaultIcon;
+		m_ClueName.text = base.ViewModel.Name.Text;
+		m_Icon.sprite = (base.ViewModel.Icon ? base.ViewModel.Icon : m_DefaultIcon);
 		m_Description.text = base.ViewModel.Description.Text;
 		EventBus.Subscribe(this).AddTo(this);
 	}

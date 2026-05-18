@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -6,7 +8,7 @@ using Kingmaker.Enums;
 
 namespace Kingmaker.RuleSystem.Rules.Modifiers;
 
-public class FlagModifiersManager : AbstractModifiersManager, IReadonlyModifiersFlag, IReadonlyModifiers
+public class FlagModifiersManager : AbstractModifiersManager, IReadonlyModifiersFlag, IReadonlyModifiers, IEnumerable<Modifier>, IEnumerable
 {
 	public bool Value => GetValue() > 0;
 

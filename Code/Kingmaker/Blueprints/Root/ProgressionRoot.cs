@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Code.Gameplay.Enums.Stats;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.UnitLogic.Levelup.Obsolete.Blueprints;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.View.MapObjects;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -47,6 +49,35 @@ public class ProgressionRoot : BlueprintScriptableObject
 	}
 
 	[Serializable]
+	private sealed class SkillCheckExperienceByChapter
+	{
+		public Chapter Chapter;
+
+		public SkillCheckDifficultyExperience[] Entries = new SkillCheckDifficultyExperience[4]
+		{
+			new SkillCheckDifficultyExperience(SkillCheckDifficulty.Easy, 0),
+			new SkillCheckDifficultyExperience(SkillCheckDifficulty.Normal, 0),
+			new SkillCheckDifficultyExperience(SkillCheckDifficulty.Hard, 0),
+			new SkillCheckDifficultyExperience(SkillCheckDifficulty.Impossible, 0)
+		};
+	}
+
+	[Serializable]
+	private sealed class SkillCheckDifficultyExperience
+	{
+		[SkillCheckActualDifficulty]
+		public SkillCheckDifficulty Difficulty;
+
+		public int Experience;
+
+		public SkillCheckDifficultyExperience(SkillCheckDifficulty difficulty, int experience)
+		{
+			Difficulty = difficulty;
+			Experience = experience;
+		}
+	}
+
+	[Serializable]
 	private sealed class SkillCheckDifficultyToExperienceFactor
 	{
 		[Range(-60f, 60f)]
@@ -76,12 +107,11 @@ public class ProgressionRoot : BlueprintScriptableObject
 	private BpRef<BlueprintStatProgression> _crTable = new BpRef<BlueprintStatProgression>();
 
 	[SerializeField]
-	private TypeToExperienceFactor[] _typeFactors = new TypeToExperienceFactor[5]
+	private TypeToExperienceFactor[] _typeFactors = new TypeToExperienceFactor[4]
 	{
 		new TypeToExperienceFactor(ExperienceType.Encounter, 1f),
 		new TypeToExperienceFactor(ExperienceType.SkillCheck, 1f),
 		new TypeToExperienceFactor(ExperienceType.Quest, 1f),
-		new TypeToExperienceFactor(ExperienceType.MainQuest, 1f),
 		new TypeToExperienceFactor(ExperienceType.Investigation, 1f)
 	};
 
@@ -112,6 +142,9 @@ public class ProgressionRoot : BlueprintScriptableObject
 		new SkillCheckDifficultyToExperienceFactor(-60, 1f)
 	};
 
+	[SerializeField]
+	private SkillCheckExperienceByChapter[] _skillCheckExperienceByChapter = new SkillCheckExperienceByChapter[0];
+
 	public static ProgressionRoot Instance => ConfigRoot.Instance.Progression;
 
 	public IEnumerable<BlueprintCareerPath> CareerPaths => from i in _careerPaths.Dereference()
@@ -140,5 +173,49 @@ public class ProgressionRoot : BlueprintScriptableObject
 	public float GetExperienceFactorSkillCheckDifficulty(int difficulty)
 	{
 		return _skillCheckDifficultyFactors.FirstItem((SkillCheckDifficultyToExperienceFactor f) => f.Difficulty <= difficulty)?.ExperienceFactor ?? _skillCheckDifficultyFactors.LastItem()?.ExperienceFactor ?? 1f;
+	}
+
+	public int GetSkillCheckExperience(SkillCheckDifficulty difficulty, int chapter)
+	{
+		if (difficulty == SkillCheckDifficulty.Custom || difficulty == SkillCheckDifficulty.AutoPass)
+		{
+			return 0;
+		}
+		Chapter mappedChapter = MapSkillCheckExperienceChapter(chapter);
+		if (mappedChapter == Chapter.None)
+		{
+			return 0;
+		}
+		SkillCheckExperienceByChapter skillCheckExperienceByChapter = _skillCheckExperienceByChapter.FirstItem((SkillCheckExperienceByChapter e) => e.Chapter == mappedChapter);
+		if (skillCheckExperienceByChapter == null)
+		{
+			PFLog.Default.Error($"Skill check experience settings are missing for chapter {chapter}");
+			return 0;
+		}
+		SkillCheckDifficultyExperience skillCheckDifficultyExperience = skillCheckExperienceByChapter.Entries.FirstItem((SkillCheckDifficultyExperience e) => e.Difficulty == difficulty);
+		if (skillCheckDifficultyExperience == null)
+		{
+			PFLog.Default.Error($"Skill check experience settings are missing for difficulty {difficulty} in chapter {chapter}");
+			return 0;
+		}
+		return Math.Max(0, skillCheckDifficultyExperience.Experience);
+	}
+
+	private static Chapter MapSkillCheckExperienceChapter(int chapter)
+	{
+		switch (chapter)
+		{
+		case 0:
+			return Chapter.Prologue;
+		case 1:
+			return Chapter.Chapter1;
+		case 2:
+			return Chapter.Chapter2;
+		case 3:
+			return Chapter.Epilogue;
+		default:
+			PFLog.Default.Error($"Unknown chapter value for skill check experience: {chapter}");
+			return Chapter.Prologue;
+		}
 	}
 }

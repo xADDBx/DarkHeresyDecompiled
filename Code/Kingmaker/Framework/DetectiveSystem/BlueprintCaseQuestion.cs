@@ -18,6 +18,16 @@ namespace Kingmaker.Framework.DetectiveSystem;
 [TypeId("642789f7a249488e91cede47d1b1ba0c")]
 public sealed class BlueprintCaseQuestion : BlueprintScriptableObject
 {
+	[Serializable]
+	public sealed class CaseDisplayOverride
+	{
+		public LocalizedString Name = new LocalizedString();
+
+		public LocalizedString Description = new LocalizedString();
+
+		public Sprite? Icon;
+	}
+
 	public LocalizedString Name = new LocalizedString();
 
 	public LocalizedString Description = new LocalizedString();
@@ -34,6 +44,8 @@ public sealed class BlueprintCaseQuestion : BlueprintScriptableObject
 	[SerializeField]
 	[HideIf("NoAnswer")]
 	public BpRef<BlueprintCaseAnswer>[] WrongAnswers = new BpRef<BlueprintCaseAnswer>[0];
+
+	public CaseDisplayOverride DisplayOverride = new CaseDisplayOverride();
 
 	public IEnumerable<BpRef<BlueprintCaseAnswer>> AllAnswers => WrongAnswers.Prepend<BpRef<BlueprintCaseAnswer>>(RightAnswer);
 }

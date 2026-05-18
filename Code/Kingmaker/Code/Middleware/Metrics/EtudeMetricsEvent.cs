@@ -10,11 +10,6 @@ public class EtudeMetricsEvent : MetricsEvent
 
 	protected override string Name => "etude";
 
-	public EtudeMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public EtudeMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -27,7 +22,7 @@ public class EtudeMetricsEvent : MetricsEvent
 		{
 			EtudeStates.Start => "start", 
 			EtudeStates.Complete => "complete", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}

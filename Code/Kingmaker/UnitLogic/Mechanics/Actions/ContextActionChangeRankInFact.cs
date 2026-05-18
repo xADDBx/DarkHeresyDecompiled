@@ -49,7 +49,7 @@ public class ContextActionChangeRankInFact : ContextAction
 		bool flag = false;
 		foreach (EntityFact item in base.Target.Entity.Facts.List)
 		{
-			if (item.Blueprint == Blueprint && (!m_FactFromCaster || item.MaybeContext?.MaybeCaster == base.Context.MaybeCaster) && item is IFactWithRanks factWithRanks)
+			if (item.Blueprint == Blueprint && (!m_FactFromCaster || item.MaybeContext?.MaybeCaster == base.Context.Caster) && item is IFactWithRanks factWithRanks)
 			{
 				if (num > 0)
 				{

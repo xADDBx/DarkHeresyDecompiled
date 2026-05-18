@@ -12,6 +12,7 @@ using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.UnityExtensions;
 using ObservableCollections;
@@ -21,7 +22,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class PointMarkersVM : ViewModel, ILineOfSightHandler, ISubscriber, INetAddPingMarker, IAreaHandler, IAreaActivationHandler, IReloadMechanicsHandler, IUnitHandler, IUnitSpawnHandler, ISubscriber<IAbstractUnitEntity>, ITurnBasedModeHandler, ITurnBasedModeResumeHandler
+public class PointMarkersVM : ViewModel, ILineOfSightHandler, ISubscriber, INetAddPingMarker, IAreaHandler, IAreaActivationHandler, IReloadMechanicsHandler, IUnitHandler, IUnitSpawnHandler, ISubscriber<IAbstractUnitEntity>, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, ICompanionStateChanged, ISubscriber<IMechanicEntity>
 {
 	public readonly ObservableList<PointMarkerVM> PointMarkers = new ObservableList<PointMarkerVM>();
 
@@ -208,6 +209,11 @@ public class PointMarkersVM : ViewModel, ILineOfSightHandler, ISubscriber, INetA
 	}
 
 	void IReloadMechanicsHandler.OnMechanicsReloaded()
+	{
+		UpdateUnits();
+	}
+
+	void ICompanionStateChanged.HandleCompanionStateChanged()
 	{
 		UpdateUnits();
 	}

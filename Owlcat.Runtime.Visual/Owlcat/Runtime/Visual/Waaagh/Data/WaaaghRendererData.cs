@@ -1,6 +1,7 @@
 using System;
 using Owlcat.Runtime.Visual.Waaagh.PipelineResources;
 using Owlcat.Runtime.Visual.Waaagh.PostProcess;
+using Owlcat.Runtime.Visual.Waaagh.Recorders;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -88,7 +89,7 @@ public class WaaaghRendererData : ScriptableRendererData, ISerializationCallback
 		}
 	}
 
-	protected override ScriptableRenderer Create()
+	protected override IPipelineRenderer Create()
 	{
 		m_Shaders = GraphicsSettings.GetRenderPipelineSettings<RenderRuntimeShaders>();
 		m_PostProcessResources = new PostProcessResources();

@@ -10,7 +10,7 @@ public class BlueprintAnimationActionExternalHandler : BlueprintScriptableObject
 {
 	private BlueprintAnimationActionExternalBaseComponent m_BlueprintAnimationActionExternalBaseComponent;
 
-	public void Handle(AnimationManager animationManager, ClipEventType сlipEventType, int id)
+	public void Handle(AnimationManager animationManager, ClipEventType сlipEventType, int id, object userData)
 	{
 		if (m_BlueprintAnimationActionExternalBaseComponent == null)
 		{
@@ -23,6 +23,6 @@ public class BlueprintAnimationActionExternalHandler : BlueprintScriptableObject
 				m_BlueprintAnimationActionExternalBaseComponent = (BlueprintAnimationActionExternalBaseComponent)base.ComponentsArray.FirstOrDefault();
 			}
 		}
-		m_BlueprintAnimationActionExternalBaseComponent?.Handle(animationManager, сlipEventType, id);
+		m_BlueprintAnimationActionExternalBaseComponent?.Handle(animationManager, сlipEventType, id, userData);
 	}
 }

@@ -54,11 +54,11 @@ public class TranslocateUnit : GameAction
 		{
 			return;
 		}
-		targetUnit.View.StopMoving();
+		targetUnit.StopMoving();
 		Vector3 position;
 		if (translocatePositionEvaluator == null)
 		{
-			position = translocatePosition.FindView().ViewTransform.position;
+			position = translocatePosition.FindData().Position;
 			targetUnit.View.MovementAgent.Blocker.Unblock();
 		}
 		else
@@ -98,8 +98,8 @@ public class TranslocateUnit : GameAction
 		}
 		else if (m_CopyRotation)
 		{
-			Transform transform = translocatePosition?.FindView()?.ViewTransform;
-			unit.SetOrientation((transform == null) ? 0f : transform.rotation.eulerAngles.y);
+			float valueOrDefault = (translocatePosition?.FindData()?.Orientation).GetValueOrDefault();
+			unit.SetOrientation(valueOrDefault);
 		}
 	}
 }

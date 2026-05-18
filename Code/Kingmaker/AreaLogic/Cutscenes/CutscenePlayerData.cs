@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using JetBrains.Annotations;
 using Kingmaker.AreaLogic.Cutscenes.Commands;
 using Kingmaker.AreaLogic.Cutscenes.Components;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Framework.CutsceneSystem;
+using Kingmaker.Code.Middleware.Metrics;
+using Kingmaker.Controllers;
 using Kingmaker.Designers;
 using Kingmaker.Designers.EventConditionActionSystem.Actions;
 using Kingmaker.Designers.EventConditionActionSystem.NamedParameters;
@@ -17,9 +18,10 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.QA;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Utility.CodeTimer;
@@ -40,7 +42,7 @@ using UnityEngine;
 namespace Kingmaker.AreaLogic.Cutscenes;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPackable<CutscenePlayerData>
+public class CutscenePlayerData : Entity, ICutscenePlayerData, IReloadMechanicsHandler, ISubscriber, IHashable, IOwlPackable<CutscenePlayerData>
 {
 	private struct DisableStackTraceScope : IDisposable
 	{
@@ -61,10 +63,6 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		{
 			Logger.SetMinStackTraceLevel(m_PreviousStackTraceLevel);
 		}
-	}
-
-	private class EvaluationFailedHandlingFlag : ContextFlag<EvaluationFailedHandlingFlag>
-	{
 	}
 
 	public static readonly LogChannel Logger = PFLog.Cutscene;
@@ -115,8 +113,6 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 	private readonly Dictionary<CutscenePauseReason, int> m_Paused = new Dictionary<CutscenePauseReason, int>();
 
 	private readonly Dictionary<CutscenePauseReason, int> m_PauseDelayed = new Dictionary<CutscenePauseReason, int>();
-
-	private bool m_PausedSleeping;
 
 	private bool m_TickInProgress;
 
@@ -186,6 +182,8 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 	[OwlPackInclude]
 	public bool IsFinished { get; private set; }
 
+	public float PlayingTime { get; set; }
+
 	public bool PreventDestruction { get; set; }
 
 	public bool TraceCommands { get; set; }
@@ -200,21 +198,7 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 
 	public bool Paused => m_Paused.Count > 0;
 
-	public new CutscenePlayerView View => (CutscenePlayerView)base.View;
-
-	public bool ShouldBeFreezed
-	{
-		get
-		{
-			if (!Cutscene.Freezeless && !HasActiveLockControl && Anchors.Count > 0)
-			{
-				return CheckIsShouldBeFreezed();
-			}
-			return false;
-		}
-	}
-
-	public bool IsAnyAnchorActive => CheckIsAnyAnchorActive();
+	public new ICutscenePlayerView View => (ICutscenePlayerView)base.View;
 
 	public BlueprintCutscene Cutscene => m_Cutscene;
 
@@ -299,8 +283,8 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 
 	public StatefulRandom Random => m_Random;
 
-	public CutscenePlayerData(BlueprintCutscene cutscene, ICutscenePlayerView player)
-		: base(player.UniqueViewId, player.IsInGameBySettings)
+	public CutscenePlayerData(BlueprintCutscene cutscene, IEntityConfig player)
+		: base(player.EntityId, player.IsInGameBySettings)
 	{
 		m_Cutscene = cutscene;
 		foreach (CutsceneBlock block in m_Cutscene.Blocks)
@@ -309,12 +293,8 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		}
 	}
 
-	protected CutscenePlayerData(JsonConstructorMark _)
+	protected CutscenePlayerData(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected CutscenePlayerData()
 	{
 	}
 
@@ -396,16 +376,8 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		}
 	}
 
-	private bool CheckIsShouldBeFreezed()
+	private bool AllUnitsAreFreezed()
 	{
-		if (Cutscene.Sleepless)
-		{
-			return false;
-		}
-		if (HasActiveLockControl)
-		{
-			return false;
-		}
 		bool flag = false;
 		bool flag2 = true;
 		foreach (EntityRef anchor in Anchors)
@@ -424,22 +396,12 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		return flag && flag2;
 	}
 
-	private bool CheckIsAnyAnchorActive()
+	private bool HasActiveAnchor()
 	{
-		if (Cutscene.Sleepless)
-		{
-			return true;
-		}
-		bool flag = false;
 		foreach (EntityRef anchor in Anchors)
 		{
 			IEntity entity = anchor.Entity;
-			if (entity == null)
-			{
-				continue;
-			}
-			flag = true;
-			if (!entity.IsInGame)
+			if (entity == null || !entity.IsInGame)
 			{
 				continue;
 			}
@@ -460,10 +422,10 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 				}
 			}
 		}
-		return !flag;
+		return false;
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		if (!Cutscene)
 		{
@@ -578,11 +540,20 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			}
 			using (ProfileScope.New("Check Should Pause Cutscene"))
 			{
-				m_PausedSleeping = !Cutscene.Sleepless && !HasActiveLockControl && !IsAnyAnchorActive;
-				bool flag = m_Paused.ContainsKey(CutscenePauseReason.HasNoActiveAnchors);
-				if (m_PausedSleeping != flag)
+				bool flag = !Cutscene.Sleepless && !HasActiveLockControl && Anchors.Count > 0 && !HasActiveAnchor();
+				bool flag2 = m_Paused.ContainsKey(CutscenePauseReason.HasNoActiveAnchors);
+				if (flag != flag2)
 				{
-					SetPaused(m_PausedSleeping, CutscenePauseReason.HasNoActiveAnchors);
+					SetPaused(flag, CutscenePauseReason.HasNoActiveAnchors);
+				}
+				if (!flag)
+				{
+					bool flag3 = !Cutscene.Sleepless && !Cutscene.Freezeless && !HasActiveLockControl && Anchors.Count > 0 && AllUnitsAreFreezed();
+					bool flag4 = m_Paused.ContainsKey(CutscenePauseReason.Freezed);
+					if (flag3 != flag4)
+					{
+						SetPaused(flag3, CutscenePauseReason.Freezed);
+					}
 				}
 			}
 			if (m_ShouldResume)
@@ -590,7 +561,7 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 				Resume();
 				m_ShouldResume = false;
 			}
-			if (Paused || ShouldBeFreezed)
+			if (Paused)
 			{
 				return;
 			}
@@ -599,12 +570,28 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			using (ProfileScope.New("Process Tick"))
 			{
 				Parameters.Cutscene = this;
-				using (Parameters.RequestContextData())
+				BarkController barkController = Game.Instance.Controllers.BarkController;
+				bool suppressOtherBarks = m_Cutscene.SuppressOtherBarks;
+				if (suppressOtherBarks)
 				{
-					for (int i = 0; i < m_BlockPlayerData.Count; i++)
+					barkController.EnterCutsceneContext();
+				}
+				try
+				{
+					using (Parameters.RequestContextData())
 					{
-						bool skipping2 = skipping && !Cutscene.NonSkippable && (Cutscene.LockControl || m_BlockPlayerData[i].Block.LockControl);
-						m_BlockPlayerData[i].TickBlock(skipping2);
+						for (int i = 0; i < m_BlockPlayerData.Count; i++)
+						{
+							bool skipping2 = skipping && !Cutscene.NonSkippable && (Cutscene.LockControl || m_BlockPlayerData[i].Block.LockControl);
+							m_BlockPlayerData[i].TickBlock(skipping2);
+						}
+					}
+				}
+				finally
+				{
+					if (suppressOtherBarks)
+					{
+						barkController.LeaveCutsceneContext();
 					}
 				}
 			}
@@ -626,17 +613,22 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			{
 				return;
 			}
-			bool flag2 = true;
+			PlayingTime += Game.Instance.Controllers.TimeController.DeltaTime;
+			bool flag5 = true;
 			for (int k = 0; k < m_BlockPlayerData.Count; k++)
 			{
-				flag2 &= !m_BlockPlayerData[k].IsActivated || m_BlockPlayerData[k].IsComplete;
+				flag5 &= !m_BlockPlayerData[k].IsActivated || m_BlockPlayerData[k].IsComplete;
 			}
-			if (flag2)
+			if (flag5)
 			{
 				CheckResetZoom();
 				if (Cutscene.StageSwitches.All((CutsceneStageSwitch s) => m_TriggeredStages.Contains(s.StageId)))
 				{
 					IsFinished = true;
+					if (Cutscene.LockControl && !skipping)
+					{
+						Metrics.Cutscene.Id(Cutscene.AssetGuid).Skipped(skipped: false).Send();
+					}
 				}
 				else
 				{
@@ -644,10 +636,10 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 				}
 			}
 		}
-		catch (Exception e)
+		catch (Exception arg)
 		{
 			IsFinished = true;
-			HandleException(e, null, null);
+			LogError($"[{Cutscene.NameSafe()}] Unhandled exception: {arg}", needQaReport: true);
 		}
 		finally
 		{
@@ -655,6 +647,10 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		}
 		if (IsFinished)
 		{
+			if (Cutscene.SuppressOtherBarks)
+			{
+				Game.Instance.Controllers.BarkController.LeaveSuppression();
+			}
 			Cutscene.OnFinished?.Run();
 		}
 		if (IsFinished && !PreventDestruction)
@@ -678,7 +674,7 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		if (Cutscene.LockControl && CameraRig.Instance?.Camera != null)
 		{
 			CameraStartingPosition = CameraRig.Instance.transform.position;
-			CameraStartingRotation = CameraRig.Instance.transform.rotation.y;
+			CameraStartingRotation = CameraRig.Instance.transform.rotation.eulerAngles.y;
 			CameraStartingZoom = CameraRig.Instance.CameraZoom.CurrentNormalizePosition;
 		}
 		if (queued)
@@ -689,6 +685,11 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 				m_QueuedAfter = s_LastQueuedCutscene;
 			}
 			s_LastQueuedCutscene = this;
+		}
+		if (Cutscene.SuppressOtherBarks)
+		{
+			Game.Instance.Controllers.BarkController.StopAll();
+			Game.Instance.Controllers.BarkController.EnterSuppression();
 		}
 		RaiseEvent(this, delegate(ICutsceneHandler h)
 		{
@@ -704,7 +705,7 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			{
 				for (int i = 0; i < spawners.Length; i++)
 				{
-					UnitSpawnerBase unitSpawner = GameHelper.GetUnitSpawner(spawners[i]);
+					AbstractUnitSpawnerEntity unitSpawner = GameHelper.GetUnitSpawner(spawners[i]);
 					if (!(unitSpawner?.Blueprint?.Prefab == null))
 					{
 						unitSpawner.Blueprint.Prefab.Load();
@@ -714,6 +715,26 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 							CollectResourcesFromAction(action2, result, seenGates);
 						}
 					}
+				}
+				return;
+			}
+			if (action is SpawnByUnitGroup spawnByUnitGroup)
+			{
+				if (spawnByUnitGroup.m_Group.FindData() is UnitGroupEntity unitGroupEntity)
+				{
+					foreach (AbstractUnitSpawnerEntity item in unitGroupEntity.Members.OfType<AbstractUnitSpawnerEntity>())
+					{
+						AbstractUnitSpawnerEntity unitSpawner2 = GameHelper.GetUnitSpawner(item);
+						if (!(unitSpawner2?.Blueprint?.Prefab == null))
+						{
+							unitSpawner2.Blueprint.Prefab.Load();
+						}
+					}
+				}
+				GameAction[] actions = spawnByUnitGroup.ActionsOnSpawn.Actions;
+				foreach (GameAction action3 in actions)
+				{
+					CollectResourcesFromAction(action3, result, seenGates);
 				}
 				return;
 			}
@@ -739,14 +760,14 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			if (action is Conditional conditional)
 			{
 				GameAction[] actions = conditional.IfTrue.Actions;
-				foreach (GameAction action3 in actions)
-				{
-					CollectResourcesFromAction(action3, result, seenGates);
-				}
-				actions = conditional.IfFalse.Actions;
 				foreach (GameAction action4 in actions)
 				{
 					CollectResourcesFromAction(action4, result, seenGates);
+				}
+				actions = conditional.IfFalse.Actions;
+				foreach (GameAction action5 in actions)
+				{
+					CollectResourcesFromAction(action5, result, seenGates);
 				}
 			}
 		}
@@ -801,7 +822,7 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			return;
 		}
 		m_ResourcesCollected = true;
-		using (CodeTimer.New($"PreloadCutsceneResources {View}"))
+		using (CodeTimer.New($"PreloadCutsceneResources {this}"))
 		{
 			using (ProfileScope.New("PreloadCutsceneResources"))
 			{
@@ -904,12 +925,22 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		}
 	}
 
-	public void StartCutsceneStage(int stage)
+	public void StartCutsceneStage(int stage, bool stopOtherStages)
 	{
 		if (m_TriggeredStages.Contains(stage))
 		{
 			PFLog.Cutscene.Warning("Stage trigger called more than once. And will be ignored.");
 			return;
+		}
+		if (stopOtherStages)
+		{
+			foreach (CutscenePlayerBlockData blockPlayerDatum in m_BlockPlayerData)
+			{
+				if (blockPlayerDatum.IsActivated && !blockPlayerDatum.IsComplete)
+				{
+					blockPlayerDatum.Stop();
+				}
+			}
 		}
 		m_TriggeredStages.Add(stage);
 		if (Paused)
@@ -924,7 +955,11 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 			}
 			foreach (string signalGuid in stageSwitch.NextBlocks)
 			{
-				m_BlockPlayerData.FirstOrDefault((CutscenePlayerBlockData b) => b.Block.Guid == signalGuid)?.SignalBlock();
+				CutscenePlayerBlockData cutscenePlayerBlockData = m_BlockPlayerData.FirstOrDefault((CutscenePlayerBlockData b) => b.Block.Guid == signalGuid);
+				using (Parameters.RequestContextData())
+				{
+					cutscenePlayerBlockData?.SignalBlock();
+				}
 			}
 		}
 	}
@@ -934,6 +969,10 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		if (m_StoppingInProgress)
 		{
 			return;
+		}
+		if (Cutscene.SuppressOtherBarks && !IsFinished)
+		{
+			Game.Instance.Controllers.BarkController.LeaveSuppression();
 		}
 		m_StoppingInProgress = true;
 		if (!IsFinished)
@@ -1001,21 +1040,21 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 					where c != null
 					select c.Get())
 				{
-					if (item != null)
+					try
 					{
-						AbstractUnitEntity abstractUnitEntity = null;
-						try
-						{
-							abstractUnitEntity = item.GetControlledUnit().ToAbstractUnitEntity();
-						}
-						catch (Exception e)
-						{
-							HandleException(e, null, item);
-						}
+						AbstractUnitEntity abstractUnitEntity = item?.GetControlledUnit()?.ToAbstractUnitEntity();
 						if (abstractUnitEntity != null)
 						{
 							result.Add(abstractUnitEntity.Ref);
 						}
+						else if (item != null && item.ShouldHaveControlledUnit)
+						{
+							LogError($"[{Cutscene.Name}]: Cmd should have a controlled unit, but it doesn't. {item}");
+						}
+					}
+					catch (Exception arg)
+					{
+						LogError($"[{Cutscene.Name}]: Evaluation exception {item}: {arg}");
 					}
 				}
 			}
@@ -1037,6 +1076,10 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 
 	public void LogError(string message, bool needQaReport = false, [CanBeNull] CommandBase failedCommand = null)
 	{
+		if (failedCommand != null)
+		{
+			FailedCommands.Add(failedCommand);
+		}
 		CutsceneLogSink.Instance.PrepareForLog(this, failedCommand);
 		if (needQaReport)
 		{
@@ -1060,83 +1103,46 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 		}
 	}
 
-	public void HandleException(Exception e, [CanBeNull] CutscenePlayerTrackData track, [CanBeNull] CommandBase command)
+	public void StopGateOnErrorInsideTrack(CutscenePlayerTrackData track)
 	{
-		using PooledStringBuilder pooledStringBuilder = ContextData<PooledStringBuilder>.Request();
-		StringBuilder builder = pooledStringBuilder.Builder;
-		builder.AppendFormat("Exception in cutscene {0} (", Cutscene.NameSafe());
-		if (track != null)
+		foreach (CutscenePlayerBlockData blockPlayerDatum in m_BlockPlayerData)
 		{
-			builder.AppendFormat("track #{0}", track.TrackIndex);
+			blockPlayerDatum.StopGateOnErrorInsideTrack(track);
 		}
-		if (command != null)
+	}
+
+	private void ClearErrorStatus()
+	{
+		foreach (CutscenePlayerBlockData blockPlayerDatum in m_BlockPlayerData)
 		{
-			builder.AppendFormat(" {0} {1}", command.GetType().Name, command.AssetGuid);
-		}
-		builder.Append(")");
-		string messageFormat = builder.ToString();
-		if ((bool)ContextData<EvaluationFailedHandlingFlag>.Current)
-		{
-			Logger.Exception(Cutscene, e, messageFormat);
-			return;
-		}
-		if (e is FailedToRunCutsceneCommandException && e.InnerException is FailToEvaluateException ex)
-		{
-			using (ContextData<EvaluationFailedHandlingFlag>.Request())
+			foreach (CutscenePlayerGateData gatesPlayerDatum in blockPlayerDatum.GatesPlayerData)
 			{
-				CutsceneElement cutsceneElement;
-				switch (EvaluationErrorHandlingPolicyHelper.GetEvaluationErrorHandlingPolicy(this, track, command, out cutsceneElement))
+				foreach (CutscenePlayerTrackData track in gatesPlayerDatum.Tracks)
 				{
-				case EvaluationErrorHandlingPolicy.Ignore:
-					ElementsDebugger.ClearException(ex.Element, e);
-					return;
-				case EvaluationErrorHandlingPolicy.SkipTrack:
-					if (track != null)
+					foreach (CutscenePlayerCommandData item in track.CommandsPlayer)
 					{
-						ElementsDebugger.ClearException(ex.Element, e);
-						track.ForceStop(shouldSignal: true, releaseControlledUnit: true);
-						return;
+						item.ClearErrorStatus();
 					}
-					break;
-				case EvaluationErrorHandlingPolicy.SkipGate:
-					if (cutsceneElement == CutsceneElement.Cutscene)
-					{
-						ElementsDebugger.ClearException(ex.Element, e);
-						Stop();
-						return;
-					}
-					ElementsDebugger.ClearException(ex.Element, e);
-					if (track == null)
-					{
-						return;
-					}
-					{
-						foreach (CutscenePlayerBlockData blockPlayerDatum in m_BlockPlayerData)
-						{
-							blockPlayerDatum.StopGateOnErrorInsideTrack(track);
-						}
-						return;
-					}
-				default:
-					throw new ArgumentOutOfRangeException();
-				case EvaluationErrorHandlingPolicy.Default:
-					break;
-				}
-				CutsceneLogSink.Instance.PrepareForLog(this, command);
-				using (DisableStackTraceScope.Get())
-				{
-					Logger.Exception(Cutscene, e, messageFormat);
-					return;
 				}
 			}
 		}
-		CutsceneLogSink.Instance.PrepareForLog(this, command);
-		Logger.Exception(Cutscene, e, messageFormat);
 	}
 
-	private static void RaiseEvent<T>(CutscenePlayerData entity, Action<T> action, bool isCheckRuntime = true) where T : ISubscriber<CutscenePlayerData>
+	private void RaiseEvent<T>(CutscenePlayerData entity, Action<T> action, bool isCheckRuntime = true) where T : ISubscriber<CutscenePlayerData>
 	{
-		EventBus.RaiseEvent(entity, action, isCheckRuntime);
+		base.EventBus.RaiseEvent(entity, action, isCheckRuntime);
+	}
+
+	public void OnBeforeMechanicsReload()
+	{
+	}
+
+	public void OnMechanicsReloaded()
+	{
+		if (!IsFinished && FailedCommands.Count > 0)
+		{
+			ClearErrorStatus();
+		}
 	}
 
 	public override Hash128 GetHash128()
@@ -1191,7 +1197,7 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IHashable, IOwlPa
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		CutscenePlayerData source = new CutscenePlayerData();
+		CutscenePlayerData source = new CutscenePlayerData(default(OwlPackConstructorParameter));
 		result = Unsafe.As<CutscenePlayerData, TPossiblyBase>(ref source);
 	}
 

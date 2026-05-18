@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Gameplay.Features.Scaling.Components;
+using Kingmaker.Localization;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Abilities;
@@ -13,51 +16,66 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipTemplateUIProperty : TooltipBaseTemplate
 {
-	public readonly UIPropertySettings PropertySettings;
+	private readonly LocalizedString m_Description;
 
-	private readonly MechanicEntity _owner;
+	private readonly BlueprintMechanicEntityFact m_DescriptionFact;
 
-	private readonly BlueprintMechanicEntityFact _factBlueprint;
+	private readonly MechanicEntity m_Owner;
 
-	private readonly AbilityData _ability;
+	private readonly BlueprintMechanicEntityFact m_FactBlueprint;
+
+	private readonly AbilityData m_Ability;
 
 	public TooltipTemplateUIProperty(UIPropertySettings propertySettings, MechanicEntity owner, BlueprintMechanicEntityFact factBlueprint, AbilityData ability)
 	{
-		PropertySettings = propertySettings;
-		_owner = owner;
-		_factBlueprint = factBlueprint;
-		_ability = ability;
+		m_Description = propertySettings.Description;
+		m_DescriptionFact = propertySettings.DescriptionFact;
+		m_Owner = owner;
+		m_FactBlueprint = factBlueprint;
+		m_Ability = ability;
+	}
+
+	public TooltipTemplateUIProperty(AbilityPropertyUISettings uiSettings, MechanicEntity owner, BlueprintMechanicEntityFact factBlueprint, AbilityData ability)
+	{
+		m_Description = uiSettings.Description;
+		m_DescriptionFact = uiSettings.DescriptionFact;
+		m_Owner = owner;
+		m_FactBlueprint = factBlueprint;
+		m_Ability = ability;
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		using (GameLogContext.Scope)
 		{
-			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)_owner;
-			GameLogContext.DescriptionFactBlueprint = _factBlueprint;
-			GameLogContext.DescriptionAbility = _ability;
-			List<ITooltipBrick> list = new List<ITooltipBrick>();
-			AddDescription(list);
-			if (type == TooltipTemplateType.Info)
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Owner;
+			GameLogContext.DescriptionFactBlueprint = m_FactBlueprint;
+			GameLogContext.DescriptionAbility = m_Ability;
+			using (EvalContext.Build().Ability(m_Ability).Push())
 			{
-				AddSource(list);
+				List<ITooltipBrick> list = new List<ITooltipBrick>();
+				AddDescription(list);
+				if (type == TooltipTemplateType.Info)
+				{
+					AddSource(list);
+				}
+				return list;
 			}
-			return list;
 		}
 	}
 
 	private void AddDescription(List<ITooltipBrick> bricks)
 	{
-		bricks.Add(new TooltipBrickText(PropertySettings.Description, TooltipTextType.BoldCentered));
+		bricks.Add(new BrickTextVM(m_Description, TooltipTextType.BoldCentered));
 	}
 
 	private void AddSource(List<ITooltipBrick> bricks)
 	{
-		if (PropertySettings.DescriptionFact != null)
+		if (m_DescriptionFact != null)
 		{
-			bricks.Add(new TooltipBrickSeparator());
-			bricks.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.Source, TooltipTitleType.H2));
-			bricks.Add(new TooltipBrickFeature(PropertySettings.DescriptionFact));
+			bricks.Add(new BrickSeparatorVM());
+			bricks.Add(new BrickTitleVM(UIStrings.Instance.Tooltips.Source, TooltipTitleType.H2));
+			bricks.Add(new BrickFeatureVM(m_DescriptionFact));
 		}
 	}
 }

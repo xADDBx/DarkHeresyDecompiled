@@ -132,7 +132,7 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
-	private EntityRef<DroppedLoot.EntityData> m_DroppedLootEntityDataRef;
+	private EntityRef<DroppedLootEntity> m_DroppedLootEntityDataRef;
 
 	[JsonProperty]
 	[GameStateIgnore]
@@ -147,7 +147,7 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 		{
 			new FieldInfo("CollectionConverter", typeof(ItemsCollection)),
 			new FieldInfo("HasOwnInventory", typeof(bool)),
-			new FieldInfo("m_DroppedLootEntityDataRef", typeof(EntityRef<DroppedLoot.EntityData>)),
+			new FieldInfo("m_DroppedLootEntityDataRef", typeof(EntityRef<DroppedLootEntity>)),
 			new FieldInfo("m_AttachedDroppedLootData", typeof(DroppedLootData))
 		}
 	};
@@ -209,7 +209,7 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 	{
 		if (base.OwnerUnit != null)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.OwnerUnit, (Action<IUnitInventoryChanged>)delegate(IUnitInventoryChanged h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.OwnerUnit, (Action<IUnitInventoryChanged>)delegate(IUnitInventoryChanged h)
 			{
 				h.HandleInventoryChanged();
 			}, isCheckRuntime: true);
@@ -245,33 +245,33 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 		if (dropAttached && base.OwnerUnit != null && !dismember)
 		{
 			m_AttachedDroppedLootData = new DroppedLootData(base.Owner.Position, Vector3.up * PFStatefulRandom.Visuals.AttachedDroppedLoot.Range(0f, 360f));
-			EventBus.RaiseEvent((IBaseUnitEntity)base.OwnerUnit, (Action<ILootDroppedAsAttachedHandler>)delegate(ILootDroppedAsAttachedHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.OwnerUnit, (Action<ILootDroppedAsAttachedHandler>)delegate(ILootDroppedAsAttachedHandler h)
 			{
 				h.HandleLootDroppedAsAttached();
 			}, isCheckRuntime: true);
 			return;
 		}
-		DroppedLoot unityObject = ((dismember && base.OwnerUnit != null) ? ConfigRoot.Instance.HitSystemRoot.GetDismemberLoot(base.OwnerUnit.SurfaceType) : null);
+		DroppedLootView unityObject = ((dismember && base.OwnerUnit != null) ? ConfigRoot.Instance.HitSystemRoot.GetDismemberLoot(base.OwnerUnit.SurfaceType) : null);
 		unityObject = unityObject.Or(null) ?? ConfigRoot.Instance.Prefabs.DroppedLootBag;
-		DroppedLoot droppedLoot = Game.Instance.Controllers.EntitySpawner.SpawnEntityWithView(unityObject, overridePos ?? base.Owner.Position, base.Owner.View.Or(null)?.ViewTransform.rotation ?? Quaternion.identity, base.ConcreteOwner.HoldingState);
+		DroppedLootView droppedLootView = Game.Instance.Controllers.EntitySpawner.SpawnEntityWithView(unityObject, overridePos ?? base.Owner.Position, base.Owner.View.Or(null)?.ViewTransform.rotation ?? Quaternion.identity, base.ConcreteOwner.HoldingState);
 		StatefulRandom statefulRandom = ((base.OwnerUnit != null) ? base.OwnerUnit.Random : PFStatefulRandom.UnitLogic.Parts);
 		Vector3 rotation = Vector3.up * statefulRandom.Range(0f, 360f);
-		UnitHelper.UpdateDropTransform(base.OwnerUnit, droppedLoot.ViewTransform, rotation);
+		UnitHelper.UpdateDropTransform(base.OwnerUnit, droppedLootView.ViewTransform, rotation);
 		if (base.OwnerUnit != null)
 		{
-			droppedLoot.Data.GetOptional<InteractionLootPart>()?.SetUnit(base.OwnerUnit.Blueprint);
+			droppedLootView.Data.GetOptional<InteractionLootPart>()?.SetUnit(base.OwnerUnit.Blueprint);
 		}
 		if (dismember)
 		{
-			DroppedLoot.EntityData data = droppedLoot.Data;
+			DroppedLootEntity data = droppedLootView.Data;
 			data.IsDismember = true;
 			data.BloodType = base.OwnerUnit?.BloodType ?? BloodType.Dust;
 			data.SurfaceType = base.OwnerUnit?.SurfaceType ?? SurfaceType.Ground;
 		}
-		droppedLoot.Loot = base.Collection;
-		droppedLoot.DroppedBy = base.ConcreteOwner;
-		m_DroppedLootEntityDataRef = droppedLoot.Data;
-		LocalMapMarkerPart orCreate = ((MapObjectView)droppedLoot).Data.GetOrCreate<LocalMapMarkerPart>();
+		droppedLootView.Loot = base.Collection;
+		droppedLootView.DroppedBy = base.ConcreteOwner;
+		m_DroppedLootEntityDataRef = droppedLootView.Data;
+		LocalMapMarkerPart orCreate = ((MapObjectView)droppedLootView).Data.GetOrCreate<LocalMapMarkerPart>();
 		orCreate.IsRuntimeCreated = true;
 		orCreate.Settings.Type = LocalMapMarkType.Loot;
 		orCreate.NonLocalizedDescription = base.ConcreteOwner.GetOptional<PartUnitDescription>()?.Name ?? "";
@@ -283,7 +283,7 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 		{
 			return;
 		}
-		DroppedLoot.EntityData entityData = m_DroppedLootEntityDataRef.Entity;
+		DroppedLootEntity entityData = m_DroppedLootEntityDataRef.Entity;
 		if (entityData == null)
 		{
 			PFLog.Default.Warning($"Invalid DroppedLoot reference {m_DroppedLootEntityDataRef.Id} from Unit {base.Owner}");
@@ -336,7 +336,10 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 		{
 			HasOwnInventory = false;
 		}
-		Setup();
+		using (ContextData<ItemsCollection.SuppressEvents>.Request())
+		{
+			Setup();
+		}
 	}
 
 	void IPartyHandler.HandleCompanionRemoved(bool stayInGame)
@@ -354,8 +357,8 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 		result.Append(ref val);
 		bool val2 = HasOwnInventory;
 		result.Append(ref val2);
-		EntityRef<DroppedLoot.EntityData> obj = m_DroppedLootEntityDataRef;
-		Hash128 val3 = StructHasher<EntityRef<DroppedLoot.EntityData>>.GetHash128(ref obj);
+		EntityRef<DroppedLootEntity> obj = m_DroppedLootEntityDataRef;
+		Hash128 val3 = StructHasher<EntityRef<DroppedLootEntity>>.GetHash128(ref obj);
 		result.Append(ref val3);
 		return result;
 	}
@@ -407,7 +410,7 @@ public class PartInventory : PartItemsCollection, IUnitFactionHandler<EntitySubs
 				HasOwnInventory = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 2:
-				m_DroppedLootEntityDataRef = formatter.ReadPackable<EntityRef<DroppedLoot.EntityData>>(state);
+				m_DroppedLootEntityDataRef = formatter.ReadPackable<EntityRef<DroppedLootEntity>>(state);
 				break;
 			case 3:
 				m_AttachedDroppedLootData = formatter.ReadPackable<DroppedLootData>(state);

@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
@@ -118,7 +119,7 @@ public class UnitPartCounterAttack : UnitPart, ITargetRulebookHandler<RulePerfor
 			Component = component;
 			if (component.GuardAllies)
 			{
-				MaxDistanceToAlly = component.GuardAlliesRange.Calculate(Fact.MaybeContext).Cells();
+				MaxDistanceToAlly = component.GuardAlliesRange.Calculate(EvalContext.Current).Cells();
 			}
 		}
 

@@ -30,7 +30,7 @@ public class PauseNotificationBaseView : View<PauseNotificationVM>
 	{
 		if (state)
 		{
-			UISounds.Instance.Sounds.Systems.PauseSound.Play();
+			SystemSounds.Instance.Systems.PauseSound.Play();
 		}
 		m_PauseBlock.interactable = state;
 		m_PauseBlock.blocksRaycasts = state;

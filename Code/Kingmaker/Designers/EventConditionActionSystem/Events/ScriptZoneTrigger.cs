@@ -5,6 +5,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -31,9 +32,9 @@ public class ScriptZoneTrigger : EntityFactComponentDelegate, IScriptZoneHandler
 
 	public ActionList OnExitActions;
 
-	public void OnUnitEnteredScriptZone(ScriptZone zone)
+	public void OnUnitEnteredScriptZone(ScriptZoneEntity zone)
 	{
-		if (!(zone == ScriptZone.FindView() as ScriptZone))
+		if (zone != ScriptZone.FindData())
 		{
 			return;
 		}
@@ -46,9 +47,9 @@ public class ScriptZoneTrigger : EntityFactComponentDelegate, IScriptZoneHandler
 		}
 	}
 
-	public void OnUnitExitedScriptZone(ScriptZone zone)
+	public void OnUnitExitedScriptZone(ScriptZoneEntity zone)
 	{
-		if (!(zone == ScriptZone.FindView() as ScriptZone))
+		if (zone != ScriptZone.FindData())
 		{
 			return;
 		}

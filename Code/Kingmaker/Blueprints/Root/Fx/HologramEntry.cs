@@ -8,5 +8,9 @@ public class HologramEntry
 {
 	public PrefabLink MainFx;
 
+	public PrefabLink ThreateningMainFx;
+
 	public MaterialLink HoloMaterial;
+
+	public MaterialLink ThreateningHoloMaterial;
 }

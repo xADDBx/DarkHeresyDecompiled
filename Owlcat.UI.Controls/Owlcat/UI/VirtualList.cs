@@ -30,6 +30,8 @@ internal class VirtualList
 
 	private VirtualListConsoleNavigation m_VirtualListConsoleNavigation;
 
+	private VirtualListAutoScroll m_VirtualListAutoScroll;
+
 	private bool m_IsValidView;
 
 	public readonly ReactiveCommand<Unit> AttachedFirstValidView = new ReactiveCommand<Unit>();
@@ -55,21 +57,12 @@ internal class VirtualList
 		m_DistancesCalculator = new VirtualListDistancesCalculator(m_ActiveElements, m_VisibleElements, viewport, content, layoutSettings, scrollSettings);
 		m_Scroll = new VirtualListScroll(m_ActiveElements, scrollSettings, viewport, content, layoutSettings, scrollbar, m_DistancesCalculator);
 		m_ElementsWalker = new VirtualListElementsWalker(m_ActiveElements, m_VisibleElements, viewport, content, layoutSettings, fabric, m_Scroll, m_DistancesCalculator, clearItemsAnyway);
-		if (GamePad.Instance.Type != 0)
+		if (PlatformManager.Instance.Type != 0)
 		{
 			m_VirtualListConsoleNavigation = new VirtualListConsoleNavigation(layoutSettings, scrollSettings, m_Scroll.ScrollController);
 		}
+		m_VirtualListAutoScroll = new VirtualListAutoScroll(m_ActiveElements, m_Scroll.ScrollController);
 		m_DistancesCalculator.UpdateViewportData();
-	}
-
-	internal GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		return m_VirtualListConsoleNavigation?.GetNavigationBehaviour(m_Elements);
-	}
-
-	internal GridConsoleNavigationBehaviour GetActiveNavigationBehaviour()
-	{
-		return m_VirtualListConsoleNavigation?.GetNavigationBehaviour(m_ActiveElements);
 	}
 
 	internal void ClearNavigation()
@@ -172,6 +165,7 @@ internal class VirtualList
 	internal void Dispose()
 	{
 		m_Fabric.AttachedValidView -= AttachedValidView;
+		m_VirtualListAutoScroll.Dispose();
 		Clear();
 	}
 
@@ -282,7 +276,6 @@ internal class VirtualList
 			if (num || flag2)
 			{
 				flag |= m_DistancesCalculator.Tick(force: true);
-				m_VirtualListConsoleNavigation?.NavigationBehaviour?.DeepestNestedFocus?.SetFocused(value: true);
 			}
 			m_NeedUpdateScrollValue |= flag2 || flag || m_DistancesCalculator.ViewportSizeUpdated;
 			if (m_NeedUpdateScrollValue && m_Scroll.UpdateScrollValue())

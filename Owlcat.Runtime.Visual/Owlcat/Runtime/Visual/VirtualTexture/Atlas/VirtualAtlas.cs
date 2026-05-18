@@ -48,6 +48,8 @@ public class VirtualAtlas : IDisposable
 
 	private Action m_MaterialsChanged;
 
+	private const int kMinTextureStackDataBufferEntries = 1024;
+
 	public AtlasAllocator AtlasAllocator => m_AtlasAllocator;
 
 	public NativeList<VirtualAtlasEntry> Entries => m_Entries;
@@ -104,6 +106,7 @@ public class VirtualAtlas : IDisposable
 		InitPages();
 		m_MaxMipCountRef = new NativeReference<int>(Allocator.Persistent);
 		UpdateResolution();
+		BuildTextureStackDataBuffer();
 		m_ResolutionChanged = resolutionChangedCallback;
 		m_MaterialsChanged = materialsChangedCallback;
 	}
@@ -247,7 +250,8 @@ public class VirtualAtlas : IDisposable
 		}
 		else
 		{
-			Debug.LogWarning("Material " + material.name + " has " + VirtualTextureUtils.UseOwlcatVT + " tag but doesn't have any TextureStack.", material);
+			Debug.LogWarning("Material " + material.name + " (shader: " + material.shader.name + ") has " + VirtualTextureUtils.UseOwlcatVT + " tag but doesn't have any TextureStack.", material);
+			VirtualTextureUtils.SetVTStackIndicesSentinel(material);
 		}
 	}
 
@@ -398,39 +402,46 @@ public class VirtualAtlas : IDisposable
 
 	private void BuildTextureStackDataBuffer()
 	{
+		int num = math.max(m_AtlasAllocator.Nodes.Length, 1024) * 4;
 		if (m_TextureStackDataBuffer == null)
 		{
-			m_TextureStackDataBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Raw, m_AtlasAllocator.Nodes.Length * 4, 4);
+			m_TextureStackDataBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Raw, num, 4);
+			m_TextureStackDataBuffer.name = "VTTextureStackDataBuffer";
 		}
-		else if (m_TextureStackDataBuffer.count < m_AtlasAllocator.Nodes.Length * 4)
+		else if (m_TextureStackDataBuffer.count < num)
 		{
 			m_TextureStackDataBuffer.Dispose();
-			m_TextureStackDataBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Raw, m_AtlasAllocator.Nodes.Length * 4, 4);
+			m_TextureStackDataBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Raw, num, 4);
+			m_TextureStackDataBuffer.name = "VTTextureStackDataBuffer";
 		}
 		NativeArray<uint> data = new NativeArray<uint>(m_TextureStackDataBuffer.count, Allocator.Temp);
-		Span<VirtualAtlasEntry> span = m_Entries.AsArray().AsSpan();
-		for (int i = 0; i < span.Length; i++)
+		for (int i = 0; i < data.Length / 4; i++)
 		{
-			ref VirtualAtlasEntry reference = ref span[i];
+			data[i * 4 + 2] = 2147418112u;
+		}
+		Span<VirtualAtlasEntry> span = m_Entries.AsArray().AsSpan();
+		for (int j = 0; j < span.Length; j++)
+		{
+			ref VirtualAtlasEntry reference = ref span[j];
 			if (reference.NodeKind == NodeKind.Alloc)
 			{
-				int num = i * 4;
+				int num2 = j * 4;
 				uint4 x = math.asuint(reference.RectInTiles);
 				x = math.min(x, 65535u);
 				uint2 @uint = new uint2(x.x | (x.y << 16), x.z | (x.w << 16));
-				data[num++] = @uint.x;
-				data[num++] = @uint.y;
-				int num2 = reference.MipCount - 1;
-				uint num3 = (uint)(reference.MipBias / 16383f * 32767f + 32767f);
-				uint value = (uint)num2 | (num3 << 16);
-				data[num++] = value;
-				uint num4 = 1u;
+				data[num2++] = @uint.x;
+				data[num2++] = @uint.y;
+				int num3 = reference.MipCount - 1;
+				uint num4 = (uint)(reference.MipBias / 16383f * 32767f + 32767f);
+				uint value = (uint)num3 | (num4 << 16);
+				data[num2++] = value;
+				uint num5 = 1u;
 				if (x.z > 1)
 				{
-					num4 = (uint)((float)x.z / 1.5f);
+					num5 = (uint)((float)x.z / 1.5f);
 				}
-				uint value2 = (uint)reference.LayerCount | (reference.PackedLayerFlags << 4) | (num4 << 16);
-				data[num++] = value2;
+				uint value2 = (uint)reference.LayerCount | (reference.PackedLayerFlags << 4) | (num5 << 16);
+				data[num2++] = value2;
 			}
 		}
 		m_TextureStackDataBuffer.SetData(data);

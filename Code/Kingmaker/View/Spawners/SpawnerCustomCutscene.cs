@@ -24,11 +24,11 @@ namespace Kingmaker.View.Spawners;
 public class SpawnerCustomCutscene : EntityPartComponent<SpawnerCustomCutscene.Part>
 {
 	[OwlPackable(OwlPackableMode.Generate)]
-	public class Part : ViewBasedPart, IUnitInitializer, IAreaActivationHandler, ISubscriber, IHashable, IOwlPackable<Part>
+	public class Part : EntityPartWithConfig, IUnitInitializer, IAreaActivationHandler, ISubscriber, IHashable, IOwlPackable<Part>
 	{
 		private EntityRef<CutscenePlayerData> m_Cutscene;
 
-		public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 		{
 			Name = "Part",
 			OldNames = null,
@@ -81,7 +81,7 @@ public class SpawnerCustomCutscene : EntityPartComponent<SpawnerCustomCutscene.P
 		{
 			if (Source.m_RestartIfAbsent)
 			{
-				EntityRef<AbstractUnitEntity> spawnedUnit = ((UnitSpawnerBase.MyData)base.ConcreteOwner).SpawnedUnit;
+				AbstractUnitEntity spawnedUnit = ((AbstractUnitSpawnerEntity)base.ConcreteOwner).SpawnedUnit;
 				if (spawnedUnit != null)
 				{
 					OnSpawn(spawnedUnit);
@@ -97,7 +97,7 @@ public class SpawnerCustomCutscene : EntityPartComponent<SpawnerCustomCutscene.P
 			return result;
 		}
 
-		public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 		{
 			Part source = new Part();
 			result = Unsafe.As<Part, TPossiblyBase>(ref source);

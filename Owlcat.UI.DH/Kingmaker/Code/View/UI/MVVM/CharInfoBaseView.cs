@@ -1,8 +1,9 @@
-using Assets.Code.View.UI.MVVM;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.UI.MVVM.Common;
 using Owlcat.UI;
 using R3;
+using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.View.UI.MVVM;
@@ -34,6 +35,12 @@ public class CharInfoBaseView : View<CharacterInfoVM>
 	[SerializeField]
 	private GameObject m_HasModifierUpgrade;
 
+	[SerializeField]
+	private OwlcatMultiButton m_ToLevelUpButton;
+
+	[SerializeField]
+	private TextMeshProUGUI m_ToLevelUpButtonText;
+
 	public void Initialize()
 	{
 		m_PartyView.Initialize();
@@ -55,6 +62,12 @@ public class CharInfoBaseView : View<CharacterInfoVM>
 		base.ViewModel.ConvictionsVM.Subscribe(m_Convictions.Bind).AddTo(this);
 		base.ViewModel.CharacteristicsVM.Subscribe(m_Characteristics.Bind).AddTo(this);
 		base.ViewModel.HasModifierUpgrade.Subscribe(m_HasModifierUpgrade.SetActive).AddTo(this);
+		base.ViewModel.PortraitVM.Experience.CanLevelup.Subscribe(m_ToLevelUpButton.gameObject.SetActive);
+		ObservableSubscribeExtensions.Subscribe(m_ToLevelUpButton.OnLeftClickAsObservable(), delegate
+		{
+			base.ViewModel.PortraitVM.Experience.LevelUp();
+		}).AddTo(this);
+		m_ToLevelUpButtonText.text = UIStrings.Instance.CharacterSheet.ToLevelUp;
 	}
 
 	protected override void OnUnbind()

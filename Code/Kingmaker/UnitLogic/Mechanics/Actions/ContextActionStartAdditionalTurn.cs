@@ -5,7 +5,6 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.Mechanics.Facts;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -55,8 +54,8 @@ public class ContextActionStartAdditionalTurn : ContextAction
 		{
 			return;
 		}
-		List<CasterExtraTurnBonus> list = base.Context.MaybeCaster?.Facts.GetComponents<CasterExtraTurnBonus>().ToList() ?? new List<CasterExtraTurnBonus>();
-		if (entity == base.Context.MaybeCaster)
+		List<CasterExtraTurnBonus> list = base.Context.Caster?.Facts.GetComponents<CasterExtraTurnBonus>().ToList() ?? new List<CasterExtraTurnBonus>();
+		if (entity == base.Context.Caster)
 		{
 			list.RemoveAll((CasterExtraTurnBonus p) => p.OnlyIfTargetIsNotOwner);
 		}
@@ -70,13 +69,13 @@ public class ContextActionStartAdditionalTurn : ContextAction
 			num2 += ((num2 > 0) ? list.Sum((CasterExtraTurnBonus p) => p.MovementPointsBonus.Calculate(base.Context)) : 0);
 			combatStateOptional.SetMovementPoints(num2, base.Context);
 		}
-		Game.Instance.Controllers.TurnController.InterruptCurrentTurn(entity, base.Caster, new InterruptionData
+		Game.Instance.Controllers.TurnController.ScheduleInterruptTurn(entity, base.Caster, new InterruptionData
 		{
 			AsExtraTurn = !AsInterruption,
 			RestrictionsOnInterrupt = AbilityRestrictionForInterrupt,
 			WaitForCommandsToFinish = LetCurrentUnitFinishAction
 		});
-		using (base.Context.SetScope(entity.ToITargetWrapper()))
+		using (base.Context.PushTarget(entity))
 		{
 			foreach (CasterExtraTurnBonus item in list)
 			{

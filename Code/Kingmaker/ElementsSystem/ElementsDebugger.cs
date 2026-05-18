@@ -69,7 +69,14 @@ public class ElementsDebugger : ContextData<ElementsDebugger>
 		ElementsDebugger elementsDebugger = ContextData<ElementsDebugger>.Request();
 		elementsDebugger.List = list;
 		elementsDebugger.Element = element;
-		EnterCallback?.Invoke(elementsDebugger);
+		try
+		{
+			EnterCallback?.Invoke(elementsDebugger);
+		}
+		catch (Exception ex)
+		{
+			PFLog.Default.Exception(ex);
+		}
 		return elementsDebugger;
 	}
 
@@ -80,7 +87,14 @@ public class ElementsDebugger : ContextData<ElementsDebugger>
 
 	protected override void Reset()
 	{
-		ExitCallback?.Invoke(this);
+		try
+		{
+			ExitCallback?.Invoke(this);
+		}
+		catch (Exception ex)
+		{
+			PFLog.Default.Exception(ex);
+		}
 		List = null;
 		Element = null;
 		Result = null;

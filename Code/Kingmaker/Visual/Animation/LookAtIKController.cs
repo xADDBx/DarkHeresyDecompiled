@@ -10,11 +10,33 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 {
 	private class LookAtCommandParams
 	{
-		public Vector3? TargetPosition;
-
-		public float TurningSeconds;
+		public readonly float TurningSeconds;
 
 		public float DurationSeconds;
+
+		public IVector3PositionProvider TargetPositionProvider { get; private set; }
+
+		public RotatedBonesSet RotatedBonesSet { get; private set; }
+
+		private LookAtCommandParams(float turningSeconds)
+		{
+			TurningSeconds = turningSeconds;
+		}
+
+		public static LookAtCommandParams StartLookAt(IVector3PositionProvider positionProvider, RotatedBonesSet rotatedBonesSet, float turningSeconds, float durationSeconds)
+		{
+			return new LookAtCommandParams(turningSeconds)
+			{
+				TargetPositionProvider = positionProvider,
+				RotatedBonesSet = rotatedBonesSet,
+				DurationSeconds = durationSeconds
+			};
+		}
+
+		public static LookAtCommandParams StopLookAt(float turningSeconds)
+		{
+			return new LookAtCommandParams(turningSeconds);
+		}
 	}
 
 	private class LookAtCommand
@@ -37,9 +59,9 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 		public void Start(LookAtIKController controller)
 		{
 			IsStarted = true;
-			if (m_Params.TargetPosition.HasValue)
+			if (m_Params.TargetPositionProvider != null)
 			{
-				controller.StartLookAtInternal(m_Params.TargetPosition.Value, m_Params.TurningSeconds);
+				controller.StartLookAtInternal(m_Params.TargetPositionProvider, m_Params.RotatedBonesSet, m_Params.TurningSeconds);
 			}
 			else
 			{
@@ -50,7 +72,7 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 		public void Update(float deltaTime)
 		{
 			m_Time += deltaTime;
-			if (m_Time >= m_Params.TurningSeconds + m_Params.DurationSeconds || (m_Time >= m_Params.TurningSeconds && !m_Params.TargetPosition.HasValue))
+			if (m_Time >= m_Params.TurningSeconds + m_Params.DurationSeconds || (m_Time >= m_Params.TurningSeconds && m_Params.TargetPositionProvider == null))
 			{
 				IsFinished = true;
 			}
@@ -63,7 +85,7 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 
 	private const float Epsilon = 0.0001f;
 
-	public static Vector3 EyeShift = Vector3.up * 1.7f;
+	public static readonly Vector3 EyeShift = Vector3.up * 1.7f;
 
 	private LookAtIK m_LookAtIK;
 
@@ -73,11 +95,9 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 
 	private float m_TurningSeconds;
 
-	private Vector3 m_InitialPosition;
-
-	private Vector3 m_TargetPosition;
-
 	private Vector3 m_PositionVelocityRef;
+
+	private IVector3PositionProvider m_TargetPositionProvider;
 
 	private float m_InitialWeight;
 
@@ -95,59 +115,37 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 	{
 		m_LookAtIK = base.gameObject.GetComponent<LookAtIK>();
 		m_LookAtIK.solver.IKPositionWeight = 0f;
+		m_LookAtIK.fixTransforms = false;
 		m_TargetWeight = 0f;
 		SetUpBones();
 	}
 
-	public void StartLookAt(Vector3 position, float turningSeconds = 0.3f, float durationSeconds = 0f)
+	public void PushLookAtCommand(IVector3PositionProvider positionProvider, RotatedBonesSet rotatedBonesSet = RotatedBonesSet.HeadAndSpine, float turningSeconds = 0.3f, float durationSeconds = 0f)
 	{
 		if (!(m_LookAtIK == null))
 		{
-			m_CommandsQueue.Enqueue(new LookAtCommandParams
-			{
-				TargetPosition = position,
-				TurningSeconds = turningSeconds,
-				DurationSeconds = durationSeconds
-			});
+			m_CommandsQueue.Enqueue(LookAtCommandParams.StartLookAt(positionProvider, rotatedBonesSet, turningSeconds, durationSeconds));
 		}
 	}
 
-	public void StopLookAt(float turningSeconds = 0.3f)
-	{
-		if (!(m_LookAtIK == null) && m_LookAtIK.solver.IKPositionWeight != 0f)
-		{
-			m_CommandsQueue.Enqueue(new LookAtCommandParams
-			{
-				TargetPosition = null,
-				TurningSeconds = turningSeconds
-			});
-		}
-	}
-
-	private void StartLookAtInternal(Vector3 position, float turningDurationSeconds)
+	public void PushResetCommand(float turningSeconds = 0.3f)
 	{
 		if (!(m_LookAtIK == null))
 		{
-			m_InitialWeight = m_LookAtIK.solver.IKPositionWeight;
-			m_InitialPosition = m_LookAtIK.solver.IKPosition;
-			m_TargetPosition = position;
-			m_TurningSeconds = turningDurationSeconds;
-			m_TargetWeight = 1f;
-			m_TimeSinceTurnStart = 0f;
-			IKComponentsManager.Instance.RegisterComponent(this);
+			m_CommandsQueue.Enqueue(LookAtCommandParams.StopLookAt(turningSeconds));
 		}
 	}
 
-	private void StopLookAtInternal(float fadingDurationSeconds)
+	public void LookAtImmediately(IVector3PositionProvider positionProvider, RotatedBonesSet rotatedBonesSet = RotatedBonesSet.HeadAndSpine, float turningSeconds = 0.3f, float durationSeconds = 0f)
 	{
-		if (!(m_LookAtIK == null) && m_LookAtIK.solver.IKPositionWeight != 0f)
-		{
-			m_InitialWeight = m_LookAtIK.solver.IKPositionWeight;
-			m_InitialPosition = m_LookAtIK.solver.IKPosition;
-			m_TurningSeconds = fadingDurationSeconds;
-			m_TargetWeight = 0f;
-			m_TimeSinceTurnStart = 0f;
-		}
+		CancelAll();
+		PushLookAtCommand(positionProvider, rotatedBonesSet, turningSeconds, durationSeconds);
+	}
+
+	public void ResetImmediately(float turningSeconds = 0.3f)
+	{
+		CancelAll();
+		PushResetCommand(turningSeconds);
 	}
 
 	public bool IsLookingAt(Vector3 position)
@@ -163,6 +161,52 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 		return false;
 	}
 
+	public bool HasCommandToProcess()
+	{
+		if (m_CurrentCommand == null)
+		{
+			return m_CommandsQueue.Count > 0;
+		}
+		return true;
+	}
+
+	public void DisableIKAiming()
+	{
+		m_TargetWeight = 0f;
+		m_LookAtIK.solver.IKPositionWeight = 0f;
+		IKComponentsManager.Instance.UnregisterComponent(this);
+	}
+
+	private void StartLookAtInternal(IVector3PositionProvider positionProvider, RotatedBonesSet rotatedBonesSet, float turningDurationSeconds)
+	{
+		if (!(m_LookAtIK == null))
+		{
+			m_InitialWeight = m_LookAtIK.solver.IKPositionWeight;
+			m_TargetPositionProvider = new ClampedToSphereSegmentPositionProvider(base.gameObject.transform, m_LookAtIK.solver.head.transform, 80f, positionProvider);
+			m_TurningSeconds = turningDurationSeconds;
+			m_TargetWeight = 1f;
+			m_TimeSinceTurnStart = 0f;
+			m_PositionVelocityRef = Vector3.zero;
+			m_LookAtIK.solver.headWeight = 1f;
+			IKSolverLookAt solver = m_LookAtIK.solver;
+			float bodyWeight = ((rotatedBonesSet != RotatedBonesSet.OnlyHead) ? 0.5f : 0f);
+			solver.bodyWeight = bodyWeight;
+			IKComponentsManager.Instance.RegisterComponent(this);
+		}
+	}
+
+	private void StopLookAtInternal(float fadingDurationSeconds)
+	{
+		if (!(m_LookAtIK == null) && m_LookAtIK.solver.IKPositionWeight != 0f)
+		{
+			m_InitialWeight = m_LookAtIK.solver.IKPositionWeight;
+			m_TurningSeconds = fadingDurationSeconds;
+			m_TargetWeight = 0f;
+			m_TimeSinceTurnStart = 0f;
+			m_PositionVelocityRef = Vector3.zero;
+		}
+	}
+
 	private void Update()
 	{
 		LookAtCommand nextCommand = GetNextCommand();
@@ -174,7 +218,7 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 		else if (m_LookAtIK.solver.IKPositionWeight != 0f && m_ResetAfterCommandFinished)
 		{
 			m_ResetAfterCommandFinished = false;
-			StopLookAt();
+			PushResetCommand();
 		}
 	}
 
@@ -202,7 +246,7 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 
 	void IIKComponent.DoLateUpdate()
 	{
-		if (!Mathf.Approximately(m_LookAtIK.solver.IKPositionWeight, m_TargetWeight) || !((m_LookAtIK.solver.IKPosition - m_TargetPosition).sqrMagnitude < 0.0001f))
+		if (!Mathf.Approximately(m_LookAtIK.solver.IKPositionWeight, m_TargetWeight) || !((m_LookAtIK.solver.IKPosition - m_TargetPositionProvider.Position).sqrMagnitude < 0.0001f))
 		{
 			float t = ((m_TimeSinceTurnStart < m_TurningSeconds) ? (m_TimeSinceTurnStart / m_TurningSeconds) : 1f);
 			InterpolateTargetPosition(t);
@@ -216,16 +260,15 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 
 	private void InterpolateTargetPosition(float t)
 	{
-		if (!((m_LookAtIK.solver.IKPosition - m_TargetPosition).sqrMagnitude < 0.0001f))
+		if (!((m_LookAtIK.solver.IKPosition - m_TargetPositionProvider.Position).sqrMagnitude < 0.0001f))
 		{
 			if (m_TargetWeight < 0.5f)
 			{
-				m_InitialPosition = m_TargetPosition;
-				m_LookAtIK.solver.IKPosition = m_TargetPosition;
+				m_LookAtIK.solver.IKPosition = m_TargetPositionProvider.Position;
 			}
 			else
 			{
-				m_LookAtIK.solver.IKPosition = Vector3.Slerp(m_InitialPosition, m_TargetPosition, t);
+				m_LookAtIK.solver.IKPosition = Vector3.SmoothDamp(m_LookAtIK.solver.IKPosition, m_TargetPositionProvider.Position, ref m_PositionVelocityRef, m_TurningSeconds * 0.5f);
 			}
 		}
 	}
@@ -233,13 +276,6 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 	private void InterpolateWeight(float t)
 	{
 		m_LookAtIK.solver.IKPositionWeight = Mathf.Lerp(m_InitialWeight, m_TargetWeight, t);
-	}
-
-	public void DisableIKAiming()
-	{
-		m_TargetWeight = 0f;
-		m_LookAtIK.solver.IKPositionWeight = 0f;
-		IKComponentsManager.Instance.UnregisterComponent(this);
 	}
 
 	private void SetUpBones()
@@ -256,5 +292,11 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 	private Transform GetBoneTransform(string boneName)
 	{
 		return base.gameObject.GetComponentsInChildren<Transform>().FindOrDefault((Transform t) => t.name == boneName);
+	}
+
+	private void CancelAll()
+	{
+		m_CommandsQueue.Clear();
+		m_CurrentCommand = null;
 	}
 }

@@ -187,53 +187,146 @@ public static class InitiativeHelper
 
 	private static void TryForceInitiativeOrder(List<MechanicEntity> entities)
 	{
-		IEnumerable<MechanicEntity> firstOrder = GetFirstOrder(entities);
-		IEnumerable<MechanicEntity> lastOrder = GetLastOrder(entities);
-		if (firstOrder.Empty() && lastOrder.Empty())
+		ApplyEtudeForceInitiativeOverrides(entities);
+		CollectPersistentOverrideEntities(entities);
+		List<MechanicEntity> entitiesWithOverrides = (from e in entities
+			where e.Initiative.Override != null
+			orderby e.Initiative.Override.InnerPriority descending
+			select e).ToList();
+		if (entitiesWithOverrides.Empty())
 		{
 			return;
 		}
-		foreach (MechanicEntity entity in entities)
+		List<MechanicEntity> calculatedUnits = (from unit in Game.Instance.Controllers.TurnController.AllUnits
+			where unit.IsInCombat && !entitiesWithOverrides.Contains(unit)
+			select unit into u
+			orderby u.Initiative.Roll descending
+			select u).ToList();
+		int i = 0;
+		int num = 0;
+		while (!entitiesWithOverrides.Empty())
 		{
-			int num = firstOrder.IndexOf(entity);
-			if (num != -1)
+			MechanicEntity mechanicEntity = entitiesWithOverrides[i];
+			MechanicEntity mechanicEntity2 = null;
+			int num2;
+			if (mechanicEntity.Initiative.Override.PercentPosition < 0)
 			{
-				entity.Initiative.Roll = 15762825 - num * 100;
+				mechanicEntity2 = mechanicEntity.Initiative.Override.FollowEntity ?? mechanicEntity.Initiative.Override.UnitEvaluator.GetValue();
+				if (mechanicEntity2 == null || !mechanicEntity2.IsInCombat)
+				{
+					MoveToCalculated(mechanicEntity);
+					num = 0;
+					continue;
+				}
+				if (entitiesWithOverrides.Contains(mechanicEntity2))
+				{
+					if (++num >= entitiesWithOverrides.Count)
+					{
+						mechanicEntity.Initiative.Roll = 15762825 - 100 * mechanicEntity.Initiative.Override.InnerPriority;
+						MoveToCalculated(mechanicEntity);
+						num = 0;
+					}
+					else
+					{
+						i = (i + 1) % entitiesWithOverrides.Count;
+					}
+					continue;
+				}
+				num2 = calculatedUnits.IndexOf(mechanicEntity2);
+			}
+			else
+			{
+				num2 = calculatedUnits.Count * mechanicEntity.Initiative.Override.PercentPosition / 100 - 1;
+				if (num2 == -1)
+				{
+					mechanicEntity.Initiative.Roll = 15762825 - 100 * mechanicEntity.Initiative.Override.InnerPriority - mechanicEntity.Initiative.Override.PercentPosition;
+					MoveToCalculated(mechanicEntity);
+					num = 0;
+					continue;
+				}
+				mechanicEntity2 = calculatedUnits[num2];
+			}
+			num = 0;
+			if (num2 == calculatedUnits.Count - 1)
+			{
+				mechanicEntity.Initiative.Roll = mechanicEntity2.Initiative.Roll / 2f;
+			}
+			else
+			{
+				mechanicEntity.Initiative.Roll = (mechanicEntity2.Initiative.Roll + calculatedUnits[num2 + 1].Initiative.Roll) / 2f;
+			}
+			MoveToCalculated(mechanicEntity);
+		}
+		void MoveToCalculated(MechanicEntity e)
+		{
+			entitiesWithOverrides.RemoveAt(i);
+			calculatedUnits.Add(e);
+			calculatedUnits.Sort((MechanicEntity u1, MechanicEntity u2) => u2.Initiative.Roll.CompareTo(u1.Initiative.Roll));
+			if (i >= entitiesWithOverrides.Count)
+			{
+				i = 0;
+			}
+		}
+	}
+
+	private static void ApplyEtudeForceInitiativeOverrides(List<MechanicEntity> entities)
+	{
+		List<BaseUnitEntity> list = EtudeBracketForceInitiativeOrder.GetOrderOptional()?.ToList();
+		if (list == null || list.Count == 0 || Game.Instance.Controllers.TurnController.CombatRound != 0)
+		{
+			return;
+		}
+		MechanicEntity mechanicEntity = null;
+		foreach (BaseUnitEntity item in list)
+		{
+			MechanicEntity mechanicEntity2 = item;
+			if (mechanicEntity2 == null || !mechanicEntity2.IsInCombat || !entities.Contains(mechanicEntity2))
+			{
+				MechanicEntity mechanicEntity3 = item;
+				if (mechanicEntity3 != null && mechanicEntity3.IsInCombat)
+				{
+					mechanicEntity = mechanicEntity3;
+				}
 				continue;
 			}
-			num = lastOrder.IndexOf(entity);
-			if (num != -1)
+			if (mechanicEntity != null)
 			{
-				entity.Initiative.Roll = 1 + num;
+				mechanicEntity2.Initiative.Overrides.Add(new InitiativeOverride
+				{
+					InnerPriority = 100,
+					PercentPosition = -1,
+					FollowEntity = mechanicEntity,
+					EtudeEnforcement = true
+				});
+			}
+			else
+			{
+				mechanicEntity2.Initiative.Overrides.Add(new InitiativeOverride
+				{
+					InnerPriority = 100,
+					PercentPosition = 0,
+					EtudeEnforcement = true
+				});
+			}
+			mechanicEntity = mechanicEntity2;
+		}
+	}
+
+	private static void CollectPersistentOverrideEntities(List<MechanicEntity> entities)
+	{
+		foreach (MechanicEntity allUnit in Game.Instance.Controllers.TurnController.AllUnits)
+		{
+			if (allUnit.IsInCombat && !entities.Contains(allUnit))
+			{
+				InitiativeOverride @override = allUnit.Initiative.Override;
+				if (@override != null && @override.Persistent)
+				{
+					allUnit.Initiative.Clear();
+					RollInitiative(allUnit);
+					entities.Add(allUnit);
+				}
 			}
 		}
-		int num2 = lastOrder.Count();
-		if (num2 == 0)
-		{
-			return;
-		}
-		foreach (MechanicEntity item in Game.Instance.Controllers.TurnController.AllUnits.Where((MechanicEntity u) => !entities.Contains(u) && u.IsInCombat))
-		{
-			item.Initiative.Value += num2;
-		}
-	}
-
-	private static IEnumerable<MechanicEntity> GetFirstOrder(List<MechanicEntity> entities)
-	{
-		if (EtudeBracketForceInitiativeOrder.GetOrderOptional() == null)
-		{
-			return entities.Where((MechanicEntity x) => (bool)x.Features.IsFirstInFight && x.IsInPlayerParty).Concat(entities.Where((MechanicEntity x) => (bool)x.Features.IsFirstInFight && !x.IsInPlayerParty));
-		}
-		return EtudeBracketForceInitiativeOrder.GetOrderOptional();
-	}
-
-	private static IEnumerable<MechanicEntity> GetLastOrder(List<MechanicEntity> entities)
-	{
-		if (EtudeBracketForceInitiativeOrder.GetOrderOptional() == null)
-		{
-			return entities.Where((MechanicEntity x) => (bool)x.Features.IsLastInFight && x.IsInPlayerParty).Concat(entities.Where((MechanicEntity x) => (bool)x.Features.IsLastInFight && !x.IsInPlayerParty));
-		}
-		return EtudeBracketForceInitiativeOrder.GetOrderOptional();
 	}
 
 	private static void ApplyInitiative(MechanicEntity entity)

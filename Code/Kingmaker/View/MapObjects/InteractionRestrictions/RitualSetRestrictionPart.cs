@@ -11,7 +11,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class RitualSetRestrictionPart : NeedItemRestrictionPart<RitualSetRestrictionSettings>, IHashable, IOwlPackable<RitualSetRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "RitualSetRestrictionPart",
 		OldNames = null,
@@ -70,7 +70,7 @@ public class RitualSetRestrictionPart : NeedItemRestrictionPart<RitualSetRestric
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		RitualSetRestrictionPart source = new RitualSetRestrictionPart();
 		result = Unsafe.As<RitualSetRestrictionPart, TPossiblyBase>(ref source);

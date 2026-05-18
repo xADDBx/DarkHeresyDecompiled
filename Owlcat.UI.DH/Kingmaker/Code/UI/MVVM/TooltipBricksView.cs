@@ -1,167 +1,192 @@
 using Code.View.UI.MVVM.Tooltip.Bricks;
-using Code.View.UI.MVVM.Tooltip.Bricks.Items;
 using Kingmaker.Code.UI.MVVM.View;
-using Kingmaker.UI.MVVM.View.Tooltip.PC.Bricks;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipBricksView : MonoBehaviour
 {
-	public TooltipBrickTextView BrickTextView;
+	[Header("Text")]
+	public BrickTitleView BrickTitleView;
 
-	public TooltipBrickSeparatorView BrickSeparatorView;
+	public BrickTextView BrickTextView;
 
-	public TooltipBrickSpaceView BrickSpaceView;
+	public BrickMultipleTextView BrickMultipleTextView;
 
-	public TooltipBrickTitleView BrickTitleView;
+	[Header("Space and separators")]
+	public BrickSeparatorView BrickSeparatorView;
 
-	public TooltipBrickPictureView BrickPictureView;
+	public BrickSpaceView BrickSpaceView;
 
-	public TooltipBrickIconAndNameView BrickIconAndNameView;
+	[Header("Features")]
+	public BrickFeatureView BrickFeatureView;
 
-	public TooltipBrickFactionStatusView FactionStatusView;
+	public BrickFeatureHeaderView BrickFeatureHeaderView;
 
-	public TooltipBrickDoubleTextView BrickDoubleTextView;
+	public BrickFeatureShortDescriptionView BrickFeatureShortDescriptionView;
 
-	public TooltipBrickTripleTextView BrickTripleTextView;
+	public BrickPortraitFeaturesView BrickPortraitFeaturesView;
 
-	public TooltipBrickIconValueStatView BrickIconValueStatView;
+	[Header("Values")]
+	public BrickIconAndNameView BrickIconAndNameView;
 
-	public TooltipBrickIconStatValueView BrickIconStatValueView;
+	public BrickIconValueStatView BrickIconValueStatView;
 
-	public TooltipBrickTwoColumnsStatView BrickTwoColumnsStatView;
+	public BrickIconStatValueView BrickIconStatValueView;
 
-	public TooltipBrickValueStatFormulaView BrickValueStatFormulaView;
+	public BrickTwoColumnsStatView BrickTwoColumnsStatView;
 
-	public TooltipBrickTimerView BrickTimerView;
+	public BrickValueStatFormulaView BrickValueStatFormulaView;
 
-	public TooltipBrickFeatureView BrickFeatureView;
+	[Header("Buffs")]
+	public BrickBuffView BrickBuffView;
 
-	public TooltipBrickFeatureHeaderView BrickFeatureHeaderView;
+	public BrickBuffDOTView BrickBuffDOTView;
 
-	public TooltipBrickBuffView BrickBuffView;
+	public BrickBuffGroupsView BrickBuffGroupsView;
 
-	public TooltipBrickBuffDOTView BrickBuffDOTView;
+	[Header("Layout")]
+	public BrickGroupOneColumnView BrickGroupOneColumnView;
 
-	public TooltipBrickWeaponDOTInitialDamageView BrickWeaponDOTInitialDamageView;
+	public BrickGroupTwoColumnsView BrickGroupTwoColumnsView;
 
-	public TooltipBrickItemFooterView BrickItemFooterView;
+	[Header("Specials")]
+	public BrickFactionStatusView BrickFactionStatusView;
 
-	public TooltipBrickAbilityScoresView BrickAbilityScoresView;
+	public BrickAbilityScoresView BrickAbilityScoresView;
 
-	public TooltipBrickPortraitAndNameView BrickPortraitAndNameView;
+	[Header("Pictures")]
+	public BrickPictureView BrickPictureView;
 
-	public TooltipBrickItemIconAndNameView BrickItemIconAndNameView;
-
-	public TooltipBrickPFIconAndNameView BrickPFIconAndNameView;
-
-	public TooltipBrickButtonView BrickButtonView;
-
-	public TooltipBrickHistoryManagementView BrickHistoryManagementView;
-
-	public TooltipBrickNonStackView BrickNonStackView;
-
-	public TooltipBrickPrerequisiteView BrickPrerequisiteView;
-
-	public TooltipBrickRateView BrickRateView;
-
-	public TooltipBrickFeatureShortDescriptionView BrickFeatureShortDescriptionView;
-
-	public TooltipBrickAbilityScoresBlockView BrickAbilityScoresBlockView;
-
-	public TooltipBrickAbilityTargetView BrickAbilityTargetView;
-
-	public TooltipBrickHintView BrickHintView;
-
-	public TooltipBrickUnifiedStatusView UnifiedStatusView;
-
-	public TooltipBrickIconPatternView IconPatternView;
-
-	public TooltipBricksGroupView BricksGroupView;
-
-	public TooltipBrickPortraitFeaturesView PortraitFeaturesView;
-
-	public TooltipBrickSliderView SliderView;
-
-	public TooltipBrickWeaponSetView WeaponSetView;
-
-	public TooltipBrickEventsView EventsView;
-
-	public TooltipBrickIconAndTextWithCustomColorsView IconAndTextWithCustomColorsView;
-
-	public TooltipBrickWidgetView BrickWidgetView;
-
-	public TooltipBrickCalculatedFormulaView CalculatedFormulaView;
-
-	public TooltipBrickTitleWithIconView BrickTitleWithIconView;
-
-	public TooltipBrickRankEntrySelectionView BrickRankEntrySelectionView;
-
-	public TooltipBrickTextBackgroundView BrickTextBackgroundView;
-
-	public TooltipBrickAttributeView BrickAttributeView;
-
-	public TooltipBrickExchangeView BrickExchangeView;
-
-	public TooltipBrickCantUseView BrickCantUseView;
-
-	public TooltipBrickCaseItemView BrickCaseItemView;
-
-	public TooltipBrickSettingsTextView BrickSettingsTextView;
-
-	public TooltipBrickImageView BrickImageView;
+	public BrickImageView BrickImageView;
 
 	[Header("Level Up")]
-	public TooltipBrickLevelUpHeaderView BrickLevelUpHeaderView;
+	public BrickLevelUpHeaderView BrickLevelUpHeaderView;
 
-	public TooltipBrickLevelUpTitledValueStatGroupView BrickLevelUpTitledValueStatGroupView;
+	public BrickLevelUpTitledValueStatGroupView BrickLevelUpTitledValueStatGroupView;
 
-	public TooltipBrickLevelUpStatProgressionView BrickLevelUpStatProgressionView;
+	public BrickLevelUpStatProgressionView BrickLevelUpStatProgressionView;
 
-	public TooltipBrickLevelUpSkillcheckBonusView BrickLevelUpSkillcheckBonusView;
+	public BrickLevelUpSkillcheckBonusView BrickLevelUpSkillcheckBonusView;
 
-	public TooltipBrickLevelUpFittingAbilitiesView BrickLevelpFittingAbilitiesView;
+	public BrickLevelUpRelatedSkillsView BrickLevelUpRelatedSkillsView;
 
-	public TooltipBrickLevelUpAbilityUpgradeDescriptionView BrickLevelUpAbilityUpgradeDescriptionView;
+	public BrickLevelUpFittingAbilitiesView BrickLevelupFittingAbilitiesView;
 
-	public TooltipBrickLevelUpFeatureView BrickLevelUpFeatureView;
+	public BrickLevelUpAbilityUpgradeDescriptionView BrickLevelUpAbilityUpgradeDescriptionView;
+
+	public BrickLevelUpFeatureView BrickLevelUpFeatureView;
 
 	[Header("Items")]
-	public TooltipBrickItemHeaderView BrickItemHeaderView;
+	public BrickItemHeaderView BrickItemHeaderView;
 
-	public TooltipBrickEntityHeaderView BrickEntityHeaderView;
+	public BrickEntityHeaderView BrickEntityHeaderView;
 
-	public TooltipBrickWeaponHeaderView BrickWeaponHeaderView;
+	public BrickWeaponHeaderView BrickWeaponHeaderView;
 
-	public TooltipBrickArmourHeaderView BrickArmourHeaderView;
+	public BrickArmourHeaderView BrickArmourHeaderView;
 
-	public TooltipBrickItemRestrictionView BrickItemRestrictionView;
+	public BrickItemRestrictionView BrickItemRestrictionView;
 
-	public TooltipBrickTagDescriptionView BrickTagDescriptionView;
+	public BrickTagDescriptionView BrickTagDescriptionView;
+
+	public BrickItemCostView BrickItemCostView;
+
+	[Header("Chargen")]
+	public BrickHomeworldTitleView BrickHomeworldTitleView;
+
+	public BrickCareerTitleView BrickCareerTitleView;
+
+	public BrickOriginTitleView BrickOriginTitleView;
+
+	public BrickChargenStatTitleView BrickChargenStatTitleView;
+
+	public BrickChargenSectionTitleView BrickChargenSectionTitleView;
+
+	public BrickHomeworldInfoView BrickHomeworldInfoView;
+
+	public BrickChargenArchetypeInfoBlockView BrickChargenArchetypeInfoBlockView;
+
+	public BrickChargenDividerTextLineView BrickChargenDividerTextLineView;
 
 	[Header("Combat Log")]
-	public TooltipBrickChanceView BrickChanceView;
+	public BrickChanceView BrickChanceView;
 
-	public TooltipBrickShotDeviationView BrickShotDeviationView;
+	public BrickShotDeviationView BrickShotDeviationView;
 
-	public TooltipBrickShotDeviationWithNameView BrickShotDeviationWithNameView;
+	public BrickShotDeviationWithNameView BrickShotDeviationWithNameView;
 
-	public TooltipBrickIconTextView BrickIconTextView;
+	public BrickIconTextView BrickIconTextView;
 
-	public TooltipBrickIconTextValueView BrickIconTextValueView;
+	public BrickIconTextValueView BrickIconTextValueView;
 
-	public TooltipBrickTextValueView BrickTextValueView;
+	public BrickTextValueView BrickTextValueView;
 
-	public TooltipBrickTextSignatureValueView BrickTextSignatureValueView;
+	public BrickTextSignatureValueView BrickTextSignatureValueView;
 
-	public TooltipBrickDamageRangeView BrickDamageRangeView;
+	public BrickDamageRangeView BrickDamageRangeView;
 
-	public TooltipBrickMinimalAdmissibleDamageView BrickMinimalAdmissibleDamageView;
+	public BrickMinimalAdmissibleDamageView BrickMinimalAdmissibleDamageView;
 
-	public TooltipBrickTriggeredAutoView BrickTriggeredAutoView;
+	public BrickTriggeredAutoView BrickTriggeredAutoView;
 
-	public TooltipBrickDamageNullifierView BrickDamageNullifierView;
+	public BrickDamageNullifierView BrickDamageNullifierView;
 
-	public TooltipBrickNestedMessageView BrickNestedMessageView;
+	public BrickNestedMessageView BrickNestedMessageView;
+
+	[Header("Other")]
+	public BrickWeaponDOTInitialDamageView BrickWeaponDOTInitialDamageView;
+
+	public BrickPortraitAndNameView BrickPortraitAndNameView;
+
+	public BrickItemIconAndNameView BrickItemIconAndNameView;
+
+	public BrickButtonView BrickButtonView;
+
+	public BrickHistoryManagementView BrickHistoryManagementView;
+
+	public BrickNonStackView BrickNonStackView;
+
+	public BrickPrerequisiteView BrickPrerequisiteView;
+
+	public BrickAbilityScoresBlockView BrickAbilityScoresBlockView;
+
+	public BrickHintView BrickHintView;
+
+	public BrickUnifiedStatusView BrickUnifiedStatusView;
+
+	public BrickIconPatternView BrickIconPatternView;
+
+	public BrickSliderView BrickSliderView;
+
+	public BrickWeaponSetView BrickWeaponSetView;
+
+	public BrickWidgetView BrickWidgetView;
+
+	public BrickTitleWithIconView BrickTitleWithIconView;
+
+	public BrickRankEntrySelectionView BrickRankEntrySelectionView;
+
+	public BrickTextBackgroundView BrickTextBackgroundView;
+
+	public BrickAttributeView BrickAttributeView;
+
+	public BrickExchangeView BrickExchangeView;
+
+	public BrickCaseItemView BrickCaseItemView;
+
+	public BrickSettingsTextView BrickSettingsTextView;
+
+	public BrickSegmentedProgressBarView BrickSegmentedProgressBarView;
+
+	[Header("Abilities")]
+	public BrickAbilityHeaderView BrickAbilityHeaderView;
+
+	public BrickAbilityPatternView BrickAbilityPatternView;
+
+	public BrickAbilityWeaponDamageView BrickAbilityWeaponDamageView;
+
+	public BrickAbilityWeaponStatView BrickAbilityWeaponStatView;
+
+	public BrickAbilityModifiersView BrickAbilityModifiersView;
 }

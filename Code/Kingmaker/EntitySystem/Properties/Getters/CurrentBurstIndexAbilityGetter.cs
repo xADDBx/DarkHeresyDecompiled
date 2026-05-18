@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Owlcat.Runtime.Core.Utility;
@@ -19,7 +20,7 @@ public class CurrentBurstIndexAbilityGetter : IntPropertyGetter, PropertyContext
 
 	protected override int GetBaseValue()
 	{
-		RulebookEvent rule = this.GetRule();
+		RulebookEvent rule = EvalContext.Current.Rule;
 		if (rule is RuleCalculateHitChances ruleCalculateHitChances)
 		{
 			return ruleCalculateHitChances.BurstIndex;

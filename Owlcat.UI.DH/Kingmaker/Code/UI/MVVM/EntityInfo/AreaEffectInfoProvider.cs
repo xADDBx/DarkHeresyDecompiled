@@ -2,21 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Code.Enums;
-using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Gameplay.Features.AreaEffects;
 using Kingmaker.Localization;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
+using Kingmaker.UnitLogic.Abilities.Blueprints;
+using Kingmaker.UnitLogic.Abilities.Components.AreaEffects;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Actions;
-using Kingmaker.Utility.DotNetExtensions;
 using Pathfinding;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.EntityInfo;
 
-public class AreaEffectInfoProvider : IEntityInfoProvider<GridNodeBase>
+public class AreaEffectInfoProvider : IEntityInfoProvider<NodeInfo>
 {
 	private readonly AreaEffectEventType[] m_EventTypes;
 
@@ -24,28 +26,36 @@ public class AreaEffectInfoProvider : IEntityInfoProvider<GridNodeBase>
 
 	private readonly UIStrings m_UIStrings;
 
-	private readonly UIIcons m_UIIcons;
-
-	public AreaEffectInfoProvider(UIStrings uiStrings, UIIcons uiIcons)
+	public AreaEffectInfoProvider(UIStrings uiStrings)
 	{
 		m_UIStrings = uiStrings;
-		m_UIIcons = uiIcons;
 		m_DescriptionsCached = new List<IEntityInfoDescription>();
 		m_EventTypes = Enum.GetValues(typeof(AreaEffectEventType)).OfType<AreaEffectEventType>().ToArray();
 	}
 
-	public bool TryGetEntityInfo(GridNodeBase node, out IEntityInfo entityInfo)
+	public bool TryGetEntityInfo(NodeInfo info, out IEntityInfo entityInfo)
 	{
-		if (node == null)
+		if (!TryGetAreaEffects(info, out var effectEntities))
 		{
 			entityInfo = null;
 			return false;
 		}
-		FilteredList<AreaEffectEntity> areaEffects = node.GetAreaEffects();
 		m_DescriptionsCached.Clear();
-		foreach (AreaEffectEntity item in areaEffects)
+		(string, Color?, int) tuple = (null, null, int.MinValue);
+		foreach (AreaEffectEntity item in effectEntities)
 		{
-			ProcessEffectDescription(item.GetEffectDescription());
+			AreaEffectUISettings component = item.Blueprint.GetComponent<AreaEffectUISettings>();
+			ProcessTextDescription(item.Blueprint, component);
+			ProcessMechanicsDescription(item.GetEffectDescription());
+			string name = item.Blueprint.Name;
+			if (!string.IsNullOrEmpty(name))
+			{
+				int num = component?.QuickInspectSettings.GetPriority() ?? int.MinValue;
+				if (string.IsNullOrEmpty(tuple.Item1) || num > tuple.Item3)
+				{
+					tuple = (name, component?.QuickInspectSettings.GetNameColor(), num);
+				}
+			}
 		}
 		if (m_DescriptionsCached.Count < 1)
 		{
@@ -54,13 +64,48 @@ public class AreaEffectInfoProvider : IEntityInfoProvider<GridNodeBase>
 		}
 		entityInfo = new AreaEffectEntityInfo
 		{
+			Name = (tuple.Item1 ?? ((string)m_UIStrings.AreaEffectInfoTexts.InfoTitle)),
+			NameColor = tuple.Item2,
 			Descriptions = m_DescriptionsCached,
-			WorldPosition = node.Vector3Position()
+			WorldPosition = info.Node.Vector3Position()
 		};
 		return true;
 	}
 
-	private void ProcessEffectDescription(AreaEffectDescription effectDescription)
+	private bool TryGetAreaEffects(NodeInfo info, out IEnumerable<AreaEffectEntity> effectEntities)
+	{
+		if (!info.IsTurnBasedMode)
+		{
+			effectEntities = null;
+			return false;
+		}
+		if (info.IsHighlighted)
+		{
+			effectEntities = info.Node.GetAreaEffects();
+			return effectEntities.Any();
+		}
+		effectEntities = info.Node.GetAreaEffects(IsForceShow);
+		return effectEntities.Any();
+		static bool IsForceShow(AreaEffectEntity entity)
+		{
+			return entity.Blueprint.GetComponent<AreaEffectUISettings>()?.QuickInspectSettings.ForceShow ?? false;
+		}
+	}
+
+	private void ProcessTextDescription(BlueprintAreaEffect blueprint, AreaEffectUISettings uiSettings)
+	{
+		if (!string.IsNullOrEmpty(blueprint.Description))
+		{
+			m_DescriptionsCached.Add(new AreaEffectInfoEntry
+			{
+				Icon = uiSettings?.QuickInspectSettings.GetDescriptionIcon(),
+				Text = blueprint.Description,
+				Color = uiSettings?.QuickInspectSettings.GetDescriptionColor()
+			});
+		}
+	}
+
+	private void ProcessMechanicsDescription(AreaEffectDescription effectDescription)
 	{
 		AreaEffectEventType[] eventTypes = m_EventTypes;
 		foreach (AreaEffectEventType areaEffectEventType in eventTypes)

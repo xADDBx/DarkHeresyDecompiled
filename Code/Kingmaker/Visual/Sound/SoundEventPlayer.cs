@@ -3,11 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Properties;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Sound.Base;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.View.Mechanics;
@@ -45,29 +45,29 @@ public static class SoundEventPlayer
 		}
 	}
 
-	public static void Play([NotNull] ISoundSettingsProvider soundProvider, [NotNull] MechanicsContext context, AbilityEventType eventType)
+	public static void Play([NotNull] ISoundSettingsProvider soundProvider, [NotNull] IEvalContext context, AbilityEventType eventType)
 	{
 		IEnumerable<ISoundSettings> sounds = soundProvider.GetSounds(eventType);
-		if (sounds == null || context.MaybeCaster == null)
+		if (sounds == null || context.Caster == null)
 		{
 			return;
 		}
 		foreach (ISoundSettings item in sounds)
 		{
 			ISoundSettings effect = item;
-			GameObject targetObject = GetSoundTarget(context.MaybeCaster, context.ClickedTarget, effect.Target);
+			GameObject targetObject = GetSoundTarget(context.Caster, context.ClickedTarget, effect.Target);
 			if (effect.Settings.Delay > 0f)
 			{
 				MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(PlaySoundDelayed());
 			}
 			else
 			{
-				PlaySoundNow(effect, context.MaybeCaster, targetObject);
+				PlaySoundNow(effect, context.Caster, targetObject);
 			}
 			IEnumerator PlaySoundDelayed()
 			{
 				yield return new WaitForSeconds(effect.Settings.Delay);
-				PlaySoundNow(effect, context.MaybeCaster, targetObject);
+				PlaySoundNow(effect, context.Caster, targetObject);
 			}
 		}
 	}
@@ -123,7 +123,7 @@ public static class SoundEventPlayer
 			GameSyncSettings[] gameSyncs = effect.Settings.GameSyncs;
 			for (int i = 0; i < gameSyncs.Length; i++)
 			{
-				gameSyncs[i]?.Sync(new PropertyContext(entity, null, target), id);
+				gameSyncs[i]?.Sync(entity, EvalContext.Current, id);
 			}
 		}
 	}
@@ -166,34 +166,34 @@ public static class SoundEventPlayer
 			{
 				return simpleCaster2.TrapParentObject;
 			}
-			return caster.View.Or(null)?.gameObject;
+			return caster.View.AsMechanicEntityView()?.gameObject;
 		case FXTarget.Target:
 		{
 			if ((object)target != null && target.IsPoint)
 			{
-				GameObject gameObject = new GameObject("SoundTarget_" + target.Point.ToString());
+				GameObject gameObject = new GameObject("SoundTarget_" + target.Point);
 				gameObject.transform.SetPositionAndRotation(target.Point, Quaternion.identity);
 				gameObject.AddComponent<AutoDestroy>().Lifetime = 10f;
 				return gameObject;
 			}
-			object obj = target?.Entity?.View.Or(null)?.gameObject.Or(null);
-			if (obj == null)
+			GameObject gameObject2 = (target?.Entity?.View.AsMechanicEntityView()?.gameObject).Or(null);
+			if ((object)gameObject2 == null)
 			{
-				MechanicEntityView mechanicEntityView = caster.View.Or(null);
+				MechanicEntityView mechanicEntityView = caster.View.AsMechanicEntityView();
 				if ((object)mechanicEntityView == null)
 				{
 					return null;
 				}
-				obj = mechanicEntityView.gameObject;
+				gameObject2 = mechanicEntityView.gameObject;
 			}
-			return (GameObject)obj;
+			return gameObject2;
 		}
 		case FXTarget.CasterWeapon:
 			if (caster is SimpleCaster simpleCaster && simpleCaster.TrapParentObject != null)
 			{
 				return simpleCaster.TrapParentObject;
 			}
-			return caster.View.Or(null)?.gameObject;
+			return caster.View.AsMechanicEntityView()?.gameObject;
 		case FXTarget.CasterAllWeapon:
 			return null;
 		case FXTarget.CasterOffHandWeapon:

@@ -37,18 +37,6 @@ public class AddAttackerSavingThrowTrigger : UnitFactComponentDelegate, IGlobalR
 
 	private bool CheckConditions(RulePerformSavingThrow evt)
 	{
-		if (OnlyPass && !evt.IsPassed)
-		{
-			return false;
-		}
-		if (OnlyFail && evt.IsPassed)
-		{
-			return false;
-		}
-		if (!Restrictions.IsPassed(base.Context, null, null, evt))
-		{
-			return false;
-		}
-		return true;
+		return false;
 	}
 }

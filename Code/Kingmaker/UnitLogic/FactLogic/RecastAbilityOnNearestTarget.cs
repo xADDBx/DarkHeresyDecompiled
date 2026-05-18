@@ -7,7 +7,6 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.QA;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -31,17 +30,6 @@ public class RecastAbilityOnNearestTarget : MechanicEntityFactComponentDelegate,
 
 	public void HandleExecutionProcessStart(AbilityExecutionContext context)
 	{
-		if (Restriction.IsPassed(context, base.Owner))
-		{
-			MechanicEntity mechanicEntity = SelectTarget(context);
-			if (mechanicEntity == null)
-			{
-				PFLog.EntityFact.ErrorWithReport("Can't find suitable target");
-				return;
-			}
-			AbilityExecutionContext context2 = context.Ability.ClaimExecutionContext(mechanicEntity);
-			Game.Instance.Controllers.AbilityExecutor.Execute(context2);
-		}
 	}
 
 	public void HandleExecutionProcessEnd(AbilityExecutionContext context)
@@ -55,7 +43,7 @@ public class RecastAbilityOnNearestTarget : MechanicEntityFactComponentDelegate,
 			where i != context.ClickedTarget.Entity
 			where (m_TargetType == TargetType.Ally && base.Owner.IsAlly(i)) || (m_TargetType == TargetType.Enemy && base.Owner.IsEnemy(i)) || m_TargetType == TargetType.Any
 			where context.Ability.IsValid(i)
-			where TargetRestriction.IsPassed(context, i)
+			where TargetRestriction.IsPassed(base.Context, i)
 			select i).MinBy((BaseUnitEntity i) => (i.Position - context.ClickedTarget.Point).sqrMagnitude);
 	}
 }

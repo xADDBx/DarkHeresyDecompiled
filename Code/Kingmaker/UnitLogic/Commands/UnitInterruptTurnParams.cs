@@ -14,20 +14,15 @@ namespace Kingmaker.UnitLogic.Commands;
 [OwlPackable(OwlPackableMode.Generate)]
 public sealed class UnitInterruptTurnParams : UnitCommandParams<UnitInterruptTurn>, IOwlPackable<UnitInterruptTurnParams>
 {
-	public EntityRef<MechanicEntity> EntityToGetTheTurn;
-
-	public EntityRef<MechanicEntity> InterruptionSource;
-
-	public InterruptionData InterruptionData;
-
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "UnitInterruptTurnParams",
 		OldNames = null,
-		Fields = new FieldInfo[14]
+		Fields = new FieldInfo[15]
 		{
 			new FieldInfo("Type", typeof(CommandType)),
 			new FieldInfo("OwnerRef", typeof(EntityRef<BaseUnitEntity>)),
+			new FieldInfo("PreprocessingFlags", typeof(CommandPreprocessingFlags)),
 			new FieldInfo("Target", typeof(TargetWrapper)),
 			new FieldInfo("FromCutscene", typeof(bool)),
 			new FieldInfo("InterruptAsSoonAsPossible", typeof(bool)),
@@ -42,6 +37,12 @@ public sealed class UnitInterruptTurnParams : UnitCommandParams<UnitInterruptTur
 			new FieldInfo("m_SlowMotionRequired", typeof(bool?))
 		}
 	};
+
+	public EntityRef<MechanicEntity> EntityToGetTheTurn { get; }
+
+	public EntityRef<MechanicEntity> InterruptionSource { get; }
+
+	public InterruptionData InterruptionData { get; }
 
 	public UnitInterruptTurnParams(MechanicEntity unit, MechanicEntity source, InterruptionData interruptionData)
 	{
@@ -73,23 +74,24 @@ public sealed class UnitInterruptTurnParams : UnitCommandParams<UnitInterruptTur
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 		formatter.EnumField(0, "Type", ref Type, state);
 		formatter.Field(1, "OwnerRef", ref OwnerRef, state);
+		formatter.EnumField(2, "PreprocessingFlags", ref PreprocessingFlags, state);
 		TargetWrapper value = base.Target;
-		formatter.Field(2, "Target", ref value, state);
+		formatter.Field(3, "Target", ref value, state);
 		bool value2 = base.FromCutscene;
-		formatter.UnmanagedField(3, "FromCutscene", ref value2, state);
+		formatter.UnmanagedField(4, "FromCutscene", ref value2, state);
 		bool value3 = base.InterruptAsSoonAsPossible;
-		formatter.UnmanagedField(4, "InterruptAsSoonAsPossible", ref value3, state);
+		formatter.UnmanagedField(5, "InterruptAsSoonAsPossible", ref value3, state);
 		float? value4 = base.OverrideSpeed;
-		formatter.UnmanagedNullableField(5, "OverrideSpeed", ref value4, state);
+		formatter.UnmanagedNullableField(6, "OverrideSpeed", ref value4, state);
 		bool value5 = base.DoNotInterruptAfterFight;
-		formatter.UnmanagedField(6, "DoNotInterruptAfterFight", ref value5, state);
-		formatter.UnmanagedNullableField(7, "m_FreeAction", ref m_FreeAction, state);
-		formatter.UnmanagedNullableField(8, "m_NeedLoS", ref m_NeedLoS, state);
-		formatter.UnmanagedNullableField(9, "m_ApproachRadius", ref m_ApproachRadius, state);
-		formatter.Field(10, "m_ForcedPath", ref m_ForcedPath, state);
-		formatter.EnumNullableField(11, "m_MovementType", ref m_MovementType, state);
-		formatter.UnmanagedNullableField(12, "m_IsOneFrameCommand", ref m_IsOneFrameCommand, state);
-		formatter.UnmanagedNullableField(13, "m_SlowMotionRequired", ref m_SlowMotionRequired, state);
+		formatter.UnmanagedField(7, "DoNotInterruptAfterFight", ref value5, state);
+		formatter.UnmanagedNullableField(8, "m_FreeAction", ref m_FreeAction, state);
+		formatter.UnmanagedNullableField(9, "m_NeedLoS", ref m_NeedLoS, state);
+		formatter.UnmanagedNullableField(10, "m_ApproachRadius", ref m_ApproachRadius, state);
+		formatter.Field(11, "m_ForcedPath", ref m_ForcedPath, state);
+		formatter.EnumNullableField(12, "m_MovementType", ref m_MovementType, state);
+		formatter.UnmanagedNullableField(13, "m_IsOneFrameCommand", ref m_IsOneFrameCommand, state);
+		formatter.UnmanagedNullableField(14, "m_SlowMotionRequired", ref m_SlowMotionRequired, state);
 		formatter.EndObject();
 	}
 
@@ -114,39 +116,42 @@ public sealed class UnitInterruptTurnParams : UnitCommandParams<UnitInterruptTur
 				OwnerRef = formatter.ReadPackable<EntityRef<BaseUnitEntity>>(state);
 				break;
 			case 2:
-				base.Target = formatter.ReadPackable<TargetWrapper>(state);
+				PreprocessingFlags = formatter.ReadEnum<CommandPreprocessingFlags>(state);
 				break;
 			case 3:
-				base.FromCutscene = formatter.ReadUnmanaged<bool>(state);
+				base.Target = formatter.ReadPackable<TargetWrapper>(state);
 				break;
 			case 4:
-				base.InterruptAsSoonAsPossible = formatter.ReadUnmanaged<bool>(state);
+				base.FromCutscene = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 5:
-				base.OverrideSpeed = formatter.ReadNullableUnmanaged<float>(state);
+				base.InterruptAsSoonAsPossible = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 6:
-				base.DoNotInterruptAfterFight = formatter.ReadUnmanaged<bool>(state);
+				base.OverrideSpeed = formatter.ReadNullableUnmanaged<float>(state);
 				break;
 			case 7:
-				m_FreeAction = formatter.ReadNullableUnmanaged<bool>(state);
+				base.DoNotInterruptAfterFight = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 8:
-				m_NeedLoS = formatter.ReadNullableUnmanaged<bool>(state);
+				m_FreeAction = formatter.ReadNullableUnmanaged<bool>(state);
 				break;
 			case 9:
-				m_ApproachRadius = formatter.ReadNullableUnmanaged<int>(state);
+				m_NeedLoS = formatter.ReadNullableUnmanaged<bool>(state);
 				break;
 			case 10:
-				m_ForcedPath = formatter.ReadPackable<ForcedPath>(state);
+				m_ApproachRadius = formatter.ReadNullableUnmanaged<int>(state);
 				break;
 			case 11:
-				m_MovementType = formatter.ReadNullableEnum<WalkSpeedType>(state);
+				m_ForcedPath = formatter.ReadPackable<ForcedPath>(state);
 				break;
 			case 12:
-				m_IsOneFrameCommand = formatter.ReadNullableUnmanaged<bool>(state);
+				m_MovementType = formatter.ReadNullableEnum<WalkSpeedType>(state);
 				break;
 			case 13:
+				m_IsOneFrameCommand = formatter.ReadNullableUnmanaged<bool>(state);
+				break;
+			case 14:
 				m_SlowMotionRequired = formatter.ReadNullableUnmanaged<bool>(state);
 				break;
 			}

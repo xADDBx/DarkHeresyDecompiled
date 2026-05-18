@@ -41,14 +41,14 @@ public class GamepadInputController : IControllerTick, IController, IControllerR
 				return;
 			}
 			SynchronizedDataController.DecompressStickData(leftStickData, out var moveDirection, out var stickDeflection);
-			UnitMovementAgentBase unityObject = unit.View.Or(null)?.MovementAgent;
-			UnitMovementAgentBase unitMovementAgentBase = unityObject.Or(null);
-			if ((object)unitMovementAgentBase != null && unitMovementAgentBase.IsTraverseInProgress)
+			UnitMovementAgent movementAgent = unit.MovementAgent;
+			UnitMovementAgent unitMovementAgent = movementAgent.Or(null);
+			if ((object)unitMovementAgent != null && unitMovementAgent.IsTraverseInProgress)
 			{
 				return;
 			}
-			bool flag = unityObject.Or(null)?.IsReallyMoving ?? false;
-			flag &= unit.View.Or(null)?.AgentOverride as UnitMovementAgentContinuous != null;
+			bool flag = movementAgent.Or(null)?.IsReallyMoving ?? false;
+			flag &= movementAgent?.IsDirectionalMovementActive ?? false;
 			if (flag || moveDirection.sqrMagnitude > Mathf.Epsilon)
 			{
 				UnitMoveContinuouslyParams unitMoveContinuouslyParams = new UnitMoveContinuouslyParams(moveDirection, stickDeflection)
@@ -124,7 +124,7 @@ public class GamepadInputController : IControllerTick, IController, IControllerR
 	{
 		get
 		{
-			if (Game.Instance.CurrentModeType == GameModeType.Default && !CutsceneLock.Active)
+			if ((Game.Instance.CurrentModeType == GameModeType.None || Game.Instance.CurrentModeType == GameModeType.Default) && !CutsceneLock.Active)
 			{
 				return !Game.Instance.Player.IsInCombat;
 			}
@@ -166,12 +166,7 @@ public class GamepadInputController : IControllerTick, IController, IControllerR
 	{
 		foreach (UnitReference partyCharacter in Game.Instance.Player.PartyCharacters)
 		{
-			if (!(partyCharacter.Entity is BaseUnitEntity baseUnitEntity))
-			{
-				continue;
-			}
-			UnitMovementAgentContinuous unitMovementAgentContinuous = baseUnitEntity.View.Or(null)?.MovementAgent as UnitMovementAgentContinuous;
-			if (unitMovementAgentContinuous == null || !unitMovementAgentContinuous.IsReallyMoving)
+			if (!(partyCharacter.Entity is BaseUnitEntity { MovementAgent: var movementAgent } baseUnitEntity) || movementAgent == null || !movementAgent.IsReallyMoving || !movementAgent.IsDirectionalMovementActive)
 			{
 				continue;
 			}

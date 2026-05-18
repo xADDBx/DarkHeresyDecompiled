@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class CharGenCustomPortraitCreatorItemView : View<CharGenPortraitSelectorItemVM>, IConsoleEntityProxy, IConsoleEntity
+public class CharGenCustomPortraitCreatorItemView : View<CharGenPortraitSelectorItemVM>
 {
 	[SerializeField]
 	private OwlcatButton m_Button;

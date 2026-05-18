@@ -3,10 +3,9 @@ using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.UnitLogic.Parts;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -31,9 +30,7 @@ public class PartMachineTrait : MechanicEntityPart, IHashable, IOwlPackable<Part
 		Fields = new FieldInfo[0]
 	};
 
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
-
-	public ModifiableValue MachineTrait => StatsContainer.GetStat(StatType.MachineTrait);
+	public MechanicActorStat MachineTrait => base.Owner.Actor.Stats.GetStat(StatType.MachineTrait);
 
 	public static int GetBaseStatValue(MechanicEntity unit)
 	{
@@ -54,11 +51,6 @@ public class PartMachineTrait : MechanicEntityPart, IHashable, IOwlPackable<Part
 		{
 			RemoveSelf();
 		}
-	}
-
-	protected override void OnAttachOrPrePostLoad()
-	{
-		StatsContainer.Register(StatType.MachineTrait);
 	}
 
 	public override Hash128 GetHash128()

@@ -24,7 +24,7 @@ public class BookEventAnswerPCView : BookEventAnswerView
 		}).AddTo(this);
 		m_AnswerText.OnPointerEnterAsObservable().Subscribe(delegate
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 		}).AddTo(this);
 		m_AnswerText.OnPointerExitAsObservable().Subscribe(delegate
 		{

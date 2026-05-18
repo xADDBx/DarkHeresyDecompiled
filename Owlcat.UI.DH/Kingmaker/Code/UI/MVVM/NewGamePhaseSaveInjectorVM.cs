@@ -113,7 +113,7 @@ public class NewGamePhaseSaveInjectorVM : NewGamePhaseBaseVm
 			m_SaveSlotCollectionVm.HandleDeleteSave(item2);
 			m_SaveSlotVMs.Remove(item2);
 		}
-		m_CollectionWasUpdated.Execute();
+		m_CollectionWasUpdated.Execute(Unit.Default);
 	}
 
 	public void AcceptSave()

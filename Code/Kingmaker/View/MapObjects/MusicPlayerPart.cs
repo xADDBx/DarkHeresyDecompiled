@@ -13,11 +13,11 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MusicPlayerPart : ViewBasedPart<MusicPlayerSettings>, IAreaHandler, ISubscriber, IHashable, IOwlPackable<MusicPlayerPart>
+public class MusicPlayerPart : EntityPartWithConfig<MusicPlayerSettings>, IAreaHandler, ISubscriber, IHashable, IOwlPackable<MusicPlayerPart>
 {
 	private bool m_IsLoaded;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "MusicPlayerPart",
 		OldNames = null,
@@ -38,9 +38,9 @@ public class MusicPlayerPart : ViewBasedPart<MusicPlayerSettings>, IAreaHandler,
 		m_IsLoaded = true;
 	}
 
-	protected override void OnSettingsDidSet(bool isNewSettings)
+	protected override void OnConfigDidSet(bool isNewConfig)
 	{
-		base.OnSettingsDidSet(isNewSettings);
+		base.OnConfigDidSet(isNewConfig);
 		if (!m_IsLoaded)
 		{
 			IsPlaying = base.Settings.AutoPlay;
@@ -104,7 +104,7 @@ public class MusicPlayerPart : ViewBasedPart<MusicPlayerSettings>, IAreaHandler,
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		MusicPlayerPart source = new MusicPlayerPart();
 		result = Unsafe.As<MusicPlayerPart, TPossiblyBase>(ref source);

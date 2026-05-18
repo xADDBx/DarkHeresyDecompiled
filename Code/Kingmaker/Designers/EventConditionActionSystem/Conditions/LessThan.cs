@@ -41,7 +41,7 @@ public class LessThan : Condition
 
 	protected override string GetConditionCaption()
 	{
-		return ((!FloatValues) ? Value?.ToString() : FloatValue?.ToString()) + " less than (or equal) " + ((!FloatValues) ? MaxValue?.ToString() : FloatMaxValue?.ToString());
+		return ((!FloatValues) ? Value?.ToString() : FloatValue?.ToString()) + " less than " + (OrEqualTo ? "(or equal) " : "") + ((!FloatValues) ? MaxValue?.ToString() : FloatMaxValue?.ToString());
 	}
 
 	protected override bool CheckCondition()

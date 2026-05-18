@@ -10,17 +10,27 @@ public abstract class BlueprintItemEquipmentHand : BlueprintItemEquipment
 
 	public WeaponVisualParameters VisualParameters => m_VisualParameters;
 
-	public override string InventoryEquipSound => VisualParameters.InventoryEquipSound;
+	public override string InventoryEquipSound
+	{
+		get
+		{
+			return VisualParameters.InventoryEquipSound;
+		}
+		set
+		{
+			VisualParameters.InventoryEquipSound = value;
+		}
+	}
 
 	public override string InventoryPutSound
 	{
 		get
 		{
-			if (!string.IsNullOrEmpty(base.InventoryPutSound))
-			{
-				return base.InventoryPutSound;
-			}
 			return VisualParameters.InventoryPutSound;
+		}
+		set
+		{
+			VisualParameters.InventoryPutSound = value;
 		}
 	}
 
@@ -28,11 +38,11 @@ public abstract class BlueprintItemEquipmentHand : BlueprintItemEquipment
 	{
 		get
 		{
-			if (!string.IsNullOrEmpty(base.InventoryTakeSound))
-			{
-				return base.InventoryTakeSound;
-			}
 			return VisualParameters.InventoryTakeSound;
+		}
+		set
+		{
+			VisualParameters.InventoryTakeSound = value;
 		}
 	}
 }

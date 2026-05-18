@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Visual.Sound;
+using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Code.Framework.VO;
@@ -23,8 +25,16 @@ public class VOSettings : BlueprintScriptableObject
 
 	public BlueprintUnitReference ServoSkull;
 
+	public BpRef<BlueprintFeature> PsykanaUserFeature;
+
+	public BpRef<BlueprintFeature> DeamonFeature;
+
+	public BpRef<BlueprintFeature> PariahFeature;
+
 	[VerticalLayout]
 	public MismatchMapObjects MismatchMapObjects = new MismatchMapObjects();
+
+	public List<BlueprintDialogReference> NotUsedDialogues = new List<BlueprintDialogReference>();
 
 	public List<AskTypeToPrototypeEntry> AskTypeToPrototypeMap = new List<AskTypeToPrototypeEntry>();
 

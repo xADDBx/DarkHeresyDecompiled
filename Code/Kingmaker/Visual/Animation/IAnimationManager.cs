@@ -1,3 +1,4 @@
+using Kingmaker.Utility.StatefulRandom;
 using Kingmaker.Visual.Animation.Actions;
 using UnityEngine;
 using UnityEngine.Playables;
@@ -13,6 +14,12 @@ public interface IAnimationManager
 	float PlayingSpeed { get; }
 
 	UnitAnimationCallbackReceiver CallbackReceiver { get; }
+
+	AnimationSoundEventsManager SoundEventsManager { get; }
+
+	StatefulRandom StatefulRandom { get; }
+
+	GameObject GameObject { get; }
 
 	void CustomUpdate(float deltaTime);
 

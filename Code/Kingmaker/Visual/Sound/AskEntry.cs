@@ -14,14 +14,16 @@ namespace Kingmaker.Visual.Sound;
 [Serializable]
 public class AskEntry
 {
+	[LocalizedStringParam(Kind = "ask")]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Ask)]
-	public SharedStringAsset Text;
+	public LocalizedString Text;
 
 	[AkEventReference]
 	public string AkEvent;
 
 	public float RandomWeight = 1f;
 
+	[Tooltip("How many times it will be skipped when selecting random entry")]
 	public int ExcludeTime = 1;
 
 	[Tooltip("bark can only trigger when ALL these flags are UNLOCKED")]
@@ -41,18 +43,27 @@ public class AskEntry
 	[Tooltip("bark with no condition specified is always treated at zero priority")]
 	public ConditionsChecker Condition;
 
-	[NonSerialized]
-	public int ExclusionCounter;
-
 	public bool IsEmpty
 	{
 		get
 		{
-			if (Text == null)
+			if (Text == null || Text.Empty)
 			{
 				return string.IsNullOrEmpty(AkEvent);
 			}
 			return false;
+		}
+	}
+
+	public bool IsExist
+	{
+		get
+		{
+			if (string.IsNullOrEmpty(Text?.Key))
+			{
+				return !string.IsNullOrEmpty(AkEvent);
+			}
+			return true;
 		}
 	}
 

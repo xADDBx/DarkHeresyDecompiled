@@ -6,6 +6,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.Features.AreaEffects;
 using Kingmaker.QA;
 using Kingmaker.ResourceLinks;
@@ -49,6 +50,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 
 	public bool OnlyInCombat;
 
+	[Tooltip("Debug visualization in AR grid")]
 	public bool SavePersistentArea;
 
 	public Texture2D PersistentAreaTexture2D;
@@ -156,7 +158,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		return base.ComponentsArray;
 	}
 
-	public void HandleEntityEnter(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityEnter(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -172,7 +174,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleEntityExit(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityExit(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -188,7 +190,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleEntityMove(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityMove(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -204,7 +206,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleUnitStartTurn(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleUnitStartTurn(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -220,7 +222,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleUnitEndTurn(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleUnitEndTurn(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -236,7 +238,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleRound(MechanicsContext context, AreaEffectEntity areaEffect)
+	public void HandleRound(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -252,7 +254,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleTick(MechanicsContext context, AreaEffectEntity areaEffect)
+	public void HandleTick(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		BlueprintComponent[] array = TryOverrideComponentsArray();
 		foreach (BlueprintComponent blueprintComponent in array)
@@ -285,7 +287,7 @@ public class BlueprintAreaEffect : BlueprintMechanicEntityFact, IAbilityAoEPatte
 		}
 	}
 
-	public void HandleEnd(MechanicsContext context, AreaEffectEntity areaEffect)
+	public void HandleEnd(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		if (ScrollCameraToAreaEffectWhenEnded)
 		{

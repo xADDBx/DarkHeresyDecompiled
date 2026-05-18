@@ -1,6 +1,6 @@
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Framework;
 
 namespace Kingmaker.EntitySystem.Properties;
 
@@ -10,7 +10,5 @@ public interface IPropertyCalculatorComponent
 
 	SaveToContextType SaveToContext { get; }
 
-	int GetValue(MechanicsContext context, MechanicEntity currentEntity);
-
-	int GetValue(PropertyContext context);
+	int GetValue(IEvalContext context, MechanicEntity currentEntity);
 }

@@ -1,5 +1,5 @@
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.UI.Common;
+using Kingmaker.Code.Gameplay.Components;
 using R3;
 using UnityEngine;
 
@@ -8,13 +8,10 @@ namespace Kingmaker.Code.UI.MVVM.UnitInfo;
 public class UnitInfoPartMorale : UnitInfoPart
 {
 	[SerializeField]
-	private BaseProgressBar<int> m_MoraleProgressPositive;
-
-	[SerializeField]
-	private BaseProgressBar<int> m_MoraleProgressNegative;
-
-	[SerializeField]
 	private UnitInfoPartHeader m_Header;
+
+	[SerializeField]
+	private DoubleSidedSegmentedProgressBar m_MoraleProgressBar;
 
 	[Space]
 	[SerializeField]
@@ -50,7 +47,7 @@ public class UnitInfoPartMorale : UnitInfoPart
 
 	private bool CanShowPart(UnitInfoPartState state)
 	{
-		if (state.IsDeadOrUnconscious || state.PreciseAttackHasNoTarget)
+		if (state.IsDeadOrUnconscious || state.PreciseAttackHasNoTarget || !state.HasMorale || base.ViewModel.HasSettingsFlags(UnitInspectUIFlags.HideMorale))
 		{
 			return false;
 		}
@@ -68,11 +65,7 @@ public class UnitInfoPartMorale : UnitInfoPart
 	private void SetMoraleValue((int min, int max, int current) morale)
 	{
 		m_Header.SetValue(morale.current.ToString());
-		m_MoraleProgressPositive.SetLimits(0, morale.max);
-		m_MoraleProgressNegative.SetLimits(0, Mathf.Abs(morale.min));
-		bool flag = morale.current >= 0;
-		m_MoraleProgressPositive.SetValue(flag ? morale.current : 0);
-		m_MoraleProgressNegative.SetValue((!flag) ? Mathf.Abs(morale.current) : 0);
+		m_MoraleProgressBar.SetValue(morale.min, morale.max, morale.current);
 		SetColors(morale.min, morale.max, morale.current);
 	}
 

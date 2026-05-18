@@ -55,7 +55,7 @@ public sealed class PartAbilityReplacements : BaseUnitPart, IHashable, IOwlPacka
 		if (!_entries.HasItem<Entry>((Entry i) => i.Source == source && i.Target == target && i.Replacement == replacement))
 		{
 			_entries.Add(new Entry(source, target, replacement));
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IAbilityReplacementsUpdatedHandler>)delegate(IAbilityReplacementsUpdatedHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IAbilityReplacementsUpdatedHandler>)delegate(IAbilityReplacementsUpdatedHandler h)
 			{
 				h.HandleAbilityReplacementsUpdated(target);
 			}, isCheckRuntime: true);
@@ -67,7 +67,7 @@ public sealed class PartAbilityReplacements : BaseUnitPart, IHashable, IOwlPacka
 		EntityFact source = source;
 		BlueprintAbility target = target;
 		_entries.RemoveAll((Entry i) => i.Source == source && i.Target == target);
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IAbilityReplacementsUpdatedHandler>)delegate(IAbilityReplacementsUpdatedHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IAbilityReplacementsUpdatedHandler>)delegate(IAbilityReplacementsUpdatedHandler h)
 		{
 			h.HandleAbilityReplacementsUpdated(target);
 		}, isCheckRuntime: true);
@@ -81,6 +81,12 @@ public sealed class PartAbilityReplacements : BaseUnitPart, IHashable, IOwlPacka
 	{
 		BlueprintAbility target = target;
 		return _entries.LastItem<Entry>((Entry i) => i.Target == target)?.Replacement;
+	}
+
+	public BlueprintAbility? GetTargetFor(Ability? replacement)
+	{
+		Ability replacement = replacement;
+		return _entries.LastItem<Entry>((Entry i) => i.Replacement == replacement)?.Target;
 	}
 
 	public override Hash128 GetHash128()

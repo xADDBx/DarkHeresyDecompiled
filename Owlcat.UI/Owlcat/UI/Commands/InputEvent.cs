@@ -8,6 +8,9 @@ public abstract class InputEvent
 
 	public virtual bool Bubbling { get; internal set; }
 
+	public virtual float Progress { get; internal set; } = 1f;
+
+
 	public virtual float GetAxis()
 	{
 		return 0f;

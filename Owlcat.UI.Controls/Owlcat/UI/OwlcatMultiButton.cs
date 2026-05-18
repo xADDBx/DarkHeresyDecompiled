@@ -10,7 +10,7 @@ namespace Owlcat.UI;
 [AddComponentMenu("UI/Owlcat/OwlcatMultiButton", 70)]
 [SelectionBase]
 [DisallowMultipleComponent]
-public class OwlcatMultiButton : OwlcatMultiSelectable, IConfirmClickHandler, IConsoleEntity, ILongConfirmClickHandler, IDeclineClickHandler, ILongDeclineClickHandler, IFunc01ClickHandler, ILongFunc01ClickHandler, IFunc02ClickHandler, ILongFunc02ClickHandler, IPointerClickHandler, IEventSystemHandler, IConsolePointerLeftClickEvent, IConsoleNavigationEntity
+public class OwlcatMultiButton : OwlcatMultiSelectable, IConfirmClickHandler, IConsoleEntity, ILongConfirmClickHandler, IDeclineClickHandler, ILongDeclineClickHandler, IFunc01ClickHandler, ILongFunc01ClickHandler, IFunc02ClickHandler, ILongFunc02ClickHandler, ISubmitHandler, IEventSystemHandler, IPointerClickHandler, IConsolePointerLeftClickEvent, IConsoleNavigationEntity
 {
 	[SerializeField]
 	private ClickEvent m_ConfirmClickEvent = new ClickEvent();
@@ -424,6 +424,15 @@ public class OwlcatMultiButton : OwlcatMultiSelectable, IConfirmClickHandler, IC
 		else
 		{
 			m_OnSingleRightClickNotInteractable.Invoke();
+		}
+	}
+
+	public void OnSubmit(BaseEventData eventData)
+	{
+		if (IsActive() && base.Interactable)
+		{
+			m_OnSingleLeftClick?.Invoke();
+			m_OnLeftClick?.Invoke();
 		}
 	}
 }

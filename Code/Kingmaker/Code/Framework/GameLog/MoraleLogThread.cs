@@ -9,6 +9,7 @@ using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Modifiers;
@@ -17,8 +18,8 @@ using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
+using Owlcat.Plugins.DotNetExtensions;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.Framework.GameLog;
@@ -63,20 +64,22 @@ public class MoraleLogThread : LogThreadBase, IGameLogEventHandler<MergeGameLogE
 	{
 		foreach (KeyValuePair<BaseUnitEntity, List<RulePerformMoraleChange>> @event in events)
 		{
-			MoraleEventSummary summary = new MoraleEventSummary(@event.Value);
+			MoraleEventSummary moraleEventSummary = new MoraleEventSummary(@event.Value);
+			if (moraleEventSummary.MoraleStartValue == moraleEventSummary.MoraleResultValue)
+			{
+				yield break;
+			}
 			List<MoraleEventSummary> aggregatedEventsByType = GetAggregatedEventsByType(@event.Value);
-			yield return CombatLogTooltipService.CreateTooltipBricksGroupStart();
-			GetCombatLogMessage(summary);
-			yield return CombatLogTooltipService.CreateTooltipBrickText(GetCombatLogMessage(summary).Message);
+			List<ITooltipBrick> list = new List<ITooltipBrick> { CombatLogTooltipService.CreateBrickText(GetCombatLogMessage(moraleEventSummary).Message) };
 			foreach (MoraleEventSummary item in aggregatedEventsByType)
 			{
 				foreach (ITooltipBrick bricksForMoraleSource in GetBricksForMoraleSources(item))
 				{
-					yield return bricksForMoraleSource;
+					list.Add(bricksForMoraleSource);
 				}
 			}
-			yield return CombatLogTooltipService.CreateTooltipBricksGroupEnd();
-			yield return CombatLogTooltipService.CreateTooltipBrickSeparator(TooltipBrickElementType.Big);
+			yield return CombatLogTooltipService.CreateBricksGroupOneColumn(list);
+			yield return CombatLogTooltipService.CreateBrickSeparator(TooltipBrickElementType.Big);
 		}
 	}
 
@@ -117,8 +120,12 @@ public class MoraleLogThread : LogThreadBase, IGameLogEventHandler<MergeGameLogE
 
 	private static IEnumerable<ITooltipBrick> GetBricksForMoraleSources(MoraleEventSummary summary)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> textValueTooltip = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		Func<TooltipBrickElementType, ITooltipBrick> separatorTooltip = CombatLogTooltipService.CreateTooltipBrickSeparator;
+		if (summary.MoraleStartValue == summary.MoraleResultValue)
+		{
+			yield break;
+		}
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> textValueTooltip = CombatLogTooltipService.CreateBrickTextValue;
+		Func<TooltipBrickElementType, ITooltipBrick> separatorTooltip = CombatLogTooltipService.CreateBrickSeparator;
 		if (textValueTooltip == null || separatorTooltip == null)
 		{
 			yield break;
@@ -129,7 +136,8 @@ public class MoraleLogThread : LogThreadBase, IGameLogEventHandler<MergeGameLogE
 		string text = $"{GetEventReason(rule)}{arg}";
 		string value = (rule.ResultDelta * summary.Count).ToStringWithSign();
 		yield return textValueTooltip(new TooltipBrickTextValueArgs(text, value, 0, isResultValue: true));
-		bool resultIsCapped = rule.ResultDeltaRaw != rule.ResultDelta;
+		int num = rule.ResultDeltaRaw + summary.Count;
+		bool resultIsCapped = (rule.TopLimit != rule.BottomLimit && (rule.BottomLimit != 0 || rule.TopLimit != 0) && num < rule.BottomLimit) || num > rule.TopLimit;
 		if (rule.ValueModifier.List.Count > 1 || resultIsCapped)
 		{
 			foreach (Modifier item in rule.ValueModifier.List)
@@ -262,14 +270,22 @@ public class MoraleLogThread : LogThreadBase, IGameLogEventHandler<MergeGameLogE
 
 	private static GameLogContext.Property<string> GetEventReason(RulePerformMoraleChange rule)
 	{
+		if (TryGetUnitDeathEventReason(rule, out var reason))
+		{
+			return reason;
+		}
+		if (!rule.Reason.Name.IsNullOrEmpty())
+		{
+			return rule.Reason.Name;
+		}
+		if (rule.Reason.Context != null && !rule.Reason.Context.Name.IsNullOrEmpty())
+		{
+			return rule.Reason.Context.Name;
+		}
 		return rule.EventType switch
 		{
 			MoraleEventType.CombatStart | MoraleEventType.TurnStart => UIStrings.Instance.CombatLog.MoraleEventCombatStart.Text, 
 			MoraleEventType.TurnStart => UIStrings.Instance.CombatLog.MoraleEventTurnStart.Text, 
-			MoraleEventType.AllyDeath => UIStrings.Instance.CombatLog.MoraleEventAllyDeath.Text, 
-			MoraleEventType.EnemyDeath => GetEnemyDeathReason(rule), 
-			MoraleEventType.AllyDeath | MoraleEventType.LeaderAllyDeath => UIStrings.Instance.CombatLog.MoraleEventLeaderAllyDeath.Text, 
-			MoraleEventType.EnemyDeath | MoraleEventType.LeaderEnemyDeath => UIStrings.Instance.CombatLog.MoraleEventLeaderEnemyDeath.Text, 
 			MoraleEventType.RestoreToRegular => UIStrings.Instance.CombatLog.MoraleEventRestoreToRegular.Text, 
 			MoraleEventType.BecomeHeroic => UIStrings.Instance.CombatLog.MoraleEventBecomeHeroic.Text, 
 			MoraleEventType.BecomeBroken => UIStrings.Instance.CombatLog.MoraleEventBecomeBroken.Text, 
@@ -279,9 +295,22 @@ public class MoraleLogThread : LogThreadBase, IGameLogEventHandler<MergeGameLogE
 		};
 	}
 
+	private static bool TryGetUnitDeathEventReason(RulePerformMoraleChange rule, out string reason)
+	{
+		reason = rule.EventType switch
+		{
+			MoraleEventType.AllyDeath => UIStrings.Instance.CombatLog.MoraleEventAllyDeath.Text, 
+			MoraleEventType.EnemyDeath => reason = GetEnemyDeathReason(rule), 
+			MoraleEventType.AllyDeath | MoraleEventType.LeaderAllyDeath => UIStrings.Instance.CombatLog.MoraleEventLeaderAllyDeath.Text, 
+			MoraleEventType.EnemyDeath | MoraleEventType.LeaderEnemyDeath => UIStrings.Instance.CombatLog.MoraleEventLeaderEnemyDeath.Text, 
+			_ => null, 
+		};
+		return reason != null;
+	}
+
 	private static string GetForcedChangeReason(RulePerformMoraleChange rule)
 	{
-		MechanicsContext sourceContext = rule.SourceContext;
+		IEvalContext sourceContext = rule.SourceContext;
 		if (sourceContext != null)
 		{
 			MechanicEntityFact fact = sourceContext.Fact;

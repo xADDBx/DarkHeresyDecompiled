@@ -63,9 +63,9 @@ public abstract class VeilThicknessView : View<VeilThicknessVM>
 		m_PredictedValueSlider.maxValue = maxVeilDamage;
 		m_PhenomenaChanceSlider.maxValue = 100f;
 		m_PhenomenaChanceSlider.value = 100f - (float)base.ViewModel.Veil.PerilsOfTheWarpChance;
-		base.ViewModel.IsTurnBasedActive.CombineLatest(base.ViewModel.IsPlayerTurn, base.ViewModel.IsAppropriateGameMode, (bool isTurnBasedActive, bool isPlayerTurn, bool isAppropriateGameMode) => new { isTurnBasedActive, isPlayerTurn, isAppropriateGameMode }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(value =>
+		base.ViewModel.IsTurnBasedActive.CombineLatest(base.ViewModel.IsAppropriateGameMode, (bool isTurnBasedActive, bool isAppropriateGameMode) => new { isTurnBasedActive, isAppropriateGameMode }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(value =>
 		{
-			m_Animator.PlayAnimation(value.isAppropriateGameMode && value.isTurnBasedActive && value.isPlayerTurn);
+			m_Animator.PlayAnimation(value.isAppropriateGameMode && value.isTurnBasedActive);
 		})
 			.AddTo(this);
 		base.ViewModel.Value.Subscribe(delegate(int value)

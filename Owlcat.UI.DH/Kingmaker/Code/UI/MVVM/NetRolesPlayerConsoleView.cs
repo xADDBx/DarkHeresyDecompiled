@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using Kingmaker.Code.UI.MVVM.View;
-using Owlcat.UI;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -31,8 +29,7 @@ public class NetRolesPlayerConsoleView : NetRolesPlayerBaseView
 		}
 	}
 
-	public void AddGamerTagInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, Action hideGamersTagModeAction)
+	public void AddGamerTagInput()
 	{
-		m_GamerTagAndName.AddGamerTagInput(inputLayer, hintsWidget, hideGamersTagModeAction);
 	}
 }

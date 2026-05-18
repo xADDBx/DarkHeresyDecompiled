@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
@@ -19,12 +18,16 @@ public class UnclotheRT : CommandBase
 {
 	public bool ClotheON;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		BaseUnitEntity playerCharacter = GameHelper.GetPlayerCharacter();
-		if (playerCharacter?.View == null || playerCharacter.View.CharacterAvatar == null)
+		if (playerCharacter?.View == null)
 		{
-			return;
+			return CommandResult.Fail("Unit not found");
+		}
+		if (playerCharacter.View.CharacterAvatar == null)
+		{
+			return CommandResult.Fail("Unit avatar not found");
 		}
 		if (!ClotheON)
 		{
@@ -38,12 +41,12 @@ public class UnclotheRT : CommandBase
 			{
 				playerCharacter.View.CharacterAvatar.SavedBeforeCutsceneRampIndices.Add(rampIndex);
 			}
-			List<EquipmentEntityLink> source = ((playerCharacter.Gender == Gender.Male) ? ConfigRoot.Instance.CharGenRoot.MaleDontUnequip : ConfigRoot.Instance.CharGenRoot.FemaleDontUnequip);
+			List<EquipmentEntityLink> dontUnequip = ConfigRoot.Instance.CharGenRoot.GetDollConfig(playerCharacter.Gender).DontUnequip;
 			playerCharacter.View.CharacterAvatar.RemoveAllEquipmentEntities();
-			IEnumerable<EquipmentEntity> source2 = source.Select((EquipmentEntityLink x) => x.Load());
+			IEnumerable<EquipmentEntity> source = dontUnequip.Select((EquipmentEntityLink x) => x.Load());
 			foreach (EquipmentEntity equipmentEntity in playerCharacter.View.CharacterAvatar.SavedBeforeCutsceneEquipment)
 			{
-				if (source2.Contains(equipmentEntity))
+				if (source.Contains(equipmentEntity))
 				{
 					playerCharacter.View.CharacterAvatar.AddEquipmentEntity(equipmentEntity);
 				}
@@ -53,7 +56,7 @@ public class UnclotheRT : CommandBase
 					playerCharacter.View.CharacterAvatar.SetRampIndices(equipmentEntity, selectedRampIndices.PrimaryIndex, selectedRampIndices.SecondaryIndex);
 				}
 			}
-			EquipmentEntityLink equipmentEntityLink = ((playerCharacter.Gender == Gender.Male) ? ConfigRoot.Instance.CharGenRoot.MaleClothes[0] : ConfigRoot.Instance.CharGenRoot.FemaleClothes[0]);
+			EquipmentEntityLink equipmentEntityLink = ConfigRoot.Instance.CharGenRoot.GetDollConfig(playerCharacter.Gender).Clothes[0];
 			if (equipmentEntityLink != null)
 			{
 				playerCharacter.View.CharacterAvatar.AddEquipmentEntity(equipmentEntityLink);
@@ -65,14 +68,22 @@ public class UnclotheRT : CommandBase
 			playerCharacter.View.CharacterAvatar.RestoreEquipment();
 			playerCharacter.View.HandsEquipment.UpdateVisibility(isVisible: true);
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -80,11 +91,11 @@ public class UnclotheRT : CommandBase
 		return true;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		BaseUnitEntity playerCharacter = GameHelper.GetPlayerCharacter();
 		playerCharacter.View.CharacterAvatar.RestoreEquipment();
 		playerCharacter.View.HandsEquipment.UpdateVisibility(isVisible: true);
+		return CommandResult.Success;
 	}
 }

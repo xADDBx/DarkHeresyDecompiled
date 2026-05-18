@@ -1,15 +1,22 @@
 using System;
+using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Enums.Stats;
+using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
 using Kingmaker.ElementsSystem;
+using Kingmaker.Gameplay.Features.Encounter.Components;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.Utility.Attributes;
 using Newtonsoft.Json;
+using Owlcat.AI;
+using Owlcat.BehaviourTrees;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using OwlPack.Runtime;
 using UnityEngine;
 
@@ -50,6 +57,28 @@ public sealed class BlueprintEncounter : BlueprintMechanicEntityFact
 		public SpawnerEntry SquadLeader = new SpawnerEntry();
 
 		public SpawnerEntry[] Spawners = new SpawnerEntry[0];
+
+		public bool TryValidateSquadBrains(out BpRef<BlueprintUnit> problematicUnit)
+		{
+			if (IsSquad)
+			{
+				SpawnerEntry[] spawners = Spawners;
+				foreach (SpawnerEntry spawnerEntry in spawners)
+				{
+					if (spawnerEntry != null)
+					{
+						BlueprintUnit blueprint = spawnerEntry.Unit.Blueprint;
+						if (blueprint != null && blueprint.GetComponent<AIAgentComponent>()?.BehaviourTree.Nodes.All((BehaviourTreeNodeElement node) => node is SquadControlNodeElement) == false)
+						{
+							problematicUnit = spawnerEntry.Unit;
+							return false;
+						}
+					}
+				}
+			}
+			problematicUnit = null;
+			return true;
+		}
 	}
 
 	[InspectorReadOnly]
@@ -99,6 +128,11 @@ public sealed class BlueprintEncounter : BlueprintMechanicEntityFact
 	[ShowIf("AllowVictoryByCustomCondition")]
 	public ActionList OnVictoryByCustomCondition = new ActionList();
 
+	[Header("Psychic Phenomena Override")]
+	public PhenomenaListOverride PhenomenaOverride = new PhenomenaListOverride();
+
+	public PhenomenaListOverride PerilsOverride = new PhenomenaListOverride();
+
 	[Header("Groups")]
 	public Group[] Groups = new Group[0];
 
@@ -106,19 +140,29 @@ public sealed class BlueprintEncounter : BlueprintMechanicEntityFact
 	[SerializeField]
 	private BlueprintEtudeReference[] _additionalCombatObjectiveMarkers;
 
-	public int OverrideCombatCR
+	[InfoBox("Этот блок настроек - meta информация для статистики")]
+	public Chapter Chapter;
+
+	public Cluster Cluster;
+
+	public int CR => CROverride ?? Area.MaybeBlueprint?.GetCR() ?? 0;
+
+	public int? CROverride
 	{
 		get
 		{
-			if (!_overrideCombatCR)
+			int? result = EncounterCROverrideHelper.Get(AssetGuid);
+			if (!result.HasValue)
 			{
-				return 0;
+				if (!_overrideCombatCR)
+				{
+					return null;
+				}
+				return _combatCR;
 			}
-			return _combatCR;
+			return result;
 		}
 	}
-
-	public int CR => Area.MaybeBlueprint?.GetCR() ?? 0;
 
 	public bool IsDefault => ConfigRoot.Instance.EncounterRoot.DefaultEncounter == this;
 
@@ -133,4 +177,6 @@ public sealed class BlueprintEncounter : BlueprintMechanicEntityFact
 			return _overrideExperienceValue;
 		}
 	}
+
+	public BlueprintEtudeReference[] Editor_AdditionalCombatObjectiveMarkers => _additionalCombatObjectiveMarkers;
 }

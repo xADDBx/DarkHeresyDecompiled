@@ -33,7 +33,7 @@ public class BugContextComparer : IComparer<BugContext>
 		{
 			return num;
 		}
-		if (alice.Type == "Interface")
+		if (alice?.Type == "Interface")
 		{
 			return CompareUiFeatures(alice, bob);
 		}
@@ -80,7 +80,11 @@ public class BugContextComparer : IComparer<BugContext>
 
 	private static int GetTypePriority(BugContext bc)
 	{
-		return TypePriority.GetValueOrDefault(bc.Type, 100);
+		if (bc.Type != null)
+		{
+			return TypePriority.GetValueOrDefault(bc.Type, 100);
+		}
+		return 99;
 	}
 
 	private static int GetUiFeaturePriority(BugContext bc)

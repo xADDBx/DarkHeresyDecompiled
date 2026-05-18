@@ -17,11 +17,24 @@ public class FailObjectiveByEtudeTrigger : QuestObjectiveComponentDelegate, IEtu
 	[SerializeField]
 	private BlueprintEtudeReference? m_Etude;
 
+	[SerializeField]
+	private bool m_FailByPlay = true;
+
+	[SerializeField]
+	private bool m_FailByComplete;
+
 	public void OnEtudesUpdate()
 	{
-		if (m_Etude != null && base.Objective.State != QuestObjectiveState.Failed && Game.Instance.EtudesSystem.EtudeIsCompleted(m_Etude.Get()))
+		if (m_Etude != null && base.Objective.State != QuestObjectiveState.Failed)
 		{
-			base.Objective.Fail();
+			if (m_FailByPlay && Game.Instance.EtudesSystem.EtudeIsPlaying(m_Etude.Get()))
+			{
+				base.Objective.Fail();
+			}
+			else if (m_FailByComplete && Game.Instance.EtudesSystem.EtudeIsCompleted(m_Etude.Get()))
+			{
+				base.Objective.Fail();
+			}
 		}
 	}
 

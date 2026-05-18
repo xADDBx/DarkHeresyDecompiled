@@ -1,5 +1,4 @@
 using Kingmaker.ElementsSystem;
-using Kingmaker.View.MapObjects;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -13,12 +12,7 @@ public class CheckCanInteract : Condition
 
 	protected override bool CheckCondition()
 	{
-		InteractionAction value = Interaction.GetValue();
-		if (value == null)
-		{
-			return false;
-		}
-		return value.EnsurePart().CanInteract();
+		return Interaction.GetValue().CanInteract();
 	}
 
 	protected override string GetConditionCaption()

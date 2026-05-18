@@ -21,12 +21,13 @@ public class ModifierDescriptorComparer : IComparer<ModifierDescriptor>
 		{
 			m_Order[i] = -1;
 		}
-		List<ModifierDescriptor> list = new List<ModifierDescriptor>(new ModifierDescriptor[5]
+		List<ModifierDescriptor> list = new List<ModifierDescriptor>(new ModifierDescriptor[6]
 		{
 			ModifierDescriptor.None,
 			ModifierDescriptor.UntypedStackable,
 			ModifierDescriptor.UntypedUnstackable,
 			ModifierDescriptor.Difficulty,
+			ModifierDescriptor.EnemyCombatVeterancy,
 			ModifierDescriptor.Polymorph
 		});
 		int j;

@@ -159,7 +159,14 @@ internal sealed class MotionVectorsPersistentData
 		m_PrevAspectRatio[num] = cameraData.aspectRatio;
 	}
 
-	public void SetGlobalMotionMatrices(CommandBuffer cmd)
+	public void SetGlobalMotionMatrices(RasterCommandBuffer cmd)
+	{
+		int num = 0;
+		cmd.SetGlobalMatrix(ShaderPropertyId._PrevViewProjMatrix, previousViewProjectionStereo[num]);
+		cmd.SetGlobalMatrix(ShaderPropertyId._NonJitteredViewProjMatrix, viewProjectionStereo[num]);
+	}
+
+	public void SetGlobalMotionMatrices(UnsafeCommandBuffer cmd)
 	{
 		int num = 0;
 		cmd.SetGlobalMatrix(ShaderPropertyId._PrevViewProjMatrix, previousViewProjectionStereo[num]);

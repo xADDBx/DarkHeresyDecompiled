@@ -62,7 +62,7 @@ public sealed class PartyFormationManager : EntityPart<Player>, IUnitEquipmentHa
 	private Dictionary<BlueprintPartyFormation, bool> m_PreserveFormation { get; set; } = new Dictionary<BlueprintPartyFormation, bool>();
 
 
-	private BlueprintPartyFormation SelectedFormation
+	public BlueprintPartyFormation SelectedFormation
 	{
 		get
 		{
@@ -85,29 +85,28 @@ public sealed class PartyFormationManager : EntityPart<Player>, IUnitEquipmentHa
 		}
 	}
 
-	public int CurrentFormationIndex
-	{
-		get
-		{
-			return m_CurrentFormationIndex;
-		}
-		set
-		{
-			if (m_CurrentFormationIndex != value)
-			{
-				m_CurrentFormationIndex = value;
-				UpdateSelectedFormation();
-				Metrics.Formation.Id(m_SelectedFormation?.AssetGuid).Send();
-				EventBus.RaiseEvent(delegate(IFormationUIHandlers h)
-				{
-					h.CurrentFormationChanged(m_CurrentFormationIndex);
-				});
-			}
-		}
-	}
+	public int CurrentFormationIndex => m_CurrentFormationIndex;
 
 	[NotNull]
 	public IPartyFormation CurrentFormation => GetPartyFormation(SelectedFormation);
+
+	public void SetCurrentFormationIndex(int index, bool fromUi)
+	{
+		if (m_CurrentFormationIndex != index)
+		{
+			BlueprintPartyFormation selectedFormation = m_SelectedFormation;
+			m_CurrentFormationIndex = index;
+			UpdateSelectedFormation();
+			if (fromUi)
+			{
+				Metrics.Formation.From(selectedFormation?.AssetGuid).To(m_SelectedFormation?.AssetGuid).Send();
+			}
+			base.EventBus.RaiseEvent(delegate(IFormationUIHandlers h)
+			{
+				h.CurrentFormationChanged(m_CurrentFormationIndex);
+			});
+		}
+	}
 
 	private IPartyFormation GetPartyFormation(BlueprintPartyFormation formation)
 	{
@@ -224,7 +223,7 @@ public sealed class PartyFormationManager : EntityPart<Player>, IUnitEquipmentHa
 		{
 			m_CustomFormations.Remove(blueprintPartyFormation);
 			SureCustomFormation(blueprintPartyFormation);
-			EventBus.RaiseEvent(delegate(IFormationUIHandlers h)
+			base.EventBus.RaiseEvent(delegate(IFormationUIHandlers h)
 			{
 				h.CurrentFormationChanged(m_CurrentFormationIndex);
 			});
@@ -255,7 +254,7 @@ public sealed class PartyFormationManager : EntityPart<Player>, IUnitEquipmentHa
 		{
 			BlueprintPartyFormation formation = predefinedFormations[formationIndex];
 			GetPartyFormation(formation).SetOffset(index, unit, vector);
-			EventBus.RaiseEvent(delegate(IFormationUIHandlers h)
+			base.EventBus.RaiseEvent(delegate(IFormationUIHandlers h)
 			{
 				h.CurrentFormationChanged(m_CurrentFormationIndex);
 			});

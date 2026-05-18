@@ -48,6 +48,8 @@ public class UICombatTexts
 
 	public LocalizedString CultAmbush;
 
+	public LocalizedString ConcentrationBroken;
+
 	public string GetAvoidText(AttackResult result, bool isCasterCriticallyInjured)
 	{
 		return result switch

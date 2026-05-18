@@ -3,6 +3,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects.SriptZones;
 using Owlcat.QA.Validation;
@@ -37,11 +38,14 @@ public class ScriptZoneGraphNodesEvaluator : GraphNodeListEvaluator, IOwlPackabl
 
 	protected override List<GraphNode> GetValueInternal()
 	{
-		ScriptZone obj = ScriptZone.FindView() as ScriptZone;
+		ScriptZoneEntity scriptZoneEntity = ScriptZone.FindData() as ScriptZoneEntity;
 		HashSet<GraphNode> hashSet = new HashSet<GraphNode>();
-		foreach (IScriptZoneShape shape in obj.Shapes)
+		if (scriptZoneEntity != null)
 		{
-			hashSet.AddRange(shape.CoveredNodes);
+			foreach (IScriptZoneShape shape in scriptZoneEntity.Config.Shapes)
+			{
+				hashSet.AddRange(shape.CoveredNodes);
+			}
 		}
 		return hashSet.ToList();
 	}

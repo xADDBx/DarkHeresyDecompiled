@@ -1,10 +1,8 @@
 using System;
 using System.Collections;
 using Kingmaker.AreaLogic.Cutscenes;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.View;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Controllers.MapObjects;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.GameCommands;
@@ -13,12 +11,10 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Common.Animations;
-using Kingmaker.UI.Pointer;
 using Kingmaker.UI.Sound;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -60,14 +56,10 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 
 	[Header("Cutscene hints")]
 	[SerializeField]
-	private ConsoleHint m_SkipCutsceneHint;
+	private HintView m_SkipCutsceneHint;
 
 	[SerializeField]
 	private FadeAnimator m_SkipCutsceneHintHolderFade;
-
-	private InputLayer m_CutSceneInputLayer;
-
-	private InputBindStruct m_SkipCutsceneHintStruct;
 
 	private IDisposable m_TurnUnitSubscription;
 
@@ -81,7 +73,7 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 
 	[Header("Main input hints")]
 	[SerializeField]
-	private ConsoleHint m_PauseGameHint;
+	private HintView m_PauseGameHint;
 
 	[SerializeField]
 	private FadeAnimator m_AdditionalHintsContainer;
@@ -92,44 +84,44 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 	private float m_HintsDisappearTime = 5f;
 
 	[SerializeField]
-	private ConsoleHint m_ChangeCameraRotateModeHint;
+	private HintView m_ChangeCameraRotateModeHint;
 
 	[SerializeField]
-	private ConsoleHint m_FocusOnCurrentUnitHint;
+	private HintView m_FocusOnCurrentUnitHint;
 
 	[SerializeField]
-	private ConsoleHint m_SwitchCursorHint;
+	private HintView m_SwitchCursorHint;
 
 	[SerializeField]
-	private ConsoleHint m_OpenMapHint;
+	private HintView m_OpenMapHint;
 
 	[SerializeField]
-	private ConsoleHint m_SwitchHighlightHint;
+	private HintView m_SwitchHighlightHint;
 
 	[SerializeField]
-	private ConsoleHint m_CoopRolesHint;
+	private HintView m_CoopRolesHint;
 
 	[SerializeField]
-	private ConsoleHint m_EscMenuHint;
+	private HintView m_EscMenuHint;
 
 	[Header("Combat input hints")]
 	[SerializeField]
-	private ConsoleHint m_FocusOnCurrentUnitCombatHint;
+	private HintView m_FocusOnCurrentUnitCombatHint;
 
 	[SerializeField]
-	private ConsoleHint m_HighlightObjectsCombatHint;
+	private HintView m_HighlightObjectsCombatHint;
 
 	[SerializeField]
-	private ConsoleHint m_EndTurnCombatHint;
+	private HintView m_EndTurnCombatHint;
 
 	[SerializeField]
-	private ConsoleHint m_StartBattleHint;
+	private HintView m_StartBattleHint;
 
 	[SerializeField]
-	private ConsoleHint m_CoopRolesSurfaceCombatHint;
+	private HintView m_CoopRolesSurfaceCombatHint;
 
 	[SerializeField]
-	private ConsoleHint m_EscMenuCombatHint;
+	private HintView m_EscMenuCombatHint;
 
 	[Header("Other")]
 	[SerializeField]
@@ -170,10 +162,10 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		m_InspectConsoleView.Bind(base.ViewModel.InspectVM);
 		m_CombatLogConsoleView.Bind(base.ViewModel.CombatLogVM);
 		AddDisposable(base.ViewModel.InitiativeTrackerVM.Subscribe(m_InitiativeTrackerView.Bind));
-		AddDisposable(base.ViewModel.CombatStartWindowVM.Subscribe(m_CombatStartWindowView.Bind));
+		AddDisposable(base.ViewModel.PreparationTurnWindowVM.Subscribe(m_CombatStartWindowView.Bind));
 		AddDisposable(base.ViewModel.CurrentUnit.Subscribe(m_SurfaceCombatCurrentUnitView.Bind));
 		AddDisposable(base.ViewModel.ActionBarVM.IsVisible.Subscribe(ActionBarVisibilityChanged));
-		AddDisposable(ObservableSubscribeExtensions.Subscribe(MainThreadDispatcher.LateUpdateAsObservable(), delegate
+		AddDisposable(ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.PreLateUpdate), delegate
 		{
 			InternalUpdate();
 		}));
@@ -232,105 +224,19 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		m_IsSkipCutsceneLongPressAnimActive.Value = true;
 	}
 
-	public void AddBaseInput(InputLayer baseInputLayer)
+	public void AddBaseInput()
 	{
-		AddDisposable(baseInputLayer.AddButton(delegate
-		{
-			SwitchPartySelector(isEnabled: true);
-		}, 12, InputActionEventType.ButtonJustPressed, enableDefaultSound: false));
-		AddDisposable(baseInputLayer.AddButton(delegate
-		{
-			SwitchPartySelector(isEnabled: false);
-		}, 12, InputActionEventType.ButtonJustReleased, enableDefaultSound: false));
-		AddDisposable(baseInputLayer.AddButton(delegate
-		{
-			SwitchPartySelector(isEnabled: false);
-		}, 12, InputActionEventType.ButtonLongPressJustReleased, enableDefaultSound: false));
-		AddDisposable(baseInputLayer.AddButton(delegate
-		{
-			SwitchIngameMenu(IsIngameMenuAllowed);
-		}, 13, InputActionEventType.ButtonJustPressed, enableDefaultSound: false));
-		AddDisposable(baseInputLayer.AddButton(delegate
-		{
-			SwitchIngameMenu(isEnabled: false);
-		}, 13, InputActionEventType.ButtonJustReleased, enableDefaultSound: false));
-		AddDisposable(baseInputLayer.AddButton(delegate
-		{
-			SwitchIngameMenu(isEnabled: false);
-		}, 13, InputActionEventType.ButtonLongPressJustReleased, enableDefaultSound: false));
 	}
 
-	public void AddMainInput(InputLayer inputLayer)
+	public void AddMainInput()
 	{
-		AddDisposable(m_ChangeCameraRotateModeHint.Bind(inputLayer.AddButton(ChangeCameraRotateMode, 19, ConsoleCursor.Instance.IsNotActiveProperty, InputActionEventType.ButtonJustReleased)));
-		m_ChangeCameraRotateModeHint.SetLabel(UIStrings.Instance.HUDTexts.SwitchCameraMode);
-		AddDisposable(m_FocusOnCurrentUnitHint.Bind(inputLayer.AddButton(FocusOnCurrentUnit, 19, ConsoleCursor.Instance.IsActiveProperty, InputActionEventType.ButtonJustReleased)));
-		m_FocusOnCurrentUnitHint.SetLabel(UIStrings.Instance.HUDTexts.FocusOnCurrentUnit);
-		AddDisposable(m_SwitchCursorHint.Bind(inputLayer.AddButton(delegate
-		{
-			SwitchCursor(inputLayer);
-		}, 18, InputActionEventType.ButtonJustReleased)));
-		m_SwitchCursorHint.SetLabel(UIStrings.Instance.HUDTexts.Pointer);
-		AddDisposable(m_OpenMapHint.Bind(inputLayer.AddButton(OpenMap, 17, InputActionEventType.ButtonJustLongPressed)));
-		m_OpenMapHint.SetLabel(UIStrings.Instance.MainMenu.LocalMap);
-		AddDisposable(m_SwitchHighlightHint.Bind(inputLayer.AddButton(SwitchHighlight, 17, InputActionEventType.ButtonJustReleased)));
-		m_SwitchHighlightHint.SetLabel(UIStrings.Instance.HUDTexts.HighlightObjects);
-		AddDisposable(m_PauseGameHint.Bind(inputLayer.AddButton(PauseGame, 10, InputActionEventType.ButtonJustReleased)));
-		m_PauseGameHint.SetLabel(UIStrings.Instance.HUDTexts.Pause);
-		AddDisposable(m_CoopRolesHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.OpenNetRoles();
-		}, 18, base.ViewModel.NetFirstLoadState, InputActionEventType.ButtonJustLongPressed)));
-		m_CoopRolesHint.SetLabel(UIStrings.Instance.EscapeMenu.EscMenuRoles);
-		AddDisposable(m_EscMenuHint.Bind(inputLayer.AddButton(delegate
-		{
-		}, 16, InputActionEventType.ButtonJustReleased)));
-		m_EscMenuHint.SetLabel(UIStrings.Instance.MainMenu.Settings);
-		m_ActionBarConsoleView.AddInput(inputLayer, inCombat: false);
-		m_CombatLogConsoleView.AddInput(inputLayer);
 	}
 
-	public void AddCombatInput(InputLayer inputLayer)
+	public void AddCombatInput()
 	{
-		AddDisposable(m_FocusOnCurrentUnitCombatHint.Bind(inputLayer.AddButton(FocusOnCurrentUnit, 19, base.ViewModel.DeploymentPhase.Not().ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased)));
-		m_FocusOnCurrentUnitCombatHint.SetLabel(UIStrings.Instance.HUDTexts.FocusOnCurrentUnit);
-		AddDisposable(m_HighlightObjectsCombatHint.Bind(inputLayer.AddButton(delegate
-		{
-		}, 12)));
-		m_HighlightObjectsCombatHint.SetLabel(UIStrings.Instance.HUDTexts.HighlightObjects);
-		AddDisposable(m_EndTurnCombatHint.Bind(inputLayer.AddButton(EndTurn, 17, base.ViewModel.DeploymentPhase.Not().And(base.ViewModel.IsTurnBasedActive).And(base.ViewModel.ShowEndTurn)
-			.And(base.ViewModel.CanEndTurn)
-			.ToReadOnlyReactiveProperty(initialValue: false))));
-		m_EndTurnCombatHint.SetLabel(UIStrings.Instance.HUDTexts.EndTurn);
-		AddDisposable(m_StartBattleHint.Bind(inputLayer.AddButton(EndTurn, 17, base.ViewModel.DeploymentPhase)));
-		m_StartBattleHint.SetLabel(UIStrings.Instance.TurnBasedTexts.StartBattle);
-		AddDisposable(m_CoopRolesSurfaceCombatHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.OpenNetRoles();
-		}, 18, base.ViewModel.NetFirstLoadState, InputActionEventType.ButtonJustLongPressed)));
-		m_CoopRolesSurfaceCombatHint.SetLabel(UIStrings.Instance.EscapeMenu.EscMenuRoles);
-		AddDisposable(m_EscMenuCombatHint.Bind(inputLayer.AddButton(delegate
-		{
-		}, 16, InputActionEventType.ButtonJustReleased)));
-		m_EscMenuCombatHint.SetLabel(UIStrings.Instance.MainMenu.Settings);
-		AddDisposable(inputLayer.AddButton(delegate
-		{
-			SpeedUp(state: true);
-		}, 17));
-		AddDisposable(inputLayer.AddButton(delegate
-		{
-			SpeedUp(state: false);
-		}, 17, InputActionEventType.ButtonJustReleased));
-		AddDisposable(inputLayer.AddButton(delegate
-		{
-			SpeedUp(state: false);
-		}, 17, InputActionEventType.ButtonLongPressJustReleased));
-		m_ActionBarConsoleView.AddInput(inputLayer, inCombat: true);
-		m_CombatLogConsoleView.AddInputToCombat(inputLayer);
-		m_PartyConsoleView.AddInput(inputLayer, base.ViewModel.DeploymentPhase);
 	}
 
-	public void OnShowEscMenu(InputActionEventData data)
+	public void OnShowEscMenu()
 	{
 		EventBus.RaiseEvent(delegate(IEscMenuHandler h)
 		{
@@ -341,52 +247,14 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 	public void OnGameModeStart(GameModeType gameMode)
 	{
 		m_IsPaused.Value = Game.Instance.IsPaused;
-		if (CutsceneLock.Active && m_CutSceneInputLayer == null && gameMode == GameModeType.Cutscene)
-		{
-			m_CutSceneInputLayer = new InputLayer
-			{
-				ContextName = "CutSceneInputLayer"
-			};
-			AddDisposable(m_CutSceneInputLayer.AddButton(OnShowEscMenu, 16, InputActionEventType.ButtonJustReleased));
-			AddDisposable(m_SkipCutsceneHintStruct = m_CutSceneInputLayer.AddButton(OnCutSceneDecline, 9, m_IsSkipCutsceneHintActive, InputActionEventType.ButtonJustLongPressed));
-			AddDisposable(m_SkipCutsceneHint.Bind(m_SkipCutsceneHintStruct));
-			AddDisposable(m_IsSkipCutsceneHintActive.Subscribe(HandleSkipCutsceneHintState));
-			m_SkipCutsceneHint.SetLabel(UIStrings.Instance.CommonTexts.SkipHold);
-			AddDisposable(GamePad.Instance.PushLayer(m_CutSceneInputLayer));
-		}
-		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.Dialog)
-		{
-			InteractionHighlightController.Instance?.Highlight(on: false);
-		}
 	}
 
 	public void OnGameModeStop(GameModeType gameMode)
 	{
-		m_IsPaused.Value = Game.Instance.IsPaused;
-		if (!CutsceneLock.Active && m_CutSceneInputLayer != null)
-		{
-			GamePad.Instance.PopLayer(m_CutSceneInputLayer);
-			m_CutSceneInputLayer = null;
-			if (m_HideCloseCutsceneHint != null)
-			{
-				HideCutsceneHints();
-				StopCoroutine(m_HideCloseCutsceneHint);
-			}
-		}
 	}
 
 	public void CloseCutscene()
 	{
-		if (m_CutSceneInputLayer != null)
-		{
-			GamePad.Instance.PopLayer(m_CutSceneInputLayer);
-			m_CutSceneInputLayer = null;
-			if (m_HideCloseCutsceneHint != null)
-			{
-				HideCutsceneHints();
-				StopCoroutine(m_HideCloseCutsceneHint);
-			}
-		}
 	}
 
 	private void HideCutsceneHints()
@@ -418,7 +286,7 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		m_SkipCutsceneHintHolderFade.DisappearAnimation();
 	}
 
-	private void OnCutSceneDecline(InputActionEventData data)
+	private void OnCutSceneDecline()
 	{
 		if (!(Game.Instance.CurrentModeType != GameModeType.Cutscene))
 		{
@@ -470,7 +338,7 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 
 	public void SwitchIngameMenu(bool isEnabled)
 	{
-		bool flag = RootUIContext.Instance.IsBlockedFullScreenUIType() || m_PartySelectorConsoleView.ViewModel != null || RootUIContext.Instance.IsVendorSelectingWindowShow;
+		bool flag = RootUIContext.Instance.IsBlockedFullScreenUIType() || m_PartySelectorConsoleView.ViewModel != null;
 		bool flag2 = isEnabled && !flag && !LoadingProcess.Instance.IsLoadingScreenActive;
 		m_IngameMenuConsoleView.Bind(flag2 ? base.ViewModel.IngameMenuVM : null);
 		if (isEnabled && !flag)
@@ -479,17 +347,17 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		}
 	}
 
-	private void PauseGame(InputActionEventData eventData)
+	private void PauseGame()
 	{
 		Game.Instance.PauseBind();
 	}
 
-	private void SwitchHighlight(InputActionEventData eventData)
+	private void SwitchHighlight()
 	{
 		InteractionHighlightController.Instance.SwitchHighlight();
 	}
 
-	private void OpenMap(InputActionEventData eventData)
+	private void OpenMap()
 	{
 		EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
 		{
@@ -497,7 +365,7 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		});
 	}
 
-	private void EndTurn(InputActionEventData eventData)
+	private void EndTurn()
 	{
 		Game.Instance.EndTurnBind();
 	}
@@ -507,20 +375,17 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		Game.Instance.SpeedUp(state);
 	}
 
-	private void ChangeCameraRotateMode(InputActionEventData data)
+	private void ChangeCameraRotateMode()
 	{
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Buttons.ButtonClick);
+		ButtonsSounds.Instance.Default.Click.Play();
 		Game.Instance.Player.IsCameraRotateMode = !Game.Instance.Player.IsCameraRotateMode;
 	}
 
-	private void SwitchCursor(InputLayer inputLayer)
+	private void SwitchCursor()
 	{
-		SurfaceMainInputLayer obj = (SurfaceMainInputLayer)inputLayer;
-		obj.StopMovement();
-		obj.SwitchCursorEnabled();
 	}
 
-	private void FocusOnCurrentUnit(InputActionEventData data)
+	private void FocusOnCurrentUnit()
 	{
 		Game.Instance.Controllers.CameraController?.Follower?.ScrollTo((base.ViewModel.CurrentUnit.CurrentValue != null) ? base.ViewModel.CurrentUnit.CurrentValue.MechanicEntity : Game.Instance.Player.MainCharacterEntity);
 	}
@@ -531,11 +396,6 @@ public class SurfaceHUDConsoleView : ViewBase<SurfaceHUDVM>, IGameModeHandler, I
 		m_SelectedUnitSubscription = null;
 		m_TurnUnitSubscription?.Dispose();
 		m_TurnUnitSubscription = null;
-		if (m_CutSceneInputLayer != null)
-		{
-			GamePad.Instance.PopLayer(m_CutSceneInputLayer);
-			m_CutSceneInputLayer = null;
-		}
 		if (m_HideCloseCutsceneHint != null)
 		{
 			HideCutsceneHints();

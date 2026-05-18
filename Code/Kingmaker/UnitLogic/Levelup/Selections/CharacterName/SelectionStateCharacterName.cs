@@ -6,9 +6,9 @@ namespace Kingmaker.UnitLogic.Levelup.Selections.CharacterName;
 
 public class SelectionStateCharacterName : SelectionState
 {
-	private string m_CharacterName;
-
 	private bool m_Selected;
+
+	public string CharacterName { get; private set; }
 
 	public SelectionStateCharacterName([NotNull] LevelUpManager manager, [NotNull] BlueprintSelection blueprint, [NotNull] BlueprintPath path, int pathRank)
 		: base(manager, blueprint, path, pathRank)
@@ -22,7 +22,7 @@ public class SelectionStateCharacterName : SelectionState
 
 	protected override bool IsValidInternal()
 	{
-		return !string.IsNullOrEmpty(m_CharacterName);
+		return !string.IsNullOrEmpty(CharacterName);
 	}
 
 	protected override bool CanSelectAnyInternal()
@@ -32,14 +32,14 @@ public class SelectionStateCharacterName : SelectionState
 
 	public void SelectName(string name)
 	{
-		m_CharacterName = name;
+		CharacterName = name;
 		m_Selected = true;
 		NotifySelectionChanged();
 	}
 
 	protected override void ApplyInternal(BaseUnitEntity unit)
 	{
-		unit.Description.SetName(m_CharacterName);
+		unit.Description.SetCustomName(CharacterName);
 	}
 
 	protected override void InvalidateInternal()

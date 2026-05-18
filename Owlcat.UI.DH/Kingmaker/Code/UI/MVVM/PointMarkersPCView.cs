@@ -43,7 +43,7 @@ public class PointMarkersPCView : View<PointMarkersVM>
 
 	private Camera UICamera => Kingmaker.UI.UICamera.Instance;
 
-	public static float ScreenScale => 1f;
+	public float ScreenScale => Mathf.Min((float)Screen.width / 1920f, (float)Screen.height / 1080f);
 
 	protected override void OnBind()
 	{

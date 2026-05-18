@@ -1,0 +1,40 @@
+using Code.View.UI.Helpers;
+using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Utility.DotNetExtensions;
+using Owlcat.UI;
+using R3;
+using TMPro;
+using UnityEngine;
+
+namespace Kingmaker.Code.UI.MVVM;
+
+public class BrickLevelUpFittingAbilitiesView : BrickBaseView<BrickLevelUpFittingAbilitiesVM>
+{
+	[Header("Elements")]
+	[SerializeField]
+	private TMP_Text m_Title;
+
+	[SerializeField]
+	private TMP_Text m_NoAbilities;
+
+	[SerializeField]
+	private WidgetList m_WidgetList;
+
+	[Header("Views")]
+	[SerializeField]
+	private TooltipElementAbilityWithModifierView m_AbilityWithModifierPrefab;
+
+	protected override void OnBind()
+	{
+		if (m_TextHelper == null)
+		{
+			m_TextHelper = new AccessibilityTextHelper(m_Title, m_NoAbilities).AddTo(this);
+		}
+		base.OnBind();
+		m_Title.SetText(UIStrings.Instance.Tooltips.FittingAbilities);
+		m_NoAbilities.SetText(UIStrings.Instance.Tooltips.NoSuitableAbilities);
+		m_NoAbilities.gameObject.SetActive(base.ViewModel.Abilities.Empty());
+		m_WidgetList.DrawEntries(base.ViewModel.Abilities, m_AbilityWithModifierPrefab).AddTo(this);
+		m_TextHelper.UpdateTextSize();
+	}
+}

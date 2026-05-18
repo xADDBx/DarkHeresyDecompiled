@@ -1,11 +1,9 @@
 using System;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Gameplay.Components;
@@ -28,7 +26,17 @@ public abstract class ChanceRollTrigger : MechanicEntityFactComponentDelegate
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.SetIfNotNull(rule.Target))
+		object obj;
+		if (rule.Target == null)
+		{
+			obj = null;
+		}
+		else
+		{
+			IDisposable disposable = EvalContext.Current.PushTarget(rule.Target);
+			obj = disposable;
+		}
+		using (obj)
 		{
 			OnAnyResult.Run();
 			if (rule.Success)

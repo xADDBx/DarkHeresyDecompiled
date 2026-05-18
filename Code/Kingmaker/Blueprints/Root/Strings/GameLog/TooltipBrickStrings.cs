@@ -7,18 +7,30 @@ namespace Kingmaker.Blueprints.Root.Strings.GameLog;
 [Serializable]
 public class TooltipBrickStrings
 {
+	[Header("Hit")]
 	public LocalizedString TriggersOverpenetration;
+
+	public LocalizedString FromOverpenetration;
+
+	public LocalizedString FromOverpenetrationAndTriggersOverpenetration;
 
 	public LocalizedString TriggersPush;
 
-	[Header("Hit")]
 	public LocalizedString HitChance;
 
 	public LocalizedString HitChanceSignature;
 
 	public LocalizedString HitRoll;
 
+	public LocalizedString Defence;
+
 	public LocalizedString DefenceRoll;
+
+	public LocalizedString NoDefenceRoll;
+
+	public LocalizedString DefenceDisabled;
+
+	public LocalizedString MaxDefence;
 
 	public LocalizedString InitialRoll;
 
@@ -150,7 +162,25 @@ public class TooltipBrickStrings
 
 	public LocalizedString AssassinLethality;
 
-	public LocalizedString AutoCrit;
+	public LocalizedString AoeRangedAttack;
+
+	public LocalizedString UnitInCover;
+
+	public LocalizedString CoverForceHit;
+
+	public LocalizedString Cover;
+
+	public LocalizedString Environment;
+
+	public LocalizedString BodyPart;
+
+	public LocalizedString DamageReduction;
+
+	public LocalizedString PlainDamage;
+
+	public LocalizedString DamageToArmor;
+
+	public LocalizedString DamageToHealth;
 
 	[Space]
 	public LocalizedString Initiator;

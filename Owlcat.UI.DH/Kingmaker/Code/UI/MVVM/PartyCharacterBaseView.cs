@@ -48,7 +48,9 @@ public class PartyCharacterBaseView : View<PartyCharacterVM>, IScrollHandler, IE
 		m_CharacterButton.OnSingleLeftClickAsObservable().Subscribe(OnSingleLeftClick).AddTo(this);
 		m_CharacterButton.OnLeftDoubleClickAsObservable().Subscribe(OnDoubleLeftClick).AddTo(this);
 		base.ViewModel.IsEnable.Subscribe(base.gameObject.SetActive).AddTo(this);
-		base.ViewModel.IsSelected.Subscribe(SetSelected).AddTo(this);
+		base.ViewModel.IsSelected.Skip(1).Subscribe(SetSelected).AddTo(this);
+		m_IsSelected = base.ViewModel.IsSelected.CurrentValue;
+		m_CharacterButton.SetActiveLayer(base.ViewModel.IsSelected.CurrentValue ? 1 : 0);
 		if (m_NetLock != null)
 		{
 			base.ViewModel.NetAvatar.Subscribe(delegate(Sprite value)
@@ -71,7 +73,7 @@ public class PartyCharacterBaseView : View<PartyCharacterVM>, IScrollHandler, IE
 
 	protected virtual void OnDoubleLeftClick()
 	{
-		UISounds.Instance.Sounds.Character.CharacterSelectAll.Play();
+		ServiceWindowsSounds.Instance.Character.SelectAll.Play();
 	}
 
 	private void SetSelected(bool value)
@@ -82,7 +84,7 @@ public class PartyCharacterBaseView : View<PartyCharacterVM>, IScrollHandler, IE
 			m_CharacterButton.SetActiveLayer(value ? 1 : 0);
 			if (value)
 			{
-				UISounds.Instance.Sounds.Character.CharacterSelect.Play();
+				ServiceWindowsSounds.Instance.Character.Select.Play();
 			}
 		}
 	}
@@ -97,7 +99,7 @@ public class PartyCharacterBaseView : View<PartyCharacterVM>, IScrollHandler, IE
 		float y = eventData.scrollDelta.y;
 		if (!(Mathf.Abs(y) < Mathf.Epsilon))
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+			ButtonsSounds.Instance.Default.Click.Play();
 			base.ViewModel.NextPrev(y < 0f);
 		}
 	}

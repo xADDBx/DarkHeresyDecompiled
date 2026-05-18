@@ -24,7 +24,7 @@ public sealed class CommandMovePartyToElevatorPlatform : CommandBase
 	{
 		public UnitData[] Units = Array.Empty<UnitData>();
 
-		public Exception? ExceptionToThrow;
+		public CommandResult? PathCalculationResult;
 
 		public bool IsFinished;
 	}
@@ -55,14 +55,14 @@ public sealed class CommandMovePartyToElevatorPlatform : CommandBase
 	[ShowIf("OverrideSpeed")]
 	public float Speed = 5f;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		ElevatorPlatformEntity elevatorPlatform = player.GetElevatorPlatform();
 		elevatorPlatform.CutsceneHold.Retain();
 		LocatorEntity[] array = elevatorPlatform.Config.PartyPlaces.Dereference().NotNull().ToArray();
 		if (array.Length == 0)
 		{
-			throw new InvalidOperationException($"No party places defined for elevator {elevatorPlatform}");
+			return CommandResult.Fail($"No party places defined for elevator {elevatorPlatform}");
 		}
 		List<BaseUnitEntity> partyAndPets = Game.Instance.Player.PartyAndPets;
 		CommandData commandData = player.GetCommandData<CommandData>(this);
@@ -81,7 +81,7 @@ public sealed class CommandMovePartyToElevatorPlatform : CommandBase
 				unitData.WaitingForPath = false;
 				if (path.error)
 				{
-					commandData.ExceptionToThrow = new Exception("An error path was returned. Ignoring. Unit [" + unitData.Unit?.UniqueId + ", '" + unitData.Unit?.Blueprint?.Name + "']");
+					commandData.PathCalculationResult = CommandResult.Fail("An error path was returned. Ignoring. Unit [" + unitData.Unit?.UniqueId + ", '" + unitData.Unit?.Blueprint?.Name + "']");
 				}
 				else
 				{
@@ -90,7 +90,7 @@ public sealed class CommandMovePartyToElevatorPlatform : CommandBase
 					{
 						path.Claim(this);
 						path.Release(this);
-						commandData.ExceptionToThrow = new Exception("Unit was disposed while searching for path");
+						commandData.PathCalculationResult = CommandResult.Fail("Unit was disposed while searching for path");
 					}
 					else
 					{
@@ -106,28 +106,29 @@ public sealed class CommandMovePartyToElevatorPlatform : CommandBase
 				}
 			});
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		CommandData commandData = player.GetCommandData<CommandData>(this);
-		Exception exceptionToThrow = commandData.ExceptionToThrow;
-		if (exceptionToThrow != null)
+		CommandResult? pathCalculationResult = commandData.PathCalculationResult;
+		if (pathCalculationResult.HasValue && !pathCalculationResult.GetValueOrDefault().IsSuccess)
 		{
-			commandData.ExceptionToThrow = null;
-			throw new Exception("Re-throwing path exception", exceptionToThrow);
+			return commandData.PathCalculationResult.Value;
 		}
 		if (time > (double)m_Timeout)
 		{
-			Interrupt(player);
+			return Interrupt(player);
 		}
-		else if (IsMovementFinished(player))
+		if (IsMovementFinished(player))
 		{
 			commandData.IsFinished = true;
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		CommandData commandData = player.GetCommandData<CommandData>(this);
 		UnitData[] units = commandData.Units;
@@ -146,16 +147,19 @@ public sealed class CommandMovePartyToElevatorPlatform : CommandBase
 		}
 		commandData.Units = Array.Empty<UnitData>();
 		player.GetElevatorPlatform().CutsceneHold.Release();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		player.GetCommandData<CommandData>(this).IsFinished = true;
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
 		player.GetCommandData<CommandData>(this).IsFinished = true;
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)

@@ -1,4 +1,3 @@
-using Kingmaker.Controllers.Net;
 using Kingmaker.EntitySystem;
 using Kingmaker.Signals;
 using Newtonsoft.Json;
@@ -24,9 +23,6 @@ public struct HashableState : IHashable
 	public RandomState randomState;
 
 	[JsonProperty]
-	public PlayerCommandsCollection<SynchronizedData> synchronizedData;
-
-	[JsonProperty]
 	public SignalService.SignalServiceState signalService;
 
 	public Hash128 GetHash128()
@@ -40,10 +36,8 @@ public struct HashableState : IHashable
 		result.Append(ref val3);
 		Hash128 val4 = ClassHasher<RandomState>.GetHash128(randomState);
 		result.Append(ref val4);
-		Hash128 val5 = ClassHasher<PlayerCommandsCollection<SynchronizedData>>.GetHash128(synchronizedData);
+		Hash128 val5 = ClassHasher<SignalService.SignalServiceState>.GetHash128(signalService);
 		result.Append(ref val5);
-		Hash128 val6 = ClassHasher<SignalService.SignalServiceState>.GetHash128(signalService);
-		result.Append(ref val6);
 		return result;
 	}
 }

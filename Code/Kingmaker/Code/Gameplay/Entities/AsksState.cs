@@ -42,7 +42,7 @@ public sealed class AsksState : Entity, IHashable, IOwlPackable<AsksState>
 
 	public override bool NeedsView => false;
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}

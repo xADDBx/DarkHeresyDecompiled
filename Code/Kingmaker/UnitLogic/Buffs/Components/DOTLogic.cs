@@ -11,6 +11,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Mechanics.Damage;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
@@ -30,6 +31,13 @@ namespace Kingmaker.UnitLogic.Buffs.Components;
 [AllowedOn(typeof(BlueprintBuff))]
 [ComponentName("DOT/DOTLogic")]
 [TypeId("f13ba6e499da486e9ec3ddc458c6c110")]
+[ReadsContext(new ContextField[]
+{
+	ContextField.Caster,
+	ContextField.Owner
+})]
+[ContextRole(ContextField.Caster, "buff applier (poisoner)", FallsBackTo = "Owner", Note = "if applier left the area, falls back to victim — damage attribution will go to victim")]
+[ContextRole(ContextField.Owner, "the buff holder (the poisoned unit)")]
 public class DOTLogic : UnitBuffComponentDelegate, ITickEachRound
 {
 	public class Settings : ContextData<Settings>

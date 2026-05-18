@@ -8,6 +8,7 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.ElementsSystem;
+using Kingmaker.Framework;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Gameplay.Features.Cohesion.Ability;
 using Kingmaker.ResourceLinks.BaseInterfaces;
@@ -18,7 +19,6 @@ using Kingmaker.UnitLogic.Abilities.Components.CutsceneAttack;
 using Kingmaker.UnitLogic.Abilities.Components.TargetCheckers;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.FactLogic;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
@@ -99,8 +99,6 @@ public class BlueprintAbility : BlueprintUnitFact, IBlueprintScanner, IResourceI
 	[SerializeField]
 	private BlueprintAbilityReference m_Parent;
 
-	public AbilityAnimationStyle Animation;
-
 	public bool CastInOffHand;
 
 	public bool UseOnMechadendrite;
@@ -131,7 +129,15 @@ public class BlueprintAbility : BlueprintUnitFact, IBlueprintScanner, IResourceI
 	private BlueprintAbilityFXSettings.Reference m_FXSettings;
 
 	[SerializeField]
-	private AttackAnimationType m_AttackAnimationType;
+	private bool m_HasAnimation = true;
+
+	[SerializeField]
+	[ShowIf("HasSpellAnimation")]
+	private AbilityAnimationStyle m_SpellAnimation = AbilityAnimationStyle.Default;
+
+	[SerializeField]
+	[ShowIf("HasAttackAnimation")]
+	private AttackAnimationType m_AttackAnimation;
 
 	[SerializeField]
 	private AbilityTag m_AbilityTag;
@@ -183,7 +189,11 @@ public class BlueprintAbility : BlueprintUnitFact, IBlueprintScanner, IResourceI
 	[CanBeNull]
 	public BlueprintAbilityFXSettings FXSettings => m_FXSettings;
 
-	public AttackAnimationType AttackAnimationType => m_AttackAnimationType;
+	public bool HasAnimation => m_HasAnimation;
+
+	public AbilityAnimationStyle SpellAnimation => m_SpellAnimation;
+
+	public AttackAnimationType AttackAnimationType => m_AttackAnimation;
 
 	public ReferenceArrayProxy<BlueprintAbilityGroup> AbilityGroups
 	{
@@ -270,7 +280,7 @@ public class BlueprintAbility : BlueprintUnitFact, IBlueprintScanner, IResourceI
 	{
 		get
 		{
-			if (this.GetComponent<AbilityTargetsInPattern>() == null && this.GetComponent<AbilityTargetsInCohesionRange>() == null)
+			if (this.GetComponent<AbilityTargetsInPattern>() == null && this.GetComponent<AbilityTargetsInCohesionRange>() == null && this.GetComponent<AbilityDeliverBeamChain>() == null)
 			{
 				IAbilityAttackTypeProvider component = this.GetComponent<IAbilityAttackTypeProvider>();
 				if (component == null || !component.IsAoe)
@@ -356,6 +366,30 @@ public class BlueprintAbility : BlueprintUnitFact, IBlueprintScanner, IResourceI
 	[CanBeNull]
 	public BlueprintAbility BaseAbility => this.GetComponent<UpgradeAbility>()?.BaseAbility;
 
+	private bool HasSpellAnimation
+	{
+		get
+		{
+			if (m_HasAnimation)
+			{
+				return IsSpell;
+			}
+			return false;
+		}
+	}
+
+	private bool HasAttackAnimation
+	{
+		get
+		{
+			if (m_HasAnimation)
+			{
+				return !IsSpell;
+			}
+			return false;
+		}
+	}
+
 	public bool CanTargetPointAfterRestrictions(AbilityData abilityData)
 	{
 		if (abilityData.CanTargetPoint)
@@ -392,7 +426,7 @@ public class BlueprintAbility : BlueprintUnitFact, IBlueprintScanner, IResourceI
 		return typeof(Ability);
 	}
 
-	public override MechanicEntityFact CreateFact(MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public override MechanicEntityFact CreateFact(IEvalContext parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new Ability(this);
 	}

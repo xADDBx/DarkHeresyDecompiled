@@ -28,14 +28,18 @@ using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Formations;
 using Kingmaker.GameModes;
+using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 using Kingmaker.Gameplay.Features.Encounter;
+using Kingmaker.Gameplay.Parts;
 using Kingmaker.Inspect;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking.Serialization;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
+using Kingmaker.Settings;
 using Kingmaker.Settings.Difficulty;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Stores;
@@ -195,15 +199,8 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 
 	public const string ID = "player-id";
 
+	[HashCommit]
 	public new static readonly EntityRef<Player> Ref = new EntityRef<Player>("player-id");
-
-	[JsonProperty]
-	[OwlPackInclude]
-	public DateTime? StartDate;
-
-	[JsonProperty]
-	[OwlPackInclude]
-	public BlueprintAreaPreset StartPreset;
 
 	private UnlockableFlagsManager m_UnlockableFlagsBackingField = new UnlockableFlagsManager();
 
@@ -338,7 +335,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 	{
 		Name = "Player",
 		OldNames = null,
-		Fields = new FieldInfo[64]
+		Fields = new FieldInfo[65]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -354,6 +351,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 			new FieldInfo("RealTime", typeof(TimeSpan)),
 			new FieldInfo("StartDate", typeof(DateTime?)),
 			new FieldInfo("StartPreset", typeof(BlueprintAreaPreset)),
+			new FieldInfo("Campaign", typeof(BlueprintCampaign)),
 			new FieldInfo("m_UnlockableFlags", typeof(UnlockableFlagsManager)),
 			new FieldInfo("CompanionStories", typeof(CompanionStoriesManager)),
 			new FieldInfo("VisitedAreas", typeof(HashSet<BlueprintArea>)),
@@ -416,6 +414,17 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 	[OwlPackInclude]
 	public TimeSpan RealTime { get; set; } = TimeSpan.Zero;
 
+
+	[JsonProperty]
+	[OwlPackInclude]
+	public DateTime? StartDate { get; set; }
+
+	[JsonProperty]
+	[OwlPackInclude]
+	public BlueprintAreaPreset StartPreset { get; set; }
+
+	[OwlPackInclude]
+	public BlueprintCampaign Campaign { get; set; }
 
 	public SceneEntitiesState CrossSceneState => Game.Instance.State.CrossSceneState;
 
@@ -576,6 +585,8 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 
 	public MoraleDataPart MoraleData => GetOrCreate<MoraleDataPart>();
 
+	public int MaxPartySize => GetOptional<PartMaxPartySize>()?.Value ?? 6;
+
 	public UnitPartFlashlight Flashlight => MainCharacter.ToAbstractUnitEntity()?.GetOrCreate<UnitPartFlashlight>();
 
 	public UnitGroup Group => ((BaseUnitEntity)PartyCharacters[0].Entity).CombatGroup.Group;
@@ -677,8 +688,6 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		}
 	}
 
-	public BlueprintCampaign Campaign => SimpleBlueprintExtendAsObject.Or(StartPreset, null)?.Campaign;
-
 	public UnlockableFlagsManager UnlockableFlags => m_UnlockableFlags;
 
 	public bool IsInCombat
@@ -709,14 +718,14 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 
 	public string GameId { get; set; }
 
-	private Player(OwlPackConstructorParameter _)
-		: base(_)
+	public Player()
+		: base("player-id", isInGame: true)
 	{
 		UnlockableFlagsManagerWrapper.Instance.Setup(m_UnlockableFlags);
 	}
 
-	public Player()
-		: base("player-id", isInGame: true)
+	private Player(OwlPackConstructorParameter _)
+		: base(_)
 	{
 		UnlockableFlagsManagerWrapper.Instance.Setup(m_UnlockableFlags);
 	}
@@ -748,7 +757,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		VirtualStashes.Clear();
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -771,7 +780,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		{
 			vs.Value.PostLoad();
 		});
-		CrossSceneState.AllEntityData.OfType<DroppedLoot.EntityData>().ForEach(Game.Instance.Controllers.EntityDestroyer.Destroy);
+		CrossSceneState.AllEntityData.OfType<DroppedLootEntity>().ForEach(Game.Instance.Controllers.EntityDestroyer.Destroy);
 		CameraRig instance = CameraRig.Instance;
 		if ((bool)instance)
 		{
@@ -782,7 +791,13 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		PSNObjects.Activate();
 		if (StartPreset == null)
 		{
-			StartPreset = ConfigRoot.Instance.NewGameSettings.NewGamePreset;
+			BlueprintAreaPreset blueprintAreaPreset = (StartPreset = ConfigRoot.Instance.NewGameSettings.NewGamePreset);
+		}
+		if (Campaign == null)
+		{
+			BlueprintCampaign obj = StartPreset.Campaign ?? ConfigRoot.Instance.NewGameSettings.NewGamePreset.Campaign;
+			BlueprintCampaign blueprintCampaign = obj;
+			Campaign = obj;
 		}
 	}
 
@@ -851,7 +866,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 			{
 				MainCharacterEntity.Remove<UnitPartMainCharacter>();
 				MainCharacterEntity.Remove<UnitPartFlashlight>();
-				EventBus.RaiseEvent(MainCharacter.Entity.ToIBaseUnitEntity(), delegate(IPartyHandler h)
+				base.EventBus.RaiseEvent(MainCharacter.Entity.ToIBaseUnitEntity(), delegate(IPartyHandler h)
 				{
 					h.HandleCompanionRemoved(stayInGame: false);
 				});
@@ -861,7 +876,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		{
 			AddPartyCharacter(unit.FromAbstractUnitEntity());
 			unit.GetOrCreate<UnitPartCompanion>().SetState(CompanionState.InParty);
-			EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IPartyHandler>)delegate(IPartyHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IPartyHandler>)delegate(IPartyHandler h)
 			{
 				h.HandleAddCompanion();
 			}, isCheckRuntime: true);
@@ -909,20 +924,25 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 				}
 				foreach (var (abstractUnitEntity2, followerAction2) in Game.Instance.Controllers.FollowersFormationController.CalculateTeleportToLeaderDestinations(optional))
 				{
-					if ((bool)abstractUnitEntity2.View)
-					{
-						abstractUnitEntity2.View.StopMoving();
-					}
+					abstractUnitEntity2.StopMoving();
 					abstractUnitEntity2.Position = followerAction2.Position;
 					abstractUnitEntity2.DesiredOrientation = followerAction2.Orientation;
 				}
 			}
 		}
+		PartDetectiveServoSkull partDetectiveServoSkull = PartDetectiveServoSkull.Find();
+		if (partDetectiveServoSkull != null)
+		{
+			partDetectiveServoSkull.Owner.Commands.InterruptAllInterruptible();
+			partDetectiveServoSkull.Owner.StopMoving();
+			partDetectiveServoSkull.Owner.Position = partDetectiveServoSkull.IdlePosition;
+			partDetectiveServoSkull.Owner.DesiredOrientation = partDetectiveServoSkull.Leader.DesiredOrientation;
+		}
 		if (moveCamera && Game.Instance.CurrentlyLoadedArea.IsPartyArea)
 		{
 			CameraRig.Instance.ScrollToImmediately(MainCharacter.Entity.Position);
 		}
-		EventBus.RaiseEvent(delegate(ITeleportHandler h)
+		base.EventBus.RaiseEvent(delegate(ITeleportHandler h)
 		{
 			h.HandlePartyTeleport(areaEnterPoint);
 		});
@@ -939,7 +959,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		{
 			item.Progression.GainExperience(gained, log: false);
 		}
-		EventBus.RaiseEvent(delegate(IPartyGainExperienceHandler h)
+		base.EventBus.RaiseEvent(delegate(IPartyGainExperienceHandler h)
 		{
 			h.HandlePartyGainExperience(gained, isExperienceForDeath);
 		});
@@ -977,7 +997,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		}
 		if (!remote)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)value, (Action<IPartyHandler>)delegate(IPartyHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)value, (Action<IPartyHandler>)delegate(IPartyHandler h)
 			{
 				h.HandleCompanionActivated();
 			}, isCheckRuntime: true);
@@ -1015,7 +1035,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 			value.IsInGame = false;
 			SelectionManagerFacade.UpdateSelectedUnits();
 		}
-		EventBus.RaiseEvent((IBaseUnitEntity)value, (Action<IPartyHandler>)delegate(IPartyHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)value, (Action<IPartyHandler>)delegate(IPartyHandler h)
 		{
 			h.HandleCompanionRemoved(stayInGame);
 		}, isCheckRuntime: true);
@@ -1049,7 +1069,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 			}
 		}
 		Game.Instance.Controllers.EntityDestroyer.Destroy(value);
-		EventBus.RaiseEvent((IBaseUnitEntity)value, (Action<IPartyHandler>)delegate(IPartyHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)value, (Action<IPartyHandler>)delegate(IPartyHandler h)
 		{
 			h.HandleCompanionRemoved(stayInGame: false);
 		}, isCheckRuntime: true);
@@ -1069,7 +1089,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		unit.GetOrCreate<UnitPartCompanion>().SetState(CompanionState.InPartyDetached);
 		m_CharacterListsValid = false;
 		SelectionManagerFacade.UpdateSelectedUnits();
-		EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IPartyHandler>)delegate(IPartyHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IPartyHandler>)delegate(IPartyHandler h)
 		{
 			h.HandleCompanionRemoved(stayInGame: false);
 		}, isCheckRuntime: true);
@@ -1084,7 +1104,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		unit.GetOrCreate<UnitPartCompanion>().SetState(CompanionState.InParty);
 		AddPartyCharacter(unit.FromBaseUnitEntity());
 		m_CharacterListsValid = false;
-		EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IPartyHandler>)delegate(IPartyHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IPartyHandler>)delegate(IPartyHandler h)
 		{
 			h.HandleAddCompanion();
 		}, isCheckRuntime: true);
@@ -1284,9 +1304,20 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		newCompanion.Progression.AdvanceExperienceTo(targetExp, log: false);
 		UpdateSoundState(MusicStateHandler.MusicState.Chargen);
 		CharGenConfig.Create(newCompanion, CharGenMode.NewCompanion, companionType, isCustomCompanionChargen: true).SetOnComplete(OnComplete).SetOnClose(OnClose)
-			.SetOnCloseSoundAction(delegate
+			.SetSoundActions(new CharGenSoundActions
 			{
-				UpdateSoundState(MusicStateHandler.MusicState.Setting);
+				OnOpen = delegate
+				{
+					UpdateSoundState(MusicStateHandler.MusicState.Chargen);
+				},
+				OnClose = delegate
+				{
+					UpdateSoundState(MusicStateHandler.MusicState.Setting);
+				},
+				OnComplete = delegate
+				{
+					UpdateSoundState(MusicStateHandler.MusicState.Setting);
+				}
 			})
 			.OpenUI();
 		void OnClose()
@@ -1343,6 +1374,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 
 	public void GameOver(GameOverReasonType reason)
 	{
+		Metrics.GameOver.Reason(reason).Difficulty(MetricsUtils.GameDifficultyToString(SettingsRoot.Difficulty.GameDifficulty.GetValue())).Send();
 		if (reason == GameOverReasonType.Won)
 		{
 			Game.Instance.ResetToMainMenu();
@@ -1352,7 +1384,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 			GameOverReason = reason;
 			Game.Instance.StartMode(GameModeType.GameOver);
 		}
-		EventBus.RaiseEvent(delegate(IGameOverHandler h)
+		base.EventBus.RaiseEvent(delegate(IGameOverHandler h)
 		{
 			h.HandleGameOver(reason);
 		});
@@ -1422,7 +1454,7 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 				Metrics.Chapter.Number(chapter2.ToString()).ChapterState(ChapterMetricsEvent.ChapterStates.Finish).Send();
 			}
 			Metrics.Chapter.Number(chapter.ToString()).ChapterState(ChapterMetricsEvent.ChapterStates.Start).Send();
-			EventBus.RaiseEvent(delegate(IChangeChapterHandler h)
+			base.EventBus.RaiseEvent(delegate(IChangeChapterHandler h)
 			{
 				h.HandleChangeChapter();
 			});
@@ -1762,85 +1794,89 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 		formatter.Field(10, "GameTime", ref value2, state);
 		TimeSpan value3 = RealTime;
 		formatter.Field(11, "RealTime", ref value3, state);
-		formatter.NullableField(12, "StartDate", ref StartDate, state);
-		formatter.Field(13, "StartPreset", ref StartPreset, state);
-		UnlockableFlagsManager value4 = m_UnlockableFlags;
-		formatter.Field(14, "m_UnlockableFlags", ref value4, state);
-		CompanionStoriesManager value5 = CompanionStories;
-		formatter.Field(15, "CompanionStories", ref value5, state);
-		HashSet<BlueprintArea> value6 = VisitedAreas;
-		formatter.Field(16, "VisitedAreas", ref value6, state);
-		formatter.Field(17, "SavedInArea", ref SavedInArea, state);
-		formatter.Field(18, "SavedInAreaPart", ref SavedInAreaPart, state);
-		formatter.Field(19, "m_CameraPos", ref m_CameraPos, state);
-		formatter.UnmanagedField(20, "m_CameraRot", ref m_CameraRot, state);
-		formatter.Field(21, "SkillChecks", ref SkillChecks, state);
-		int value7 = ExperienceRatePercent;
-		formatter.UnmanagedField(22, "ExperienceRatePercent", ref value7, state);
-		List<UnitReference> value8 = PartyCharacters;
-		formatter.Field(23, "PartyCharacters", ref value8, state);
-		PlayerUISettings value9 = UISettings;
-		formatter.Field(24, "UISettings", ref value9, state);
-		long value10 = Money;
-		formatter.UnmanagedField(25, "Money", ref value10, state);
-		MinDifficultyController value11 = MinDifficultyController;
-		formatter.Field(26, "MinDifficultyController", ref value11, state);
-		BlueprintUnit value12 = Stalker;
-		formatter.Field(27, "Stalker", ref value12, state);
-		formatter.UnmanagedField(28, "Chapter", ref Chapter, state);
-		formatter.Field(29, "SharedStash", ref SharedStash, state);
-		formatter.Field(30, "VirtualStashes", ref VirtualStashes, state);
-		AchievementsManager value13 = Achievements;
-		formatter.Field(31, "Achievements", ref value13, state);
-		PSNObjectsManager value14 = PSNObjects;
-		formatter.Field(32, "PSNObjects", ref value14, state);
-		InspectUnitsManager value15 = InspectUnitsManager;
-		formatter.Field(33, "InspectUnitsManager", ref value15, state);
-		List<PlayerUpgradeAction> value16 = UpgradeActions;
-		formatter.Field(34, "UpgradeActions", ref value16, state);
-		List<BlueprintPlayerUpgrader> value17 = AppliedPlayerUpgraders;
-		formatter.Field(35, "AppliedPlayerUpgraders", ref value17, state);
-		List<BlueprintPlayerUpgrader> value18 = IgnoredAppliedPlayerUpgraders;
-		formatter.Field(36, "IgnoredAppliedPlayerUpgraders", ref value18, state);
-		List<BlueprintPlayerUpgrader> value19 = IgnoredNotAppliedPlayerUpgraders;
-		formatter.Field(37, "IgnoredNotAppliedPlayerUpgraders", ref value19, state);
-		UnitReference value20 = MainCharacter;
-		formatter.Field(38, "MainCharacter", ref value20, state);
-		UnitReference value21 = MainCharacterOriginal;
-		formatter.Field(39, "MainCharacterOriginal", ref value21, state);
-		formatter.Field(40, "RespecUsedByChar", ref RespecUsedByChar, state);
-		formatter.Field(41, "PlayedBanters", ref PlayedBanters, state);
-		formatter.Field(42, "PreviousVisitedArea", ref PreviousVisitedArea, state);
-		formatter.UnmanagedField(43, "IsShowBlockedColonyProjects", ref IsShowBlockedColonyProjects, state);
-		formatter.UnmanagedField(44, "IsShowFinishedColonyProjects", ref IsShowFinishedColonyProjects, state);
-		formatter.NullableField(45, "LastPositionOnPreviousVisitedArea", ref LastPositionOnPreviousVisitedArea, state);
-		formatter.Field(46, "ActivatedSpawners", ref ActivatedSpawners, state);
-		formatter.UnmanagedField(47, "IsShowConsoleTooltip", ref IsShowConsoleTooltip, state);
-		formatter.UnmanagedField(48, "IsCameraRotateMode", ref IsCameraRotateMode, state);
-		formatter.Field(49, "TraumasModification", ref TraumasModification, state);
-		formatter.UnmanagedField(50, "CanAccessStarshipInventory", ref CanAccessStarshipInventory, state);
-		formatter.Field(51, "CannotAccessContracts", ref CannotAccessContracts, state);
-		HashSet<BlueprintItem> value22 = ItemsToCargo;
-		formatter.Field(52, "ItemsToCargo", ref value22, state);
-		BlueprintAreaEnterPoint value23 = NextEnterPoint;
-		formatter.Field(53, "NextEnterPoint", ref value23, state);
-		formatter.Field(54, "BrokenEntities", ref BrokenEntities, state);
-		Dictionary<BlueprintDlc, bool> value24 = m_StartNewGameAdditionalContentDlcStatus;
-		formatter.Field(55, "m_StartNewGameAdditionalContentDlcStatus", ref value24, state);
-		List<BlueprintDlcReward> value25 = UsedDlcRewards;
-		formatter.Field(56, "UsedDlcRewards", ref value25, state);
-		List<BlueprintDlcReward> value26 = ClaimedDlcRewards;
-		formatter.Field(57, "ClaimedDlcRewards", ref value26, state);
-		HashSet<BlueprintCampaign> value27 = ImportedCampaigns;
-		formatter.Field(58, "ImportedCampaigns", ref value27, state);
-		Dictionary<BlueprintCampaign, CampaignImportSettings> value28 = CampaignsToOfferImport;
-		formatter.Field(59, "CampaignsToOfferImport", ref value28, state);
-		formatter.UnmanagedField(60, "ShowFullUnitInfo", ref ShowFullUnitInfo, state);
-		formatter.UnmanagedField(61, "ForcedWalk", ref ForcedWalk, state);
-		CountableFlag value29 = CameraScrollLocked;
-		formatter.Field(62, "CameraScrollLocked", ref value29, state);
-		HashSet<BlueprintEncounter> value30 = CompletedEncounters;
-		formatter.Field(63, "CompletedEncounters", ref value30, state);
+		DateTime? value4 = StartDate;
+		formatter.NullableField(12, "StartDate", ref value4, state);
+		BlueprintAreaPreset value5 = StartPreset;
+		formatter.Field(13, "StartPreset", ref value5, state);
+		BlueprintCampaign value6 = Campaign;
+		formatter.Field(14, "Campaign", ref value6, state);
+		UnlockableFlagsManager value7 = m_UnlockableFlags;
+		formatter.Field(15, "m_UnlockableFlags", ref value7, state);
+		CompanionStoriesManager value8 = CompanionStories;
+		formatter.Field(16, "CompanionStories", ref value8, state);
+		HashSet<BlueprintArea> value9 = VisitedAreas;
+		formatter.Field(17, "VisitedAreas", ref value9, state);
+		formatter.Field(18, "SavedInArea", ref SavedInArea, state);
+		formatter.Field(19, "SavedInAreaPart", ref SavedInAreaPart, state);
+		formatter.Field(20, "m_CameraPos", ref m_CameraPos, state);
+		formatter.UnmanagedField(21, "m_CameraRot", ref m_CameraRot, state);
+		formatter.Field(22, "SkillChecks", ref SkillChecks, state);
+		int value10 = ExperienceRatePercent;
+		formatter.UnmanagedField(23, "ExperienceRatePercent", ref value10, state);
+		List<UnitReference> value11 = PartyCharacters;
+		formatter.Field(24, "PartyCharacters", ref value11, state);
+		PlayerUISettings value12 = UISettings;
+		formatter.Field(25, "UISettings", ref value12, state);
+		long value13 = Money;
+		formatter.UnmanagedField(26, "Money", ref value13, state);
+		MinDifficultyController value14 = MinDifficultyController;
+		formatter.Field(27, "MinDifficultyController", ref value14, state);
+		BlueprintUnit value15 = Stalker;
+		formatter.Field(28, "Stalker", ref value15, state);
+		formatter.UnmanagedField(29, "Chapter", ref Chapter, state);
+		formatter.Field(30, "SharedStash", ref SharedStash, state);
+		formatter.Field(31, "VirtualStashes", ref VirtualStashes, state);
+		AchievementsManager value16 = Achievements;
+		formatter.Field(32, "Achievements", ref value16, state);
+		PSNObjectsManager value17 = PSNObjects;
+		formatter.Field(33, "PSNObjects", ref value17, state);
+		InspectUnitsManager value18 = InspectUnitsManager;
+		formatter.Field(34, "InspectUnitsManager", ref value18, state);
+		List<PlayerUpgradeAction> value19 = UpgradeActions;
+		formatter.Field(35, "UpgradeActions", ref value19, state);
+		List<BlueprintPlayerUpgrader> value20 = AppliedPlayerUpgraders;
+		formatter.Field(36, "AppliedPlayerUpgraders", ref value20, state);
+		List<BlueprintPlayerUpgrader> value21 = IgnoredAppliedPlayerUpgraders;
+		formatter.Field(37, "IgnoredAppliedPlayerUpgraders", ref value21, state);
+		List<BlueprintPlayerUpgrader> value22 = IgnoredNotAppliedPlayerUpgraders;
+		formatter.Field(38, "IgnoredNotAppliedPlayerUpgraders", ref value22, state);
+		UnitReference value23 = MainCharacter;
+		formatter.Field(39, "MainCharacter", ref value23, state);
+		UnitReference value24 = MainCharacterOriginal;
+		formatter.Field(40, "MainCharacterOriginal", ref value24, state);
+		formatter.Field(41, "RespecUsedByChar", ref RespecUsedByChar, state);
+		formatter.Field(42, "PlayedBanters", ref PlayedBanters, state);
+		formatter.Field(43, "PreviousVisitedArea", ref PreviousVisitedArea, state);
+		formatter.UnmanagedField(44, "IsShowBlockedColonyProjects", ref IsShowBlockedColonyProjects, state);
+		formatter.UnmanagedField(45, "IsShowFinishedColonyProjects", ref IsShowFinishedColonyProjects, state);
+		formatter.NullableField(46, "LastPositionOnPreviousVisitedArea", ref LastPositionOnPreviousVisitedArea, state);
+		formatter.Field(47, "ActivatedSpawners", ref ActivatedSpawners, state);
+		formatter.UnmanagedField(48, "IsShowConsoleTooltip", ref IsShowConsoleTooltip, state);
+		formatter.UnmanagedField(49, "IsCameraRotateMode", ref IsCameraRotateMode, state);
+		formatter.Field(50, "TraumasModification", ref TraumasModification, state);
+		formatter.UnmanagedField(51, "CanAccessStarshipInventory", ref CanAccessStarshipInventory, state);
+		formatter.Field(52, "CannotAccessContracts", ref CannotAccessContracts, state);
+		HashSet<BlueprintItem> value25 = ItemsToCargo;
+		formatter.Field(53, "ItemsToCargo", ref value25, state);
+		BlueprintAreaEnterPoint value26 = NextEnterPoint;
+		formatter.Field(54, "NextEnterPoint", ref value26, state);
+		formatter.Field(55, "BrokenEntities", ref BrokenEntities, state);
+		Dictionary<BlueprintDlc, bool> value27 = m_StartNewGameAdditionalContentDlcStatus;
+		formatter.Field(56, "m_StartNewGameAdditionalContentDlcStatus", ref value27, state);
+		List<BlueprintDlcReward> value28 = UsedDlcRewards;
+		formatter.Field(57, "UsedDlcRewards", ref value28, state);
+		List<BlueprintDlcReward> value29 = ClaimedDlcRewards;
+		formatter.Field(58, "ClaimedDlcRewards", ref value29, state);
+		HashSet<BlueprintCampaign> value30 = ImportedCampaigns;
+		formatter.Field(59, "ImportedCampaigns", ref value30, state);
+		Dictionary<BlueprintCampaign, CampaignImportSettings> value31 = CampaignsToOfferImport;
+		formatter.Field(60, "CampaignsToOfferImport", ref value31, state);
+		formatter.UnmanagedField(61, "ShowFullUnitInfo", ref ShowFullUnitInfo, state);
+		formatter.UnmanagedField(62, "ForcedWalk", ref ForcedWalk, state);
+		CountableFlag value32 = CameraScrollLocked;
+		formatter.Field(63, "CameraScrollLocked", ref value32, state);
+		HashSet<BlueprintEncounter> value33 = CompletedEncounters;
+		formatter.Field(64, "CompletedEncounters", ref value33, state);
 		formatter.EndObject();
 	}
 
@@ -1901,153 +1937,156 @@ public sealed class Player : Entity, IDisposable, IHashable, IOwlPackable<Player
 				StartPreset = formatter.ReadPackable<BlueprintAreaPreset>(state);
 				break;
 			case 14:
-				m_UnlockableFlags = formatter.ReadPackable<UnlockableFlagsManager>(state);
+				Campaign = formatter.ReadPackable<BlueprintCampaign>(state);
 				break;
 			case 15:
-				CompanionStories = formatter.ReadPackable<CompanionStoriesManager>(state);
+				m_UnlockableFlags = formatter.ReadPackable<UnlockableFlagsManager>(state);
 				break;
 			case 16:
-				VisitedAreas = formatter.ReadPackable<HashSet<BlueprintArea>>(state);
+				CompanionStories = formatter.ReadPackable<CompanionStoriesManager>(state);
 				break;
 			case 17:
-				SavedInArea = formatter.ReadPackable<BlueprintArea>(state);
+				VisitedAreas = formatter.ReadPackable<HashSet<BlueprintArea>>(state);
 				break;
 			case 18:
-				SavedInAreaPart = formatter.ReadPackable<BlueprintAreaPart>(state);
+				SavedInArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 19:
-				m_CameraPos = formatter.ReadPackable<Vector3>(state);
+				SavedInAreaPart = formatter.ReadPackable<BlueprintAreaPart>(state);
 				break;
 			case 20:
-				m_CameraRot = formatter.ReadUnmanaged<float>(state);
+				m_CameraPos = formatter.ReadPackable<Vector3>(state);
 				break;
 			case 21:
-				SkillChecks = formatter.ReadPackable<Dictionary<StatType, Dictionary<string, int>>>(state);
+				m_CameraRot = formatter.ReadUnmanaged<float>(state);
 				break;
 			case 22:
-				ExperienceRatePercent = formatter.ReadUnmanaged<int>(state);
+				SkillChecks = formatter.ReadPackable<Dictionary<StatType, Dictionary<string, int>>>(state);
 				break;
 			case 23:
-				PartyCharacters = formatter.ReadPackable<List<UnitReference>>(state);
+				ExperienceRatePercent = formatter.ReadUnmanaged<int>(state);
 				break;
 			case 24:
-				UISettings = formatter.ReadPackable<PlayerUISettings>(state);
+				PartyCharacters = formatter.ReadPackable<List<UnitReference>>(state);
 				break;
 			case 25:
-				Money = formatter.ReadUnmanaged<long>(state);
+				UISettings = formatter.ReadPackable<PlayerUISettings>(state);
 				break;
 			case 26:
-				MinDifficultyController = formatter.ReadPackable<MinDifficultyController>(state);
+				Money = formatter.ReadUnmanaged<long>(state);
 				break;
 			case 27:
-				Stalker = formatter.ReadPackable<BlueprintUnit>(state);
+				MinDifficultyController = formatter.ReadPackable<MinDifficultyController>(state);
 				break;
 			case 28:
-				Chapter = formatter.ReadUnmanaged<int>(state);
+				Stalker = formatter.ReadPackable<BlueprintUnit>(state);
 				break;
 			case 29:
-				SharedStash = formatter.ReadPackable<ItemsCollection>(state);
+				Chapter = formatter.ReadUnmanaged<int>(state);
 				break;
 			case 30:
-				VirtualStashes = formatter.ReadPackable<Dictionary<BlueprintItemsStashReference, ItemsCollection>>(state);
+				SharedStash = formatter.ReadPackable<ItemsCollection>(state);
 				break;
 			case 31:
-				Achievements = formatter.ReadPackable<AchievementsManager>(state);
+				VirtualStashes = formatter.ReadPackable<Dictionary<BlueprintItemsStashReference, ItemsCollection>>(state);
 				break;
 			case 32:
-				PSNObjects = formatter.ReadPackable<PSNObjectsManager>(state);
+				Achievements = formatter.ReadPackable<AchievementsManager>(state);
 				break;
 			case 33:
-				InspectUnitsManager = formatter.ReadPackable<InspectUnitsManager>(state);
+				PSNObjects = formatter.ReadPackable<PSNObjectsManager>(state);
 				break;
 			case 34:
-				UpgradeActions = formatter.ReadPackable<List<PlayerUpgradeAction>>(state);
+				InspectUnitsManager = formatter.ReadPackable<InspectUnitsManager>(state);
 				break;
 			case 35:
-				AppliedPlayerUpgraders = formatter.ReadPackable<List<BlueprintPlayerUpgrader>>(state);
+				UpgradeActions = formatter.ReadPackable<List<PlayerUpgradeAction>>(state);
 				break;
 			case 36:
-				IgnoredAppliedPlayerUpgraders = formatter.ReadPackable<List<BlueprintPlayerUpgrader>>(state);
+				AppliedPlayerUpgraders = formatter.ReadPackable<List<BlueprintPlayerUpgrader>>(state);
 				break;
 			case 37:
-				IgnoredNotAppliedPlayerUpgraders = formatter.ReadPackable<List<BlueprintPlayerUpgrader>>(state);
+				IgnoredAppliedPlayerUpgraders = formatter.ReadPackable<List<BlueprintPlayerUpgrader>>(state);
 				break;
 			case 38:
-				MainCharacter = formatter.ReadPackable<UnitReference>(state);
+				IgnoredNotAppliedPlayerUpgraders = formatter.ReadPackable<List<BlueprintPlayerUpgrader>>(state);
 				break;
 			case 39:
-				MainCharacterOriginal = formatter.ReadPackable<UnitReference>(state);
+				MainCharacter = formatter.ReadPackable<UnitReference>(state);
 				break;
 			case 40:
-				RespecUsedByChar = formatter.ReadPackable<Dictionary<EntityRef<MechanicEntity>, int>>(state);
+				MainCharacterOriginal = formatter.ReadPackable<UnitReference>(state);
 				break;
 			case 41:
-				PlayedBanters = formatter.ReadPackable<HashSet<BlueprintBarkBanter>>(state);
+				RespecUsedByChar = formatter.ReadPackable<Dictionary<EntityRef<MechanicEntity>, int>>(state);
 				break;
 			case 42:
-				PreviousVisitedArea = formatter.ReadPackable<BlueprintArea>(state);
+				PlayedBanters = formatter.ReadPackable<HashSet<BlueprintBarkBanter>>(state);
 				break;
 			case 43:
-				IsShowBlockedColonyProjects = formatter.ReadUnmanaged<bool>(state);
+				PreviousVisitedArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 44:
-				IsShowFinishedColonyProjects = formatter.ReadUnmanaged<bool>(state);
+				IsShowBlockedColonyProjects = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 45:
-				LastPositionOnPreviousVisitedArea = formatter.ReadNullablePackable<Vector3>(state);
+				IsShowFinishedColonyProjects = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 46:
-				ActivatedSpawners = formatter.ReadPackable<List<EntityReference>>(state);
+				LastPositionOnPreviousVisitedArea = formatter.ReadNullablePackable<Vector3>(state);
 				break;
 			case 47:
-				IsShowConsoleTooltip = formatter.ReadUnmanaged<bool>(state);
+				ActivatedSpawners = formatter.ReadPackable<List<EntityReference>>(state);
 				break;
 			case 48:
-				IsCameraRotateMode = formatter.ReadUnmanaged<bool>(state);
+				IsShowConsoleTooltip = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 49:
-				TraumasModification = formatter.ReadPackable<TraumasModification>(state);
+				IsCameraRotateMode = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 50:
-				CanAccessStarshipInventory = formatter.ReadUnmanaged<bool>(state);
+				TraumasModification = formatter.ReadPackable<TraumasModification>(state);
 				break;
 			case 51:
-				CannotAccessContracts = formatter.ReadPackable<CountableFlag>(state);
+				CanAccessStarshipInventory = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 52:
-				ItemsToCargo = formatter.ReadPackable<HashSet<BlueprintItem>>(state);
+				CannotAccessContracts = formatter.ReadPackable<CountableFlag>(state);
 				break;
 			case 53:
-				NextEnterPoint = formatter.ReadPackable<BlueprintAreaEnterPoint>(state);
+				ItemsToCargo = formatter.ReadPackable<HashSet<BlueprintItem>>(state);
 				break;
 			case 54:
-				BrokenEntities = formatter.ReadPackable<List<string>>(state);
+				NextEnterPoint = formatter.ReadPackable<BlueprintAreaEnterPoint>(state);
 				break;
 			case 55:
-				m_StartNewGameAdditionalContentDlcStatus = formatter.ReadPackable<Dictionary<BlueprintDlc, bool>>(state);
+				BrokenEntities = formatter.ReadPackable<List<string>>(state);
 				break;
 			case 56:
-				UsedDlcRewards = formatter.ReadPackable<List<BlueprintDlcReward>>(state);
+				m_StartNewGameAdditionalContentDlcStatus = formatter.ReadPackable<Dictionary<BlueprintDlc, bool>>(state);
 				break;
 			case 57:
-				ClaimedDlcRewards = formatter.ReadPackable<List<BlueprintDlcReward>>(state);
+				UsedDlcRewards = formatter.ReadPackable<List<BlueprintDlcReward>>(state);
 				break;
 			case 58:
-				ImportedCampaigns = formatter.ReadPackable<HashSet<BlueprintCampaign>>(state);
+				ClaimedDlcRewards = formatter.ReadPackable<List<BlueprintDlcReward>>(state);
 				break;
 			case 59:
-				CampaignsToOfferImport = formatter.ReadPackable<Dictionary<BlueprintCampaign, CampaignImportSettings>>(state);
+				ImportedCampaigns = formatter.ReadPackable<HashSet<BlueprintCampaign>>(state);
 				break;
 			case 60:
-				ShowFullUnitInfo = formatter.ReadUnmanaged<bool>(state);
+				CampaignsToOfferImport = formatter.ReadPackable<Dictionary<BlueprintCampaign, CampaignImportSettings>>(state);
 				break;
 			case 61:
-				ForcedWalk = formatter.ReadUnmanaged<bool>(state);
+				ShowFullUnitInfo = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 62:
-				Unsafe.AsRef(in CameraScrollLocked) = formatter.ReadPackable<CountableFlag>(state);
+				ForcedWalk = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 63:
+				Unsafe.AsRef(in CameraScrollLocked) = formatter.ReadPackable<CountableFlag>(state);
+				break;
+			case 64:
 				Unsafe.AsRef(in CompletedEncounters) = formatter.ReadPackable<HashSet<BlueprintEncounter>>(state);
 				break;
 			}

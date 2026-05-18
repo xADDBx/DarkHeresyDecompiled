@@ -61,7 +61,7 @@ public class FactionReputationWidgetView : View<FactionReputationWidgetVM>
 		m_RespectValue.text = base.ViewModel.RespectLevel.CurrentValue.ToString();
 		base.ViewModel.FearLevel.Subscribe(MoveFearTo).AddTo(this);
 		base.ViewModel.RespectLevel.Subscribe(MoveRespectTo).AddTo(this);
-		m_FactionLogo.SetTooltip(new TooltipTemplateGlossary(UIUtilityEncyclopedy.GetFactionEncyclopediaKey(base.ViewModel.FactionType)));
+		m_FactionLogo.SetTooltip(new TooltipTemplateGlossary(UIUtilityEncyclopedy.GetFactionEncyclopediaKey(base.ViewModel.FactionType))).AddTo(this);
 		TooltipConfig tooltipConfig = default(TooltipConfig);
 		tooltipConfig.PriorityPivots = new List<Vector2>
 		{

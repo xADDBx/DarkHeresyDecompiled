@@ -44,7 +44,7 @@ public class UnitAnimationActionDeath : UnitAnimationAction
 
 	public override void OnStart(UnitAnimationActionHandle handle)
 	{
-		handle.AnimationLayer = AnimationLayerType.Prone;
+		handle.AnimationLayer = UnitAnimationLayerType.Prone;
 		ActionData actionData2 = (ActionData)(handle.ActionData = new ActionData());
 		handle.HasCrossfadePriority = true;
 		AnimationClipWrapper actionAnimation = GetActionAnimation();
@@ -73,9 +73,7 @@ public class UnitAnimationActionDeath : UnitAnimationAction
 		}
 		else
 		{
-			handle.Manager.Animator.enabled = false;
-			handle.Manager.StopEvents();
-			DismembermentHandler.UseWithoutAnimationDeath(handle.Unit.Data);
+			handle.Manager.HandleDeathWithoutAnimation();
 		}
 	}
 
@@ -104,14 +102,12 @@ public class UnitAnimationActionDeath : UnitAnimationAction
 			{
 				handle.ActiveAnimation.TransitionOut = 0f;
 				handle.ActiveAnimation.StartTransitionOut();
-				handle.ActiveAnimation.StopEvents();
 				handle.ActiveAnimation.TransitionIn = 0f;
 			}
 		}
 		else
 		{
 			handle.ActiveAnimation.SetTime(10f);
-			handle.ActiveAnimation.SetWeight(1f);
 			handle.UpdateInternal(10f);
 		}
 		actionData.FallingFinished = true;

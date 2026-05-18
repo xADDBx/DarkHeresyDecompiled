@@ -4,10 +4,10 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Kingmaker.View.MapObjects;
+using Kingmaker.Utility.DotNetExtensions;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -43,54 +43,45 @@ public class DetectiveClueEntity : MapObjectEntity, IHashable, IOwlPackable<Dete
 		}
 	};
 
-	public new DetectiveClueView View => (DetectiveClueView)base.View;
+	public new IDetectiveClueConfig Config => (IDetectiveClueConfig)base.Config;
 
-	public DetectiveClueEntity(string uniqueId, bool isInGame, BlueprintMechanicEntityFact blueprint)
-		: base(uniqueId, isInGame, blueprint)
+	public IEnumerable<DetectiveClueEntity> PreviousClues => Config.PreviousClues.Dereference().NotNull();
+
+	public IEnumerable<DetectiveClueEntity> NextClues => Config.NextClues.Dereference().NotNull();
+
+	public IEnumerable<DetectiveClueEntity> CluesToTurnOffAfterInteraction => Config.CluesToTurnOffAfterInteraction.Dereference().NotNull();
+
+	public DetectiveClueEntity(IDetectiveClueConfig config)
+		: base(config)
 	{
 	}
 
-	public DetectiveClueEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	public DetectiveClueEntity(MapObjectView view)
-		: base(view)
-	{
-	}
-
-	protected DetectiveClueEntity(JsonConstructorMark _)
+	protected DetectiveClueEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected DetectiveClueEntity()
 	{
 	}
 
 	public void OnInteract()
 	{
-		if (View.TurnOffAllCluesInGroupAfterInteraction)
+		if (Config.TurnOffAllCluesInGroupAfterInteraction)
 		{
-			foreach (DetectiveClueView previousClueView in View.PreviousClueViews)
+			foreach (DetectiveClueEntity previousClue in PreviousClues)
 			{
-				foreach (DetectiveClueView nextClueView in previousClueView.NextClueViews)
+				foreach (DetectiveClueEntity nextClue in previousClue.NextClues)
 				{
-					nextClueView.Data.IsInGame = false;
+					nextClue.IsInGame = false;
 				}
 			}
-			base.IsInGame = false;
 		}
-		foreach (DetectiveClueView item in View.TurnOffClueViewsAfterInteraction)
+		foreach (DetectiveClueEntity item in CluesToTurnOffAfterInteraction)
 		{
-			item.Data.IsInGame = false;
+			item.IsInGame = false;
 		}
-		foreach (DetectiveClueView nextClueView2 in View.NextClueViews)
+		foreach (DetectiveClueEntity nextClue2 in NextClues)
 		{
-			nextClueView2.Data.IsInGame = true;
+			nextClue2.IsInGame = true;
 		}
-		View.Data.IsInGame = false;
+		base.IsInGame = false;
 	}
 
 	public override Hash128 GetHash128()
@@ -103,7 +94,7 @@ public class DetectiveClueEntity : MapObjectEntity, IHashable, IOwlPackable<Dete
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		DetectiveClueEntity source = new DetectiveClueEntity();
+		DetectiveClueEntity source = new DetectiveClueEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<DetectiveClueEntity, TPossiblyBase>(ref source);
 	}
 

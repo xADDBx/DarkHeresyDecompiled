@@ -1,35 +1,37 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.MapObjects;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.Controllers.Units;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.GameModes;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Settings;
 using Kingmaker.UnitLogic.Abilities;
+using Kingmaker.UnitLogic.Interaction;
 using Kingmaker.Utility;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Kingmaker.View.MapObjects.InteractionRestrictions;
 using Kingmaker.View.MapObjects.Traps;
-using Owlcat.Runtime.Core.Utility;
-using Pathfinding;
 using R3;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Kingmaker.UI.Pointer;
 
-public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelectionUIHandler, IInteractionHighlightUIHandler, IPartyCharacterHoverHandler, IUnitPathManagerHandler, ISubscriber<IMechanicEntity>
+public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelectionUIHandler, IInteractionHighlightUIHandler, IPartyCharacterHoverHandler
 {
 	private MapObjectView m_MapObjectView;
 
@@ -43,21 +45,14 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 
 	private bool m_Locked;
 
+	private bool m_IsActive = true;
+
 	private string m_UpperTextAP;
 
 	private string m_LowerTextMP;
 
-	private BaseCursor CurrentCursor
-	{
-		get
-		{
-			if (!Game.Instance.IsControllerMouse)
-			{
-				return ConsoleCursor.Instance;
-			}
-			return PCCursor.Instance;
-		}
-	}
+	[Obsolete("Use instance Position property")]
+	public static Vector2 CursorPosition => Game.Instance.CursorController.Position;
 
 	private bool CastMode => SelectedAbility != null;
 
@@ -65,22 +60,87 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 
 	public AbilityData SelectedAbility { get; private set; }
 
-	public Vector2 CursorPosition => CurrentCursor.Or(null)?.Position ?? ((Vector2)Input.mousePosition);
-
 	public bool OnGui { get; private set; }
 
-	public bool IsCursorActive { get; private set; }
+	public bool IsCursorActive => m_IsActive;
+
+	public Vector2 Position
+	{
+		get
+		{
+			if (!TryGetMouse(out var mouse))
+			{
+				return Vector2.zero;
+			}
+			return mouse.position.value;
+		}
+	}
 
 	public bool CursorHasText
 	{
 		get
 		{
-			if ((bool)CurrentCursor)
+			if (string.IsNullOrEmpty(m_UpperTextAP))
 			{
-				return !CurrentCursor.NoTexts;
+				return !string.IsNullOrEmpty(m_LowerTextMP);
 			}
-			return false;
+			return true;
 		}
+	}
+
+	public bool GetMouseButton(MouseButton button)
+	{
+		if (TryGetMouseButton(out var control, button))
+		{
+			return control.isPressed;
+		}
+		return false;
+	}
+
+	public bool GetMouseButtonDown(MouseButton button)
+	{
+		if (TryGetMouseButton(out var control, button))
+		{
+			return control.wasPressedThisFrame;
+		}
+		return false;
+	}
+
+	public bool GetMouseButtonUp(MouseButton button)
+	{
+		if (TryGetMouseButton(out var control, button))
+		{
+			return control.wasReleasedThisFrame;
+		}
+		return false;
+	}
+
+	private bool TryGetMouseButton(out ButtonControl control, MouseButton button)
+	{
+		control = null;
+		if (TryGetMouse(out var mouse))
+		{
+			control = button switch
+			{
+				MouseButton.Left => mouse.leftButton, 
+				MouseButton.Right => mouse.rightButton, 
+				MouseButton.Middle => mouse.middleButton, 
+				MouseButton.Forward => mouse.forwardButton, 
+				MouseButton.Back => mouse.backButton, 
+				_ => null, 
+			};
+		}
+		return control != null;
+	}
+
+	private bool TryGetMouse(out Mouse mouse)
+	{
+		mouse = null;
+		if (IsCursorActive && Mouse.current != null && Mouse.current.added && Mouse.current.enabled)
+		{
+			mouse = Mouse.current;
+		}
+		return mouse != null;
 	}
 
 	public void Activate()
@@ -88,10 +148,10 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 		EventBus.Subscribe(this);
 		UpdateCursorMode();
 		m_Disposable = new CompositeDisposable();
-		m_Disposable.Add(MainThreadDispatcher.UpdateAsObservable().Subscribe(OnUpdate));
+		m_Disposable.Add(Observable.EveryUpdate(UnityFrameProvider.Update).Subscribe(OnUpdate));
 		m_Disposable.Add(UIVisibilityState.VisibilityPreset.Subscribe(delegate
 		{
-			CurrentCursor.Or(null)?.SetActive(CurrentCursor.PrevActiveCursorState);
+			PFLog.UI.Log("Implement visibility change");
 		}));
 	}
 
@@ -102,17 +162,26 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 		SelectedAbility = null;
 	}
 
-	public void SetActive(bool active)
+	public void SetActive(bool value)
 	{
-		IsCursorActive = active;
-		CurrentCursor.Or(null)?.SetActive(active);
+		if (m_IsActive != value)
+		{
+			m_IsActive = value;
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleActiveChanged(value);
+			});
+		}
 	}
 
 	public void SetCursor(CursorType type, bool force = false)
 	{
 		if ((!m_Locked && !OnGui) || force)
 		{
-			CurrentCursor.Or(null)?.SetCursor(type);
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleTypeChanged(type);
+			});
 		}
 	}
 
@@ -150,19 +219,19 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 		SelectedAbility = null;
 	}
 
-	public void SetAbilityCursor(Sprite abilityIcon)
+	public void SetInvalidCursor()
 	{
 		if (!m_Locked)
 		{
-			CurrentCursor.Or(null)?.SetAbilityCursor(abilityIcon);
-		}
-	}
-
-	public void SetAbilityCursor()
-	{
-		if (!m_Locked)
-		{
-			CurrentCursor.Or(null)?.SetAbilityCursor(SelectedAbility.Icon);
+			IUnitInteraction unitInteractionFrom = UtilityUnit.GetUnitInteractionFrom(m_BaseUnitEntity);
+			if (TurnController.IsInTurnBasedCombat())
+			{
+				SetCursor((unitInteractionFrom == null) ? CursorType.Restricted : CursorType.Gear);
+			}
+			else
+			{
+				SetCursor(CursorType.Restricted);
+			}
 		}
 	}
 
@@ -177,11 +246,17 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 	{
 		if ((m_Locked || OnGui) && !force)
 		{
-			CurrentCursor.Or(null)?.SetTexts(null, null);
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleTextsChanged(upperText, lowerText);
+			});
 		}
 		else
 		{
-			CurrentCursor.Or(null)?.SetTexts(upperText, lowerText);
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleTextsChanged(upperText, lowerText);
+			});
 		}
 	}
 
@@ -189,17 +264,25 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 	{
 		if ((m_Locked || OnGui) && !force)
 		{
-			CurrentCursor.Or(null)?.SetNoMove(noMove: false);
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleNoMoveChanged(value: false);
+			});
 		}
 		else
 		{
-			CurrentCursor.Or(null)?.SetNoMove(noMove);
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleNoMoveChanged(noMove);
+			});
 		}
 	}
 
 	private void ClearComponents()
 	{
-		CurrentCursor.Or(null)?.ClearComponents();
+		SetCursor(CursorType.Default, force: true);
+		SetTextsInternal(null, null, force: true);
+		SetNoMoveIcon(noMove: false, force: true);
 	}
 
 	private void UpdateCursorMode(bool forceFocused = false)
@@ -250,32 +333,38 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 		}
 		m_BaseUnitEntity = (isHighlighted ? unit : null);
 		IAbstractUnitEntity entity = Game.Instance.Player.MainCharacter.Entity;
-		if (!CastMode)
+		if (CastMode)
 		{
-			if (!isHighlighted)
-			{
-				SetCursor(CursorType.Default);
-			}
-			else if (m_BaseUnitEntity.IsDirectlyControllable)
-			{
-				SetCursor(CursorType.Default);
-			}
-			else if (m_BaseUnitEntity.IsDeadAndHasLoot && !TurnController.IsInTurnBasedCombat())
-			{
-				SetCursor(CursorType.Loot);
-			}
-			else if (m_BaseUnitEntity.LifeState.IsFinallyDead && Game.Instance.Player.UISettings.ShowInspect)
-			{
-				SetCursor(CursorType.Info);
-			}
-			else if (TurnController.IsInTurnBasedCombat())
-			{
-				SetCursor(CursorType.Default);
-			}
-			else if (m_BaseUnitEntity.SelectClickInteraction((BaseUnitEntity)entity) != null)
-			{
-				SetCursor(CursorType.Dialog);
-			}
+			return;
+		}
+		if (!isHighlighted)
+		{
+			SetCursor(CursorType.Default);
+			return;
+		}
+		if (m_BaseUnitEntity.IsDirectlyControllable)
+		{
+			SetCursor(CursorType.Default);
+			return;
+		}
+		if (m_BaseUnitEntity.IsDeadAndHasLoot && !TurnController.IsInTurnBasedCombat())
+		{
+			SetCursor(CursorType.Loot);
+			return;
+		}
+		if (m_BaseUnitEntity.LifeState.IsFinallyDead && Game.Instance.Player.UISettings.ShowInspect)
+		{
+			SetCursor(CursorType.Info);
+			return;
+		}
+		IUnitInteraction unitInteraction = m_BaseUnitEntity.SelectClickInteraction((BaseUnitEntity)entity);
+		if (TurnController.IsInTurnBasedCombat())
+		{
+			SetCursor((unitInteraction != null) ? CursorType.Gear : CursorType.Default);
+		}
+		else if (unitInteraction != null)
+		{
+			SetCursor(CursorType.Dialog);
 		}
 	}
 
@@ -338,6 +427,8 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 				case UIInteractionType.DetectiveClue:
 					SetCursor(CursorType.Detective);
 					break;
+				case UIInteractionType.AreaTransition:
+					break;
 				default:
 					throw new ArgumentOutOfRangeException();
 				}
@@ -367,6 +458,46 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 		}
 	}
 
+	private void SetAbilityCursor()
+	{
+		if (!HasAbilityTarget(out var target, out var pointerPosition))
+		{
+			SetAbilityCursor(SelectedAbility, isRestricted: true);
+			return;
+		}
+		if (CanTarget(SelectedAbility, target, pointerPosition))
+		{
+			SetTexts_APMP(m_UpperTextAP, m_LowerTextMP, force: true);
+			SetAbilityCursor(SelectedAbility, isRestricted: false);
+			return;
+		}
+		SetTextsInternal(string.Empty, string.Empty, force: true);
+		if (GameUIState.Instance.CurrentFullScreenUIType.Value != 0)
+		{
+			SetCursor(CursorType.Default, force: true);
+		}
+		else if (!OnGui)
+		{
+			SetAbilityCursor(SelectedAbility, isRestricted: true);
+		}
+	}
+
+	private void SetAbilityCursor(AbilityData selectedAbility, bool isRestricted)
+	{
+		if (!m_Locked && !(selectedAbility == null))
+		{
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleTypeChanged(CursorType.Cast, selectedAbility.Icon);
+			});
+			CursorType cursorType = (isRestricted ? CursorType.CastRestricted : CursorType.Cast);
+			EventBus.RaiseEvent(delegate(ICursorControllerHandler h)
+			{
+				h.HandleTypeChanged(cursorType, selectedAbility.Icon);
+			});
+		}
+	}
+
 	private void SetLootCursor()
 	{
 		SetCursor((!TurnController.IsInTurnBasedCombat()) ? CursorType.Loot : CursorType.Default);
@@ -380,7 +511,7 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 		}
 		if (forbidden)
 		{
-			SetCursor(CursorType.Restricted);
+			SetInvalidCursor();
 		}
 		else if (!m_MapObjectView && m_BaseUnitEntity == null)
 		{
@@ -422,74 +553,55 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 			OnGuiChanged(PointerController.InGui);
 		}
 		Player player = Game.Instance.Player;
-		TrySetMoveCursor(player != null && !player.IsInCombat && IsOnNavMesh(PointerController.WorldPositionForSimulation));
+		bool state = player != null && !player.IsInCombat && IsOnNavMesh(PointerController.WorldPositionForSimulation) && Game.Instance.CurrentGameMode?.Type != GameModeType.Dialog;
+		TrySetMoveCursor(state);
 		if (SelectedAbility == null)
 		{
 			return;
 		}
 		InteractionHighlightController instance = InteractionHighlightController.Instance;
-		if ((instance != null && instance.IsGlobalHighlighting) || IsPreciseAttack)
+		if (instance == null || !instance.IsGlobalHighlighting)
 		{
-			return;
+			if (IsPreciseAttack)
+			{
+				SetCursor(CursorType.Default);
+			}
+			else
+			{
+				SetAbilityCursor();
+			}
 		}
-		Vector3? pointerPosition = null;
-		TargetWrapper targetForDesiredPosition;
+	}
+
+	private bool HasAbilityTarget(out TargetWrapper target, out Vector3? pointerPosition)
+	{
 		if (!m_PortraitHover)
 		{
 			PointerController clickEventsController = Game.Instance.Controllers.ClickEventsController;
 			pointerPosition = clickEventsController.WorldPosition;
-			targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, pointerPosition.Value);
+			target = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, pointerPosition.Value);
+			return target != null;
 		}
-		else
+		IUnitEntityView unitEntityView = m_PortraitHoveredUnit?.View;
+		if (unitEntityView == null)
 		{
-			targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(m_PortraitHoveredUnit.View.gameObject, m_PortraitHoveredUnit.View.transform.position);
+			target = null;
+			pointerPosition = null;
+			return false;
 		}
-		if (CanTarget(SelectedAbility, targetForDesiredPosition, pointerPosition))
-		{
-			SetTexts_APMP(m_UpperTextAP, m_LowerTextMP, force: true);
-			SetAbilityCursor();
-			return;
-		}
-		SetTextsInternal(string.Empty, string.Empty, force: true);
-		if (GameUIState.Instance.CurrentFullScreenUIType.Value != 0)
-		{
-			SetCursor(CursorType.Default, force: true);
-			return;
-		}
-		if (OnGui)
-		{
-			CursorType? cursorType = CurrentCursor.Or(null)?.CurrentType;
-			if (cursorType.HasValue && cursorType.GetValueOrDefault() == CursorType.Default)
-			{
-				return;
-			}
-		}
-		SetCursor(CursorType.CastRestricted, force: true);
+		target = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(unitEntityView.gameObject, unitEntityView.transform.position);
+		pointerPosition = null;
+		return target != null;
 	}
 
 	private bool CanTarget(AbilityData ability, TargetWrapper target, Vector3? pointerPosition)
 	{
-		if (ability == null || target == null)
+		AbilityData.UnavailabilityReasonType? reason;
+		bool result = ability.CanCastAbility(target, pointerPosition, out reason);
+		if (!result && reason == AbilityData.UnavailabilityReasonType.TargetTooFar && Game.Instance.Controllers.TurnController.TurnBasedModeActive && AbilityApproachHelper.IsApproachCandidate(ability, target) && AbilityApproachHelper.TryFindApproachNode(ability, target, out var _))
 		{
-			return false;
+			result = true;
 		}
-		AbilityData.UnavailabilityReasonType? unavailabilityReason;
-		bool flag = SelectedAbility.CanTargetFromDesiredPosition(target, out unavailabilityReason);
-		if (flag && pointerPosition.HasValue && SelectedAbility.IsAoe)
-		{
-			if (!SelectedAbility.CanCastAoeAtPointerPositionFromDesiredPosition(target, pointerPosition.Value))
-			{
-				unavailabilityReason = AbilityData.UnavailabilityReasonType.TargetTooFar;
-				flag = false;
-			}
-			else if (SelectedAbility.IsResultPatternEmpty(target))
-			{
-				unavailabilityReason = AbilityData.UnavailabilityReasonType.Unknown;
-				flag = false;
-			}
-		}
-		bool flag2 = !Game.Instance.Player.IsInCombat && unavailabilityReason == AbilityData.UnavailabilityReasonType.TargetTooFar;
-		bool result = flag || flag2;
 		EventBus.RaiseEvent(delegate(IAbilityTargetPossibilityCheck h)
 		{
 			h.HandleAbilityTargetPossibilityCheck(ability, target, pointerPosition, result);
@@ -499,66 +611,22 @@ public class CursorController : IFocusHandler, ISubscriber, IAbilityTargetSelect
 
 	private void OnGuiChanged(bool newValue)
 	{
-		bool flag;
 		if (newValue)
-		{
-			CursorType? cursorType = CurrentCursor.Or(null)?.CurrentType;
-			if (cursorType.HasValue)
-			{
-				CursorType valueOrDefault = cursorType.GetValueOrDefault();
-				if ((uint)(valueOrDefault - 14) <= 1u)
-				{
-					flag = true;
-					goto IL_0047;
-				}
-			}
-			flag = false;
-			goto IL_0047;
-		}
-		OnGui = false;
-		ClearCursor();
-		goto IL_006f;
-		IL_0047:
-		if (flag)
 		{
 			SetCursor(CursorType.Default);
 			ClearComponents();
+			OnGui = true;
 		}
-		OnGui = true;
-		goto IL_006f;
-		IL_006f:
-		CurrentCursor.Or(null)?.OnGuiChanged(OnGui);
+		else
+		{
+			OnGui = false;
+			ClearCursor();
+		}
 	}
 
 	public void HandlePartyCharacterHover(BaseUnitEntity unit, bool hover)
 	{
 		m_PortraitHover = hover;
 		m_PortraitHoveredUnit = unit;
-	}
-
-	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO)
-	{
-		SetNotificationInternal((enemiesAoO.Count > 0) ? UINotificationTexts.Instance.AttackOfOpportunityTrigger.Text : null);
-	}
-
-	public void HandlePathRemoved()
-	{
-		SetNotificationInternal(null);
-	}
-
-	public void HandleCurrentNodeChanged(float cost)
-	{
-	}
-
-	private void SetNotificationInternal(string notificationText, bool force = false)
-	{
-		if ((m_Locked || OnGui) && !force)
-		{
-			CurrentCursor.Or(null)?.SetNotification(null);
-		}
-		else
-		{
-			CurrentCursor.Or(null)?.SetNotification(notificationText);
-		}
 	}
 }

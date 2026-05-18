@@ -13,10 +13,6 @@ public abstract class BaseTextTemplateEngine : ITextTemplateEngine
 {
 	protected static readonly Dictionary<string, TextTemplate> TemplatesByTag = new Dictionary<string, TextTemplate>();
 
-	protected static readonly List<string> ParsList = new List<string>();
-
-	protected static readonly StringBuilder Builder = new StringBuilder();
-
 	protected void AddTemplate(string tag, TextTemplate template)
 	{
 		TemplatesByTag[tag.ToLowerInvariant()] = template;
@@ -28,16 +24,17 @@ public abstract class BaseTextTemplateEngine : ITextTemplateEngine
 		{
 			return text;
 		}
+		StringBuilder stringBuilder = new StringBuilder();
+		List<string> list = new List<string>();
 		try
 		{
-			Builder.Clear();
 			int i = 0;
 			while (i < text.Length)
 			{
 				char c = text[i];
 				if (c != '{')
 				{
-					Builder.Append(c);
+					stringBuilder.Append(c);
 					i++;
 					continue;
 				}
@@ -50,7 +47,7 @@ public abstract class BaseTextTemplateEngine : ITextTemplateEngine
 				while (i < text.Length && text[i] != '}' && text[i] != '|' && text[i] != '{');
 				if (i >= text.Length || text[i] == '{')
 				{
-					Builder.Append(text, num, i - num);
+					stringBuilder.Append(text, num, i - num);
 					continue;
 				}
 				string text2 = text.Substring(num + 1, i - num - 1);
@@ -61,13 +58,13 @@ public abstract class BaseTextTemplateEngine : ITextTemplateEngine
 					for (; i < text.Length && text[i] != '}'; i++)
 					{
 					}
-					Builder.Append(text, num, i - num);
+					stringBuilder.Append(text, num, i - num);
 					continue;
 				}
-				ParsList.Clear();
+				list.Clear();
 				if (text[i] == '}')
 				{
-					Builder.Append(value.Generate(capitalized, ParsList));
+					stringBuilder.Append(value.Generate(capitalized, list));
 					i++;
 					continue;
 				}
@@ -77,7 +74,7 @@ public abstract class BaseTextTemplateEngine : ITextTemplateEngine
 					i++;
 					if (text[i] == '|' || text[i] == '}')
 					{
-						ParsList.Add(text.Substring(num + 1, i - num - 1));
+						list.Add(text.Substring(num + 1, i - num - 1));
 						num = i;
 					}
 					if (text[i] == '}' || text[i] == '{')
@@ -87,15 +84,15 @@ public abstract class BaseTextTemplateEngine : ITextTemplateEngine
 				}
 				if (text[i] == '}')
 				{
-					Builder.Append(value.Generate(capitalized, ParsList));
+					stringBuilder.Append(value.Generate(capitalized, list));
 					i++;
 				}
 				else if (i >= text.Length - 1 || text[i] == '{')
 				{
-					Builder.Append(text, num2, i - num2);
+					stringBuilder.Append(text, num2, i - num2);
 				}
 			}
-			return Builder.ToString();
+			return stringBuilder.ToString();
 		}
 		catch (Exception innerException)
 		{

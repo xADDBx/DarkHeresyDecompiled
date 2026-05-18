@@ -17,7 +17,7 @@ public class AwarenessLogThread : LogThreadBase, IGameLogEventHandler<GameLogEve
 			GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)actor;
 			AddMessage(LogThreadBase.Strings.TrapSpotted.CreateCombatLogMessage());
 		}
-		else if (!(targetObject.View.GetComponent<InteractionDoor>() == null))
+		else if (targetObject.GetOptional<InteractionDoorPart>() != null)
 		{
 			GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)actor;
 			AddMessage(LogThreadBase.Strings.DoorSpotted.CreateCombatLogMessage());

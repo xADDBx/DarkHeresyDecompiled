@@ -29,7 +29,7 @@ public class MainMenuVM : ViewModel
 
 	public void LoadLastGame()
 	{
-		m_MainMenuContext?.LoadLastGame();
+		m_MainMenuContext?.EnterGame(Game.Instance.LoadLastSave);
 	}
 
 	public void ShowNewGameSetup()

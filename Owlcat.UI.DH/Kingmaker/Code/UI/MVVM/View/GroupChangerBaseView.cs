@@ -39,7 +39,7 @@ public class GroupChangerBaseView : View<GroupChangerVM>, IGameModeHandler, ISub
 
 	private readonly List<GroupChangerCharacterBaseView> m_PartyCharacterViews = new List<GroupChangerCharacterBaseView>();
 
-	protected readonly List<GroupChangerCharacterBaseView> RemoteCharacterViews = new List<GroupChangerCharacterBaseView>();
+	protected readonly List<GroupChangerCharacterBaseView> m_RemoteCharacterViews = new List<GroupChangerCharacterBaseView>();
 
 	public void Initialize()
 	{
@@ -50,7 +50,7 @@ public class GroupChangerBaseView : View<GroupChangerVM>, IGameModeHandler, ISub
 	protected override void OnBind()
 	{
 		m_WindowAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.GroupChanger.GroupChangerOpen.Play();
+		ModalWindowsSounds.Instance.GroupChanger.Open.Play();
 		foreach (GroupChangerCharacterVM item in base.ViewModel.PartyCharacter.Concat(base.ViewModel.RemoteCharacter))
 		{
 			CreateCharacterView(item, m_PartyCharacterView, AddToParty);
@@ -68,8 +68,8 @@ public class GroupChangerBaseView : View<GroupChangerVM>, IGameModeHandler, ISub
 	{
 		m_PartyCharacterViews.ForEach(WidgetFactory.DisposeWidget);
 		m_PartyCharacterViews.Clear();
-		RemoteCharacterViews.ForEach(WidgetFactory.DisposeWidget);
-		RemoteCharacterViews.Clear();
+		m_RemoteCharacterViews.ForEach(WidgetFactory.DisposeWidget);
+		m_RemoteCharacterViews.Clear();
 		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.GroupChanger);
@@ -93,7 +93,7 @@ public class GroupChangerBaseView : View<GroupChangerVM>, IGameModeHandler, ISub
 			{
 				Game.Instance.GameCommandQueue.AddCommand(new CloseChangeGroupGameCommand());
 			});
-			UISounds.Instance.Sounds.GroupChanger.GroupChangerClose.Play();
+			ModalWindowsSounds.Instance.GroupChanger.Close.Play();
 		}
 	}
 
@@ -117,7 +117,7 @@ public class GroupChangerBaseView : View<GroupChangerVM>, IGameModeHandler, ISub
 
 	private void AddToReserve(GroupChangerCharacterBaseView pcView)
 	{
-		RemoteCharacterViews.Add(pcView);
+		m_RemoteCharacterViews.Add(pcView);
 		pcView.transform.SetParent(m_RemoteContainer, worldPositionStays: false);
 	}
 

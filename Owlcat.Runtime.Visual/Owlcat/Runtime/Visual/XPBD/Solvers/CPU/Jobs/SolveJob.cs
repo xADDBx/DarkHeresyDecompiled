@@ -192,22 +192,27 @@ public struct SolveJob : IJobParallelFor
 		{
 			int index = constraintsRange.x + i;
 			int4 @int = ConstraintIndices[index] + bodyDesc.ParticlesRange.x;
+			float4 @float = ConstraintParameters0[index];
 			int x = @int.x;
 			int y = @int.y;
 			float num = ParticleInvMass[x];
 			float num2 = ParticleInvMass[y];
-			float3 @float = ParticlePosition[x];
-			float3 float2 = ParticlePosition[y];
+			float3 float2 = ParticlePosition[x];
+			float3 float3 = ParticlePosition[y];
 			float num3 = constraintSettings.x * DeltaTimeRcpSqr;
 			float num4 = num + num2;
-			float3 float3 = @float - float2;
-			float num5 = math.length(float3);
-			float3 /= num5 + 1E-06f;
+			float3 float4 = float2 - float3;
+			float num5 = math.length(float4);
+			float4 /= num5 + 1E-06f;
 			float num6 = math.distance(ParticleBasePosition[x], ParticleBasePosition[y]);
+			if (@float.x > 0f)
+			{
+				num6 = math.max(num6, @float.x);
+			}
 			float num7 = num5 - num6;
 			float num8 = (0f - (num7 - math.max(math.min(num7, 0f), 0f - constraintSettings.y))) / (num4 + num3 + 1E-06f);
-			ParticlePosition[x] = @float + float3 * num8 * num;
-			ParticlePosition[y] = float2 - float3 * num8 * num2;
+			ParticlePosition[x] = float2 + float4 * num8 * num;
+			ParticlePosition[y] = float3 - float4 * num8 * num2;
 		}
 	}
 

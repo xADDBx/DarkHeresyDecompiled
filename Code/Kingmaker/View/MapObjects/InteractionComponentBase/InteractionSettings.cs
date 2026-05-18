@@ -3,6 +3,8 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.View.MapObjects.Traps;
 using Kingmaker.Visual.Animation.Kingmaker;
@@ -112,6 +114,8 @@ public class InteractionSettings : IHideUnusedSettings
 
 	[ShowIf("ShouldShowOvertipVerticalCorrection")]
 	public float OvertipVerticalCorrection = 60f;
+
+	public EntityRef<TrapObjectData> TrapRef => new EntityRef<TrapObjectData>(Kingmaker.EntitySystem.Interfaces.EntityViewHelper.Or(Trap, null)?.EntityId);
 
 	public virtual bool ShouldShowUIType => true;
 

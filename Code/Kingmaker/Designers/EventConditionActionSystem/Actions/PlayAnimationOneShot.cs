@@ -45,8 +45,7 @@ public class PlayAnimationOneShot : GameAction
 			unitAnimationActionClip.TransitionIn = TransitionIn;
 			unitAnimationActionClip.TransitionOut = TransitionOut;
 			unitAnimationActionClip.ExecutionMode = ExecutionMode.Interrupted;
-			AnimationActionHandle handle = value.View.AnimationManager.CreateHandle(unitAnimationActionClip);
-			value.View.AnimationManager.Execute(handle);
+			value.View.AnimationManager.TryExecute(unitAnimationActionClip);
 		}
 	}
 

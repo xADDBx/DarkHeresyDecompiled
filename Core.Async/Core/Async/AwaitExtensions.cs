@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -16,5 +17,23 @@ public static class AwaitExtensions
 			};
 		});
 		await tcs.Task;
+	}
+
+	public static async void RunOnMainThread(Action action)
+	{
+		try
+		{
+			await RunOnMainThreadTask(action);
+		}
+		catch (Exception exception)
+		{
+			Debug.LogException(exception);
+		}
+	}
+
+	private static async Task RunOnMainThreadTask(Action action)
+	{
+		await Awaitable.MainThreadAsync();
+		action();
 	}
 }

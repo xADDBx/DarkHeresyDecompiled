@@ -15,11 +15,11 @@ namespace Kingmaker.Code.Gameplay.Parts;
 
 [OwlPackOldName("Kingmaker.Code.Gameplay.Parts.PartAdditionalCombatObjective")]
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PartAdditionalCombatObjectiveMapObject : ViewBasedPart<AdditionalCombatObjectiveSettings>, IHashable, IOwlPackable<PartAdditionalCombatObjectiveMapObject>
+public sealed class PartAdditionalCombatObjectiveMapObject : EntityPartWithConfig<AdditionalCombatObjectiveSettings>, IHashable, IOwlPackable<PartAdditionalCombatObjectiveMapObject>
 {
 	private bool m_IsLoaded;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartAdditionalCombatObjectiveMapObject",
 		OldNames = new string[1] { "Kingmaker.Code.Gameplay.Parts.PartAdditionalCombatObjective" },
@@ -45,14 +45,14 @@ public sealed class PartAdditionalCombatObjectiveMapObject : ViewBasedPart<Addit
 		m_IsLoaded = true;
 	}
 
-	protected override void OnSettingsDidSet(bool isNewSettings)
+	protected override void OnConfigDidSet(bool isNewConfig)
 	{
-		base.OnSettingsDidSet(isNewSettings);
+		base.OnConfigDidSet(isNewConfig);
 		if (!m_IsLoaded)
 		{
 			ShowType = base.Settings.ShowType;
 		}
-		IEntityViewBase view = base.View;
+		IEntityView view = base.View;
 		MapObjectView mapObjectView = view as MapObjectView;
 		if ((object)mapObjectView == null)
 		{
@@ -143,7 +143,7 @@ public sealed class PartAdditionalCombatObjectiveMapObject : ViewBasedPart<Addit
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		PartAdditionalCombatObjectiveMapObject source = new PartAdditionalCombatObjectiveMapObject();
 		result = Unsafe.As<PartAdditionalCombatObjectiveMapObject, TPossiblyBase>(ref source);

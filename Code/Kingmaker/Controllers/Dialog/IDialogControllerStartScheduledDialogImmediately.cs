@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Kingmaker.DialogSystem;
 
 namespace Kingmaker.Controllers.Dialog;
 

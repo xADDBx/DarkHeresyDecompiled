@@ -51,7 +51,11 @@ public class CommandHint : View<Command>
 		}
 		if ((bool)m_Label)
 		{
-			m_Label.text = base.ViewModel.Label.ToString();
+			m_Label.text = base.ViewModel.Label?.ToString();
+		}
+		if ((bool)m_LongPressProgress)
+		{
+			m_LongPressProgress.enabled = base.ViewModel.Binding.Contains("#longpress");
 		}
 		if ((bool)m_LongPressProgress)
 		{
@@ -83,6 +87,10 @@ public class CommandHint : View<Command>
 	{
 		bool flag = base.ViewModel.Active && base.ViewModel.Enabled;
 		m_CanvasGroup.alpha = (flag ? 1f : 0.15f);
+		if (m_LongPressProgress != null && m_LongPressProgress.enabled)
+		{
+			m_LongPressProgress.fillAmount = base.ViewModel.Progress;
+		}
 	}
 
 	private void OnTriggered()

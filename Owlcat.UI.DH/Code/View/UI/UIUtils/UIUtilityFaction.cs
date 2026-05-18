@@ -10,9 +10,6 @@ public static class UIUtilityFaction
 		return faction switch
 		{
 			FactionType.None => string.Empty, 
-			FactionType.Drusians => string.Empty, 
-			FactionType.Explorators => string.Empty, 
-			FactionType.Kasballica => string.Empty, 
 			FactionType.AstraMilitarum => "AstraMilitarumFaction", 
 			FactionType.AdeptusMechanicus => "AdeptusMechanicusFaction", 
 			FactionType.RulingCouncilOfNobles => "RulingCouncilOfNoblesFaction", 

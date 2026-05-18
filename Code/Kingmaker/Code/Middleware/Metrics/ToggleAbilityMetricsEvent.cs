@@ -4,11 +4,6 @@ public class ToggleAbilityMetricsEvent : MetricsEvent
 {
 	protected override string Name => "toggle_ability";
 
-	public ToggleAbilityMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public ToggleAbilityMetricsEvent Id(string id)
 	{
 		AddParam("id", id);

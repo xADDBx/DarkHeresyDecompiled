@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Enums;
 using Owlcat.Runtime.Core.Utility;
@@ -19,7 +20,7 @@ public class MechanicFeatureGetter : BoolPropertyGetter, PropertyContextAccessor
 
 	protected override bool GetBaseValue()
 	{
-		return ((this.GetTargetByType(m_Target) as BaseUnitEntity) ?? throw new Exception($"MechanicFeatureGetter: can't find suitable target of type {m_Target}")).GetMechanicFeature(m_FeatureType).Count > 0;
+		return ((EvalContext.Current.GetEntityByType(m_Target) as BaseUnitEntity) ?? throw new Exception($"MechanicFeatureGetter: can't find suitable target of type {m_Target}")).GetMechanicFeature(m_FeatureType).Count > 0;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

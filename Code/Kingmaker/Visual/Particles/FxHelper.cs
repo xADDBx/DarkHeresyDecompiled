@@ -3,6 +3,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Visual.FX;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Utility;
 using Kingmaker.View;
 using Kingmaker.View.Mechanics;
@@ -254,12 +255,12 @@ public static class FxHelper
 		return x.Priority.CompareTo(y.Priority);
 	}
 
-	public static GameObject SpawnFxOnEntity(GameObject prefab, MechanicEntityView entity, bool enableFxObject = true, bool overrideOrientationSource = false)
+	public static GameObject SpawnFxOnEntity(GameObject prefab, IMechanicEntityView entity, bool enableFxObject = true, bool overrideOrientationSource = false)
 	{
 		if ((bool)prefab && entity is AbstractUnitEntityView abstractUnitEntityView)
 		{
 			float coeff = ConfigRoot.Instance.FxRoot.RaceFxSnapToLocatorScaleSettings.GetCoeff(abstractUnitEntityView.Blueprint.Race?.RaceId);
-			return SpawnFxOnGameObject(prefab, entity.gameObject, coeff, enableFxObject, (overrideOrientationSource && abstractUnitEntityView.HasOverriddenRotatablePart) ? new Quaternion?(abstractUnitEntityView.OverrideRotatablePart.transform.rotation) : null);
+			return SpawnFxOnGameObject(prefab, abstractUnitEntityView.gameObject, coeff, enableFxObject, (overrideOrientationSource && abstractUnitEntityView.HasOverriddenRotatablePart) ? new Quaternion?(abstractUnitEntityView.OverrideRotatablePart.transform.rotation) : null);
 		}
 		return null;
 	}

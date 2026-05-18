@@ -68,7 +68,6 @@ public class SaveSlotPCView : SaveSlotBaseView
 			SetInteractableSaveLoadButton();
 		}));
 		SetInteractableSaveLoadButton();
-		m_DeleteButton.Or(null)?.SetInteractable(state: true);
 		if (!m_IsDetailedView && !(this is NewSaveSlotPCView))
 		{
 			AddDisposable(ObservableSubscribeExtensions.Subscribe(m_Button.OnLeftDoubleClickAsObservable(), delegate
@@ -87,6 +86,8 @@ public class SaveSlotPCView : SaveSlotBaseView
 		{
 			base.ViewModel.HideScreenshot();
 		}));
+		AddDisposable(base.ViewModel.IsAvailable.Subscribe(OnAvailableChanged));
+		OnAvailableChanged(base.ViewModel.IsAvailable.CurrentValue);
 	}
 
 	protected override void DestroyViewImplementation()
@@ -106,13 +107,20 @@ public class SaveSlotPCView : SaveSlotBaseView
 		base.DestroyViewImplementation();
 	}
 
+	private void OnAvailableChanged(bool isAvailable)
+	{
+		SetSaveLoadButton(base.ViewModel.Mode.CurrentValue);
+		m_DeleteButton.Or(null)?.gameObject.SetActive(isAvailable);
+		m_DeleteButton.Or(null)?.SetInteractable(!(base.ViewModel is NewSaveSlotVM));
+	}
+
 	private void SetSaveLoadButton(SaveLoadMode mode)
 	{
 		if (m_SaveLoadLabel != null)
 		{
 			m_SaveLoadLabel.text = ((mode == SaveLoadMode.Load) ? base.Texts.LoadLabel : base.Texts.SaveLabel);
 		}
-		m_SaveLoadButton.Or(null)?.gameObject.SetActive(base.ViewModel.ShowSaveLoadButton);
+		m_SaveLoadButton.Or(null)?.gameObject.SetActive(base.ViewModel.ShowSaveLoadButton && base.ViewModel.IsAvailable.CurrentValue);
 	}
 
 	protected override void UpdateDLCState(bool b)

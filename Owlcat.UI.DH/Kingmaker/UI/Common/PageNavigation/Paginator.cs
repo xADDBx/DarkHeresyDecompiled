@@ -1,6 +1,6 @@
 using System;
 using Kingmaker.Code.UI.Common.PageNavigation;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using R3;
 using UnityEngine;
 

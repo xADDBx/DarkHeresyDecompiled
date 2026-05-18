@@ -46,18 +46,25 @@ public class Skeleton : ScriptableObject
 		private BoneType m_BoneType;
 
 		[SerializeField]
-		private bool m_ApplyScale;
-
-		[ShowIf("m_ApplyScale")]
-		[SerializeField]
-		private Vector3 m_Scale = Vector3.one;
-
-		[SerializeField]
 		private bool m_ApplyOffset;
 
 		[ShowIf("m_ApplyOffset")]
 		[SerializeField]
 		private Vector3 m_Offset = Vector3.zero;
+
+		[SerializeField]
+		private bool m_ApplyRotation;
+
+		[ShowIf("m_ApplyRotation")]
+		[SerializeField]
+		private Vector3 m_Rotation = Vector3.zero;
+
+		[SerializeField]
+		private bool m_ApplyScale;
+
+		[ShowIf("m_ApplyScale")]
+		[SerializeField]
+		private Vector3 m_Scale = Vector3.one;
 
 		[Tooltip("Модификатор не будет применяться, если на персонаже есть хотя бы одно из ЕЕ из списка")]
 		[SerializeField]
@@ -71,13 +78,9 @@ public class Skeleton : ScriptableObject
 
 		public bool IsValid()
 		{
-			if (!m_ApplyOffset || !(m_Offset != Vector3.zero))
+			if (!m_ApplyOffset && !m_ApplyScale)
 			{
-				if (m_ApplyScale)
-				{
-					return m_Scale != Vector3.one;
-				}
-				return false;
+				return m_ApplyRotation;
 			}
 			return true;
 		}
@@ -101,14 +104,17 @@ public class Skeleton : ScriptableObject
 
 		public void Apply(Transform boneTransform)
 		{
-			if (m_ApplyScale)
-			{
-				Vector3 localScale = Vector3.Scale(boneTransform.localScale, m_Scale);
-				boneTransform.localScale = localScale;
-			}
 			if (m_ApplyOffset)
 			{
-				boneTransform.localPosition = m_Offset;
+				boneTransform.localPosition += m_Offset;
+			}
+			if (m_ApplyRotation)
+			{
+				boneTransform.localRotation *= Quaternion.Euler(m_Rotation);
+			}
+			if (m_ApplyScale)
+			{
+				boneTransform.localScale = Vector3.Scale(boneTransform.localScale, m_Scale);
 			}
 		}
 	}

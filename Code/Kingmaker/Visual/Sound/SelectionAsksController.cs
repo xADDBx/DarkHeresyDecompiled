@@ -1,5 +1,6 @@
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -40,7 +41,10 @@ public class SelectionAsksController : BaseAsksController, ISelectionHandler, IS
 	{
 		if (!unit.IsInCombat && unit.LifeState.IsConscious)
 		{
-			unit.View.Asks?.Selected.Schedule();
+			using (EvalContext.PushAsksContext(unit, unit))
+			{
+				unit.View.Asks?.Select.Schedule();
+			}
 		}
 	}
 }

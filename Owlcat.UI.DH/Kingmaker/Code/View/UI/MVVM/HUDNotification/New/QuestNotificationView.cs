@@ -26,17 +26,17 @@ public class QuestNotificationView : QuestNotificationBaseView<QuestNotification
 		base.OnBind();
 	}
 
-	protected override BlueprintUISound.UISound GetSound()
+	protected override UISound GetSound()
 	{
-		BlueprintUISound sounds = UISounds.Instance.Sounds;
+		NotificationsSounds instance = NotificationsSounds.Instance;
 		return base.ViewModel.State switch
 		{
-			QuestNotificationState.Nothing => sounds.DoNothingEvent, 
-			QuestNotificationState.New => sounds.Notifications.NewQuest, 
-			QuestNotificationState.Completed => sounds.Notifications.CompletedQuest, 
-			QuestNotificationState.Failed => sounds.Notifications.NewInformation, 
-			QuestNotificationState.Updated => sounds.Notifications.NewInformation, 
-			QuestNotificationState.Postponed => sounds.Notifications.NewInformation, 
+			QuestNotificationState.Nothing => UISounds.Instance.Sounds.DoNothingEvent, 
+			QuestNotificationState.New => instance.Notifications.NewQuest, 
+			QuestNotificationState.Completed => instance.Notifications.CompletedQuest, 
+			QuestNotificationState.Failed => instance.Notifications.NewInformation, 
+			QuestNotificationState.Updated => instance.Notifications.NewInformation, 
+			QuestNotificationState.Postponed => instance.Notifications.NewInformation, 
 			_ => throw new ArgumentOutOfRangeException(), 
 		};
 	}

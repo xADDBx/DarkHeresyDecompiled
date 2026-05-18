@@ -18,16 +18,22 @@ public abstract class View<T> : MonoBehaviour, IBindable<T>, IBindable
 	public void Bind(T source)
 	{
 		Unbind();
-		if (source != null)
+		if (source == null)
 		{
-			ViewModel = source;
-			if (ViewModel is ViewModel viewModel)
-			{
-				viewModel.Add(m_Unbind = new DisposableAction(Unbind));
-			}
-			m_Disposables = new DisposableBag(GetType(), 0);
-			OnBind();
+			return;
 		}
+		if (source is ViewModel viewModel)
+		{
+			if (viewModel.IsDisposed)
+			{
+				UnityEngine.Debug.LogError($"Trying to Bind() to a disposed view model, type={typeof(T)}");
+				return;
+			}
+			viewModel.Add(m_Unbind = new DisposableAction(Unbind));
+		}
+		ViewModel = source;
+		m_Disposables = new DisposableBag(GetType(), 0);
+		OnBind();
 	}
 
 	[DebuggerStepThrough]
@@ -39,15 +45,28 @@ public abstract class View<T> : MonoBehaviour, IBindable<T>, IBindable
 			{
 				viewModel.Remove(Interlocked.Exchange(ref m_Unbind, null));
 			}
-			m_Disposables.Clear();
-			OnUnbind();
-			ViewModel = default(T);
+			try
+			{
+				m_Disposables.Clear();
+				OnUnbind();
+			}
+			finally
+			{
+				ViewModel = default(T);
+			}
 		}
 	}
 
 	protected virtual void OnDestroy()
 	{
-		Unbind();
+		try
+		{
+			Unbind();
+		}
+		catch (Exception exception)
+		{
+			UIKitLogger.Exception("Exception in " + GetType().Name + ".OnDestroy", exception);
+		}
 	}
 
 	protected virtual void OnBind()

@@ -1,9 +1,6 @@
 using System;
-using System.Linq;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Sound;
 using Kingmaker.Utility.DotNetExtensions;
 using ObservableCollections;
@@ -15,7 +12,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabConsoleView<RankEntrySelectionVM>, IUIHighlighter, ISubscriber
+public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabConsoleView<RankEntrySelectionVM>
 {
 	[Header("UltimateFeatures")]
 	[SerializeField]
@@ -38,10 +35,10 @@ public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabCo
 
 	[Header("Hints")]
 	[SerializeField]
-	private ConsoleHint m_PrevFilterHint;
+	private HintView m_PrevFilterHint;
 
 	[SerializeField]
-	private ConsoleHint m_NextFilterHint;
+	private HintView m_NextFilterHint;
 
 	[SerializeField]
 	private RankEntryStatItemCommonView m_RankEntryStatItemCommonView;
@@ -59,11 +56,7 @@ public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabCo
 
 	private readonly ObservableList<VirtualListElementVMBase> m_VMCollection = new ObservableList<VirtualListElementVMBase>();
 
-	private GridConsoleNavigationBehaviour m_Navigation;
-
 	private RankEntrySelectionFeatureVM m_IsFocusedSelection;
-
-	RectTransform IUIHighlighter.RectTransform => RectTransform;
 
 	public override void Initialize()
 	{
@@ -97,7 +90,6 @@ public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabCo
 		}).AddTo(this);
 		m_NoFeaturesText.text = UIStrings.Instance.CharacterSheet.NoFeaturesInFilter;
 		UpdateCollection();
-		CreateNavigation();
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
@@ -105,48 +97,11 @@ public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabCo
 	{
 		base.OnUnbind();
 		m_VMCollection.Clear();
-		m_Navigation?.Clear();
-		m_Navigation = null;
 		m_FeaturesFilter.Or(null)?.Unbind();
 	}
 
-	public override void AddInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
+	public void AddInput()
 	{
-		if (base.ViewModel.FeaturesFilterVM == null)
-		{
-			m_PrevFilterHint?.Dispose();
-			m_NextFilterHint?.Dispose();
-			return;
-		}
-		if ((bool)m_PrevFilterHint)
-		{
-			InputBindStruct inputBindStruct = inputLayer.AddButton(delegate
-			{
-				bool isFocused2 = m_Navigation.IsFocused;
-				m_FeaturesFilter.Or(null)?.SetPrevFilter();
-				if (isFocused2)
-				{
-					m_Navigation.FocusOnFirstValidEntity();
-				}
-			}, 14);
-			m_PrevFilterHint.Bind(inputBindStruct).AddTo(this);
-			inputBindStruct.AddTo(this);
-		}
-		if (!m_NextFilterHint)
-		{
-			return;
-		}
-		InputBindStruct inputBindStruct2 = inputLayer.AddButton(delegate
-		{
-			bool isFocused = m_Navigation.IsFocused;
-			m_FeaturesFilter.Or(null)?.SetNextFilter();
-			if (isFocused)
-			{
-				m_Navigation.FocusOnFirstValidEntity();
-			}
-		}, 15);
-		m_NextFilterHint.Bind(inputBindStruct2).AddTo(this);
-		inputBindStruct2.AddTo(this);
 	}
 
 	private void UpdateCollection()
@@ -179,7 +134,7 @@ public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabCo
 			else if (base.ViewModel.SelectionMade && base.ViewModel.SelectedFeature.CurrentValue.FocusedState.CurrentValue)
 			{
 				base.ViewModel.CareerPathVM.SelectNextItem();
-				UISounds.Instance.Sounds.Buttons.DoctrineNextButtonClick.Play();
+				ButtonsSounds.Instance.DoctrineNextButton.Click.Play();
 			}
 		}
 	}
@@ -191,87 +146,5 @@ public class RankEntryFeatureSelectionConsoleView : BaseCareerPathSelectionTabCo
 		{
 			h.SetFocusOn(null);
 		});
-	}
-
-	private void CreateNavigation()
-	{
-		m_Navigation = new GridConsoleNavigationBehaviour();
-		if (base.ViewModel.UltimateFeature != null)
-		{
-			m_Navigation.AddEntityVertical(m_UltimateFeatureConsoleView);
-		}
-		GridConsoleNavigationBehaviour vListNav = m_VirtualList.GetNavigationBehaviour();
-		m_Navigation.AddEntityVertical(vListNav);
-		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
-		{
-			VirtualListElement virtualListElement = m_VirtualList.Elements.FirstOrDefault((VirtualListElement e) => ((e.ConsoleEntityProxy as View<VirtualListElementVMBase>)?.ViewModel as BaseRankEntryFeatureVM)?.FeatureState.CurrentValue == RankFeatureState.Selected);
-			if (virtualListElement != null)
-			{
-				vListNav.SetCurrentEntity(virtualListElement);
-			}
-			else
-			{
-				vListNav.SetCurrentEntity(m_VirtualList.ActiveElements.FirstOrDefault((VirtualListElement i) => !(i.Data is ExpandableTitleVM)));
-			}
-			m_Navigation?.SetCurrentEntity(vListNav);
-		}).AddTo(this);
-		m_Navigation.DeepestFocusAsObservable.Subscribe(delegate(IConsoleEntity value)
-		{
-			if (value != null)
-			{
-				EventBus.RaiseEvent(delegate(IRankEntryFocusHandler h)
-				{
-					h.SetFocusOn((value as View<VirtualListElementVMBase>)?.ViewModel as BaseRankEntryFeatureVM);
-				});
-			}
-		}).AddTo(this);
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		if (m_Navigation == null)
-		{
-			CreateNavigation();
-		}
-		return m_Navigation;
-	}
-
-	public void StartHighlight(string key)
-	{
-	}
-
-	public void StopHighlight(string key)
-	{
-	}
-
-	public void Highlight(string key)
-	{
-	}
-
-	public void HighlightOnce(string key)
-	{
-		if (m_VMCollection == null)
-		{
-			return;
-		}
-		int itemId = m_VMCollection.FindIndex((VirtualListElementVMBase vm) => (vm as RankEntrySelectionFeatureVM)?.Feature.AssetGuid == key);
-		if (itemId < 0)
-		{
-			return;
-		}
-		m_VirtualList.ScrollController.ForceScrollToElement(m_VMCollection.ElementAt(itemId));
-		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
-		{
-			RankEntryFeatureItemCommonView rankEntryFeatureItemCommonView = m_VirtualList.Elements.ElementAt(itemId).View as RankEntryFeatureItemCommonView;
-			if (rankEntryFeatureItemCommonView != null)
-			{
-				rankEntryFeatureItemCommonView.StartHighlight(key);
-				m_VirtualList.GetNavigationBehaviour().FocusOnEntityManual(rankEntryFeatureItemCommonView);
-			}
-			EventBus.RaiseEvent(delegate(IUIHighlighter h)
-			{
-				h.StopHighlight(key);
-			});
-		}).AddTo(this);
 	}
 }

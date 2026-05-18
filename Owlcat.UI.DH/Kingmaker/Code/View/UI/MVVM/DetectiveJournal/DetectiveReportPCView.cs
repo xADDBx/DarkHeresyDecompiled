@@ -28,9 +28,6 @@ public class DetectiveReportPCView : DetectiveReportBaseView
 	[SerializeField]
 	private TMP_Text m_SendReportLabel;
 
-	[SerializeField]
-	private float m_SendReportButtonDelayTEMP = 1.2f;
-
 	protected override void OnBind()
 	{
 		ObservableSubscribeExtensions.Subscribe(m_BackButton.OnLeftClickAsObservable(), delegate
@@ -75,8 +72,9 @@ public class DetectiveReportPCView : DetectiveReportBaseView
 		}
 		else
 		{
-			m_SendReportButton.Interactable = base.ViewModel.QuestionIsAnswered.CurrentValue;
-			m_StampButton.Interactable = base.ViewModel.QuestionIsAnswered.CurrentValue;
+			bool interactable = base.ViewModel.IsInteractable && base.ViewModel.QuestionIsAnswered.CurrentValue;
+			m_SendReportButton.Interactable = interactable;
+			m_StampButton.Interactable = interactable;
 			LocalizedString localizedString = (base.ViewModel.QuestionIsAnswered.CurrentValue ? UIStrings.Instance.DetectiveJournal.SendReportHint : UIStrings.Instance.DetectiveJournal.CompleteReportHint);
 			m_SendReportButton.SetHint(localizedString).AddTo(this);
 		}
@@ -91,7 +89,7 @@ public class DetectiveReportPCView : DetectiveReportBaseView
 		if (m_IsStamping.Value)
 		{
 			m_StampingAnimator.SetBool(DetectiveReportBaseView.Stamping, value: true);
-			ObservableSubscribeExtensions.Subscribe(Observable.Timer(TimeSpan.FromSeconds(m_SendReportButtonDelayTEMP), UnityTimeProvider.UpdateIgnoreTimeScale), delegate
+			ObservableSubscribeExtensions.Subscribe(base.StampAnimationFinishedAsObservable.Take(1), delegate
 			{
 				base.ViewModel.SendReport();
 			}).AddTo(this);

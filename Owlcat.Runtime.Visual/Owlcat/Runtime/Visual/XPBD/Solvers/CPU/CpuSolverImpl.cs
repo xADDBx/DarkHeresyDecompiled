@@ -222,6 +222,10 @@ public class CpuSolverImpl : ISolverImpl
 		}
 	}
 
+	public void EnsureRenderBuffersInitialized(ScriptableRenderContext context)
+	{
+	}
+
 	public void BeginStep(in UpdateContext context)
 	{
 		m_Jobs.Clear();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Code.BlueprintSystem.Attributes;
 using Kingmaker.Code.Gameplay.Features.DetectiveClues.View;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
@@ -9,10 +10,13 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 using Kingmaker.Interaction;
 using Kingmaker.Localization;
+using Kingmaker.Utility.Attributes;
 using Kingmaker.View;
 using Kingmaker.View.MapObjects;
+using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Kingmaker.Code.Gameplay.Features.VariableInteractions;
 
@@ -22,22 +26,35 @@ public class InteractionWithConditions
 	[Serializable]
 	public class ShowReason
 	{
+		[ValidateNotNull]
 		public ConditionsReference Conditions;
 
-		public SharedStringAsset Reason;
+		[FormerlySerializedAs("Reason")]
+		public LocalizedString ShowHint;
 	}
 
+	[field: FormerlySerializedAs("<VariantActor>k__BackingField")]
 	[field: SerializeField]
-	public AbstractEntityPartComponent VariantActor { get; private set; }
+	[field: ValidFieldType(typeof(InteractionSkillCheck))]
+	[field: ValidFieldType(typeof(InteractionDetectiveClue))]
+	[field: ValidFieldType(typeof(InteractionDetectiveTrace))]
+	[field: ValidFieldType(typeof(InteractionAction))]
+	public AbstractEntityPartComponent Interaction { get; private set; }
+
+	[field: FormerlySerializedAs("<ShowReasons>k__BackingField")]
+	[field: Tooltip("Список условий при выполнении любого из которых этот интеракт будет показан. По наведению на этот вариант в хинте справа будет показана строка \"ShowHint\"")]
+	[field: SerializeField]
+	public List<ShowReason> ShowConditions { get; private set; }
 
 	[field: SerializeField]
-	public List<ShowReason> ShowReasons { get; private set; }
-
-	[field: SerializeField]
+	[field: Tooltip("Эвалюатор условий, при которых интеракт можно будет выбрать в списке. По наведению на этот вариант будет показана строка \"CannotSelectReason\", если вариант недоступен")]
 	public ConditionsChecker SelectConditions { get; private set; }
 
+	[field: ShowIf("HasSelectConditions")]
 	[field: SerializeField]
-	public SharedStringAsset CannotSelectReason { get; private set; }
+	public LocalizedString CannotSelectReason { get; private set; }
+
+	private bool HasSelectConditions => SelectConditions.HasConditions;
 
 	public InteractionWithConditions()
 	{
@@ -45,21 +62,25 @@ public class InteractionWithConditions
 
 	public InteractionWithConditions(AbstractEntityPartComponent partComponent)
 	{
-		VariantActor = partComponent;
+		Interaction = partComponent;
 	}
 
 	public IInteractionVariantActor GetVariantActor()
 	{
-		AbstractEntityPartComponent variantActor = VariantActor;
-		if (!(variantActor is InteractionSkillCheck))
+		AbstractEntityPartComponent interaction = Interaction;
+		if (!(interaction is InteractionSkillCheck))
 		{
-			if (!(variantActor is InteractionDetectiveClue))
+			if (!(interaction is InteractionDetectiveClue))
 			{
-				if (variantActor is InteractionDetectiveTrace)
+				if (!(interaction is InteractionDetectiveTrace))
 				{
-					return GetVariantActor<InteractionPartDetectiveTrace>();
+					if (interaction is InteractionAction)
+					{
+						return GetVariantActor<InteractionActionPart>();
+					}
+					return null;
 				}
-				return null;
+				return GetVariantActor<InteractionPartDetectiveTrace>();
 			}
 			return GetVariantActor<InteractionPartDetectiveClue>();
 		}
@@ -68,25 +89,29 @@ public class InteractionWithConditions
 
 	public MapObjectEntity GetMapObject()
 	{
-		AbstractEntityPartComponent variantActor = VariantActor;
-		if (!(variantActor is InteractionSkillCheck interactionSkillCheck))
+		AbstractEntityPartComponent interaction = Interaction;
+		if (!(interaction is InteractionSkillCheck component))
 		{
-			if (!(variantActor is InteractionDetectiveClue interactionDetectiveClue))
+			if (!(interaction is InteractionDetectiveClue component2))
 			{
-				if (variantActor is InteractionDetectiveTrace interactionDetectiveTrace)
+				if (!(interaction is InteractionDetectiveTrace component3))
 				{
-					return (interactionDetectiveTrace.GetComponent<EntityViewBase>() as MapObjectView)?.Data;
+					if (interaction is InteractionAction component4)
+					{
+						return component4.GetEntityPart<InteractionActionPart>().Owner;
+					}
+					return null;
 				}
-				return null;
+				return component3.GetEntityPart<InteractionPartDetectiveTrace>().Owner;
 			}
-			return (interactionDetectiveClue.GetComponent<EntityViewBase>() as MapObjectView)?.Data;
+			return component2.GetEntityPart<InteractionPartDetectiveClue>().Owner;
 		}
-		return (interactionSkillCheck.GetComponent<EntityViewBase>() as MapObjectView)?.Data;
+		return component.GetEntityPart<InteractionSkillCheckPart>().Owner;
 	}
 
-	public IInteractionVariantActor GetVariantActor<TPart>() where TPart : ViewBasedPart, new()
+	public IInteractionVariantActor GetVariantActor<TPart>() where TPart : EntityPartWithConfig, new()
 	{
-		EntityViewBase entityViewBase = VariantActor.GetComponent<EntityViewBase>().Or(null);
+		EntityViewBase entityViewBase = Interaction.GetComponent<EntityViewBase>().Or(null);
 		object obj;
 		if ((object)entityViewBase == null)
 		{
@@ -102,6 +127,6 @@ public class InteractionWithConditions
 
 	public InteractionActorWithConditions ToActorWithConditions()
 	{
-		return new InteractionActorWithConditions(GetVariantActor(), ShowReasons, SelectConditions, CannotSelectReason);
+		return new InteractionActorWithConditions(GetVariantActor(), ShowConditions, SelectConditions, CannotSelectReason);
 	}
 }

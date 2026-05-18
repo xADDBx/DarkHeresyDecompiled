@@ -1,5 +1,5 @@
 using Kingmaker.Blueprints.Loot;
-using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
 using UnityEngine;
 
@@ -16,7 +16,7 @@ public class LootSlotVM : ViewModel
 	public LootSlotVM(LootEntry lootEntry)
 	{
 		m_LootEntity = lootEntry;
-		Icon = lootEntry.Item.Icon ?? UIConfig.Instance.UIIcons.DefaultItemIcon;
+		Icon = lootEntry.Item.Icon.GetDefaultIfNull(DefaultImageType.Item);
 		Count = lootEntry.Count;
 	}
 

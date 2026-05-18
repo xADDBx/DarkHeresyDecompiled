@@ -1,5 +1,6 @@
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -10,6 +11,9 @@ public class ItemInteractionsAsksController : BaseAsksController, IInsertItemFai
 {
 	void IInsertItemFailHandler.HandleInsertFail(MechanicEntity owner)
 	{
-		owner?.View.Asks?.CantDo.Schedule(is2D: true);
+		using (EvalContext.PushAsksContext(owner, owner))
+		{
+			owner?.View.Asks?.CantDo.Schedule(is2D: true);
+		}
 	}
 }

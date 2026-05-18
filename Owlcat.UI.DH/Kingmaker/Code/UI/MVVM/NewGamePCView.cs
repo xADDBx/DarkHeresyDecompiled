@@ -81,14 +81,10 @@ public class NewGamePCView : NewGameBaseView
 
 	private void OnPhaseChanged(NewGameMenuEntityVM vm)
 	{
-		if (vm.NewGamePhaseVM == base.ViewModel.PresetVM)
-		{
-			m_NewGamePhasePresetView.Bind(base.ViewModel.PresetVM);
-			m_NewGamePhaseDifficultyPCView.Unbind();
-		}
-		else if (vm.NewGamePhaseVM == base.ViewModel.DifficultyVM)
+		if (vm.NewGamePhaseVM == base.ViewModel.DifficultyVM)
 		{
 			m_NewGamePhasePresetView.Unbind();
+			m_NewGamePhaseStoryPCView.Unbind();
 			m_NewGamePhaseDifficultyPCView.Bind(base.ViewModel.DifficultyVM);
 		}
 	}

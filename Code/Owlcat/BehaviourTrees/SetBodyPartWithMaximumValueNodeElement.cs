@@ -18,12 +18,11 @@ public class SetBodyPartWithMaximumValueNodeElement : BehaviourTreeNodeElement<S
 
 	public int MinThresholdValue;
 
+	[OptionalParameter]
+	public PropertyCalculatorBlueprintVariableReference CalculatorBlueprint;
+
 	protected override SetBodyPartWithMaximumValueNode CreateTypedNode(Blackboard blackboard)
 	{
-		EntityVariable agentVariable = blackboard.GetAgentVariable();
-		BodyPartVariable runtimeVariable = Variable.GetRuntimeVariable(blackboard);
-		BodyPartListVariable runtimeVariable2 = BodyPartsList.GetRuntimeVariable(blackboard);
-		EntityVariable runtimeVariable3 = Target.GetRuntimeVariable(blackboard);
-		return new SetBodyPartWithMaximumValueNode(agentVariable, runtimeVariable, runtimeVariable2, runtimeVariable3, FunctionToMaximize, MinThresholdValue);
+		return new SetBodyPartWithMaximumValueNode(blackboard.GetAgentVariable(), Variable.GetRuntimeVariable(blackboard), BodyPartsList.GetRuntimeVariable(blackboard), Target.GetRuntimeVariable(blackboard), calculatorBlueprint: CalculatorBlueprint.GetOptionalRuntimeVariable<PropertyCalculatorBlueprintVariable>(blackboard), functionToMaximize: FunctionToMaximize, minThresholdValue: MinThresholdValue);
 	}
 }

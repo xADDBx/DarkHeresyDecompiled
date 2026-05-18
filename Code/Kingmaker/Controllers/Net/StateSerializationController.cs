@@ -59,21 +59,21 @@ public class StateSerializationController : IControllerTick, IController, IContr
 
 		public static List<UnitMovementAgentData> GetUnitMovementAgentData()
 		{
-			List<UnitMovementAgentBase> allAgents = UnitMovementAgentBase.AllAgents;
+			List<UnitMovementAgent> allAgents = UnitMovementAgent.AllAgents;
 			List<UnitMovementAgentData> list = TempList.Get<UnitMovementAgentData>();
 			list.IncreaseCapacity(allAgents.Count);
 			int i = 0;
 			for (int count = allAgents.Count; i < count; i++)
 			{
-				UnitMovementAgentBase unitMovementAgentBase = allAgents[i];
-				AbstractUnitEntityView unit2 = unitMovementAgentBase.Unit;
+				UnitMovementAgent unitMovementAgent = allAgents[i];
+				AbstractUnitEntityView unit2 = unitMovementAgent.Unit;
 				if (!(unit2 == null) && unit2.Data != null)
 				{
 					list.Add(new UnitMovementAgentData
 					{
 						unitId = unit2.UniqueId,
-						speed = unitMovementAgentBase.Speed,
-						maxSpeedOverride = unitMovementAgentBase.MaxSpeedOverride,
+						speed = unitMovementAgent.Speed,
+						maxSpeedOverride = unitMovementAgent.MaxSpeedOverride,
 						currentSpeedMps = unit2.EntityData?.Movable.CurrentSpeedMps,
 						modifiedSpeedMps = unit2.EntityData?.Movable.DefaultSpeedMps,
 						commandOverrideSpeed = GetCommandOverrideSpeed(unit2),

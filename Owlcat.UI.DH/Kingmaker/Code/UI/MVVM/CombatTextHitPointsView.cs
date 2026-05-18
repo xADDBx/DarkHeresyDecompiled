@@ -1,4 +1,5 @@
 using DG.Tweening;
+using Kingmaker.UnitLogic.Mechanics.Damage;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,6 +27,24 @@ public class CombatTextHitPointsView : CombatTextEntityBaseView<CombatMessageBas
 	private Color m_MissColor;
 
 	[SerializeField]
+	private Color m_HealthDamageIconColor;
+
+	[SerializeField]
+	private Color m_ArmorDamageIconColor;
+
+	[SerializeField]
+	private Color m_VitalDamageIconColor;
+
+	[SerializeField]
+	private Color m_CritAppliedIconColor;
+
+	[SerializeField]
+	private Color m_HealIconColor;
+
+	[SerializeField]
+	private Color m_RepairIconColor;
+
+	[SerializeField]
 	private float m_MoveDeltaGain;
 
 	[SerializeField]
@@ -43,17 +62,17 @@ public class CombatTextHitPointsView : CombatTextEntityBaseView<CombatMessageBas
 	[SerializeField]
 	private Ease m_MoveEase;
 
-	private Sequence m_AnimatioinSequence;
-
-	private Tweener m_MoveTween;
-
-	private float m_Scale;
-
 	[SerializeField]
 	private Vector2 m_XRandomRange = new Vector2(-100f, 100f);
 
 	[SerializeField]
 	private Vector2 m_YRandomRange = new Vector2(-100f, 100f);
+
+	private Sequence m_AnimatioinSequence;
+
+	private Tweener m_MoveTween;
+
+	private float m_Scale;
 
 	protected override float GetXPos()
 	{
@@ -68,10 +87,13 @@ public class CombatTextHitPointsView : CombatTextEntityBaseView<CombatMessageBas
 		{
 			if (!(combatMessage is CombatMessageAttackMiss))
 			{
-				if (combatMessage is CombatMessageHealing)
+				if (combatMessage is CombatMessageHealing combatMessageHealing)
 				{
 					m_Text.color = m_HealColor;
 					m_Scale = 1f;
+					m_Icon.sprite = combatMessageHealing.Sprite;
+					m_Icon.color = GetHealingIconColor(combatMessageHealing.Strategy);
+					m_Icon.enabled = combatMessageHealing.Sprite != null;
 				}
 			}
 			else
@@ -82,10 +104,11 @@ public class CombatTextHitPointsView : CombatTextEntityBaseView<CombatMessageBas
 		}
 		else
 		{
-			m_Text.color = (combatMessageDamage.IsVital ? m_CritDamageColor : m_DamageColor);
-			m_Scale = (combatMessageDamage.IsVital ? m_CritScaleDelta : m_DamageScaleDelta);
+			m_Text.color = GetDamageTextColor(combatMessageDamage.Bonus);
+			m_Scale = GetDamageTextScale(combatMessageDamage.Bonus);
 			m_Icon.sprite = combatMessageDamage.Sprite;
-			m_Icon.enabled = combatMessageDamage.HasArmorDamageBonus || combatMessageDamage.HasHPDamageBonus || combatMessageDamage.HasCriticalEffect;
+			m_Icon.color = GetDamageIconColor(combatMessageDamage.Bonus);
+			m_Icon.enabled = combatMessageDamage.Sprite != null;
 		}
 	}
 
@@ -128,5 +151,45 @@ public class CombatTextHitPointsView : CombatTextEntityBaseView<CombatMessageBas
 		m_MoveTween.Kill();
 		m_MoveTween = null;
 		base.Dispose();
+	}
+
+	private Color GetDamageTextColor(CombatMessageDamage.DamageBonus damageBonus)
+	{
+		if (damageBonus == CombatMessageDamage.DamageBonus.Vital)
+		{
+			return m_CritDamageColor;
+		}
+		return m_DamageColor;
+	}
+
+	private Color GetDamageIconColor(CombatMessageDamage.DamageBonus damageBonus)
+	{
+		return damageBonus switch
+		{
+			CombatMessageDamage.DamageBonus.Vital => m_VitalDamageIconColor, 
+			CombatMessageDamage.DamageBonus.Armor => m_ArmorDamageIconColor, 
+			CombatMessageDamage.DamageBonus.Hp => m_HealthDamageIconColor, 
+			CombatMessageDamage.DamageBonus.Critical => m_CritAppliedIconColor, 
+			_ => Color.clear, 
+		};
+	}
+
+	private float GetDamageTextScale(CombatMessageDamage.DamageBonus damageBonus)
+	{
+		if (damageBonus == CombatMessageDamage.DamageBonus.Vital)
+		{
+			return m_CritScaleDelta;
+		}
+		return m_DamageScaleDelta;
+	}
+
+	private Color GetHealingIconColor(DamageStrategy strategy)
+	{
+		return strategy switch
+		{
+			DamageStrategy.HealthOnly => m_HealIconColor, 
+			DamageStrategy.ArmorOnly => m_RepairIconColor, 
+			_ => Color.clear, 
+		};
 	}
 }

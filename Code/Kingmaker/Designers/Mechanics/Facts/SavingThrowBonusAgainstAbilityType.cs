@@ -30,11 +30,6 @@ public class SavingThrowBonusAgainstAbilityType : UnitFactComponentDelegate, IIn
 
 	public void OnEventAboutToTrigger(RulePerformSavingThrow evt)
 	{
-		int num = Bonus.Calculate(base.Context) + Value * base.Fact.GetRank();
-		if (evt.Reason.Context != null && evt.Reason.Ability != null && evt.Reason.Ability.Blueprint.Type == AbilityType && (!OnlyPositiveValue || num > Value))
-		{
-			evt.ValueModifiers.Add(num, base.Fact, ModifierDescriptor);
-		}
 	}
 
 	public void OnEventDidTrigger(RulePerformSavingThrow evt)

@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.Gameplay.Controllers;
 
-public class GPUSoundController : IControllerTick, IController
+public class GPUSoundController : IControllerTick, IController, IControllerReset
 {
 	public enum CrowdType
 	{
@@ -87,32 +87,31 @@ public class GPUSoundController : IControllerTick, IController
 
 		public void UpdateSoundEmitter()
 		{
+			CleanupEmitter();
+			int count = GetCount();
+			if (count < 3)
+			{
+				return;
+			}
+			SoundRoot.SoundEmitterBySizeCollection soundEmitterBySizeCollection = ConfigRoot.Instance.Sound.SoundEventsForCrowdTypes.FirstOrDefault((SoundRoot.SoundEventByCrowdType e) => e.CrowdType == GetCrowdType())?.soundEmitterCollection;
+			if (soundEmitterBySizeCollection != null)
+			{
+				SoundFx soundFx = ((count < ConfigRoot.Instance.Sound.MinMediumCrowdSize) ? soundEmitterBySizeCollection.EmitterForSmall : ((count < ConfigRoot.Instance.Sound.MinHugeCrowdSize) ? soundEmitterBySizeCollection.EmitterForMedium : soundEmitterBySizeCollection.EmitterForLarge));
+				if (!(soundFx == null))
+				{
+					_soundEmitter = UnityEngine.Object.Instantiate(soundFx, GetCenter(), Quaternion.identity);
+					_soundEmitter.transform.SetParent(FxHelper.FxRoot);
+				}
+			}
+		}
+
+		public void CleanupEmitter()
+		{
 			if (_soundEmitter != null)
 			{
 				PFLog.Audio.Log($"GPUSOUND: remove emitter {_soundEmitter.transform.position}");
 				UnityEngine.Object.Destroy(_soundEmitter.gameObject);
 			}
-			int count = GetCount();
-			if (count < 3)
-			{
-				PFLog.Audio.Log($"GPUSOUND: crowd is too small {count}");
-				return;
-			}
-			SoundRoot.SoundEmitterBySizeCollection soundEmitterBySizeCollection = ConfigRoot.Instance.Sound.SoundEventsForCrowdTypes.FirstOrDefault((SoundRoot.SoundEventByCrowdType e) => e.CrowdType == GetCrowdType())?.soundEmitterCollection;
-			if (soundEmitterBySizeCollection == null)
-			{
-				PFLog.Audio.Log($"GPUSOUND: no emittercollection for {GetCrowdType()}");
-				return;
-			}
-			SoundFx soundFx = ((count < ConfigRoot.Instance.Sound.MinMediumCrowdSize) ? soundEmitterBySizeCollection.EmitterForSmall : ((count < ConfigRoot.Instance.Sound.MinHugeCrowdSize) ? soundEmitterBySizeCollection.EmitterForMedium : soundEmitterBySizeCollection.EmitterForLarge));
-			if (soundFx == null)
-			{
-				PFLog.Audio.Log($"GPUSOUND: no emitter for size {count} in {GetCrowdType()}");
-				return;
-			}
-			_soundEmitter = UnityEngine.Object.Instantiate(soundFx, GetCenter(), Quaternion.identity);
-			_soundEmitter.transform.SetParent(FxHelper.FxRoot);
-			PFLog.Audio.Log($"GPUSOUND: spawn emitter {_soundEmitter.transform.position}");
 		}
 	}
 
@@ -183,28 +182,91 @@ public class GPUSoundController : IControllerTick, IController
 		{
 			AddLocatorInfo(item5);
 		}
+		LogClusteringResult();
+	}
+
+	private void LogClusteringResult()
+	{
+		HashSet<Cluster> hashSet = new HashSet<Cluster>();
+		int num = 0;
+		foreach (List<LocatorInfo> value in CellToLocators.Values)
+		{
+			foreach (LocatorInfo item in value)
+			{
+				num++;
+				if (item.containingCluster != null)
+				{
+					hashSet.Add(item.containingCluster);
+				}
+			}
+		}
+		int minMediumCrowdSize = ConfigRoot.Instance.Sound.MinMediumCrowdSize;
+		int minHugeCrowdSize = ConfigRoot.Instance.Sound.MinHugeCrowdSize;
+		int num2 = 0;
+		int num3 = 0;
+		foreach (Cluster item2 in hashSet.OrderByDescending((Cluster c) => c.GetCount()))
+		{
+			int count = item2.GetCount();
+			if (count < 3)
+			{
+				num3++;
+				continue;
+			}
+			if (count >= minMediumCrowdSize)
+			{
+			}
+			item2.GetCenter();
+			item2.GetCrowdType();
+			num2++;
+		}
+	}
+
+	public void OnReset()
+	{
+		foreach (Cluster item in ExpandedCluster)
+		{
+			item?.CleanupEmitter();
+		}
+		ExpandedCluster.Clear();
+		foreach (Cluster item2 in ContractedCluster)
+		{
+			item2?.CleanupEmitter();
+		}
+		ContractedCluster.Clear();
 	}
 
 	public void RegisterCrowd(GpuCrowd crowd)
 	{
-		PFLog.Audio.Log($"GPUSOUND: register crowd {crowd.name} with {crowd.CrowdSoundInfos.Count} locators");
+		int num = 0;
+		int num2 = 0;
 		foreach (GpuCrowdSoundInfo crowdSoundInfo in crowd.CrowdSoundInfos)
 		{
 			if (crowdSoundInfo.ConsiderInSoundComputation)
 			{
-				AddLocator(crowdSoundInfo, crowd.CrowdType);
+				num++;
+			}
+			else
+			{
+				num2++;
+			}
+		}
+		foreach (GpuCrowdSoundInfo crowdSoundInfo2 in crowd.CrowdSoundInfos)
+		{
+			if (crowdSoundInfo2.ConsiderInSoundComputation)
+			{
+				AddLocator(crowdSoundInfo2, crowd.CrowdType);
 			}
 		}
 	}
 
 	public void UnregisterCrowd(GpuCrowd crowd)
 	{
-		PFLog.Audio.Log($"GPUSOUND: unregister crowd {crowd.name} with {crowd.CrowdSoundInfos.Count} locators");
+		crowd.CrowdSoundInfos.Count((GpuCrowdSoundInfo l) => l.ConsiderInSoundComputation);
 		foreach (GpuCrowdSoundInfo crowdSoundInfo in crowd.CrowdSoundInfos)
 		{
 			if (crowdSoundInfo.ConsiderInSoundComputation)
 			{
-				RemoveLocator(crowdSoundInfo);
+				RemoveLocator(crowdSoundInfo, crowd.CrowdType);
 			}
 		}
 	}
@@ -217,7 +279,6 @@ public class GPUSoundController : IControllerTick, IController
 			soundType = crowdType,
 			containingCluster = null
 		};
-		PFLog.Audio.Log($"GPUSOUND: register locator {crowdLocator.Position}");
 		AddLocatorInfo(newLocator);
 	}
 
@@ -249,6 +310,8 @@ public class GPUSoundController : IControllerTick, IController
 				if (!(Vector3.Distance(newLocator.locator.Position.ReplaceY(0f), item.locator.Position.ReplaceY(0f)) > mergeDistance))
 				{
 					Cluster containingCluster = item.containingCluster;
+					newLocator.containingCluster.GetCount();
+					containingCluster.GetCount();
 					if (containingCluster.GetCount() > newLocator.containingCluster.GetCount())
 					{
 						containingCluster.MergeCluster(newLocator.containingCluster);
@@ -266,13 +329,17 @@ public class GPUSoundController : IControllerTick, IController
 		}
 	}
 
-	private void RemoveLocator(GpuCrowdSoundInfo crowdLocator)
+	private void RemoveLocator(GpuCrowdSoundInfo crowdLocator, CrowdType type)
 	{
 		Vector2Int cellCoords = GetCellCoords(crowdLocator.Position);
-		LocatorInfo locatorInfo = CellToLocators[cellCoords].FirstOrDefault((LocatorInfo l) => l.locator.Position == crowdLocator.Position);
+		if (!CellToLocators.ContainsKey(cellCoords))
+		{
+			return;
+		}
+		LocatorInfo locatorInfo = CellToLocators[cellCoords].FirstOrDefault((LocatorInfo l) => l.locator.Position == crowdLocator.Position && l.soundType == type);
 		if (locatorInfo != null)
 		{
-			PFLog.Audio.Log($"GPUSOUND: remove locator {crowdLocator.Position}");
+			locatorInfo.containingCluster.GetCount();
 			locatorInfo.containingCluster.RemoveLocator(locatorInfo);
 			CellToLocators[cellCoords].Remove(locatorInfo);
 			if (CellToLocators[cellCoords].Count == 0)

@@ -10,7 +10,7 @@ public class AwarenessAsksController : BaseAsksController, IAwarenessHandler, IS
 {
 	void IAwarenessHandler.OnEntityNoticed(BaseUnitEntity spotter)
 	{
-		if (!(spotter.View == null))
+		if (spotter.View != null)
 		{
 			spotter.View.Asks?.Discovery.Schedule();
 		}

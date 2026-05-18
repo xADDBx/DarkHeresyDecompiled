@@ -11,6 +11,7 @@ using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Commands.Base;
+using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.CountingGuard;
 using Kingmaker.Utility.ManualCoroutines;
@@ -124,6 +125,8 @@ public class UnitViewHandsEquipment
 
 	public bool IsDollRoom => View.HandsEquipment != this;
 
+	public bool HoldWeaponsWhenOutOfCombat => Owner.GetOptional<UnitPartVisualChange>()?.HoldWeaponsWhenOutOfCombat ?? false;
+
 	public bool IsMainHandMismatched
 	{
 		get
@@ -158,25 +161,11 @@ public class UnitViewHandsEquipment
 
 	public bool InCombat { get; private set; }
 
-	public UnitViewHandSlotData QuiverHandSlot { get; set; }
-
-	public bool HasQuiverSpawned
-	{
-		get
-		{
-			if (QuiverHandSlot != null)
-			{
-				return QuiverHandSlot.SheathVisualModel;
-			}
-			return false;
-		}
-	}
-
 	private bool Active
 	{
 		get
 		{
-			if (Owner?.Body != null && m_IsActive && !Owner.Body.IsPolymorphed)
+			if (Owner?.Body != null && m_IsActive && Owner.Body.HandsEquipmentAreVisible)
 			{
 				return Character != null;
 			}
@@ -190,21 +179,9 @@ public class UnitViewHandsEquipment
 		{
 			if (Owner.UISettings.ShowBackpack)
 			{
-				return Character.EquipmentEntities.SelectMany((EquipmentEntity ee) => ee.OutfitParts).Any((OutfitPart p) => !p.IsHiddenByVisibilityFeatures(Character.DisplayOptions) && p.HasFeature(EquipmentFeatureFlag.IsBackpack));
+				return Character.EquipmentEntities.Any((EquipmentEntity ee) => ee.HasFeature(EquipmentFeatureFlag.IsBackpack) && !ee.IsHiddenByVisibilityFeatures(Character.DisplayOptions));
 			}
 			return false;
-		}
-	}
-
-	private bool ShouldSquashCloak
-	{
-		get
-		{
-			if (!HasQuiverSpawned)
-			{
-				return HasBackpackSpawned;
-			}
-			return true;
 		}
 	}
 
@@ -244,8 +221,12 @@ public class UnitViewHandsEquipment
 			m_ActiveSet = GetSelectedWeaponSet();
 			character.DisplayOptions.OutfitFilter = ShouldShowOutfit;
 			character.OnBackEquipmentUpdated += ReattachBackEquipment;
-			Owner.UISettings.SubscribeOnBackpackVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.SubscribeOnHelmetVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.SubscribeOnArmorVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.SubscribeOnBackpackVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.SubscribeOnCloakVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.SubscribeOnGlovesVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.SubscribeOnBootsVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.SubscribeOnHelmetVisibilityAboveAllChange(UpdateCharacterDisplayOptions);
 			UpdateCharacterDisplayOptions();
 			MatchWithCurrentCombatState();
@@ -258,6 +239,7 @@ public class UnitViewHandsEquipment
 		if (Owner != null && Active)
 		{
 			Owner.UISettings.UnsubscribeFromBackpackVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.UnsubscribeFromCapeVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.UnsubscribeFromHelmetVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.UnsubscribeFromHelmetVisibilityAboveAllChange(UpdateCharacterDisplayOptions);
 		}
@@ -265,8 +247,12 @@ public class UnitViewHandsEquipment
 
 	private void UpdateCharacterDisplayOptions()
 	{
-		Character.DisplayOptions.ShowBackpack = Owner.UISettings.ShowBackpack;
 		Character.DisplayOptions.ShowHelmet = Owner.UISettings.ShowHelm;
+		Character.DisplayOptions.ShowArmor = Owner.UISettings.ShowArmor;
+		Character.DisplayOptions.ShowBackpack = Owner.UISettings.ShowBackpack;
+		Character.DisplayOptions.ShowCloak = Owner.UISettings.ShowCloak;
+		Character.DisplayOptions.ShowGloves = Owner.UISettings.ShowGloves;
+		Character.DisplayOptions.ShowBoots = Owner.UISettings.ShowBoots;
 		Character.DisplayOptions.ShowHelmetAboveAll = Owner.UISettings.ShowHelmAboveAll;
 	}
 
@@ -468,8 +454,8 @@ public class UnitViewHandsEquipment
 		{
 			unitEquipmentVisualSlotType2 = ((BlueprintItemEquipmentHand)selectedWeaponSet.OffHand.Slot.Item.Blueprint).VisualParameters.AttachSlots.FirstOrDefault((UnitEquipmentVisualSlotType s) => s.IsRight());
 		}
-		selectedWeaponSet.MainHand.AttachModel(InCombat || Character.HoldWeaponsInNonCombat);
-		selectedWeaponSet.OffHand.AttachModel(InCombat || Character.HoldWeaponsInNonCombat);
+		selectedWeaponSet.MainHand.AttachModel(InCombat || HoldWeaponsWhenOutOfCombat);
+		selectedWeaponSet.OffHand.AttachModel(InCombat || HoldWeaponsWhenOutOfCombat);
 		if (m_ActiveSet.MainHand.IsMismatched)
 		{
 			if (unitEquipmentVisualSlotType != 0)
@@ -632,18 +618,14 @@ public class UnitViewHandsEquipment
 		{
 			return Owner.UISettings.ShowBackpack;
 		}
-		if (part.HasFeature(EquipmentFeatureFlag.IsCloak) || part.HasFeature(EquipmentFeatureFlag.IsCloakSquashed))
+		if (part.HasFeature(EquipmentFeatureFlag.IsCloak))
 		{
-			if (part.HasFeature(EquipmentFeatureFlag.IsCloak) ^ !ShouldSquashCloak)
-			{
-				return false;
-			}
 			if (m_PrevCloakObj != gameObject && (bool)m_PrevCloakObj)
 			{
 				m_PrevCloakObj.SetActive(value: false);
 			}
 			m_PrevCloakObj = gameObject;
-			return true;
+			return Owner.UISettings.ShowCloak;
 		}
 		Transform parent = gameObject.transform.parent;
 		for (int i = 0; i < s_ConsumableVisualSlots.Length; i++)
@@ -797,13 +779,13 @@ public class UnitViewHandsEquipment
 	private IEnumerator AnimateEquipping(bool equip)
 	{
 		AreHandsBusyWithAnimation.Value = true;
-		bool flag = equip && !Character.HoldWeaponsInNonCombat;
-		if (!equip && Character.HoldWeaponsInNonCombat && Owner.Body.CurrentHandsEquipmentSet != Owner.Body.HandsEquipmentSets[0])
+		bool flag = equip && !HoldWeaponsWhenOutOfCombat;
+		if (!equip && HoldWeaponsWhenOutOfCombat && Owner.Body.CurrentHandsEquipmentSet != Owner.Body.HandsEquipmentSets[0])
 		{
 			flag = true;
 			m_ActiveSet = Sets[Owner.Body.HandsEquipmentSets[0]];
 		}
-		bool shouldUnequip = !equip && !Character.HoldWeaponsInNonCombat;
+		bool shouldUnequip = !equip && !HoldWeaponsWhenOutOfCombat;
 		UnitViewHandSlotData mainHand = m_ActiveSet.MainHand;
 		UnitViewHandSlotData offHand = m_ActiveSet.OffHand;
 		if (flag)
@@ -877,16 +859,9 @@ public class UnitViewHandsEquipment
 
 	public void OnLeaveProne()
 	{
-		if (Active && InCombat != ShouldBeInCombat)
+		if (Active && InCombat != ShouldBeInCombat && ShouldBeInCombat)
 		{
-			if (ShouldBeInCombat)
-			{
-				ForceSwitch(ShouldBeInCombat);
-			}
-			else
-			{
-				Game.Instance.Controllers.HandsEquipmentController.ScheduleUpdate(this);
-			}
+			ForceSwitch(ShouldBeInCombat);
 		}
 	}
 
@@ -914,7 +889,7 @@ public class UnitViewHandsEquipment
 	public Quaternion GetWeaponRotation()
 	{
 		_ = Active;
-		return Owner.View.ViewTransform.rotation;
+		return Owner.GetView().transform.rotation;
 	}
 
 	public void UpdateVisibility(bool isVisible)

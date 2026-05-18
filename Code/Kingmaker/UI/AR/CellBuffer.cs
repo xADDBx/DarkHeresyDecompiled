@@ -9,7 +9,7 @@ internal readonly struct CellBuffer
 {
 	private readonly NativeArray<CellUnion> m_CellArray;
 
-	private readonly NativeArray<ushort> m_CellAreaMaskArray;
+	private readonly NativeArray<uint> m_CellAreaMaskArray;
 
 	public int Length
 	{
@@ -20,7 +20,7 @@ internal readonly struct CellBuffer
 		}
 	}
 
-	public CellBuffer(NativeArray<CellUnion> cellArray, NativeArray<ushort> cellAreaMaskArray)
+	public CellBuffer(NativeArray<CellUnion> cellArray, NativeArray<uint> cellAreaMaskArray)
 	{
 		m_CellArray = cellArray;
 		m_CellAreaMaskArray = cellAreaMaskArray;
@@ -33,7 +33,7 @@ internal readonly struct CellBuffer
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public int GetAreaMask(int index)
+	public uint GetAreaMask(int index)
 	{
 		return m_CellAreaMaskArray[index];
 	}

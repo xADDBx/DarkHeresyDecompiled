@@ -24,6 +24,8 @@ public class BlueprintItemArmor : BlueprintItemEquipment
 
 	public ItemPowerLevel PowerLevel;
 
+	public ItemFaction Faction;
+
 	[SerializeField]
 	private bool m_OverrideDamageReduction;
 
@@ -44,7 +46,13 @@ public class BlueprintItemArmor : BlueprintItemEquipment
 	[SerializeField]
 	private WarhammerArmorCategory m_Category;
 
+	[SerializeField]
+	[ShowIf("IsHeavyCategory")]
+	private int m_MaxDefence;
+
 	private static BlueprintItemProgressionRoot Progression => ConfigRoot.Instance.ItemProgressionRoot;
+
+	private bool IsHeavyCategory => m_Category == WarhammerArmorCategory.Heavy;
 
 	private bool OverrideDamageReduction
 	{
@@ -74,7 +82,7 @@ public class BlueprintItemArmor : BlueprintItemEquipment
 
 	public override ItemsItemType ItemType => ItemsItemType.Armor;
 
-	public override Sprite Icon => base.Icon ?? ConfigRoot.Instance.UIConfig.UIIcons.DefaultItemIcon;
+	public override Sprite Icon => base.Icon ?? ConfigRoot.Instance.UIConfig.UIIcons.DefaultIcons.DefaultItemIcon;
 
 	public ArmorVisualParameters VisualParameters => m_VisualParameters;
 
@@ -82,31 +90,29 @@ public class BlueprintItemArmor : BlueprintItemEquipment
 
 	public WarhammerArmorCategory Category => m_Category;
 
-	public int ArmorDamageReduction
+	public int MaxDefence
 	{
 		get
 		{
-			if (!OverrideDamageReduction)
+			if (!IsHeavyCategory)
 			{
-				return Progression.Get(ProgressionType, PowerLevel).DamageReduction;
+				return 0;
 			}
-			return m_DamageReduction;
+			return m_MaxDefence;
 		}
 	}
 
-	public int ArmorDurability
+	public override string InventoryEquipSound
 	{
 		get
 		{
-			if (!OverrideDurability)
-			{
-				return Progression.Get(ProgressionType, PowerLevel).Durability;
-			}
-			return m_Durability;
+			return VisualParameters.InventoryEquipSound;
+		}
+		set
+		{
+			VisualParameters.InventoryEquipSound = value;
 		}
 	}
-
-	public override string InventoryEquipSound => VisualParameters.InventoryEquipSound;
 
 	public override string InventoryPutSound
 	{
@@ -138,4 +144,31 @@ public class BlueprintItemArmor : BlueprintItemEquipment
 		select tag;
 
 	public override float Weight => m_Weight;
+
+	public int GetArmorDamageReduction(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideDamageReduction)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).DamageReduction;
+		}
+		return m_DamageReduction;
+	}
+
+	public int GetArmorDurability(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideDurability)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).Durability;
+		}
+		return m_Durability;
+	}
+
+	internal ItemPowerLevel ResolvePowerLevel(ItemPowerLevel powerLevel)
+	{
+		if (powerLevel == ItemPowerLevel.Undefined)
+		{
+			return PowerLevel;
+		}
+		return powerLevel;
+	}
 }

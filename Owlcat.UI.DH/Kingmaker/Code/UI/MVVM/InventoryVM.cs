@@ -1,4 +1,3 @@
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.UI.MVVM.ServiceWindows;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Items;
@@ -18,7 +17,7 @@ public class InventoryVM : ViewModel, IInventoryHandler, ISubscriber, INewSlotsH
 
 	private readonly ReactiveCommand<Unit> m_SuppressHideAnimation;
 
-	private readonly ReactiveProperty<BaseUnitEntity> m_Unit = new ReactiveProperty<BaseUnitEntity>();
+	private readonly ReactiveProperty<BaseUnitEntity> m_Unit;
 
 	public readonly InventoryDollVM DollVM;
 
@@ -58,13 +57,6 @@ public class InventoryVM : ViewModel, IInventoryHandler, ISubscriber, INewSlotsH
 		{
 			h.HandleUIEvent(UIEventType.InventoryOpen);
 		});
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Inventory).Send();
-	}
-
-	protected override void OnDispose()
-	{
-		base.OnDispose();
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Inventory).Send();
 	}
 
 	private void OnWeaponSetChanged()
@@ -144,6 +136,6 @@ public class InventoryVM : ViewModel, IInventoryHandler, ISubscriber, INewSlotsH
 
 	void IServiceWindow.HandleOnSwitchedFromWindow()
 	{
-		m_SuppressHideAnimation.Execute();
+		m_SuppressHideAnimation.Execute(R3.Unit.Default);
 	}
 }

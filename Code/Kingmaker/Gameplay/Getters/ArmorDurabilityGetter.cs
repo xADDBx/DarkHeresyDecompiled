@@ -1,7 +1,6 @@
 using System;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.Items;
 using Owlcat.Runtime.Core.Utility;
 
@@ -23,22 +22,14 @@ public sealed class ArmorDurabilityGetter : IntPropertyGetter
 
 	protected override int GetBaseValue()
 	{
-		switch (Type)
+		return Type switch
 		{
-		case ValueType.Current:
-			return base.CurrentEntity.GetArmorOptional()?.DurabilityLeft ?? 0;
-		case ValueType.Max:
-		{
-			ModifiableValue modifiableValue = base.CurrentEntity.GetArmorOptional()?.Durability;
-			return (modifiableValue != null) ? ((int)modifiableValue) : 0;
-		}
-		case ValueType.Percent:
-			return (int)((base.CurrentEntity.GetArmorOptional()?.DurabilityLeftFraction ?? 0f) * 100f);
-		case ValueType.ArmourItem:
-			return (base.CurrentEntity.GetBodyOptional()?.Armor.MaybeArmor?.Blueprint.ArmorDurability).GetValueOrDefault();
-		default:
-			throw new ArgumentOutOfRangeException();
-		}
+			ValueType.Current => base.CurrentEntity.GetArmorOptional()?.DurabilityLeft ?? 0, 
+			ValueType.Max => base.CurrentEntity.GetArmorOptional()?.DurabilityValue ?? 0, 
+			ValueType.Percent => (int)((base.CurrentEntity.GetArmorOptional()?.DurabilityLeftFraction ?? 0f) * 100f), 
+			ValueType.ArmourItem => (base.CurrentEntity.GetBodyOptional()?.Armor.MaybeArmor?.ArmorDurability).GetValueOrDefault(), 
+			_ => throw new ArgumentOutOfRangeException(), 
+		};
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

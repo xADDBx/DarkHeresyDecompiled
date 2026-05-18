@@ -3,5 +3,6 @@ namespace Owlcat.AI;
 public enum AiThreatsHandlingStrategy
 {
 	AvoidIfPossible,
-	Ignore
+	Ignore,
+	AvoidAlways
 }

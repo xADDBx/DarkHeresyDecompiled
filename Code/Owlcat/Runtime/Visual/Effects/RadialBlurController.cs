@@ -95,7 +95,7 @@ public class RadialBlurController : MonoBehaviour
 				position = animation.TargetObject.position;
 			}
 			position = m_Camera.WorldToViewportPoint(position);
-			float value = Vector2.Distance(position, new Vector2(0.5f, 0.5f)) * 2f;
+			float value = Vector2.Distance((Vector2)position, new Vector2(0.5f, 0.5f)) * 2f;
 			float time = Mathf.Clamp(value, 0f, animation.StrengthOverDistance.GetDuration());
 			float time2 = Mathf.Clamp(value, 0f, animation.WidthOverDistance.GetDuration());
 			animation.CurrentStrength = animation.StrengthOverLifetime.Evaluate(animation.NormalizedTime) * animation.StrengthMultiplier * animation.StrengthOverDistance.Evaluate(time);

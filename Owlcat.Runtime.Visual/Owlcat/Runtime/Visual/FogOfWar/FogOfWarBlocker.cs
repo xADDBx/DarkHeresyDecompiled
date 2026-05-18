@@ -96,6 +96,8 @@ public class FogOfWarBlocker : MonoBehaviour
 
 	public bool TwoSided;
 
+	public bool IgnoredByRevealer;
+
 	public Vector2[] Points => m_Points;
 
 	public bool Closed => m_PointsClosed;

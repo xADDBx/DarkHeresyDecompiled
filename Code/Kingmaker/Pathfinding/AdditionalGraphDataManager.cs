@@ -12,17 +12,18 @@ public class AdditionalGraphDataManager
 
 	public void SetGraphData(uint graphIndex, AdditionalGraphData data)
 	{
+		if (m_PerGraphData.TryGetValue(graphIndex, out var value))
+		{
+			value.Dispose();
+		}
 		m_PerGraphData.Remove(graphIndex);
 		m_PerGraphData.Add(graphIndex, data);
 	}
 
+	[CanBeNull]
 	public AdditionalGraphData GetGraphData(uint graphIndex)
 	{
-		if (graphIndex >= m_PerGraphData.Count)
-		{
-			return null;
-		}
-		return m_PerGraphData[graphIndex];
+		return GetGraphDataOptional(graphIndex);
 	}
 
 	[CanBeNull]

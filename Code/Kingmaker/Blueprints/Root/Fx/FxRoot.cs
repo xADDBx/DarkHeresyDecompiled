@@ -94,6 +94,8 @@ public class FxRoot : BlueprintScriptableObject
 
 	public float MinDistanceBetweenFootprints = 0.2f;
 
+	public PrefabLink StubFootprint;
+
 	public PrefabLink DefaultHumanFootprint;
 
 	public PrefabLink DefaultEldarFootprint;
@@ -147,6 +149,9 @@ public class FxRoot : BlueprintScriptableObject
 
 	[Header("Body parts highlight on precise shot")]
 	public PrefabLink BodyPartHighlightFx;
+
+	[Header("Ability target highlight")]
+	public PrefabLink AbilityTargetHighlightFx;
 
 	public static FxRoot Instance => ConfigRoot.Instance.FxRoot;
 

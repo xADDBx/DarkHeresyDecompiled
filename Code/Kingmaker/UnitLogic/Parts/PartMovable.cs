@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Code.Visual.Animation;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -57,8 +56,6 @@ public class PartMovable : EntityPart, IHashable, IOwlPackable<PartMovable>
 	[OwlPackInclude]
 	public TimeSpan LastMoveTime { get; set; }
 
-	private StatsContainer StatsContainer => base.ConcreteOwner.GetRequired<PartStatsContainer>().Container;
-
 	public bool HasMotionThisSimulationTick => (base.Owner.Position - PreviousPosition).sqrMagnitude > 1E-05f;
 
 	public PreviousSimulationTickInfo PreviousSimulationTick { get; set; }
@@ -109,9 +106,9 @@ public class PartMovable : EntityPart, IHashable, IOwlPackable<PartMovable>
 		if (abstractUnitCommand != null)
 		{
 			UnitAnimationManager animationManager = abstractUnitCommand.Executor.AnimationManager;
-			if (animationManager != null && animationManager.NewSpeed >= 0f)
+			if (animationManager != null && animationManager.Speed >= 0f)
 			{
-				num = animationManager.NewSpeed * SlowMoSpeedMod;
+				num = animationManager.Speed * SlowMoSpeedMod;
 			}
 			else if (animationManager != null)
 			{

@@ -1,20 +1,10 @@
+using Kingmaker.AreaLogic.QuestSystem;
+
 namespace Kingmaker.Code.Middleware.Metrics;
 
 public class QuestMetricsEvent : MetricsEvent
 {
-	public enum States
-	{
-		Started,
-		Completed,
-		Failed
-	}
-
 	protected override string Name => "quest";
-
-	public QuestMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
 
 	public QuestMetricsEvent Id(string id)
 	{
@@ -22,14 +12,14 @@ public class QuestMetricsEvent : MetricsEvent
 		return this;
 	}
 
-	public QuestMetricsEvent State(States state)
+	public QuestMetricsEvent State(QuestState state)
 	{
 		AddParam("state", state switch
 		{
-			States.Started => "started", 
-			States.Completed => "completed", 
-			States.Failed => "failed", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			QuestState.Started => "started", 
+			QuestState.Completed => "completed", 
+			QuestState.Failed => "failed", 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}

@@ -89,7 +89,7 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 	{
 		Name = "EtudesSystem",
 		OldNames = null,
-		Fields = new FieldInfo[12]
+		Fields = new FieldInfo[13]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -101,10 +101,16 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 			new FieldInfo("Parts", typeof(EntityPartsManager)),
 			new FieldInfo("m_IsRevealed", typeof(bool)),
 			new FieldInfo("m_ViewHandlingOnDisposePolicyOverride", typeof(ViewHandlingOnDisposePolicyType?)),
+			new FieldInfo("m_ExclusionGroupToBlockingEtude", typeof(Dictionary<BlueprintEtudeExclusionGroup, BlueprintEtude>)),
 			new FieldInfo("m_EtudesData", typeof(Dictionary<BlueprintEtudeReference, EtudeState>)),
 			new FieldInfo("m_HeldConflictingGroups", typeof(Dictionary<BlueprintEtudeConflictingGroup, BlueprintEtude>))
 		}
 	};
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private Dictionary<BlueprintEtudeExclusionGroup, BlueprintEtude> m_ExclusionGroupToBlockingEtude { get; set; } = new Dictionary<BlueprintEtudeExclusionGroup, BlueprintEtude>();
+
 
 	[JsonProperty]
 	[HasherCustom(Type = typeof(EtudesDataGameStateAdapter))]
@@ -144,6 +150,26 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 
 	public BlueprintAreaPart AreaPartBeingExited => m_AreaPartBeingExited;
 
+	private BlueprintEtude? GetExclusionGroupBlockingEtude(BlueprintEtudeExclusionGroup exclusionGroup)
+	{
+		if (!m_ExclusionGroupToBlockingEtude.TryGetValue(exclusionGroup, out BlueprintEtude value))
+		{
+			return null;
+		}
+		return value;
+	}
+
+	public void SetExclusionGroupBlockingEtude(BlueprintEtudeExclusionGroup exclusionGroup, BlueprintEtude blockingEtude)
+	{
+		m_ExclusionGroupToBlockingEtude[exclusionGroup] = blockingEtude;
+	}
+
+	private bool WasEtudeExcludedByGroup(BlueprintEtude etude)
+	{
+		BlueprintEtude etude = etude;
+		return etude.ExclusionGroups.Dereference().NotNull().Any((BlueprintEtudeExclusionGroup exclusionGroup) => etude == GetExclusionGroupBlockingEtude(exclusionGroup));
+	}
+
 	public bool EtudeIsNotStarted(BlueprintEtude etude)
 	{
 		return !m_EtudesData.ContainsKey(etude.ToReference<BlueprintEtudeReference>());
@@ -182,13 +208,13 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		return value;
 	}
 
-	protected EtudesSystem(OwlPackConstructorParameter _)
-		: base(_)
+	public EtudesSystem()
+		: base("etudes-system-id", isInGame: true)
 	{
 	}
 
-	public EtudesSystem()
-		: base("etudes-system-id", isInGame: true)
+	protected EtudesSystem(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
@@ -263,8 +289,18 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		switch (savedState)
 		{
 		case EtudeState.Started:
-			PFLog.Etudes.Log(bp, $"Cannot start etude {bp}: already started" + text);
+		{
+			Etude etude = Etudes.Get(bp);
+			if (etude != null && etude.IsPaused)
+			{
+				etude.SetPaused(isPaused: false);
+			}
+			else
+			{
+				PFLog.Etudes.Log(bp, $"Cannot start etude {bp}: already started" + text);
+			}
 			return;
+		}
 		case EtudeState.Completed:
 			PFLog.Etudes.Log(bp, $"Cannot start etude {bp}: already completed" + text);
 			return;
@@ -326,7 +362,12 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 			PFLog.Etudes.Log(bp, $"Cannot start etude {bp}: parent is CompletionInProgress" + text);
 			return;
 		}
-		Facts.Add(new Etude(bp, etude));
+		Etude etude2 = new Etude(bp, etude);
+		Facts.Add(etude2);
+		if (WasEtudeExcludedByGroup(bp))
+		{
+			etude2.SetPaused(isPaused: true);
+		}
 		if (savedState == EtudeState.PreCompleted)
 		{
 			MarkEtudeCompleted(bp, "EtudesSystem, because etude was PreCompleted");
@@ -345,6 +386,30 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 			StartEtudeInternal(item2.Key, "parent " + bp.name + " " + bp.AssetGuid + ", as prestarted child");
 		}
 		MarkConditionsDirty();
+	}
+
+	public void SetEtudePause(BlueprintEtude bp, bool isPaused, string source = "")
+	{
+		string text = (isPaused ? "Pausing" : "Resuming");
+		string text2 = bp.name + (string.IsNullOrEmpty(source) ? string.Empty : (" From: " + source));
+		string text3 = text + " etude failed";
+		PFLog.Etudes.Log(text + " etude: " + text2);
+		Etude etude = Etudes.Get(bp);
+		if (etude == null)
+		{
+			if (Game.Instance.EtudesSystem.EtudeIsNotStarted(bp))
+			{
+				PFLog.Etudes.Warning(text3 + ", as it was not started yet: " + text2);
+			}
+			else
+			{
+				PFLog.Etudes.Error(text3 + ", as etude is null: " + text2);
+			}
+		}
+		else
+		{
+			etude.SetPaused(isPaused);
+		}
 	}
 
 	public void MarkEtudeCompleted(BlueprintEtude bp, string source = "")
@@ -394,10 +459,10 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		if (!GetActiveAdditionalMechanics(Game.Instance.CurrentlyLoadedArea).ToHashSet().SetEquals(equals))
 		{
 			PFLog.Etudes.Log("Etude system causing mechanics reload");
-			Game.ReloadAreaMechanic(clearFx: false);
+			Game.ReloadAreaMechanic(clearFx: false, needNavMeshRescam: true);
 			LoadingProcess.Instance.StartLoadingProcess("OnEtudesUpdate", delegate
 			{
-				EventBus.RaiseEvent(delegate(IEtudesUpdateHandler h)
+				base.EventBus.RaiseEvent(delegate(IEtudesUpdateHandler h)
 				{
 					h.OnEtudesUpdate();
 				});
@@ -405,7 +470,7 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		}
 		else
 		{
-			EventBus.RaiseEvent(delegate(IEtudesUpdateHandler h)
+			base.EventBus.RaiseEvent(delegate(IEtudesUpdateHandler h)
 			{
 				h.OnEtudesUpdate();
 			});
@@ -444,7 +509,7 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		}
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -663,22 +728,37 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		Hash128 result = default(Hash128);
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
-		Hash128 val2 = EtudesDataGameStateAdapter.GetHash128(m_EtudesData);
-		result.Append(ref val2);
+		Dictionary<BlueprintEtudeExclusionGroup, BlueprintEtude> exclusionGroupToBlockingEtude = m_ExclusionGroupToBlockingEtude;
+		if (exclusionGroupToBlockingEtude != null)
+		{
+			int val2 = 0;
+			foreach (KeyValuePair<BlueprintEtudeExclusionGroup, BlueprintEtude> item in exclusionGroupToBlockingEtude)
+			{
+				Hash128 hash = default(Hash128);
+				Hash128 val3 = SimpleBlueprintHasher.GetHash128(item.Key);
+				hash.Append(ref val3);
+				Hash128 val4 = SimpleBlueprintHasher.GetHash128(item.Value);
+				hash.Append(ref val4);
+				val2 ^= hash.GetHashCode();
+			}
+			result.Append(ref val2);
+		}
+		Hash128 val5 = EtudesDataGameStateAdapter.GetHash128(m_EtudesData);
+		result.Append(ref val5);
 		Dictionary<BlueprintEtudeConflictingGroup, BlueprintEtude> heldConflictingGroups = m_HeldConflictingGroups;
 		if (heldConflictingGroups != null)
 		{
-			int val3 = 0;
-			foreach (KeyValuePair<BlueprintEtudeConflictingGroup, BlueprintEtude> item in heldConflictingGroups)
+			int val6 = 0;
+			foreach (KeyValuePair<BlueprintEtudeConflictingGroup, BlueprintEtude> item2 in heldConflictingGroups)
 			{
-				Hash128 hash = default(Hash128);
-				Hash128 val4 = SimpleBlueprintHasher.GetHash128(item.Key);
-				hash.Append(ref val4);
-				Hash128 val5 = SimpleBlueprintHasher.GetHash128(item.Value);
-				hash.Append(ref val5);
-				val3 ^= hash.GetHashCode();
+				Hash128 hash2 = default(Hash128);
+				Hash128 val7 = SimpleBlueprintHasher.GetHash128(item2.Key);
+				hash2.Append(ref val7);
+				Hash128 val8 = SimpleBlueprintHasher.GetHash128(item2.Value);
+				hash2.Append(ref val8);
+				val6 ^= hash2.GetHashCode();
 			}
-			result.Append(ref val3);
+			result.Append(ref val6);
 		}
 		return result;
 	}
@@ -711,10 +791,12 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 		formatter.Field(7, "Parts", ref Parts, state);
 		formatter.UnmanagedField(8, "m_IsRevealed", ref m_IsRevealed, state);
 		formatter.EnumNullableField(9, "m_ViewHandlingOnDisposePolicyOverride", ref m_ViewHandlingOnDisposePolicyOverride, state);
-		Dictionary<BlueprintEtudeReference, EtudeState> value2 = m_EtudesData;
-		formatter.Field(10, "m_EtudesData", ref value2, state);
-		Dictionary<BlueprintEtudeConflictingGroup, BlueprintEtude> value3 = m_HeldConflictingGroups;
-		formatter.Field(11, "m_HeldConflictingGroups", ref value3, state);
+		Dictionary<BlueprintEtudeExclusionGroup, BlueprintEtude> value2 = m_ExclusionGroupToBlockingEtude;
+		formatter.Field(10, "m_ExclusionGroupToBlockingEtude", ref value2, state);
+		Dictionary<BlueprintEtudeReference, EtudeState> value3 = m_EtudesData;
+		formatter.Field(11, "m_EtudesData", ref value3, state);
+		Dictionary<BlueprintEtudeConflictingGroup, BlueprintEtude> value4 = m_HeldConflictingGroups;
+		formatter.Field(12, "m_HeldConflictingGroups", ref value4, state);
 		formatter.EndObject();
 	}
 
@@ -763,9 +845,12 @@ public class EtudesSystem : Entity, IUnlockHandler, ISubscriber, IUnlockValueHan
 				m_ViewHandlingOnDisposePolicyOverride = formatter.ReadNullableEnum<ViewHandlingOnDisposePolicyType>(state);
 				break;
 			case 10:
-				m_EtudesData = formatter.ReadPackable<Dictionary<BlueprintEtudeReference, EtudeState>>(state);
+				m_ExclusionGroupToBlockingEtude = formatter.ReadPackable<Dictionary<BlueprintEtudeExclusionGroup, BlueprintEtude>>(state);
 				break;
 			case 11:
+				m_EtudesData = formatter.ReadPackable<Dictionary<BlueprintEtudeReference, EtudeState>>(state);
+				break;
+			case 12:
 				m_HeldConflictingGroups = formatter.ReadPackable<Dictionary<BlueprintEtudeConflictingGroup, BlueprintEtude>>(state);
 				break;
 			}

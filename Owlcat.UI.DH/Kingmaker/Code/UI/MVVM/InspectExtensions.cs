@@ -1,22 +1,22 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Code.View.UI.UIUtils;
+using Kingmaker.Code.Gameplay.Components;
+using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
-using Kingmaker.RuleSystem;
-using Kingmaker.RuleSystem.Rules;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.RuleSystem.Rules.Utility;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.Enums;
 using ObservableCollections;
 using Owlcat.UI;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class InspectExtensions
+public static class InspectExtensions
 {
 	public static bool TryGetWoundsText(MechanicEntityUIWrapper unitUIWrapper, out string woundsValue)
 	{
@@ -52,7 +52,7 @@ public class InspectExtensions
 
 	public static int GetDefenceValue(BaseUnitEntity unit)
 	{
-		return Rulebook.Trigger(new RuleCalculateDefence(unit, unit)).ResultDefence;
+		return unit.GetEffectiveDefence();
 	}
 
 	public static string GetDefence(BaseUnitEntity unit)
@@ -63,69 +63,67 @@ public class InspectExtensions
 
 	public static string GetDamageReduction(BaseUnitEntity unit)
 	{
-		ModifiableValue statOptional = unit.GetStatOptional(StatType.ArmorDamageReduction);
-		if (statOptional != null)
-		{
-			return $"{(int)statOptional}%";
-		}
-		return "0%";
+		return string.Format("{0}%", unit.Actor.GetStat(StatType.ArmorDamageReduction, null, default(StatContext), "GetDamageReduction").ModifiedValue);
 	}
 
 	public static string GetMovementPoints(BaseUnitEntity unit)
 	{
-		return unit.CombatState.MovementPointsMax.ToString();
+		return Mathf.Max(unit.CombatState.MovementPointsMax, 0).ToString();
 	}
 
-	public static List<TooltipBrickBuff> GetBuffs(BaseUnitEntity unit)
+	public static IUIUnitMoraleData GetMorale(BaseUnitEntity unit)
+	{
+		IUIUnitMoraleData iUIUnitMoraleData = unit?.Parts?.GetOptional<PartMorale>();
+		if (iUIUnitMoraleData == null)
+		{
+			return null;
+		}
+		return iUIUnitMoraleData;
+	}
+
+	public static List<BrickBuffVM> GetBuffs(BaseUnitEntity unit)
 	{
 		return (from b in unit.Buffs.RawFacts.ToList()
 			where !b.Blueprint.IsHiddenInUI
-			select b).Select(delegate(Buff buff)
-		{
-			BuffGroupType group = (buff.Blueprint.IsDOTVisual ? BuffGroupType.DOT : ((!buff.Blueprint.IsCriticalEffect) ? (unit.IsEnemy(buff.Context.MaybeCaster) ? BuffGroupType.Negative : BuffGroupType.Positive) : BuffGroupType.CriticalEffect));
-			return new TooltipBrickBuff(buff, group);
-		}).ToList();
+			select b into buff
+			select new BrickBuffVM(buff)).ToList();
 	}
 
 	public static ObservableList<ITooltipBrick> GetBuffsTooltipBricks(MechanicEntity unit)
 	{
-		return new ObservableList<ITooltipBrick>((from b in unit.Buffs.RawFacts.ToList()
+		return new ObservableList<ITooltipBrick>(from b in unit.Buffs.RawFacts.ToList()
 			where !b.Blueprint.IsHiddenInUI
-			select b).Select((Func<Buff, ITooltipBrick>)((Buff buff) => new TooltipBrickBuff(buff, GetBuffGroupType(buff, unit)))));
+			select b into buff
+			select new BrickBuffVM(buff));
 	}
 
-	private static BuffGroupType GetBuffGroupType(Buff buff, MechanicEntity unit)
+	public static BuffGroupFlags GetGroupsShowFlags(this UnitUIInspectSettings settings)
 	{
-		BuffUISettings buffUISettings = buff.Blueprint.BuffUISettings;
-		if (buffUISettings != null)
+		BuffGroupFlags buffGroupFlags = BuffGroupFlags.All;
+		if (settings == null)
 		{
-			BuffGroupType group = buffUISettings.GetGroup(GetBuffTargetType(unit));
-			if (group != BuffGroupType.None)
-			{
-				return group;
-			}
+			return buffGroupFlags;
 		}
-		if (buff.Blueprint.IsDOTVisual)
+		if (settings.HasFlags(UnitInspectUIFlags.HideCriticalEffects))
 		{
-			return BuffGroupType.DOT;
+			buffGroupFlags &= ~BuffGroupFlags.CriticalEffects;
 		}
-		if (buff.Blueprint.IsCriticalEffect)
+		if (settings.HasFlags(UnitInspectUIFlags.HideStatusEffects))
 		{
-			return BuffGroupType.CriticalEffect;
+			buffGroupFlags &= ~BuffGroupFlags.StatusEffects;
 		}
-		return unit.IsEnemy(buff.Context.MaybeCaster) ? BuffGroupType.Negative : BuffGroupType.Positive;
-	}
-
-	private static BuffTargetType GetBuffTargetType(MechanicEntity unit)
-	{
-		if (unit.IsPlayerEnemy)
+		if (settings.HasFlags(UnitInspectUIFlags.HideDotEffects))
 		{
-			return BuffTargetType.Enemy;
+			buffGroupFlags &= ~BuffGroupFlags.DotEffects;
 		}
-		if (unit.IsPlayerFaction)
+		if (settings.HasFlags(UnitInspectUIFlags.HideNegativeEffects))
 		{
-			return BuffTargetType.Ally;
+			buffGroupFlags &= ~BuffGroupFlags.NegativeEffects;
 		}
-		return BuffTargetType.All;
+		if (settings.HasFlags(UnitInspectUIFlags.HidePositiveEffects))
+		{
+			buffGroupFlags &= ~BuffGroupFlags.PositiveEffects;
+		}
+		return buffGroupFlags;
 	}
 }

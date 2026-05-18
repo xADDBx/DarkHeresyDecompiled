@@ -8,5 +8,9 @@ namespace Kingmaker.Code.Gameplay.Components;
 [TypeId("3d5927eaa23e457a9afb2818235a55e9")]
 public class UnitUISettings : BlueprintComponent
 {
-	public bool OverrideHideName;
+	public UnitUIOvertipSettings OvertipSettings;
+
+	public UnitUIUnitMarkSettings MarkSettings;
+
+	public UnitUIInspectSettings InspectSettings;
 }

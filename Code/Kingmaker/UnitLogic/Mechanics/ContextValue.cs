@@ -1,11 +1,10 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.Enums;
-using Kingmaker.Utility;
+using Kingmaker.Framework;
 using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Mechanics;
@@ -63,7 +62,7 @@ public class ContextValue
 		Factor = other.Factor;
 	}
 
-	public int Calculate(MechanicsContext context)
+	public int Calculate(IEvalContext context)
 	{
 		if (ValueType != 0 && context == null)
 		{
@@ -71,15 +70,15 @@ public class ContextValue
 			return 0;
 		}
 		BlueprintScriptableObject blueprint = context?.Blueprint;
-		MechanicEntity mechanicEntity = SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current?.Entity ?? context?.ClickedTarget.Entity;
+		MechanicEntity mechanicEntity = EvalContext.Current.Target?.Entity ?? context?.ClickedTarget?.Entity;
 		int num = ValueType switch
 		{
 			ContextValueType.Const => Value, 
-			ContextValueType.CasterProperty => Property.GetValue(context.MaybeCaster, context), 
+			ContextValueType.CasterProperty => Property.GetValue(context.Caster, context), 
 			ContextValueType.TargetProperty => Property.GetValue(mechanicEntity, context), 
-			ContextValueType.CasterCustomProperty => CustomProperty.GetValue(new PropertyContext(context.MaybeCaster, context)), 
-			ContextValueType.TargetCustomProperty => CustomProperty.GetValue(new PropertyContext(mechanicEntity, context)), 
-			ContextValueType.CasterNamedProperty => blueprint.CalculateValue(PropertyName, context.MaybeCaster, context), 
+			ContextValueType.CasterCustomProperty => CustomProperty.GetValue(context.Caster, context), 
+			ContextValueType.TargetCustomProperty => CustomProperty.GetValue(mechanicEntity, context), 
+			ContextValueType.CasterNamedProperty => blueprint.CalculateValue(PropertyName, context.Caster, context), 
 			ContextValueType.TargetNamedProperty => blueprint.CalculateValue(PropertyName, mechanicEntity, context), 
 			ContextValueType.ContextProperty => context[PropertyName], 
 			_ => throw new ArgumentOutOfRangeException(), 

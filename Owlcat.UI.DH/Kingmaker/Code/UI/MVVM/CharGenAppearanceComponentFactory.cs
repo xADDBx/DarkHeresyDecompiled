@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.ResourceLinks;
+using Kingmaker.UnitLogic.Customization;
 using Kingmaker.UnitLogic.Levelup.CharGen;
 using Kingmaker.UnitLogic.Levelup.Selections.Doll;
 using Kingmaker.Visual.CharacterSystem;
@@ -20,7 +22,6 @@ public static class CharGenAppearanceComponentFactory
 	{
 		return componentType switch
 		{
-			CharGenAppearancePageComponent.Portraits => GetPortraitsSelectorVM(ctx), 
 			CharGenAppearancePageComponent.Gender => GetGenderSelectorVM(ctx), 
 			CharGenAppearancePageComponent.FaceType => GetFaceSelectorVM(ctx), 
 			CharGenAppearancePageComponent.BodyType => GetBodySelectorVM(ctx), 
@@ -32,12 +33,11 @@ public static class CharGenAppearanceComponentFactory
 			CharGenAppearancePageComponent.BeardType => GetBeardSelectorVM(ctx), 
 			CharGenAppearancePageComponent.BeardColour => GetBeardColorSelectorVM(ctx), 
 			CharGenAppearancePageComponent.ScarsType => GetScarsSelectorVM(ctx), 
-			CharGenAppearancePageComponent.FacePaint => GetFacePaintSelectorVM(ctx), 
-			CharGenAppearancePageComponent.Tattoo => GetTattooSelectorVM(ctx), 
+			CharGenAppearancePageComponent.Tattoo => GetTattooAndColorSelectorVM(ctx), 
 			CharGenAppearancePageComponent.TattooColor => GetTattooColorSelector(ctx), 
 			CharGenAppearancePageComponent.PortType1 => GetPortsSelectorVM(ctx, 0), 
 			CharGenAppearancePageComponent.PortType2 => GetPortsSelectorVM(ctx, 1), 
-			CharGenAppearancePageComponent.NavigatorMutations => GetNavigatorMutationsSelectorVM(ctx), 
+			CharGenAppearancePageComponent.Augmentic => GetImplantsSelectorVM(ctx), 
 			CharGenAppearancePageComponent.VoiceType => GetVoiceSelectorVM(ctx), 
 			CharGenAppearancePageComponent.ServoSkullType => GetServoSkullSelectorVM(ctx), 
 			_ => null, 
@@ -52,7 +52,7 @@ public static class CharGenAppearanceComponentFactory
 			UpdateGenderSelectorVM(ctx, component as TextureSequentialSelectorVM);
 			break;
 		case CharGenAppearancePageComponent.FaceType:
-			UpdateFaceSelectorVM(ctx, component as SlideSequentialSelectorVM);
+			UpdateFaceSelectorVM(ctx, component as TextureSelectorVM);
 			break;
 		case CharGenAppearancePageComponent.BodyType:
 			UpdateBodySelectorVM(ctx, component as SlideSequentialSelectorVM);
@@ -78,14 +78,11 @@ public static class CharGenAppearanceComponentFactory
 		case CharGenAppearancePageComponent.BeardColour:
 			UpdateBeardColorList(ctx, component as TextureSelectorVM);
 			break;
-		case CharGenAppearancePageComponent.FacePaint:
-			UpdateFacePaintSelector(ctx, component as SlideTextureCombinedSelectorVM);
-			break;
 		case CharGenAppearancePageComponent.ScarsType:
 			UpdateScarsSelectorVM(ctx, component as SlideSequentialSelectorVM);
 			break;
 		case CharGenAppearancePageComponent.Tattoo:
-			UpdateTattooSelector(ctx, component as TextureSelectorTabsVM);
+			UpdateTattooAndColorSelector(ctx, component as TextureAndColorGroupSelectorVM);
 			break;
 		case CharGenAppearancePageComponent.TattooColor:
 			UpdateTattooColorList(ctx, ctx.CurrentTattooSet, component as TextureSelectorVM);
@@ -96,21 +93,13 @@ public static class CharGenAppearanceComponentFactory
 		case CharGenAppearancePageComponent.PortType2:
 			UpdatePortsList(ctx, component as TextureSelectorVM, 1);
 			break;
-		case CharGenAppearancePageComponent.NavigatorMutations:
-			UpdateNavigatorMutationsList(ctx, component as TextureSelectorVM);
+		case CharGenAppearancePageComponent.Augmentic:
+			UpdatePortsAndColorSelector(ctx, component as TextureAndColorGroupSelectorVM);
 			break;
 		case CharGenAppearancePageComponent.VoiceType:
 		case CharGenAppearancePageComponent.ServoSkullType:
 			break;
 		}
-	}
-
-	private static CharGenPortraitsSelectorVM GetPortraitsSelectorVM(CharGenContext ctx)
-	{
-		return new CharGenPortraitsSelectorVM(ctx)
-		{
-			Type = CharGenAppearancePageComponent.Portraits
-		};
 	}
 
 	private static CharGenVoiceSelectorVM GetVoiceSelectorVM(CharGenContext ctx)
@@ -121,16 +110,89 @@ public static class CharGenAppearanceComponentFactory
 		};
 	}
 
-	public static void GetTextureSelectorItemVM(ObservableList<TextureSelectorItemVM> valueList, int i, Texture2D item, Action setter)
+	public static void GetTextureSelectorItemVM(ObservableList<TextureSelectorItemVM> valueList, int i, Texture2D item, Action setter, bool isEmpty = false)
 	{
 		if (valueList.Count > i)
 		{
-			valueList[i].UpdateTextureAndSetter(item, setter);
+			valueList[i].UpdateTextureAndSetter(item, setter, isEmpty);
 		}
 		else
 		{
-			valueList.Add(new TextureSelectorItemVM(item, setter, i));
+			valueList.Add(new TextureSelectorItemVM(item, setter, i, allowSwitchOff: false, null, isEmpty));
 		}
+	}
+
+	private static void UpdateAppearanceList(CharGenAppearancePageComponent componentType, CharGenContext ctx, TextureSelectorVM selector, Func<CustomizationOptions, EquipmentEntityLink[]> listSelector, Func<DollState, DollState.EEAdapter> currentSelector, Action<EquipmentEntityLink, int> setter, bool isOptional = false)
+	{
+		UpdateAppearanceListImpl(componentType, ctx, selector, listSelector, (DollState s) => currentSelector(s).Load(), setter, isOptional, null);
+	}
+
+	private static void UpdateAppearanceListIndexed(CharGenAppearancePageComponent componentType, CharGenContext ctx, TextureSelectorVM selector, int slot, Func<CustomizationOptions, EquipmentEntityLink[]> listSelector, Func<DollState, List<DollState.DollPrint>> slotsSelector, Action<EquipmentEntityLink, int, int> setter, bool isOptional = false)
+	{
+		List<DollState.DollPrint> slots = slotsSelector(ctx.Doll);
+		if (slots.Count != 0 && slot <= slots.Count)
+		{
+			UpdateAppearanceListImpl(componentType, ctx, selector, listSelector, (DollState _) => slots[slot].PaintEE.Load(), delegate(EquipmentEntityLink item, int i)
+			{
+				setter(item, i, slot);
+			}, isOptional, slot);
+		}
+	}
+
+	private static void UpdateAppearanceListImpl(CharGenAppearancePageComponent componentType, CharGenContext ctx, TextureSelectorVM selector, Func<CustomizationOptions, EquipmentEntityLink[]> listSelector, Func<DollState, EquipmentEntity> currentLoaded, Action<EquipmentEntityLink, int> setter, bool isOptional, int? logSlot)
+	{
+		DollState doll = ctx.Doll;
+		if (doll.Race == null)
+		{
+			return;
+		}
+		BlueprintRaceAppearance appearance = doll.Race.Appearance;
+		if (appearance == null)
+		{
+			return;
+		}
+		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
+		CustomizationOptions arg = ((doll.Gender == Gender.Male) ? appearance.MaleOptions : appearance.FemaleOptions);
+		EquipmentEntityLink[] array = listSelector(arg);
+		EquipmentEntity equipmentEntity = currentLoaded(doll);
+		int num = 0;
+		if (isOptional)
+		{
+			GetTextureSelectorItemVM(entitiesCollection, num, null, delegate
+			{
+				setter(new EquipmentEntityLink
+				{
+					AssetId = string.Empty
+				}, -1);
+			}, isEmpty: true);
+			if (equipmentEntity == null)
+			{
+				selector.SelectionGroup.TrySelectEntity(entitiesCollection[num]);
+			}
+			num++;
+		}
+		for (int j = 0; j < array.Length; j++)
+		{
+			EquipmentEntityLink item = array[j];
+			EquipmentEntity equipmentEntity2 = item.Load();
+			if (equipmentEntity2 == null)
+			{
+				string arg2 = (logSlot.HasValue ? $" slot={logSlot.Value}" : string.Empty);
+				PFLog.UI.Error($"[CharGenAppearance] {componentType}[{j}] failed to load (AssetId='{item?.AssetId}') — " + $"race='{doll.Race?.name}' gender={doll.Gender}{arg2}. Item skipped.");
+				continue;
+			}
+			int i1 = j;
+			GetTextureSelectorItemVM(entitiesCollection, num, equipmentEntity2.PreviewTexture, delegate
+			{
+				setter(item, i1);
+			});
+			if (equipmentEntity2 == equipmentEntity)
+			{
+				selector.SelectionGroup.TrySelectEntity(entitiesCollection[num]);
+			}
+			num++;
+		}
+		selector.SelectionGroup.ClearFromIndex(num);
 	}
 
 	private static TextureSequentialSelectorVM GetGenderSelectorVM(CharGenContext ctx)
@@ -153,69 +215,45 @@ public static class CharGenAppearanceComponentFactory
 	{
 		List<TextureSequentialEntity> list = new List<TextureSequentialEntity>();
 		current = null;
-		foreach (Gender gender in Enum.GetValues(typeof(Gender)))
+		foreach (Gender gender in new List<Gender>
 		{
-			Sprite genderIcon = UIConfig.Instance.UIIcons.GetGenderIcon(gender);
-			TextureSequentialEntity textureSequentialEntity = new TextureSequentialEntity
+			Gender.Male,
+			Gender.Female
+		})
+		{
+			if (gender != Gender.Unknown)
 			{
-				Texture = genderIcon,
-				Setter = delegate
+				Sprite genderIcon = UIConfig.Instance.UIIcons.GetGenderIcon(gender);
+				TextureSequentialEntity textureSequentialEntity = new TextureSequentialEntity
 				{
-					ctx.RequestSetGender(gender, (int)gender);
+					Texture = genderIcon,
+					Setter = delegate
+					{
+						ctx.RequestSetGender(gender, (int)gender);
+					}
+				};
+				list.Add(textureSequentialEntity);
+				if (ctx.Doll.Gender == gender)
+				{
+					current = textureSequentialEntity;
 				}
-			};
-			list.Add(textureSequentialEntity);
-			if (ctx.Doll.Gender == gender)
-			{
-				current = textureSequentialEntity;
 			}
 		}
 		return list;
 	}
 
-	private static SlideSequentialSelectorVM GetFaceSelectorVM(CharGenContext ctx)
+	private static TextureSelectorVM GetFaceSelectorVM(CharGenContext ctx)
 	{
-		StringSequentialEntity current;
-		SlideSequentialSelectorVM slideSequentialSelectorVM = new SlideSequentialSelectorVM(GetFaceList(ctx, out current), current);
-		slideSequentialSelectorVM.Type = CharGenAppearancePageComponent.FaceType;
-		slideSequentialSelectorVM.SetTitle(UIStrings.Instance.CharGen.Face);
-		return slideSequentialSelectorVM;
+		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Default);
+		UpdateFaceSelectorVM(ctx, textureSelectorVM);
+		textureSelectorVM.Type = CharGenAppearancePageComponent.FaceType;
+		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.Face);
+		return textureSelectorVM;
 	}
 
-	private static void UpdateFaceSelectorVM(CharGenContext ctx, SlideSequentialSelectorVM selectorVM)
+	private static void UpdateFaceSelectorVM(CharGenContext ctx, TextureSelectorVM selector)
 	{
-		StringSequentialEntity current;
-		List<StringSequentialEntity> faceList = GetFaceList(ctx, out current);
-		selectorVM.SetValues(faceList, current);
-	}
-
-	private static List<StringSequentialEntity> GetFaceList(CharGenContext ctx, out StringSequentialEntity current)
-	{
-		List<StringSequentialEntity> list = new List<StringSequentialEntity>();
-		current = null;
-		if (ctx.Doll.Race == null)
-		{
-			return list;
-		}
-		CustomizationOptions customizationOptions = ((ctx.Doll.Gender == Gender.Male) ? ctx.Doll.Race.MaleOptions : ctx.Doll.Race.FemaleOptions);
-		for (int j = 0; j < customizationOptions.Heads.Length; j++)
-		{
-			EquipmentEntityLink head = customizationOptions.Heads[j];
-			int i1 = j;
-			StringSequentialEntity stringSequentialEntity = new StringSequentialEntity
-			{
-				Setter = delegate
-				{
-					ctx.RequestSetHead(head, i1);
-				}
-			};
-			list.Add(stringSequentialEntity);
-			if (head.Load() == ctx.Doll.Head.Load())
-			{
-				current = stringSequentialEntity;
-			}
-		}
-		return list;
+		UpdateAppearanceList(CharGenAppearancePageComponent.FaceType, ctx, selector, (CustomizationOptions o) => o.Head, (DollState s) => s.Head, ctx.RequestSetHead);
 	}
 
 	private static SlideSequentialSelectorVM GetBodySelectorVM(CharGenContext ctx)
@@ -238,13 +276,14 @@ public static class CharGenAppearanceComponentFactory
 	{
 		List<StringSequentialEntity> list = new List<StringSequentialEntity>();
 		current = null;
-		if (ctx.Doll.Race == null)
+		BlueprintRaceAppearance blueprintRaceAppearance = ctx.Doll.Race?.Appearance;
+		if (blueprintRaceAppearance == null)
 		{
 			return list;
 		}
-		for (int j = 0; j < ctx.Doll.Race.Presets.Length; j++)
+		for (int j = 0; j < blueprintRaceAppearance.Presets.Length; j++)
 		{
-			BlueprintRaceVisualPreset racePreset = ctx.Doll.Race.Presets[j];
+			BlueprintRaceVisualPreset racePreset = blueprintRaceAppearance.Presets[j];
 			int i1 = j;
 			StringSequentialEntity stringSequentialEntity = new StringSequentialEntity
 			{
@@ -264,7 +303,7 @@ public static class CharGenAppearanceComponentFactory
 
 	private static TextureSelectorVM GetBodyColorSelectorVM(CharGenContext ctx)
 	{
-		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
+		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color);
 		UpdateBodyColorList(ctx, textureSelectorVM);
 		textureSelectorVM.Type = CharGenAppearancePageComponent.SkinColour;
 		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.SkinTone);
@@ -303,36 +342,12 @@ public static class CharGenAppearanceComponentFactory
 
 	private static void UpdateHairList(CharGenContext ctx, TextureSelectorVM selector)
 	{
-		DollState doll = ctx.Doll;
-		if (doll.Race == null)
-		{
-			return;
-		}
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		EquipmentEntityLink[] hair = ((doll.Gender == Gender.Male) ? doll.Race.MaleOptions : doll.Race.FemaleOptions).Hair;
-		for (int j = 0; j < hair.Length; j++)
-		{
-			EquipmentEntityLink item = hair[j];
-			EquipmentEntity equipmentEntity = item.Load();
-			if (!(equipmentEntity == null))
-			{
-				int i1 = j;
-				GetTextureSelectorItemVM(entitiesCollection, j, equipmentEntity.PreviewTexture, delegate
-				{
-					ctx.RequestSetHair(item, i1);
-				});
-				if (item.Load() == doll.Hair.Load())
-				{
-					selector.SelectionGroup.TrySelectEntity(entitiesCollection[j]);
-				}
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(hair.Length);
+		UpdateAppearanceList(CharGenAppearancePageComponent.HairType, ctx, selector, (CustomizationOptions o) => o.Hair, (DollState s) => s.Hair, ctx.RequestSetHair, isOptional: true);
 	}
 
 	private static TextureSelectorVM GetHairColorSelectorVM(CharGenContext ctx)
 	{
-		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
+		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color);
 		UpdateHairColorList(ctx, textureSelectorVM);
 		textureSelectorVM.Type = CharGenAppearancePageComponent.HairColour;
 		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.HairColor);
@@ -371,36 +386,12 @@ public static class CharGenAppearanceComponentFactory
 
 	private static void UpdateEyebrowsList(CharGenContext ctx, TextureSelectorVM selector)
 	{
-		DollState doll = ctx.Doll;
-		if (doll.Race == null)
-		{
-			return;
-		}
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		EquipmentEntityLink[] eyebrows = ((doll.Gender == Gender.Male) ? doll.Race.MaleOptions : doll.Race.FemaleOptions).Eyebrows;
-		for (int j = 0; j < eyebrows.Length; j++)
-		{
-			EquipmentEntityLink item = eyebrows[j];
-			EquipmentEntity equipmentEntity = item.Load();
-			if (!(equipmentEntity == null))
-			{
-				int i1 = j;
-				GetTextureSelectorItemVM(entitiesCollection, j, equipmentEntity.PreviewTexture, delegate
-				{
-					ctx.RequestSetEyebrows(item, i1);
-				});
-				if (item.Load() == doll.Eyebrows.Load())
-				{
-					selector.SelectionGroup.TrySelectEntity(entitiesCollection[j]);
-				}
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(eyebrows.Length);
+		UpdateAppearanceList(CharGenAppearancePageComponent.EyebrowType, ctx, selector, (CustomizationOptions o) => o.Eyebrows, (DollState s) => s.Eyebrows, ctx.RequestSetEyebrows);
 	}
 
 	private static TextureSelectorVM GetEyebrowsColorSelectorVM(CharGenContext ctx)
 	{
-		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
+		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color);
 		UpdateEyebrowColorList(ctx, textureSelectorVM);
 		textureSelectorVM.Type = CharGenAppearancePageComponent.EyebrowColour;
 		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.EyebrowsColor);
@@ -439,36 +430,12 @@ public static class CharGenAppearanceComponentFactory
 
 	private static void UpdateBeardList(CharGenContext ctx, TextureSelectorVM selector)
 	{
-		DollState doll = ctx.Doll;
-		if (doll.Race == null)
-		{
-			return;
-		}
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		EquipmentEntityLink[] beards = ((doll.Gender == Gender.Male) ? doll.Race.MaleOptions : doll.Race.FemaleOptions).Beards;
-		for (int j = 0; j < beards.Length; j++)
-		{
-			EquipmentEntityLink item = beards[j];
-			EquipmentEntity equipmentEntity = item.Load();
-			if (!(equipmentEntity == null))
-			{
-				int i1 = j;
-				GetTextureSelectorItemVM(entitiesCollection, j, equipmentEntity.PreviewTexture, delegate
-				{
-					ctx.RequestSetBeard(item, i1);
-				});
-				if (item.Load() == doll.Beard.Load())
-				{
-					selector.SelectionGroup.TrySelectEntity(entitiesCollection[j]);
-				}
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(beards.Length);
+		UpdateAppearanceList(CharGenAppearancePageComponent.BeardType, ctx, selector, (CustomizationOptions o) => o.Facial, (DollState s) => s.Beard, ctx.RequestSetBeard, isOptional: true);
 	}
 
 	private static TextureSelectorVM GetBeardColorSelectorVM(CharGenContext ctx)
 	{
-		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
+		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color);
 		UpdateBeardColorList(ctx, textureSelectorVM);
 		textureSelectorVM.Type = CharGenAppearancePageComponent.BeardColour;
 		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.BeardColor);
@@ -517,131 +484,55 @@ public static class CharGenAppearanceComponentFactory
 		DollState doll = ctx.Doll;
 		List<StringSequentialEntity> list = new List<StringSequentialEntity>();
 		current = null;
+		StringSequentialEntity stringSequentialEntity = new StringSequentialEntity
+		{
+			Title = UIStrings.Instance.CharGen.NothingToChoose,
+			Setter = delegate
+			{
+				ctx.RequestSetScar(new EquipmentEntityLink
+				{
+					AssetId = string.Empty
+				}, -1);
+			}
+		};
+		list.Add(stringSequentialEntity);
+		if (doll.Scar.Load() == null)
+		{
+			current = stringSequentialEntity;
+		}
 		for (int j = 0; j < doll.Scars.Count; j++)
 		{
 			EquipmentEntityLink scar = doll.Scars[j];
 			int i1 = j;
-			StringSequentialEntity stringSequentialEntity = new StringSequentialEntity
+			StringSequentialEntity stringSequentialEntity2 = new StringSequentialEntity
 			{
 				Setter = delegate
 				{
 					ctx.RequestSetScar(scar, i1);
 				}
 			};
-			list.Add(stringSequentialEntity);
+			list.Add(stringSequentialEntity2);
 			if (scar.Load() == doll.Scar.Load())
 			{
-				current = stringSequentialEntity;
+				current = stringSequentialEntity2;
 			}
 		}
 		return list;
 	}
 
-	private static SlideTextureCombinedSelectorVM GetFacePaintSelectorVM(CharGenContext ctx)
+	private static TextureAndColorGroupSelectorVM GetTattooAndColorSelectorVM(CharGenContext ctx)
 	{
-		SlideTextureCombinedSelectorVM slideTextureCombinedSelectorVM = new SlideTextureCombinedSelectorVM();
-		slideTextureCombinedSelectorVM.Type = CharGenAppearancePageComponent.FacePaint;
-		slideTextureCombinedSelectorVM.SetTitle(UIStrings.Instance.CharGen.FacePaint);
-		UpdateFacePaintSelector(ctx, slideTextureCombinedSelectorVM);
-		return slideTextureCombinedSelectorVM;
+		TextureAndColorGroupSelectorVM textureAndColorGroupSelectorVM = new TextureAndColorGroupSelectorVM(ctx);
+		textureAndColorGroupSelectorVM.Type = CharGenAppearancePageComponent.Tattoo;
+		UpdateTattooAndColorSelector(ctx, textureAndColorGroupSelectorVM);
+		return textureAndColorGroupSelectorVM;
 	}
 
-	private static void UpdateFacePaintSelector(CharGenContext ctx, SlideTextureCombinedSelectorVM selector)
-	{
-		IEnumerable<SlideSequentialSelectorVM> facePaintSelectors = GetFacePaintSelectors(ctx);
-		IEnumerable<TextureSelectorVM> facePaintColorSelectors = GetFacePaintColorSelectors(ctx);
-		selector.SetValues(facePaintSelectors, facePaintColorSelectors);
-	}
-
-	private static IEnumerable<SlideSequentialSelectorVM> GetFacePaintSelectors(CharGenContext ctx)
-	{
-		List<SlideSequentialSelectorVM> list = new List<SlideSequentialSelectorVM>();
-		for (int i = 0; i < 5; i++)
-		{
-			StringSequentialEntity current;
-			List<StringSequentialEntity> facePaintList = GetFacePaintList(ctx, i, out current);
-			list.Add(new SlideSequentialSelectorVM(facePaintList, current));
-		}
-		return list;
-	}
-
-	private static List<StringSequentialEntity> GetFacePaintList(CharGenContext ctx, int index, out StringSequentialEntity current)
-	{
-		DollState dollState = ctx.Doll;
-		List<StringSequentialEntity> list = new List<StringSequentialEntity>();
-		current = null;
-		List<DollState.DollPrint> warpaints = dollState.Warpaints;
-		if (warpaints.Count == 0 || index > warpaints.Count)
-		{
-			return list;
-		}
-		List<EquipmentEntityLink> paints = warpaints[index].Paints;
-		for (int j = 0; j < paints.Count; j++)
-		{
-			EquipmentEntityLink option1 = paints[j];
-			int i1 = j;
-			StringSequentialEntity stringSequentialEntity = new StringSequentialEntity
-			{
-				Setter = delegate
-				{
-					dollState.SetWarpaint(option1, i1);
-				}
-			};
-			list.Add(stringSequentialEntity);
-			if (paints[j].Load() == warpaints[index].PaintEE.Load())
-			{
-				current = stringSequentialEntity;
-			}
-		}
-		return list;
-	}
-
-	private static IEnumerable<TextureSelectorVM> GetFacePaintColorSelectors(CharGenContext ctx)
-	{
-		List<TextureSelectorVM> list = new List<TextureSelectorVM>();
-		for (int i = 0; i < 5; i++)
-		{
-			TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
-			UpdateFacePaintColorList(ctx, i, textureSelectorVM);
-			list.Add(textureSelectorVM);
-		}
-		return list;
-	}
-
-	private static void UpdateFacePaintColorList(CharGenContext ctx, int index, TextureSelectorVM selector)
-	{
-		DollState dollState = ctx.Doll;
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		List<Texture2D> warpaintRamps = dollState.GetWarpaintRamps();
-		for (int j = 0; j < warpaintRamps.Count; j++)
-		{
-			int i1 = j;
-			Texture2D item = warpaintRamps[j];
-			GetTextureSelectorItemVM(entitiesCollection, j, item, delegate
-			{
-				dollState.SetWarpaintColor(i1, i1);
-			});
-			if (dollState.Warpaints[index].PaintRampIndex == j)
-			{
-				selector.SelectionGroup.TrySelectEntity(entitiesCollection[j]);
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(warpaintRamps.Count);
-	}
-
-	private static TextureSelectorTabsVM GetTattooSelectorVM(CharGenContext ctx)
-	{
-		TextureSelectorTabsVM textureSelectorTabsVM = new TextureSelectorTabsVM(ctx);
-		textureSelectorTabsVM.Type = CharGenAppearancePageComponent.Tattoo;
-		textureSelectorTabsVM.SetTitle(UIStrings.Instance.CharGen.Tattoo);
-		UpdateTattooSelector(ctx, textureSelectorTabsVM);
-		return textureSelectorTabsVM;
-	}
-
-	private static void UpdateTattooSelector(CharGenContext ctx, TextureSelectorTabsVM selector)
+	private static void UpdateTattooAndColorSelector(CharGenContext ctx, TextureAndColorGroupSelectorVM selector)
 	{
 		IEnumerable<TextureSelectorVM> tattooSelectors = GetTattooSelectors(ctx);
-		selector.SetValues(tattooSelectors);
+		IEnumerable<TextureSelectorVM> tattooColorSelectors = GetTattooColorSelectors(ctx);
+		selector.SetValues(tattooSelectors, tattooColorSelectors);
 	}
 
 	private static IEnumerable<TextureSelectorVM> GetTattooSelectors(CharGenContext ctx)
@@ -649,55 +540,47 @@ public static class CharGenAppearanceComponentFactory
 		List<TextureSelectorVM> list = new List<TextureSelectorVM>();
 		for (int i = 0; i < 5; i++)
 		{
-			TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Default);
+			TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Default, hideIfNoElements: true, i);
+			textureSelectorVM.SetTitle(string.Concat(UIStrings.Instance.CharGen.Tattoo, " ", i.ToString()));
 			UpdateTattoosList(ctx, textureSelectorVM, i);
 			list.Add(textureSelectorVM);
 		}
 		return list;
 	}
 
-	private static void UpdateTattoosList(CharGenContext ctx, TextureSelectorVM selector, int index)
+	private static void UpdateTattoosList(CharGenContext ctx, TextureSelectorVM selector, int slot)
 	{
-		DollState doll = ctx.Doll;
-		if (doll.Race == null)
-		{
-			return;
-		}
-		List<DollState.DollPrint> tattoos = doll.Tattoos;
-		if (tattoos.Count == 0 || index > tattoos.Count)
-		{
-			return;
-		}
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		EquipmentEntityLink[] tattoos2 = ((doll.Gender == Gender.Male) ? doll.Race.MaleOptions : doll.Race.FemaleOptions).Tattoos;
-		for (int j = 0; j < tattoos2.Length; j++)
-		{
-			EquipmentEntityLink item = tattoos2[j];
-			EquipmentEntity equipmentEntity = item.Load();
-			if (!(equipmentEntity == null))
-			{
-				int i1 = j;
-				GetTextureSelectorItemVM(entitiesCollection, j, equipmentEntity.PreviewTexture, delegate
-				{
-					ctx.RequestSetTattoo(item, i1, index);
-				});
-				if (item.Load() == tattoos[index].PaintEE.Load())
-				{
-					selector.SelectionGroup.TrySelectEntity(entitiesCollection[j]);
-				}
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(tattoos2.Length);
+		UpdateAppearanceListIndexed(CharGenAppearancePageComponent.Tattoo, ctx, selector, slot, (CustomizationOptions o) => o.Tatoo, (DollState s) => s.Tattoos, ctx.RequestSetTattoo, isOptional: true);
 	}
 
 	private static TextureSelectorVM GetTattooColorSelector(CharGenContext ctx)
 	{
-		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged, hideIfNoElements: false);
+		return GetTattooColorSelector(ctx, ctx.CurrentTattooSet);
+	}
+
+	private static IEnumerable<TextureSelectorVM> GetTattooColorSelectors(CharGenContext ctx)
+	{
+		List<TextureSelectorVM> list = new List<TextureSelectorVM>();
+		for (int i = 0; i < 5; i++)
+		{
+			list.Add(GetTattooColorSelector(ctx, i));
+		}
+		return list;
+	}
+
+	private static TextureSelectorVM GetTattooColorSelector(CharGenContext ctx, int index)
+	{
+		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color, hideIfNoElements: false, index);
 		textureSelectorVM.Type = CharGenAppearancePageComponent.TattooColor;
-		UpdateTattooColorList(ctx, ctx.CurrentTattooSet, textureSelectorVM);
-		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.TattooColor);
+		UpdateTattooColorList(ctx, index, textureSelectorVM);
+		textureSelectorVM.SetTitle(string.Concat(UIStrings.Instance.CharGen.TattooColor, " ", index.ToString()));
 		textureSelectorVM.SetNoItemsDescription(UIStrings.Instance.CharGen.NothingToChoose);
 		return textureSelectorVM;
+	}
+
+	public static void RefreshTattooColorSelector(CharGenContext ctx, int slot, TextureSelectorVM selector)
+	{
+		UpdateTattooColorList(ctx, slot, selector);
 	}
 
 	private static void UpdateTattooColorList(CharGenContext ctx, int index, TextureSelectorVM selector)
@@ -721,6 +604,31 @@ public static class CharGenAppearanceComponentFactory
 		selector.SelectionGroup.ClearFromIndex(tattooRamps.Count);
 	}
 
+	private static TextureAndColorGroupSelectorVM GetImplantsSelectorVM(CharGenContext ctx)
+	{
+		TextureAndColorGroupSelectorVM textureAndColorGroupSelectorVM = new TextureAndColorGroupSelectorVM(ctx);
+		textureAndColorGroupSelectorVM.Type = CharGenAppearancePageComponent.Augmentic;
+		UpdatePortsAndColorSelector(ctx, textureAndColorGroupSelectorVM);
+		return textureAndColorGroupSelectorVM;
+	}
+
+	private static void UpdatePortsAndColorSelector(CharGenContext ctx, TextureAndColorGroupSelectorVM selector)
+	{
+		IEnumerable<TextureSelectorVM> portsSelectors = GetPortsSelectors(ctx);
+		IEnumerable<TextureSelectorVM> colors = Enumerable.Empty<TextureSelectorVM>();
+		selector.SetValues(portsSelectors, colors);
+	}
+
+	private static IEnumerable<TextureSelectorVM> GetPortsSelectors(CharGenContext ctx)
+	{
+		List<TextureSelectorVM> list = new List<TextureSelectorVM>();
+		for (int i = 0; i < 2; i++)
+		{
+			list.Add(GetPortsSelectorVM(ctx, i));
+		}
+		return list;
+	}
+
 	private static TextureSelectorVM GetPortsSelectorVM(CharGenContext ctx, int index)
 	{
 		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Default);
@@ -730,75 +638,9 @@ public static class CharGenAppearanceComponentFactory
 		return textureSelectorVM;
 	}
 
-	private static void UpdatePortsList(CharGenContext ctx, TextureSelectorVM selector, int index)
+	private static void UpdatePortsList(CharGenContext ctx, TextureSelectorVM selector, int slot)
 	{
-		DollState doll = ctx.Doll;
-		if (doll.Race == null)
-		{
-			return;
-		}
-		List<DollState.DollPrint> ports = doll.Ports;
-		if (ports.Count == 0 || index > ports.Count)
-		{
-			return;
-		}
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		EquipmentEntityLink[] ports2 = ((doll.Gender == Gender.Male) ? doll.Race.MaleOptions : doll.Race.FemaleOptions).Ports;
-		for (int j = 0; j < ports2.Length; j++)
-		{
-			EquipmentEntityLink item = ports2[j];
-			EquipmentEntity equipmentEntity = item.Load();
-			if (!(equipmentEntity == null))
-			{
-				int i1 = j;
-				GetTextureSelectorItemVM(entitiesCollection, j, equipmentEntity.PreviewTexture, delegate
-				{
-					ctx.RequestSetPort(item, i1, index);
-				});
-				if (item.Load() == ports[index].PaintEE.Load())
-				{
-					selector.SelectionGroup.TrySelectEntity(entitiesCollection[j]);
-				}
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(ports2.Length);
-	}
-
-	private static TextureSelectorVM GetNavigatorMutationsSelectorVM(CharGenContext ctx)
-	{
-		TextureSelectorVM textureSelectorVM = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Default);
-		UpdateNavigatorMutationsList(ctx, textureSelectorVM);
-		textureSelectorVM.Type = CharGenAppearancePageComponent.NavigatorMutations;
-		textureSelectorVM.SetTitle(UIStrings.Instance.CharGen.NavigatorMutations);
-		return textureSelectorVM;
-	}
-
-	private static void UpdateNavigatorMutationsList(CharGenContext ctx, TextureSelectorVM selector)
-	{
-		DollState dollState = ctx.Doll;
-		if (dollState.Race == null)
-		{
-			return;
-		}
-		ObservableList<TextureSelectorItemVM> entitiesCollection = selector.SelectionGroup.EntitiesCollection;
-		EquipmentEntityLink[] navigatorMutations = ((dollState.Gender == Gender.Male) ? dollState.Race.MaleOptions : dollState.Race.FemaleOptions).NavigatorMutations;
-		for (int i = 0; i < navigatorMutations.Length; i++)
-		{
-			EquipmentEntityLink item = navigatorMutations[i];
-			EquipmentEntity equipmentEntity = item.Load();
-			if (!(equipmentEntity == null))
-			{
-				GetTextureSelectorItemVM(entitiesCollection, i, equipmentEntity.PreviewTexture, delegate
-				{
-					dollState.SetNavigatorMutation(item);
-				});
-				if (item.Load() == dollState.NavigatorMutation.Load())
-				{
-					selector.SelectionGroup.TrySelectEntity(entitiesCollection[i]);
-				}
-			}
-		}
-		selector.SelectionGroup.ClearFromIndex(navigatorMutations.Length);
+		UpdateAppearanceListIndexed((slot == 0) ? CharGenAppearancePageComponent.PortType1 : CharGenAppearancePageComponent.PortType2, ctx, selector, slot, (CustomizationOptions o) => o.Augmentic, (DollState s) => s.Ports, ctx.RequestSetPort, isOptional: true);
 	}
 
 	private static TextureSelectorVM GetServoSkullSelectorVM(CharGenContext ctx)

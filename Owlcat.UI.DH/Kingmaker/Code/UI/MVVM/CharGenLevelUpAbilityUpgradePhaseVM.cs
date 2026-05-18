@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.UnitLogic.Progression.Features;
@@ -24,23 +26,27 @@ public class CharGenLevelUpAbilityUpgradePhaseVM : CharGenLevelUpBaseSelectionPh
 			Debug.LogError("CareerPath or Unit is null");
 			return;
 		}
-		List<CharGenLevelUpSelectorAbilityUpgradeItemVM> list = (from x in SelectionFeature.Items
-			group x by x.Feature into g
-			select g.First() into f
-			select new CharGenLevelUpSelectorAbilityUpgradeItemVM(f, OnItemHovered, CharGenContext.LevelUpManager.CurrentValue)).ToList();
-		list.ForEach(delegate(CharGenLevelUpSelectorAbilityUpgradeItemVM i)
+		using (GameLogContext.Scope)
 		{
-			UpdateItem(i);
-		});
-		(from i in list
-			orderby i.State.CurrentValue, i.Label.CurrentValue
-			select i).ForEach(delegate(CharGenLevelUpSelectorAbilityUpgradeItemVM i)
-		{
-			AddItem(i);
-		});
-		if (base.SelectedItem.CurrentValue != null)
-		{
-			SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)base.Unit;
+			List<CharGenLevelUpSelectorAbilityUpgradeItemVM> list = (from x in SelectionFeature.Items
+				group x by x.Feature into g
+				select g.First() into f
+				select new CharGenLevelUpSelectorAbilityUpgradeItemVM(f, OnItemHovered, m_CharGenContext.LevelUpManager.CurrentValue)).ToList();
+			list.ForEach(delegate(CharGenLevelUpSelectorAbilityUpgradeItemVM i)
+			{
+				UpdateItem(i);
+			});
+			(from i in list
+				orderby i.State.CurrentValue, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.BaseAbilityData?.Name, i.Label.CurrentValue
+				select i).ForEach(delegate(CharGenLevelUpSelectorAbilityUpgradeItemVM i)
+			{
+				AddItem(i);
+			});
+			if (base.SelectedItem.CurrentValue != null)
+			{
+				SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
+			}
 		}
 	}
 
@@ -79,6 +85,7 @@ public class CharGenLevelUpAbilityUpgradePhaseVM : CharGenLevelUpBaseSelectionPh
 		itemVM.RefreshView.Execute(default(Unit));
 		if (itemVM is CharGenLevelUpSelectorAbilityUpgradeItemVM charGenLevelUpSelectorAbilityUpgradeItemVM)
 		{
+			charGenLevelUpSelectorAbilityUpgradeItemVM.SetFavorite(m_CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp, UnitSaveData.FavoriteFeatures.Contains(charGenLevelUpSelectorAbilityUpgradeItemVM.Blueprint.AssetGuidThreadSafe));
 			if (SelectionFeature.CanSelect(charGenLevelUpSelectorAbilityUpgradeItemVM.FeatureSelectionItem))
 			{
 				charGenLevelUpSelectorAbilityUpgradeItemVM.UpdateAccessibility(LEVEL_UP_ITEM_STATE.Available);

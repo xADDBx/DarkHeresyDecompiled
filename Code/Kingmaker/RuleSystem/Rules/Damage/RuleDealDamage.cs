@@ -4,7 +4,10 @@ using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.Controllers.Projectiles;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Framework.Mechanics.Utility.Damage;
+using Kingmaker.Gameplay.Features.Encounter;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
@@ -16,6 +19,7 @@ using Kingmaker.UnitLogic.Parts;
 
 namespace Kingmaker.RuleSystem.Rules.Damage;
 
+[RuleRoles(Initiator = "who dealt the damage", Target = "who took the damage")]
 public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 {
 	[CanBeNull]
@@ -36,6 +40,8 @@ public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 	public int HPBeforeDamage { get; private set; }
 
 	public int DurabilityBeforeDamage { get; private set; }
+
+	public int DurabilityAfterDamage { get; private set; }
 
 	public int ResultValue => ResultDamage.ResultDamageValue;
 
@@ -107,6 +113,7 @@ public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 		}
 		HPBeforeDamage = TargetHealth.HitPointsLeft;
 		DurabilityBeforeDamage = TargetArmor?.DurabilityLeft ?? 0;
+		DurabilityAfterDamage = DurabilityBeforeDamage - ResultDamage.ResultDamageToArmorValue;
 		EventBus.RaiseEvent(delegate(IDamageFXHandler h)
 		{
 			h.HandleDamageDealt(this);
@@ -140,11 +147,12 @@ public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 		{
 			int hitPointsLeft = TargetHealth.HitPointsLeft;
 			DealDamageToHealth(resultDamageToHealthValue);
-			if (TargetHealth.HitPointsLeft == 0 && hitPointsLeft > 0)
+			if (TargetHealth.HitPointsLeft == 0 && hitPointsLeft > 0 && TargetHealth.Owner is AbstractUnitEntity)
 			{
 				ResultUnitDied = true;
 			}
 		}
+		ActiveEncounter.Current?.GetOptional<PartEncounterMetrics>()?.HandleIncomingDamage(base.TargetUnit, ResultValue);
 		if (ResultDamage.ResultCritsCountValue > 0)
 		{
 			BlueprintBodyPart bodyPart = ResultDamage.BodyPart;

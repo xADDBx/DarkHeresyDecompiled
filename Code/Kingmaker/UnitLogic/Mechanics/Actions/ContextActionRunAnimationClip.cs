@@ -31,8 +31,7 @@ public class ContextActionRunAnimationClip : ContextAction
 			unitAnimationActionClip.TransitionIn = TransitionIn;
 			unitAnimationActionClip.TransitionOut = TransitionOut;
 			unitAnimationActionClip.ExecutionMode = Mode;
-			AnimationActionHandle handle = entity.MaybeAnimationManager.CreateHandle(unitAnimationActionClip);
-			entity.MaybeAnimationManager.Execute(handle);
+			entity.MaybeAnimationManager.TryExecute(unitAnimationActionClip);
 		}
 	}
 }

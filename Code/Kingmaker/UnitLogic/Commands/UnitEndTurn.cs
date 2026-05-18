@@ -9,6 +9,8 @@ public class UnitEndTurn : UnitCommand<UnitEndTurnParams>
 {
 	public override bool IsMoveUnit => false;
 
+	public override bool ShouldTurnToTarget => false;
+
 	public UnitEndTurn([NotNull] UnitEndTurnParams @params)
 		: base(@params)
 	{

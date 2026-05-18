@@ -14,12 +14,11 @@ public enum CharGenAppearancePageComponent
 	BeardType,
 	BeardColour,
 	ScarsType,
-	FacePaint,
 	Tattoo,
 	TattooColor,
 	PortType1,
 	PortType2,
+	Augmentic,
 	VoiceType,
-	ServoSkullType,
-	NavigatorMutations
+	ServoSkullType
 }

@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.RuleSystem.Rules.Modifiers;
@@ -21,7 +22,7 @@ public class ContextActionMedicae : ContextAction
 	protected override void RunAction()
 	{
 		RuleHealDamage ruleHealDamage = RuleHealDamage.Setup(base.Caster, base.TargetEntity).Base(BaseHeal.Calculate(base.Context)).Create();
-		int value = (int)base.Caster.GetStatOptional(StatType.SkillMedicae) / 3;
+		int value = (int)base.Caster.Actor.GetStat(StatType.SkillMedicae, null, default(StatContext), "RunAction") / 3;
 		ruleHealDamage.CalculateHealRule.Modifiers.Add(ModifierType.ValAdd, value, null, null, BonusType.None, StatType.SkillMedicae);
 		Rulebook.Trigger(ruleHealDamage);
 	}

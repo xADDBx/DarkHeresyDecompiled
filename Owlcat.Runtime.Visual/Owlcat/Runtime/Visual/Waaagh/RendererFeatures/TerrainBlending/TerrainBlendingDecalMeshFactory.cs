@@ -8,7 +8,8 @@ internal static class TerrainBlendingDecalMeshFactory
 	{
 		Mesh mesh = new Mesh
 		{
-			name = "TerrainDecal"
+			name = "TerrainDecal",
+			hideFlags = HideFlags.DontSave
 		};
 		mesh.vertices = new Vector3[8]
 		{
@@ -31,7 +32,6 @@ internal static class TerrainBlendingDecalMeshFactory
 		PushTriangle(4, 5, 0, 1);
 		mesh.triangles = triangles;
 		mesh.UploadMeshData(markNoLongerReadable: true);
-		mesh.hideFlags |= HideFlags.DontSave;
 		return mesh;
 		void PushTriangle(int v0, int v1, int v2, int v3)
 		{

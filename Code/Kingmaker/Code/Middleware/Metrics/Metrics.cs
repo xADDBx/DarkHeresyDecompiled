@@ -10,49 +10,73 @@ namespace Kingmaker.Code.Middleware.Metrics;
 
 public static class Metrics
 {
-	public static readonly AbilityUsageMetricsEvent Ability = new AbilityUsageMetricsEvent(isGameEvent: true);
+	public static readonly AbilityUsageMetricsEvent Ability = new AbilityUsageMetricsEvent();
 
-	public static readonly ToggleAbilityMetricsEvent ToggleAbility = new ToggleAbilityMetricsEvent(isGameEvent: true);
+	public static readonly ToggleAbilityMetricsEvent ToggleAbility = new ToggleAbilityMetricsEvent();
 
-	public static readonly AlignmentMetricsEvent Alignment = new AlignmentMetricsEvent(isGameEvent: true);
+	public static readonly AlignmentMetricsEvent Alignment = new AlignmentMetricsEvent();
 
-	public static readonly ChapterMetricsEvent Chapter = new ChapterMetricsEvent(isGameEvent: true);
+	public static readonly ChapterMetricsEvent Chapter = new ChapterMetricsEvent();
 
-	public static readonly DetectiveCaseMetricsEvent DetectiveCase = new DetectiveCaseMetricsEvent(isGameEvent: true);
+	public static readonly CutsceneMetricsEvent Cutscene = new CutsceneMetricsEvent();
 
-	public static readonly DetectivePieceMetricsEvent DetectivePiece = new DetectivePieceMetricsEvent(isGameEvent: true);
+	public static readonly DetectiveCaseMetricsEvent DetectiveCase = new DetectiveCaseMetricsEvent();
 
-	public static readonly EncounterMetricsEvent Encounter = new EncounterMetricsEvent(isGameEvent: true);
+	public static readonly DetectivePieceMetricsEvent DetectivePiece = new DetectivePieceMetricsEvent();
 
-	public static readonly EquipmentMetricsEvent Equipment = new EquipmentMetricsEvent(isGameEvent: true);
+	public static readonly EncounterStartMetricsEvent EncounterStart = new EncounterStartMetricsEvent();
 
-	public static readonly EtudeMetricsEvent Etude = new EtudeMetricsEvent(isGameEvent: true);
+	public static readonly EncounterCompanionStartMetricsEvent EncounterCompanionStart = new EncounterCompanionStartMetricsEvent();
 
-	public static readonly FormationMetricsEvent Formation = new FormationMetricsEvent(isGameEvent: true);
+	public static readonly EncounterCompanionFinishMetricsEvent EncounterCompanionFinish = new EncounterCompanionFinishMetricsEvent();
 
-	public static readonly InterfaceMetricsEvent Interface = new InterfaceMetricsEvent(isGameEvent: true);
+	public static readonly EncounterFinishMetricsEvent EncounterFinish = new EncounterFinishMetricsEvent();
 
-	public static readonly LevelUpMetricsEvent LevelUp = new LevelUpMetricsEvent(isGameEvent: true);
+	public static readonly EquipmentMetricsEvent Equipment = new EquipmentMetricsEvent();
 
-	public static readonly LocationMetricsEvent Location = new LocationMetricsEvent(isGameEvent: true);
+	public static readonly EtudeMetricsEvent Etude = new EtudeMetricsEvent();
 
-	public static readonly PlayerMetricsEvent Player = new PlayerMetricsEvent(isGameEvent: true);
+	public static readonly FormationMetricsEvent Formation = new FormationMetricsEvent();
 
-	public static readonly QuestMetricsEvent Quest = new QuestMetricsEvent(isGameEvent: true);
+	public static readonly InterfaceMetricsEvent Interface = new InterfaceMetricsEvent();
 
-	public static readonly RecruitMetricsEvent Recruitment = new RecruitMetricsEvent(isGameEvent: true);
+	public static readonly TabMetricsEvent Tab = new TabMetricsEvent();
 
-	public static readonly ReputationMetricsEvent Reputation = new ReputationMetricsEvent(isGameEvent: true);
+	public static readonly LevelUpMetricsEvent LevelUp = new LevelUpMetricsEvent();
 
-	public static readonly NewGameEvent NewGame = new NewGameEvent(isGameEvent: false);
+	public static readonly LocationMetricsEvent Location = new LocationMetricsEvent();
 
-	public static readonly SaveMetricsEvent Save = new SaveMetricsEvent(isGameEvent: true);
+	public static readonly LocationDataMetricsEvent LocationData = new LocationDataMetricsEvent();
 
-	public static readonly LoadMetricsEvent Load = new LoadMetricsEvent(isGameEvent: false);
+	public static readonly LocationCompanionMetricsEvent LocationCompanion = new LocationCompanionMetricsEvent();
 
-	public static readonly SettingsMetricsEvent Settings = new SettingsMetricsEvent(isGameEvent: false);
+	public static readonly MoralePhaseMetricsEvent Morale = new MoralePhaseMetricsEvent();
 
-	public static readonly VendorDealMetricsEvent VendorDeal = new VendorDealMetricsEvent(isGameEvent: true);
+	public static readonly PlayerMetricsEvent Player = new PlayerMetricsEvent();
+
+	public static readonly QuestMetricsEvent Quest = new QuestMetricsEvent();
+
+	public static readonly QuestObjectiveMetricsEvent QuestObjective = new QuestObjectiveMetricsEvent();
+
+	public static readonly RecruitMetricsEvent Recruitment = new RecruitMetricsEvent();
+
+	public static readonly ReputationMetricsEvent Reputation = new ReputationMetricsEvent();
+
+	public static readonly NewGameMetricsEvent NewGame = new NewGameMetricsEvent();
+
+	public static readonly GameOverMetricsEvent GameOver = new GameOverMetricsEvent();
+
+	public static readonly SaveMetricsEvent Save = new SaveMetricsEvent();
+
+	public static readonly LoadMetricsEvent Load = new LoadMetricsEvent();
+
+	public static readonly SettingsMetricsEvent Settings = new SettingsMetricsEvent();
+
+	public static readonly SkillCheckMetricsEvent SkillCheck = new SkillCheckMetricsEvent();
+
+	public static readonly VendorDealMetricsEvent VendorDeal = new VendorDealMetricsEvent();
+
+	public static readonly PerformanceMetricsEvent Performance = new PerformanceMetricsEvent();
 
 	private static bool _initialized;
 
@@ -64,6 +88,7 @@ public static class Metrics
 		{
 			AbolethService.Instance.StartDataCollection();
 			Enabled = true;
+			MetricsEventBusListener.Init();
 		}
 	}
 

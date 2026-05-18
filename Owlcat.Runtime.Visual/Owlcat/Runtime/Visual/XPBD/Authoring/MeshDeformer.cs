@@ -199,7 +199,7 @@ public class MeshDeformer : XPBDEntity
 		{
 			Aabb bodyAabb = m_Bindings[i].Master.BodyAabb;
 			bodyAabb.Transform(in worldToLocalMatrix);
-			bounds.Encapsulate(new Bounds(bodyAabb.Center, bodyAabb.Size));
+			bounds.Encapsulate(new Bounds((Vector3)bodyAabb.Center, (Vector3)bodyAabb.Size));
 		}
 		m_Renderer.localBounds = bounds;
 	}

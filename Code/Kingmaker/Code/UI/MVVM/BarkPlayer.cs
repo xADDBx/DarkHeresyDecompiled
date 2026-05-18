@@ -17,7 +17,7 @@ public static class BarkPlayer
 {
 	public const int CallbackTimeout = 60;
 
-	public static IBarkHandle Bark(Entity entity, LocalizedString text, VoiceOverType voiceOverType, string voGuid, float duration = -1f, BaseUnitEntity interactUser = null, bool synced = true)
+	public static IBarkHandle Bark(Entity entity, LocalizedString text, VoiceOverType voiceOverType, string voGuid, float duration = -1f, BaseUnitEntity interactUser = null, bool synced = true, bool forceShow = false)
 	{
 		if (text == null)
 		{
@@ -34,17 +34,21 @@ public static class BarkPlayer
 			{
 				return null;
 			}
-			return Bark(entity, text2, voiceOverType, voGuid, duration, text, interactUser, synced);
+			return Bark(entity, text2, voiceOverType, voGuid, duration, text, interactUser, synced, forceShow);
 		}
 	}
 
-	public static IBarkHandle Bark(Entity entity, string text, VoiceOverType voiceOverType, string voGuid, float duration = -1f, LocalizedString localizedString = null, BaseUnitEntity interactUser = null, bool synced = true)
+	public static IBarkHandle Bark(Entity entity, string text, VoiceOverType voiceOverType, string voGuid, float duration = -1f, LocalizedString localizedString = null, BaseUnitEntity interactUser = null, bool synced = true, bool forceShow = false)
 	{
 		if (entity == null)
 		{
 			return new BarkHandle(entity, text, duration);
 		}
-		if (!entity.IsInGame || !entity.IsVisibleForPlayer)
+		if (!entity.IsInGame || (!forceShow && !entity.IsVisibleForPlayer))
+		{
+			return null;
+		}
+		if (Game.Instance.Controllers.BarkController.IsSuppressed)
 		{
 			return null;
 		}
@@ -74,6 +78,10 @@ public static class BarkPlayer
 
 	public static IBarkHandle BarkSubtitle([CanBeNull] Entity entity, LocalizedString text, VoiceOverType voiceOverType, string voGuid, float duration = -1f, LocalizedString speakerName = null)
 	{
+		if (Game.Instance.Controllers.BarkController.IsSuppressed)
+		{
+			return null;
+		}
 		using (GameLogContext.Scope)
 		{
 			if (entity is MechanicEntity mechanicEntity)

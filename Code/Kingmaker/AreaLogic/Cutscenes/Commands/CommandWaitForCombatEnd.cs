@@ -1,5 +1,4 @@
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.QA;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -12,20 +11,30 @@ public class CommandWaitForCombatEnd : CommandBase
 	private class Data
 	{
 		public double CurrentTime;
+
+		public bool TimedOut;
 	}
 
 	[SerializeField]
 	[Tooltip("The command will end even in combat if it takes longer than this")]
 	private float m_TimeOut = 60f;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		player.ClearCommandData(this);
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
-		player.GetCommandData<Data>(this).CurrentTime = time;
+		Data commandData = player.GetCommandData<Data>(this);
+		commandData.CurrentTime = time;
+		if (commandData.CurrentTime > (double)m_TimeOut)
+		{
+			commandData.TimedOut = true;
+			return CommandResult.FailWithReport("Command " + name + " in " + player.Cutscene.name + " is taking too long");
+		}
+		return CommandResult.Success;
 	}
 
 	public override bool TrySkip(CutscenePlayerData player)
@@ -33,15 +42,25 @@ public class CommandWaitForCombatEnd : CommandBase
 		return false;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
 	{
-		if (player.GetCommandData<Data>(this).CurrentTime > (double)m_TimeOut)
+		if (player.GetCommandData<Data>(this).TimedOut)
 		{
-			PFLog.Default.ErrorWithReport("Command " + name + " in " + player.Cutscene.name + " is taking too long, skipping");
 			return true;
 		}
 		return !Game.Instance.Player.IsInCombat;

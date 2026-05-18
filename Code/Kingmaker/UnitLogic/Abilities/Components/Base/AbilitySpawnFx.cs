@@ -6,12 +6,13 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items.Slots;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.ResourceLinks;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.ManualCoroutines;
@@ -64,7 +65,7 @@ public class AbilitySpawnFx : BlueprintComponent, IResourcesHolder
 		}
 	}
 
-	public void Spawn([NotNull] MechanicsContext context, [CanBeNull] TargetWrapper selectedTarget, List<GameObject> list = null)
+	public void Spawn([NotNull] IEvalContext context, [CanBeNull] TargetWrapper selectedTarget, List<GameObject> list = null)
 	{
 		if (context.DisableFx || ((selectedTarget != null) ^ UsesSelectedTarget))
 		{
@@ -77,19 +78,19 @@ public class AbilitySpawnFx : BlueprintComponent, IResourcesHolder
 			{
 				DoSpawn(context, selectedTarget, list, targetWrapper);
 			}
-			else if (context.MaybeCaster?.View != null)
+			else if (context.Caster?.View != null)
 			{
-				Game.Instance.Controllers.CoroutinesController.Start(DoSpawnDelayed(context, selectedTarget, list, targetWrapper), context.MaybeCaster.View);
+				Game.Instance.Controllers.CoroutinesController.Start(DoSpawnDelayed(context, selectedTarget, list, targetWrapper), context.Caster.View.AsMechanicEntityView());
 			}
 		}
-		IEnumerator DoSpawnDelayed(MechanicsContext context, TargetWrapper selectedTarget, List<GameObject> list, TargetWrapper target)
+		IEnumerator DoSpawnDelayed(IEvalContext context, TargetWrapper selectedTarget, List<GameObject> list, TargetWrapper target)
 		{
 			yield return YieldInstructions.WaitForSecondsGameTime(Delay);
 			DoSpawn(context, selectedTarget, list, target);
 		}
 	}
 
-	private void DoSpawn(MechanicsContext context, TargetWrapper selectedTarget, List<GameObject> list, TargetWrapper target)
+	private void DoSpawn(IEvalContext context, TargetWrapper selectedTarget, List<GameObject> list, TargetWrapper target)
 	{
 		GameObject prefab = PrefabLink.Load();
 		if (prefab == null)
@@ -108,13 +109,13 @@ public class AbilitySpawnFx : BlueprintComponent, IResourcesHolder
 				switch (WeaponTarget)
 				{
 				case AbilitySpawnFxWeaponTarget.None:
-					gameObject = FxHelper.SpawnFxOnEntity(prefab, target.Entity.View);
+					gameObject = FxHelper.SpawnFxOnEntity(prefab, target.Entity.View.AsMechanicEntityView());
 					break;
 				case AbilitySpawnFxWeaponTarget.Primary:
-					gameObject = FxHelper.SpawnFxOnWeapon(prefab, target.Entity.View, unitEntity.Body.PrimaryHand.FxSnapMap);
+					gameObject = FxHelper.SpawnFxOnWeapon(prefab, target.Entity.View.AsMechanicEntityView(), unitEntity.Body.PrimaryHand.FxSnapMap);
 					break;
 				case AbilitySpawnFxWeaponTarget.Secondary:
-					gameObject = FxHelper.SpawnFxOnWeapon(prefab, target.Entity.View, unitEntity.Body.SecondaryHand.FxSnapMap);
+					gameObject = FxHelper.SpawnFxOnWeapon(prefab, target.Entity.View.AsMechanicEntityView(), unitEntity.Body.SecondaryHand.FxSnapMap);
 					break;
 				case AbilitySpawnFxWeaponTarget.All:
 				{
@@ -122,7 +123,7 @@ public class AbilitySpawnFx : BlueprintComponent, IResourcesHolder
 					{
 						if (item.HasWeapon)
 						{
-							gameObject = FxHelper.SpawnFxOnWeapon(prefab, target.Entity.View, item.FxSnapMap);
+							gameObject = FxHelper.SpawnFxOnWeapon(prefab, target.Entity.View.AsMechanicEntityView(), item.FxSnapMap);
 							if ((bool)gameObject)
 							{
 								list?.Add(gameObject);
@@ -149,7 +150,7 @@ public class AbilitySpawnFx : BlueprintComponent, IResourcesHolder
 		}
 	}
 
-	private void PositionFx(MechanicsContext context, TargetWrapper selectedTarget, GameObject fx)
+	private void PositionFx(IEvalContext context, TargetWrapper selectedTarget, GameObject fx)
 	{
 		if (!fx)
 		{
@@ -186,25 +187,21 @@ public class AbilitySpawnFx : BlueprintComponent, IResourcesHolder
 	}
 
 	[CanBeNull]
-	private static TargetWrapper ResolveAnchor(AbilitySpawnFxAnchor anchor, [NotNull] MechanicsContext context, [CanBeNull] TargetWrapper selectedTarget)
+	private static TargetWrapper ResolveAnchor(AbilitySpawnFxAnchor anchor, [NotNull] IEvalContext context, [CanBeNull] TargetWrapper selectedTarget)
 	{
 		switch (anchor)
 		{
 		case AbilitySpawnFxAnchor.None:
 			return null;
 		case AbilitySpawnFxAnchor.Caster:
-			if (context.MaybeCaster == null)
+			if (context.Caster == null)
 			{
 				PFLog.Default.Error("Caster is missing");
 				return null;
 			}
-			return context.MaybeCaster;
+			return context.Caster;
 		case AbilitySpawnFxAnchor.ClickedTarget:
-			if (!(context is AbilityExecutionContext abilityExecutionContext))
-			{
-				return selectedTarget;
-			}
-			return abilityExecutionContext.ClickedTarget;
+			return context.ClickedTarget ?? selectedTarget;
 		case AbilitySpawnFxAnchor.SelectedTarget:
 			return selectedTarget;
 		default:

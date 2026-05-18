@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Code.View.UI.UIUtils;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.GameCommands;
@@ -10,7 +11,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Events;
-using Kingmaker.View.Mechadendrites;
 using Owlcat.UI;
 using R3;
 
@@ -167,9 +167,10 @@ public class InventoryDollVM : CharInfoComponentVM, IInventoryItemHandler, ISubs
 			}
 			WeaponSetSelector = new SelectionGroupRadioVM<WeaponSetVM>(WeaponSets, m_CurrentSet).AddTo(this);
 		}
+		int weaponSetsCount = UIUtilityUnit.GetWeaponSetsCount(Unit.CurrentValue);
 		for (int k = 0; k < WeaponSets.Count; k++)
 		{
-			WeaponSets[k].SetEnabled(!Unit.CurrentValue.HasMechadendrites() || k == 0);
+			WeaponSets[k].SetEnabled(k < weaponSetsCount);
 			WeaponSets[k].Primary?.Dispose();
 			WeaponSets[k].Primary = new EquipSlotVM(EquipSlotType.PrimaryHand, body.HandsEquipmentSets[k].PrimaryHand, -1, null, k).AddTo(this);
 			m_AllEquipSlots.Add(WeaponSets[k].Primary);
@@ -265,17 +266,17 @@ public class InventoryDollVM : CharInfoComponentVM, IInventoryItemHandler, ISubs
 		m_InventorySelectorWindowVM.Value = new InventorySelectorWindowVM(TryInsertItem, HideSelectionWindow, possibleItems, slot);
 		void TryInsertItem(EquipSelectorSlotVM selectorSlotVM)
 		{
-			if (Game.Instance.Player.IsInCombat)
+			if (UIUtilityCombat.IsCombatLockActive())
 			{
 				EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 				{
-					h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, addToLog: false, WarningNotificationFormat.Warning);
+					h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, null, addToLog: false, WarningNotificationFormat.Warning);
 				});
 			}
 			else
 			{
 				BaseUnitEntity baseUnitEntity = (BaseUnitEntity)slot.ItemSlot.Owner;
-				if (baseUnitEntity != null && UIInventoryHelper.CanEquipItem(selectorSlotVM.Item, baseUnitEntity))
+				if (baseUnitEntity != null)
 				{
 					Game.Instance.GameCommandQueue.EquipItem(selectorSlotVM.Item, baseUnitEntity, slot.ToSlotRef());
 					EventBus.RaiseEvent(delegate(IInventoryHandler h)
@@ -290,11 +291,11 @@ public class InventoryDollVM : CharInfoComponentVM, IInventoryItemHandler, ISubs
 
 	public void ChooseSlotToItem(InventorySlotConsoleView item)
 	{
-		if (Game.Instance.Player.IsInCombat)
+		if (UIUtilityCombat.IsCombatLockActive())
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, addToLog: false, WarningNotificationFormat.Warning);
+				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, null, addToLog: false, WarningNotificationFormat.Warning);
 			});
 			item.ReleaseSlot();
 		}

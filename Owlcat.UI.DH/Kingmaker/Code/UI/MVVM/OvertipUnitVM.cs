@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using Kingmaker.Code.UI.MVVM.Parts.AdditionalCombat;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.GameModes;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Parts;
@@ -22,6 +22,8 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 
 	private readonly ReactiveProperty<bool> m_HasActiveCombatMessage = new ReactiveProperty<bool>();
 
+	private readonly ReactiveProperty<bool> m_HasCombatInteraction = new ReactiveProperty<bool>();
+
 	private bool m_UnitScanned;
 
 	private Transform m_Bone;
@@ -40,13 +42,15 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 
 	public EntityOvertipVisibilityVM VisibilityVM { get; }
 
-	public OvertipCombatTextBlockVM CombatTextBlockVM { get; private set; }
+	public OvertipCombatTextBlockVM CombatTextBlockVM { get; }
 
 	public OvertipHealthBlockVM HealthBlockVM { get; private set; }
 
-	public UnitBuffBlockVM BuffBlockVM { get; private set; }
-
 	public OvertipBuffBlockVM OvertipBuffBlockVM { get; private set; }
+
+	public OvertipSpecialBuffBlockVM OvertipSpecialBuffBlockVM { get; private set; }
+
+	public OvertipBuffsPredictionBlockVM OvertipBuffsPredictionBlockVM { get; private set; }
 
 	public OvertipDamageBlockVM DamageBlockVM { get; private set; }
 
@@ -56,9 +60,9 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 
 	public OvertipConcentrationActionVM SurfaceCombatActionVM { get; private set; }
 
-	public UnitMoraleVM OvertipMoraleVM { get; private set; }
+	public OvertipMoraleVM OvertipMoraleVM { get; private set; }
 
-	public OvertipAdditionalCombatObjectBlockVM AdditionalCombatObjectBlockVM { get; private set; }
+	public OvertipCombatUnitInteractionVM CombatUnitInteractionVM { get; private set; }
 
 	public float? DeathDelay { get; private set; }
 
@@ -72,7 +76,7 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 
 	public ReadOnlyReactiveProperty<bool> HasActiveCombatMessage => m_HasActiveCombatMessage;
 
-	public bool ForceOnScreen => IsBarkActive.CurrentValue;
+	public ReadOnlyReactiveProperty<bool> HasCombatInteraction => m_HasCombatInteraction;
 
 	public bool HideFromScreen
 	{
@@ -118,6 +122,12 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 		MechanicEntityUIState.IsInCombat.Subscribe(CreateCombatBlocks).AddTo(this);
 		VisibilityVM = new EntityOvertipVisibilityVM(MechanicEntityUIState, BarkBlockVM.IsBarkActive, m_HasActiveCombatMessage).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
+	}
+
+	protected override void OnUpdateHandler()
+	{
+		base.OnUpdateHandler();
+		m_HasCombatInteraction.Value = GameUIState.Instance.IsInCombat.CurrentValue && UtilityUnit.GetUnitInteractionFrom(Unit) != null;
 	}
 
 	public void ShowBark(string text)
@@ -172,13 +182,7 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 		MechanicEntityUIWrapper mechanicEntity = MechanicEntityUIState.MechanicEntity;
 		if (m_Bone != null && !mechanicEntity.IsDeadOrUnconscious)
 		{
-			if (Game.Instance.CurrentModeType != GameModeType.StarSystem)
-			{
-				return m_Bone.position;
-			}
-			Vector3 position = m_Bone.position;
-			position.y += 5f;
-			return position;
+			return m_Bone.position;
 		}
 		if (mechanicEntity.IsDeadOrUnconscious && mechanicEntity.IsDeadAndHasAttachedDroppedLoot)
 		{
@@ -188,10 +192,10 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 		{
 			return baseUnitEntity.View?.CorpseOvertipPosition ?? baseUnitEntity.Position;
 		}
-		if (Unit is AbstractUnitEntity { Position: var position2 } abstractUnitEntity)
+		if (Unit is AbstractUnitEntity { Position: var position } abstractUnitEntity)
 		{
-			position2.y += abstractUnitEntity.View?.CameraOrientedBoundsSize.y ?? Vector2.zero.y;
-			return position2;
+			position.y += abstractUnitEntity.View?.CameraOrientedBoundsSize.y ?? Vector2.zero.y;
+			return position;
 		}
 		return Vector3.zero;
 	}
@@ -202,13 +206,15 @@ public sealed class OvertipUnitVM : OvertipEntityVM
 		{
 			HitChanceBlockVM = new OvertipHitChanceBlockVM(MechanicEntityUIState).AddTo(this);
 			HealthBlockVM = new OvertipHealthBlockVM(MechanicEntityUIState, HitChanceBlockVM.IsVisible).AddTo(this);
-			BuffBlockVM = new UnitBuffBlockVM(Unit).AddTo(this);
-			OvertipBuffBlockVM = new OvertipBuffBlockVM(Unit).AddTo(this);
-			DamageBlockVM = new OvertipDamageBlockVM(MechanicEntityUIState).AddTo(this);
 			OvertipCoverBlockVM = new OvertipCoverBlockVM(MechanicEntityUIState).AddTo(this);
+			UnitBuffBlockVM buffBlockVM = new UnitBuffBlockVM(Unit).AddTo(this);
+			OvertipBuffBlockVM = new OvertipBuffBlockVM(Unit, buffBlockVM).AddTo(this);
+			OvertipSpecialBuffBlockVM = new OvertipSpecialBuffBlockVM(Unit, buffBlockVM, OvertipCoverBlockVM).AddTo(this);
+			OvertipBuffsPredictionBlockVM = new OvertipBuffsPredictionBlockVM(MechanicEntityUIState).AddTo(this);
+			DamageBlockVM = new OvertipDamageBlockVM(MechanicEntityUIState).AddTo(this);
 			SurfaceCombatActionVM = new OvertipConcentrationActionVM(MechanicEntityUIState).AddTo(this);
-			OvertipMoraleVM = new UnitMoraleVM(MechanicEntityUIState).AddTo(this);
-			AdditionalCombatObjectBlockVM = new OvertipAdditionalCombatObjectBlockVM(MechanicEntityUIState).AddTo(this);
+			OvertipMoraleVM = new OvertipMoraleVM(MechanicEntityUIState).AddTo(this);
+			CombatUnitInteractionVM = new OvertipCombatUnitInteractionVM(MechanicEntityUIState).AddTo(this);
 			m_CombatBlocksCreated.Value = true;
 		}
 	}

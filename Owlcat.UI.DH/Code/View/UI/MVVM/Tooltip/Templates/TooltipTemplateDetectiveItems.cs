@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Code.View.UI.MVVM.Tooltip.Bricks;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
@@ -37,23 +36,23 @@ public class TooltipTemplateDetectiveItems : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(UIStrings.Instance.Tooltips.RelatedDetectiveItemsTitle.Text, TooltipTitleType.H2);
+		yield return new BrickTitleVM(UIStrings.Instance.Tooltips.RelatedDetectiveItemsTitle.Text, TooltipTitleType.H2);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		DetectiveJournalDecor decor = UIStrings.Instance.DetectiveDecor;
-		yield return new TooltipBrickText(UIStrings.Instance.Tooltips.RelatedDetectiveItemsDescription.Text);
+		yield return new BrickTextVM(UIStrings.Instance.Tooltips.RelatedDetectiveItemsDescription.Text);
 		using (GameLogContext.Scope)
 		{
 			GameLogContext.TextStyle = UIConfig.Instance.DefaultTextStyle;
 			foreach (KeyValuePair<BlueprintCase, List<DialogDetectiveCaseLink>> caseWithItems in m_ItemsByCase)
 			{
 				GameLogContext.Case = caseWithItems.Key;
-				yield return new TooltipBrickUnifiedStatus(UnifiedStatus.Detective, decor.CaseName);
+				yield return new BrickUnifiedStatusVM(UnifiedStatus.Detective, decor.CaseName);
 				foreach (DialogDetectiveCaseLink item in caseWithItems.Value)
 				{
-					yield return new TooltipBrickCaseItem(item.Item);
+					yield return new BrickCaseItemVM(item.Item);
 				}
 			}
 		}

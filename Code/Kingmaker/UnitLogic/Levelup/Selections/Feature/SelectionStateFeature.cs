@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
+using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Kingmaker.Utility.DotNetExtensions;
 
@@ -109,13 +111,51 @@ public class SelectionStateFeature : SelectionState
 
 	protected override void ApplyInternal(BaseUnitEntity unit)
 	{
-		Kingmaker.UnitLogic.Feature feature = unit.Progression.Features.Add(SelectionItem.Value.Feature);
+		BlueprintFeature feature = SelectionItem.Value.Feature;
+		if (feature is BlueprintCareerPath careerPath)
+		{
+			ApplyCareerPath(unit, careerPath);
+			return;
+		}
+		if (!(feature is BlueprintPath))
+		{
+			ApplyFeature(unit, feature, SelectionItem.Value.SourceBlueprint);
+			return;
+		}
+		throw new InvalidOperationException($"Can't apply selection of {feature}");
+	}
+
+	private void ApplyFeature(BaseUnitEntity unit, BlueprintFeature featureBlueprint, BlueprintScriptableObject sourceBlueprint)
+	{
+		Kingmaker.UnitLogic.Feature feature = unit.Progression.Features.Add(featureBlueprint);
 		if (feature == null)
 		{
-			throw new Exception($"Failed to apply selection {Blueprint} ({SelectionItem.Value.Feature}) to unit {unit}: result feature is null");
+			throw new Exception($"Failed to apply selection {Blueprint} ({featureBlueprint}) to unit {unit}: result feature is null");
 		}
-		feature.AddSource(base.Path, SelectionItem.Value.SourceBlueprint, base.PathRank);
+		feature.AddSource(base.Path, sourceBlueprint, base.PathRank);
 		unit.Progression.AddFeatureSelection(base.Path, base.PathRank, Blueprint, feature.Blueprint, feature.Rank);
+	}
+
+	private void ApplyCareerPath(BaseUnitEntity unit, BlueprintCareerPath careerPath)
+	{
+		if (unit.Progression.GetPathRank(careerPath) > 0)
+		{
+			throw new InvalidOperationException($"Can't apply selection of {careerPath} to {unit}, career path rank > 0");
+		}
+		BlueprintPath.RankEntry rankEntry = careerPath.GetRankEntry(1);
+		if (rankEntry != null && rankEntry.Selections.Length > 0)
+		{
+			throw new InvalidOperationException($"Can't apply selection of {careerPath} to {unit}, selections on 1st rank isn't empty");
+		}
+		unit.Progression.AddPathRank(careerPath);
+		if (rankEntry == null)
+		{
+			return;
+		}
+		foreach (BlueprintFeature feature in rankEntry.Features)
+		{
+			unit.Progression.Features.Add(feature)?.AddSource(careerPath, feature, 1);
+		}
 	}
 
 	protected override void InvalidateInternal()

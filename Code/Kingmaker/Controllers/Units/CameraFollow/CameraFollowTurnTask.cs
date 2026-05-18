@@ -6,11 +6,12 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.RuleSystem.Rules;
 using UnityEngine;
 
 namespace Kingmaker.Controllers.Units.CameraFollow;
 
-public class CameraFollowTurnTask : ICameraFollowTask, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber
+public class CameraFollowTurnTask : ICameraFollowTask, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, IWarhammerAttackHandler
 {
 	private readonly MechanicEntity m_Entity;
 
@@ -59,6 +60,14 @@ public class CameraFollowTurnTask : ICameraFollowTask, ITurnStartHandler, ISubsc
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
 		if (isTurnBased && EventInvokerExtensions.MechanicEntity != m_Entity)
+		{
+			IsActive = false;
+		}
+	}
+
+	public void HandleAttack(RulePerformAttack withWeaponAttackHit)
+	{
+		if (withWeaponAttackHit.Initiator == m_Entity)
 		{
 			IsActive = false;
 		}

@@ -11,6 +11,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Cheats;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
@@ -19,7 +20,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.View;
-using Kingmaker.View.MapObjects.SriptZones;
 using Owlcat.Runtime.Core.Logging;
 using UnityEngine;
 
@@ -74,7 +74,7 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 
 	public void SystemEvent(string message)
 	{
-		AddMessage(PFLog.History.System, (ICanBeLogContext)null, message);
+		AddMessage(PFLog.History.System, null, message);
 	}
 
 	public void AreaLoading(BlueprintArea oldArea, BlueprintArea newArea, SceneReference[] scenes)
@@ -90,7 +90,7 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 		}
 		foreach (SceneReference sceneReference in scenes)
 		{
-			AddMessage(PFLog.History.Area, (ICanBeLogContext)null, "scene: " + sceneReference.SceneName);
+			AddMessage(PFLog.History.Area, null, "scene: " + sceneReference.SceneName);
 		}
 	}
 
@@ -277,12 +277,12 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 		AddMessage(PFLog.History.Area, cutscenePlayerData.Cutscene, "cutscene stopped");
 	}
 
-	public void OnUnitEnteredScriptZone(ScriptZone zone)
+	public void OnUnitEnteredScriptZone(ScriptZoneEntity zone)
 	{
 		AddMessage(PFLog.History.Area, zone, $"{EventInvokerExtensions.BaseUnitEntity.Blueprint} enters script zone");
 	}
 
-	public void OnUnitExitedScriptZone(ScriptZone zone)
+	public void OnUnitExitedScriptZone(ScriptZoneEntity zone)
 	{
 		AddMessage(PFLog.History.Area, zone, $"{EventInvokerExtensions.BaseUnitEntity.Blueprint} leaves script zone");
 	}
@@ -296,11 +296,11 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 				where u.IsInCombat
 				select u.Blueprint).ToList();
 			int totalChallengeRating = Utilities.GetTotalChallengeRating(list);
-			AddMessage(PFLog.History.Combat, (ICanBeLogContext)null, $"party combat started | enemies count = {list.Count} | enemies cr = {totalChallengeRating}");
+			AddMessage(PFLog.History.Combat, null, $"party combat started | enemies count = {list.Count} | enemies cr = {totalChallengeRating}");
 		}
 		else
 		{
-			AddMessage(PFLog.History.Combat, (ICanBeLogContext)null, "party combat finished");
+			AddMessage(PFLog.History.Combat, null, "party combat finished");
 		}
 	}
 
@@ -321,7 +321,7 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 	public void OnEventDidTrigger(RulePerformSkillCheck check)
 	{
 		string text = (check.ResultIsSuccess ? "passed" : "failed");
-		AddMessage(PFLog.History.Skill, check.ConcreteInitiator?.Blueprint, $"{check.StatType} check {text} | dc = {check.Difficulty} | result = {check.RollResult} | d100 = {check.ResultChanceRule} | stat value = {check.StatValue}");
+		AddMessage(PFLog.History.Skill, check.ConcreteInitiator?.Blueprint, $"{check.StatType} check {text} | dc = {check.Difficulty} | result = {check.RollResult} | d100 = {check.RollRule} | stat value = {check.StatValue}");
 	}
 
 	public void HandleFactionChanged()
@@ -335,7 +335,7 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 		DialogEvent(answer, "Selected answer");
 	}
 
-	private static void AddMessage(LogChannel channel, [CanBeNull] UnityEngine.Object context, string message)
+	private static void AddMessage(LogChannel channel, [CanBeNull] object context, string message)
 	{
 		CalendarRoot calendar = ConfigRoot.Instance.Calendar;
 		TimeSpan gameTime = Game.Instance.Controllers.TimeController.GameTime;
@@ -345,9 +345,31 @@ public class GameHistoryLog : IQuestHandler, ISubscriber, IQuestObjectiveHandler
 		string text2 = "";
 		if (context != null)
 		{
-			text2 = ((!(context is EntityViewBase entityViewBase)) ? (context.name + ": ") : (entityViewBase.name + " [" + entityViewBase.UniqueId + "]"));
+			if (context is EntityViewBase entityViewBase)
+			{
+				text2 = entityViewBase.name + " [" + entityViewBase.UniqueId + "]";
+			}
+			else if (context is Entity)
+			{
+				text2 = context.ToString();
+			}
+			else if (context is UnityEngine.Object @object)
+			{
+				text2 = @object.name + ": ";
+			}
 		}
-		channel.Log(context, "{0} - {1}{2}", text, text2, message);
+		if (context is UnityEngine.Object ctx)
+		{
+			channel.Log(ctx, "{0} - {1}{2}", text, text2, message);
+		}
+		else if (context is ICanBeLogContext ctx2)
+		{
+			channel.Log(ctx2, "{0} - {1}{2}", text, text2, message);
+		}
+		else
+		{
+			channel.Log("{0} - {1}{2}", text, text2, message);
+		}
 	}
 
 	private static void AddMessage(LogChannel channel, [CanBeNull] ICanBeLogContext context, string message)

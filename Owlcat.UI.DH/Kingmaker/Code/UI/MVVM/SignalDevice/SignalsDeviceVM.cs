@@ -37,7 +37,7 @@ public class SignalsDeviceVM : ViewModel, IDetectiveRadarHandler, ISubscriber
 			ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 			{
 				m_SignalPowerClamped.Value = controller.SignalPowerClamped01;
-				m_SignalSourceName.Value = controller.CurrentTrackedSignal?.Settings.SourceName?.String.Text;
+				m_SignalSourceName.Value = controller.CurrentTrackedSignal?.Settings.SourceName?.Text;
 			}).AddTo(this);
 			GameUIState.Instance.ActiveDialogController.Subscribe(delegate
 			{
@@ -70,6 +70,13 @@ public class SignalsDeviceVM : ViewModel, IDetectiveRadarHandler, ISubscriber
 	public void HandleRadarModeChange(DetectiveRadarState state)
 	{
 		m_State.Value = state;
+		if (state == DetectiveRadarState.Activated || state == DetectiveRadarState.Jammed)
+		{
+			EventBus.RaiseEvent(delegate(ISignalDeviceShownHandler h)
+			{
+				h.HandleSignalDeviceShown();
+			});
+		}
 	}
 
 	public void HandleNearestSignalTurnedOn()

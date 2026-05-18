@@ -53,7 +53,7 @@ public class CharBAttentionMark : MonoBehaviour
 		Init();
 		if (m_StaticMark.gameObject.activeSelf)
 		{
-			UISounds.Instance.Sounds.Systems.BlinkAttentionMark.Play();
+			SystemSounds.Instance.Systems.BlinkAttentionMark.Play();
 			m_AnimatedMark.gameObject.SetActive(value: true);
 			m_AnimatedMark.alpha = 1f;
 			m_AnimatedMarkRect.localScale = new Vector3(0f, 0f, 1f);

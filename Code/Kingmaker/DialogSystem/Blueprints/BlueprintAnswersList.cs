@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.ElementsSystem;
 using Kingmaker.UnitLogic.Alignments;
 using Owlcat.Runtime.Core.Utility;

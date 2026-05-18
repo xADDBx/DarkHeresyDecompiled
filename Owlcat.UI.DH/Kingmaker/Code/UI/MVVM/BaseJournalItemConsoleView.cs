@@ -2,7 +2,6 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.GameCommands;
 using Owlcat.UI;
 using TMPro;

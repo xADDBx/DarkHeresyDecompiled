@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
 using Kingmaker.Framework;
@@ -46,5 +47,12 @@ public class AbilityCasterHasWeaponOfClassification : BlueprintComponent, IAbili
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		return ConfigRoot.Instance.LocalizedTexts.Reasons.CasterHasNoWeaponOfClassification;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		bool isCompatible = IsCasterRestrictionPassed(caster);
+		CasterRestrictionsStrings casterRestrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		yield return casterRestrictionsStrings.GetCompatibleWeaponText(isCompatible);
 	}
 }

@@ -1,11 +1,12 @@
 using System;
 using Kingmaker.Enums.Sound;
+using Kingmaker.View.Mechanics;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Events;
 
 [Serializable]
-public class AnimationClipEventSoundMapped : AnimationClipEvent
+public class AnimationClipEventSoundMapped : AnimationClipEventSound
 {
 	[SerializeField]
 	private MappedAnimationEventType m_Type;
@@ -37,9 +38,9 @@ public class AnimationClipEventSoundMapped : AnimationClipEvent
 		m_Type = type;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override Action PostSoundEvent(MechanicEntityView view)
 	{
-		animationManager.CallbackReceiver.PostEventMapped(Type);
+		view.PostSoundEventMapped(Type);
 		return null;
 	}
 

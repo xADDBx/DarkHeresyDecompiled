@@ -10,10 +10,10 @@ using Kingmaker.AreaLogic.Etudes;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
@@ -23,6 +23,7 @@ using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.FlagCountable;
 using Kingmaker.Utility.GuidUtility;
@@ -245,6 +246,8 @@ public abstract class EntityFact : IDisposable, IUIDataProvider, IEntityFact, IH
 
 	public Entity Owner => (Entity)(Manager?.Owner ?? m_CachedOwner.Entity);
 
+	protected IEntityEventBus EventBus => Owner.EventBus;
+
 	public IEntity IOwner => Owner;
 
 	public bool Active => IsActive;
@@ -334,7 +337,12 @@ public abstract class EntityFact : IDisposable, IUIDataProvider, IEntityFact, IH
 			BlueprintComponent blueprintComponent = list.FirstOrDefault((BlueprintComponent i) => i.name == componentName);
 			if (blueprintComponent == null)
 			{
-				PFLog.EntityFact.Log($"EntityFact.PostLoad: can't find source component {componentName} ({this})");
+				PFLog.EntityFact.Log($"EntityFact: can't find source component {componentName} ({this}) Is PostLoad: {postLoad}");
+				if (!postLoad)
+				{
+					component2.Deactivate();
+					component2.Dispose();
+				}
 				continue;
 			}
 			component2.Setup(blueprintComponent);
@@ -636,7 +644,7 @@ public abstract class EntityFact : IDisposable, IUIDataProvider, IEntityFact, IH
 		{
 			PFLog.Default.ErrorWithReport("There is no Context in " + GetType().Name + ": '" + Name + "' [" + UniqueId + "]. Blueprint: '" + Blueprint?.name + "' [" + Blueprint?.AssetGuid + "]");
 		}
-		using (MaybeContext?.SetScope(target))
+		using (EvalContext.PushContextMaybe(MaybeContext, (TargetWrapper)target))
 		{
 			actions.Run();
 		}
@@ -693,14 +701,14 @@ public abstract class EntityFact : IDisposable, IUIDataProvider, IEntityFact, IH
 			AddSource(new EntityFactSource((CutscenePlayerData)current));
 			return;
 		}
-		MechanicsContext current2 = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current2 != null)
-		{
-			AddSource(new EntityFactSource(current2.Blueprint));
-		}
-		else if (element.Owner is BlueprintScriptableObject blueprint)
+		BlueprintScriptableObject blueprint = EvalContext.Current.Blueprint;
+		if (blueprint != null)
 		{
 			AddSource(new EntityFactSource(blueprint));
+		}
+		else if (element.Owner is BlueprintScriptableObject blueprint2)
+		{
+			AddSource(new EntityFactSource(blueprint2));
 		}
 	}
 
@@ -945,14 +953,25 @@ public abstract class EntityFact : IDisposable, IUIDataProvider, IEntityFact, IH
 			{
 				PFLog.EntityFact.Exception(ex4);
 			}
+			foreach (EntityFactComponent component2 in m_Components)
+			{
+				try
+				{
+					component2.DidActivate();
+				}
+				catch (Exception ex5)
+				{
+					PFLog.EntityFact.Exception(ex5);
+				}
+			}
 			if (Manager.IsSubscribedOnEventBus)
 			{
 				Subscribe();
 			}
 		}
-		catch (Exception ex5)
+		catch (Exception ex6)
 		{
-			PFLog.EntityFact.Exception(ex5);
+			PFLog.EntityFact.Exception(ex6);
 		}
 		finally
 		{
@@ -1120,29 +1139,32 @@ public abstract class EntityFact : IDisposable, IUIDataProvider, IEntityFact, IH
 
 	public void PostLoad()
 	{
-		try
+		if (!IsPostLoadExecuted)
 		{
-			OnPostLoad();
+			try
+			{
+				OnPostLoad();
+			}
+			catch (Exception ex)
+			{
+				PFLog.EntityFact.Exception(ex);
+			}
+			Setup(Blueprint, postLoad: true);
+			try
+			{
+				OnComponentsDidPostLoad();
+			}
+			catch (Exception ex2)
+			{
+				PFLog.EntityFact.Exception(ex2);
+			}
+			if (m_RemoveWhenActivatedOrPostLoaded)
+			{
+				m_RemoveWhenActivatedOrPostLoaded = false;
+				Manager.Remove(this);
+			}
+			IsPostLoadExecuted = true;
 		}
-		catch (Exception ex)
-		{
-			PFLog.EntityFact.Exception(ex);
-		}
-		Setup(Blueprint, postLoad: true);
-		try
-		{
-			OnComponentsDidPostLoad();
-		}
-		catch (Exception ex2)
-		{
-			PFLog.EntityFact.Exception(ex2);
-		}
-		if (m_RemoveWhenActivatedOrPostLoaded)
-		{
-			m_RemoveWhenActivatedOrPostLoaded = false;
-			Manager.Remove(this);
-		}
-		IsPostLoadExecuted = true;
 	}
 
 	public void ApplyPostLoadFixes()

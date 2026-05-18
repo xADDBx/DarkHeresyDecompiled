@@ -1,7 +1,6 @@
 using System;
 using System.Text;
 using Owlcat.Runtime.Visual.GPUDrivenBRG;
-using Owlcat.Runtime.Visual.GPUDrivenBRG.Passes;
 using Owlcat.Runtime.Visual.Waaagh.Data;
 using Unity.Collections;
 using Unity.Mathematics;

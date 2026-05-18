@@ -32,8 +32,8 @@ public class TaskInteractWithMapObject : ClockworkRunnerTask
 		{
 			yield break;
 		}
-		yield return new TaskMovePartyToPoint(Runner, m_MapObject.View.ViewTransform.position);
-		if (!m_MapObject.IsAwarenessCheckPassed && Game.Instance.Player.Party.Any((BaseUnitEntity c) => c.Vision.HasLOS(m_MapObject.View)))
+		yield return new TaskMovePartyToPoint(Runner, m_MapObject.ViewPosition);
+		if (!m_MapObject.IsAwarenessCheckPassed && Game.Instance.Player.Party.Any((BaseUnitEntity c) => c.Vision.HasLOS(m_MapObject)))
 		{
 			Runner?.MarkAsInteracted(m_MapObject.UniqueId + "0");
 			PFLog.Clockwork.Log($"Failed preception on {m_MapObject}");
@@ -98,7 +98,7 @@ public class TaskInteractWithMapObject : ClockworkRunnerTask
 	{
 		foreach (BaseUnitEntity item in Game.Instance.Player.Party)
 		{
-			if (!item.View.MovementAgent.IsReallyMoving && Vector3.Distance(item.Position, m_MapObject.View.ViewTransform.position) < 4f && (m_MapObject.IsInFogOfWar || !m_MapObject.IsVisibleForPlayer || !m_MapObject.IsRevealed))
+			if (!item.IsReallyMoving && Vector3.Distance(item.Position, m_MapObject.ViewPosition) < 4f && (m_MapObject.IsInFogOfWar || !m_MapObject.IsVisibleForPlayer || !m_MapObject.IsRevealed))
 			{
 				return true;
 			}
@@ -108,7 +108,7 @@ public class TaskInteractWithMapObject : ClockworkRunnerTask
 
 	public override string ToString()
 	{
-		if (!m_MapObject.View)
+		if (m_MapObject.View == null)
 		{
 			return "Interact with: [destroyed] " + m_MapObject.UniqueId;
 		}

@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using Code.UI.Common.Animations;
 using DG.Tweening;
-using Kingmaker;
 using Kingmaker.UI;
 using Owlcat.Runtime.Visual.Overrides;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Rendering;
 
-public class UIPostProcessingAnimator : MonoBehaviour
+public class UIPostProcessingAnimator : MonoBehaviour, IDisposable
 {
 	[Serializable]
 	private struct UIPostEffectStateEntry
@@ -47,26 +46,10 @@ public class UIPostProcessingAnimator : MonoBehaviour
 
 	private Tweener m_FilmGrainTweener;
 
-	private bool m_IsInit;
-
 	private Volume m_Volume;
 
-	private static UIPostProcessingAnimator m_Instance;
-
-	public static UIPostProcessingAnimator Instance => m_Instance;
-
-	public void Bind()
+	public void Bind(UIPostEffectState prevState = UIPostEffectState.Off)
 	{
-		if (m_IsInit)
-		{
-			return;
-		}
-		if (m_Instance != null && m_Instance != this)
-		{
-			PFLog.UI.Error("[UIPostProcessingAnimator] Instance already exists.");
-			return;
-		}
-		m_Instance = this;
 		m_Volume = UICamera.AdditionalUICamera?.GetComponentInChildren<Volume>();
 		if (m_Volume == null)
 		{
@@ -82,8 +65,23 @@ public class UIPostProcessingAnimator : MonoBehaviour
 			m_States[stateSetting.State] = stateSetting.Data;
 		}
 		CreateTweeners();
-		SetValuesImmediately(UIPostEffectState.Off);
-		m_IsInit = true;
+		SetValuesImmediately(prevState);
+	}
+
+	public void Dispose()
+	{
+		m_ChromaticTweener?.Kill();
+		m_DistortionTweener?.Kill();
+		m_DistortionXTweener?.Kill();
+		m_DistortionYTweener?.Kill();
+		m_BloomTweener?.Kill();
+		m_FilmGrainTweener?.Kill();
+		m_ChromaticTweener = null;
+		m_DistortionTweener = null;
+		m_DistortionXTweener = null;
+		m_DistortionYTweener = null;
+		m_BloomTweener = null;
+		m_FilmGrainTweener = null;
 	}
 
 	private void SetValuesImmediately(UIPostEffectState state)
@@ -136,9 +134,8 @@ public class UIPostProcessingAnimator : MonoBehaviour
 			.SetUpdate(isIndependentUpdate: true);
 	}
 
-	public void PlayState(UIPostEffectState state, UnityAction onComplete = null)
+	public void PlayState(UIPostEffectState state)
 	{
-		Bind();
 		if (!m_States.TryGetValue(state, out var value))
 		{
 			Debug.LogWarning($"UIPostEffectState '{state}' not configured.");
@@ -161,23 +158,5 @@ public class UIPostProcessingAnimator : MonoBehaviour
 				onComplete?.Invoke();
 			})
 			.Restart();
-	}
-
-	public void Dispose()
-	{
-		m_ChromaticTweener?.Kill();
-		m_DistortionTweener?.Kill();
-		m_DistortionXTweener?.Kill();
-		m_DistortionYTweener?.Kill();
-		m_BloomTweener = null;
-		m_FilmGrainTweener = null;
-		m_ChromaticTweener = null;
-		m_DistortionTweener = null;
-		m_DistortionXTweener = null;
-		m_DistortionYTweener = null;
-		m_BloomTweener = null;
-		m_FilmGrainTweener = null;
-		m_IsInit = false;
-		m_Instance = null;
 	}
 }

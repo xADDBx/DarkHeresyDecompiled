@@ -1,12 +1,16 @@
 using System.Collections.Generic;
 using Code.View.UI.MVVM.Tooltip.Templates;
+using JetBrains.Annotations;
+using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.Localization;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Owlcat.UI;
 using R3;
@@ -64,7 +68,9 @@ public class ReportAnswerView : SelectionGroupEntityView<ReportAnswerVM>
 		{
 			GameLogContext.CaseItem = base.ViewModel.Answer.RelatedItem?.Blueprint;
 			GameLogContext.TextStyle = m_TextStyle;
-			m_ClueName.text = ((!(base.ViewModel.Answer.RelatedItem?.Blueprint is BlueprintClue)) ? UIStrings.Instance.DetectiveJournal.BasedOnConclusionLabel.Text : UIStrings.Instance.DetectiveJournal.AccusationLabel.Text);
+			LocalizedString answerRelatedItemName = GetAnswerRelatedItemName();
+			m_ClueNameButton.SetActiveLayer((answerRelatedItemName == null) ? 1 : 0);
+			m_ClueName.text = answerRelatedItemName?.Text;
 			m_ClueNameButton.SetTooltip(new TooltipTemplateDetective(base.ViewModel.Answer.RelatedItem?.Blueprint), config).AddTo(this);
 			GameLogContext.TextStyle = UIConfig.Instance.DefaultTextStyle;
 		}
@@ -94,5 +100,23 @@ public class ReportAnswerView : SelectionGroupEntityView<ReportAnswerVM>
 	{
 		int activeLayer = (isSelected ? 1 : 0);
 		m_Button.SetActiveLayer(activeLayer);
+	}
+
+	[CanBeNull]
+	private LocalizedString GetAnswerRelatedItemName()
+	{
+		if (base.ViewModel.Answer.TryGetComponent<CaseAnswerUISettings>(out var component))
+		{
+			if (!component.HideCaseAnswerRelatedItem)
+			{
+				return component.GetAnswerFormat();
+			}
+			return null;
+		}
+		if (base.ViewModel.Answer.RelatedItem?.Blueprint is BlueprintClue)
+		{
+			return UIStrings.Instance.DetectiveJournal.AccusationLabel;
+		}
+		return UIStrings.Instance.DetectiveJournal.BasedOnConclusionPlainLabel;
 	}
 }

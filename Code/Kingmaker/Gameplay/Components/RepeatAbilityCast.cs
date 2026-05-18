@@ -4,17 +4,15 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
-using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 
@@ -42,7 +40,17 @@ public sealed class RepeatAbilityCast : UnitFactComponentDelegate, IUnitCommandE
 		if (componentData.RepeatCommandHandle?.Cmd == command)
 		{
 			componentData.RepeatCommandHandle = null;
-			using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.SetIfNotNull(command.Target?.Entity))
+			object obj;
+			if (command.Target?.Entity == null)
+			{
+				obj = null;
+			}
+			else
+			{
+				IDisposable disposable = EvalContext.Current.PushTarget(command.Target.Entity);
+				obj = disposable;
+			}
+			using (obj)
 			{
 				OnRepeated.Run();
 				return;
@@ -50,9 +58,8 @@ public sealed class RepeatAbilityCast : UnitFactComponentDelegate, IUnitCommandE
 		}
 		if (command is UnitUseAbility { ExecutionProcess: { } executionProcess, Params: { } @params })
 		{
-			AbilityExecutionContext context = executionProcess.Context;
 			TargetWrapper clickedTarget = executionProcess.Context.ClickedTarget;
-			if (AbilityRestriction.IsPassed(context, base.Owner, clickedTarget))
+			if (AbilityRestriction.IsPassed(base.Context, base.Owner, clickedTarget, null, @params.Ability))
 			{
 				UnitUseAbilityParams unitUseAbilityParams = @params.Copy();
 				unitUseAbilityParams.IgnoreCooldown = true;

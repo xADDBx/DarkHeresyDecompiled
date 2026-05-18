@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Visual.CharacterSystem.EquipmentComponents;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.Utility.CodeTimer;
@@ -73,12 +74,15 @@ public class CharacterBuilder
 
 		public GameObject PhysicsMasterMesh;
 
-		public OutfitPartInfo(OutfitPart outfitPart, GameObject gameObject, Transform bone, GameObject physicsMasterMesh)
+		public EquipmentEntity SourceEE;
+
+		public OutfitPartInfo(OutfitPart outfitPart, GameObject gameObject, Transform bone, GameObject physicsMasterMesh, EquipmentEntity sourceEe)
 		{
 			OutfitPart = outfitPart;
 			GameObject = gameObject;
 			Bone = bone;
 			PhysicsMasterMesh = physicsMasterMesh;
+			SourceEE = sourceEe;
 		}
 
 		public void Destroy()
@@ -105,7 +109,7 @@ public class CharacterBuilder
 
 		public bool HasPhysics { get; private set; }
 
-		public void ProcessMesh(EquipmentFeatureProvider characterPart, Mesh mesh)
+		public void ProcessMesh(IEquipmentFeatureProvider characterPart, Mesh mesh)
 		{
 			if (characterPart.TryGetPhysicsDeformerLayout(out var triangleSkinmap, out var prefabMesh) && triangleSkinmap != null && prefabMesh != null)
 			{
@@ -242,7 +246,16 @@ public class CharacterBuilder
 		return m_CharacterBuildStatus.IsComplete();
 	}
 
-	public void BuildCharacter(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndicesList, CharacterAtlasData atlasData, CharacterAtlasSize maxAtlasSize, CharacterDisplayOptions displayOptions, Character.CharacterRebuildMode mode)
+	public bool IsReadyForBaking()
+	{
+		if (m_CharacterBuildStatus.IsMeshReady && m_CharacterBuildStatus.IsOutfitReady)
+		{
+			return m_CharacterBuildStatus.IsAtlasReadyToBuild;
+		}
+		return false;
+	}
+
+	public void BuildCharacter(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndices, CharacterAtlasData atlasData, CharacterAtlasSize maxAtlasSize, CharacterDisplayOptions displayOptions, Character.CharacterRebuildMode mode)
 	{
 		if ((mode & Character.CharacterRebuildMode.FullUpdate) == Character.CharacterRebuildMode.FullUpdate)
 		{
@@ -270,28 +283,33 @@ public class CharacterBuilder
 		{
 			ClearMeshes();
 			UpdateCharacter(equipmentEntities);
-			m_StandardMaterialController.InvalidateRenderersAndMaterials();
+			m_StandardMaterialController.UpdateRenderers();
 			m_CharacterBuildStatus.IsMeshReady = true;
 		}
 		if (!m_CharacterBuildStatus.IsOutfitReady)
 		{
-			RebuildOutfit(equipmentEntities);
+			RebuildOutfit(equipmentEntities, selectedRampIndices);
+			m_StandardMaterialController.UpdateRenderers();
 			m_CharacterBuildStatus.IsOutfitReady = true;
 		}
 		if (m_CharacterBuildStatus.IsAtlasReadyToBuild)
 		{
 			return;
 		}
-		ClearAtlases();
+		if (m_AtlasBuilderCts != null)
+		{
+			m_AtlasBuilderCts.Cancel();
+			m_AtlasBuilderCts.Dispose();
+			m_AtlasBuilderCts = null;
+		}
 		if (m_OverlayBodyParts.Count <= 0)
 		{
 			return;
 		}
-		CreateAtlasTexturesMap(maxAtlasSize);
 		m_CharacterBuildStatus.IsAtlasReadyToBuild = true;
 		if (!Application.isPlaying || !LoadingProcess.Instance.IsLoadingInProcess)
 		{
-			BuildCharacterAtlases(equipmentEntities, selectedRampIndicesList);
+			BuildCharacterAtlases(equipmentEntities, selectedRampIndices, maxAtlasSize);
 			return;
 		}
 		if (m_AtlasBuilderCts != null)
@@ -300,7 +318,7 @@ public class CharacterBuilder
 			m_AtlasBuilderCts.Dispose();
 		}
 		m_AtlasBuilderCts = new CancellationTokenSource();
-		BuildCharacterAtlasesAsync(equipmentEntities, selectedRampIndicesList, m_AtlasBuilderCts.Token);
+		BuildCharacterAtlasesAsync(equipmentEntities, selectedRampIndices, maxAtlasSize, m_AtlasBuilderCts.Token);
 	}
 
 	private void UpdateCharacter(List<EquipmentEntity> equipmentEntities)
@@ -308,13 +326,13 @@ public class CharacterBuilder
 		List<EquipmentEntity> list = new List<EquipmentEntity>();
 		foreach (EquipmentEntity equipmentEntity in equipmentEntities)
 		{
-			if (!(equipmentEntity == null) && equipmentEntity.BodyParts.Count != 0)
+			if (!(equipmentEntity == null) && equipmentEntity.BodyParts.Count != 0 && !equipmentEntity.IsHiddenByVisibilityFeatures(m_DisplayOptions))
 			{
 				list.Add(equipmentEntity);
 			}
 		}
 		Material material = null;
-		Dictionary<BodyPartType, List<EquipmentBodyPartInfo>> dictionary = new Dictionary<BodyPartType, List<EquipmentBodyPartInfo>>();
+		SortedDictionary<BodyPartType, List<EquipmentBodyPartInfo>> sortedDictionary = new SortedDictionary<BodyPartType, List<EquipmentBodyPartInfo>>(BodyPartTypeNameComparer.Instance);
 		foreach (EquipmentEntity item in list)
 		{
 			if ((object)material == null)
@@ -330,12 +348,12 @@ public class CharacterBuilder
 			{
 				if (bodyPart != null && !bodyPart.IsHiddenByVisibilityFeatures(m_DisplayOptions))
 				{
-					if (!dictionary.ContainsKey(bodyPart.Type))
+					if (!sortedDictionary.ContainsKey(bodyPart.Type))
 					{
-						dictionary.Add(bodyPart.Type, new List<EquipmentBodyPartInfo>());
+						sortedDictionary.Add(bodyPart.Type, new List<EquipmentBodyPartInfo>());
 					}
-					int layer = (bodyPart.HasFeature(EquipmentFeatureFlag.IgnoreLayer) ? 999 : item.Layer);
-					dictionary[bodyPart.Type].Add(new EquipmentBodyPartInfo
+					int layer = ((item.HasFeature(EquipmentFeatureFlag.IgnoreLayer) || bodyPart.HasFeature(EquipmentFeatureFlag.IgnoreLayer)) ? 999 : item.Layer);
+					sortedDictionary[bodyPart.Type].Add(new EquipmentBodyPartInfo
 					{
 						BodyPart = bodyPart,
 						Layer = layer,
@@ -353,7 +371,7 @@ public class CharacterBuilder
 		List<BodyPart> list2 = new List<BodyPart>();
 		m_OverlayBodyParts.Clear();
 		HashSet<VertexColorMask> hashSet = new HashSet<VertexColorMask>();
-		foreach (KeyValuePair<BodyPartType, List<EquipmentBodyPartInfo>> item2 in dictionary)
+		foreach (KeyValuePair<BodyPartType, List<EquipmentBodyPartInfo>> item2 in sortedDictionary)
 		{
 			List<EquipmentBodyPartInfo> value = item2.Value;
 			value.Sort((EquipmentBodyPartInfo x, EquipmentBodyPartInfo y) => x.Layer.CompareTo(y.Layer));
@@ -518,43 +536,27 @@ public class CharacterBuilder
 		}
 	}
 
-	private void RebuildOutfit(List<EquipmentEntity> equipmentEntities)
+	private void RebuildOutfit(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndices)
 	{
 		List<EquipmentEntity> list = new List<EquipmentEntity>();
-		bool flag = false;
-		bool flag2 = false;
-		bool flag3 = false;
 		foreach (EquipmentEntity equipmentEntity in equipmentEntities)
 		{
-			if (equipmentEntity == null)
+			if (equipmentEntity == null || equipmentEntity.IsHiddenByVisibilityFeatures(m_DisplayOptions))
 			{
 				continue;
 			}
 			foreach (OutfitPart outfitPart in equipmentEntity.OutfitParts)
 			{
-				if (outfitPart == null)
+				if (outfitPart != null)
 				{
-					continue;
-				}
-				if (outfitPart.Type == null)
-				{
-					return;
-				}
-				if (!outfitPart.IsHiddenByVisibilityFeatures(m_DisplayOptions))
-				{
-					if (outfitPart.HasFeature(EquipmentFeatureFlag.IsCloak))
+					if (outfitPart.Type == null)
 					{
-						flag2 = true;
+						return;
 					}
-					if (outfitPart.HasFeature(EquipmentFeatureFlag.IsCloakSquashed))
+					if (!outfitPart.IsHiddenByVisibilityFeatures(m_DisplayOptions))
 					{
-						flag3 = true;
+						list.Add(equipmentEntity);
 					}
-					if (outfitPart.HasFeature(EquipmentFeatureFlag.IsBackpack))
-					{
-						flag = true;
-					}
-					list.Add(equipmentEntity);
 				}
 			}
 		}
@@ -565,16 +567,13 @@ public class CharacterBuilder
 		{
 			foreach (OutfitPart outfitPart2 in item.OutfitParts)
 			{
-				if ((!(flag && flag2) || !outfitPart2.HasFeature(EquipmentFeatureFlag.IsCloak)) && (!(!flag && flag2 && flag3) || !outfitPart2.HasFeature(EquipmentFeatureFlag.IsCloakSquashed)))
+				if (item.HasFeature(EquipmentFeatureFlag.IgnoreLayer) || outfitPart2.HasFeature(EquipmentFeatureFlag.IgnoreLayer))
 				{
-					if (outfitPart2.HasFeature(EquipmentFeatureFlag.IgnoreLayer))
-					{
-						list2.Add(outfitPart2);
-					}
-					else
-					{
-						dictionary[outfitPart2.Type] = outfitPart2;
-					}
+					list2.Add(outfitPart2);
+				}
+				else
+				{
+					dictionary[outfitPart2.Type] = outfitPart2;
 				}
 			}
 		}
@@ -592,15 +591,138 @@ public class CharacterBuilder
 		{
 			if (!m_OutfitObjectsSpawned.Contains((OutfitPartInfo x) => x.OutfitPart == outfit))
 			{
-				OutfitPartInfo outfitPartInfo = outfit.Attach(m_CharacterObj.transform, m_AttachBonesCache);
+				EquipmentEntity sourceEe = equipmentEntities.FirstOrDefault((EquipmentEntity e) => e.OutfitParts.Contains(outfit));
+				OutfitPartInfo outfitPartInfo = outfit.Attach(m_CharacterObj.transform, m_AttachBonesCache, sourceEe);
 				if (outfitPartInfo != null)
 				{
 					m_AttachBonesCache.TryAdd(outfitPartInfo.Bone.name, outfitPartInfo.Bone);
 					m_OutfitObjectsSpawned.Add(outfitPartInfo);
+					outfitPartInfo.GameObject.layer = m_CharacterObj.layer;
+					ColorizeOutfitPart(outfitPartInfo, selectedRampIndices);
 				}
 			}
 		}
 		FilterOutfit(m_DisplayOptions.OutfitFilter);
+	}
+
+	private void ColorizeOutfitPart(OutfitPartInfo info, List<Character.SelectedRampIndices> selectedRampIndices)
+	{
+		if (!IsCheck())
+		{
+			return;
+		}
+		Renderer componentInChildren = info.GameObject.GetComponentInChildren<Renderer>();
+		if (componentInChildren == null)
+		{
+			return;
+		}
+		Shader equipmentColorizerShader = ConfigRoot.Instance.CharGenRoot.EquipmentColorizerShader;
+		Material[] sharedMaterials = componentInChildren.sharedMaterials;
+		List<Material> list = new List<Material>();
+		Material[] array = sharedMaterials;
+		foreach (Material material in array)
+		{
+			if (!(material == null))
+			{
+				Material material2 = material;
+				if (!material.name.Contains("_paintedOutfit"))
+				{
+					material2 = new Material(equipmentColorizerShader);
+					material2.name = info.GameObject.name + "_paintedOutfit";
+					material2.SetTexture(ShaderProps._BaseMap, material.GetTexture(ShaderProps._BaseMap));
+					material2.SetTexture(ShaderProps._BumpMap, material.GetTexture(ShaderProps._BumpMap));
+					material2.SetTexture(ShaderProps._MasksMap, material.GetTexture(ShaderProps._MasksMap));
+					material2.SetTexture(ShaderProps._ColorMask, info.OutfitPart.ColorizeMask);
+				}
+				ApplyRampsToMaterial(material2, info.SourceEE, selectedRampIndices);
+				list.Add(material2);
+			}
+		}
+		componentInChildren.sharedMaterials = list.ToArray();
+		bool IsCheck()
+		{
+			if (info.OutfitPart == null || info.OutfitPart.ColorizeMask == null)
+			{
+				return false;
+			}
+			string text = info.OutfitPart.ToString();
+			string text2 = ((info.SourceEE != null) ? info.SourceEE.name : "<null EE>");
+			if (!ConfigRoot.Instance.CharGenRoot.EquipmentColorizerShader)
+			{
+				PFLog.TechArt.Error("Colorize: missing global EquipmentColorizerShader in CharGenRoot (ConfigRoot). Fix in project config, not per-asset.");
+				return false;
+			}
+			if (info.GameObject == null)
+			{
+				PFLog.TechArt.Error("Colorize: OutfitPart '" + text + "' (from EE '" + text2 + "') has no GameObject in scene — instantiation failed");
+				return false;
+			}
+			if (info.SourceEE == null)
+			{
+				PFLog.TechArt.Error("Colorize: OutfitPart '" + text + "' has no SourceEE link — mapping from outfit to EE is broken");
+				return false;
+			}
+			if (info.SourceEE.PrimaryColorsProfile == null)
+			{
+				PFLog.TechArt.Error("Colorize: EE asset '" + text2 + "' is missing PrimaryColorsProfile (used by OutfitPart '" + text + "'). Fix on EE asset in Inspector.");
+				return false;
+			}
+			if (info.SourceEE.SecondaryColorsProfile == null)
+			{
+				PFLog.TechArt.Error("Colorize: EE asset '" + text2 + "' is missing SecondaryColorsProfile (used by OutfitPart '" + text + "'). Fix on EE asset in Inspector.");
+				return false;
+			}
+			return true;
+		}
+	}
+
+	public void UpdateOutfitColors(List<Character.SelectedRampIndices> selectedRampIndices)
+	{
+		foreach (OutfitPartInfo item in m_OutfitObjectsSpawned)
+		{
+			if (item.GameObject == null)
+			{
+				continue;
+			}
+			Renderer componentInChildren = item.GameObject.GetComponentInChildren<Renderer>();
+			if (componentInChildren == null)
+			{
+				continue;
+			}
+			Material[] sharedMaterials = componentInChildren.sharedMaterials;
+			foreach (Material material in sharedMaterials)
+			{
+				if (material != null && material.name.Contains("_paintedOutfit"))
+				{
+					ApplyRampsToMaterial(material, item.SourceEE, selectedRampIndices);
+				}
+			}
+		}
+	}
+
+	private void ApplyRampsToMaterial(Material mat, EquipmentEntity ee, List<Character.SelectedRampIndices> selectedRampIndices)
+	{
+		if (!(mat == null) && !(ee == null))
+		{
+			int index = 0;
+			int index2 = 0;
+			Character.SelectedRampIndices selectedRampIndices2 = selectedRampIndices.FirstOrDefault((Character.SelectedRampIndices i) => i.EquipmentEntity == ee);
+			if (selectedRampIndices2 != null)
+			{
+				index = selectedRampIndices2.PrimaryIndex;
+				index2 = selectedRampIndices2.SecondaryIndex;
+			}
+			Texture2D texture2D = ((ee.PrimaryColorsProfile != null && ee.PrimaryColorsProfile.Ramps.IsValidIndex(index)) ? ee.PrimaryColorsProfile.Ramps[index] : null);
+			Texture2D texture2D2 = ((ee.SecondaryColorsProfile != null && ee.SecondaryColorsProfile.Ramps.IsValidIndex(index2)) ? ee.SecondaryColorsProfile.Ramps[index2] : null);
+			if (texture2D != null)
+			{
+				mat.SetTexture(ShaderProps._Ramp1, texture2D);
+			}
+			if (texture2D2 != null)
+			{
+				mat.SetTexture(ShaderProps._Ramp2, texture2D2);
+			}
+		}
 	}
 
 	private void CreateAtlasTexturesMap(CharacterAtlasSize maxAtlasSize)
@@ -675,18 +797,23 @@ public class CharacterBuilder
 		return dictionary;
 	}
 
-	private void OnAtlasNotCompressed(CharacterAtlas atlas)
+	private void OnAtlasTextureNotCompressed(CharacterAtlas atlas)
 	{
-		m_CharacterBuildStatus.IsAtlasCompressed = true;
 	}
 
-	private void OnAtlasCompressed(CharacterAtlas atlas, Texture2D tex)
+	private void OnAllCompressed(CharacterAtlas atlas)
+	{
+		if (!(m_CharacterObj == null))
+		{
+			m_CharacterBuildStatus.IsAtlasCompressed = true;
+		}
+	}
+
+	private void OnAtlasTextureCompressed(CharacterAtlas atlas, Texture2D tex)
 	{
 		if (!(m_CharacterObj == null))
 		{
 			UpdateMaterial(atlas.Channel, tex);
-			m_CharacterBuildStatus.IsAtlasCompressed = true;
-			m_StandardMaterialController.InvalidateMaterialsTextures();
 		}
 	}
 
@@ -706,6 +833,7 @@ public class CharacterBuilder
 				m_SkinnedMeshRenderer.material.SetTexture(ShaderProps._MasksMap, tex);
 				break;
 			}
+			m_StandardMaterialController.InvalidateRenderer(m_SkinnedMeshRenderer);
 		}
 		if (m_NonSkinnedMeshRenderer != null)
 		{
@@ -721,11 +849,14 @@ public class CharacterBuilder
 				m_NonSkinnedMeshRenderer.material.SetTexture(ShaderProps._MasksMap, tex);
 				break;
 			}
+			m_StandardMaterialController.InvalidateRenderer(m_NonSkinnedMeshRenderer);
 		}
 	}
 
-	private void BuildCharacterAtlases(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndicesList)
+	private void BuildCharacterAtlases(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndicesList, CharacterAtlasSize maxAtlasSize)
 	{
+		ClearAtlases();
+		CreateAtlasTexturesMap(maxAtlasSize);
 		RepaintTextures(equipmentEntities, selectedRampIndicesList);
 		Material sharedMaterial = m_SkinnedMeshRenderer.sharedMaterial;
 		MaterialProperties materialProperties = default(MaterialProperties);
@@ -740,15 +871,14 @@ public class CharacterBuilder
 		}
 		if (Application.isPlaying)
 		{
-			m_StandardMaterialController.InvalidateMaterialsTextures();
-			Services.GetInstance<CharacterAtlasService>().QueueAtlasRebuild(m_Atlases, OnAtlasCompressed, OnAtlasNotCompressed, m_CharacterObj.GetInstanceID(), m_CharacterObj.name);
+			Services.GetInstance<CharacterAtlasService>().QueueAtlasRebuild(m_Atlases, OnAtlasTextureCompressed, OnAtlasTextureNotCompressed, OnAllCompressed, m_CharacterObj.GetInstanceID(), m_CharacterObj.name);
 		}
 		m_EquipmentEntitiesTextures.Clear();
 	}
 
-	private async void BuildCharacterAtlasesAsync(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndicesList, CancellationToken cancellationToken)
+	private async void BuildCharacterAtlasesAsync(List<EquipmentEntity> equipmentEntities, List<Character.SelectedRampIndices> selectedRampIndicesList, CharacterAtlasSize maxAtlasSize, CancellationToken cancellationToken)
 	{
-		while (Services.GetInstance<CharacterAtlasService>().RequestsCount > 0 && Services.GetInstance<DxtCompressorService2>().RequestsCount > 0)
+		while (Services.GetInstance<DxtCompressorService2>().RequestsCount > 0)
 		{
 			await Task.Delay(10);
 			if (cancellationToken.IsCancellationRequested)
@@ -758,7 +888,7 @@ public class CharacterBuilder
 		}
 		if (m_OverlayBodyParts.Count > 0)
 		{
-			BuildCharacterAtlases(equipmentEntities, selectedRampIndicesList);
+			BuildCharacterAtlases(equipmentEntities, selectedRampIndicesList, maxAtlasSize);
 		}
 	}
 
@@ -775,10 +905,28 @@ public class CharacterBuilder
 
 	public void Cleanup()
 	{
+		if (m_AtlasBuilderCts != null)
+		{
+			m_AtlasBuilderCts.Cancel();
+			m_AtlasBuilderCts.Dispose();
+			m_AtlasBuilderCts = null;
+		}
 		ClearAtlases();
 		ClearMeshes();
 		foreach (OutfitPartInfo item in m_OutfitObjectsSpawned)
 		{
+			Renderer componentInChildren = item.GameObject.GetComponentInChildren<Renderer>();
+			if (componentInChildren != null)
+			{
+				Material[] sharedMaterials = componentInChildren.sharedMaterials;
+				foreach (Material material in sharedMaterials)
+				{
+					if (material != null && material.name.Contains("_paint_"))
+					{
+						UnityEngine.Object.Destroy(material);
+					}
+				}
+			}
 			item.Destroy();
 		}
 		m_OutfitObjectsSpawned.Clear();
@@ -787,12 +935,6 @@ public class CharacterBuilder
 
 	private void ClearAtlases()
 	{
-		if (m_AtlasBuilderCts != null)
-		{
-			m_AtlasBuilderCts.Cancel();
-			m_AtlasBuilderCts.Dispose();
-			m_AtlasBuilderCts = null;
-		}
 		foreach (CharacterAtlas atlase in m_Atlases)
 		{
 			atlase.Cleanup();
@@ -804,7 +946,7 @@ public class CharacterBuilder
 	{
 		if (m_SkinnedMeshRenderer != null)
 		{
-			UnityEngine.Object.Destroy(m_SkinnedMeshRenderer.sharedMesh);
+			DestroyIfNotPersistent(m_SkinnedMeshRenderer.sharedMesh);
 			UnityEngine.Object.Destroy(m_SkinnedMeshRenderer.gameObject);
 		}
 		if (m_NonSkinnedMeshRenderer != null)
@@ -814,6 +956,14 @@ public class CharacterBuilder
 		foreach (GameObject deformer in m_Deformers)
 		{
 			UnityEngine.Object.Destroy(deformer);
+		}
+	}
+
+	private static void DestroyIfNotPersistent(UnityEngine.Object obj)
+	{
+		if (!(obj == null))
+		{
+			UnityEngine.Object.Destroy(obj);
 		}
 	}
 
@@ -894,7 +1044,6 @@ public class CharacterBuilder
 					list2.Add(num3);
 				}
 			}
-			PFLog.TechArt.Log($"Mesh {mesh.name} apply vertex mask: old vertices {vertices.Length} | new vertices {array2.Length}");
 			mesh.Clear();
 			mesh.vertices = array2;
 			mesh.colors = array3;

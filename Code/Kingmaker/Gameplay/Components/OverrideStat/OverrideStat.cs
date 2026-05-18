@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
@@ -14,7 +16,7 @@ namespace Kingmaker.Gameplay.Components.OverrideStat;
 [ComponentName("Stats/OverrideStat")]
 [AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("d553b17d00fd44b085c1eb5c79c8e94f")]
-public sealed class OverrideStat : UnitFactComponentDelegate
+public sealed class OverrideStat : UnitFactComponentDelegate, IStatModifier
 {
 	public AttributeType Target;
 
@@ -22,13 +24,16 @@ public sealed class OverrideStat : UnitFactComponentDelegate
 
 	public bool OnlyIfHigher = true;
 
-	protected override void OnActivateOrPostLoad()
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		base.Owner.Stats.GetAttribute(Target.ToStatType()).AddOverride(Override.ToStatType(), base.Runtime, OnlyIfHigher);
+		if (stat == Target.ToStatType())
+		{
+			collector.OverrideFull(Override.ToStatType(), OnlyIfHigher, base.Fact);
+		}
 	}
 
-	protected override void OnDeactivate()
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
 	{
-		base.Owner.Stats.GetAttribute(Target.ToStatType()).RemoveOverride(base.Runtime);
+		entries.Add(new AffectedStatEntry(Target.ToStatType(), Override.ToStatType()));
 	}
 }

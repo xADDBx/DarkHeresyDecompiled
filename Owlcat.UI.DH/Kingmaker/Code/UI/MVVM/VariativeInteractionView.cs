@@ -28,6 +28,9 @@ public class VariativeInteractionView : View<VariativeInteractionVM>
 	protected RectTransform Viewport;
 
 	[SerializeField]
+	protected RectTransform Container;
+
+	[SerializeField]
 	protected TMP_Text Title;
 
 	[SerializeField]
@@ -58,7 +61,7 @@ public class VariativeInteractionView : View<VariativeInteractionVM>
 	protected override void OnBind()
 	{
 		base.gameObject.SetActive(value: true);
-		UISounds.Instance.Sounds.InteractionSounds.InteractionWindowOpen.Play();
+		SystemSounds.Instance.InteractionSounds.Open.Play();
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.PostLateUpdate), delegate
 		{
 			OnUpdateHandler();
@@ -69,11 +72,10 @@ public class VariativeInteractionView : View<VariativeInteractionVM>
 		List<MonoBehaviour> prefabs = new List<MonoBehaviour> { m_InteractionVariantToggleViewPrefab, m_InteractionVariantViewPrefab };
 		WidgetList.DrawMultiEntries(base.ViewModel.Variants.EntitiesCollection, prefabs).AddTo(this);
 		((RectTransform)base.transform).anchoredPosition = new Vector2(0f, 35f);
-		RectTransform container = (RectTransform)WidgetList.Container;
-		container.sizeDelta = new Vector2(GetContainerWidth(), container.sizeDelta.y);
+		Container.sizeDelta = new Vector2(GetContainerWidth(), Container.sizeDelta.y);
 		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
 		{
-			Viewport.DOSizeDelta(container.sizeDelta, m_AnimationDuration).SetUpdate(isIndependentUpdate: true).SetEase(m_Ease);
+			Viewport.DOSizeDelta(Container.sizeDelta, m_AnimationDuration).SetUpdate(isIndependentUpdate: true).SetEase(m_Ease);
 			Dots.DOFade(1f, m_AnimationDuration).SetUpdate(isIndependentUpdate: true).SetEase(m_Ease);
 		}).AddTo(this);
 	}
@@ -82,7 +84,7 @@ public class VariativeInteractionView : View<VariativeInteractionVM>
 	{
 		WidgetList.Clear();
 		base.gameObject.SetActive(value: false);
-		UISounds.Instance.Sounds.InteractionSounds.InteractionWindowClosed.Play();
+		SystemSounds.Instance.InteractionSounds.Close.Play();
 		DOTween.Kill(Viewport);
 		DOTween.Kill(Dots);
 		Viewport.sizeDelta = Vector2.zero;

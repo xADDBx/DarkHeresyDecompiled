@@ -1,3 +1,4 @@
+using Code.Utility.Attributes;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Owlcat.QA.Validation;
@@ -11,6 +12,7 @@ public class RestrictionsHolderGetter : BoolPropertyGetter
 {
 	[SerializeField]
 	[ValidateNotNull]
+	[InlineBlueprint]
 	private RestrictionsHolder.Reference m_Property;
 
 	public RestrictionsHolder Property => m_Property;
@@ -22,6 +24,6 @@ public class RestrictionsHolderGetter : BoolPropertyGetter
 
 	protected override bool GetBaseValue()
 	{
-		return Property.IsPassed(base.PropertyContext);
+		return Property.IsPassed(base.CurrentEntity, base.Context, base.Context.Target);
 	}
 }

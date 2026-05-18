@@ -7,12 +7,14 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.QA;
 using Kingmaker.UIDataProvider;
@@ -169,7 +171,7 @@ public class Feature : UnitFact<BlueprintFeature>, IFactWithRanks, IHashable, IO
 			FeatureParam param = Param;
 			if (param.WeaponCategory.HasValue)
 			{
-				return text + " (" + instance.Stats.GetText(param.WeaponCategory.Value) + ")";
+				return text + " (" + UIStrings.Instance.WeaponCategories.GetWeaponCategoryLabel(param.WeaponCategory.Value) + ")";
 			}
 			if (param.StatType.HasValue)
 			{
@@ -193,7 +195,7 @@ public class Feature : UnitFact<BlueprintFeature>, IFactWithRanks, IHashable, IO
 		return ((ItemEntity)entityFactSource.Entity).Name;
 	}
 
-	public Feature(BlueprintFeature blueprint, MechanicsContext parentContext, int rank = 1)
+	public Feature(BlueprintFeature blueprint, IEvalContext parentContext, int rank = 1)
 		: base(blueprint, parentContext)
 	{
 		if (rank < 1)
@@ -217,29 +219,41 @@ public class Feature : UnitFact<BlueprintFeature>, IFactWithRanks, IHashable, IO
 		return Rank;
 	}
 
+	protected override void OnPostLoad()
+	{
+		Rank = Math.Min(Rank, base.Blueprint.Ranks);
+	}
+
 	public void AddRank(int count = 1, MechanicEntity caster = null)
 	{
-		if (count <= 0)
+		if (Rank >= base.Blueprint.Ranks)
 		{
-			return;
+			PFLog.Default.ErrorWithReport($"Can't add rank to feature {base.Blueprint} (current rank {Rank})");
 		}
-		try
+		else
 		{
-			m_IsReapplying.Retain();
-			bool isActive = base.IsActive;
-			if (isActive)
+			if (count <= 0)
 			{
-				Deactivate();
+				return;
 			}
-			Rank += count;
-			if (isActive)
+			try
 			{
-				Activate();
+				m_IsReapplying.Retain();
+				bool isActive = base.IsActive;
+				if (isActive)
+				{
+					Deactivate();
+				}
+				Rank += count;
+				if (isActive)
+				{
+					Activate();
+				}
 			}
-		}
-		finally
-		{
-			m_IsReapplying.Release();
+			finally
+			{
+				m_IsReapplying.Release();
+			}
 		}
 	}
 

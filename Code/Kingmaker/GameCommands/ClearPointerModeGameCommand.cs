@@ -1,23 +1,53 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class ClearPointerModeGameCommand : GameCommand, IOwlPackable<ClearPointerModeGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class ClearPointerModeGameCommand : GameCommand, IMemoryPackable<ClearPointerModeGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<ClearPointerModeGameCommand>
 {
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	[Preserve]
+	private sealed class ClearPointerModeGameCommandFormatter : MemoryPackFormatter<ClearPointerModeGameCommand>
 	{
-		Name = "ClearPointerModeGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[0]
-	};
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ClearPointerModeGameCommand value)
+		{
+			ClearPointerModeGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref ClearPointerModeGameCommand value)
+		{
+			ClearPointerModeGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref ClearPointerModeGameCommand value)
+		{
+			ClearPointerModeGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref ClearPointerModeGameCommand value)
+		{
+			ClearPointerModeGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	public ClearPointerModeGameCommand()
 	{
 	}
@@ -25,6 +55,114 @@ public sealed class ClearPointerModeGameCommand : GameCommand, IOwlPackable<Clea
 	protected override void ExecuteInternal()
 	{
 		Game.Instance.Controllers.ClickEventsController.ClearPointerMode();
+	}
+
+	static ClearPointerModeGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "ClearPointerModeGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[0]
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<ClearPointerModeGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new ClearPointerModeGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<ClearPointerModeGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<ClearPointerModeGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ClearPointerModeGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteObjectHeader(0);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref ClearPointerModeGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		if (memberCount == 0)
+		{
+			if (value != null)
+			{
+				return;
+			}
+		}
+		else
+		{
+			if (memberCount > 0)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(ClearPointerModeGameCommand), 0, memberCount);
+				return;
+			}
+			_ = value;
+			if (value != null)
+			{
+				return;
+			}
+		}
+		value = new ClearPointerModeGameCommand();
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref ClearPointerModeGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+		}
+		else
+		{
+			writer.WriteEmptyObject();
+		}
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref ClearPointerModeGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		_ = value;
+		_ = new bool[0];
+		while (reader.ReadPropertyName() != null)
+		{
+			_ = value;
+		}
+		if (value == null)
+		{
+			value = new ClearPointerModeGameCommand();
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

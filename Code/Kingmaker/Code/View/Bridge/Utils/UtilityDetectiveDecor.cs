@@ -11,13 +11,13 @@ public static class UtilityDetectiveDecor
 {
 	public static int[] GetCaseUniqueIds(BlueprintCase blueprintCase)
 	{
-		return GetThreeDigits(blueprintCase.AssetGuid);
+		return GetThreeDigits(blueprintCase?.AssetGuid);
 	}
 
 	public static string GetGreekLetter(BlueprintCase blueprintCase)
 	{
 		DetectiveJournalDecor detectiveDecor = UIStrings.Instance.DetectiveDecor;
-		return GetRandomMax(blueprintCase.AssetGuid, 2) switch
+		return GetRandomMax(blueprintCase?.AssetGuid, 2) switch
 		{
 			0 => detectiveDecor.GreekLetterOmega.Text.ToUpper(), 
 			1 => detectiveDecor.GreekLetterPhy.Text.ToUpper(), 
@@ -38,7 +38,12 @@ public static class UtilityDetectiveDecor
 
 	private static int GetRandomMax(string name, int max)
 	{
-		return new Random(BitConverter.ToInt32(Encoding.UTF8.GetBytes(name))).Next(max);
+		if (name == null)
+		{
+			name = "UNKNOWN_CASE";
+		}
+		byte[] bytes = Encoding.UTF8.GetBytes(name);
+		return new Random((bytes.Length >= 4) ? BitConverter.ToInt32(bytes) : bytes.Aggregate(0, (int s, byte b) => s * 31 + b)).Next(max);
 	}
 
 	public static char GetCaseTier(BlueprintCase blueprintCase)
@@ -59,8 +64,8 @@ public static class UtilityDetectiveDecor
 
 	public static string GetLocationUniqueId(BlueprintClue blueprintClue)
 	{
-		int[] caseUniqueIds = GetCaseUniqueIds(blueprintClue.ParentCase);
-		int num = GetThreeDigits(blueprintClue.AssetGuid).ElementAt(0);
+		int[] caseUniqueIds = GetCaseUniqueIds(blueprintClue?.ParentCase);
+		int num = GetThreeDigits(blueprintClue?.AssetGuid).ElementAt(0);
 		return $"LOC {caseUniqueIds.ElementAt(0)}-GH-{num}";
 	}
 
@@ -71,8 +76,8 @@ public static class UtilityDetectiveDecor
 
 	public static string GetPersonUniqueId(BlueprintClue blueprintClue)
 	{
-		int[] caseUniqueIds = GetCaseUniqueIds(blueprintClue.ParentCase);
-		int num = GetThreeDigits(blueprintClue.AssetGuid).ElementAt(0);
+		int[] caseUniqueIds = GetCaseUniqueIds(blueprintClue?.ParentCase);
+		int num = GetThreeDigits(blueprintClue?.AssetGuid).ElementAt(0);
 		return $"O/{caseUniqueIds.ElementAt(0)}//CP{num}";
 	}
 

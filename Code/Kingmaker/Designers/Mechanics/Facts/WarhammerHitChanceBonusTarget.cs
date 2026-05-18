@@ -1,13 +1,10 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.Code.Enums.Helper;
 using Kingmaker.Enums;
-using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules;
-using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.Attributes;
@@ -30,11 +27,6 @@ public class WarhammerHitChanceBonusTarget : UnitFactComponentDelegate, ITargetR
 
 	public void OnEventAboutToTrigger(RuleCalculateHitChances evt)
 	{
-		ItemEntityWeapon weapon = evt.Ability.Weapon;
-		if (!SpecificRangeType || (weapon != null && WeaponRangeType.IsSuitableWeapon(weapon)))
-		{
-			evt.Modifiers.Add(ModifierType.ValAdd, Value.Calculate(base.Context), base.Fact);
-		}
 	}
 
 	public void OnEventDidTrigger(RuleCalculateHitChances evt)

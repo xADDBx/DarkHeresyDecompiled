@@ -3,9 +3,11 @@ using Code.Editor;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Localization;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
+using UnityEngine;
 
 namespace Kingmaker.View.MapObjects;
 
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("8e21ca2f1fb74fe4da1ce73a29d81212")]
 public class InteractionBark : InteractionComponent<InteractionBarkPart, InteractionBarkSettings>, IBarkSource
 {

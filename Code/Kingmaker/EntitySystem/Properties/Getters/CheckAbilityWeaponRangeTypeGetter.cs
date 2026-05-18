@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -21,7 +22,7 @@ public class CheckAbilityWeaponRangeTypeGetter : BoolPropertyGetter, PropertyCon
 
 	protected override bool GetBaseValue()
 	{
-		ItemEntityWeapon abilityWeapon = this.GetAbilityWeapon();
+		ItemEntityWeapon abilityWeapon = EvalContext.Current.AbilityWeapon;
 		if (abilityWeapon == null)
 		{
 			return false;

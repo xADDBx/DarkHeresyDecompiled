@@ -34,7 +34,7 @@ public class TutorialDataTemplate : TextTemplate
 			}
 			return "<b>" + strValue + "</b>";
 		}
-		string text = "#" + ColorUtility.ToHtmlStringRGB(color);
+		string text = "#" + ColorUtility.ToHtmlStringRGB((Color)color);
 		return "<b><color=" + text + "><link=\"" + id + "\">" + strValue + "</link></color></b>";
 	}
 

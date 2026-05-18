@@ -7,7 +7,7 @@ using UnityEngine.Rendering;
 namespace Owlcat.Runtime.Visual.XPBD.DataStructures;
 
 [BurstCompile]
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\XPBD\\DataStructures\\Aabb.cs")]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\XPBD\\DataStructures\\Aabb.cs")]
 public struct Aabb
 {
 	public float3 Min;
@@ -143,6 +143,6 @@ public struct Aabb
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public Bounds ToBounds()
 	{
-		return new Bounds(Center, Size);
+		return new Bounds((Vector3)Center, (Vector3)Size);
 	}
 }

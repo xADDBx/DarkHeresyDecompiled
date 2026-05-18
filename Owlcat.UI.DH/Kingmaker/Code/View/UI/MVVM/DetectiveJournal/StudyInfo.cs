@@ -27,10 +27,13 @@ public class StudyInfo : InfoWrapper
 
 	public override void RefreshData()
 	{
-		EventBus.RaiseEvent(delegate(IClueDataChangedHandler h)
+		foreach (BlueprintClue clue in UIUtilityDetective.CollectCluesAffectedByStudy(BlueprintStudy))
 		{
-			h.RefreshDataFor(BlueprintStudy.ParentClue);
-		});
+			EventBus.RaiseEvent(delegate(IClueDataChangedHandler h)
+			{
+				h.RefreshDataFor(clue);
+			});
+		}
 	}
 
 	public override AddendumState GetAddendumState()

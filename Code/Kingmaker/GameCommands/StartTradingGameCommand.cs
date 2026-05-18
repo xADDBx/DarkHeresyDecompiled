@@ -1,30 +1,58 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Gameplay.Features.Vendor;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class StartTradingGameCommand : GameCommandWithSynchronized, IOwlPackable<StartTradingGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class StartTradingGameCommand : GameCommandWithSynchronized, IMemoryPackable<StartTradingGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<StartTradingGameCommand>
 {
+	[Preserve]
+	private sealed class StartTradingGameCommandFormatter : MemoryPackFormatter<StartTradingGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref StartTradingGameCommand value)
+		{
+			StartTradingGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref StartTradingGameCommand value)
+		{
+			StartTradingGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref StartTradingGameCommand value)
+		{
+			StartTradingGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref StartTradingGameCommand value)
+		{
+			StartTradingGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private EntityRef<MechanicEntity> m_Vendor;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "StartTradingGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_Vendor", typeof(EntityRef<MechanicEntity>))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackConstructor]
 	private StartTradingGameCommand(EntityRef<MechanicEntity> m_vendor)
 	{
 		m_Vendor = m_vendor;
@@ -43,6 +71,135 @@ public sealed class StartTradingGameCommand : GameCommandWithSynchronized, IOwlP
 	protected override void ExecuteInternal()
 	{
 		VendorHelper.TradeLogic.BeginTrading(m_Vendor.Entity);
+	}
+
+	static StartTradingGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "StartTradingGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_Vendor", typeof(EntityRef<MechanicEntity>))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<StartTradingGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new StartTradingGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<StartTradingGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<StartTradingGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref StartTradingGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(1);
+		writer.WritePackable(in value.m_Vendor);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref StartTradingGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		EntityRef<MechanicEntity> value2;
+		if (memberCount == 1)
+		{
+			if (value == null)
+			{
+				value2 = reader.ReadPackable<EntityRef<MechanicEntity>>();
+			}
+			else
+			{
+				value2 = value.m_Vendor;
+				reader.ReadPackable(ref value2);
+			}
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(StartTradingGameCommand), 1, memberCount);
+				return;
+			}
+			value2 = ((value != null) ? value.m_Vendor : default(EntityRef<MechanicEntity>));
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				_ = 1;
+			}
+			_ = value;
+		}
+		value = new StartTradingGameCommand(value2);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref StartTradingGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Vendor");
+		writer.WritePackable(value.m_Vendor);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref StartTradingGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		EntityRef<MechanicEntity> val = ((value != null) ? value.m_Vendor : default(EntityRef<MechanicEntity>));
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_Vendor")
+				{
+					val = reader.ReadPackable<EntityRef<MechanicEntity>>();
+					array[0] = true;
+				}
+			}
+			else if (text == "m_Vendor")
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		_ = value;
+		value = new StartTradingGameCommand(val);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

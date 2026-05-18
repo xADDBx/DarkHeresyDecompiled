@@ -4,16 +4,15 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
 using Kingmaker.Framework.Pathfinding;
 using Kingmaker.Pathfinding;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
-using Kingmaker.View.Scene.Mechanics.Entities;
 using Kingmaker.Visual.HitSystem;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using Pathfinding;
 using StateHasher.Core;
@@ -22,7 +21,7 @@ using UnityEngine;
 namespace Kingmaker.EntitySystem.Entities;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class DestructibleEntity : MapObjectEntity, PartStatsContainer.IOwner, IEntityPartOwner<PartStatsContainer>, IEntityPartOwner, PartHealth.IOwner, IEntityPartOwner<PartHealth>, PartDestructionStagesManager.IOwner, IEntityPartOwner<PartDestructionStagesManager>, IHashable, IOwlPackable<DestructibleEntity>
+public class DestructibleEntity : MapObjectEntity, PartHealth.IOwner, IEntityPartOwner<PartHealth>, IEntityPartOwner, PartDestructionStagesManager.IOwner, IEntityPartOwner<PartDestructionStagesManager>, IHashable, IOwlPackable<DestructibleEntity>
 {
 	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -56,13 +55,13 @@ public class DestructibleEntity : MapObjectEntity, PartStatsContainer.IOwner, IE
 
 	public new BlueprintDestructibleObject Blueprint => (BlueprintDestructibleObject)base.Blueprint;
 
-	public new AbstractDestructibleEntityView View => (AbstractDestructibleEntityView)base.View;
+	public new IAbstractDestructibleEntityView View => (IAbstractDestructibleEntityView)base.View;
+
+	public new IDestructibleEntityConfig Config => (IDestructibleEntityConfig)base.Config;
 
 	public override ViewHandlingOnDisposePolicyType DefaultViewHandlingOnDisposePolicy => ViewHandlingOnDisposePolicyType.Deactivate;
 
-	public override bool CanBeAttackedDirectly => View.Or(null)?.CanBeAttackedDirectly ?? base.CanBeAttackedDirectly;
-
-	public PartStatsContainer Stats => GetRequired<PartStatsContainer>();
+	public override bool CanBeAttackedDirectly => Config.CanBeAttackedDirectly;
 
 	public PartHealth Health => GetRequired<PartHealth>();
 
@@ -74,37 +73,29 @@ public class DestructibleEntity : MapObjectEntity, PartStatsContainer.IOwner, IE
 
 	public GridObstacle[] WholeStageGridObstacles => View?.WholeStageGridObstacles;
 
-	public override IntRect SizeRect => BoundsToSizeRect(View.Or(null)?.Bounds ?? default(Rect));
+	public GridObstacle[] AllGridObstacles => View?.AllGridObstacles;
 
-	public bool AutoHit => !View.DisableAutoHit;
+	public override IntRect SizeRect => BoundsToSizeRect(Config?.Bounds ?? default(Rect));
 
-	public int HitChanceModifier => View.HitChanceModifier;
+	public bool AutoHit => !Config.DisableAutoHit;
+
+	public int HitChanceModifier => Config.HitChanceModifier;
 
 	public override bool SetViewOrientation => false;
 
-	public DestructibleEntity(AbstractDestructibleEntityView view)
-		: base(view.UniqueId, view.IsInGameBySettings, view.Blueprint)
+	public DestructibleEntity(IDestructibleEntityConfig config)
+		: base(config)
 	{
 	}
 
-	public DestructibleEntity(string uniqueId, bool isInGame, BlueprintDestructibleObject blueprint)
-		: base(uniqueId, isInGame, blueprint)
-	{
-	}
-
-	protected DestructibleEntity(JsonConstructorMark _)
+	protected DestructibleEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected DestructibleEntity()
 	{
 	}
 
 	protected override void OnCreateParts()
 	{
 		base.OnCreateParts();
-		GetOrCreate<PartStatsContainer>();
 		GetOrCreate<PartHealth>();
 		GetOrCreate<PartDestructionStagesManager>();
 	}
@@ -126,7 +117,7 @@ public class DestructibleEntity : MapObjectEntity, PartStatsContainer.IOwner, IE
 	{
 		return type switch
 		{
-			StatType.HitPoints => Blueprint.HitPoints, 
+			StatType.MaxHitPoints => Blueprint.HitPoints, 
 			StatType.Toughness => Blueprint.Toughness, 
 			_ => base.GetStatBaseValue(type), 
 		};
@@ -181,7 +172,7 @@ public class DestructibleEntity : MapObjectEntity, PartStatsContainer.IOwner, IE
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		DestructibleEntity source = new DestructibleEntity();
+		DestructibleEntity source = new DestructibleEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<DestructibleEntity, TPossiblyBase>(ref source);
 	}
 

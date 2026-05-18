@@ -32,8 +32,6 @@ public class VoiceOverStatus
 
 	public bool Stopped => m_Stopped;
 
-	public bool IsStarted => m_PlayTriggered;
-
 	public float RemainingTime
 	{
 		get
@@ -56,11 +54,23 @@ public class VoiceOverStatus
 
 	public void HandleCallback(object cookie, AkCallbackType type, object info)
 	{
-		if (type == AkCallbackType.AK_Duration)
+		switch (type)
 		{
-			AkDurationCallbackInfo akDurationCallbackInfo = (AkDurationCallbackInfo)info;
+		case AkCallbackType.AK_EndOfEvent:
+			m_PlayTriggered = true;
+			break;
+		case AkCallbackType.AK_AudioInterruption:
+			m_Stopped = true;
+			break;
+		case AkCallbackType.AK_Duration:
+			if (!(info is AkDurationCallbackInfo akDurationCallbackInfo))
+			{
+				PFLog.VO.Warning("[VO] AK_Duration callback received unexpected info type");
+				break;
+			}
 			m_EndTime += TimeSpan.FromMilliseconds(akDurationCallbackInfo.fDuration);
 			m_PlayTriggered = true;
+			break;
 		}
 	}
 

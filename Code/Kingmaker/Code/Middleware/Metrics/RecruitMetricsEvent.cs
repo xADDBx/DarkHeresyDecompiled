@@ -10,11 +10,6 @@ public class RecruitMetricsEvent : MetricsEvent
 
 	protected override string Name => "recruitment";
 
-	public RecruitMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public RecruitMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -27,7 +22,7 @@ public class RecruitMetricsEvent : MetricsEvent
 		{
 			CompanionRecruitStates.Recruit => "recruit", 
 			CompanionRecruitStates.Dismiss => "dismiss", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
 		return this;
 	}

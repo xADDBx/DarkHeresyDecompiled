@@ -7,4 +7,6 @@ public struct AreaEffectInfoEntry : IEntityInfoDescription
 	public Sprite Icon;
 
 	public string Text;
+
+	public Color? Color;
 }

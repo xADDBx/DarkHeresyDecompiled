@@ -5,10 +5,10 @@ using System.Linq;
 using Core.Cheats;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums.Sound;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -17,8 +17,6 @@ using Kingmaker.Sound;
 using Kingmaker.Sound.Base;
 using Kingmaker.UI.Sound;
 using Kingmaker.UI.Sound.Base;
-using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
@@ -28,13 +26,19 @@ namespace Kingmaker.Visual.Sound;
 
 public class UnitAsksManager
 {
-	private AskWrapper _mCurrentlyActiveAsk;
+	private AskSchedulingEntry m_CurrentlyActiveAsk;
+
+	private Coroutine m_CurrentlyPlayAfterCoroutine;
 
 	private uint m_CurrentlyPlayingId;
+
+	public readonly BlueprintUnitAsksList Blueprint;
 
 	public readonly AbstractUnitEntity Unit;
 
 	private readonly string[] m_SoundBanks;
+
+	private UnitAsksQueue m_Queue = new UnitAsksQueue();
 
 	public readonly AskWrapper Aggro;
 
@@ -50,39 +54,39 @@ public class UnitAsksManager
 
 	public readonly AskWrapper Order;
 
-	public readonly AskWrapper Selected;
+	public readonly AskWrapper Select;
 
 	public readonly AskWrapper CantDo;
 
-	public readonly AskWrapper CheckSuccess;
+	public readonly AskWrapper CheckSuccessful;
 
-	public readonly AskWrapper CheckFail;
+	public readonly AskWrapper CheckFailed;
 
 	public readonly AskWrapper Discovery;
 
-	public readonly AskWrapper OrderMove;
+	public readonly AskWrapper MoveInCombat;
 
-	public readonly AskWrapper OrderMoveExploration;
+	public readonly AskWrapper MoveInExploration;
 
 	public readonly AskWrapper EnemyDeath;
 
-	public readonly AskWrapper PartyMemberUnconscious;
+	public readonly AskWrapper PartyMemberUnconsciousGeneral;
 
 	public readonly AskWrapper PsychicPhenomena;
 
 	public readonly AskWrapper PerilsOfTheWarp;
 
-	public readonly AskWrapper HealingAlly;
+	public readonly AskWrapper SupportAnAlly;
 
-	public readonly AskWrapper BeingHealed;
+	public readonly AskWrapper BeingSupported;
 
 	public readonly AskWrapper EnemyMassDeath;
 
 	public readonly AskWrapper FriendlyFire;
 
-	public readonly AskWrapper MoraleBroken;
+	public readonly AskWrapper BrokenMorale;
 
-	public readonly AskWrapper MoraleHeroic;
+	public readonly AskWrapper HeroicMorale;
 
 	public readonly AskWrapper ChannellingOn;
 
@@ -98,23 +102,27 @@ public class UnitAsksManager
 
 	public readonly AskWrapper WeAreLostByMorale;
 
-	public readonly AskWrapper ArmorBroken;
+	public readonly AskWrapper BrokenArmour;
 
-	public readonly AskWrapper DetectiveCanStudyClue;
+	public readonly AskWrapper ClueCanBeProcessed;
 
-	public readonly AskWrapper DetectiveNewConclusionAvailable;
+	public readonly AskWrapper ConclusionAvailable;
 
 	public readonly AskWrapper DetectiveSearch;
 
-	public readonly AskWrapper DetectiveTracesFound;
+	public readonly AskWrapper TracesFound;
 
 	public readonly AskWrapper DetectiveReminder;
 
-	public readonly AskWrapper DetectiveReconstructionFind;
+	public readonly AskWrapper DetectiveReconstructionFound;
 
 	public readonly AskWrapper DetectiveReconstructionReady;
 
-	public readonly AskWrapper DetectiveSignalFound;
+	public readonly AskWrapper SignalFound;
+
+	public readonly AskWrapper WithinPariahAura;
+
+	public readonly AskWrapper PainPariahKeystone;
 
 	public readonly AskWrapper[] PartyMemberUnconsciousPersonalized;
 
@@ -123,61 +131,66 @@ public class UnitAsksManager
 	public AskWrapper SelectAnimationBark(MappedAnimationEventType evt)
 	{
 		return (from b in AnimationBarks.EmptyIfNull()
-			where ((AnimationAsk)b.Bark).AnimationEvent == evt
+			where ((AnimationAsk)b.AsksSet).AnimationEvent == evt
 			select b).Random(PFStatefulRandom.Visuals.Sounds);
 	}
 
 	public UnitAsksManager(AbstractUnitEntity unit, BlueprintUnitAsksList asksList)
 	{
+		Blueprint = asksList;
 		m_SoundBanks = asksList.SoundBanks;
 		Unit = unit;
-		Aggro = Wrap(asksList.Aggro);
-		Pain = Wrap(asksList.Pain);
-		Death = Wrap(asksList.Death);
-		Unconscious = Wrap(asksList.Unconscious);
-		CriticalHit = Wrap(asksList.CriticalHit);
-		TraumaApplied = Wrap(asksList.TraumaApplied);
-		Order = Wrap(asksList.Order);
-		Selected = Wrap(asksList.Selected);
-		CantDo = Wrap(asksList.CantDo);
-		CheckSuccess = Wrap(asksList.CheckSuccess);
-		CheckFail = Wrap(asksList.CheckFail);
-		Discovery = Wrap(asksList.Discovery);
-		OrderMove = Wrap(asksList.OrderMove);
-		OrderMoveExploration = Wrap(asksList.OrderMoveExploration);
-		EnemyDeath = Wrap(asksList.EnemyDeath);
-		PartyMemberUnconscious = Wrap(asksList.PartyMemberUnconscious);
-		PsychicPhenomena = Wrap(asksList.PsychicPhenomena);
-		PerilsOfTheWarp = Wrap(asksList.PerilsOfTheWarp);
-		HealingAlly = Wrap(asksList.HealingAlly);
-		BeingHealed = Wrap(asksList.BeingHealed);
-		EnemyMassDeath = Wrap(asksList.EnemyMassDeath);
-		FriendlyFire = Wrap(asksList.FriendlyFire);
-		MoraleBroken = Wrap(asksList.MoraleBroken);
-		MoraleHeroic = Wrap(asksList.MoraleHeroic);
-		ChannellingOn = Wrap(asksList.ChannellingOn);
-		ChannellingReaction = Wrap(asksList.ChannellingReaction);
-		ChannellingOff = Wrap(asksList.ChannellingOff);
-		ChannellingSuccessfulRelease = Wrap(asksList.ChannellingSuccessfulRelease);
-		WeAreLoosing = Wrap(asksList.WeAreLoosing);
-		WeAreWinning = Wrap(asksList.WeAreWinning);
-		WeAreLostByMorale = Wrap(asksList.WeAreLostByMorale);
-		ArmorBroken = Wrap(asksList.ArmorBroken);
-		DetectiveCanStudyClue = Wrap(asksList.DetectiveCanStudyClue);
-		DetectiveNewConclusionAvailable = Wrap(asksList.DetectiveNewConclusionAvailable);
-		DetectiveSearch = Wrap(asksList.DetectiveSearch);
-		DetectiveTracesFound = Wrap(asksList.DetectiveTracesFound);
-		DetectiveReminder = Wrap(asksList.DetectiveReminder);
-		DetectiveReconstructionFind = Wrap(asksList.DetectiveReconstructionFind);
-		DetectiveReconstructionReady = Wrap(asksList.DetectiveReconstructionReady);
-		DetectiveSignalFound = Wrap(asksList.DetectiveSignalFound);
-		PartyMemberUnconsciousPersonalized = asksList.PartyMemberUnconsciousPersonalized.EmptyIfNull().Select(Wrap).ToArray();
-		AnimationBarks = asksList.AnimationAsks.EmptyIfNull().Select(Wrap).ToArray();
+		Aggro = Wrap(asksList.AggroBattleCry, "AggroBattleCry");
+		Pain = Wrap(asksList.Pain, "Pain");
+		Death = Wrap(asksList.Death, "Death");
+		Unconscious = Wrap(asksList.Unconscious, "Unconscious");
+		CriticalHit = Wrap(asksList.CriticalHit, "CriticalHit");
+		TraumaApplied = Wrap(asksList.TraumaApplied, "TraumaApplied");
+		Order = Wrap(asksList.Order, "Order");
+		Select = Wrap(asksList.Select, "Select");
+		CantDo = Wrap(asksList.CantDo, "CantDo");
+		CheckSuccessful = Wrap(asksList.CheckSuccessful, "CheckSuccessful");
+		CheckFailed = Wrap(asksList.CheckFailed, "CheckFailed");
+		Discovery = Wrap(asksList.Discovery, "Discovery");
+		MoveInCombat = Wrap(asksList.MoveInCombat, "MoveInCombat");
+		MoveInExploration = Wrap(asksList.MoveInExploration, "MoveInExploration");
+		EnemyDeath = Wrap(asksList.EnemyDeath, "EnemyDeath");
+		PartyMemberUnconsciousGeneral = Wrap(asksList.PartyMemberUnconsciousGeneral, "PartyMemberUnconsciousGeneral");
+		PsychicPhenomena = Wrap(asksList.PsychicPhenomena, "PsychicPhenomena");
+		PerilsOfTheWarp = Wrap(asksList.PerilsOfTheWarp, "PerilsOfTheWarp");
+		SupportAnAlly = Wrap(asksList.SupportAnAlly, "SupportAnAlly");
+		BeingSupported = Wrap(asksList.BeingSupported, "BeingSupported");
+		EnemyMassDeath = Wrap(asksList.EnemyMassDeath, "EnemyMassDeath");
+		FriendlyFire = Wrap(asksList.FriendlyFire, "FriendlyFire");
+		BrokenMorale = Wrap(asksList.BrokenMorale, "BrokenMorale");
+		HeroicMorale = Wrap(asksList.HeroicMorale, "HeroicMorale");
+		ChannellingOn = Wrap(asksList.ChannellingOn, "ChannellingOn");
+		ChannellingOff = Wrap(asksList.ChannellingOff, "ChannellingOff");
+		ChannellingReaction = Wrap(asksList.ChannellingReaction, "ChannellingReaction");
+		ChannellingSuccessfulRelease = Wrap(asksList.ChannellingSuccessfulRelease, "ChannellingSuccessfulRelease");
+		WeAreLoosing = Wrap(asksList.WeAreLoosing, "WeAreLoosing");
+		WeAreWinning = Wrap(asksList.WeAreWinning, "WeAreWinning");
+		WeAreLostByMorale = Wrap(asksList.WeAreLostByMorale, "WeAreLostByMorale");
+		BrokenArmour = Wrap(asksList.BrokenArmour, "BrokenArmour");
+		ClueCanBeProcessed = Wrap(asksList.ClueCanBeProcessed, "ClueCanBeProcessed");
+		ConclusionAvailable = Wrap(asksList.ConclusionAvailable, "ConclusionAvailable");
+		DetectiveSearch = Wrap(asksList.DetectiveSearch, "DetectiveSearch");
+		TracesFound = Wrap(asksList.TracesFound, "TracesFound");
+		DetectiveReminder = Wrap(asksList.DetectiveReminder, "DetectiveReminder");
+		DetectiveReconstructionFound = Wrap(asksList.DetectiveReconstructionFound, "DetectiveReconstructionFound");
+		DetectiveReconstructionReady = Wrap(asksList.DetectiveReconstructionReady, "DetectiveReconstructionReady");
+		SignalFound = Wrap(asksList.SignalFound, "SignalFound");
+		WithinPariahAura = Wrap(asksList.WithinPariahAura, "WithinPariahAura");
+		PainPariahKeystone = Wrap(asksList.PainPariahKeystone, "PainPariahKeystone");
+		PartyMemberUnconsciousPersonalized = (from a in asksList.PartyMemberUnconsciousPersonalized.EmptyIfNull()
+			select Wrap(a, "PartyMemberUnconsciousPersonalized")).ToArray();
+		AnimationBarks = (from a in asksList.MappedSound.EmptyIfNull()
+			select Wrap(a, "AnimationEvent")).ToArray();
 	}
 
-	private AskWrapper Wrap(AsksSet bark)
+	private AskWrapper Wrap(AsksSet bark, string type)
 	{
-		return new AskWrapper(bark, this);
+		return new AskWrapper(bark, this, type);
 	}
 
 	public void LoadBanks()
@@ -208,32 +221,29 @@ public class UnitAsksManager
 	{
 	}
 
-	public bool Schedule(AskWrapper wrapper, bool is2D = false, AskCallback callback = null, AsksContext asksContext = null)
+	public bool TrySchedule(AskSchedulingEntry schedulingEntry, out string reason)
 	{
-		AsksSet asksSet = wrapper?.Bark;
+		reason = "no reason";
+		AskWrapper wrapper = schedulingEntry.Wrapper;
+		AsksSet asksSet = wrapper?.AsksSet;
 		if (asksSet == null)
 		{
+			reason = "ask is null";
 			return false;
 		}
 		if (asksSet.DoNotPlayWhileAlone && Game.Instance.Player.CapitalPartyMode)
 		{
+			reason = "ask is DoNotPlayWhileAlone and we in CapitalPartyMode";
 			return false;
 		}
 		if (asksSet.Entries == null || asksSet.Entries.Length == 0 || wrapper.IsOnCooldown)
 		{
+			reason = "ask entries are empty or on cooldown";
 			return false;
 		}
-		if (wrapper.Bark.EnablePrioritization)
+		if (m_Queue.IsInQueue(wrapper))
 		{
-			UnitAsksPriorityHelper.RegisterBark(wrapper);
-			AskWrapper currentHighestPriorityBark = UnitAsksPriorityHelper.GetCurrentHighestPriorityBark(wrapper.Bark.PrioritizationGroup);
-			if (wrapper != currentHighestPriorityBark && wrapper.Bark.Priority >= currentHighestPriorityBark.Bark.Priority)
-			{
-				return false;
-			}
-		}
-		if (!asksSet.InterruptOthers && _mCurrentlyActiveAsk != null)
-		{
+			reason = "same ask already in queue";
 			return false;
 		}
 		float num = 1f;
@@ -252,188 +262,217 @@ public class UnitAsksManager
 		num = asksSet.Chance * num;
 		if (!asksSet.CheckBarkChance(num))
 		{
+			reason = "ask didnt pass chance test";
 			return false;
 		}
-		AskEntry entry = SelectRandomEntry(asksSet, Unit, asksContext);
-		float num2 = PFStatefulRandom.Visuals.Sounds.Range(asksSet.DelayMin, asksSet.DelayMax);
-		if (num2 < 0.01f || Unit == null)
+		if (schedulingEntry.IsInterruptCurrent)
 		{
-			Play(wrapper, entry, is2D, callback, asksContext);
+			DiscardCurrentActiveBark();
+			if (schedulingEntry.IsClearsQueue)
+			{
+				PFLog.VO.Log("[VO] Ask " + (schedulingEntry.Wrapper.Type ?? "unknown") + " Cleared Queue \n Caster: " + schedulingEntry.AsksContext.Caster?.Name + " \nTarget: " + schedulingEntry.AsksContext.Target?.Entity?.Name);
+				m_Queue.ClearQueue();
+			}
 		}
-		else
+		if (schedulingEntry.CannotBePlayedIfQueueNotEmpty && (m_CurrentlyActiveAsk != null || !m_Queue.IsEmpty))
 		{
-			Unit.View.StartCoroutine(PlayAfter(wrapper, num2, entry, is2D, callback, synced: false));
+			reason = "ask is CannotBePlayedIfQueueNotEmpty and other ask is playing/in queue";
+			return false;
 		}
+		AskSchedulingEntry currentlyActiveAsk = m_CurrentlyActiveAsk;
+		if (currentlyActiveAsk != null && currentlyActiveAsk.IsForbidQueueing)
+		{
+			reason = "current ask forbids queueing new asks";
+			return false;
+		}
+		m_Queue.Schedule(schedulingEntry);
+		reason = "success";
 		return true;
+	}
+
+	public void TryPlayNextAsk()
+	{
+		if (m_CurrentlyActiveAsk == null && m_Queue.TryPopFromQueue(out var nextEntry) && Unit != null && !Unit.IsDeadOrUnconscious)
+		{
+			AsksSet asksSet = nextEntry.Wrapper.AsksSet;
+			AskEntry askEntry = SelectRandomEntry(asksSet, nextEntry.Wrapper, Unit, nextEntry.AsksContext);
+			PFLog.VO.Log(string.Format("[VO] Playing Ask {0} \n Caster: {1} \nTarget: {2} \n ChoosenEntry: {3}", nextEntry.Wrapper.Type ?? "unknown", nextEntry.AsksContext.Caster?.Name, nextEntry.AsksContext.Target?.Entity?.Name, askEntry.Text));
+			float num = PFStatefulRandom.Visuals.Sounds.Range(asksSet.DelayMin, asksSet.DelayMax);
+			if (num < 0.01f || Unit == null)
+			{
+				Play(askEntry, nextEntry);
+			}
+			else
+			{
+				m_CurrentlyPlayAfterCoroutine = Unit.View.StartCoroutine(PlayAfter(askEntry, nextEntry, num, synced: false));
+			}
+		}
 	}
 
 	public void DiscardCurrentActiveBark()
 	{
 		SoundEventsManager.StopPlayingById(m_CurrentlyPlayingId);
-		_mCurrentlyActiveAsk = null;
+		m_CurrentlyActiveAsk = null;
+		if (m_CurrentlyPlayAfterCoroutine != null)
+		{
+			Unit.View.StopCoroutine(m_CurrentlyPlayAfterCoroutine);
+			m_CurrentlyPlayAfterCoroutine = null;
+		}
 	}
 
-	private static AskEntry SelectRandomEntry(AsksSet bark, AbstractUnitEntity target, AsksContext context)
+	private static AskEntry SelectRandomEntry(AsksSet bark, AskWrapper wrapper, AbstractUnitEntity target, AsksContext context)
 	{
 		if (bark.Entries.Length == 1)
 		{
 			return bark.Entries[0];
 		}
-		AskEntry askEntry = null;
 		MechanicEntity caster = context.Caster;
 		TargetWrapper clickedTarget = context.Target ?? ((TargetWrapper)target);
-		MechanicsContext mechanicsContext = null;
-		DisposableBag disposableBag = null;
-		if (caster != null)
+		using ((caster != null) ? EvalContext.Build().Blueprint(context.AbilityBlueprint ?? target.MainFact.Blueprint).Caster(caster)
+			.ClickedTarget(clickedTarget)
+			.Push() : default(EvalContext.StackFrameHandle))
 		{
-			mechanicsContext = MechanicsContext.Claim(context.AbilityBlueprint ?? target.MainFact.Blueprint, caster, null, null, clickedTarget);
-			disposableBag = mechanicsContext.SetScope();
-		}
-		foreach (IGrouping<int, AskEntry> item in from x in bark.Entries.Where(delegate(AskEntry x)
-			{
-				if (!x.IsEmpty && !x.Locked)
+			IOrderedEnumerable<IGrouping<int, (int Index, AskEntry ask)>> orderedEnumerable = from x in bark.Entries.AllWithIndex.Where(delegate((int Index, AskEntry ask) x)
 				{
-					ConditionsChecker condition = x.Condition;
-					if (condition != null && condition.HasConditions)
+					if (x.ask.IsExist && !x.ask.Locked)
 					{
-						return x.Condition.Check();
+						ConditionsChecker condition = x.ask.Condition;
+						if (condition != null && condition.HasConditions)
+						{
+							return x.ask.Condition.Check();
+						}
+						return true;
 					}
-					return true;
-				}
-				return false;
-			})
-			group x by x.HasCondition ? x.ConditionPriority : 0 into x
-			orderby x.Key descending
-			select x)
-		{
-			askEntry = SelectRandom(item);
-			if (askEntry != null)
+					return false;
+				})
+				group x by x.ask.HasCondition ? x.ask.ConditionPriority : 0 into x
+				orderby x.Key descending
+				select x;
+			(int, AskEntry) tuple = default((int, AskEntry));
+			foreach (IGrouping<int, (int, AskEntry)> item in orderedEnumerable)
 			{
-				break;
+				tuple = SelectRandom(item, wrapper);
+				if (tuple.Item2 != null)
+				{
+					break;
+				}
 			}
+			AskEntry askEntry;
+			int entryIndex;
+			if (tuple.Item2 != null)
+			{
+				askEntry = tuple.Item2;
+				(entryIndex, _) = tuple;
+			}
+			else
+			{
+				askEntry = bark.Entries.FirstOrDefault();
+				entryIndex = 0;
+			}
+			wrapper.SetExclusionCounter(entryIndex, askEntry.ExcludeTime);
+			return askEntry;
 		}
-		if (askEntry == null)
-		{
-			askEntry = bark.Entries.FirstOrDefault();
-		}
-		askEntry.ExclusionCounter = askEntry.ExcludeTime;
-		mechanicsContext?.Dispose();
-		disposableBag?.Dispose();
-		return askEntry;
 	}
 
-	private static AskEntry SelectRandom(IEnumerable<AskEntry> entries)
+	private static (int Index, AskEntry Ask) SelectRandom(IEnumerable<(int Index, AskEntry ask)> entries, AskWrapper wrapper)
 	{
-		AskEntry askEntry = null;
+		(int, AskEntry) result = default((int, AskEntry));
+		(int, AskEntry) result2 = default((int, AskEntry));
 		float num = 0f;
-		List<AskEntry> list = entries.ToList();
-		foreach (AskEntry item in list)
+		foreach (var item in entries.ToList())
 		{
-			if (item.ExclusionCounter > 0)
+			if (result2.Item2 == null)
 			{
-				item.ExclusionCounter--;
+				result2 = (item.Index, item.ask);
+			}
+			if (wrapper.GetExclusionCounter(item.Index) > 0)
+			{
+				wrapper.DecrementExclusionCounter(item.Index);
 				continue;
 			}
-			float randomWeight = item.RandomWeight;
+			float randomWeight = item.ask.RandomWeight;
 			if (PFStatefulRandom.Visuals.Sounds.Range(0f, num + randomWeight) >= num)
 			{
-				askEntry = item;
+				result = (item.Index, item.ask);
 			}
 			num += randomWeight;
 		}
-		if (askEntry == null)
+		if (result.Item2 == null)
 		{
-			askEntry = list.FirstOrDefault();
+			return result2;
 		}
-		return askEntry;
+		return result;
 	}
 
-	private IEnumerator PlayAfter(AskWrapper wrapper, float delay, AskEntry entry, bool is2D, AskCallback callback = null, bool synced = true)
+	private IEnumerator PlayAfter(AskEntry entry, AskSchedulingEntry schedulingEntry, float delay, bool synced = true)
 	{
-		wrapper.IsPlaying = true;
-		_mCurrentlyActiveAsk = wrapper;
+		schedulingEntry.Wrapper.IsPlaying = true;
+		m_CurrentlyActiveAsk = schedulingEntry;
 		yield return new WaitForSeconds(delay);
-		Play(wrapper, entry, is2D, callback, null, synced);
+		Play(entry, schedulingEntry, synced);
 	}
 
-	private void Play(AskWrapper wrapper, AskEntry entry, bool is2D, AskCallback callback = null, AsksContext askContext = null, bool synced = false)
+	private void Play(AskEntry entry, AskSchedulingEntry schedulingEntry, bool synced = false)
 	{
-		wrapper.IsPlaying = true;
-		_mCurrentlyActiveAsk = wrapper;
-		if (!string.IsNullOrEmpty(entry.AkEvent) && !is2D && Unit == null)
+		schedulingEntry.Wrapper.IsPlaying = true;
+		m_CurrentlyActiveAsk = schedulingEntry;
+		bool flag = schedulingEntry.Is2D;
+		AskWrapper wrapper = schedulingEntry.Wrapper;
+		if (!string.IsNullOrEmpty(entry.AkEvent) && !flag && Unit == null)
 		{
 			PFLog.Default.Warning("Can not play " + entry.AkEvent + " in 3D cause no unit entity. Will play in 2D");
-			is2D = true;
+			flag = true;
 		}
-		if (!string.IsNullOrEmpty(entry.AkEvent) && Unit != null && Game.Instance.Controllers.VoiceOverController.CanPlayAsk(Unit.VoGuid, is2D ? SoundState.Get2DSoundObject() : Unit.View.gameObject))
+		if (!string.IsNullOrEmpty(entry.AkEvent) && Unit != null && Game.Instance.Controllers.VoiceOverController.CanPlayAsk(Unit.VoGuid, flag ? SoundState.Get2DSoundObject() : Unit.View.gameObject))
 		{
-			VoiceOverStatus voiceOverStatus = Game.Instance.Controllers.VoiceOverController.PlayVoiceOver(entry.AkEvent, Unit.VoGuid, VoiceOverType.Ask, is2D ? SoundState.Get2DSoundObject() : Unit.View.gameObject);
-			if (voiceOverStatus != null)
+			VoiceOverStatus status = Game.Instance.Controllers.VoiceOverController.PlayVoiceOver(entry.AkEvent, Unit.VoGuid, VoiceOverType.Ask, flag ? SoundState.Get2DSoundObject() : Unit.View.gameObject);
+			BindPlayback(status, schedulingEntry);
+		}
+		else if (entry.Text != null && Unit != null)
+		{
+			if (wrapper.AsksSet.ShowOnScreen)
 			{
-				voiceOverStatus.Ended += OnEndCallback;
-				m_CurrentlyPlayingId = voiceOverStatus.PlayingSoundId;
+				IBarkHandle barkHandle = BarkPlayer.Bark(Unit, entry.Text, VoiceOverType.Ask, Unit.VoGuid, -1f, null, synced);
+				BindPlayback(barkHandle.VoiceOverStatus, schedulingEntry);
+				return;
 			}
-			else
+			EventBus.RaiseEvent((IEntity)Unit, (Action<ICombatLogBarkHandler>)delegate(ICombatLogBarkHandler h)
 			{
-				m_CurrentlyPlayingId = 0u;
-			}
-			if (voiceOverStatus == null || m_CurrentlyPlayingId == 0)
-			{
-				OnEndCallback();
-			}
+				h.HandleOnShowBark(entry.Text);
+			}, isCheckRuntime: true);
+			VoiceOverStatus status2 = Game.Instance.Controllers.VoiceOverController.PlayVoiceOver(entry.Text, Unit.VoGuid, VoiceOverType.Ask, flag ? SoundState.Get2DSoundObject() : Unit.View.gameObject);
+			BindPlayback(status2, schedulingEntry);
 		}
 		else
 		{
-			if (!(entry.Text != null) || Unit == null)
-			{
-				return;
-			}
-			if (wrapper.Bark.ShowOnScreen)
-			{
-				IBarkHandle barkHandle = BarkPlayer.Bark(Unit, entry.Text.String, VoiceOverType.Ask, Unit.VoGuid, -1f, null, synced);
-				m_CurrentlyPlayingId = barkHandle.VoiceOverStatus.PlayingSoundId;
-				if (barkHandle.VoiceOverStatus != null)
-				{
-					barkHandle.VoiceOverStatus.Ended += OnEndCallback;
-				}
-				else
-				{
-					OnEndCallback();
-				}
-			}
-			else
-			{
-				EventBus.RaiseEvent((IEntity)Unit, (Action<ICombatLogBarkHandler>)delegate(ICombatLogBarkHandler h)
-				{
-					h.HandleOnShowBark(entry.Text.String);
-				}, isCheckRuntime: true);
-				VoiceOverStatus voiceOverStatus2 = Game.Instance.Controllers.VoiceOverController.PlayVoiceOver(entry.Text.String, Unit.VoGuid, VoiceOverType.Ask, is2D ? SoundState.Get2DSoundObject() : Unit.View.gameObject);
-				if (voiceOverStatus2 != null)
-				{
-					voiceOverStatus2.Ended += OnEndCallback;
-					m_CurrentlyPlayingId = voiceOverStatus2.PlayingSoundId;
-				}
-				else
-				{
-					m_CurrentlyPlayingId = 0u;
-				}
-				if (voiceOverStatus2 == null || m_CurrentlyPlayingId == 0)
-				{
-					OnEndCallback();
-				}
-			}
-			if (!wrapper.IsPlaying)
-			{
-				wrapper.LastPlayTime = (float)Game.Instance.Controllers.TimeController.RealTime.TotalSeconds;
-			}
+			OnEndCallback(schedulingEntry);
 		}
-		void OnEndCallback()
+	}
+
+	private void BindPlayback(VoiceOverStatus status, AskSchedulingEntry entry)
+	{
+		if (status != null && status.PlayingSoundId != 0)
 		{
-			wrapper.IsPlaying = false;
-			wrapper.LastPlayTime = (float)Game.Instance.Controllers.TimeController.RealTime.TotalSeconds;
-			_mCurrentlyActiveAsk = null;
-			callback?.Invoke(askContext);
+			m_CurrentlyPlayingId = status.PlayingSoundId;
+			status.Ended += delegate
+			{
+				OnEndCallback(entry);
+			};
 		}
+		else
+		{
+			m_CurrentlyPlayingId = 0u;
+			OnEndCallback(entry);
+		}
+	}
+
+	private void OnEndCallback(AskSchedulingEntry entry)
+	{
+		entry.Wrapper.IsPlaying = false;
+		entry.Wrapper.LastPlayTime = (float)Game.Instance.Controllers.TimeController.RealTime.TotalSeconds;
+		m_CurrentlyActiveAsk = null;
+		entry.Callback?.Invoke(entry.AsksContext);
+		TryPlayNextAsk();
 	}
 
 	[Cheat(ExecutionPolicy = ExecutionPolicy.PlayMode)]
@@ -445,16 +484,11 @@ public class UnitAsksManager
 
 	public static AsksContext CreateAsksContext()
 	{
-		AsksContext asksContext = new AsksContext();
-		if (SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current is AbilityExecutionContext abilityExecutionContext)
+		return new AsksContext
 		{
-			asksContext.AbilityBlueprint = abilityExecutionContext.AbilityBlueprint;
-		}
-		if (SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current != null)
-		{
-			asksContext.Caster = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current.MaybeCaster;
-			asksContext.Target = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current.ClickedTarget;
-		}
-		return asksContext;
+			AbilityBlueprint = EvalContext.Current.AbilityBlueprint,
+			Caster = EvalContext.Current.Caster,
+			Target = EvalContext.Current.ClickedTarget
+		};
 	}
 }

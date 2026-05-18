@@ -9,7 +9,7 @@ public class VeilThicknessLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 	public void HandleEvent(GameLogEventVeilChanged evt)
 	{
 		TooltipBaseTemplate template = CombatLogTooltipService.CreateTooltipTemplateGlossary("VeilThickness");
-		if (evt.Delta != evt.NewValue)
+		if (evt.Delta != 0)
 		{
 			GameLogContext.VeilThicknessDelta = evt.Delta;
 			GameLogContext.VeilThicknessValue = evt.NewValue;

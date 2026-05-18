@@ -1,8 +1,6 @@
 using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.Utility;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -19,6 +17,6 @@ public class ContextTargetPositionEvaluator : PositionEvaluator
 
 	protected override Vector3 GetValueInternal()
 	{
-		return (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current ?? throw new FailToEvaluateException(this)).Point;
+		return (EvalContext.Current.Target ?? throw new FailToEvaluateException(this)).Point;
 	}
 }

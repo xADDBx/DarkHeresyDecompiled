@@ -19,12 +19,12 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MapObjectProvidesCoverPart : ViewBasedPart<MapObjectForcedCoverSettings>, IDestructibleEntityHandler, ISubscriber<IMapObjectEntity>, ISubscriber, IDynamicCoverProvider, IHashable, IOwlPackable<MapObjectProvidesCoverPart>
+public class MapObjectProvidesCoverPart : EntityPartWithConfig<MapObjectForcedCoverSettings>, IDestructibleEntityHandler, ISubscriber<IMapObjectEntity>, ISubscriber, IDynamicCoverProvider, IHashable, IOwlPackable<MapObjectProvidesCoverPart>
 {
 	[HideInInspector]
 	private DestructionStage m_CurrentDestructionStage;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "MapObjectProvidesCoverPart",
 		OldNames = null,
@@ -55,9 +55,9 @@ public class MapObjectProvidesCoverPart : ViewBasedPart<MapObjectForcedCoverSett
 		base.OnDetach();
 	}
 
-	protected override void OnSettingsDidSet(bool isNewSettings)
+	protected override void OnConfigDidSet(bool isNewConfig)
 	{
-		base.OnSettingsDidSet(isNewSettings);
+		base.OnConfigDidSet(isNewConfig);
 		base.Settings.StageToCoverTypeMap = base.Settings.DestructionStageToCovers.ToDictionary((MapObjectForcedCoverSettings.DestructionStageToCover x) => x.DestructionStage, (MapObjectForcedCoverSettings.DestructionStageToCover x) => x.CoverType);
 		UpdateCoverType();
 	}
@@ -84,7 +84,7 @@ public class MapObjectProvidesCoverPart : ViewBasedPart<MapObjectForcedCoverSett
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		MapObjectProvidesCoverPart source = new MapObjectProvidesCoverPart();
 		result = Unsafe.As<MapObjectProvidesCoverPart, TPossiblyBase>(ref source);

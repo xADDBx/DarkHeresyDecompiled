@@ -1,7 +1,4 @@
 using Kingmaker.Blueprints.Root.Strings;
-using Owlcat.UI;
-using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 
@@ -17,16 +14,13 @@ public class BugReportConsoleView : BugReportBaseView
 	private TextMeshProUGUI m_OpenBugReportText;
 
 	[SerializeField]
-	private ConsoleHint m_FirstOpenBugReportHint;
+	private HintView m_FirstOpenBugReportHint;
 
 	[SerializeField]
-	private ConsoleHint m_SecondOpenBugReportHint;
+	private HintView m_SecondOpenBugReportHint;
 
 	[SerializeField]
-	private ConsoleHint m_SendHint;
-
-	[SerializeField]
-	private ConsoleHintsWidget m_HintsWidget;
+	private HintView m_SendHint;
 
 	protected override void OnBind()
 	{
@@ -34,32 +28,8 @@ public class BugReportConsoleView : BugReportBaseView
 		m_OpenBugReportText.text = UIStrings.Instance.UIBugReport.OpenBugReportText;
 	}
 
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
+	protected void CreateInputImpl()
 	{
-		base.BuildNavigationImpl(navigationBehaviour);
-		navigationBehaviour.FocusOnEntityManual(m_ContextDropdown);
-	}
-
-	protected override void CreateInputImpl(InputLayer inputLayer)
-	{
-		base.CreateInputImpl(inputLayer);
-		m_FirstOpenBugReportHint.BindCustomAction(18, inputLayer).AddTo(this);
-		m_SecondOpenBugReportHint.BindCustomAction(19, inputLayer).AddTo(this);
-		m_SendHint.SetLabel(UIStrings.Instance.UIBugReport.SendButton);
-		m_SendHint.Bind(m_InputLayer.AddButton(delegate
-		{
-			OnSend();
-		}, 10, InputActionEventType.ButtonJustLongPressed)).AddTo(this);
-		m_HintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			OnClose();
-		}, 9), UIStrings.Instance.CommonTexts.CloseWindow).AddTo(this);
-		m_HintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			OnShowDrawing();
-		}, 11, InputActionEventType.ButtonJustReleased), UIStrings.Instance.UIBugReport.EditScreenShotTitleText).AddTo(this);
-		m_PrivacyToggle.IsOn.Subscribe(OnPrivacyToggle).AddTo(this);
-		m_InputLayer.LayerBinded.Subscribe(OnLayerBinded).AddTo(this);
 	}
 
 	private void OnLayerBinded(bool value)

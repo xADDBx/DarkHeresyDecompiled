@@ -176,7 +176,7 @@ public class AreaEnterPoint : MonoBehaviour
 	private static void PositionCharacter(BaseUnitEntity character, Vector3 p, Quaternion rot)
 	{
 		character.Commands.InterruptAllInterruptible();
-		ObjectExtensions.Or(character.View, null)?.StopMoving();
+		character.StopMoving();
 		character.Translocate(p, rot.eulerAngles.y);
 	}
 

@@ -27,12 +27,13 @@ public class ContextActionBreakConcentration : ContextAction
 		{
 			return;
 		}
-		AbilityExecutionContext abilityContext = base.AbilityContext;
-		if (abilityContext != null && abilityContext.Ability.IsPrecise)
+		AbilityData ability = base.Context.Ability;
+		AbilityData abilityData = ability;
+		if ((object)abilityData != null && abilityData.IsPrecise)
 		{
 			EventBus.RaiseEvent((IMechanicEntity)base.Target.Entity, (Action<IBodyPartHitAdditionalEffect>)delegate(IBodyPartHitAdditionalEffect h)
 			{
-				h.HandleBodyPartHitBreakConcentration(base.AbilityContext?.Ability.PreciseBodyPart, base.Target.Entity?.GetOptional<PartConcentration>()?.Buff);
+				h.HandleBodyPartHitBreakConcentration(ability.PreciseBodyPart, base.Target.Entity?.GetOptional<PartConcentration>()?.Buff);
 			}, isCheckRuntime: true);
 		}
 		base.Target.Entity?.GetOptional<PartConcentration>()?.Break(base.Caster);

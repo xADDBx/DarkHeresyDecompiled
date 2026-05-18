@@ -11,6 +11,7 @@ using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Gameplay.Features.Items.Utility;
 using Kingmaker.Items.Slots;
 using Kingmaker.Networking.Serialization;
 using Kingmaker.PubSubSystem;
@@ -213,7 +214,7 @@ public class PartUnitBody : BaseUnitPart, IUnitInventoryChanged<EntitySubscriber
 					CurrentHandsEquipmentSet.PrimaryHand.UpdateActive();
 					CurrentHandsEquipmentSet.SecondaryHand.UpdateActive();
 				}
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitActiveEquipmentSetHandler>)delegate(IUnitActiveEquipmentSetHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitActiveEquipmentSetHandler>)delegate(IUnitActiveEquipmentSetHandler h)
 				{
 					h.HandleUnitChangeActiveEquipmentSet();
 				}, isCheckRuntime: true);
@@ -502,16 +503,20 @@ public class PartUnitBody : BaseUnitPart, IUnitInventoryChanged<EntitySubscriber
 		{
 			return;
 		}
-		ItemEntity itemEntity = bpItem.CreateEntity();
+		ItemEntity itemEntity = ContainerResolver.TryResolveEntity(bpItem, UnitEquipmentCRHelper.GetEquipmentCR(base.Owner));
+		if (itemEntity == null)
+		{
+			return;
+		}
 		if (!slot.CanInsertItem(itemEntity))
 		{
-			PFLog.Default.Error("'{0}' can't insert item '{1}' to slot '{2}'", base.Owner.OriginalBlueprint, bpItem, slot.GetType().Name);
+			PFLog.Default.Error("'{0}' can't insert item '{1}' to slot '{2}'", base.Owner.OriginalBlueprint, itemEntity.Blueprint, slot.GetType().Name);
 			base.Owner.Inventory.Add(itemEntity);
 			return;
 		}
-		if (bpItem is BlueprintItemEquipment && !itemEntity.CanBeEquippedBy(base.Owner))
+		if (itemEntity.Blueprint is BlueprintItemEquipment && !itemEntity.CanBeEquippedBy(base.Owner))
 		{
-			PFLog.Default.Error("'{0}' can't equip item '{1}'", base.Owner.OriginalBlueprint, bpItem);
+			PFLog.Default.Error("'{0}' can't equip item '{1}'", base.Owner.OriginalBlueprint, itemEntity.Blueprint);
 			base.Owner.Inventory.Add(itemEntity);
 			return;
 		}
@@ -867,7 +872,7 @@ public class PartUnitBody : BaseUnitPart, IUnitInventoryChanged<EntitySubscriber
 				m_CutsceneHandsEquipmentSet = null;
 				CurrentHandsEquipmentSet.PrimaryHand.RemoveCutsceneItem();
 				CurrentHandsEquipmentSet.SecondaryHand.ReleaseDeactivateFlag();
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitActiveEquipmentSetHandler>)delegate(IUnitActiveEquipmentSetHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitActiveEquipmentSetHandler>)delegate(IUnitActiveEquipmentSetHandler h)
 				{
 					h.HandleUnitChangeActiveEquipmentSet();
 				}, isCheckRuntime: true);
@@ -876,7 +881,7 @@ public class PartUnitBody : BaseUnitPart, IUnitInventoryChanged<EntitySubscriber
 			{
 				CurrentHandsEquipmentSet.PrimaryHand.InsertCutsceneItem(weapon);
 				CurrentHandsEquipmentSet.SecondaryHand.RetainDeactivateFlag();
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitActiveEquipmentSetHandler>)delegate(IUnitActiveEquipmentSetHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitActiveEquipmentSetHandler>)delegate(IUnitActiveEquipmentSetHandler h)
 				{
 					h.HandleUnitChangeActiveEquipmentSet();
 				}, isCheckRuntime: true);

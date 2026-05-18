@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Inspect;
 using Kingmaker.RuleSystem.Rules;
@@ -126,7 +125,7 @@ public class UnitPartInspectedBuffs : BaseUnitPart, IHashable, IOwlPackable<Unit
 		StatType statType = StatType.SkillTechUse;
 		foreach (BaseUnitEntity item in Game.Instance.Player.Party)
 		{
-			if (item.LifeState.IsConscious && (item.Stats.GetStat<ModifiableValueSkill>(statType)?.BaseValue ?? 0) > 0 && GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(item, statType, dC, null, SkillCheckType.Inspect), null, allowPartyCheckInCamp: false).RollResult >= dC)
+			if (item.LifeState.IsConscious && item.Actor.GetStatBase(statType) > 0 && GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(item, statType, dC, null, SkillCheckType.Inspect), null, allowPartyCheckInCamp: false).RollResult >= dC)
 			{
 				return true;
 			}

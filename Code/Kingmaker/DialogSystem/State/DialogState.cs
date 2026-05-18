@@ -87,7 +87,7 @@ public class DialogState : Entity, IHashable, IOwlPackable<DialogState>
 	{
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}

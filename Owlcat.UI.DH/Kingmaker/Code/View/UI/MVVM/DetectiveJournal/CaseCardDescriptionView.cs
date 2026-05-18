@@ -30,7 +30,7 @@ public class CaseCardDescriptionView : View<CaseCardVM>
 		{
 			m_StateSelectable.SetActiveLayer(value.ToString());
 		}).AddTo(this);
-		m_Title.text = ((base.ViewModel.BlueprintCase == null) ? UIStrings.Instance.DetectiveJournal.UnknownCluesHeader.Text : base.ViewModel.BlueprintCase.Name.Text);
+		m_Title.text = ((base.ViewModel.BlueprintCase == null) ? UIStrings.Instance.DetectiveJournal.UnknownCluesHeader.Text : Game.Instance.DetectiveSystem.GetCaseDisplay(base.ViewModel.BlueprintCase).Name);
 		base.ViewModel.Questions.ObserveAdd().Subscribe(delegate
 		{
 			DrawQuestions();

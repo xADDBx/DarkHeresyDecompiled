@@ -20,5 +20,6 @@ public enum WarningNotificationType
 	NoQuickSaves,
 	SavingFailed,
 	SavingImpossibleIronmanWillSavedAutomatically,
-	EquipInLevlUpIsImpossible
+	EquipInLevlUpIsImpossible,
+	ExpGain
 }

@@ -48,7 +48,7 @@ public class SaveLoadMenuSelectorBaseView : View<SelectionGroupRadioVM<SaveLoadM
 
 	protected override void OnUnbind()
 	{
-		UISounds.Instance.Sounds.Selector.SelectorStop.Play();
-		UISounds.Instance.Sounds.Selector.SelectorLoopStop.Play();
+		SystemSounds.Instance.Selector.Stop.Play();
+		SystemSounds.Instance.Selector.LoopStop.Play();
 	}
 }

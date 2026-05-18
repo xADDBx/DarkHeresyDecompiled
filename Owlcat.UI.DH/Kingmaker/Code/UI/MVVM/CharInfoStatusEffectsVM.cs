@@ -1,50 +1,65 @@
 using System.Collections.Generic;
-using System.Linq;
+using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.UnitLogic.Buffs;
 using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CharInfoStatusEffectsVM : CharInfoComponentVM
 {
-	public CharInfoFeatureGroupVM BuffsGroup;
+	private readonly BuffGroupsVM m_BuffGroups;
 
-	public bool NoBuffs
-	{
-		get
-		{
-			CharInfoFeatureGroupVM buffsGroup = BuffsGroup;
-			if (buffsGroup == null)
-			{
-				return false;
-			}
-			return buffsGroup.FeatureList.Count == 0;
-		}
-	}
+	private readonly List<CharacterInfoBuffGroupVM> m_BuffGroupsList = new List<CharacterInfoBuffGroupVM>();
 
-	public CharInfoStatusEffectsVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit)
+	public readonly string StatusEffectsTitleText;
+
+	public readonly string NoEffectsText;
+
+	public bool NoBuffs => m_BuffGroupsList.Count < 1;
+
+	public IEnumerable<CharacterInfoBuffGroupVM> BuffGroups => m_BuffGroupsList;
+
+	public CharInfoStatusEffectsVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit, BuffGroupsVM buffGroupsVM)
 		: base(unit)
 	{
+		m_BuffGroups = buffGroupsVM;
+		StatusEffectsTitleText = UIStrings.Instance.CharacterSheet.StatusEffects;
+		NoEffectsText = UIStrings.Instance.CharacterSheet.NoBuffText;
+		CollectBuffGroups();
 	}
 
 	protected override void RefreshData()
 	{
 		base.RefreshData();
-		List<CharInfoFeatureVM> buffs = new List<CharInfoFeatureVM>();
-		buffs = ExtractBuffs(Unit.CurrentValue, buffs);
-		BuffsGroup = new CharInfoFeatureGroupVM(buffs).AddTo(this);
+		CollectBuffGroups();
 	}
 
-	private List<CharInfoFeatureVM> ExtractBuffs(BaseUnitEntity unit, List<CharInfoFeatureVM> buffs)
+	private void CollectBuffGroups()
 	{
-		List<Buff> unitBuffs = GetUnitBuffs(unit);
-		buffs.AddRange(unitBuffs.Select((Buff bf) => new CharInfoFeatureVM(bf, unit)));
-		return buffs;
-	}
-
-	private List<Buff> GetUnitBuffs(BaseUnitEntity unit)
-	{
-		return unit.Buffs.Enumerable.Where((Buff b) => !b.Blueprint.IsHiddenInUI).ToList();
+		m_BuffGroupsList.Clear();
+		if (m_BuffGroups != null)
+		{
+			if (m_BuffGroups.CriticalEffects.CurrentValue.Count > 0)
+			{
+				m_BuffGroupsList.Add(new CharacterInfoBuffGroupVM(Unit.CurrentValue, UIStrings.Instance.Inspect.EffectsCritical, UIConfig.Instance.UIIcons.CriticalEffects, m_BuffGroups.CriticalEffects));
+			}
+			if (m_BuffGroups.StatusEffects.CurrentValue.Count > 0)
+			{
+				m_BuffGroupsList.Add(new CharacterInfoBuffGroupVM(Unit.CurrentValue, UIStrings.Instance.Inspect.EffectsStatus, UIConfig.Instance.UIIcons.StatusEffects, m_BuffGroups.StatusEffects));
+			}
+			if (m_BuffGroups.DotEffects.CurrentValue.Count > 0)
+			{
+				m_BuffGroupsList.Add(new CharacterInfoBuffGroupVM(Unit.CurrentValue, UIStrings.Instance.Inspect.EffectsDOT, UIConfig.Instance.UIIcons.DotEffects, m_BuffGroups.DotEffects));
+			}
+			if (m_BuffGroups.NegativeEffects.CurrentValue.Count > 0)
+			{
+				m_BuffGroupsList.Add(new CharacterInfoBuffGroupVM(Unit.CurrentValue, UIStrings.Instance.Inspect.EffectsNegative, UIConfig.Instance.UIIcons.NegativeEffects, m_BuffGroups.NegativeEffects));
+			}
+			if (m_BuffGroups.PositiveEffects.CurrentValue.Count > 0)
+			{
+				m_BuffGroupsList.Add(new CharacterInfoBuffGroupVM(Unit.CurrentValue, UIStrings.Instance.Inspect.EffectsPositive, UIConfig.Instance.UIIcons.PositiveEffects, m_BuffGroups.PositiveEffects));
+			}
+		}
 	}
 }

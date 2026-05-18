@@ -6,7 +6,6 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -43,10 +42,7 @@ public class FactsChangeTrigger : UnitFactComponentDelegate, IEntityGainFactHand
 	{
 		if (fact.Owner is BaseUnitEntity baseUnitEntity && baseUnitEntity == base.Owner && OnFactGainedActions.HasActions && (!CheckedFacts.Any() || CheckedFacts.Contains(fact.Blueprint)))
 		{
-			using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-			{
-				base.Fact.RunActionInContext(OnFactGainedActions, base.Owner.ToITargetWrapper());
-			}
+			base.Fact.RunActionInContext(OnFactGainedActions, base.Owner);
 		}
 	}
 
@@ -54,10 +50,7 @@ public class FactsChangeTrigger : UnitFactComponentDelegate, IEntityGainFactHand
 	{
 		if (fact.Owner is BaseUnitEntity baseUnitEntity && baseUnitEntity == base.Owner && OnFactLostActions.HasActions && (!CheckedFacts.Any() || CheckedFacts.Contains(fact.Blueprint)))
 		{
-			using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-			{
-				base.Fact.RunActionInContext(OnFactLostActions, base.Owner.ToITargetWrapper());
-			}
+			base.Fact.RunActionInContext(OnFactLostActions, base.Owner);
 		}
 	}
 }

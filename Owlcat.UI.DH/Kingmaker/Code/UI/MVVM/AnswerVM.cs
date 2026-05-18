@@ -20,7 +20,6 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Settings;
 using Kingmaker.UI.Common.DebugInformation;
 using Kingmaker.UI.Sound;
-using Kingmaker.UnitLogic.Alignments;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
@@ -89,8 +88,6 @@ public class AnswerVM : ViewModel, IBookEventUIHandler, ISubscriber, INetPingDia
 
 	public bool CanSelect => Answer.CanSelect();
 
-	public bool IsRequirementSatisfied => Answer.IsRequirementsSatisfied();
-
 	public bool IsAlreadySelected => Game.Instance.DialogState.SelectedAnswersContains(Answer);
 
 	public bool IsCurrentUnselectedWithNewAnswers
@@ -113,9 +110,9 @@ public class AnswerVM : ViewModel, IBookEventUIHandler, ISubscriber, INetPingDia
 	{
 		get
 		{
-			if (!Answer.HasConditions && !Answer.HasExchangeData && !HasVisibleSkillChecks && !HasVisibleSkillCheckRequirement)
+			if (!Answer.HasConditions && !Answer.HasExchangeData && !HasVisibleSkillChecks && !HasVisibleSkillCheckRequirement && !HasRelatedDetectiveItems && !HasVisibleConvictionShifts)
 			{
-				return HasRelatedDetectiveItems;
+				return HasCloseCaseData;
 			}
 			return true;
 		}
@@ -126,6 +123,8 @@ public class AnswerVM : ViewModel, IBookEventUIHandler, ISubscriber, INetPingDia
 	public bool HasVisibleExchangeData => Answer.HasExchangeData;
 
 	public bool HasRelatedDetectiveItems => Answer.GetRelatedCaseItems().Any();
+
+	public bool HasCloseCaseData => Answer.GetCloseCaseData().Any();
 
 	public string ExchangeIDText => Answer.AssetGuid;
 
@@ -169,25 +168,29 @@ public class AnswerVM : ViewModel, IBookEventUIHandler, ISubscriber, INetPingDia
 		}
 	}
 
-	public string ConvictionDirection => UIUtilityText.GetSoulMarkDirectionText(Answer.AlignmentShiftAxis).Text ?? "";
-
-	public int ConvictionRankIndex => AlignmentShiftExtension.GetAlignmentMarkRankIndex(Answer.AlignmentShiftAxis, Answer.AlignmentShiftRank);
-
-	public string ConvictionRankText => UIUtilityText.GetSoulMarkRankText(ConvictionRankIndex + 1).Text ?? "";
-
-	public bool HasVisibleConvictionShifts
+	public bool ShowSpoiler
 	{
 		get
 		{
-			if (!HasConditions && (bool)DialogSettings.ShowAlignmentShiftsInAnswer && Answer.AlignmentShifts.Any())
+			if (!Answer.CanSelect())
 			{
-				return Answer.AlignmentShiftRank != 0;
+				return HasVisibleConvictionRequirements;
 			}
 			return false;
 		}
 	}
 
-	public string ConvictionShiftText => string.Format(UIDialog.Instance.AligmentShiftedFormat, UIUtilityText.GetSoulMarkDirectionText(Answer.AlignmentShiftAxis).Text);
+	public bool HasVisibleConvictionShifts
+	{
+		get
+		{
+			if (!HasConditions && (bool)DialogSettings.ShowAlignmentShiftsInAnswer)
+			{
+				return Answer.AlignmentShifts.Any();
+			}
+			return false;
+		}
+	}
 
 	public Observable<Unit> VotedPlayersChanged => m_VotedPlayersChanged;
 
@@ -295,7 +298,7 @@ public class AnswerVM : ViewModel, IBookEventUIHandler, ISubscriber, INetPingDia
 		}
 		else
 		{
-			UISounds.Instance.Sounds.Coop.DialogVotePing.Play();
+			CoopSounds.Instance.Pings.DialogVotePing.Play();
 			VotedPlayers.Add(player);
 			UpdateAnswerVotes();
 		}
@@ -310,7 +313,7 @@ public class AnswerVM : ViewModel, IBookEventUIHandler, ISubscriber, INetPingDia
 		ReadonlyList<PlayerInfo> activePlayers = PhotonManager.Instance.ActivePlayers;
 		AnswerVotes.Clear();
 		AnswerVotes = VotedPlayers.Select((NetPlayer player) => activePlayers.FirstOrDefault((PlayerInfo p) => player.Index == p.NetPlayer.Index)).ToList();
-		m_VotedPlayersChanged.Execute();
+		m_VotedPlayersChanged.Execute(Unit.Default);
 	}
 
 	private void SetupTooltip()

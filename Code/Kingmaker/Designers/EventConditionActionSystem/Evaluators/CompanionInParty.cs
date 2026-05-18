@@ -8,11 +8,11 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
+using Kingmaker.Utility.Attributes;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Evaluators;
 
@@ -25,8 +25,6 @@ public class CompanionInParty : AbstractUnitEvaluator, IOwlPackable<CompanionInP
 {
 	[ValidateNotNull]
 	[SerializeField]
-	[FormerlySerializedAs("companion")]
-	[FormerlySerializedAs("m_companion")]
 	private BlueprintUnitReference m_Companion;
 
 	[Tooltip("Зарекручен и находится в активной партии")]
@@ -41,6 +39,18 @@ public class CompanionInParty : AbstractUnitEvaluator, IOwlPackable<CompanionInP
 	[Tooltip("Анрекручен, т.е. удален из ростера")]
 	public bool IncludeExCompanions;
 
+	[ShowIf("IncludeExCompanions")]
+	[Tooltip("Анрекручен как InReserve")]
+	public bool IncludeInReserveEx;
+
+	[ShowIf("IncludeExCompanions")]
+	[Tooltip("Анрекручен как Kicked")]
+	public bool IncludeKickedEx;
+
+	[ShowIf("IncludeExCompanions")]
+	[Tooltip("Анрекручен как Dead")]
+	public bool IncludeDeadEx;
+
 	[Tooltip("Индекс юнита, подпадающего под условия")]
 	public int Index;
 
@@ -53,49 +63,6 @@ public class CompanionInParty : AbstractUnitEvaluator, IOwlPackable<CompanionInP
 
 	public BlueprintUnit Companion => m_Companion;
 
-	protected override AbstractUnitEntity GetAbstractUnitEntityInternal()
-	{
-		return Game.Instance.Player.AllCrossSceneUnits.Where(IsMatchingFilters).Skip(Index).FirstOrDefault();
-	}
-
-	private bool IsMatchingFilters(BaseUnitEntity unit)
-	{
-		if (!IsCompanion(unit.Blueprint))
-		{
-			return false;
-		}
-		switch (unit.GetOptional<UnitPartCompanion>()?.State ?? CompanionState.None)
-		{
-		case CompanionState.InParty:
-			if (IncludeActive)
-			{
-				break;
-			}
-			goto case CompanionState.None;
-		case CompanionState.Remote:
-			if (IncludeRemote)
-			{
-				break;
-			}
-			goto case CompanionState.None;
-		case CompanionState.ExCompanion:
-			if (IncludeExCompanions)
-			{
-				break;
-			}
-			goto case CompanionState.None;
-		case CompanionState.InPartyDetached:
-			if (IncludeDetached)
-			{
-				break;
-			}
-			goto case CompanionState.None;
-		case CompanionState.None:
-			return false;
-		}
-		return true;
-	}
-
 	private bool IsCompanion(BlueprintUnit unit)
 	{
 		if (!m_Companion.Is(unit))
@@ -107,6 +74,55 @@ public class CompanionInParty : AbstractUnitEvaluator, IOwlPackable<CompanionInP
 			return false;
 		}
 		return true;
+	}
+
+	protected override AbstractUnitEntity GetAbstractUnitEntityInternal()
+	{
+		return Game.Instance.Player.AllCrossSceneUnits.Where(IsMatchingFilters).Skip(Index).FirstOrDefault();
+	}
+
+	private bool IsMatchingFilters(BaseUnitEntity unit)
+	{
+		if (!IsCompanion(unit.Blueprint))
+		{
+			return false;
+		}
+		UnitPartCompanion optional = unit.GetOptional<UnitPartCompanion>();
+		CompanionState companionState = optional?.State ?? CompanionState.None;
+		CompanionExState companionExState = optional?.ExState ?? CompanionExState.InReserve;
+		bool flag = !IncludeInReserveEx && !IncludeKickedEx && !IncludeDeadEx;
+		switch (companionState)
+		{
+		case CompanionState.InParty:
+			if (!IncludeActive)
+			{
+				break;
+			}
+			goto IL_00cf;
+		case CompanionState.Remote:
+			if (!IncludeRemote)
+			{
+				break;
+			}
+			goto IL_00cf;
+		case CompanionState.ExCompanion:
+			if ((!IncludeExCompanions || companionExState != 0 || !IncludeInReserveEx) && (!IncludeExCompanions || companionExState != CompanionExState.Kicked || !IncludeKickedEx) && (!IncludeExCompanions || companionExState != CompanionExState.Dead || !IncludeDeadEx) && !(IncludeExCompanions && flag))
+			{
+				break;
+			}
+			goto IL_00cf;
+		case CompanionState.InPartyDetached:
+			{
+				if (!IncludeDetached)
+				{
+					break;
+				}
+				goto IL_00cf;
+			}
+			IL_00cf:
+			return true;
+		}
+		return false;
 	}
 
 	public override string GetCaption()

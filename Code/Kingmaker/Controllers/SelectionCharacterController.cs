@@ -21,7 +21,7 @@ using R3;
 
 namespace Kingmaker.Controllers;
 
-public class SelectionCharacterController : IControllerStart, IController, IControllerEnable, IControllerTick, IControllerStop, IControllerReset, IFullScreenUIHandler, ISubscriber, IFullScreenUIHandlerWorkaround, IPartyHandler, ISubscriber<IBaseUnitEntity>, ITurnBasedModeHandler, IForceShowActionBarUIHandler
+public class SelectionCharacterController : IControllerStart, IController, IControllerEnable, IControllerTick, IControllerStop, IControllerReset, IFullScreenUIHandler, ISubscriber, IFullScreenUIHandlerWorkaround, IPartyHandler, ISubscriber<IBaseUnitEntity>, ITurnBasedModeHandler, IForceShowActionBarUIHandler, IInGameHandler, ISubscriber<IEntity>
 {
 	public readonly ReactiveProperty<BaseUnitEntity> SelectedUnit = new ReactiveProperty<BaseUnitEntity>();
 
@@ -48,8 +48,6 @@ public class SelectionCharacterController : IControllerStart, IController, ICont
 	private CompositeDisposable m_SelectedUnitsSubscription;
 
 	private bool m_ControllerStarted;
-
-	private bool m_ForceShowActionBar;
 
 	public ObservableList<BaseUnitEntity> SelectedUnits { get; } = new ObservableList<BaseUnitEntity>();
 
@@ -255,7 +253,7 @@ public class SelectionCharacterController : IControllerStart, IController, ICont
 		m_NeedUpdate = true;
 	}
 
-	private void UpdateSelectedUnits()
+	private void UpdateSelectedUnits(bool forcedSingleSelection = false)
 	{
 		UtilityParty.GetGroup(m_ActualGroup, WithRemote, WithRemote);
 		if (!GameUIState.Instance.IsInMainMenu)
@@ -265,7 +263,7 @@ public class SelectionCharacterController : IControllerStart, IController, ICont
 				SelectionManagerFacade.UnselectUnit(item);
 			}
 		}
-		IsSingleSelected.Value = Game.Instance.IsControllerGamepad || SelectedUnits.Count == 1 || m_ForceShowActionBar;
+		IsSingleSelected.Value = Game.Instance.IsControllerGamepad || SelectedUnits.Count == 1 || forcedSingleSelection;
 		if (IsSingleSelected.Value)
 		{
 			SingleSelectedUnit.Value = (Game.Instance.IsControllerMouse ? FirstSelectedUnit : SelectedUnit.Value);
@@ -324,7 +322,7 @@ public class SelectionCharacterController : IControllerStart, IController, ICont
 
 	public void ReselectCurrentUnit()
 	{
-		IsSingleSelected.Value = Game.Instance.IsControllerGamepad || SelectedUnits.Count == 1 || m_ForceShowActionBar;
+		IsSingleSelected.Value = Game.Instance.IsControllerGamepad || SelectedUnits.Count == 1;
 		if (IsSingleSelected.Value)
 		{
 			SingleSelectedUnit.Value = (Game.Instance.IsControllerMouse ? FirstSelectedUnit : SelectedUnit.Value);
@@ -350,7 +348,11 @@ public class SelectionCharacterController : IControllerStart, IController, ICont
 
 	public void HandleForceShowActionBar(bool state)
 	{
-		m_ForceShowActionBar = state;
-		UpdateSelectedUnits();
+		UpdateSelectedUnits(state);
+	}
+
+	public void HandleObjectInGameChanged()
+	{
+		m_NeedUpdate = true;
 	}
 }

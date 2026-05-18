@@ -12,8 +12,15 @@ public static class NetMessageSerializer
 	{
 		MemoryPackBuffer.Clear();
 		MemoryPackSerializer.ResetWriterState();
-		CustomArrayBufferWriter<byte> bufferWriter = MemoryPackBuffer;
-		MemoryPackSerializer.Serialize(in bufferWriter, in value);
+		try
+		{
+			CustomArrayBufferWriter<byte> bufferWriter = MemoryPackBuffer;
+			MemoryPackSerializer.Serialize(in bufferWriter, in value);
+		}
+		catch (Exception ex)
+		{
+			PFLog.Net.Exception(ex);
+		}
 		return PhotonManager.Instance.ByteArraySlicePool.Acquire(MemoryPackBuffer.GetArray(), 0, MemoryPackBuffer.WrittenCount);
 	}
 
@@ -24,7 +31,17 @@ public static class NetMessageSerializer
 
 	public static T DeserializeFromSpan<T>(ReadOnlySpan<byte> span)
 	{
-		MemoryPackSerializer.ResetReaderState();
-		return MemoryPackSerializer.Deserialize<T>(span);
+		T result = default(T);
+		try
+		{
+			MemoryPackSerializer.ResetReaderState();
+			result = MemoryPackSerializer.Deserialize<T>(span);
+			return result;
+		}
+		catch (Exception ex)
+		{
+			PFLog.Net.Exception(ex);
+		}
+		return result;
 	}
 }

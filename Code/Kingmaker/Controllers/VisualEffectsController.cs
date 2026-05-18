@@ -6,8 +6,11 @@ using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Controllers.Projectiles;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Enums.Sound;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -22,7 +25,6 @@ using Kingmaker.UnitLogic.Abilities.Visual.Blueprints;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Visual.Animation.Kingmaker;
@@ -30,6 +32,7 @@ using Kingmaker.Visual.FX;
 using Kingmaker.Visual.HitSystem;
 using Kingmaker.Visual.Particles;
 using Kingmaker.Visual.Sound;
+using Owlcat.Plugins.DotNetExtensions;
 using UnityEngine;
 
 namespace Kingmaker.Controllers;
@@ -125,7 +128,7 @@ public class VisualEffectsController : IController, IAnimationEventHandler, ISub
 		}
 	}
 
-	private static void TryPlaySoundFX([NotNull] MechanicsContext context, [CanBeNull] TargetWrapper target, [NotNull] AreaEffectEntity areaEffect, AbilityEventType abilityEvent)
+	private static void TryPlaySoundFX([NotNull] IEvalContext context, [CanBeNull] TargetWrapper target, [NotNull] AreaEffectEntity areaEffect, AbilityEventType abilityEvent)
 	{
 		BlueprintAbilitySoundFXSettings blueprintAbilitySoundFXSettings = areaEffect?.FXSettings?.SoundFXSettings;
 		if (blueprintAbilitySoundFXSettings != null)
@@ -166,16 +169,14 @@ public class VisualEffectsController : IController, IAnimationEventHandler, ISub
 
 	private static void TryPlayAnimationHit(RuleDealDamage rule)
 	{
-		UnitAnimationManager maybeAnimationManager = rule.Target.MaybeAnimationManager;
-		if (!(maybeAnimationManager == null))
+		UnitAnimationManager unitAnimationManager = rule.Target.MaybeAnimationManager as UnitAnimationManager;
+		if (!(unitAnimationManager == null))
 		{
-			UnitAnimationActionHandle unitAnimationActionHandle = maybeAnimationManager.CreateHandle(UnitAnimationType.Hit, errorOnEmpty: false);
-			if (unitAnimationActionHandle != null)
+			unitAnimationManager.TryExecute(UnitAnimationType.Hit, delegate(UnitAnimationActionHandle handle)
 			{
-				unitAnimationActionHandle.HitDirection = ((rule.Target != null && rule.Initiator != null) ? (rule.Initiator.Position - rule.Target.Position) : Vector3.zero);
-				unitAnimationActionHandle.Spell = rule.Reason.Context?.SourceAbilityBlueprint;
-				maybeAnimationManager.Execute(unitAnimationActionHandle);
-			}
+				handle.HitDirection = ((rule.Target != null && rule.Initiator != null) ? (rule.Initiator.Position - rule.Target.Position) : Vector3.zero);
+				handle.Spell = rule.Reason.Context?.SourceAbilityBlueprint;
+			}, out var _);
 		}
 	}
 
@@ -264,30 +265,48 @@ public class VisualEffectsController : IController, IAnimationEventHandler, ISub
 				if (dealDamage.Reason.Fact is Buff buff2)
 				{
 					buff2.PlayedFirstHitSound = true;
-					AkSwitchReference soundTypeSwitch = buff2.Blueprint.SoundTypeSwitch;
-					if (soundTypeSwitch.IsValid())
+					BlueprintAbilityFXSettings fXSettings = buff2.Blueprint.FXSettings;
+					AkSwitchReference akSwitchReference2 = fXSettings?.ProjectileTypeSwitch;
+					if (akSwitchReference2.IsValid())
 					{
-						AkUnitySoundEngine.SetSwitch(soundTypeSwitch.Group, soundTypeSwitch.Value, unitEntity.View.gameObject);
+						AkUnitySoundEngine.SetSwitch(akSwitchReference2.Group, akSwitchReference2.Value, unitEntity.View.gameObject);
 					}
-					AkSwitchReference muffledTypeSwitch = buff2.Blueprint.MuffledTypeSwitch;
-					if (muffledTypeSwitch.IsValid())
+					AkSwitchReference akSwitchReference3 = fXSettings?.MuffledTypeSwitch;
+					if (akSwitchReference3.IsValid())
 					{
-						AkUnitySoundEngine.SetSwitch(muffledTypeSwitch.Group, muffledTypeSwitch.Value, unitEntity.View.gameObject);
+						AkUnitySoundEngine.SetSwitch(akSwitchReference3.Group, akSwitchReference3.Value, unitEntity.View.gameObject);
+					}
+					if (fXSettings != null && fXSettings.OverrideDamageType)
+					{
+						AkSwitchReference damageSoundSwitch = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(fXSettings.DamageType);
+						if (damageSoundSwitch.IsValid())
+						{
+							AkUnitySoundEngine.SetSwitch(damageSoundSwitch.Group, damageSoundSwitch.Value, unitEntity.View.gameObject);
+						}
 					}
 				}
-				else if (dealDamage.SourceAbility?.Weapon?.Blueprint.VisualParameters != null)
+				else if (dealDamage.SourceAbility?.FXSettings != null)
 				{
 					try
 					{
-						AkSwitchReference akSwitchReference2 = dealDamage.SourceAbility?.Weapon?.Blueprint.VisualParameters.SoundTypeSwitch;
-						if (akSwitchReference2.IsValid())
+						BlueprintAbilityFXSettings blueprintAbilityFXSettings = dealDamage.SourceAbility?.FXSettings;
+						AkSwitchReference akSwitchReference4 = blueprintAbilityFXSettings?.ProjectileTypeSwitch;
+						if (akSwitchReference4.IsValid())
 						{
-							AkUnitySoundEngine.SetSwitch(akSwitchReference2.Group, akSwitchReference2.Value, unitEntity.View.gameObject);
+							AkUnitySoundEngine.SetSwitch(akSwitchReference4.Group, akSwitchReference4.Value, unitEntity.View.gameObject);
 						}
-						AkSwitchReference akSwitchReference3 = dealDamage.SourceAbility?.Weapon?.Blueprint.VisualParameters.MuffledTypeSwitch;
-						if (akSwitchReference3.IsValid())
+						AkSwitchReference akSwitchReference5 = blueprintAbilityFXSettings?.MuffledTypeSwitch;
+						if (akSwitchReference5.IsValid())
 						{
-							AkUnitySoundEngine.SetSwitch(akSwitchReference3.Group, akSwitchReference3.Value, unitEntity.View.gameObject);
+							AkUnitySoundEngine.SetSwitch(akSwitchReference5.Group, akSwitchReference5.Value, unitEntity.View.gameObject);
+						}
+						if (blueprintAbilityFXSettings != null && blueprintAbilityFXSettings.OverrideDamageType)
+						{
+							AkSwitchReference damageSoundSwitch2 = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(blueprintAbilityFXSettings.DamageType);
+							if (damageSoundSwitch2.IsValid())
+							{
+								AkUnitySoundEngine.SetSwitch(damageSoundSwitch2.Group, damageSoundSwitch2.Value, unitEntity.View.gameObject);
+							}
 						}
 					}
 					catch
@@ -297,15 +316,24 @@ public class VisualEffectsController : IController, IAnimationEventHandler, ISub
 				}
 				else
 				{
-					AkSwitchReference damageSoundSwitch = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(dealDamage.ResultDamage.Type);
-					if (damageSoundSwitch.IsValid())
+					AkSwitchReference damageSoundSwitch3 = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(dealDamage.ResultDamage.Type);
+					if (damageSoundSwitch3.IsValid())
 					{
-						AkUnitySoundEngine.SetSwitch(damageSoundSwitch.Group, damageSoundSwitch.Value, unitEntity.View.gameObject);
+						AkUnitySoundEngine.SetSwitch(damageSoundSwitch3.Group, damageSoundSwitch3.Value, unitEntity.View.gameObject);
 					}
 				}
-				string text = dealDamage.SourceAbility?.Weapon?.Blueprint?.VisualParameters?.SoundTypeSwitch?.Value ?? string.Empty;
+				string text = dealDamage.SourceAbility?.FXSettings?.ProjectileTypeSwitch?.Value ?? string.Empty;
 				string text2 = unitEntity.Blueprint?.VisualSettings?.BodyTypeSoundSwitch?.Value ?? string.Empty;
 				AkUnitySoundEngine.SetRTPCValue("RTPC_SharpCheck", (text == "Sharp" && text2 == "Flesh") ? 1 : 0, unitEntity.View.gameObject);
+				int num = unitEntity.Actor.GetStat(StatType.MaxArmorDurability, null, default(StatContext), "HandleDamageDealt");
+				float value = ((num > 0) ? ((float)dealDamage.DurabilityAfterDamage / (float)num) : 0f);
+				value = Mathf.Clamp01(value);
+				AkUnitySoundEngine.SetRTPCValue("RTPC_AP_Amount", value, unitEntity.View.gameObject);
+				AkSwitchReference akSwitchReference6 = unitEntity.Body.Armor.MaybeArmor?.Blueprint.VisualParameters.SoundSwitch;
+				if (akSwitchReference6 != null && !akSwitchReference6.Value.IsNullOrEmpty())
+				{
+					akSwitchReference6.Set(unitEntity.View.gameObject);
+				}
 				SoundEventPlayer.PlaySound(ConfigRoot.Instance.HitSystemRoot.GlobalHitEffect.HitMarkSoundSettings, dealDamage.ConcreteTarget.View.gameObject);
 			}
 		}
@@ -325,10 +353,19 @@ public class VisualEffectsController : IController, IAnimationEventHandler, ISub
 		AkUnitySoundEngine.SetSwitch(hitEntry.Switch.Group, hitEntry.Switch.Value, destructibleEntity.View.gameObject);
 		try
 		{
-			AkSwitchReference akSwitchReference4 = dealDamage.SourceAbility?.Weapon?.Blueprint.VisualParameters.SoundTypeSwitch;
-			if (akSwitchReference4.IsValid())
+			BlueprintAbilityFXSettings blueprintAbilityFXSettings2 = dealDamage.SourceAbility?.FXSettings;
+			AkSwitchReference akSwitchReference7 = blueprintAbilityFXSettings2?.ProjectileTypeSwitch;
+			if (akSwitchReference7.IsValid())
 			{
-				AkUnitySoundEngine.SetSwitch(akSwitchReference4.Group, akSwitchReference4.Value, destructibleEntity.View.gameObject);
+				AkUnitySoundEngine.SetSwitch(akSwitchReference7.Group, akSwitchReference7.Value, destructibleEntity.View.gameObject);
+			}
+			if (blueprintAbilityFXSettings2 != null && blueprintAbilityFXSettings2.OverrideDamageType)
+			{
+				AkSwitchReference damageSoundSwitch4 = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(blueprintAbilityFXSettings2.DamageType);
+				if (damageSoundSwitch4.IsValid())
+				{
+					AkUnitySoundEngine.SetSwitch(damageSoundSwitch4.Group, damageSoundSwitch4.Value, destructibleEntity.View.gameObject);
+				}
 			}
 		}
 		catch
@@ -348,27 +385,26 @@ public class VisualEffectsController : IController, IAnimationEventHandler, ISub
 
 	void IWarhammerAttackHandler.HandleAttack(RulePerformAttack rule)
 	{
-		if (rule.Result != AttackResult.Defended)
+		if (rule.Result == AttackResult.Defended)
 		{
-			return;
-		}
-		UnitAnimationManager maybeAnimationManager = rule.Target.MaybeAnimationManager;
-		if (!(maybeAnimationManager == null))
-		{
-			UnitAnimationActionHandle unitAnimationActionHandle = maybeAnimationManager.CreateHandle(UnitAnimationType.Defence, errorOnEmpty: false);
-			if (unitAnimationActionHandle != null)
+			UnitAnimationManager unitAnimationManager = rule.Target.MaybeAnimationManager as UnitAnimationManager;
+			if (!(unitAnimationManager == null))
 			{
-				maybeAnimationManager.Execute(unitAnimationActionHandle);
+				unitAnimationManager.TryExecute(UnitAnimationType.Defence);
 			}
 		}
 	}
 
 	public void HandleAreaEffectSpawned()
 	{
-		if (EventInvokerExtensions.Entity is AreaEffectEntity { Context: { MaybeCaster: not null } context } areaEffectEntity)
+		if (EventInvokerExtensions.Entity is AreaEffectEntity areaEffectEntity)
 		{
-			TryPlayAreaEffectFX(context.MaybeCaster, context.ClickedTarget, areaEffectEntity, null, AbilityEventType.Start);
-			TryPlaySoundFX(context, context.ClickedTarget, areaEffectEntity, AbilityEventType.Start);
+			AbilityExecutionContext abilityExecutionContext = areaEffectEntity.Context?.AsAbilityContext;
+			if (abilityExecutionContext != null && abilityExecutionContext.MaybeCaster != null)
+			{
+				TryPlayAreaEffectFX(abilityExecutionContext.MaybeCaster, abilityExecutionContext.ClickedTarget, areaEffectEntity, null, AbilityEventType.Start);
+				TryPlaySoundFX(abilityExecutionContext, abilityExecutionContext.ClickedTarget, areaEffectEntity, AbilityEventType.Start);
+			}
 		}
 	}
 

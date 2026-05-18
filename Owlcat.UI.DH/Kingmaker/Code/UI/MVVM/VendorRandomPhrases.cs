@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Code.View.UI.MVVM;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
@@ -9,22 +11,14 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
+[Serializable]
 public class VendorRandomPhrases : StringsContainer
 {
-	[Header("Drusians")]
-	public List<LocalizedString> HelloPhrasesDrusians;
+	[SerializeField]
+	private EnumToObjectSelector<FactionType, List<LocalizedString>> m_HelloPhrases = new EnumToObjectSelector<FactionType, List<LocalizedString>>();
 
-	public List<LocalizedString> FinishDealPhrasesDrusians;
-
-	[Header("Explorators")]
-	public List<LocalizedString> HelloPhrasesExplorators;
-
-	public List<LocalizedString> FinishDealPhrasesExplorators;
-
-	[Header("Kasballica")]
-	public List<LocalizedString> HelloPhrasesKasballica;
-
-	public List<LocalizedString> FinishDealPhrasesKasballica;
+	[SerializeField]
+	private EnumToObjectSelector<FactionType, List<LocalizedString>> m_FinishDealPhrases = new EnumToObjectSelector<FactionType, List<LocalizedString>>();
 
 	[Header("Special Vendors Phrases")]
 	public SpecialPhrasesDict[] SpecialPhrases;
@@ -38,27 +32,17 @@ public class VendorRandomPhrases : StringsContainer
 		{
 			if (specialPhrasesDict.Vendors.Any((BlueprintUnitReference x) => x.Is(unit?.Blueprint)))
 			{
-				m_Index = Random.Range(0, specialPhrasesDict.HelloPhrases.Count);
+				m_Index = UnityEngine.Random.Range(0, specialPhrasesDict.HelloPhrases.Count);
 				return specialPhrasesDict.HelloPhrases[m_Index];
 			}
 		}
-		List<LocalizedString> list = null;
-		switch (factionType)
+		List<LocalizedString> entity = m_HelloPhrases.GetEntity(factionType);
+		if (entity == null || entity.Count == 0)
 		{
-		case FactionType.Drusians:
-			list = HelloPhrasesDrusians;
-			break;
-		case FactionType.Explorators:
-			list = HelloPhrasesExplorators;
-			break;
-		case FactionType.Kasballica:
-			list = HelloPhrasesKasballica;
-			break;
-		default:
 			return string.Empty;
 		}
-		m_Index = Random.Range(0, list.Count);
-		return list[m_Index];
+		m_Index = UnityEngine.Random.Range(0, entity.Count);
+		return entity[m_Index];
 	}
 
 	public string TakeFinishDealPhrase(FactionType factionType, BaseUnitEntity unit)
@@ -68,24 +52,16 @@ public class VendorRandomPhrases : StringsContainer
 		{
 			if (specialPhrasesDict.Vendors.Any((BlueprintUnitReference x) => x.Is(unit.Blueprint)))
 			{
-				m_Index = Random.Range(0, specialPhrasesDict.FinishDealPhrases.Count);
+				m_Index = UnityEngine.Random.Range(0, specialPhrasesDict.FinishDealPhrases.Count);
 				return specialPhrasesDict.FinishDealPhrases[m_Index];
 			}
 		}
-		List<LocalizedString> list = null;
-		switch (factionType)
+		List<LocalizedString> entity = m_FinishDealPhrases.GetEntity(factionType);
+		if (entity == null || entity.Count == 0)
 		{
-		case FactionType.Drusians:
-			list = FinishDealPhrasesDrusians;
-			break;
-		case FactionType.Explorators:
-			list = FinishDealPhrasesExplorators;
-			break;
-		case FactionType.Kasballica:
-			list = FinishDealPhrasesKasballica;
-			break;
+			return string.Empty;
 		}
-		m_Index = Random.Range(0, list.Count);
-		return list[m_Index];
+		m_Index = UnityEngine.Random.Range(0, entity.Count);
+		return entity[m_Index];
 	}
 }

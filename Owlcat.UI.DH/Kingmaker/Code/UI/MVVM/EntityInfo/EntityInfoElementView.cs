@@ -17,7 +17,12 @@ public class EntityInfoElementView : MonoBehaviour
 	private GameObject m_Underline;
 
 	[SerializeField]
+	private GameObject m_DotEffectContainer;
+
+	[SerializeField]
 	private DOTEffectIconWidget m_DotEffect;
+
+	private Color? m_DefaultDescriptionColor;
 
 	public void SetIcon(Sprite icon)
 	{
@@ -41,13 +46,21 @@ public class EntityInfoElementView : MonoBehaviour
 
 	public void SetDOT(DOT? dotType)
 	{
-		if (!dotType.HasValue)
-		{
-			m_DotEffect.SetActive(isActive: false);
-		}
-		else
+		m_DotEffectContainer.SetActive(dotType.HasValue);
+		if (dotType.HasValue)
 		{
 			m_DotEffect.SetDOTType(dotType.Value);
 		}
+	}
+
+	public void SetTextColor(Color? color)
+	{
+		Color valueOrDefault = m_DefaultDescriptionColor.GetValueOrDefault();
+		if (!m_DefaultDescriptionColor.HasValue)
+		{
+			valueOrDefault = m_Description.color;
+			m_DefaultDescriptionColor = valueOrDefault;
+		}
+		m_Description.color = color ?? m_DefaultDescriptionColor.Value;
 	}
 }

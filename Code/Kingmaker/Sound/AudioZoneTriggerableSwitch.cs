@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.UnitLogic.Mechanics;
 using UnityEngine;
 
 namespace Kingmaker.Sound;
@@ -36,7 +36,7 @@ public class AudioZoneTriggerableSwitch : MonoBehaviour, IAbilitySoundZoneTrigge
 		EventBus.Unsubscribe(this);
 	}
 
-	public void TriggerSoundZone(MechanicsContext context, GameObject go)
+	public void TriggerSoundZone(IEvalContext context, GameObject go)
 	{
 		Bounds bounds = new Bounds(Bounds.center + base.transform.position, Bounds.size);
 		if (bounds.Contains(go.transform.position) && !m_SelectedEvents)

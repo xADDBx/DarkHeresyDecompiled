@@ -5,6 +5,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Groups;
@@ -42,7 +43,7 @@ public class SwitchFaction : GameAction
 		{
 			return;
 		}
-		List<AbstractUnitEntity> list;
+		List<Entity> list;
 		using ((baseUnitEntity.Group?.Members ?? Enumerable.Empty<AbstractUnitEntity>()).ToPooledList(out list))
 		{
 			if (list.Count > 1 && !IncludeGroup)

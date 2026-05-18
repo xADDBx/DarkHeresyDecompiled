@@ -33,4 +33,6 @@ public class UITurnBasedTexts
 	public LocalizedString Deploy;
 
 	public LocalizedString AutoEndTurn;
+
+	public LocalizedString BattleBegins;
 }

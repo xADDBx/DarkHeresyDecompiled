@@ -4,12 +4,12 @@ using JetBrains.Annotations;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Items.Slots;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Abilities.Visual.Blueprints;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
@@ -148,12 +148,12 @@ public class ProjectileController : IControllerTick, IController, IControllerSto
 			{
 				m_ViewParent = new GameObject("__Projectiles__").transform;
 			}
-			MechanicEntityView launcherView = projectile.Launcher.Entity?.View;
+			IMechanicEntityView view = projectile.Launcher.Entity?.View;
 			Transform transform;
 			Vector3 vector;
 			if (!customLaunchPosition.HasValue)
 			{
-				transform = FindSourceTransform(projectile, launcherView);
+				transform = FindSourceTransform(projectile, view.AsMechanicEntityView());
 				vector = ((transform != null) ? transform.position : ((projectile.Blueprint.IgnoreGrid && projectile.Launcher.Entity != null) ? projectile.Launcher.Entity.Position : projectile.Launcher.Point));
 			}
 			else
@@ -224,15 +224,14 @@ public class ProjectileController : IControllerTick, IController, IControllerSto
 		MechanicEntity entityData = launcherView.EntityData;
 		if (entityData?.GetOptional<UnitPartTrapActor>() != null)
 		{
-			return launcherView.ViewTransform;
+			return launcherView.transform;
 		}
-		StarshipView starshipView = launcherView.Or(null)?.GetComponentInChildren<StarshipView>();
 		BlueprintAbilityFXSettings blueprintAbilityFXSettings = projectile.Ability?.FXSettings;
-		SnapMapBase snapMapBase = ((starshipView != null) ? starshipView.particleSnapMap : ((!(blueprintAbilityFXSettings?.VisualFXSettings?.ProjectileOriginIsWeapon).GetValueOrDefault()) ? ((SnapMapBase)(launcherView.Or(null)?.ParticlesSnapMap)) : ((SnapMapBase)(((projectile.Ability?.Weapon?.HoldingSlot ?? entityData?.GetFirstWeapon()?.HoldingSlot) as WeaponSlot)?.FxSnapMap))));
-		if (snapMapBase != null)
+		SnapMapBase snapMap = GetSnapMap(projectile, launcherView, entityData);
+		if (snapMap != null)
 		{
 			BlueprintFxLocatorGroup group = blueprintAbilityFXSettings?.VisualFXSettings?.ProjectileOrigin;
-			IReadOnlyList<FxBone> locators = snapMapBase.GetLocators(group);
+			IReadOnlyList<FxBone> locators = snapMap.GetLocators(group);
 			if (locators != null && locators.Count > 1)
 			{
 				if (blueprintAbilityFXSettings?.VisualFXSettings?.UseRandomLocatorInGroup ?? true)
@@ -246,22 +245,36 @@ public class ProjectileController : IControllerTick, IController, IControllerSto
 					return locators[(projectile.Ability?.Weapon?.CurrentUsedBarrel % locators.Count).GetValueOrDefault()].Transform;
 				}
 			}
-			return snapMapBase.GetLocatorFirst(group)?.Transform;
+			return snapMap.GetLocatorFirst(group)?.Transform;
 		}
 		if (!launcherView.IsVisible && launcherView is UnitEntityView unitEntityView && unitEntityView.Data.CutsceneControlledUnit != null)
 		{
-			return launcherView.ViewTransform;
-		}
-		BlueprintAbilityVisualFXSettings blueprintAbilityVisualFXSettings = blueprintAbilityFXSettings?.VisualFXSettings;
-		if (blueprintAbilityVisualFXSettings != null && blueprintAbilityVisualFXSettings.ProjectileOriginIsWeapon)
-		{
-			PFLog.Default.ErrorWithReport(launcherView, $"ProjectileController.CreateView: missing ParticleSnapMap for weapon of {projectile.Launcher.Entity}");
-		}
-		else
-		{
-			PFLog.Default.ErrorWithReport(launcherView, $"ProjectileController.CreateView: missing ParticleSnapMap for {projectile.Launcher.Entity}");
+			return launcherView.transform;
 		}
 		return null;
+	}
+
+	private static SnapMapBase GetSnapMap(Projectile projectile, MechanicEntityView launcherView, MechanicEntity launcherEntity)
+	{
+		bool valueOrDefault = ((projectile.Ability?.FXSettings)?.VisualFXSettings?.ProjectileOriginIsWeapon).GetValueOrDefault();
+		SnapMapBase snapMapBase = null;
+		if (valueOrDefault)
+		{
+			snapMapBase = ((projectile.Ability?.Weapon?.HoldingSlot ?? launcherEntity?.GetFirstWeapon()?.HoldingSlot) as WeaponSlot)?.FxSnapMap;
+			if (!snapMapBase)
+			{
+				PFLog.TechArt.ErrorWithReport(launcherView, $"ProjectileController.CreateView: missing ParticleSnapMap for weapon of {projectile.Launcher.Entity}");
+			}
+		}
+		if ((object)snapMapBase == null)
+		{
+			snapMapBase = launcherView.Or(null)?.ParticlesSnapMap;
+		}
+		if (!snapMapBase)
+		{
+			PFLog.TechArt.ErrorWithReport(launcherView, $"ProjectileController.CreateView: missing ParticleSnapMap for {projectile.Launcher.Entity}");
+		}
+		return snapMapBase;
 	}
 
 	private static void ApplyLightProbeAnchor(GameObject particleEffect)

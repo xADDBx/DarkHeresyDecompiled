@@ -1,9 +1,8 @@
 using System;
 using System.Linq;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
@@ -22,20 +21,20 @@ public class CorpseNexusLegAveragePosition : PositionEvaluator
 
 	protected override Vector3 GetValueInternal()
 	{
-		MechanicEntity mechanicEntity = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.MaybeCaster;
-		UnitPartCorpseNexusLegs unitPartCorpseNexusLegs = mechanicEntity?.GetOptional<UnitPartCorpseNexusLegs>();
+		MechanicEntity caster = EvalContext.Current.Caster;
+		UnitPartCorpseNexusLegs unitPartCorpseNexusLegs = caster?.GetOptional<UnitPartCorpseNexusLegs>();
 		if (unitPartCorpseNexusLegs == null)
 		{
-			if (mechanicEntity == null)
+			if (caster == null)
 			{
 				throw new FailToEvaluateException(this);
 			}
-			return mechanicEntity.Position;
+			return caster.Position;
 		}
 		Vector3[] source = unitPartCorpseNexusLegs.Legs.Select((CorpseNexusLegData p) => p.Unit.Position).ToArray();
 		if (source.Empty())
 		{
-			return mechanicEntity.Position;
+			return caster.Position;
 		}
 		return new Vector3(source.Average((Vector3 p) => p.x), source.Average((Vector3 p) => p.y), source.Average((Vector3 p) => p.z));
 	}

@@ -9,7 +9,7 @@ using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class TextureSelectorTabsView : BaseCharGenAppearancePageComponentView<TextureSelectorTabsVM>, IFunc01ClickHandler, IConsoleEntity, IConsoleEntityProxy
+public class TextureSelectorTabsView : BaseCharGenAppearancePageComponentView<TextureSelectorTabsVM>
 {
 	[SerializeField]
 	private TextureSelectorGroupView m_GroupView;
@@ -29,8 +29,6 @@ public class TextureSelectorTabsView : BaseCharGenAppearancePageComponentView<Te
 	private bool m_IsInputAdded;
 
 	public override VirtualListLayoutElementSettings LayoutSettings => m_LayoutSettings;
-
-	public IConsoleEntity ConsoleEntityProxy => m_GroupView;
 
 	public bool CanFunc01Click()
 	{
@@ -81,37 +79,8 @@ public class TextureSelectorTabsView : BaseCharGenAppearancePageComponentView<Te
 		Hide();
 	}
 
-	public override void SetFocus(bool value)
+	public void AddInput()
 	{
-		base.SetFocus(value);
-		m_GroupView.SetFocus(value);
-	}
-
-	public override void AddInput(ref InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
-	{
-		if (!m_IsInputAdded)
-		{
-			InputBindStruct inputBindStruct = inputLayer.AddButton(delegate
-			{
-				OnFunc01Click();
-			}, 10, IsFocused);
-			AddDisposable(hintsWidget.BindHint(inputBindStruct, UIStrings.Instance.CharGen.SwitchPageSet));
-			AddDisposable(inputBindStruct);
-			m_IsInputAdded = true;
-			AddDisposable(ObservableSubscribeExtensions.Subscribe(base.ViewModel.OnSetValues, delegate
-			{
-				UpdateInternalFocus();
-			}));
-			AddDisposable(base.ViewModel.CurrentIndex.Subscribe(delegate
-			{
-				UpdateInternalFocus();
-			}));
-		}
-	}
-
-	private void UpdateInternalFocus()
-	{
-		m_GroupView.SetFocus(IsFocused.Value);
 	}
 
 	public void SetTitleText(string title)

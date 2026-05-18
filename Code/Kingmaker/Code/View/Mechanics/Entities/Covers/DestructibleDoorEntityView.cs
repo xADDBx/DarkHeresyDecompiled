@@ -34,6 +34,6 @@ public class DestructibleDoorEntityView : AbstractDestructibleEntityView
 
 	public override Entity CreateEntityData(bool load)
 	{
-		return Entity.Initialize(new CoverEntity(UniqueId, base.IsInGameBySettings, base.Blueprint));
+		return Entity.Initialize(new CoverEntity(this));
 	}
 }

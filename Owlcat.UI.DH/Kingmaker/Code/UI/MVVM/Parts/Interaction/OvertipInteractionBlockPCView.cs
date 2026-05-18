@@ -29,7 +29,7 @@ public class OvertipInteractionBlockPCView : View<OvertipInteractionBlockVM>
 	{
 		get
 		{
-			if (m_Visibility.Value == UnitOvertipVisibility.Maximized && base.ViewModel.MechanicEntityUIState.IsInCombat.CurrentValue && !base.ViewModel.MechanicEntityUIState.HasHiddenCondition.CurrentValue && base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed.CurrentValue)
+			if (m_Visibility.Value == UnitOvertipVisibility.Maximized && base.ViewModel.MechanicEntityUIState.IsInCombat.CurrentValue && !base.ViewModel.MechanicEntityUIState.HideOvertip.CurrentValue && base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed.CurrentValue)
 			{
 				return !base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead.CurrentValue;
 			}
@@ -41,7 +41,7 @@ public class OvertipInteractionBlockPCView : View<OvertipInteractionBlockVM>
 	{
 		get
 		{
-			if (base.ViewModel.MechanicEntityUIState.IsInCombat.CurrentValue && !base.ViewModel.MechanicEntityUIState.HasHiddenCondition.CurrentValue && base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed.CurrentValue)
+			if (base.ViewModel.MechanicEntityUIState.IsInCombat.CurrentValue && !base.ViewModel.MechanicEntityUIState.HideOvertip.CurrentValue && base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed.CurrentValue)
 			{
 				return !base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead.CurrentValue;
 			}
@@ -56,7 +56,7 @@ public class OvertipInteractionBlockPCView : View<OvertipInteractionBlockVM>
 
 	protected override void OnBind()
 	{
-		m_Visibility.CombineLatest(base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.HasHiddenCondition, base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, base.ViewModel.MechanicEntityUIState.IsInCombat, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, (UnitOvertipVisibility _, bool _, bool _, bool _, bool _, bool _) => true).Subscribe(delegate
+		m_Visibility.CombineLatest(base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.HideOvertip, base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, base.ViewModel.MechanicEntityUIState.IsInCombat, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, (UnitOvertipVisibility _, bool _, bool _, bool _, bool _, bool _) => true).Subscribe(delegate
 		{
 			DoVisibility();
 		});

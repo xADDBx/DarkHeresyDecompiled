@@ -100,6 +100,9 @@ public static class StoreManager
 		case StoreType.EpicGames:
 			Logger.Error("EGS is not supported");
 			break;
+		case StoreType.Nintendo:
+			Logger.Error("Store {0} is not supported", Store);
+			break;
 		default:
 			Logger.Log($"Initializing store: unknown store type {Store}");
 			break;

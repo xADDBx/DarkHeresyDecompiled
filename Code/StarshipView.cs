@@ -31,7 +31,7 @@ public class StarshipView : MonoBehaviour, IEntitySubscriber, IUnitEquipmentHand
 
 	private VisualEffect[] m_DriveVisualEffects;
 
-	private UnitMovementAgentBase m_UnitMovementAgent;
+	private UnitMovementAgent m_UnitMovementAgent;
 
 	private bool m_HasMovementAgent;
 
@@ -39,7 +39,7 @@ public class StarshipView : MonoBehaviour, IEntitySubscriber, IUnitEquipmentHand
 	{
 		SetAllEquipment();
 		m_DriveVisualEffects = GetComponentsInChildren<VisualEffect>();
-		m_UnitMovementAgent = GetComponentInParent<UnitMovementAgentBase>();
+		m_UnitMovementAgent = GetComponentInParent<UnitMovementAgent>();
 		m_HasMovementAgent = m_UnitMovementAgent != null;
 	}
 
@@ -61,9 +61,9 @@ public class StarshipView : MonoBehaviour, IEntitySubscriber, IUnitEquipmentHand
 		VisualEffect[] driveVisualEffects = m_DriveVisualEffects;
 		foreach (VisualEffect visualEffect in driveVisualEffects)
 		{
-			if (visualEffect != null && visualEffect.HasFloat("Intencity"))
+			if (visualEffect != null)
 			{
-				visualEffect.SetFloat("Intencity", Mathf.Clamp01(m_UnitMovementAgent.SpeedIndicator));
+				visualEffect.HasFloat("Intencity");
 			}
 		}
 	}

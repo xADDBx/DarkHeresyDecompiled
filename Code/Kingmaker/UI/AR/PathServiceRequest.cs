@@ -19,6 +19,8 @@ public sealed class PathServiceRequest
 
 	public GridGraph Graph;
 
+	public CombatHudPathRenderer.LineMaterialSettingsPerCreatureSize? FadeSettings;
+
 	public void Clear()
 	{
 		source = null;
@@ -28,5 +30,6 @@ public sealed class PathServiceRequest
 		GridSettings = default(GridSettings);
 		PathLineSettings = default(PathLineSettings);
 		Graph = null;
+		FadeSettings = null;
 	}
 }

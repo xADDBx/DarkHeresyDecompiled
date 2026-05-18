@@ -10,8 +10,9 @@ using Kingmaker.Controllers.Optimization;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.Gameplay.Features.AreaEffects.Parts;
 using Kingmaker.Gameplay.Features.AreaEffects.Shapes;
 using Kingmaker.Mechanics.Entities;
@@ -186,6 +187,10 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 
 	[JsonProperty]
 	[OwlPackInclude]
+	private bool m_InitialEntityScanDone;
+
+	[JsonProperty]
+	[OwlPackInclude]
 	private List<EntityInfo> m_EntitiesInside = new List<EntityInfo>();
 
 	private List<EntityRef<MechanicEntity>> m_EntitiesNotInside = new List<EntityRef<MechanicEntity>>();
@@ -226,7 +231,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	{
 		Name = "AreaEffectEntity",
 		OldNames = null,
-		Fields = new FieldInfo[29]
+		Fields = new FieldInfo[30]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -250,6 +255,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			new FieldInfo("m_CreatedFromSceneObject", typeof(bool)),
 			new FieldInfo("ForceEnded", typeof(bool)),
 			new FieldInfo("m_CanAffectAllies", typeof(bool)),
+			new FieldInfo("m_InitialEntityScanDone", typeof(bool)),
 			new FieldInfo("m_EntitiesInside", typeof(List<EntityInfo>)),
 			new FieldInfo("m_CasterDisappearTime", typeof(TimeSpan?)),
 			new FieldInfo("m_ForceInitiative", typeof(float?)),
@@ -299,6 +305,8 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 
 	public EntityEventDelegate OnEntityEndTurn { get; set; }
 
+	public bool IsInInitialEntityScan { get; private set; }
+
 	public IScriptZoneShape Shape
 	{
 		get
@@ -334,9 +342,14 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		}
 	}
 
+	public string ViewName => Config?.ViewName ?? "AreaEffectView";
+
 	public bool IsAllArea => base.Blueprint.IsAllArea;
 
-	public new AreaEffectView View => (AreaEffectView)base.View;
+	[CanBeNull]
+	public new IAreaEffectView View => (IAreaEffectView)base.View;
+
+	public new IAreaEffectConfig Config => (IAreaEffectConfig)base.Config;
 
 	public NodeList CoveredNodes => Shape.CoveredNodes;
 
@@ -410,26 +423,26 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		return m_EntitiesNotInside.Contains(entity);
 	}
 
-	public AreaEffectEntity([NotNull] AreaEffectView view, [CanBeNull] MechanicsContext parentContext, [NotNull] BlueprintAreaEffect blueprint, [NotNull] TargetWrapper target, TimeSpan creationTime, TimeSpan? duration, bool onUnit)
-		: this(view.UniqueId, view.IsInGameBySettings, parentContext, blueprint, target, creationTime, duration, onUnit, usePatternFromAbility: false, null)
+	public AreaEffectEntity([NotNull] IAreaEffectConfig config, [CanBeNull] IEvalContext parentContext, [NotNull] BlueprintAreaEffect blueprint, [NotNull] TargetWrapper target, TimeSpan creationTime, TimeSpan? duration, bool onUnit)
+		: this(config.EntityId, config.IsInGameBySettings, parentContext, blueprint, target, creationTime, duration, onUnit)
 	{
-		m_CreatedFromSceneObject = !view.CreatedAtRuntime;
+		m_CreatedFromSceneObject = !config.CreatedAtRuntime;
 		if (m_CreatedFromSceneObject)
 		{
-			m_Shape = view.Shape;
-			m_InitialPosition = (m_Position = view.transform.position);
-			m_InitialOrientation = (m_Orientation = view.transform.rotation.eulerAngles.y);
+			m_Shape = config.Shape;
+			m_InitialPosition = (m_Position = config.Position);
+			m_InitialOrientation = (m_Orientation = config.Orientation);
 		}
 	}
 
-	public AreaEffectEntity(string uniqueId, bool isInGame, [CanBeNull] MechanicsContext parentContext, [NotNull] BlueprintAreaEffect blueprint, [NotNull] TargetWrapper target, TimeSpan creationTime, TimeSpan? duration, bool onUnit, bool usePatternFromAbility, float? forceInitiative)
+	public AreaEffectEntity(string uniqueId, bool isInGame, [CanBeNull] IEvalContext parentContext, [NotNull] BlueprintAreaEffect blueprint, [NotNull] TargetWrapper target, TimeSpan creationTime, TimeSpan? duration, bool onUnit, bool usePatternFromAbility = false, float? forceInitiative = null)
 		: base(uniqueId, isInGame, blueprint)
 	{
 		if (onUnit && target.Entity == null)
 		{
 			throw new Exception("Area effect is attached to unit, but unit is missing");
 		}
-		m_Context = MechanicsContext.Claim(blueprint, parentContext?.MaybeCaster, this, parentContext, target);
+		m_Context = MechanicsContext.Claim(blueprint, parentContext?.Caster, this, parentContext, target);
 		m_Target = target;
 		m_TargetNode = target.NearestNode;
 		m_CreationTime = creationTime;
@@ -447,17 +460,8 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	}
 
 	[UsedImplicitly]
-	protected AreaEffectEntity(JsonConstructorMark _)
+	protected AreaEffectEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-		m_IsMovedFromOutsideToTheVoidDelegate = IsMovedFromOutsideToTheVoid;
-		m_IsMovedFromInsideToTheVoidDelegate = IsMovedFromInsideToTheVoid;
-		m_IsMovedFromInsideToOutsideDelegate = IsMovedFromInsideToOutside;
-		m_IsMovedFromOutsideToInsideDelegate = IsMovedFromOutsideToInside;
-		m_ForceUpdate = true;
-	}
-
-	protected AreaEffectEntity()
 	{
 		m_IsMovedFromOutsideToTheVoidDelegate = IsMovedFromOutsideToTheVoid;
 		m_IsMovedFromInsideToTheVoidDelegate = IsMovedFromInsideToTheVoid;
@@ -490,7 +494,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		UpdateCombatInitiative();
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		if (base.Blueprint.DontNeedView)
 		{
@@ -507,12 +511,12 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		return areaEffectView;
 	}
 
-	protected override void OnViewDidAttach()
+	protected override void OnSetConfig(IEntityConfig config)
 	{
-		base.OnViewDidAttach();
+		base.OnSetConfig(config);
 		if (m_CreatedFromSceneObject)
 		{
-			m_Shape = View.Shape;
+			m_Shape = Config.Shape;
 		}
 	}
 
@@ -529,7 +533,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 
 	protected override void OnDispose()
 	{
-		EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectHandler>)delegate(IAreaEffectHandler h)
+		base.EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectHandler>)delegate(IAreaEffectHandler h)
 		{
 			h.HandleAreaEffectDestroyed();
 		}, isCheckRuntime: true);
@@ -599,24 +603,35 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		Bounds bounds2 = Shape.GetBounds();
 		bool isInCombat = Game.Instance.Player.IsInCombat;
 		bool flag = bounds2 != bounds;
-		if (!isInCombat || flag || m_ForceUpdate)
+		if (!(!isInCombat || flag) && !m_ForceUpdate)
 		{
-			m_ForceUpdate = false;
-			try
+			return;
+		}
+		m_ForceUpdate = false;
+		bool flag2 = !m_InitialEntityScanDone;
+		if (flag2)
+		{
+			IsInInitialEntityScan = true;
+		}
+		try
+		{
+			UpdateEntities();
+		}
+		finally
+		{
+			m_EntitiesEnteredDuringUpdate.Clear();
+			m_EntitiesExitedDuringUpdate.Clear();
+			if (flag2)
 			{
-				UpdateEntities();
-			}
-			finally
-			{
-				m_EntitiesEnteredDuringUpdate.Clear();
-				m_EntitiesExitedDuringUpdate.Clear();
+				IsInInitialEntityScan = false;
+				m_InitialEntityScanDone = true;
 			}
 		}
 	}
 
 	public void NextRound()
 	{
-		using (m_Context.SetScope())
+		using (EvalContext.PushContext(Context))
 		{
 			Lifetime += 1.Rounds();
 			HandleNewRound();
@@ -630,9 +645,9 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 
 	private void HandleEnd()
 	{
-		using (m_Context.SetScope())
+		using (EvalContext.PushContext(Context))
 		{
-			base.Blueprint.HandleEnd(m_Context, this);
+			base.Blueprint.HandleEnd(EvalContext.Current, this);
 			foreach (EntityInfo item in m_EntitiesInside)
 			{
 				HandleEntityExit(item.Reference);
@@ -760,10 +775,10 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			{
 				return;
 			}
-			using (Context.SetScope(entity))
+			using (EvalContext.PushContext(Context, entity))
 			{
-				base.Blueprint.HandleEntityEnter(m_Context, this, entity);
-				EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectEntityHandler>)delegate(IAreaEffectEntityHandler h)
+				base.Blueprint.HandleEntityEnter(EvalContext.Current, this, entity);
+				base.EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectEntityHandler>)delegate(IAreaEffectEntityHandler h)
 				{
 					h.HandleEntityEnterAreaEffect(entity);
 				}, isCheckRuntime: true);
@@ -780,10 +795,10 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			{
 				return;
 			}
-			using (Context.SetScope(entity))
+			using (EvalContext.PushContext(Context, entity))
 			{
-				base.Blueprint.HandleEntityExit(m_Context, this, entity);
-				EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectEntityHandler>)delegate(IAreaEffectEntityHandler h)
+				base.Blueprint.HandleEntityExit(EvalContext.Current, this, entity);
+				base.EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectEntityHandler>)delegate(IAreaEffectEntityHandler h)
 				{
 					h.HandleEntityExitAreaEffect(entity);
 				}, isCheckRuntime: true);
@@ -796,8 +811,11 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	{
 		using (ProfileScope.NewScope("HandleEntityMoveInside"))
 		{
-			base.Blueprint.HandleEntityMove(m_Context, this, entity);
-			OnEntityMove?.Invoke(entity);
+			using (EvalContext.PushContext(Context, entity))
+			{
+				base.Blueprint.HandleEntityMove(EvalContext.Current, this, entity);
+				OnEntityMove?.Invoke(entity);
+			}
 		}
 	}
 
@@ -805,7 +823,10 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	{
 		using (ProfileScope.NewScope("HandleNewRound"))
 		{
-			base.Blueprint.HandleRound(m_Context, this);
+			using (EvalContext.PushContext(Context))
+			{
+				base.Blueprint.HandleRound(EvalContext.Current, this);
+			}
 		}
 	}
 
@@ -816,9 +837,9 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			MechanicEntity currentEntity = EventInvokerExtensions.MechanicEntity;
 			if (m_EntitiesInside.Any((EntityInfo x) => x.Reference.Entity == currentEntity))
 			{
-				using (Context.SetScope(currentEntity))
+				using (EvalContext.PushContext(Context, currentEntity))
 				{
-					base.Blueprint.HandleUnitStartTurn(m_Context, this, currentEntity);
+					base.Blueprint.HandleUnitStartTurn(EvalContext.Current, this, currentEntity);
 					OnEntityStartTurn?.Invoke(currentEntity);
 					return;
 				}
@@ -833,9 +854,9 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			MechanicEntity currentEntity = EventInvokerExtensions.MechanicEntity;
 			if (m_EntitiesInside.Any((EntityInfo x) => x.Reference.Entity == currentEntity))
 			{
-				using (Context.SetScope(currentEntity))
+				using (EvalContext.PushContext(Context, currentEntity))
 				{
-					base.Blueprint.HandleUnitEndTurn(m_Context, this, currentEntity);
+					base.Blueprint.HandleUnitEndTurn(EvalContext.Current, this, currentEntity);
 					OnEntityEndTurn?.Invoke(currentEntity);
 					return;
 				}
@@ -1002,7 +1023,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	public void ForceEnd()
 	{
 		ForceEnded = true;
-		EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectForceEndHandler>)delegate(IAreaEffectForceEndHandler h)
+		base.EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectForceEndHandler>)delegate(IAreaEffectForceEndHandler h)
 		{
 			h.HandleAreaEffectForceEndRequested();
 		}, isCheckRuntime: true);
@@ -1134,6 +1155,10 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			IL_01e4:
 			areaEffectShapePattern.SetPattern(gridNodeBase, gridNodeBase.Vector3Position().y, in pattern);
 			base.Position = gridNodeBase.Vector3Position();
+			base.EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectShapeUpdatedHandler>)delegate(IAreaEffectShapeUpdatedHandler h)
+			{
+				h.HandleAreaEffectShapeUpdated();
+			}, isCheckRuntime: true);
 			m_PatternDirty = false;
 		}
 	}
@@ -1165,6 +1190,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		result.Append(ref m_CreatedFromSceneObject);
 		result.Append(ref ForceEnded);
 		result.Append(ref m_CanAffectAllies);
+		result.Append(ref m_InitialEntityScanDone);
 		List<EntityInfo> entitiesInside = m_EntitiesInside;
 		if (entitiesInside != null)
 		{
@@ -1202,7 +1228,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		AreaEffectEntity source = new AreaEffectEntity();
+		AreaEffectEntity source = new AreaEffectEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<AreaEffectEntity, TPossiblyBase>(ref source);
 	}
 
@@ -1244,17 +1270,18 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		formatter.UnmanagedField(19, "m_CreatedFromSceneObject", ref m_CreatedFromSceneObject, state);
 		formatter.UnmanagedField(20, "ForceEnded", ref ForceEnded, state);
 		formatter.UnmanagedField(21, "m_CanAffectAllies", ref m_CanAffectAllies, state);
-		formatter.Field(22, "m_EntitiesInside", ref m_EntitiesInside, state);
-		formatter.NullableField(23, "m_CasterDisappearTime", ref m_CasterDisappearTime, state);
-		formatter.UnmanagedNullableField(24, "m_ForceInitiative", ref m_ForceInitiative, state);
+		formatter.UnmanagedField(22, "m_InitialEntityScanDone", ref m_InitialEntityScanDone, state);
+		formatter.Field(23, "m_EntitiesInside", ref m_EntitiesInside, state);
+		formatter.NullableField(24, "m_CasterDisappearTime", ref m_CasterDisappearTime, state);
+		formatter.UnmanagedNullableField(25, "m_ForceInitiative", ref m_ForceInitiative, state);
 		Rounds? value6 = Duration;
-		formatter.NullableField(25, "Duration", ref value6, state);
+		formatter.NullableField(26, "Duration", ref value6, state);
 		Rounds value7 = Lifetime;
-		formatter.Field(26, "Lifetime", ref value7, state);
+		formatter.Field(27, "Lifetime", ref value7, state);
 		EntityFactRef value8 = SourceFact;
-		formatter.Field(27, "SourceFact", ref value8, state);
+		formatter.Field(28, "SourceFact", ref value8, state);
 		bool value9 = RetainCameraOnEnd;
-		formatter.UnmanagedField(28, "RetainCameraOnEnd", ref value9, state);
+		formatter.UnmanagedField(29, "RetainCameraOnEnd", ref value9, state);
 		formatter.EndObject();
 	}
 
@@ -1339,24 +1366,27 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 				m_CanAffectAllies = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 22:
-				m_EntitiesInside = formatter.ReadPackable<List<EntityInfo>>(state);
+				m_InitialEntityScanDone = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 23:
-				m_CasterDisappearTime = formatter.ReadNullablePackable<TimeSpan>(state);
+				m_EntitiesInside = formatter.ReadPackable<List<EntityInfo>>(state);
 				break;
 			case 24:
-				m_ForceInitiative = formatter.ReadNullableUnmanaged<float>(state);
+				m_CasterDisappearTime = formatter.ReadNullablePackable<TimeSpan>(state);
 				break;
 			case 25:
-				Duration = formatter.ReadNullablePackable<Rounds>(state);
+				m_ForceInitiative = formatter.ReadNullableUnmanaged<float>(state);
 				break;
 			case 26:
-				Lifetime = formatter.ReadPackable<Rounds>(state);
+				Duration = formatter.ReadNullablePackable<Rounds>(state);
 				break;
 			case 27:
-				SourceFact = formatter.ReadPackable<EntityFactRef>(state);
+				Lifetime = formatter.ReadPackable<Rounds>(state);
 				break;
 			case 28:
+				SourceFact = formatter.ReadPackable<EntityFactRef>(state);
+				break;
+			case 29:
 				RetainCameraOnEnd = formatter.ReadUnmanaged<bool>(state);
 				break;
 			}

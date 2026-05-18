@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using StateHasher.Core;
-using UnityEngine;
 
 namespace Kingmaker.Networking;
 
-public class PlayerCommandsCollection<T> : IHashable
+public class PlayerCommandsCollection<T>
 {
 	public readonly List<PlayerCommands<T>> Players = new List<PlayerCommands<T>>();
 
@@ -69,10 +67,5 @@ public class PlayerCommandsCollection<T> : IHashable
 			Players.Insert(num, playerCommands);
 		}
 		return playerCommands;
-	}
-
-	public virtual Hash128 GetHash128()
-	{
-		return default(Hash128);
 	}
 }

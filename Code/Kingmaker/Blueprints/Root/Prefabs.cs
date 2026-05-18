@@ -24,11 +24,11 @@ public class Prefabs : BlueprintScriptableObject
 
 	public GameObject PersonalEnemyFxPrefab;
 
-	public DroppedLoot DroppedLootBag;
+	public DroppedLootView DroppedLootBag;
 
 	public PrefabLink DroppedLootBagAttachedLink;
 
-	public DroppedLoot BreathOfMoneyLootBag;
+	public DroppedLootView BreathOfMoneyLootBag;
 
 	[ValidateIsPrefab]
 	[ValidateHasComponent(typeof(EquipmentOffsets))]

@@ -1,14 +1,14 @@
+using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.Pathfinding;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.Utility;
-using Kingmaker.Utility.Random;
-using Kingmaker.View;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Abilities.Components;
 
+[Obsolete("Unused")]
 [TypeId("3755ee60f6c4a114489442845b9433c1")]
 public class RunActionInFrontOfEnemy : AbilityApplyEffect
 {
@@ -37,7 +37,7 @@ public class RunActionInFrontOfEnemy : AbilityApplyEffect
 		}
 		for (int i = 0; i <= repeats; i++)
 		{
-			using (context.SetScope(new TargetWrapper(GetActionPosition(target, i))))
+			using (EvalContext.PushContext(context, new TargetWrapper(GetActionPosition(target, i))))
 			{
 				Actions.Run();
 			}
@@ -46,12 +46,6 @@ public class RunActionInFrontOfEnemy : AbilityApplyEffect
 
 	public Vector3 GetActionPosition(TargetWrapper target, int repeat)
 	{
-		Vector3 vector = new Vector3(0f, 0f, PFStatefulRandom.SpaceCombat.Range(frontConeRangeMin, frontConeRangeMax) + repeat * addRangeEachRepeat) * GraphParamsMechanicsCache.GridCellSize;
-		Quaternion quaternion = Quaternion.Euler(0f, PFStatefulRandom.SpaceCombat.Range(-frontConeAngle, frontConeAngle) + frontConeRotation, 0f);
-		if (randomRotationOn180 && PFStatefulRandom.SpaceCombat.YesOrNo)
-		{
-			quaternion *= Quaternion.Euler(0f, 180f, 0f);
-		}
-		return (Vector3)ObstacleAnalyzer.GetNearestNode(target.Entity.View.ViewTransform.position + target.Entity.View.ViewTransform.rotation * quaternion * vector).node.position;
+		throw new NotImplementedException();
 	}
 }

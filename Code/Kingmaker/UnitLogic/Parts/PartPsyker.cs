@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.UnitLogic.Mechanics;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -27,8 +26,6 @@ public class PartPsyker : MechanicEntityPart, IHashable, IOwlPackable<PartPsyker
 		OldNames = null,
 		Fields = new FieldInfo[0]
 	};
-
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
 
 	public void Retain()
 	{

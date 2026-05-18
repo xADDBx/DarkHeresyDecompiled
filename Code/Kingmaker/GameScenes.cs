@@ -16,6 +16,8 @@ public static class GameScenes
 
 	public const string IngameConsoleScene = "IngameConsole";
 
+	public const string UnityPlaymodeTestScene = "InitTestScene";
+
 	public static readonly SceneReference CommonUISceneRef = new SceneReference("UI_Common_Scene");
 
 	public static readonly string[] ScenesToIncludeInBundles = new string[4] { MainMenu, "UI_Common_Scene", "IngameConsole", "LoadingScreen" };

@@ -4,6 +4,8 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Cheats;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Parts;
@@ -158,11 +160,12 @@ public static class EncumbranceHelper
 	public static CarryingCapacity GetCarryingCapacity(BaseUnitEntity unit)
 	{
 		int num = unit.GetOptional<UnitPartAdditionalEncumbrance>()?.AdditionalEncumbrance ?? 0;
-		int heavy = GetHeavy(unit.Attributes.WarhammerStrength);
+		int str = unit.Actor.GetStat(StatType.Strength, null, default(StatContext), "GetCarryingCapacity");
+		int heavy = GetHeavy(str);
 		CarryingCapacity result = default(CarryingCapacity);
 		result.CurrentWeight = unit.Body.EquipmentWeight;
-		result.Light = GetLight(unit.Attributes.WarhammerStrength, heavy) + num;
-		result.Medium = GetMedium(unit.Attributes.WarhammerStrength, heavy) + num;
+		result.Light = GetLight(str, heavy) + num;
+		result.Medium = GetMedium(str, heavy) + num;
 		result.Heavy = heavy + num;
 		return result;
 	}

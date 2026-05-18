@@ -5,6 +5,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Interaction;
@@ -24,9 +25,15 @@ public abstract class UnitInteractionComponent : EntityFactComponentDelegate<Abs
 
 	public ConditionsChecker Conditions;
 
+	public int InCombatActionCost;
+
 	public bool AllowInCombat;
 
+	public bool AllowWithHelpless;
+
 	public bool TriggerOnApproach;
+
+	public LocalizedString DisplayName;
 
 	[ShowIf("TriggerOnApproach")]
 	public bool TriggerOnParty = true;
@@ -46,6 +53,8 @@ public abstract class UnitInteractionComponent : EntityFactComponentDelegate<Abs
 		}
 	}
 
+	public int ActionCost => InCombatActionCost;
+
 	public bool IsApproach => TriggerOnApproach;
 
 	public float ApproachCooldown => Cooldown;
@@ -55,6 +64,10 @@ public abstract class UnitInteractionComponent : EntityFactComponentDelegate<Abs
 	public abstract bool IsDialog { get; }
 
 	bool IUnitInteraction.AllowInCombat => AllowInCombat;
+
+	bool IUnitInteraction.AllowWithHelpless => AllowWithHelpless;
+
+	LocalizedString IUnitInteraction.DisplayName => DisplayName;
 
 	protected override void OnActivateOrPostLoad()
 	{
@@ -68,7 +81,7 @@ public abstract class UnitInteractionComponent : EntityFactComponentDelegate<Abs
 
 	public virtual bool IsAvailable(BaseUnitEntity initiator, AbstractUnitEntity target)
 	{
-		if (target.IsHelpless)
+		if (target.IsHelpless && !AllowWithHelpless)
 		{
 			return false;
 		}

@@ -49,7 +49,7 @@ public class InteractionVariantPCView : InteractionVariantView
 		}).AddTo(this);
 		base.ViewModel.HaveNotEnoughAPinTBM.CombineLatest(base.ViewModel.CanInteract, (bool ap, bool canInteract) => new { ap, canInteract }).Subscribe(value =>
 		{
-			m_Button.Interactable = !value.ap && value.canInteract;
+			m_Button.Interactable = !value.ap && value.canInteract && !base.ViewModel.Disabled;
 		}).AddTo(this);
 		base.ViewModel.CombatHintEntityVM.Subscribe(m_CombatHintEntityView.Bind).AddTo(this);
 	}

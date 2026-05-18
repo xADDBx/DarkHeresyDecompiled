@@ -64,6 +64,8 @@ public class VideoPlayerHelper : MonoBehaviour
 
 	private TimeSpan m_PlayStartTime = TimeSpan.Zero;
 
+	private bool m_WasAudioPositionUnavailable;
+
 	private bool m_Play;
 
 	private bool m_HasAudio;
@@ -216,6 +218,7 @@ public class VideoPlayerHelper : MonoBehaviour
 		m_VideoDuration = 0.0;
 		m_SoundId = 0u;
 		m_PlayStartTime = TimeSpan.Zero;
+		m_WasAudioPositionUnavailable = false;
 		s_ForceVideoSeekTime = null;
 	}
 
@@ -310,27 +313,39 @@ public class VideoPlayerHelper : MonoBehaviour
 
 	private void SyncAudioVideo()
 	{
-		if (m_VideoPlayer.isPlaying && m_IsAudioPlaying && TryGetAudioPlaybackTime(out var audioTime))
+		if (!m_VideoPlayer.isPlaying || !m_IsAudioPlaying)
 		{
-			double time = m_VideoPlayer.time;
-			if (s_ForceVideoSeekTime.HasValue)
-			{
-				SeekVideo(time + s_ForceVideoSeekTime.Value);
-				s_ForceVideoSeekTime = null;
-			}
-			double num = Math.Abs(time - audioTime);
-			if (!(num > 0.0))
-			{
-				SetDefaultVideoPlaybackSpeed();
-			}
-			else if (time < audioTime)
-			{
-				SeekOrSpeedUpVideo(num, audioTime);
-			}
-			else
-			{
-				SeekOrSpeedUpAudio(num, time);
-			}
+			return;
+		}
+		if (!TryGetAudioPlaybackTime(out var audioTime))
+		{
+			m_WasAudioPositionUnavailable = true;
+			return;
+		}
+		double time = m_VideoPlayer.time;
+		if (m_WasAudioPositionUnavailable)
+		{
+			m_WasAudioPositionUnavailable = false;
+			SeekVideo(audioTime);
+			return;
+		}
+		if (s_ForceVideoSeekTime.HasValue)
+		{
+			SeekVideo(time + s_ForceVideoSeekTime.Value);
+			s_ForceVideoSeekTime = null;
+		}
+		double num = Math.Abs(time - audioTime);
+		if (!(num > 0.0))
+		{
+			SetDefaultVideoPlaybackSpeed();
+		}
+		else if (time < audioTime)
+		{
+			SeekOrSpeedUpVideo(num, audioTime);
+		}
+		else
+		{
+			SeekOrSpeedUpAudio(num, time);
 		}
 	}
 

@@ -25,11 +25,17 @@ public abstract class CriticalEffectsTrigger : MechanicEntityFactComponentDelega
 
 	public ActionList Actions = new ActionList();
 
+	public ActionList ActionsOnAttacker = new ActionList();
+
 	protected void TryApply(RulePerformCriticalEffects rule)
 	{
 		if (IsSuitable(rule))
 		{
 			Actions.RunWithTarget(rule.Target);
+			if (rule.Initiator != null)
+			{
+				ActionsOnAttacker.RunWithTarget(rule.Initiator);
+			}
 		}
 	}
 

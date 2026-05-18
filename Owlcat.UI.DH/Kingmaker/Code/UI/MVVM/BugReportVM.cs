@@ -45,7 +45,7 @@ public class BugReportVM : ViewModel
 			list.Add(new DropdownItemVM(tuple.Item1));
 		}
 		ContextDropdownVM = new OwlcatDropdownVM(list).AddTo(this);
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.BugReport).Send();
+		Metrics.Interface.State(InterfaceMetricsEvent.InterfaceStates.Open).Type(InterfaceMetricsEvent.InterfaceTypes.BugReport).Send();
 	}
 
 	public OwlcatDropdownVM GetAspectDropDownVM()
@@ -135,6 +135,6 @@ public class BugReportVM : ViewModel
 		m_FixVersionDropdownVM?.Dispose();
 		m_ManualSaveDropdownVM?.Dispose();
 		m_devPriorityDropdownVM?.Dispose();
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.BugReport).Send();
+		Metrics.Interface.State(InterfaceMetricsEvent.InterfaceStates.Close).Type(InterfaceMetricsEvent.InterfaceTypes.BugReport).Send();
 	}
 }

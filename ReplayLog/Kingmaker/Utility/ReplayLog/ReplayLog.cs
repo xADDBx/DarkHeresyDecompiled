@@ -9,22 +9,22 @@ public static class ReplayLog
 	public const bool Enabled = false;
 
 	[Conditional("FALSE")]
-	public static void Add(string text, bool stacktrace = false)
+	public static void Add(string text, ReplayLogSettings settings = null)
 	{
 	}
 
 	[Conditional("FALSE")]
-	public static void AddIf(bool condition, string text, bool stacktrace = false)
+	public static void AddIf(bool condition, string text, ReplayLogSettings settings = null)
 	{
 	}
 
 	[Conditional("FALSE")]
-	public static void AddForeach<T>(IEnumerable<T> container, Func<T, string> func)
+	public static void AddForeach<T>(IEnumerable<T> container, Func<T, string> func, ReplayLogSettings settings = null)
 	{
 	}
 
 	[Conditional("FALSE")]
-	public static void AddForeach<T>(Func<IEnumerable<T>> containerCreator, Func<T, string> func)
+	public static void AddForeach<T>(Func<IEnumerable<T>> containerCreator, Func<T, string> func, ReplayLogSettings settings = null)
 	{
 	}
 

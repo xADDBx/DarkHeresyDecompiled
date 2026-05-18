@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,8 +9,10 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Framework.GameLog;
+using Kingmaker.Code.Gameplay.Controllers;
 using Kingmaker.Code.View.Bridge.Interfaces;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Settings;
@@ -23,7 +26,7 @@ using R3;
 
 namespace Kingmaker.Utility;
 
-public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscriber
+public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscriber, IPowerBalanceHandler
 {
 	private static readonly LogChannel Logger = LogChannelFactory.GetOrCreate("ReportCombatLogManager");
 
@@ -120,39 +123,35 @@ public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscri
 			m_ReportingUtils?.LogReporterError(ex2.StackTrace);
 			throw;
 		}
-		finally
-		{
-			if (logFileWriter != null)
-			{
-				await ((IAsyncDisposable)logFileWriter).DisposeAsync();
-			}
-		}
 	}
 
 	private async Task AsyncFileWrite(StreamWriter logFileWriter, CancellationToken ct)
 	{
-		while (!ct.IsCancellationRequested)
+		await using (logFileWriter)
 		{
-			await Task.Delay(TimeSpan.FromSeconds(1.0), ct);
-			try
+			while (!ct.IsCancellationRequested)
 			{
-				string text;
-				lock (m_StringBuilder)
+				await Task.Delay(TimeSpan.FromSeconds(1.0), ct);
+				try
 				{
-					if (m_StringBuilder.Length == 0)
+					string text;
+					lock (m_StringBuilder)
 					{
-						continue;
+						if (m_StringBuilder.Length == 0)
+						{
+							continue;
+						}
+						text = m_StringBuilder.ToString();
+						m_StringBuilder.Clear();
+						goto IL_016b;
 					}
-					text = m_StringBuilder.ToString();
-					m_StringBuilder.Clear();
-					goto IL_0142;
+					IL_016b:
+					await logFileWriter.WriteAsync(text.AsMemory(), ct);
 				}
-				IL_0142:
-				await logFileWriter.WriteAsync(text.AsMemory(), ct);
-			}
-			catch (Exception ex)
-			{
-				Logger.Exception(ex);
+				catch (Exception ex)
+				{
+					Logger.Exception(ex);
+				}
 			}
 		}
 	}
@@ -200,7 +199,9 @@ public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscri
 		{
 			m_IsCombatActive = true;
 			m_CurrentCombatId++;
-			m_StringBuilder.Append("Combat Started [").Append(m_CurrentCombatId).Append("]")
+			m_StringBuilder.Append(Timestamp()).Append(' ').Append("Combat Started [")
+				.Append(m_CurrentCombatId)
+				.Append("]")
 				.AppendLine();
 			m_StringBuilder.AppendLine();
 			m_StringBuilder.Append("PlayerCharacter Name: ").Append(Game.Instance.Player.MainCharacter.Entity.CharacterName);
@@ -220,7 +221,9 @@ public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscri
 			m_IsCombatActive = false;
 			m_StringBuilder.AppendLine();
 			m_StringBuilder.AppendLine();
-			m_StringBuilder.Append("Combat Ended [").Append(m_CurrentCombatId).Append("]");
+			m_StringBuilder.Append(Timestamp()).Append(' ').Append("Combat Ended [")
+				.Append(m_CurrentCombatId)
+				.Append("]");
 		}
 	}
 
@@ -249,7 +252,14 @@ public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscri
 				text = ManageTooltipHeader(text, source, target);
 				lock (m_StringBuilder)
 				{
-					m_StringBuilder.AppendLine(text);
+					if (string.IsNullOrWhiteSpace(text))
+					{
+						m_StringBuilder.AppendLine(text);
+					}
+					else
+					{
+						m_StringBuilder.Append(Timestamp()).Append(' ').AppendLine(text);
+					}
 					if (!string.IsNullOrWhiteSpace(empty))
 					{
 						ManageTooltipDescription(m_StringBuilder, empty);
@@ -291,6 +301,11 @@ public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscri
 		}
 	}
 
+	private static string Timestamp()
+	{
+		return DateTime.Now.ToString("[HH:mm:ss]");
+	}
+
 	private static string ReplaceNameWithBlueprint(string str, MechanicEntity entity, string name)
 	{
 		if (name == null)
@@ -306,5 +321,45 @@ public class ReportCombatLogManager : IDisposable, IPartyCombatHandler, ISubscri
 		}
 		string newValue = text2 + "[" + text + "]";
 		return str.Replace(name, newValue);
+	}
+
+	public void HandlePowerBalanceValueUpdate(MoraleGroup combatGroup)
+	{
+		lock (m_StringBuilder)
+		{
+			m_StringBuilder.Append(Timestamp()).Append(' ');
+			if (combatGroup.IsPlayerGroup)
+			{
+				m_StringBuilder.Append("Player group Power Balance Changed to ");
+			}
+			else
+			{
+				m_StringBuilder.Append($"Enemy group [{combatGroup.ID}] Power Balance Changed to ");
+			}
+			m_StringBuilder.Append(combatGroup.PowerValue.ToString(CultureInfo.InvariantCulture));
+			m_StringBuilder.AppendLine();
+		}
+	}
+
+	public void HandlePowerBalanceStateUpdate(MoraleGroup combatGroup, PowerBalanceState state)
+	{
+		lock (m_StringBuilder)
+		{
+			m_StringBuilder.Append(Timestamp()).Append(' ');
+			if (combatGroup.IsPlayerGroup)
+			{
+				m_StringBuilder.Append("Player group Power Balance State Changed to ");
+			}
+			else
+			{
+				m_StringBuilder.Append($"Enemy group [{combatGroup.ID}] Power Balance State Changed to ");
+			}
+			m_StringBuilder.Append(state.ToString());
+			m_StringBuilder.AppendLine();
+		}
+	}
+
+	public void HandlePowerBalanceRecalculated()
+	{
 	}
 }

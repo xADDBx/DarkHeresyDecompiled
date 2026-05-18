@@ -154,7 +154,7 @@ public class EpilogBaseView : View<EpilogVM>, IInitializable
 	{
 		base.gameObject.SetActive(value: true);
 		m_WindowAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.Dialogue.BookOpen.Play();
+		FullScreenSounds.Instance.Dialogue.BookOpen.Play();
 	}
 
 	private void Hide()
@@ -163,7 +163,7 @@ public class EpilogBaseView : View<EpilogVM>, IInitializable
 		{
 			base.gameObject.SetActive(value: false);
 		});
-		UISounds.Instance.Sounds.Dialogue.BookClose.Play();
+		FullScreenSounds.Instance.Dialogue.BookClose.Play();
 	}
 
 	protected virtual void Confirm()

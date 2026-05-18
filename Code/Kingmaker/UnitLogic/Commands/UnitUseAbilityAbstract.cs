@@ -9,6 +9,8 @@ using Kingmaker.Designers.Mechanics.Buffs;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
@@ -23,25 +25,28 @@ using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
+using Kingmaker.UnitLogic.Abilities.Components.ProjectileAttack;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Parts;
+using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.Utility.Random;
 using Kingmaker.View.Covers;
 using Kingmaker.View.Mechadendrites;
-using Kingmaker.View.Mechanics;
 using Kingmaker.Visual.Animation;
+using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.Kingmaker;
-using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using Kingmaker.Visual.Particles;
 using Kingmaker.Visual.Particles.Blueprints;
 using Newtonsoft.Json;
+using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Commands;
 
-public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitCommandParams, IUnitUseAbilityParamsAbstract
+public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T>, IUnitUseAbilityAbstract where T : UnitCommandParams, IUnitUseAbilityParamsAbstract
 {
 	private class HitLocationData
 	{
@@ -70,7 +75,9 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 
 	private PlayLoopAnimationByBuff m_loopingAnimationBuff;
 
-	private HitLocationData m_HitLocationData = new HitLocationData();
+	private List<Vector3> m_ProjectileHitPositions = new List<Vector3>();
+
+	private RulePerformAbility m_RulePerformAbility;
 
 	[JsonProperty]
 	public static bool TestPauseOnCast { get; set; }
@@ -178,7 +185,17 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 
 	public override bool DontWaitForHands => Ability.Blueprint.GetComponent<AbilityCustomCharge>();
 
-	public override bool ShouldTurnToTarget => Ability.Blueprint.ShouldTurnToTarget;
+	public override bool ShouldTurnToTarget
+	{
+		get
+		{
+			if (base.Executor != base.Target?.Entity && Ability.Blueprint.ShouldTurnToTarget)
+			{
+				return !IsMoveUnit;
+			}
+			return false;
+		}
+	}
 
 	public override bool MarkManualTarget => false;
 
@@ -226,14 +243,14 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 			Ability fact = Ability.Fact;
 			if (fact != null && !fact.Active)
 			{
-				PFLog.Default.Error(base.Executor.View, $"Unit {base.Executor} casting spell {Ability.Blueprint} that is not in spellbook or unit abilities");
+				PFLog.Default.Error(base.Executor.View.AsUnitEntityView(), $"Unit {base.Executor} casting spell {Ability.Blueprint} that is not in spellbook or unit abilities");
 				Interrupt();
 				return;
 			}
 		}
 		if (!base.IsOneFrameCommand)
 		{
-			m_AbilityStyle = Ability.Blueprint.Animation;
+			m_AbilityStyle = Ability.Blueprint.SpellAnimation;
 			m_CastTime = 2.5f;
 		}
 		else
@@ -245,7 +262,7 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 		{
 			m_CastTime = Math.Min(5f, m_CastTime);
 		}
-		base.Executor.MaybeAnimationManager.Or(null)?.AimIKTargetsQueue.Clear();
+		base.Executor.MaybeUnitAnimationManager.Or(null)?.AimIKTargets.Clear();
 	}
 
 	public override void OnRun()
@@ -267,7 +284,7 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 	{
 		if (Ability.Weapon == null && Ability.Blueprint.GetComponent<AbilityCustomBladeDance>() == null)
 		{
-			base.Executor.View.HideOffWeapon(hide: true);
+			base.Executor.View.HideOffWeapon(value: true);
 		}
 		AbilityCustomBladeDance component = Ability.Blueprint.GetComponent<AbilityCustomBladeDance>();
 		if (component != null && !component.UseOnSourceWeapon)
@@ -282,31 +299,27 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 			{
 				Vector3 vector2 = Quaternion.LookRotation((base.ApproachPoint - base.Executor.Position).normalized) * Ability.FXSettings.OffsetTargetPosition;
 				vector = base.ApproachPoint + vector2;
-				if (base.Executor.MaybeAnimationManager != null)
+				if (base.Executor.MaybeUnitAnimationManager != null)
 				{
-					base.Executor.MaybeAnimationManager.UseAbilityDirection = base.Executor.GetOrientationTo(vector);
+					base.Executor.MaybeUnitAnimationManager.UseAbilityDirection = base.Executor.GetOrientationTo(vector);
 				}
 			}
 			else
 			{
 				vector.y = 0f;
-				if (base.Executor.MaybeAnimationManager != null)
+				if (base.Executor.MaybeUnitAnimationManager != null)
 				{
-					base.Executor.MaybeAnimationManager.UseAbilityDirection = ((vector == Vector3.zero) ? 0f : Quaternion.LookRotation(vector).eulerAngles.y);
+					base.Executor.MaybeUnitAnimationManager.UseAbilityDirection = ((vector == Vector3.zero) ? 0f : Quaternion.LookRotation(vector).eulerAngles.y);
 				}
 			}
 		}
 		if (Ability.NeedLoS)
 		{
-			GridNodeBase gridNodeBase = (GridNodeBase)(GraphNode)base.Executor.CurrentNode;
-			GridNodeBase bestShootingPosition = Ability.GetBestShootingPosition(gridNodeBase, base.Target);
-			if ((object)base.Executor.MaybeAnimationManager != null)
+			GridNodeBase castNode = (GridNodeBase)(GraphNode)base.Executor.CurrentNode;
+			Ability.GetBestShootingPosition(castNode, base.Target);
+			if ((object)base.Executor.MaybeUnitAnimationManager != null)
 			{
-				int num = (bestShootingPosition.XCoordinateInGrid - gridNodeBase.XCoordinateInGrid) * (base.Target.NearestNode.ZCoordinateInGrid - gridNodeBase.ZCoordinateInGrid) - (bestShootingPosition.ZCoordinateInGrid - gridNodeBase.ZCoordinateInGrid) * (base.Target.NearestNode.XCoordinateInGrid - gridNodeBase.XCoordinateInGrid);
-				UnitAnimationActionCover.StepOutDirectionAnimationType stepOutDirectionAnimationType = ((num > 0) ? UnitAnimationActionCover.StepOutDirectionAnimationType.Right : ((num < 0) ? UnitAnimationActionCover.StepOutDirectionAnimationType.Left : UnitAnimationActionCover.StepOutDirectionAnimationType.None));
-				UnitAnimationActionCover.StepOutDirectionAnimationType stepOutDirectionAnimationType2 = stepOutDirectionAnimationType;
-				base.Executor.MaybeAnimationManager.StepOutDirectionAnimationType = stepOutDirectionAnimationType2;
-				base.Executor.MaybeAnimationManager.AbilityIsSpell = Ability.Blueprint.IsSpell;
+				base.Executor.MaybeUnitAnimationManager.AbilityIsSpell = Ability.Blueprint.IsSpell;
 			}
 		}
 		bool isCornerAttack = false;
@@ -333,110 +346,112 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 			}
 			else
 			{
-				PFLog.Animations.Log(base.Executor.View, $"Ability {Ability.Blueprint} uses custom animation from IAbilityCustomAnimation-component or overriden animation from cutscene command: {unitAnimationAction}");
+				PFLog.Animations.Log(base.Executor.View.AsUnitEntityView(), $"Ability {Ability.Blueprint} uses custom animation from IAbilityCustomAnimation-component or overriden animation from cutscene command: {unitAnimationAction}");
 				if (!TryStartAnimation(unitAnimationAction, isCornerAttack))
 				{
-					PFLog.Animations.Error(base.Executor.View, $"{base.Executor} cannot start custom animation {unitAnimationAction} for {Ability.Blueprint}");
+					PFLog.Animations.Error(base.Executor.View.AsUnitEntityView(), $"{base.Executor} cannot start custom animation {unitAnimationAction} for {Ability.Blueprint}");
 					ScheduleAct();
 				}
 			}
 		}
-		else if (base.Executor.IsInSquad && !Ability.Blueprint.IsSpell && IsMainHandAttack(Ability) && Ability.Weapon != null && !Ability.Weapon.Blueprint.IsMelee && base.Executor.View != null && base.Executor.View.AnimationManager != null && base.Executor.View.AnimationManager.CurrentMainHandAttackForPrepare != null)
+		else if (Ability.Blueprint.HasAnimation)
 		{
-			base.Animation = base.Executor.View.AnimationManager.CurrentMainHandAttackForPrepare;
-			base.HasAnimation = true;
-			if (base.Animation == null)
-			{
-				ScheduleAct();
-				return;
-			}
-			base.Animation.AlternativeStyle = Ability.Blueprint.GetComponent<AttackAlternativeAnimationStyle>()?.WeaponAnimationStyle ?? AnimationAlternativeStyle.None;
-			base.Animation.IsBurst = Ability.IsBurstAttack;
-			base.Animation.BurstCount = Ability.BurstAttacksCount;
-			base.Animation.CustomRpm = Ability.CustomRpm;
-			base.Animation.BurstAnimationDelay = Ability.Weapon?.Blueprint.VisualParameters.BurstAnimationDelay ?? 0f;
-			base.Animation.IsPreparingForShooting = false;
-			base.Animation.StartInternal();
+			StartAnimation(Ability.Blueprint.IsSpell ? UnitAnimationType.Ability : UnitAnimationType.Attack, UnitAnimationActionHandleInitializer);
 		}
 		else
 		{
-			if (base.Executor.View?.AnimationManager?.CurrentMainHandAttackForPrepare != null)
-			{
-				base.Executor.View.AnimationManager.CurrentMainHandAttackForPrepare.Release();
-			}
-			StartAnimation(Ability.Blueprint.IsSpell ? UnitAnimationType.Ability : UnitAnimationType.Attack, UnitAnimationActionHandleInitializer);
+			ScheduleAct();
 		}
 		base.TriggerAnimation();
 		void UnitAnimationActionHandleInitializer(UnitAnimationActionHandle h)
 		{
 			SetHandlesParameters(h);
 			h.AbilityStyle = m_AbilityStyle;
-			h.CastInOffhand = Ability.Blueprint.CastInOffHand;
-			if (Ability.Blueprint.IsSpell && Ability.Blueprint.Animation == AbilityAnimationStyle.Reload && !IsMainHandAttack(Ability))
-			{
-				h.CastInOffhand = true;
-			}
+			h.CastInOffhand = Ability.Blueprint.CastInOffHand || (Ability.Blueprint.IsSpell && Ability.Blueprint.SpellAnimation == AbilityAnimationStyle.Reload && GetAttackingLimb(Ability) == AttackingLimb.OffHand);
 			h.IsCornerAttack = isCornerAttack;
-			h.BurstAnimationDelay = Ability.Weapon?.Blueprint.VisualParameters.BurstAnimationDelay ?? 0f;
 			h.IsBladeDance = HasTwoMeleeForBladeDance();
 			h.IsTargetSelf = base.Target?.Entity == base.Executor;
-			SetupAimIKData(base.Target?.Entity?.View, m_HitLocationData);
 		}
 	}
 
 	private bool TryStartAnimation(UnitAnimationAction action, bool isCornerAttack)
 	{
-		if (!(base.Executor.View.AnimationManager.Or(null)?.CreateHandle(action) is UnitAnimationActionHandle unitAnimationActionHandle))
+		bool isUnitAnimationHandle = false;
+		UnitAnimationManager animationManager = base.Executor.View.AnimationManager;
+		if (animationManager == null)
 		{
 			return false;
 		}
-		SetHandlesParameters(unitAnimationActionHandle);
-		unitAnimationActionHandle.IsCornerAttack = isCornerAttack;
-		SetupAimIKData(base.Target?.Entity?.View, m_HitLocationData);
-		StartAnimation(unitAnimationActionHandle);
-		return true;
+		AnimationActionHandle handle;
+		bool num = animationManager.TryExecute(action, delegate(AnimationActionHandle h)
+		{
+			if (h is UnitAnimationActionHandle unitAnimationActionHandle)
+			{
+				isUnitAnimationHandle = true;
+				SetHandlesParameters(unitAnimationActionHandle);
+				unitAnimationActionHandle.IsCornerAttack = isCornerAttack;
+			}
+		}, out handle);
+		if (num && isUnitAnimationHandle)
+		{
+			base.Animation = (UnitAnimationActionHandle)handle;
+			base.HasAnimation = true;
+			m_IsAnimationActHandled = false;
+		}
+		return num && isUnitAnimationHandle;
 	}
 
-	private void SetupAimIKData(MechanicEntityView targetView, HitLocationData hitLocationData)
+	private static Vector3 GetHitPosition(IMechanicEntityView targetView, List<BpRef<BlueprintFxLocatorGroup>> locatorGroups)
 	{
-		Transform hitLocationTransform = GetHitLocationTransform(targetView, hitLocationData.LocatorGroups);
-		if (hitLocationTransform != null)
+		ParticlesSnapMap snapMap = targetView.ParticlesSnapMap;
+		if (snapMap == null)
 		{
-			base.Executor.MaybeAnimationManager.Or(null)?.AimIKTargetsQueue.Enqueue(hitLocationTransform);
+			return targetView.transform.position;
 		}
-		Vector3? vector = hitLocationTransform.Or(null)?.position;
-		if (vector.HasValue)
+		BpRef<BlueprintFxLocatorGroup> bpRef = locatorGroups.Where((BpRef<BlueprintFxLocatorGroup> g) => !g.IsNull() && snapMap.GetLocators(g.Blueprint) != null).Random(PFStatefulRandom.Visuals.Fx);
+		Transform transform = null;
+		if (bpRef != null)
 		{
-			Vector3 valueOrDefault = vector.GetValueOrDefault();
-			hitLocationData.ProjectileHitPositions.Add(valueOrDefault);
+			transform = (from b in snapMap.GetLocators(bpRef.Blueprint)
+				where b != null
+				select b).Random(PFStatefulRandom.Visuals.Fx)?.Transform;
 		}
+		if (transform == null)
+		{
+			FxBone locatorFirst = snapMap.GetLocatorFirst(FxRoot.Instance.LocatorGroupDefaultHit);
+			if (locatorFirst != null)
+			{
+				transform = locatorFirst.Transform;
+			}
+		}
+		if (!(transform != null))
+		{
+			return targetView.transform.position;
+		}
+		return transform.position;
 	}
 
-	private static Transform GetHitLocationTransform(MechanicEntityView targetView, IReadOnlyList<BlueprintFxLocatorGroup> locatorGroups)
+	private static Vector3 GetHitPosition(IMechanicEntityView targetView, BlueprintFxLocatorGroup locatorGroup)
 	{
-		ParticlesSnapMap particlesSnapMap = targetView.Or(null)?.ParticlesSnapMap;
+		ParticlesSnapMap particlesSnapMap = targetView.ParticlesSnapMap;
 		if (particlesSnapMap == null)
 		{
-			return null;
+			return targetView.transform.position;
 		}
-		Transform transform = (particlesSnapMap.GetLocators(locatorGroups[0])?.FirstOrDefault()?.Transform).Or(null);
-		if ((object)transform == null)
+		TempList.Get<Transform>();
+		Transform transform = particlesSnapMap.GetLocators(locatorGroup)?.Random(PFStatefulRandom.Visuals.Fx).Transform;
+		if (transform == null)
 		{
-			FxBone locatorFirst = particlesSnapMap.GetLocatorFirst(FxRoot.Instance.LocatorGroupDefaultHit);
-			if (locatorFirst == null)
-			{
-				return null;
-			}
-			transform = locatorFirst.Transform;
+			transform = particlesSnapMap.GetLocatorFirst(FxRoot.Instance.LocatorGroupDefaultHit).Transform;
 		}
-		return transform;
+		return transform.position;
 	}
 
 	private void SetHandlesParameters(UnitAnimationActionHandle h)
 	{
 		h.CastingTime = m_CastTime;
 		h.AttackWeaponType = ((h.Manager.ActiveWeaponStyle == WeaponAnimationStyle.Creature) ? WeaponType.Creature : (Ability.Weapon?.WeaponType ?? WeaponType.Fist));
-		h.IsMainHandAttack = IsMainHandAttack(Ability);
+		h.AttackingLimb = GetAttackingLimb(Ability);
 		h.Spell = Ability.Blueprint.OriginalBlueprint;
 		h.SpecialCastBehaviour = m_Special;
 		h.AlternativeStyle = Ability.Blueprint.GetComponent<AttackAlternativeAnimationStyle>()?.WeaponAnimationStyle ?? AnimationAlternativeStyle.None;
@@ -471,59 +486,18 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 		return false;
 	}
 
-	protected override void StartAnimation(UnitAnimationActionHandle handle)
-	{
-		ItemEntityWeapon weapon = Ability.Weapon;
-		MechadendritesType mechadendritesType = ((weapon == null || weapon.Blueprint.IsMelee) ? Ability.Blueprint.UsedMechadendrite : MechadendritesType.Ballistic);
-		ItemEntityWeapon weapon2 = Ability.Weapon;
-		if (((weapon2 != null && !weapon2.Blueprint.IsMelee) || Ability.Blueprint.UseOnMechadendrite) && base.Executor.GetOptional<UnitPartMechadendrites>() != null)
-		{
-			UnitPartMechadendrites optional = base.Executor.GetOptional<UnitPartMechadendrites>();
-			if (optional != null && optional.Mechadendrites.ContainsKey(mechadendritesType))
-			{
-				base.Animation = handle;
-				base.HasAnimation = true;
-				UnitAnimationActionHandle unitAnimationActionHandle = (UnitAnimationActionHandle)handle.Clone();
-				handle.AbilityStyle = AbilityAnimationStyle.Mechadendrites;
-				unitAnimationActionHandle.ChangeManager(base.Executor.GetOptional<UnitPartMechadendrites>()?.Mechadendrites[mechadendritesType]?.AnimationManager);
-				if (unitAnimationActionHandle.Action != null)
-				{
-					base.Executor.GetOptional<UnitPartMechadendrites>()?.Mechadendrites[mechadendritesType]?.AnimationManager.Execute(unitAnimationActionHandle);
-					Dictionary<MechadendritesType, MechadendriteSettings>.ValueCollection valueCollection = base.Executor.GetOptional<UnitPartMechadendrites>()?.Mechadendrites.Values;
-					if (valueCollection != null && !valueCollection.Empty())
-					{
-						foreach (MechadendriteSettings item in valueCollection)
-						{
-							if (item.MechadendritesType != mechadendritesType)
-							{
-								UnitAnimationActionHandle unitAnimationActionHandle2 = (UnitAnimationActionHandle)handle.Clone();
-								unitAnimationActionHandle2.AbilityStyle = AbilityAnimationStyle.Mechadendrites;
-								unitAnimationActionHandle2.ChangeManager(item.AnimationManager);
-								if (unitAnimationActionHandle2.Action != null)
-								{
-									item.AnimationManager.Execute(unitAnimationActionHandle2);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		base.StartAnimation(handle);
-	}
-
-	private bool IsMainHandAttack(AbilityData ability)
+	private static AttackingLimb GetAttackingLimb(AbilityData ability)
 	{
 		PartUnitBody bodyOptional = ability.Caster.GetBodyOptional();
-		if (bodyOptional == null)
+		if (bodyOptional == null || ability.Weapon == bodyOptional.PrimaryHand?.MaybeWeapon)
 		{
-			return true;
+			return AttackingLimb.MainHand;
 		}
 		if (ability.Caster?.GetOptional<UnitPartMechadendrites>() == null)
 		{
-			return ability.Weapon == bodyOptional.PrimaryHand?.MaybeWeapon;
+			return AttackingLimb.OffHand;
 		}
-		return true;
+		return AttackingLimb.Mechadendrite;
 	}
 
 	protected override Vector3 GetTargetPoint()
@@ -548,7 +522,17 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 
 	protected override void OnStart()
 	{
-		CalculateHitLocations();
+		RulePerformAbility rulePerformAbility = new RulePerformAbility(Ability, base.Target, base.Params.ParentContext);
+		rulePerformAbility.IsCutscene = base.FromCutscene;
+		rulePerformAbility.DisableGameLog = DisableLog;
+		rulePerformAbility.IgnoreCooldown = IgnoreCooldown;
+		rulePerformAbility.ForceFreeAction = base.IsFreeAction;
+		rulePerformAbility.Context.DisableLog = DisableLog;
+		rulePerformAbility.Context.HitPolicy = HitPolicy;
+		rulePerformAbility.Context.DamagePolicy = DamagePolicy;
+		rulePerformAbility.Context.KillTarget = KillTarget;
+		m_RulePerformAbility = rulePerformAbility;
+		CalculateHitPositions();
 		base.OnStart();
 		Ability.IgnoreUsingInThreateningArea = IgnoreAbilityUsingInThreateningArea;
 		if (m_Special != SpecialBehaviourType.NoPrecast)
@@ -557,13 +541,105 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 		}
 		EventBus.RaiseEvent(delegate(IVisualWeaponStateChangeHandle h)
 		{
-			h.VisualWeaponStateChangeHandle(VFXSpeedUpdater.WeaponVisualState.InAttack, (!(base.Executor?.View != null)) ? null : base.Executor?.View.HandsEquipment?.GetWeaponModel(offHand: false));
+			h.VisualWeaponStateChangeHandle(VFXSpeedUpdater.WeaponVisualState.InAttack, (base.Executor?.View == null) ? null : base.Executor?.View.HandsEquipment?.GetWeaponModel(offHand: false));
 		});
 	}
 
-	private void CalculateHitLocations()
+	private void CalculateHitPositions()
 	{
-		m_HitLocationData.LocatorGroups.Add(FxRoot.Instance.LocatorGroupDefaultHit);
+		if (!CanAimWithIK())
+		{
+			return;
+		}
+		m_RulePerformAbility.Context.PreparedDeliveryProcess = TryPrepareDeliveryProcess(m_RulePerformAbility.Context, base.Target);
+		if (Ability.IsPrecise)
+		{
+			List<BpRef<BlueprintFxLocatorGroup>> fxLocatorGroups = Ability.PreciseBodyPart.FxLocatorGroups;
+			if (fxLocatorGroups != null)
+			{
+				Vector3 hitPosition = GetHitPosition(base.Target.Entity.View, fxLocatorGroups);
+				m_ProjectileHitPositions.Add(hitPosition);
+				goto IL_0180;
+			}
+		}
+		if (m_RulePerformAbility.Context.PreparedDeliveryProcess is AbilityProjectileAttack { Attacks: var attacks } abilityProjectileAttack)
+		{
+			foreach (AbilityProjectileAttackLine abilityProjectileAttackLine in attacks)
+			{
+				GridNodeBase node = abilityProjectileAttackLine.Nodes.Last();
+				AbilityProjectileAttackLine.HitData hitData = abilityProjectileAttackLine.Hits.LastItem();
+				RulePerformAttackRoll rollPerformAttackRule = hitData.RollPerformAttackRule;
+				if (!hitData.Empty)
+				{
+					RulePerformAttackRoll rollPerformAttackRule2 = hitData.RollPerformAttackRule;
+					if (rollPerformAttackRule2 != null && rollPerformAttackRule2.ResultIsHit && rollPerformAttackRule2.ResultHitLocation != null)
+					{
+						Vector3 hitPosition2 = GetHitPosition(hitData.Entity.View, rollPerformAttackRule.ResultHitLocation.FxLocatorGroups);
+						m_ProjectileHitPositions.Add(hitPosition2);
+						continue;
+					}
+				}
+				Vector3 item = node.Vector3Position();
+				item.y = abilityProjectileAttackLine.ToNode.Vector3Position().y + 1f;
+				m_ProjectileHitPositions.Add(item);
+			}
+			BeautifyAttackLinesOrder(abilityProjectileAttack.Attacks, m_ProjectileHitPositions);
+		}
+		goto IL_0180;
+		IL_0180:
+		if (m_ProjectileHitPositions.Empty())
+		{
+			Vector3 hitPosition3 = GetHitPosition(base.Target.Entity.View, FxRoot.Instance.LocatorGroupDefaultHit);
+			m_ProjectileHitPositions.Add(hitPosition3);
+		}
+		foreach (Vector3 projectileHitPosition in m_ProjectileHitPositions)
+		{
+			base.Executor.MaybeUnitAnimationManager.Or(null)?.AimIKTargets.Add(projectileHitPosition);
+		}
+	}
+
+	private bool CanAimWithIK()
+	{
+		if ((Ability.Weapon?.WeaponType ?? WeaponType.Fist).IsRanged())
+		{
+			return !Ability.Blueprint.OriginalBlueprint.IsAoE;
+		}
+		return false;
+	}
+
+	private IEnumerator<AbilityDeliveryTarget> TryPrepareDeliveryProcess(AbilityExecutionContext context, TargetWrapper target)
+	{
+		if (!Ability.IsBurst)
+		{
+			return AbilityProjectileAttack.CreateSingleTarget(context, context.Caster.CurrentUnwalkableNode, target.Entity, 1);
+		}
+		if (!context.Ability.CanTargetPoint)
+		{
+			return AbilityProjectileAttack.CreateBurst(context, context.Caster.CurrentUnwalkableNode, target, context.Ability.BurstAttacksCount, Ability.Blueprint.IsControlledBurst);
+		}
+		return AbilityProjectileAttack.CreatePatternBurst(context, context.Caster.CurrentUnwalkableNode, target, context.Ability.BurstAttacksCount, Ability.Blueprint.IsControlledBurst);
+	}
+
+	private void BeautifyAttackLinesOrder(AbilityProjectileAttackLine[] attackLines, List<Vector3> hitPositions)
+	{
+		Dictionary<AbilityProjectileAttackLine, (float cos, Vector3 hitPosition)> dict = new Dictionary<AbilityProjectileAttackLine, (float, Vector3)>();
+		Vector2 vector = base.Executor.Position.To2D();
+		Vector2 normalized = (base.Target.Point.To2D() - vector).normalized;
+		Vector2 lhs = new Vector2(normalized.y, 0f - normalized.x);
+		for (int i = 0; i < attackLines.Length; i++)
+		{
+			AbilityProjectileAttackLine key = attackLines[i];
+			Vector3 vector2 = hitPositions[i];
+			Vector2 normalized2 = (vector2.To2D() - vector).normalized;
+			float item = Vector2.Dot(lhs, normalized2);
+			dict[key] = (item, vector2);
+		}
+		Array.Sort(attackLines, (AbilityProjectileAttackLine _1, AbilityProjectileAttackLine _2) => dict[_1].cos.CompareTo(dict[_2].cos));
+		for (int j = 0; j < attackLines.Length; j++)
+		{
+			attackLines[j].Index = j;
+			hitPositions[j] = dict[attackLines[j]].hitPosition;
+		}
 	}
 
 	[NotNull]
@@ -575,12 +651,15 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 	private void CastAbilityFx(AbilitySpawnFxTime time)
 	{
 		IEnumerable<AbilitySpawnFx> components = Ability.Blueprint.GetComponents<AbilitySpawnFx>();
-		AbilityExecutionContext context = AbilityExecutionContext.Claim(Ability, base.Target, Ability.Caster.Position);
-		foreach (AbilitySpawnFx item in components)
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(Ability, base.Target, null, Ability.Caster.Position).Get(out ctx))
 		{
-			if (item.Time == time)
+			foreach (AbilitySpawnFx item in components)
 			{
-				item.Spawn(context, null, item.DestroyOnCast ? SureGroundFxList() : null);
+				if (item.Time == time)
+				{
+					item.Spawn(ctx, null, item.DestroyOnCast ? SureGroundFxList() : null);
+				}
 			}
 		}
 	}
@@ -665,19 +744,9 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 		}
 		bool isBonusUsage = Ability.IsBonusUsage;
 		int num = Ability.CalculateActionPointCost();
-		RulePerformAbility rulePerformAbility = new RulePerformAbility(Ability, base.Target, base.Params.ParentContext);
-		rulePerformAbility.IsCutscene = base.FromCutscene;
-		rulePerformAbility.DisableGameLog = DisableLog;
-		rulePerformAbility.IgnoreCooldown = IgnoreCooldown;
-		rulePerformAbility.ForceFreeAction = base.IsFreeAction;
-		rulePerformAbility.Context.DisableLog = DisableLog;
-		rulePerformAbility.Context.HitPolicy = HitPolicy;
-		rulePerformAbility.Context.DamagePolicy = DamagePolicy;
-		rulePerformAbility.Context.KillTarget = KillTarget;
-		rulePerformAbility.Context.ProjectileHitPositions = m_HitLocationData.ProjectileHitPositions;
-		RulePerformAbility rulePerformAbility2 = rulePerformAbility;
-		Rulebook.Trigger(rulePerformAbility2);
-		ExecutionProcess = rulePerformAbility2.Result;
+		m_RulePerformAbility.Context.ProjectileHitPositions = m_ProjectileHitPositions;
+		Rulebook.Trigger(m_RulePerformAbility);
+		ExecutionProcess = m_RulePerformAbility.Result;
 		if (ExecutionProcess == null)
 		{
 			return ResultType.Fail;
@@ -690,7 +759,7 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 		{
 			Ability.Spend();
 		}
-		if (!rulePerformAbility2.Success)
+		if (!m_RulePerformAbility.Success)
 		{
 			return ResultType.Fail;
 		}
@@ -736,11 +805,11 @@ public abstract class UnitUseAbilityAbstract<T> : UnitCommand<T> where T : UnitC
 		Ability.IgnoreUsingInThreateningArea = false;
 		EventBus.RaiseEvent(delegate(IVisualWeaponStateChangeHandle h)
 		{
-			h.VisualWeaponStateChangeHandle(VFXSpeedUpdater.WeaponVisualState.InHand, (!(base.Executor?.View != null)) ? null : base.Executor?.View.HandsEquipment?.GetWeaponModel(offHand: false));
+			h.VisualWeaponStateChangeHandle(VFXSpeedUpdater.WeaponVisualState.InHand, (base.Executor?.View == null) ? null : base.Executor?.View.HandsEquipment?.GetWeaponModel(offHand: false));
 		});
 		if (base.Executor?.View != null)
 		{
-			base.Executor.View.HideOffWeapon(hide: false);
+			base.Executor.View.HideOffWeapon(value: false);
 		}
 		if ((m_Special != SpecialBehaviourType.NoCast || base.Result != ResultType.Success) && m_HandFxObjects != null)
 		{

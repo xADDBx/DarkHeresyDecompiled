@@ -214,7 +214,7 @@ public class Polygon
 		for (int i = index + 1; i < vertices.Count; i++)
 		{
 			Vector2 vector2 = vertices[i];
-			if (Vector2.Dot((vector2 - vector).normalized, step) >= 0.9999f && (vector2 - vector).sqrMagnitude < num2)
+			if (Vector2.Dot((vector2 - vector).normalized, (Vector2)step) >= 0.9999f && (vector2 - vector).sqrMagnitude < num2)
 			{
 				num2 = (vector2 - vector).sqrMagnitude;
 				num = i;
@@ -223,7 +223,7 @@ public class Polygon
 		if (num == index)
 		{
 			Vector2 vector3 = vertices[0];
-			if (Vector2.Dot((vector3 - vector).normalized, step) >= 0.9999f && (vector3 - vector).sqrMagnitude < num2)
+			if (Vector2.Dot((vector3 - vector).normalized, (Vector2)step) >= 0.9999f && (vector3 - vector).sqrMagnitude < num2)
 			{
 				num = 0;
 			}

@@ -114,7 +114,7 @@ public class AggroRangeMarkController : MonoBehaviour, IViewAttachedHandler, ISu
 		}
 	}
 
-	public void OnViewAttached(IEntityViewBase view)
+	public void OnViewAttached(IEntityView view)
 	{
 		if (EventInvokerExtensions.Entity is UnitEntity unit)
 		{
@@ -122,7 +122,7 @@ public class AggroRangeMarkController : MonoBehaviour, IViewAttachedHandler, ISu
 		}
 	}
 
-	public void OnViewDetached(IEntityViewBase view)
+	public void OnViewDetached(IEntityView view)
 	{
 		if (EventInvokerExtensions.Entity is UnitEntity unit)
 		{

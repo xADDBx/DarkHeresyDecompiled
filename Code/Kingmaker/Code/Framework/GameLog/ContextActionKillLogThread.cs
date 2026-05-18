@@ -1,7 +1,9 @@
 using Kingmaker.Blueprints.Root.Strings.GameLog;
+using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
+using Owlcat.UI;
 
 namespace Kingmaker.Code.Framework.GameLog;
 
@@ -21,7 +23,8 @@ public class ContextActionKillLogThread : LogThreadBase, IGameLogEventHandler<Ga
 		GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)(BaseUnitEntity)evt.Target.Entity;
 		GameLogContext.Text = evt.Blueprint.Name;
 		GameLogContext.Count = evt.Damage;
+		TooltipBaseTemplate tooltipTemplate = CombatLogTooltipService.CreateTooltipTemplateMechanicEntityFact(evt.Blueprint);
 		GameLogMessage gameLogMessage = ((evt.Caster.Entity == evt.Target.Entity) ? LogThreadBase.Strings.TargetContextActionKill : LogThreadBase.Strings.SourceContextActionKill);
-		AddMessage(gameLogMessage.CreateCombatLogMessage());
+		AddMessage(gameLogMessage.CreateCombatLogMessage(tooltipTemplate));
 	}
 }

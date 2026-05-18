@@ -1,5 +1,4 @@
 using Owlcat.UI;
-using R3;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -7,14 +6,10 @@ namespace Kingmaker.Code.UI.MVVM;
 public class DlcManagerModEntityConsoleView : DlcManagerModEntityBaseView, INavigationHorizontalDirectionsHandler, INavigationLeftDirectionHandler, IConsoleEntity, INavigationRightDirectionHandler
 {
 	[SerializeField]
-	private ConsoleHint m_ModSettingsHint;
+	private HintView m_ModSettingsHint;
 
-	public void CreateInputImpl(InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
+	public void CreateInputImpl()
 	{
-		AddDisposable(m_ModSettingsHint.Bind(inputLayer.AddButton(delegate
-		{
-			OpenSettings();
-		}, 17, IsFocused.And(base.ViewModel.ModSettingsAvailable).ToReadOnlyReactiveProperty(initialValue: false))));
 	}
 
 	public bool GetAvailableSettings()

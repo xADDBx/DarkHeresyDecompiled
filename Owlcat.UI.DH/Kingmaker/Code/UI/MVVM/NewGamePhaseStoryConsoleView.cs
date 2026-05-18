@@ -1,8 +1,5 @@
 using System.Collections.Generic;
-using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
-using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -17,13 +14,13 @@ public class NewGamePhaseStoryConsoleView : NewGamePhaseStoryBaseView
 	private CustomUIVideoPlayerConsoleView m_CustomUIVideoPlayerConsoleView;
 
 	[SerializeField]
-	private ConsoleHint m_ScrollStoryHint;
+	private HintView m_ScrollStoryHint;
 
 	[SerializeField]
-	private ConsoleHint m_PurchaseHint;
+	private HintView m_PurchaseHint;
 
 	[SerializeField]
-	private ConsoleHint m_InstallHint;
+	private HintView m_InstallHint;
 
 	public override void Initialize()
 	{
@@ -42,63 +39,15 @@ public class NewGamePhaseStoryConsoleView : NewGamePhaseStoryBaseView
 		m_StorySelectorConsoleView.Bind(base.ViewModel.SelectionGroup);
 	}
 
-	public void Scroll(InputActionEventData arg1, float x)
-	{
-		Scroll(x);
-	}
-
-	private void Scroll(float x)
+	public void Scroll(float x)
 	{
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * m_ScrollRect.scrollSensitivity);
 		m_ScrollRect.OnSmoothlyScroll(pointerEventData);
 	}
 
-	public void CreateInputImpl(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, ConsoleHint switchOnOffHint, ConsoleHint purchaseHint, ConsoleHint installHint, ConsoleHint deleteDlcHint, ConsoleHint playPauseVideoHint)
+	public void CreateInputImpl()
 	{
-		if (m_ScrollStoryHint != null)
-		{
-			m_ScrollStoryHint.BindCustomAction(3, inputLayer, base.ViewModel.IsEnabled).AddTo(this);
-		}
-		if (m_PurchaseHint != null)
-		{
-			m_PurchaseHint.BindCustomAction(10, inputLayer, base.ViewModel.IsEnabled.And(base.ViewModel.DlcIsBought.Not()).And(SwitchOnButtonActive.Not()).ToReadOnlyReactiveProperty(initialValue: false)).AddTo(this);
-		}
-		if (m_InstallHint != null)
-		{
-			m_InstallHint.BindCustomAction(11, inputLayer, base.ViewModel.IsEnabled.And(SwitchOnButtonActive.Not()).And(base.ViewModel.DlcIsBoughtAndNotInstalled).And(base.ViewModel.DownloadingInProgress.Not())
-				.And(base.ViewModel.IsRealConsole)
-				.ToReadOnlyReactiveProperty(initialValue: false)).AddTo(this);
-		}
-		switchOnOffHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.SwitchDlcOn();
-		}, 10, base.ViewModel.IsEnabled.And(SwitchOnButtonActive).ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		switchOnOffHint.SetLabel(UIStrings.Instance.SettingsUI.SettingsToggleOff);
-		installHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.InstallDlc();
-		}, 11, base.ViewModel.IsEnabled.And(SwitchOnButtonActive.Not()).And(base.ViewModel.DlcIsBoughtAndNotInstalled).And(base.ViewModel.DownloadingInProgress.Not())
-			.And(base.ViewModel.IsRealConsole)
-			.ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		installHint.SetLabel(UIStrings.Instance.DlcManager.Install);
-		deleteDlcHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.DeleteDlc();
-		}, 11, base.ViewModel.IsEnabled.And(SwitchOnButtonActive).And(base.ViewModel.DlcIsBoughtAndNotInstalled.Not()).And(base.ViewModel.DownloadingInProgress.Not())
-			.And(base.ViewModel.IsRealConsole)
-			.ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		deleteDlcHint.SetLabel(UIStrings.Instance.DlcManager.DeleteDlc);
-		base.ViewModel.DlcIsOn.Subscribe(delegate(bool value)
-		{
-			switchOnOffHint.SetLabel(value ? UIStrings.Instance.SettingsUI.SettingsToggleOff : UIStrings.Instance.SettingsUI.SettingsToggleOn);
-		}).AddTo(this);
-		purchaseHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.ShowInStore();
-		}, 10, base.ViewModel.IsEnabled.And(base.ViewModel.DlcIsBought.Not()).And(SwitchOnButtonActive.Not()).ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		purchaseHint.SetLabel(UIStrings.Instance.DlcManager.Purchase);
-		m_CustomUIVideoPlayerConsoleView.CreateInputImpl(inputLayer, hintsWidget, playPauseVideoHint, base.ViewModel.IsEnabled);
 	}
 
 	public List<IConsoleEntity> GetNavigationEntities()

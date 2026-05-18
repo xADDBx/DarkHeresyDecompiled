@@ -115,13 +115,13 @@ public class TextScrambler : IDisposable
 		m_AnimationActive = true;
 		if (!isEmptyText && m_TextComponent.gameObject.activeInHierarchy)
 		{
-			UISounds.Instance.Sounds.ScrambledText.ScrambledTextLoopStart.Play();
+			SystemSounds.Instance.ScrambledText.LoopStart.Play();
 		}
 	}
 
 	private void StopAnimation()
 	{
-		UISounds.Instance.Sounds.ScrambledText.ScrambledTextLoopStop.Play();
+		SystemSounds.Instance.ScrambledText.LoopStop.Play();
 		m_AnimationActive = false;
 		m_Tasks.Clear();
 	}

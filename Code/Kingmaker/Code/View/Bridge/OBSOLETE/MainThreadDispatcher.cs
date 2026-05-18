@@ -75,4 +75,10 @@ public static class MainThreadDispatcher
 		}
 		return s_CoroutineRunnerInstance.StartCoroutine(routine);
 	}
+
+	public static async void Send(Action action)
+	{
+		await Awaitable.MainThreadAsync();
+		action();
+	}
 }

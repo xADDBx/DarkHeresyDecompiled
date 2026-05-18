@@ -3,7 +3,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Progression.Features.Advancements;
@@ -23,7 +23,7 @@ public class RankEntrySelectionStatVM : RankEntrySelectionFeatureVM
 
 	private readonly BlueprintStatAdvancement m_StatAdvancement;
 
-	private readonly ModifiableValue m_UnitStat;
+	private readonly BaseUnitEntity m_Unit;
 
 	public ReadOnlyReactiveProperty<string> StatIncreaseLabel => m_StatIncreaseLabel;
 
@@ -37,7 +37,7 @@ public class RankEntrySelectionStatVM : RankEntrySelectionFeatureVM
 			StatDisplayName = LocalizedTexts.Instance.Stats.GetText(blueprintStatAdvancement.Stat);
 			ShortName = UIUtilityText.GetStatShortName(blueprintStatAdvancement.Stat);
 			m_StatAdvancement = blueprintStatAdvancement;
-			m_UnitStat = owner.UnitProgressionVM.Unit.CurrentValue.Stats.GetStat(blueprintStatAdvancement.Stat);
+			m_Unit = owner.UnitProgressionVM.Unit.CurrentValue;
 			AddDisposable(ObservableSubscribeExtensions.Subscribe(OnUpdateState, delegate
 			{
 				UpdateIncreaseLabel();
@@ -53,38 +53,14 @@ public class RankEntrySelectionStatVM : RankEntrySelectionFeatureVM
 		LevelUpManager levelUpManager = Owner.UnitProgressionVM.LevelUpManager;
 		BaseUnitEntity obj = levelUpManager?.TargetUnit ?? Owner.UnitProgressionVM.Unit.CurrentValue;
 		BaseUnitEntity baseUnitEntity = levelUpManager?.PreviewUnit;
-		ModifiableValue stat = obj.Stats.GetStat(m_StatAdvancement.Stat);
-		ModifiableValue obj2 = baseUnitEntity?.Stats?.GetStat(m_StatAdvancement.Stat);
-		m_SummaryStatIncreaseLabel.Value = $"{stat.ModifiedValue} > {obj2?.ModifiedValue}";
+		int num = obj.Actor.GetStat(m_StatAdvancement.Stat, null, default(StatContext), "UpdateIncreaseLabel");
+		int? num2 = baseUnitEntity?.Actor.GetStat(m_StatAdvancement.Stat, null, default(StatContext), "UpdateIncreaseLabel").ModifiedValue;
+		m_SummaryStatIncreaseLabel.Value = $"{num} > {num2}";
 	}
 
 	private void SetTooltip()
 	{
-		ModifiableValue unitStat = m_UnitStat;
-		StatTooltipData statTooltipData = default(StatTooltipData);
-		if (!(unitStat is ModifiableValueAttributeStat attribute))
-		{
-			if (!(unitStat is ModifiableValueSkill skill))
-			{
-				if (unitStat != null)
-				{
-					statTooltipData = new StatTooltipData(m_UnitStat);
-				}
-				else
-				{
-					global::_003CPrivateImplementationDetails_003E.ThrowSwitchExpressionException(unitStat);
-				}
-			}
-			else
-			{
-				statTooltipData = new StatTooltipData(skill);
-			}
-		}
-		else
-		{
-			statTooltipData = new StatTooltipData(attribute);
-		}
-		StatTooltipData statData = statTooltipData;
+		StatTooltipData statData = StatTooltipData.FromActor(m_Unit, m_StatAdvancement.Stat);
 		m_Tooltip.Value = new TooltipTemplateRankEntryStat(statData, SelectionItem, SelectionState, showCompanionStats: true);
 	}
 

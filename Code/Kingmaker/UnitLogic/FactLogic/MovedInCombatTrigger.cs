@@ -3,6 +3,7 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -24,7 +25,7 @@ public class MovedInCombatTrigger : UnitFactComponentDelegate, IUnitCommandEndHa
 	{
 		if (command is UnitMoveToProper unitMoveToProper && base.Context.MaybeOwner == command.Executor)
 		{
-			base.Context[ContextPropertyName.Value1] = (int)unitMoveToProper.MovePointsSpent;
+			EvalContext.Current[ContextPropertyName.Value1] = (int)unitMoveToProper.MovePointsSpent;
 			base.Fact.RunActionInContext(Actions, base.Context.MaybeOwner.ToITargetWrapper());
 		}
 	}

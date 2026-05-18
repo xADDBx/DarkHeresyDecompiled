@@ -6,11 +6,6 @@ public class AbilityUsageMetricsEvent : MetricsEvent
 {
 	protected override string Name => "ability";
 
-	public AbilityUsageMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public AbilityUsageMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -29,9 +24,9 @@ public class AbilityUsageMetricsEvent : MetricsEvent
 		return this;
 	}
 
-	public AbilityUsageMetricsEvent Modifiers(IEnumerable<string> modifiers)
+	public AbilityUsageMetricsEvent Modifier(string modifier)
 	{
-		AddParam("modifiers", modifiers);
+		AddParam("modifier", modifier);
 		return this;
 	}
 }

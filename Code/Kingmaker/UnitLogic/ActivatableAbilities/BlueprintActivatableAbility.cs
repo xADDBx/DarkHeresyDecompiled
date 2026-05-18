@@ -2,11 +2,11 @@ using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Facts;
+using Kingmaker.Framework;
 using Kingmaker.ResourceLinks.BaseInterfaces;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
@@ -89,7 +89,7 @@ public class BlueprintActivatableAbility : BlueprintUnitFact, IBlueprintScanner,
 		return typeof(ActivatableAbility);
 	}
 
-	public override MechanicEntityFact CreateFact(MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public override MechanicEntityFact CreateFact(IEvalContext parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new ActivatableAbility(this);
 	}

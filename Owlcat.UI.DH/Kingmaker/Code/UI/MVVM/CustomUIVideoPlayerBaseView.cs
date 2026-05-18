@@ -1,6 +1,5 @@
 using System;
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.Utility;
 using Kingmaker.Visual.Sound;

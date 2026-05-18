@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using OwlPack.Runtime;
@@ -12,7 +13,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class InteractionDialogPart : InteractionPart<InteractionSettings>, IHashable, IOwlPackable<InteractionDialogPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionDialogPart",
 		OldNames = null,
@@ -35,7 +36,7 @@ public class InteractionDialogPart : InteractionPart<InteractionSettings>, IHash
 	{
 		if (base.View != null)
 		{
-			DialogData data = DialogController.SetupDialogWithMapObject(base.Settings.Dialog, base.View, null, user);
+			DialogData data = DialogController.SetupDialogWithMapObject(base.Settings.Dialog, base.Owner, null, user);
 			Game.Instance.Controllers.DialogController.StartDialog(data);
 		}
 	}
@@ -57,7 +58,7 @@ public class InteractionDialogPart : InteractionPart<InteractionSettings>, IHash
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionDialogPart source = new InteractionDialogPart();
 		result = Unsafe.As<InteractionDialogPart, TPossiblyBase>(ref source);

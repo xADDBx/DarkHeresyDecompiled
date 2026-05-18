@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
@@ -25,8 +26,7 @@ public class SpawnByUnitGroup : GameAction
 
 	protected override void RunAction()
 	{
-		UnitGroupView unitGroupView = m_Group.FindView() as UnitGroupView;
-		if (unitGroupView == null)
+		if (!(m_Group.FindData() is UnitGroupEntity unitGroupEntity))
 		{
 			LogChannel.Default.Warning(this, $"Unit group not found in {this} ({m_Group?.UniqueId})");
 			QAModeExceptionReporter.MaybeShowError($"Unit group not found in {this} ({m_Group?.UniqueId})");
@@ -35,16 +35,14 @@ public class SpawnByUnitGroup : GameAction
 		List<(AbstractUnitEntity, SceneEntitiesState)> value;
 		using (CollectionPool<List<(AbstractUnitEntity, SceneEntitiesState)>, (AbstractUnitEntity, SceneEntitiesState)>.Get(out value))
 		{
-			UnitSpawner[] componentsInChildren = unitGroupView.GetComponentsInChildren<UnitSpawner>();
-			foreach (UnitSpawner unitSpawner in componentsInChildren)
+			foreach (AbstractUnitSpawnerEntity item in unitGroupEntity.Members.OfType<AbstractUnitSpawnerEntity>())
 			{
-				UnitSpawnerBase.MyData data = unitSpawner.Data;
-				if (data != null && data.IsInGame && !unitSpawner.HasSpawned)
+				if (item != null && item.IsInGame && !item.HasSpawned)
 				{
-					AbstractUnitEntity abstractUnitEntity = unitSpawner.Spawn();
+					AbstractUnitEntity abstractUnitEntity = item.Spawn();
 					if (abstractUnitEntity != null)
 					{
-						value.Add((abstractUnitEntity, unitSpawner.Data.HoldingState));
+						value.Add((abstractUnitEntity, item.HoldingState));
 					}
 				}
 			}

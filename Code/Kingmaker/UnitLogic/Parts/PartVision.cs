@@ -5,12 +5,12 @@ using Kingmaker.Controllers.FogOfWar.LineOfSight;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.View;
 using Kingmaker.View.Covers;
 using Kingmaker.View.MapObjects;
-using Kingmaker.View.MapObjects.SriptZones;
 using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
@@ -51,7 +51,7 @@ public class PartVision : BaseUnitPart, IHashable, IOwlPackable<PartVision>
 
 	public UnitSightCache SightCache { get; private set; }
 
-	public ScriptZone ExtendedVisionArea { get; set; }
+	public ScriptZoneEntity ExtendedVisionArea { get; set; }
 
 	public float RangeMeters
 	{
@@ -86,7 +86,7 @@ public class PartVision : BaseUnitPart, IHashable, IOwlPackable<PartVision>
 		{
 			Vector3 eyePosition = base.Owner.EyePosition;
 			float rangeMeters = RangeMeters;
-			if ((bool)ExtendedVisionArea && ExtendedVisionArea.Data.ContainsPosition(other.Position))
+			if (ExtendedVisionArea != null && ExtendedVisionArea.ContainsPosition(other.Position))
 			{
 				return true;
 			}
@@ -112,7 +112,7 @@ public class PartVision : BaseUnitPart, IHashable, IOwlPackable<PartVision>
 		using (ProfileScope.New("PartVision.HasLos(Vector3, float)"))
 		{
 			float rangeMeters = RangeMeters;
-			return (ExtendedVisionArea != null && ExtendedVisionArea.Data.ContainsPosition(point)) || (GeometryUtils.SqrDistance2D(eyePosition, point) <= rangeMeters * rangeMeters && !LineOfSightGeometry.Instance.HasObstacle(eyePosition, point, fudgeRadius));
+			return (ExtendedVisionArea != null && ExtendedVisionArea.ContainsPosition(point)) || (GeometryUtils.SqrDistance2D(eyePosition, point) <= rangeMeters * rangeMeters && !LineOfSightGeometry.Instance.HasObstacle(eyePosition, point, fudgeRadius));
 		}
 	}
 
@@ -126,7 +126,7 @@ public class PartVision : BaseUnitPart, IHashable, IOwlPackable<PartVision>
 		float rangeMeters = RangeMeters;
 		bool num = GeometryUtils.SqrDistance2D(p1, p2) <= rangeMeters * rangeMeters;
 		bool flag = LineOfSightGeometry.Instance.HasObstacle(p1, p2, t?.GetInstanceID() ?? 0);
-		bool flag2 = (object)ExtendedVisionArea != null && ExtendedVisionArea.Data.ContainsPosition(p2);
+		bool flag2 = ExtendedVisionArea != null && ExtendedVisionArea.ContainsPosition(p2);
 		return (num && !flag) || flag2;
 	}
 

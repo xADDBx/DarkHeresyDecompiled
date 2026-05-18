@@ -1,8 +1,10 @@
 using System;
+using Kingmaker.Code.Gameplay.Enums.Stats;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using UnityEngine;
 
 namespace Kingmaker.Gameplay.Features.Experience;
@@ -29,6 +31,14 @@ public sealed class GainExp : GameAction, IExperienceSettings
 	[SerializeField]
 	[ShowIf("ShowOverrideCRValue")]
 	private int _overrideCRValue;
+
+	[SerializeField]
+	private string _comment;
+
+	[InfoBox("Этот блок настроек - meta информация для статистики")]
+	public Chapter Chapter;
+
+	public Cluster Cluster;
 
 	public ExperienceType Type => _type;
 
@@ -67,6 +77,8 @@ public sealed class GainExp : GameAction, IExperienceSettings
 			return false;
 		}
 	}
+
+	public string Comment => _comment;
 
 	public override string GetDescription()
 	{

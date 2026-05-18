@@ -63,7 +63,7 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 
 	[Header("Skills blocks characteristics")]
 	[SerializeField]
-	private CharInfoAbilityScoresBlockBaseView m_AbilityScores;
+	private CharInfoPredefinedAbilityScoresBaseView m_AbilityScores;
 
 	[Header("Char Info Tab Buttons")]
 	[SerializeField]
@@ -128,16 +128,7 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 
 	[Header("State Blocks")]
 	[SerializeField]
-	private OwlcatMultiButton m_PositiveStateTooltip;
-
-	[SerializeField]
-	private OwlcatMultiButton m_NegativeStateTooltip;
-
-	[SerializeField]
-	private OwlcatMultiButton m_TraumasStateTooltip;
-
-	[SerializeField]
-	private OwlcatMultiButton m_DamageOverTimeStateTooltip;
+	private CharInfoBuffGroupsView m_BuffGroupsView;
 
 	[Header("Career")]
 	[SerializeField]
@@ -189,6 +180,7 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 	protected override void OnBind()
 	{
 		base.OnBind();
+		m_BuffGroupsView.Bind(base.ViewModel.CharInfoBuffGroupsVM);
 		base.ViewModel.UnitName.Subscribe(delegate
 		{
 			SetName();
@@ -269,6 +261,12 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 		ChangeTab(TabButtonName.Stats);
 	}
 
+	protected override void OnUnbind()
+	{
+		m_BuffGroupsView.Unbind();
+		base.OnUnbind();
+	}
+
 	private void SetupSoundTypes()
 	{
 		foreach (OwlcatMultiButton item in new List<OwlcatMultiButton> { m_StatsButton, m_SkillsButton, m_OffenceButton })
@@ -306,7 +304,7 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 			break;
 		}
 		RefreshView();
-		UISounds.Instance.Sounds.Character.PaperTabChanged.Play();
+		ServiceWindowsSounds.Instance.Character.PaperTabChanged.Play();
 	}
 
 	protected override void RefreshView()
@@ -315,7 +313,6 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 		SetPortrait();
 		SetHP();
 		SetTooltips();
-		m_AbilityScores.Or(null)?.Bind(base.ViewModel.AbilityScores);
 	}
 
 	private void SetName()
@@ -350,14 +347,6 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 
 	private void SetTooltips()
 	{
-		m_PositiveStateTooltip.Interactable = base.ViewModel.PositiveStateTooltip.CurrentValue != null;
-		m_NegativeStateTooltip.Interactable = base.ViewModel.NegativeStateTooltip.CurrentValue != null;
-		m_TraumasStateTooltip.Interactable = base.ViewModel.TraumasStateTooltip.CurrentValue != null;
-		m_DamageOverTimeStateTooltip.Interactable = base.ViewModel.DamageOverTimeStateTooltip.CurrentValue != null;
-		m_PositiveStateTooltip.SetTooltip(base.ViewModel.PositiveStateTooltip).AddTo(this);
-		m_NegativeStateTooltip.SetTooltip(base.ViewModel.NegativeStateTooltip).AddTo(this);
-		m_TraumasStateTooltip.SetTooltip(base.ViewModel.TraumasStateTooltip).AddTo(this);
-		m_DamageOverTimeStateTooltip.SetTooltip(base.ViewModel.DamageOverTimeStateTooltip).AddTo(this);
 		if (base.ViewModel.FirstCareer.CurrentValue != null)
 		{
 			m_FirstCareerTooltip.SetTooltip(base.ViewModel.FirstCareer.CurrentValue.CareerTooltip).AddTo(this);
@@ -384,7 +373,7 @@ public class CharInfoNameAndPortraitBaseView : CharInfoComponentView<CharInfoNam
 		if (m_IsShown)
 		{
 			m_IsShown = false;
-			UISounds.Instance.Sounds.Character.CharacterStatsHide.Play();
+			ServiceWindowsSounds.Instance.Character.StatsHide.Play();
 			m_PaperMoveAnimator.DisappearAnimation();
 			m_PaperFadeAnimator.DisappearAnimation(delegate
 			{

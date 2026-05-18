@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEngine;
@@ -15,8 +16,12 @@ internal sealed class LayeredMaterialRenderer
 
 	private Renderer m_Renderer;
 
-	public static LayeredMaterialRenderer Get(Renderer renderer)
+	public static LayeredMaterialRenderer Get([NotNull] Renderer renderer)
 	{
+		if (renderer == null)
+		{
+			throw new ArgumentNullException("renderer");
+		}
 		if (!s_Pool.TryPop(out var result))
 		{
 			result = new LayeredMaterialRenderer();
@@ -37,6 +42,15 @@ internal sealed class LayeredMaterialRenderer
 		return m_Renderer != null;
 	}
 
+	public bool IsRendererIdMatch(int rendererId)
+	{
+		if (IsValid())
+		{
+			return m_Renderer.GetInstanceID() == rendererId;
+		}
+		return false;
+	}
+
 	public MaterialPropertiesSnapshot GetBaseMaterialPropertiesSnapshot()
 	{
 		return m_BaseMaterialPropertiesSnapshot;
@@ -44,11 +58,19 @@ internal sealed class LayeredMaterialRenderer
 
 	public void RefreshBaseMaterialPropertiesSnapshot()
 	{
+		if (m_Renderer == null)
+		{
+			throw new NullReferenceException("m_Renderer");
+		}
 		m_BaseMaterialPropertiesSnapshot.Capture(m_Renderer.sharedMaterial);
 	}
 
 	public void SetMaterials([CanBeNull] List<Material> additionalMaterials)
 	{
+		if (m_Renderer == null)
+		{
+			throw new NullReferenceException("m_Renderer");
+		}
 		List<Material> value;
 		using (CollectionPool<List<Material>, Material>.Get(out value))
 		{
@@ -93,6 +115,10 @@ internal sealed class LayeredMaterialRenderer
 
 	public void SetMaterialPropertyBlock(MaterialPropertyBlock materialPropertyBlock, int layerIndex)
 	{
+		if (m_Renderer == null)
+		{
+			throw new NullReferenceException("m_Renderer");
+		}
 		int num = 1 + layerIndex;
 		List<Material> value;
 		using (CollectionPool<List<Material>, Material>.Get(out value))

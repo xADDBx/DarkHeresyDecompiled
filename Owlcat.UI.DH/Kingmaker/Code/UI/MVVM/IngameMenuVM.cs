@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints.Encyclopedia;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
@@ -7,28 +8,20 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.PubSubSystem.Core.Interfaces;
 using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class IngameMenuVM : IngameMenuBaseVM, ICanAccessStarshipInventoryHandler, ISubscriber, ICanAccessColonizationHandler
+public class IngameMenuVM : IngameMenuBaseVM
 {
+	private List<UnitReference> m_PartyCharacters;
+
 	public readonly DetectiveIngameMenuNotificatorVM DetectiveNotificationsVM;
 
 	public readonly QuestIngameMenuNotificatorVM QuestNotificationsVM;
 
-	private List<UnitReference> m_PartyCharacters;
-
-	private readonly ReactiveCommand<Unit> m_CheckCanAccessStarshipInventoryButtons = new ReactiveCommand<Unit>();
-
-	private readonly ReactiveCommand<Unit> m_CheckCanAccessColonizationButton = new ReactiveCommand<Unit>();
-
-	public Observable<Unit> CheckCanAccessStarshipInventoryButtons => m_CheckCanAccessStarshipInventoryButtons;
-
-	public Observable<Unit> CheckCanAccessColonizationButton => m_CheckCanAccessColonizationButton;
-
-	public IngameMenuVM()
+	public IngameMenuVM([CanBeNull] ReadOnlyReactiveProperty<bool> isForceHidden)
+		: base(isForceHidden)
 	{
 		UpdatePartyCharacters();
 		DetectiveNotificationsVM = new DetectiveIngameMenuNotificatorVM();
@@ -157,15 +150,5 @@ public class IngameMenuVM : IngameMenuBaseVM, ICanAccessStarshipInventoryHandler
 	{
 		UpdatePartyCharacters();
 		return m_PartyCharacters.Any((UnitReference c) => c.ToBaseUnitEntity().Progression.CanLevelUp);
-	}
-
-	public void HandleCanAccessStarshipInventory()
-	{
-		m_CheckCanAccessStarshipInventoryButtons.Execute();
-	}
-
-	public void HandleCanAccessColonization()
-	{
-		m_CheckCanAccessColonizationButton.Execute();
 	}
 }

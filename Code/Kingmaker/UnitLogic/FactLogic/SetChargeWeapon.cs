@@ -18,7 +18,7 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [Obsolete]
 [AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("d841152a8173c9e42ad26cacbed8a5f8")]
-public class SetChargeWeapon : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class SetChargeWeapon : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class Runtime : EntityFactComponent<BaseUnitEntity, SetChargeWeapon>, IHashable, IOwlPackable<Runtime>

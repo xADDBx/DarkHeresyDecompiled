@@ -29,10 +29,6 @@ public abstract class BugReportDuplicatesBaseView : View<BugReportDuplicatesVM>
 	[SerializeField]
 	private BugDuplicateItemView m_WidgetEntityView;
 
-	protected InputLayer InputLayer;
-
-	protected GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	private Coroutine m_DuplicatesListCoroutine;
 
 	public const string InputLayerContextName = "BugReportDuplicatesViewInput";
@@ -43,7 +39,6 @@ public abstract class BugReportDuplicatesBaseView : View<BugReportDuplicatesVM>
 		m_LoadingProcessText.gameObject.SetActive(value: true);
 		m_TitleText.text = UIStrings.Instance.UIBugReport.DuplicateBugsTitleText.Text;
 		m_LoadingProcessText.text = UIStrings.Instance.UIBugReport.LoadingProcessDuplicatesListText.Text;
-		BuildNavigation();
 		m_DuplicatesListCoroutine = StartCoroutine(LoadDuplicatesListCoroutine());
 	}
 
@@ -55,7 +50,6 @@ public abstract class BugReportDuplicatesBaseView : View<BugReportDuplicatesVM>
 			m_DuplicatesListCoroutine = null;
 		}
 		base.gameObject.SetActive(value: false);
-		InputLayer = null;
 		m_WidgetList.Clear();
 	}
 
@@ -105,29 +99,5 @@ public abstract class BugReportDuplicatesBaseView : View<BugReportDuplicatesVM>
 	private void DrawEntities(IEnumerable<BugDuplicateItemVM> duplicatesList)
 	{
 		m_WidgetList.DrawEntries(duplicatesList, m_WidgetEntityView).AddTo(this);
-		UpdateNavigation();
-	}
-
-	private void BuildNavigation()
-	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		CreateInput();
-		GamePad.Instance.PushLayer(InputLayer).AddTo(this);
-	}
-
-	protected virtual void CreateInput()
-	{
-		InputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = "BugReportDuplicatesViewInput"
-		});
-	}
-
-	protected virtual void UpdateNavigation()
-	{
-		InputLayer.Unbind();
-		List<IConsoleNavigationEntity> navigationEntities = m_WidgetList.GetNavigationEntities();
-		m_NavigationBehaviour.AddColumn(navigationEntities);
-		InputLayer.Bind();
 	}
 }

@@ -21,7 +21,7 @@ namespace Kingmaker.Designers.EventConditionActionSystem.Events;
 [AllowedOn(typeof(BlueprintEtude))]
 [ComponentName("Events/EtudeInvokeActionsDelayed")]
 [TypeId("7282e6131e1028946b06c28e1c78ad57")]
-public class EtudeInvokeActionsDelayed : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class EtudeInvokeActionsDelayed : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[JsonObject]
 	[OwlPackable(OwlPackableMode.Generate)]

@@ -38,7 +38,11 @@ public class BugContext : IComparable<BugContext>
 
 	private const string DefaultAspect = "None";
 
-	private static readonly IReadOnlyList<string> DefaultAspects = SortAspects(new List<string> { "None", "Animation", "Code", "Localization", "Mechanics", "Narrative", "Sound", "UI", "Visual" });
+	private static readonly IReadOnlyList<string> DefaultAspects = SortAspects(new List<string>
+	{
+		"None", "Animation", "Code", "Cutscenes", "Detective", "Disolve", "Environment", "Game Design", "Level Design", "Localization",
+		"Narrative", "Sound", "UI", "Visual", "VoiceOver"
+	});
 
 	public bool IsTooltip;
 

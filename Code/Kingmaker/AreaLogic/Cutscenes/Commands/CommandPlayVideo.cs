@@ -66,9 +66,8 @@ public class CommandPlayVideo : CommandBase
 		return SignalService.Instance.CheckReadyOrSend(ref commandData.StopPlaySignal);
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data data = player.GetCommandData<Data>(this);
 		data.IsSkipped = true;
 		data.Interchapter.Finished = true;
@@ -78,31 +77,35 @@ public class CommandPlayVideo : CommandBase
 		});
 		CutsceneController.LockSkipBarkBanter.Release();
 		Flag.Release();
+		return CommandResult.Success;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data data = player.GetCommandData<Data>(this);
 		data.Interchapter = new InterchapterData();
 		data.Interchapter.Finished = skipping;
 		data.IsSkipped = skipping;
-		if (!data.IsSkipped)
+		if (data.IsSkipped)
 		{
-			data.Interchapter.VideoClip = GetVideoToPlay();
-			data.Interchapter.SoundStartEvent = m_SoundStartEventName;
-			data.Interchapter.SoundStopEvent = (m_StopSoundByEvent ? m_SoundStopEventName : null);
-			EventBus.RaiseEvent(delegate(IInterchapterHandler x)
-			{
-				x.StartInterchapter(data.Interchapter);
-			});
-			CutsceneController.LockSkipBarkBanter.Retain();
-			Flag.Retain();
-			data.StopPlaySignal = SignalService.Instance.RegisterNext();
+			return CommandResult.Success;
 		}
+		data.Interchapter.VideoClip = GetVideoToPlay();
+		data.Interchapter.SoundStartEvent = m_SoundStartEventName;
+		data.Interchapter.SoundStopEvent = (m_StopSoundByEvent ? m_SoundStopEventName : null);
+		EventBus.RaiseEvent(delegate(IInterchapterHandler x)
+		{
+			x.StartInterchapter(data.Interchapter);
+		});
+		CutsceneController.LockSkipBarkBanter.Retain();
+		Flag.Retain();
+		data.StopPlaySignal = SignalService.Instance.RegisterNext();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -110,46 +113,49 @@ public class CommandPlayVideo : CommandBase
 		return player.GetCommandData<Data>(this).Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		if (!commandData.Finished && !(time < commandData.Interchapter.VideoClip.length))
+		if (commandData.Finished || time < commandData.Interchapter.VideoClip.length)
 		{
-			switch (commandData.Interchapter.State)
-			{
-			case null:
-			case VideoState.Inactive:
-			case VideoState.Finishing:
-				commandData.Interchapter.Finished = true;
-				break;
-			case VideoState.Preparing:
-				commandData.Interchapter.Finished = commandData.TimeSinceStateStart > MaxPreparingTime;
-				break;
-			case VideoState.Playing:
-				commandData.Interchapter.Finished = commandData.TimeSinceStateStart > commandData.Interchapter.VideoClip.length + MaxPlayingLagTime;
-				break;
-			default:
-				throw new ArgumentOutOfRangeException();
-			case VideoState.PlayingPressAnyKey:
-				break;
-			}
+			return CommandResult.Success;
 		}
+		switch (commandData.Interchapter.State)
+		{
+		case null:
+		case VideoState.Inactive:
+		case VideoState.Finishing:
+			commandData.Interchapter.Finished = true;
+			break;
+		case VideoState.Preparing:
+			commandData.Interchapter.Finished = commandData.TimeSinceStateStart > MaxPreparingTime;
+			break;
+		case VideoState.Playing:
+			commandData.Interchapter.Finished = commandData.TimeSinceStateStart > commandData.Interchapter.VideoClip.length + MaxPlayingLagTime;
+			break;
+		default:
+			return CommandResult.Fail($"Unknown state {commandData.Interchapter.State}");
+		case VideoState.PlayingPressAnyKey:
+			break;
+		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data data = player.GetCommandData<Data>(this);
-		if (!data.IsSkipped)
+		if (data.IsSkipped)
 		{
-			data.Interchapter.Finished = true;
-			EventBus.RaiseEvent(delegate(IInterchapterHandler h)
-			{
-				h.StopInterchapter(data.Interchapter);
-			});
-			CutsceneController.LockSkipBarkBanter.Release();
-			Flag.Release();
+			return CommandResult.Success;
 		}
+		data.Interchapter.Finished = true;
+		EventBus.RaiseEvent(delegate(IInterchapterHandler h)
+		{
+			h.StopInterchapter(data.Interchapter);
+		});
+		CutsceneController.LockSkipBarkBanter.Release();
+		Flag.Release();
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

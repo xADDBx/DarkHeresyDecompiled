@@ -2,9 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.DialogSystem.Interfaces;
 using Kingmaker.ElementsSystem;
-using Kingmaker.Globalmap.Colonization.Rewards;
+using Kingmaker.ElementsSystem.Interfaces;
 using Kingmaker.Localization;
 using Kingmaker.Localization.Shared;
 using Kingmaker.UnitLogic.Alignments;
@@ -18,7 +17,7 @@ using UnityEngine.Serialization;
 namespace Kingmaker.DialogSystem.Blueprints;
 
 [TypeId("8eee9d45ddcfa614d99610c1892993e3")]
-public class BlueprintCue : BlueprintCueBase, ILocalizedStringHolder, IAlignmentShiftProvider
+public class BlueprintCue : BlueprintCueBase, ILocalizedStringHolder, IAlignmentShiftProvider, IPossibleDialogEnding
 {
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.ByProperty)]
 	public LocalizedString Text;
@@ -50,6 +49,10 @@ public class BlueprintCue : BlueprintCueBase, ILocalizedStringHolder, IAlignment
 	public List<BlueprintAnswerBaseReference> Answers = new List<BlueprintAnswerBaseReference>();
 
 	public CueSelection Continue;
+
+	[SerializeField]
+	[KDB("Set it to true, if dialogue can end on this Cue and it's a valid ending \n For example: dialog should break with cutscene and continue after that")]
+	private bool IsPossibleDialogEnding;
 
 	public string DisplayText => Text;
 
@@ -86,25 +89,18 @@ public class BlueprintCue : BlueprintCueBase, ILocalizedStringHolder, IAlignment
 		}
 	}
 
-	public override bool CanShow()
+	public bool IsPossibleEnding => IsPossibleDialogEnding;
+
+	public override bool CanShow(bool isFromSequence = false)
 	{
-		if (!base.CanShow())
+		if (!base.CanShow(isFromSequence))
 		{
 			return false;
 		}
-		if (Speaker.NeedsEntity && !Speaker.TryGetSpeakerEntity(this, out var _))
+		if (Speaker.NeedsEntity && !Speaker.TryGetSpeakerEntity(this, out var _, isFromSequence))
 		{
 			return false;
 		}
 		return true;
-	}
-
-	public IEnumerable<Reward> GetRewards()
-	{
-		return this.GetComponents<Reward>();
-	}
-
-	public void ReceiveRewards()
-	{
 	}
 }

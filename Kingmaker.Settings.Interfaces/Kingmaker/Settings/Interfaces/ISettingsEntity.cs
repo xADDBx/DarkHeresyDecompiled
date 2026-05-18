@@ -14,6 +14,8 @@ public interface ISettingsEntity
 
 	string GetStringValue();
 
+	string GetTempStringValue();
+
 	string GetStringDefaultValue();
 
 	void ConfirmTempValue();

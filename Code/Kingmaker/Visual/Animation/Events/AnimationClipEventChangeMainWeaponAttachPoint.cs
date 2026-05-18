@@ -1,5 +1,3 @@
-using System;
-
 namespace Kingmaker.Visual.Animation.Events;
 
 public class AnimationClipEventChangeMainWeaponAttachPoint : AnimationClipEvent
@@ -21,10 +19,9 @@ public class AnimationClipEventChangeMainWeaponAttachPoint : AnimationClipEvent
 		InMainHand = inMainHand;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
 		animationManager.CallbackReceiver.ChangeAttachPointForMainHandWeapon(InMainHand);
-		return null;
 	}
 
 	public override object Clone()

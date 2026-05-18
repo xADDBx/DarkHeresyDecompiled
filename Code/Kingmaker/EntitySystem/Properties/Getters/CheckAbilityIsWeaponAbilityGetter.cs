@@ -13,9 +13,9 @@ public class CheckAbilityIsWeaponAbilityGetter : BoolPropertyGetter, PropertyCon
 
 	protected override bool GetBaseValue()
 	{
-		if (OnlyHasAttackDelivery && base.PropertyContext.Ability != null)
+		if (OnlyHasAttackDelivery && base.Context.Ability != null)
 		{
-			return base.PropertyContext.Ability.Blueprint.ComponentsArray.Any((BlueprintComponent p) => p is AbilityAttackDelivery);
+			return base.Context.Ability.Blueprint.ComponentsArray.Any((BlueprintComponent p) => p is AbilityAttackDelivery);
 		}
 		return this.GetAbilityWeapon() != null;
 	}

@@ -10,6 +10,7 @@ using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.EntitySystem.Stats.Components;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Settings;
+using Kingmaker.Settings.Difficulty;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Unit.Utility;
 using UnityEngine;
@@ -21,7 +22,7 @@ public static class UnitBaseStatsHelper
 {
 	private static BlueprintUnitStatsRoot Config => ConfigRoot.Instance.UnitStatsRoot;
 
-	public static ImmutableDictionary<StatType, StatBaseValue> CalculateStats(BlueprintUnit blueprint, NPCDifficultyOption npcDifficulty, int cr, Func<AttributeType, AttributeCategoryType> attributeCategoryType)
+	public static ImmutableDictionary<StatType, StatBaseValue> CalculateStats(BlueprintUnit blueprint, EnemyDifficultyOption enemyDurability, int cr, Func<AttributeType, AttributeCategoryType> attributeCategoryType)
 	{
 		Dictionary<StatType, StatBaseValue> value;
 		using (CollectionPool<Dictionary<StatType, StatBaseValue>, KeyValuePair<StatType, StatBaseValue>>.Get(out value))
@@ -43,8 +44,8 @@ public static class UnitBaseStatsHelper
 				}
 				StatBaseValue value2 = statType switch
 				{
-					StatType.HitPoints => GetHitPointsValue(blueprint, npcDifficulty, cr), 
-					StatType.ArmorDurability => GetArmorDurabilityValue(blueprint, npcDifficulty, cr), 
+					StatType.MaxHitPoints => GetHitPointsValue(blueprint, enemyDurability, cr), 
+					StatType.MaxArmorDurability => GetArmorDurabilityValue(blueprint, enemyDurability, cr), 
 					StatType.Defence => blueprint.Defence, 
 					StatType.ArmorDamageReduction => blueprint.ArmorDamageReduction, 
 					StatType.MovementPoints => blueprint.WarhammerInitialAPBlue, 
@@ -152,7 +153,7 @@ public static class UnitBaseStatsHelper
 		};
 	}
 
-	private static StatBaseValue GetHitPointsValue(BlueprintUnit blueprint, NPCDifficultyOption npcDifficulty, int cr)
+	private static StatBaseValue GetHitPointsValue(BlueprintUnit blueprint, EnemyDifficultyOption enemyDurability, int cr)
 	{
 		UnitHitPointsComponent component = blueprint.GetComponent<UnitHitPointsComponent>();
 		if (component != null)
@@ -165,7 +166,7 @@ public static class UnitBaseStatsHelper
 		{
 			return 0;
 		}
-		float unmodifiedHitPoints = GetUnmodifiedHitPoints(blueprint, npcDifficulty, cr);
+		float unmodifiedHitPoints = GetUnmodifiedHitPoints(blueprint, enemyDurability, cr);
 		float num = (blueprint.IsTough() ? (1f + (float)Config.ToughUnitHitPointsModifier / 100f) : (blueprint.IsFragile() ? (1f + (float)Config.FragileUnitHitPointsModifier / 100f) : 1f));
 		int? num2 = blueprint.Army?.StatModifiers.HitPoints;
 		float num3;
@@ -184,7 +185,7 @@ public static class UnitBaseStatsHelper
 		return (int)Math.Round(unmodifiedHitPoints * num6);
 	}
 
-	private static int GetArmorDurabilityValue(BlueprintUnit blueprint, NPCDifficultyOption npcDifficulty, int cr)
+	private static int GetArmorDurabilityValue(BlueprintUnit blueprint, EnemyDifficultyOption enemyDurability, int cr)
 	{
 		int? num = blueprint.GetComponent<UnitArmorDurabilityComponent>()?.Value;
 		if (num.HasValue)
@@ -196,7 +197,7 @@ public static class UnitBaseStatsHelper
 		{
 			return 0;
 		}
-		float unmodifiedHitPoints = GetUnmodifiedHitPoints(blueprint, npcDifficulty, cr);
+		float unmodifiedHitPoints = GetUnmodifiedHitPoints(blueprint, enemyDurability, cr);
 		float num2 = (blueprint.IsFragile() ? (1f + (float)Config.FragileUnitArmorFromHitPointsModifier / 100f) : (blueprint.IsTank() ? (1f + (float)Config.TankUnitArmorFromHitPointsModifier / 100f) : (1f + (float)Config.DefaultUnitArmorFromHitPointsModifier / 100f)));
 		num = blueprint.Army?.StatModifiers.ArmorDurability;
 		float num3;
@@ -229,44 +230,9 @@ public static class UnitBaseStatsHelper
 		};
 	}
 
-	private static float GetUnmodifiedHitPoints(BlueprintUnit blueprint, NPCDifficultyOption npcDifficulty, int cr)
+	private static float GetUnmodifiedHitPoints(BlueprintUnit blueprint, EnemyDifficultyOption enemyDurability, int cr)
 	{
-		return (float)Config.GetUnmodifiedWoundsBaseValue(blueprint.DifficultyType) * GetSynergyFactor(npcDifficulty, cr) * Math.Min(1f, 1f - 0.1f * (float)(8 - cr));
-	}
-
-	private static float GetSynergyFactor(NPCDifficultyOption difficulty, int cr)
-	{
-		float num = Math.Max(1f, 0.75f + (float)cr * 0.13f);
-		return difficulty switch
-		{
-			NPCDifficultyOption.Story => num, 
-			NPCDifficultyOption.Normal => GetSynergyFactorNormal(num), 
-			NPCDifficultyOption.Daring => GetSynergyFactorDaring(num), 
-			NPCDifficultyOption.Hard => GetSynergyFactorHard(num), 
-			NPCDifficultyOption.Unfair => GetSynergyFactorUnfair(num), 
-			_ => throw new ArgumentOutOfRangeException("difficulty", difficulty, null), 
-		};
-		static float GetFactorBase(float sf, float f)
-		{
-			return 1f + (sf - 1f) * f;
-		}
-		static float GetSynergyFactorDaring(float sf)
-		{
-			return GetFactorBase(sf, 0.75f) * GetFactorBase(sf, 0.25f);
-		}
-		static float GetSynergyFactorHard(float sf)
-		{
-			return GetFactorBase(sf, 0.5f) * GetFactorBase(sf, 0.3f) * GetFactorBase(sf, 0.2f);
-		}
-		static float GetSynergyFactorNormal(float sf)
-		{
-			return GetFactorBase(sf, 0.9f) * GetFactorBase(sf, 0.1f);
-		}
-		static float GetSynergyFactorUnfair(float sf)
-		{
-			float factorBase = GetFactorBase(sf, 0.25f);
-			return factorBase * factorBase * factorBase * factorBase;
-		}
+		return (float)Config.GetUnmodifiedWoundsBaseValue(blueprint.DifficultyType) * DifficultyUtils.GetDurabilityFactor(enemyDurability, cr) * Math.Min(1f, 1f - 0.1f * (float)(8 - cr));
 	}
 
 	private static void TryApplyAdvance(BlueprintUnit blueprint, Dictionary<AttributeType, AttributeCategory> attributeCategories, BlueprintUnitStatsRoot.AttributeCategoryAdvance advance, AttributeCategoryAdvanceType type)

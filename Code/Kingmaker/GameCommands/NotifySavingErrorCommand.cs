@@ -1,21 +1,50 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class NotifySavingErrorCommand : GameCommand, IOwlPackable<NotifySavingErrorCommand>
+[MemoryPackable(GenerateType.Object)]
+public class NotifySavingErrorCommand : GameCommand, IMemoryPackable<NotifySavingErrorCommand>, IMemoryPackFormatterRegister, IOwlPackable<NotifySavingErrorCommand>
 {
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	[Preserve]
+	private sealed class NotifySavingErrorCommandFormatter : MemoryPackFormatter<NotifySavingErrorCommand>
 	{
-		Name = "NotifySavingErrorCommand",
-		OldNames = null,
-		Fields = new FieldInfo[0]
-	};
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref NotifySavingErrorCommand value)
+		{
+			NotifySavingErrorCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref NotifySavingErrorCommand value)
+		{
+			NotifySavingErrorCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref NotifySavingErrorCommand value)
+		{
+			NotifySavingErrorCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref NotifySavingErrorCommand value)
+		{
+			NotifySavingErrorCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	protected override void ExecuteInternal()
 	{
@@ -23,6 +52,114 @@ public class NotifySavingErrorCommand : GameCommand, IOwlPackable<NotifySavingEr
 		{
 			h.HandleWarning(WarningNotificationType.SavingError);
 		});
+	}
+
+	static NotifySavingErrorCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "NotifySavingErrorCommand",
+			OldNames = null,
+			Fields = new FieldInfo[0]
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<NotifySavingErrorCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new NotifySavingErrorCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<NotifySavingErrorCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<NotifySavingErrorCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref NotifySavingErrorCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteObjectHeader(0);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref NotifySavingErrorCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		if (memberCount == 0)
+		{
+			if (value != null)
+			{
+				return;
+			}
+		}
+		else
+		{
+			if (memberCount > 0)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(NotifySavingErrorCommand), 0, memberCount);
+				return;
+			}
+			_ = value;
+			if (value != null)
+			{
+				return;
+			}
+		}
+		value = new NotifySavingErrorCommand();
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref NotifySavingErrorCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+		}
+		else
+		{
+			writer.WriteEmptyObject();
+		}
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref NotifySavingErrorCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		_ = value;
+		_ = new bool[0];
+		while (reader.ReadPropertyName() != null)
+		{
+			_ = value;
+		}
+		if (value == null)
+		{
+			value = new NotifySavingErrorCommand();
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

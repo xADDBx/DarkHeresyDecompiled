@@ -205,6 +205,17 @@ internal struct OutlinePlotter
 	{
 		if (m_ShapeMask.Test(cellIndex) && m_EdgeBuffer.Test(cellIndex, edgeSegment))
 		{
+			Cell cell = m_CellBuffer.GetCell(cellIndex);
+			EdgeDirection direction = edgeSegment.GetEdgeDirection();
+			if (cell.HasCut(in direction))
+			{
+				GridDirection direction2 = edgeSegment.GetAdjacentCellDirection();
+				if (cell.TryGetAdjacent(in direction2, out var cellIndex2) && m_ShapeMask.Test(cellIndex2) && m_EdgeBuffer.IsRecorded(cellIndex2, edgeSegment.MirrorSide()))
+				{
+					m_EdgeBuffer.Write(cellIndex, edgeSegment);
+					return false;
+				}
+			}
 			m_EdgeBuffer.Write(cellIndex, edgeSegment);
 			return true;
 		}

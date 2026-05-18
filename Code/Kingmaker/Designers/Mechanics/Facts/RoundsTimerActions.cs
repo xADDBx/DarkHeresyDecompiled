@@ -8,6 +8,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -154,7 +155,7 @@ public class RoundsTimerActions : EntityFactComponentDelegate, IRoundStartHandle
 		savableData.RoundsPassed++;
 		if (savableData.RoundsPassed == Delay + 1 || (savableData.RoundsPassed > Delay && Loop > 0 && (savableData.RoundsPassed - Delay - 1) % Loop == 0))
 		{
-			using (base.Fact.MaybeContext?.SetScope())
+			using (EvalContext.PushContextMaybe(base.Fact?.MaybeContext))
 			{
 				Actions.Run();
 			}

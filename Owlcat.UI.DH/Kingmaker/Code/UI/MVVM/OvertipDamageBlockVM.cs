@@ -1,8 +1,7 @@
-using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Code.Gameplay.Components;
+using Kingmaker.Predictions;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Abilities.Components;
-using Kingmaker.Utility;
+using Kingmaker.UnitLogic.Mechanics.Damage;
 using Owlcat.UI;
 using R3;
 
@@ -10,38 +9,56 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class OvertipDamageBlockVM : ViewModel
 {
-	public readonly MechanicEntityUIState MechanicEntityUIState;
+	public enum IconType
+	{
+		None,
+		Vital,
+		Armor,
+		Health
+	}
+
+	public struct PredictionData
+	{
+		public int Min;
+
+		public int Max;
+
+		public bool IsHeal;
+
+		public IconType IconType;
+	}
+
+	private readonly OvertipDamageVisibilityVM m_VisibilityVM;
 
 	private readonly ReactiveProperty<bool> m_HasHit = new ReactiveProperty<bool>(value: false);
 
-	private readonly ReactiveProperty<int> m_MinDamage = new ReactiveProperty<int>(0);
+	private readonly ReactiveProperty<PredictionData> m_Prediction = new ReactiveProperty<PredictionData>();
 
-	private readonly ReactiveProperty<int> m_MaxDamage = new ReactiveProperty<int>(0);
+	private readonly ReactiveProperty<bool> m_IsVisible = new ReactiveProperty<bool>();
 
-	private readonly ReactiveProperty<bool> m_IsVisibleTrigger = new ReactiveProperty<bool>();
-
-	private MechanicEntity Unit => MechanicEntityUIState.MechanicEntity.MechanicEntity;
+	public readonly MechanicEntityUIState EntityUIState;
 
 	public ReadOnlyReactiveProperty<bool> HasHit => m_HasHit;
 
-	public ReadOnlyReactiveProperty<int> MinDamage => m_MinDamage;
+	public ReadOnlyReactiveProperty<PredictionData> Prediction => m_Prediction;
 
-	public ReadOnlyReactiveProperty<int> MaxDamage => m_MaxDamage;
-
-	public ReadOnlyReactiveProperty<bool> IsVisibleTrigger => m_IsVisibleTrigger;
-
-	public bool IsHeal { get; private set; }
+	public ReadOnlyReactiveProperty<bool> IsVisible => m_IsVisible;
 
 	public OvertipDamageBlockVM(MechanicEntityUIState mechanicEntityUIState)
 	{
-		MechanicEntityUIState = mechanicEntityUIState;
-		MechanicEntityUIState.IsInCombat.CombineLatest(MechanicEntityUIState.IsVisibleForPlayer, MechanicEntityUIState.IsDeadOrUnconsciousIsDead, MechanicEntityUIState.Ability, MechanicEntityUIState.IsMouseOverUnit, MechanicEntityUIState.IsTarget, MechanicEntityUIState.IsAoETarget, MechanicEntityUIState.IsDestructible, (bool isInCombat, bool isVisibleForPlayer, bool isDead, AbilityData ability, bool isHover, bool isTarget, bool isAoETarget, bool isDestructible) => (isInCombat || isDestructible) && isVisibleForPlayer && !isDead && ability != null && (isHover || isTarget || isAoETarget)).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate(bool value)
+		m_VisibilityVM = new OvertipDamageVisibilityVM(mechanicEntityUIState).AddTo(this);
+		EntityUIState = mechanicEntityUIState;
+		EntityUIState.IsInCombat.CombineLatest(EntityUIState.IsVisibleForPlayer, EntityUIState.IsDeadOrUnconsciousIsDead, EntityUIState.Ability, EntityUIState.AbilityTargetUIData, EntityUIState.IsMouseOverUnit, EntityUIState.IsTarget, (bool _, bool _, bool _, AbilityData _, AbilityTargetUIData _, bool _, bool _) => new { }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
 		{
-			m_IsVisibleTrigger.Value = value;
+			UpdateDamageVisibility();
 		})
 			.AddTo(this);
-		IsVisibleTrigger.CombineLatest(MechanicEntityUIState.AbilityTargetUIData, (bool visible, AbilityTargetUIData uiData) => visible).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(OnVisibilityChanged)
-			.AddTo(this);
+	}
+
+	private void UpdateDamageVisibility()
+	{
+		bool state = m_VisibilityVM.IsVisible() && !EntityUIState.IsOvertipPartHiddenBySettings(UnitOvertipUIPart.Damage);
+		OnVisibilityChanged(state);
 	}
 
 	private void OnVisibilityChanged(bool state)
@@ -49,60 +66,76 @@ public class OvertipDamageBlockVM : ViewModel
 		if (!state)
 		{
 			ClearProperties();
+			m_IsVisible.Value = false;
 		}
 		else
 		{
 			UpdateProperties();
+			m_IsVisible.Value = true;
 		}
 	}
 
 	private void UpdateProperties()
 	{
 		ClearProperties();
-		AbilityData currentValue = MechanicEntityUIState.Ability.CurrentValue;
-		if (currentValue == null || (currentValue.IsPrecise && !Game.Instance.Controllers.PreciseAttackController.HasTarget))
+		m_HasHit.Value = m_VisibilityVM.CanTargetByCurrentAbility();
+		if (m_HasHit.CurrentValue)
 		{
-			return;
-		}
-		TargetWrapper targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(Unit.View.gameObject, Game.Instance.Controllers.ClickEventsController.WorldPosition);
-		bool flag = ((!(targetForDesiredPosition != null) || currentValue.TargetAnchor != AbilityTargetAnchor.Point || currentValue.HasCustomDirectMovement()) ? (targetForDesiredPosition != null && currentValue.CanTargetFromDesiredPosition(targetForDesiredPosition)) : (MechanicEntityUIState.IsAoETarget.CurrentValue && CanAoETarget(MechanicEntityUIState, currentValue.Blueprint.AoETargets)));
-		m_HasHit.Value = flag;
-		if (flag)
-		{
-			AbilityTargetUIData currentValue2 = MechanicEntityUIState.AbilityTargetUIData.CurrentValue;
-			UIDamagePredictionData damage = currentValue2.Damage;
-			UIHealPredictionData heal = currentValue2.Heal;
+			AbilityTargetUIData currentValue = EntityUIState.AbilityTargetUIData.CurrentValue;
+			UIDamagePredictionData damage = currentValue.Damage;
+			UIHealPredictionData heal = currentValue.Heal;
 			if (!damage.Equals(default(UIDamagePredictionData)))
 			{
-				m_MinDamage.Value = damage.MinDamagePerAttack;
-				m_MaxDamage.Value = damage.MaxDamagePerAttack * currentValue2.AttacksCount;
-				IsHeal = false;
+				m_Prediction.Value = new PredictionData
+				{
+					Min = damage.MinDamagePerAttack,
+					Max = damage.MaxDamagePerAttack * currentValue.AttacksCount,
+					IconType = GetDamageIconType(damage)
+				};
 			}
 			else if (!heal.Equals(default(UIHealPredictionData)))
 			{
-				m_MinDamage.Value = heal.MinHeal;
-				m_MaxDamage.Value = heal.MaxHeal;
-				IsHeal = true;
+				m_Prediction.Value = new PredictionData
+				{
+					Min = heal.MinHeal,
+					Max = heal.MaxHeal,
+					IsHeal = true,
+					IconType = GetHealIconType(heal)
+				};
 			}
 		}
+	}
+
+	private IconType GetDamageIconType(UIDamagePredictionData prediction)
+	{
+		if (prediction.VitalDamage > 0)
+		{
+			return IconType.Vital;
+		}
+		if (prediction.HPDamageBonus > 0 && prediction.HealthMaxDamage > 0)
+		{
+			return IconType.Health;
+		}
+		if (prediction.ArmorDamageBonus > 0 && prediction.ArmorMaxDamage > 0)
+		{
+			return IconType.Armor;
+		}
+		return IconType.None;
+	}
+
+	private IconType GetHealIconType(UIHealPredictionData prediction)
+	{
+		return prediction.HealStrategy switch
+		{
+			DamageStrategy.HealthOnly => IconType.Health, 
+			DamageStrategy.ArmorOnly => IconType.Armor, 
+			_ => IconType.None, 
+		};
 	}
 
 	private void ClearProperties()
 	{
 		m_HasHit.Value = false;
-		m_MinDamage.Value = 0;
-		m_MaxDamage.Value = 0;
-	}
-
-	private bool CanAoETarget(MechanicEntityUIState mechanicEntityUIState, TargetType targetType)
-	{
-		MechanicEntityUIWrapper mechanicEntity = mechanicEntityUIState.MechanicEntity;
-		return targetType switch
-		{
-			TargetType.Enemy => mechanicEntity.IsPlayerEnemy, 
-			TargetType.Ally => mechanicEntity.IsPlayer || mechanicEntity.IsPlayerFaction, 
-			TargetType.Any => true, 
-			_ => false, 
-		};
+		m_Prediction.Value = default(PredictionData);
 	}
 }

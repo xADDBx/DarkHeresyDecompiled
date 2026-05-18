@@ -4,7 +4,6 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -31,26 +30,18 @@ public class GlobalCombatStateTrigger : UnitFactComponentDelegate, IUnitCombatHa
 			return;
 		}
 		CompanionState? companionState = base.Owner.GetCompanionOptional()?.State;
-		if ((companionState.HasValue && companionState.GetValueOrDefault() != CompanionState.InParty) || !(ContextData<EventInvoker>.Current?.InvokerEntity is UnitEntity entity))
+		if ((!companionState.HasValue || companionState.GetValueOrDefault() == CompanionState.InParty) && ContextData<EventInvoker>.Current?.InvokerEntity is UnitEntity target)
 		{
-			return;
-		}
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-		{
-			base.Fact.RunActionInContext(ActionsOnEnter, entity.ToITargetWrapper());
+			base.Fact.RunActionInContext(ActionsOnEnter, target);
 		}
 	}
 
 	public void HandleUnitLeaveCombat()
 	{
 		CompanionState? companionState = base.Owner.GetCompanionOptional()?.State;
-		if ((companionState.HasValue && companionState.GetValueOrDefault() != CompanionState.InParty) || !(ContextData<EventInvoker>.Current?.InvokerEntity is UnitEntity entity))
+		if ((!companionState.HasValue || companionState.GetValueOrDefault() == CompanionState.InParty) && ContextData<EventInvoker>.Current?.InvokerEntity is UnitEntity target)
 		{
-			return;
-		}
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-		{
-			base.Fact.RunActionInContext(ActionsOnLeave, entity.ToITargetWrapper());
+			base.Fact.RunActionInContext(ActionsOnLeave, target);
 		}
 	}
 }

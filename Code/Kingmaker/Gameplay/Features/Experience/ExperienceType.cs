@@ -6,19 +6,18 @@ namespace Kingmaker.Gameplay.Features.Experience;
 public enum ExperienceType
 {
 	[FormerlySerializedAs("Mob")]
-	Encounter,
-	SkillCheck,
-	Quest,
-	MainQuest,
-	Investigation,
+	Encounter = 0,
+	SkillCheck = 1,
+	Quest = 2,
+	Investigation = 4,
 	[Obsolete]
-	Boss,
+	Boss = 5,
 	[Obsolete]
-	QuestMain,
+	QuestMain = 6,
 	[Obsolete]
-	QuestNormal,
+	QuestNormal = 7,
 	[Obsolete]
-	ChallengeMinor,
+	ChallengeMinor = 8,
 	[Obsolete]
-	ChallengeMajor
+	ChallengeMajor = 9
 }

@@ -4,8 +4,8 @@ using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence.Versioning;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -38,7 +38,10 @@ public class ContextActionAdapter : GameAction
 
 	protected override void RunAction()
 	{
-		BlueprintScriptableObject blueprint = (base.Owner as BlueprintScriptableObject) ?? throw new Exception("Valid Blueprint is missing");
+		if (!(base.Owner is BlueprintScriptableObject blueprint))
+		{
+			throw new Exception("Valid Blueprint is missing");
+		}
 		MechanicEntity mechanicEntity = Caster?.GetValue() ?? SimpleCaster.GetFree();
 		MechanicEntity mechanicEntity2 = TargetEntity?.GetValue();
 		Vector3? vector = TargetPosition?.GetValue();
@@ -50,9 +53,10 @@ public class ContextActionAdapter : GameAction
 		{
 			throw new Exception("Target is missing");
 		}
-		TargetWrapper targetWrapper = ((!vector.HasValue) ? new TargetWrapper(mechanicEntity2) : ((mechanicEntity2 == null) ? new TargetWrapper(vector.Value) : new TargetWrapper(vector.Value, null, mechanicEntity2)));
-		using MechanicsContext mechanicsContext = MechanicsContext.Claim(blueprint, mechanicEntity, mechanicEntity, null, targetWrapper);
-		using (mechanicsContext.SetScope(targetWrapper))
+		TargetWrapper clickedTarget = ((!vector.HasValue) ? new TargetWrapper(mechanicEntity2) : ((mechanicEntity2 == null) ? new TargetWrapper(vector.Value) : new TargetWrapper(vector.Value, null, mechanicEntity2)));
+		using (EvalContext.Build().Blueprint(blueprint).Caster(mechanicEntity)
+			.ClickedTarget(clickedTarget)
+			.Push())
 		{
 			Actions.Run();
 		}

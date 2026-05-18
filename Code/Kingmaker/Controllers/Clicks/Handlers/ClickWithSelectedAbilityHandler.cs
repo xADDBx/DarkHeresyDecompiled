@@ -7,6 +7,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Controllers.MapObjects;
+using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Controllers.Units;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -19,10 +20,12 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Settings;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.UI.Sound;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
+using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Parts;
@@ -121,6 +124,12 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 		}
 	}
 
+	private const float SqrEpsilon = 1E-06f;
+
+	private bool m_HasPendingApproach;
+
+	private Vector3? m_PendingApproachVirtualPosition;
+
 	public AbilityData Ability { get; private set; }
 
 	public PointerMode GetMode()
@@ -208,7 +217,19 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 		{
 			GridNodeBase nearestNodeXZUnwalkable = casterPosition.GetNearestNodeXZUnwalkable();
 			Vector3 vector = worldPosition;
-			vector = ((ability.GetPatternSettings() == null) ? AoEPatternHelper.GetGridAdjustedPosition(vector) : AoEPatternHelper.GetActualCastPosition(ability.Caster, nearestNodeXZUnwalkable, vector, ability.MinRangeCells, ability.RangeCells));
+			IAbilityAoEPatternProvider patternSettings = ability.GetPatternSettings();
+			if (!ability.IsCharge)
+			{
+				vector = ((patternSettings == null) ? AoEPatternHelper.GetGridAdjustedPosition(vector) : AoEPatternHelper.GetActualCastPosition(ability.Caster, nearestNodeXZUnwalkable, vector, ability.MinRangeCells, ability.RangeCells));
+			}
+			else
+			{
+				GridNodeBase nearestNodeXZUnwalkable2 = vector.GetNearestNodeXZUnwalkable();
+				if (nearestNodeXZUnwalkable2 != null)
+				{
+					vector = nearestNodeXZUnwalkable2.Vector3Position();
+				}
+			}
 			Vector3 vector2 = vector - nearestNodeXZUnwalkable.Vector3Position();
 			Quaternion quaternion = ((vector2 != Vector3.zero) ? Quaternion.LookRotation(vector2) : Quaternion.identity);
 			MechanicEntity entity = ((mechanicEntity != null && mechanicEntity.CanBeAttackedDirectly && (ability.IsCharge || ability.Blueprint.CanTargetEnemies || ability.Blueprint.CanTargetFriends)) ? mechanicEntity : null);
@@ -247,6 +268,10 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 		TargetWrapper target = GetTarget(gameObject, worldPosition, Ability, desiredPosition);
 		if (ShouldHandleAbilityCastFail(target, worldPosition, out var unavailabilityReason))
 		{
+			if (TryStartMeleeApproachPreview(target, unavailabilityReason))
+			{
+				return true;
+			}
 			if (unavailabilityReason.HasValue)
 			{
 				string restrictionText = Ability.GetUnavailabilityReasonString(unavailabilityReason.Value, desiredPosition, target);
@@ -258,7 +283,7 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 				{
 					h.OnAbilityCastRefused(Ability, target, null);
 				});
-				UISounds.Instance.Sounds.Combat.CombatGridCantPerformActionClick.Play();
+				CombatSounds.Instance.Combat.CombatGridCantPerformActionClick.Play();
 				return false;
 			}
 			IAbilityTargetRestriction failedRestriction = null;
@@ -284,7 +309,7 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 			{
 				h.OnAbilityCastRefused(Ability, target, failedRestriction);
 			});
-			UISounds.Instance.Sounds.Combat.CombatGridCantPerformActionClick.Play();
+			CombatSounds.Instance.Combat.CombatGridCantPerformActionClick.Play();
 			return false;
 		}
 		AbilityData ability = Ability;
@@ -307,46 +332,75 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 	private static void UseAbility(AbilityData ability, TargetWrapper target, bool shouldApproach)
 	{
 		UnitCommandsRunner.TryUnitUseAbility(ability, target, shouldApproach);
-		UISounds.Instance.Sounds.Combat.CombatGridConfirmActionClick.Play();
+		CombatSounds.Instance.Combat.CombatGridConfirmActionClick.Play();
 		Game.Instance.GameCommandQueue.ClearPointerMode();
+	}
+
+	private bool TryStartMeleeApproachPreview(TargetWrapper target, AbilityData.UnavailabilityReasonType? unavailabilityReason)
+	{
+		if (unavailabilityReason != AbilityData.UnavailabilityReasonType.TargetTooFar)
+		{
+			return false;
+		}
+		if (!Game.Instance.Controllers.TurnController.TurnBasedModeActive)
+		{
+			return false;
+		}
+		if (!AbilityApproachHelper.IsApproachCandidate(Ability, target))
+		{
+			return false;
+		}
+		BaseUnitEntity baseUnitEntity = (BaseUnitEntity)Ability.Caster;
+		if (baseUnitEntity != Game.Instance.Controllers.TurnController.CurrentUnit)
+		{
+			return false;
+		}
+		if (!AbilityApproachHelper.TryFindApproachNode(Ability, target, out var approachNode))
+		{
+			return false;
+		}
+		Vector3 vector = approachNode.Vector3Position();
+		UnitHelper.MoveCommandStatus status;
+		UnitMoveToProperParams unitMoveToProperParams = baseUnitEntity.TryCreateMoveCommandTB(new MoveCommandSettings
+		{
+			Destination = vector
+		}, showMovePrediction: true, out status);
+		if (status == UnitHelper.MoveCommandStatus.NewCommandCreated && unitMoveToProperParams != null)
+		{
+			VirtualPositionController virtualPositionController = Game.Instance.Controllers.VirtualPositionController;
+			virtualPositionController.VirtualPosition = vector;
+			Vector3 vector2 = target.Entity.Position - vector;
+			virtualPositionController.VirtualRotation = ((vector2.sqrMagnitude > 1E-06f) ? vector2.normalized : baseUnitEntity.Forward);
+			m_HasPendingApproach = true;
+			m_PendingApproachVirtualPosition = vector;
+			return true;
+		}
+		if (status == UnitHelper.MoveCommandStatus.SamePath)
+		{
+			m_HasPendingApproach = true;
+			return false;
+		}
+		return false;
+	}
+
+	private void ClearPendingApproach()
+	{
+		if (m_HasPendingApproach)
+		{
+			m_HasPendingApproach = false;
+			UnitCommandsRunner.CancelMoveCommand();
+			VirtualPositionController virtualPositionController = Game.Instance.Controllers.VirtualPositionController;
+			if (m_PendingApproachVirtualPosition.HasValue && virtualPositionController.VirtualPosition == m_PendingApproachVirtualPosition)
+			{
+				virtualPositionController.CleanVirtualPosition();
+			}
+			m_PendingApproachVirtualPosition = null;
+		}
 	}
 
 	private bool ShouldHandleAbilityCastFail(TargetWrapper target, Vector3 clickPosition, out AbilityData.UnavailabilityReasonType? unavailabilityReason)
 	{
-		unavailabilityReason = null;
-		if (target == null)
-		{
-			if (!Ability.CanTargetPoint)
-			{
-				unavailabilityReason = AbilityData.UnavailabilityReasonType.NullTarget;
-				return true;
-			}
-			return true;
-		}
-		if (Ability.IsPrecise && !(target.Entity is BaseUnitEntity))
-		{
-			unavailabilityReason = AbilityData.UnavailabilityReasonType.TargetCannotBeAttackedByPreciseAttack;
-			return true;
-		}
-		bool flag = Ability.CanTargetFromDesiredPosition(target, out unavailabilityReason);
-		if (flag && Ability.IsAoe)
-		{
-			if (!Ability.CanCastAoeAtPointerPositionFromDesiredPosition(target, clickPosition))
-			{
-				flag = false;
-				unavailabilityReason = AbilityData.UnavailabilityReasonType.TargetTooFar;
-			}
-			else if (Ability.IsResultPatternEmpty(target))
-			{
-				flag = false;
-				unavailabilityReason = AbilityData.UnavailabilityReasonType.Unknown;
-			}
-		}
-		if (unavailabilityReason == AbilityData.UnavailabilityReasonType.TargetTooFar && !Game.Instance.Player.IsInCombat)
-		{
-			return false;
-		}
-		return !flag;
+		return !Ability.CanCastAbility(target, clickPosition, out unavailabilityReason);
 	}
 
 	public void SetAbility([NotNull] AbilityData ability)
@@ -373,6 +427,7 @@ public class ClickWithSelectedAbilityHandler : IClickEventHandler
 		if (!(Ability == null))
 		{
 			Ability = null;
+			ClearPendingApproach();
 			EventBus.RaiseEvent(delegate(IAbilityTargetSelectionUIHandler h)
 			{
 				h.HandleAbilityTargetSelectionEnd(Ability);

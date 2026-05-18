@@ -35,14 +35,5 @@ public class PushCollisionTrigger : UnitBuffComponentDelegate, IGlobalRulebookHa
 
 	public void OnEventDidTrigger(RulePerformCollision evt)
 	{
-		if (OnlyFromOwner && evt.Pusher != base.Owner)
-		{
-			return;
-		}
-		base.Context[ContextPropertyName] = evt.ResultDamage * ValueMultiplier.Calculate(base.Context) + ValueBonus.Calculate(base.Context);
-		using (base.Fact.MaybeContext?.SetScope(base.Owner))
-		{
-			base.Fact.RunActionInContext(Actions, evt.Pushed);
-		}
 	}
 }

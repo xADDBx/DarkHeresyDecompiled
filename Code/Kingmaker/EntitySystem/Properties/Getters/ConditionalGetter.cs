@@ -35,11 +35,11 @@ public class ConditionalGetter : PropertyGetter
 
 	protected override int GetBaseValueInternal()
 	{
-		if (!Condition.GetBoolValue(base.PropertyContext))
+		if (!Condition.GetBoolValue(base.CurrentEntity))
 		{
-			return False.GetValue(base.PropertyContext);
+			return False.GetValue(base.CurrentEntity);
 		}
-		return True.GetValue(base.PropertyContext);
+		return True.GetValue(base.CurrentEntity);
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

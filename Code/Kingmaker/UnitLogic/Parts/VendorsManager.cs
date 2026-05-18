@@ -12,7 +12,6 @@ using Kingmaker.Gameplay.Features.Reputation;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Utility.DotNetExtensions;
@@ -99,18 +98,18 @@ public sealed class VendorsManager : Entity, IChangeChapterHandler, ISubscriber,
 
 	public ItemsCollection ItemsForSell => _itemsForSell;
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
 
-	private VendorsManager(OwlPackConstructorParameter _)
-		: base(_)
+	public VendorsManager()
+		: base("vendors-manager-id", isInGame: true)
 	{
 	}
 
-	public VendorsManager()
-		: base("vendors-manager-id", isInGame: true)
+	private VendorsManager(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
@@ -307,7 +306,7 @@ public sealed class VendorsManager : Entity, IChangeChapterHandler, ISubscriber,
 			num += value;
 		}
 		_discounts[faction] = num;
-		EventBus.RaiseEvent(delegate(IGainFactionVendorDiscountHandler l)
+		base.EventBus.RaiseEvent(delegate(IGainFactionVendorDiscountHandler l)
 		{
 			l.HandleGainFactionVendorDiscount(faction, discount);
 		});

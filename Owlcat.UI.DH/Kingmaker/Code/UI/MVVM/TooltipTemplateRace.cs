@@ -22,11 +22,11 @@ public class TooltipTemplateRace : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_Name);
+		yield return new BrickTitleVM(m_Name);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickText(m_Desc, TooltipTextType.Paragraph);
+		yield return new BrickTextVM(m_Desc, TooltipTextType.Paragraph);
 	}
 }

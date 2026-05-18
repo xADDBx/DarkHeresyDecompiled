@@ -5,8 +5,9 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Gameplay.Features.AreaEffects;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.Utility;
@@ -19,6 +20,10 @@ namespace Kingmaker.UnitLogic.Abilities.Components;
 
 [AllowMultipleComponents]
 [TypeId("b2438912ccbf4301a1935c4c9a87e6e1")]
+[ContextRoleForField("Actions", ContextField.Target, "unit inside area effect")]
+[ContextRoleForField("ActionsOnCaster", ContextField.Target, "ability caster")]
+[ContextRoleForField("ActionsOnDestructibleEntities", ContextField.Target, "destructible entity inside area")]
+[ContextRoleForField("ActionsOnTargetPoint", ContextField.Target, "original click point")]
 public class RunActionOnTargetsInAreaEffect : AbilityApplyEffect
 {
 	public bool Not;
@@ -60,7 +65,7 @@ public class RunActionOnTargetsInAreaEffect : AbilityApplyEffect
 			{
 				foreach (MechanicEntity item in areaEffect.InGameEntitiesInside)
 				{
-					using (context.SetScope(item.ToITargetWrapper()))
+					using (EvalContext.PushContext(context, item))
 					{
 						Actions.Run();
 					}
@@ -69,7 +74,7 @@ public class RunActionOnTargetsInAreaEffect : AbilityApplyEffect
 			actions = ActionsOnCaster;
 			if (actions != null && actions.HasActions)
 			{
-				using (context.SetScope(context.Caster.ToITargetWrapper()))
+				using (EvalContext.PushContext(context, context.Caster))
 				{
 					ActionsOnCaster.Run();
 				}
@@ -78,9 +83,9 @@ public class RunActionOnTargetsInAreaEffect : AbilityApplyEffect
 			if (actions != null && actions.HasActions)
 			{
 				DestructibleEntity[] allDestructibleEntityInside = areaEffect.GetAllDestructibleEntityInside();
-				foreach (DestructibleEntity entity in allDestructibleEntityInside)
+				foreach (DestructibleEntity destructibleEntity in allDestructibleEntityInside)
 				{
-					using (context.SetScope(entity.ToITargetWrapper()))
+					using (EvalContext.PushContext(context, destructibleEntity))
 					{
 						ActionsOnDestructibleEntities.Run();
 					}
@@ -89,7 +94,7 @@ public class RunActionOnTargetsInAreaEffect : AbilityApplyEffect
 			actions = ActionsOnTargetPoint;
 			if (actions != null && actions.HasActions)
 			{
-				using (context.SetScope(target))
+				using (EvalContext.PushContext(context, target))
 				{
 					ActionsOnTargetPoint.Run();
 				}

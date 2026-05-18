@@ -1,9 +1,13 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem.Core;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -14,24 +18,49 @@ namespace Kingmaker.EntitySystem.Entities.Base;
 [HashRoot]
 [JsonObject(IsReference = false)]
 [OwlPackable(OwlPackableMode.Generate)]
-public struct EntityRef : IEquatable<EntityRef>, IEntityRef, IOwlPackable, IOwlPackable<EntityRef>
+[MemoryPackable(GenerateType.Object)]
+public struct EntityRef : IEquatable<EntityRef>, IEntityRef, IMemoryPackable<EntityRef>, IMemoryPackFormatterRegister, IOwlPackable, IOwlPackable<EntityRef>
 {
+	[Preserve]
+	private sealed class EntityRefFormatter : MemoryPackFormatter<EntityRef>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref EntityRef value)
+		{
+			EntityRef.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref EntityRef value)
+		{
+			EntityRef.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref EntityRef value)
+		{
+			EntityRef.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref EntityRef value)
+		{
+			EntityRef.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	private EntityServiceProxy m_Proxy;
 
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public readonly string Id;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "EntityRef",
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("Id", typeof(string))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackIgnore]
 	string IEntityRef.Id => Id;
 
+	[MemoryPackIgnore]
 	public bool IsEmpty
 	{
 		get
@@ -45,6 +74,7 @@ public struct EntityRef : IEquatable<EntityRef>, IEntityRef, IOwlPackable, IOwlP
 	}
 
 	[CanBeNull]
+	[MemoryPackIgnore]
 	public IEntity Entity
 	{
 		get
@@ -57,6 +87,7 @@ public struct EntityRef : IEquatable<EntityRef>, IEntityRef, IOwlPackable, IOwlP
 		}
 	}
 
+	[MemoryPackConstructor]
 	public EntityRef([CanBeNull] string id)
 	{
 		Id = id;
@@ -124,6 +155,107 @@ public struct EntityRef : IEquatable<EntityRef>, IEntityRef, IOwlPackable, IOwlP
 		return !string.Equals(r1.Id, r2.Id, StringComparison.Ordinal);
 	}
 
+	static EntityRef()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "EntityRef",
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("Id", typeof(string))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<EntityRef>())
+		{
+			MemoryPackFormatterProvider.Register(new EntityRefFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<EntityRef[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<EntityRef>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref EntityRef value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		writer.WriteObjectHeader(1);
+		writer.WriteString(value.Id);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref EntityRef value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = default(EntityRef);
+			return;
+		}
+		string id;
+		if (memberCount == 1)
+		{
+			id = reader.ReadString();
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(EntityRef), 1, memberCount);
+				return;
+			}
+			id = null;
+			if (memberCount != 0)
+			{
+				id = reader.ReadString();
+				_ = 1;
+			}
+		}
+		value = new EntityRef(id);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref EntityRef value)
+	{
+		writer.WriteObjectHeader();
+		writer.WriteProperty("Id");
+		writer.WriteString(value.Id);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref EntityRef value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = default(EntityRef);
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		string id = null;
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (text == "Id")
+			{
+				id = reader.ReadString();
+				array[0] = true;
+			}
+		}
+		value = new EntityRef(id);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
+	}
+
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		EntityRef source = default(EntityRef);
@@ -171,7 +303,8 @@ public struct EntityRef : IEquatable<EntityRef>, IEntityRef, IOwlPackable, IOwlP
 [HashRoot]
 [JsonObject(IsReference = false)]
 [OwlPackable(OwlPackableMode.Generate)]
-public struct EntityRef<T> : IEntityRef, ITypedEntityRef, IEquatable<EntityRef<T>>, IComparable<EntityRef<T>>, IHashable, IOwlPackable, IOwlPackable<EntityRef<T>> where T : class, IEntity
+[MemoryPackable(GenerateType.Object)]
+public struct EntityRef<T> : IEntityRef, ITypedEntityRef, IEquatable<EntityRef<T>>, IComparable<EntityRef<T>>, IMemoryPackable<EntityRef<T>>, IMemoryPackFormatterRegister, IHashable, IOwlPackable, IOwlPackable<EntityRef<T>> where T : class, IEntity
 {
 	public sealed class Comparer : IComparer<EntityRef<T>>
 	{
@@ -183,25 +316,50 @@ public struct EntityRef<T> : IEntityRef, ITypedEntityRef, IEquatable<EntityRef<T
 		}
 	}
 
+	[Preserve]
+	private sealed class EntityRefFormatter : MemoryPackFormatter<EntityRef<T>>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref EntityRef<T> value)
+		{
+			EntityRef<T>.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref EntityRef<T> value)
+		{
+			EntityRef<T>.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref EntityRef<T> value)
+		{
+			EntityRef<T>.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref EntityRef<T> value)
+		{
+			EntityRef<T>.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	private EntityServiceProxy m_Proxy;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public readonly string Id;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "EntityRef",
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("Id", typeof(string))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackIgnore]
 	string IEntityRef.Id => Id;
 
+	[MemoryPackIgnore]
 	public bool IsNull => string.IsNullOrEmpty(Id);
 
+	[MemoryPackIgnore]
 	[CanBeNull]
 	public T Entity
 	{
@@ -215,6 +373,7 @@ public struct EntityRef<T> : IEntityRef, ITypedEntityRef, IEquatable<EntityRef<T
 		}
 	}
 
+	[MemoryPackConstructor]
 	public EntityRef([CanBeNull] string id)
 	{
 		Id = id;
@@ -291,6 +450,107 @@ public struct EntityRef<T> : IEntityRef, ITypedEntityRef, IEquatable<EntityRef<T
 	public int CompareTo(EntityRef<T> other)
 	{
 		return string.Compare(Id, other.Id, StringComparison.Ordinal);
+	}
+
+	static EntityRef()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "EntityRef",
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("Id", typeof(string))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<EntityRef<T>>())
+		{
+			MemoryPackFormatterProvider.Register(new EntityRefFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<EntityRef<T>[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<EntityRef<T>>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref EntityRef<T> value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		writer.WriteObjectHeader(1);
+		writer.WriteString(value.Id);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref EntityRef<T> value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = default(EntityRef<T>);
+			return;
+		}
+		string id;
+		if (memberCount == 1)
+		{
+			id = reader.ReadString();
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(EntityRef<T>), 1, memberCount);
+				return;
+			}
+			id = null;
+			if (memberCount != 0)
+			{
+				id = reader.ReadString();
+				_ = 1;
+			}
+		}
+		value = new EntityRef<T>(id);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref EntityRef<T> value)
+	{
+		writer.WriteObjectHeader();
+		writer.WriteProperty("Id");
+		writer.WriteString(value.Id);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref EntityRef<T> value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = default(EntityRef<T>);
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		string id = null;
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (text == "Id")
+			{
+				id = reader.ReadString();
+				array[0] = true;
+			}
+		}
+		value = new EntityRef<T>(id);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public Hash128 GetHash128()

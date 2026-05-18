@@ -7,7 +7,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace Owlcat.Runtime.Visual.Waaagh.FrameData;
 
-public class WaaaghRenderingData : ContextItem
+public class WaaaghRenderingData
 {
 	public RenderGraph RenderGraph;
 
@@ -19,6 +19,8 @@ public class WaaaghRenderingData : ContextItem
 
 	public TimeData TimeData;
 
+	public ShaderTimeData ShaderTimeData;
+
 	public NativeArray<VisibleLight> VisibleLights;
 
 	public GPUDrivenBatchRendererGroup GPUDrivenBatchRendererGroup;
@@ -27,13 +29,14 @@ public class WaaaghRenderingData : ContextItem
 
 	public LightCookieManager LightCookieManager;
 
-	public override void Reset()
+	public void Reset()
 	{
 		RenderGraph = null;
 		CullResults = default(CullingResults);
 		SupportsDynamicBatching = false;
 		PerObjectData = PerObjectData.None;
 		TimeData = default(TimeData);
+		ShaderTimeData = default(ShaderTimeData);
 		VisibleLights = default(NativeArray<VisibleLight>);
 		GPUDrivenBatchRendererGroup = null;
 		VirtualTextureManager = null;

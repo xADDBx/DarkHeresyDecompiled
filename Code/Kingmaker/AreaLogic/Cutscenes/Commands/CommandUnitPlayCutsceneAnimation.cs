@@ -4,13 +4,12 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers;
 using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.QA;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.Random;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.Kingmaker;
@@ -155,6 +154,8 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 
 	public AbstractUnitEvaluator UnitEvaluator => m_Unit;
 
+	public override bool ShouldHaveControlledUnit => m_MarkUnit;
+
 	private bool GetIsLooping()
 	{
 		AnimationClipWrapper animationClipWrapper = m_CutsceneClipWrapperLink?.Load();
@@ -176,56 +177,57 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 		return true;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Finished = false;
 		commandData.Started = false;
-		commandData.Unit = m_Unit.GetValue();
+		if (!m_Unit.TryGetValue(out var value))
+		{
+			commandData.Finished = true;
+			return CommandResult.Fail("Failed to find unit");
+		}
+		commandData.Unit = value;
 		commandData.FiniteLoopDuration = (m_FiniteLoopRandomDuration ? player.Random.Range(m_FiniteLoopDuration, m_FiniteLoorDurationMax) : m_FiniteLoopDuration);
 		if (skipping)
 		{
 			commandData.Finished = true;
 			commandData.Handle?.Release();
+			return CommandResult.Success;
 		}
-		else
-		{
-			PlayAnimation(commandData, player);
-		}
+		return PlayAnimation(commandData, player);
 	}
 
-	private void PlayAnimation(Data data, CutscenePlayerData player)
+	private CommandResult PlayAnimation(Data data, CutscenePlayerData player)
 	{
 		AbstractUnitEntity unit = data.Unit;
 		if (unit == null || !unit.IsInGame)
 		{
 			data.Finished = true;
 			data.Handle?.Release();
-			return;
+			return CommandResult.Success;
 		}
 		if (unit.LifeState.IsDead)
 		{
 			data.Finished = true;
 			data.Handle?.Release();
-			return;
+			return CommandResult.Success;
 		}
 		if (data.CutsceneClipWrapper == null)
 		{
 			data.CutsceneClipWrapper = m_CutsceneClipWrapperLink.Load();
 			if (!data.CutsceneClipWrapper)
 			{
-				PFLog.Default.Error(this, $"No clip found for {this} in {player.Cutscene}");
 				data.Finished = true;
-				return;
+				return CommandResult.Fail($"No clip found for {this} in {player.Cutscene}");
 			}
 		}
-		AbstractUnitEntityView view = unit.View;
+		IAbstractUnitEntityView view = unit.View;
 		UnitAnimationManager animationManager = view.AnimationManager;
 		if (!animationManager)
 		{
-			PFLog.Cutscene.ErrorWithReport($"{view}: animator is null");
 			data.Finished = true;
-			return;
+			return CommandResult.FailWithReport($"{view}: no animator");
 		}
 		if (!data.Started && !data.Finished && (!m_OnlyIfIdle || animationManager.CanRunIdleAction()))
 		{
@@ -237,14 +239,15 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 			data.Action.TransitionIn = m_CrossfadeIn;
 			data.Action.TransitionOut = m_CrossfadeOut;
 			data.Action.ExecutionMode = (m_WaitForCurrentAnimation ? ExecutionMode.Sequenced : ExecutionMode.Interrupted);
-			AnimationActionHandle animationActionHandle = (data.Handle = animationManager.CreateHandle(data.Action));
-			animationActionHandle.PreventsRotation = m_LockRotation;
-			animationActionHandle.HasCrossfadePriority = true;
-			animationActionHandle.SpeedScale = m_AnimationSpeed;
-			animationManager.Execute(data.Handle);
+			animationManager.TryExecute(data.Action, delegate(AnimationActionHandle handle)
+			{
+				handle.PreventsRotation = m_LockRotation;
+				handle.HasCrossfadePriority = true;
+				handle.SpeedScale = m_AnimationSpeed;
+			}, out data.Handle);
 			if (m_RandomizeStart && data.IsFirstRun)
 			{
-				animationActionHandle.ActiveAnimation?.SetTime(PFStatefulRandom.Visuals.Animation.value * data.CutsceneClipWrapper.Length);
+				data.Handle?.ActiveAnimation?.SetTime(PFStatefulRandom.Visuals.Animation.value * data.CutsceneClipWrapper.Length);
 			}
 			data.Started = true;
 			data.IsFirstRun = false;
@@ -260,10 +263,12 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 				data.Finished = true;
 			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -271,21 +276,28 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 		return player.GetCommandData<Data>(this).Finished;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data commandData = player.GetCommandData<Data>(this);
-		if (commandData == null || commandData.Unit == null)
+		if (commandData == null)
 		{
-			return;
+			return CommandResult.Success;
 		}
-		if (commandData.Unit.LifeState.IsDead)
+		if (!m_Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Unit not found");
+		}
+		if (value.LifeState.IsDead)
 		{
 			commandData.Finished = true;
-			return;
+			return CommandResult.Success;
 		}
-		AbstractUnitEntityView view = commandData.Unit.View;
-		if ((bool)view && (bool)view.AnimationManager && (m_FiniteLoop || !commandData.Finished || (!m_ExitBeforeDone && commandData.Handle != null && !commandData.Handle.IsFinished)))
+		IAbstractUnitEntityView view = value.View;
+		if (view == null)
+		{
+			return CommandResult.Fail("Unit view is null");
+		}
+		if ((bool)view.AnimationManager && (m_FiniteLoop || !commandData.Finished || (!m_ExitBeforeDone && commandData.Handle != null && !commandData.Handle.IsFinished)))
 		{
 			commandData.Handle?.Release();
 			if (commandData.Handle?.Action != null)
@@ -293,9 +305,10 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 				UnityEngine.Object.Destroy(commandData.Handle.Action);
 			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (m_FiniteLoop)
@@ -317,18 +330,19 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 		}
 		if (!commandData.SkippedByPlayer && IsContinuous && m_RerunBeforeReleaseAnimation && commandData.Handle.IsReleased)
 		{
-			OnRun(player, skipping: false);
+			return OnRun(player, skipping: false);
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		if ((commandData.SkippedByPlayer || !IsContinuous) && !commandData.Finished)
 		{
-			Stop(player);
+			return Stop(player);
 		}
+		return CommandResult.Success;
 	}
 
 	public override bool TryPrepareForStop(CutscenePlayerData player)

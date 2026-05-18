@@ -68,8 +68,9 @@ public class LootCollectorPCView : LootCollectorView
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_TrashModeButton.OnLeftClickAsObservable(), delegate
 		{
-			base.ViewModel.SetTrashMode();
+			base.ViewModel.ToggleTrashMode();
 		}).AddTo(this);
+		UISounds.Instance.SetClickSound(m_TrashModeButton, ButtonSoundsEnum.NoSound);
 		base.ViewModel.IsTrashMode.Subscribe(SetTrashMoveButton).AddTo(this);
 		if (base.ViewModel.NoLoot.CurrentValue)
 		{

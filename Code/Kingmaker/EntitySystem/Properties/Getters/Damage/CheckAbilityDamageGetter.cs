@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.RuleSystem;
 using Kingmaker.UnitLogic.Mechanics.Damage;
@@ -13,9 +14,9 @@ public class CheckAbilityDamageGetter : CheckDamageGetter, PropertyContextAccess
 {
 	protected override bool Check(out DamageType type, out IntermediateDamage data, out RulebookEvent rule)
 	{
-		data = this.GetAbility().GetWeaponStats().BaseDamage;
+		data = EvalContext.Current.Ability.GetWeaponStats().BaseDamage;
 		type = data?.Type ?? DamageType.None;
-		rule = this.GetRule();
+		rule = EvalContext.Current.Rule;
 		return true;
 	}
 

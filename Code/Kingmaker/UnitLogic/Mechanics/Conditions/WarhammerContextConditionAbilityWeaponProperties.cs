@@ -33,11 +33,11 @@ public class WarhammerContextConditionAbilityWeaponProperties : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		ItemEntityWeapon itemEntityWeapon = ((!checkOnOwner) ? base.Target.Entity?.GetFirstWeapon() : base.Context.MaybeOwner?.GetFirstWeapon());
+		ItemEntityWeapon itemEntityWeapon = ((!checkOnOwner) ? base.Target.Entity?.GetFirstWeapon() : base.Eval.Owner?.GetFirstWeapon());
 		bool flag = false;
 		if (anyHand || bothHands)
 		{
-			ItemEntityWeapon itemEntityWeapon2 = ((!checkOnOwner) ? base.Target.Entity?.GetSecondWeapon() : base.Context.MaybeOwner?.GetSecondWeapon());
+			ItemEntityWeapon itemEntityWeapon2 = ((!checkOnOwner) ? base.Target.Entity?.GetSecondWeapon() : base.Eval.Owner?.GetSecondWeapon());
 			if (itemEntityWeapon2 == null)
 			{
 				flag = false;

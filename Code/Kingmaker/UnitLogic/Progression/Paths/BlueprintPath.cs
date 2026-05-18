@@ -5,6 +5,7 @@ using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
+using MemoryPack;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
@@ -16,6 +17,7 @@ namespace Kingmaker.UnitLogic.Progression.Paths;
 [Serializable]
 [TypeId("3eb928a0df1049099c82edc91d03d8da")]
 [OwlPackable(OwlPackableMode.NoGenerate)]
+[MemoryPackable(GenerateType.NoGenerate)]
 public abstract class BlueprintPath : BlueprintFeature
 {
 	[Serializable]

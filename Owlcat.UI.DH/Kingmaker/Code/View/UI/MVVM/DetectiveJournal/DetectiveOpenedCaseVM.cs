@@ -7,6 +7,7 @@ using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI;
 using Kingmaker.UI.Events;
 using Kingmaker.Utility.DotNetExtensions;
@@ -17,7 +18,7 @@ using R3;
 
 namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
-public class DetectiveOpenedCaseVM : ViewModel
+public class DetectiveOpenedCaseVM : ViewModel, IConclusionStatusChanged, ISubscriber
 {
 	public readonly BlueprintCase BlueprintCase;
 
@@ -189,7 +190,7 @@ public class DetectiveOpenedCaseVM : ViewModel
 			return;
 		}
 		DetectiveSystem detectiveSystem = Game.Instance.DetectiveSystem;
-		IEnumerable<BlueprintConclusion> currentConclusions = detectiveSystem.GetAvailableConclusions(BlueprintCase).Where(detectiveSystem.HasConclusion);
+		List<BlueprintConclusion> currentConclusions = detectiveSystem.GetAvailableConclusions(BlueprintCase).Where(detectiveSystem.HasConclusionExcludingHidden).ToList();
 		IEnumerable<DeductionOnScreenVM> enumerable = Conclusions.Where((DeductionOnScreenVM c) => !currentConclusions.Contains(c.Conclusion));
 		Conclusions.RemoveAll(enumerable.Contains<DeductionOnScreenVM>);
 		enumerable.ForEach(delegate(DeductionOnScreenVM d)
@@ -202,13 +203,18 @@ public class DetectiveOpenedCaseVM : ViewModel
 			{
 				continue;
 			}
-			List<ConclusionSourceWrapper> examinedEntities = Game.Instance.Player.UISettings.DetectiveSystemData.ExaminedDetectiveData.SelectedConclusionSource.GetEntities();
+			List<ConclusionSourceWrapper> examinedEntities = UIUtilityDetective.ExaminedDetectiveData.SelectedConclusionSource.GetEntities();
 			BlueprintConclusion.Source source = conclusion.Sources.FirstOrDefault((BlueprintConclusion.Source s) => examinedEntities.FirstOrDefault((ConclusionSourceWrapper cs) => cs.Is(s)) != null);
 			if (source == null)
 			{
-				source = conclusion.Sources.First();
+				source = conclusion.Sources.FirstOrDefault(UIUtilityDetective.HasConclusionSource) ?? conclusion.Sources.First();
 			}
-			if (Game.Instance.DetectiveSystem.HasItem(source.Item1) && Game.Instance.DetectiveSystem.HasItem(source.Item2) && (!(source.Item2.Blueprint is BlueprintClueAddendum blueprintClueAddendum) || Game.Instance.DetectiveSystem.HasItem((BlueprintClue?)blueprintClueAddendum.ParentClue)))
+			if (!UIUtilityDetective.HasConclusionSource(source))
+			{
+				detectiveSystem.RemoveConclusion(conclusion);
+				PFLog.UI.Error("Has conclusion " + conclusion.AssetName + " without source items");
+			}
+			else
 			{
 				Conclusions.Add(new DeductionOnScreenVM(conclusion, source, ClickOnConclusion));
 			}
@@ -218,5 +224,10 @@ public class DetectiveOpenedCaseVM : ViewModel
 			c.UpdateClueData();
 		});
 		UpdateCanOpenReport();
+	}
+
+	public void HandleConclusionStatusChanged(BlueprintConclusion blueprint)
+	{
+		UpdateDeductions();
 	}
 }

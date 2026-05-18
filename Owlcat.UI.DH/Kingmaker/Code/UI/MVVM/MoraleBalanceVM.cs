@@ -1,7 +1,5 @@
-using System;
 using System.Linq;
 using Kingmaker.Blueprints;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Controllers;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Gameplay.Features.Morale;
@@ -10,63 +8,50 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Owlcat.UI;
 using R3;
+using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class MoraleBalanceVM : ViewModel, IPowerBalanceHandler, ISubscriber, IMoraleVictoryConfirmationRequest, ITurnBasedModeHandler
+public class MoraleBalanceVM : ViewModel, IPowerBalanceHandler, ISubscriber, IMoraleVictoryConfirmationRequest, IMoraleVictoryConfirmationHandler, ITurnBasedModeHandler
 {
-	private readonly MoraleGroup m_PlayerGroup;
-
 	private readonly ReactiveProperty<float> m_MoraleBalanceNormalized;
 
-	private readonly float m_ShatteredMultiplier;
+	private readonly ReactiveProperty<MoraleBalanceState> m_MoraleVictoryState;
 
-	private bool m_IsMoraleVictoryAchieved;
+	private readonly float m_ShatteredMultiplierFactor;
 
-	private TooltipBaseTemplate m_DefaultTooltip;
+	private MoraleGroup m_PlayerGroup;
 
-	private TooltipBaseTemplate m_VictoryTooltip;
+	private TooltipBaseTemplate m_Tooltip;
 
 	private MoraleController MoraleController => Game.Instance.Controllers.MoraleController;
 
 	public ReadOnlyReactiveProperty<float> MoraleBalanceNormalized => m_MoraleBalanceNormalized;
 
+	public ReadOnlyReactiveProperty<MoraleBalanceState> MoraleVictoryState => m_MoraleVictoryState;
+
 	public MoraleBalanceVM()
 	{
-		m_PlayerGroup = MoraleController.MoraleGroups.FirstOrDefault((MoraleGroup g) => g.IsPlayerGroup);
-		m_ShatteredMultiplier = MoraleRoot.Instance.ShatteredPowerBalanceMultiplier;
-		m_MoraleBalanceNormalized = new ReactiveProperty<float>().AddTo(this);
-		m_MoraleBalanceNormalized.Value = CalculateBalance(m_PlayerGroup);
+		float shatteredPowerBalanceMultiplier = MoraleRoot.Instance.ShatteredPowerBalanceMultiplier;
+		m_ShatteredMultiplierFactor = (shatteredPowerBalanceMultiplier - 1f) / shatteredPowerBalanceMultiplier;
+		m_MoraleVictoryState = new ReactiveProperty<MoraleBalanceState>().AddTo(this);
+		m_MoraleBalanceNormalized = new ReactiveProperty<float>(CalculateBalance()).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
-	public TooltipBaseTemplate GetDefaultHintTooltipTemplate()
+	public TooltipBaseTemplate GetTooltip(TMP_StyleSheet styleSheet, Color textColor)
 	{
-		if (m_DefaultTooltip != null)
+		if (m_Tooltip == null)
 		{
-			return m_DefaultTooltip;
+			m_Tooltip = new TooltipTemplateMoralePressure(m_MoraleBalanceNormalized, m_MoraleVictoryState, styleSheet, textColor);
 		}
-		HUDTexts hUDTexts = UIStrings.Instance.HUDTexts;
-		return m_DefaultTooltip = new TooltipTemplateSimple(hUDTexts.MoraleBalanceHeader, hUDTexts.MoraleBalanceDescription);
-	}
-
-	public TooltipBaseTemplate GetVictoryHintTooltipTemplate(Color highlightColor, int highlightSize)
-	{
-		if (m_VictoryTooltip != null)
-		{
-			return m_VictoryTooltip;
-		}
-		HUDTexts hUDTexts = UIStrings.Instance.HUDTexts;
-		string arg = ColorUtility.ToHtmlStringRGB(highlightColor);
-		string text = hUDTexts.MoraleBalanceVictoryDescription.Text;
-		string description = string.Concat(hUDTexts.MoraleBalanceDescription, "\n\n", $"<b><color=#{arg}><size={highlightSize}%>{text}</size></color></b>");
-		return m_VictoryTooltip = new TooltipTemplateSimple(hUDTexts.MoraleBalanceHeader, description);
+		return m_Tooltip;
 	}
 
 	void IPowerBalanceHandler.HandlePowerBalanceRecalculated()
 	{
-		m_MoraleBalanceNormalized.Value = CalculateBalance(m_PlayerGroup);
+		m_MoraleBalanceNormalized.Value = CalculateBalance();
 	}
 
 	void IPowerBalanceHandler.HandlePowerBalanceValueUpdate(MoraleGroup combatGroup)
@@ -79,32 +64,53 @@ public class MoraleBalanceVM : ViewModel, IPowerBalanceHandler, ISubscriber, IMo
 
 	void IMoraleVictoryConfirmationRequest.HandleMoraleVictoryConfirmationRequest(IMoraleVictoryConfirmationRequest.Callback callback)
 	{
-		m_IsMoraleVictoryAchieved = true;
+		m_MoraleVictoryState.Value = MoraleBalanceState.Pending;
+		m_MoraleBalanceNormalized.Value = CalculateBalance();
+	}
+
+	void IMoraleVictoryConfirmationHandler.HandleMoraleVictoryConfirmation(bool confirmed)
+	{
+		if (!confirmed)
+		{
+			m_MoraleVictoryState.Value = MoraleBalanceState.Continued;
+			m_MoraleBalanceNormalized.Value = CalculateBalance();
+		}
 	}
 
 	void ITurnBasedModeHandler.HandleTurnBasedModeSwitched(bool isTurnBased)
 	{
 		if (!isTurnBased)
 		{
-			m_IsMoraleVictoryAchieved = false;
+			m_MoraleVictoryState.Value = MoraleBalanceState.None;
+			m_PlayerGroup = null;
+			m_MoraleBalanceNormalized.Value = 0f;
 		}
 	}
 
-	private float CalculateBalance(MoraleGroup moraleGroup)
+	private float CalculateBalance()
 	{
-		try
+		if (m_PlayerGroup == null)
 		{
-			float powerValue = moraleGroup.PowerValue;
-			float mostPowerfulEnemy = moraleGroup.MostPowerfulEnemy;
-			float num = (m_ShatteredMultiplier - 1f) / m_ShatteredMultiplier;
-			float num2 = powerValue / (powerValue * num + mostPowerfulEnemy);
-			num2 = Mathf.Clamp01(num2 * num2);
-			return m_IsMoraleVictoryAchieved ? num2 : Mathf.Min(num2, 0.99f);
+			m_PlayerGroup = MoraleController.MoraleGroups.FirstOrDefault((MoraleGroup g) => g.IsPlayerGroup);
 		}
-		catch (DivideByZeroException exception)
+		if (m_PlayerGroup == null)
 		{
-			Debug.LogException(exception);
+			Debug.LogError("MoraleBalanceVM: player group is null");
 			return 0f;
 		}
+		float powerValue = m_PlayerGroup.PowerValue;
+		float mostPowerfulEnemy = m_PlayerGroup.MostPowerfulEnemy;
+		if (float.IsNaN(powerValue) || float.IsNaN(mostPowerfulEnemy) || powerValue < 0f)
+		{
+			return 0f;
+		}
+		float num = powerValue * m_ShatteredMultiplierFactor + mostPowerfulEnemy;
+		if (Mathf.Approximately(num, 0f))
+		{
+			return 0f;
+		}
+		float num2 = powerValue / num;
+		float max = ((m_MoraleVictoryState.Value == MoraleBalanceState.None) ? 0.99f : 1f);
+		return Mathf.Clamp(num2 * num2, 0f, max);
 	}
 }

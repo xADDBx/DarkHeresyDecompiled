@@ -1,7 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 
@@ -18,11 +18,11 @@ public class AbilitySimpleUnitsInPatternGetter : IntPropertyGetter, PropertyCont
 	protected override int GetBaseValue()
 	{
 		int num = 0;
-		MechanicsContext mechanicContext = this.GetMechanicContext();
-		foreach (GridNodeBase item in mechanicContext.SourcePatternNodes ?? throw new Exception("Can't count targets in pattern of not casted ability"))
+		IEvalContext evalContext = this.GetEvalContext();
+		foreach (GridNodeBase sourcePatternNode in evalContext.SourcePatternNodes)
 		{
-			BaseUnitEntity firstUnit = item.GetFirstUnit();
-			if (firstUnit != null && (!IncludeCaster || firstUnit != mechanicContext.SourceCaster) && (!OnlyEnemy || mechanicContext.SourceCaster == null || !firstUnit.IsAlly(mechanicContext.SourceCaster)))
+			BaseUnitEntity firstUnit = sourcePatternNode.GetFirstUnit();
+			if (firstUnit != null && (!IncludeCaster || firstUnit != evalContext.SourceCaster) && (!OnlyEnemy || evalContext.SourceCaster == null || !firstUnit.IsAlly(evalContext.SourceCaster)))
 			{
 				num++;
 			}

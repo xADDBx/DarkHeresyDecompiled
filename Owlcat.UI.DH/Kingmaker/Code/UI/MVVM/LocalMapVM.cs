@@ -28,19 +28,19 @@ public class LocalMapVM : ViewModel, INetPingPosition, ISubscriber, IServiceWind
 
 	private readonly ReactiveProperty<WarhammerLocalMapRenderer.DrawResults> m_DrawResult = new ReactiveProperty<WarhammerLocalMapRenderer.DrawResults>();
 
-	public readonly ObservableList<LocalMapMarkerVM> MarkersVm = new ObservableList<LocalMapMarkerVM>();
-
 	private readonly ReactiveProperty<float> m_CompassAngle = new ReactiveProperty<float>(0f);
 
 	private readonly ReactiveProperty<bool> m_CanOpenMap = new ReactiveProperty<bool>();
+
+	public readonly LocalMapLegendBlockVM LocalMapLegendBlockVM;
+
+	public readonly ObservableList<LocalMapMarkerVM> MarkersVm = new ObservableList<LocalMapMarkerVM>();
 
 	public readonly ReactiveProperty<bool> SwitchedFromServiceWindow = new ReactiveProperty<bool>();
 
 	private Action m_Close;
 
 	private readonly ReactiveCommand<(NetPlayer, Vector3)> m_CoopPingPosition = new ReactiveCommand<(NetPlayer, Vector3)>();
-
-	public readonly LocalMapLegendBlockVM LocalMapLegendBlockVM;
 
 	private static readonly int LocalMapColorTex = Shader.PropertyToID("_LocalMapColorTex");
 
@@ -56,10 +56,15 @@ public class LocalMapVM : ViewModel, INetPingPosition, ISubscriber, IServiceWind
 
 	public BlueprintAreaPart.LocalMapRotationDegree LocalMapRotation => Game.Instance.CurrentlyLoadedAreaPart.LocalMapRotationDeg;
 
+	public float ZoomMin => Game.Instance.CurrentlyLoadedAreaPart.LocalMapZoomMin;
+
+	public float ZoomMax => Game.Instance.CurrentlyLoadedAreaPart.LocalMapZoomMax;
+
 	public Observable<(NetPlayer, Vector3)> CoopPingPosition => m_CoopPingPosition;
 
 	public LocalMapVM()
 	{
+		Game.Instance.Player.UISettings.IsLocalMapOpen = true;
 		EventBus.RaiseEvent(delegate(IFullScreenLocalMapUIHandler h)
 		{
 			h.HandleFullScreenLocalMapChanged(state: true);
@@ -78,6 +83,7 @@ public class LocalMapVM : ViewModel, INetPingPosition, ISubscriber, IServiceWind
 
 	protected override void OnDispose()
 	{
+		Game.Instance.Player.UISettings.IsLocalMapOpen = false;
 		MarkersVm.ForEach(delegate(LocalMapMarkerVM m)
 		{
 			m.Dispose();
@@ -171,11 +177,10 @@ public class LocalMapVM : ViewModel, INetPingPosition, ISubscriber, IServiceWind
 			if (state)
 			{
 				CameraRig.Instance.ScrollTo(worldPos);
+				return;
 			}
-			else
-			{
-				UnitCommandsRunner.MoveSelectedUnitsToPoint(worldPos);
-			}
+			UnitCommandsRunner.MoveSelectedUnitsToPoint(worldPos);
+			Game.Instance.Controllers.CameraController.Follower.Follow();
 		}
 	}
 

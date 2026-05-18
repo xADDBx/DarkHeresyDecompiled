@@ -159,12 +159,21 @@ public class ActionBarPCView : View<ActionBarVM>
 		m_ActionBarMoraleView.Bind(base.ViewModel.Morale);
 		EventBus.Subscribe(this).AddTo(this);
 		base.ViewModel.IsVisible.Subscribe(OnVisibleChanged).AddTo(this);
+		base.ViewModel.ForceHideCurrentUnit.CombineLatest(base.ViewModel.HUDContext.IsPlayer, delegate(bool forceHide, bool isPlayer)
+		{
+			bool item = isPlayer && !forceHide;
+			bool item2 = !isPlayer && !forceHide;
+			return (showPlayer: item, showEnemy: item2);
+		}).Subscribe(delegate((bool showPlayer, bool showEnemy) t)
+		{
+			SetTurnComponentsVisible(t.showPlayer, t.showEnemy);
+		}).AddTo(this);
 		base.ViewModel.CurrentCombatUnit.Subscribe(delegate(CombatMechanicEntityVM currentUnit)
 		{
 			m_SurfaceCombatCurrentUnitView.Bind(currentUnit);
 			if (base.ViewModel.IsVisible.CurrentValue)
 			{
-				UISounds.Instance.Sounds.ActionBar.ActionBarSwitch.Play();
+				CombatSounds.Instance.ActionBar.ActionBarSwitch.Play();
 			}
 		}).AddTo(this);
 		RootUIContext.Instance.GameUIState.GameMode.Subscribe(delegate(GameModeType value)
@@ -178,7 +187,6 @@ public class ActionBarPCView : View<ActionBarVM>
 				m_CommonComponentsAnimator.AppearAnimation();
 			}
 		}).AddTo(this);
-		base.ViewModel.HUDContext.IsPlayer.Subscribe(SwitchPlayerTurnComponents).AddTo(this);
 		base.ViewModel.HUDContext.IsTurnBasedActive.And(base.ViewModel.HUDContext.CanEndTurn).Subscribe(delegate(bool val)
 		{
 			m_EndTurnButton.SetInteractable(val);
@@ -215,7 +223,7 @@ public class ActionBarPCView : View<ActionBarVM>
 		m_PauseBind.OnValueChanged += SetButtonsBindTexts;
 		SetButtonsBindTexts();
 		m_ForceShowActionBarButton.OnLeftClickAsObservable().Subscribe(ForceShowActionBar).AddTo(this);
-		base.ViewModel.IsForceHidden.Subscribe(UpdateForceShowButtonLayer).AddTo(this);
+		base.ViewModel.IsForcedMinimized.Subscribe(UpdateForceShowButtonLayer).AddTo(this);
 	}
 
 	protected override void OnUnbind()
@@ -264,7 +272,7 @@ public class ActionBarPCView : View<ActionBarVM>
 		m_Animator.AppearAnimation();
 		m_AdditionalAnimator.AppearAnimation();
 		m_ContainerForMarkers.SetActive(value: true);
-		UISounds.Instance.Sounds.ActionBar.ActionBarShow.Play();
+		CombatSounds.Instance.ActionBar.Show.Play();
 	}
 
 	private void DoDisappear()
@@ -275,15 +283,15 @@ public class ActionBarPCView : View<ActionBarVM>
 		m_ContainerForMarkers.SetActive(value: false);
 		m_ClearMPAlertGroup.gameObject.SetActive(value: false);
 		m_AttackAbilityGroupCooldownAlertGroup.gameObject.SetActive(value: false);
-		UISounds.Instance.Sounds.ActionBar.ActionBarHide.Play();
+		CombatSounds.Instance.ActionBar.Hide.Play();
 	}
 
-	private void SwitchPlayerTurnComponents(bool isPlayer)
+	private void SetTurnComponentsVisible(bool playerTurnVisible, bool enemyTurnVisible)
 	{
-		m_PlayerTurnComponents.alpha = (isPlayer ? 1f : 0f);
-		m_PlayerTurnComponents.interactable = isPlayer;
-		m_EnemyTurnComponents.alpha = (isPlayer ? 0f : 1f);
-		m_EnemyTurnComponents.interactable = !isPlayer;
+		m_PlayerTurnComponents.alpha = (playerTurnVisible ? 1f : 0f);
+		m_PlayerTurnComponents.interactable = playerTurnVisible;
+		m_EnemyTurnComponents.alpha = (enemyTurnVisible ? 1f : 0f);
+		m_EnemyTurnComponents.interactable = enemyTurnVisible;
 	}
 
 	private void ShowButtons(bool isTurnBased, bool deploymentPhase, bool showEndTurn, bool currentUnitIsRunningCommand)
@@ -463,7 +471,7 @@ public class ActionBarPCView : View<ActionBarVM>
 	private void DoEndTurn()
 	{
 		base.ViewModel.HUDContext.EndTurn();
-		UISounds.Instance.Sounds.Combat.EndTurn.Play();
+		CombatSounds.Instance.Combat.EndTurn.Play();
 	}
 
 	private void UpdateForceShowButtonLayer(bool isForceHidden)

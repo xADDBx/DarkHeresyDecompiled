@@ -2,6 +2,8 @@ using Kingmaker.Blueprints;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Gameplay.Features.Scaling.Utility;
 using Kingmaker.Items;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
@@ -32,6 +34,12 @@ public class ContextActionAttackWithFirstWeaponAbility : ContextAction
 
 	public bool CountAsAttackOfOpportunity;
 
+	[Tooltip("Append the source ability's modifiers to the weapon ability's modifier list.")]
+	public bool InheritModifiers;
+
+	[Tooltip("Use the source ability's resolved scaling for the weapon ability.")]
+	public bool InheritScalings;
+
 	public BlueprintBuff PriorityTargetBuff => m_PriorityTargetBuff?.Get();
 
 	protected override void RunAction()
@@ -41,7 +49,7 @@ public class ContextActionAttackWithFirstWeaponAbility : ContextAction
 			Element.LogError(this, "Caster is missing");
 			return;
 		}
-		BaseUnitEntity baseUnitEntity2 = (OwnerIsAttacker ? ((BaseUnitEntity)base.Context.MaybeOwner) : baseUnitEntity);
+		BaseUnitEntity baseUnitEntity2 = (OwnerIsAttacker ? ((BaseUnitEntity)base.Context.Owner) : baseUnitEntity);
 		if (baseUnitEntity2 == null)
 		{
 			Element.LogError(this, "Caster is missing");
@@ -55,7 +63,7 @@ public class ContextActionAttackWithFirstWeaponAbility : ContextAction
 			MechanicEntity mechanicEntity = base.Target.Entity;
 			if (ContextCasterIsTarget)
 			{
-				mechanicEntity = base.Context.MaybeCaster;
+				mechanicEntity = base.Context.Caster;
 			}
 			if (TargetIsPriorityTarget)
 			{
@@ -82,7 +90,17 @@ public class ContextActionAttackWithFirstWeaponAbility : ContextAction
 				Element.LogError(this, "No ability in weapon");
 				return;
 			}
-			AbilityData abilityData = itemEntityWeapon.Abilities[0].Data.Clone();
+			AbilityData sourceAbility = base.Context.SourceAbility;
+			AbilityData abilityData = ((InheritModifiers && sourceAbility != null) ? itemEntityWeapon.Abilities[0].Data.Clone(sourceAbility.Modifiers) : itemEntityWeapon.Abilities[0].Data.Clone());
+			if (InheritScalings)
+			{
+				ScalingInfo? scalingInfo = sourceAbility?.GetScaling();
+				if (scalingInfo.HasValue)
+				{
+					ScalingInfo valueOrDefault = scalingInfo.GetValueOrDefault();
+					abilityData.ScalingOverride = valueOrDefault;
+				}
+			}
 			abilityData.IgnoreRestrictions = true;
 			abilityData.IsAttackOfOpportunity = CountAsAttackOfOpportunity;
 			if (SaveMPAfterUsingWeaponAbility)
@@ -104,10 +122,10 @@ public class ContextActionAttackWithFirstWeaponAbility : ContextAction
 
 	public override string GetCaption()
 	{
-		return "Attack target with first weapon ability.";
+		return "Attack target with first weapon ability " + (useSecondWeapon ? "from second weapon" : "from first weapon") + ".";
 	}
 
-	public DamagePredictionData GetDamagePrediction(AbilityExecutionContext context, MechanicEntity targetEntity, Vector3 casterPosition)
+	public DamagePredictionData GetDamagePrediction(IEvalContext context, MechanicEntity targetEntity, Vector3 casterPosition)
 	{
 		if (context.Caster == targetEntity)
 		{
@@ -118,7 +136,7 @@ public class ContextActionAttackWithFirstWeaponAbility : ContextAction
 			Element.LogError(this, "Caster is missing");
 			return null;
 		}
-		BaseUnitEntity baseUnitEntity2 = (OwnerIsAttacker ? ((BaseUnitEntity)base.Context.MaybeOwner) : baseUnitEntity);
+		BaseUnitEntity baseUnitEntity2 = (OwnerIsAttacker ? ((BaseUnitEntity)base.Context.Owner) : baseUnitEntity);
 		if (baseUnitEntity2 == null)
 		{
 			Element.LogError(this, "Caster is missing");

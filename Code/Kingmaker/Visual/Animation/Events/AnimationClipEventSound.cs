@@ -1,4 +1,6 @@
 using System;
+using Animancer;
+using Kingmaker.View.Mechanics;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Events;
@@ -41,6 +43,8 @@ public class AnimationClipEventSound : AnimationClipEvent
 
 	public float Volume => m_Volume;
 
+	public AnimancerState AnimancerState => (AnimancerState)base.UserData;
+
 	public AnimationClipEventSound()
 	{
 	}
@@ -58,26 +62,29 @@ public class AnimationClipEventSound : AnimationClipEvent
 		m_Volume = volume;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public sealed override void Start(IAnimationManager animationManager)
 	{
-		uint uniqueId = animationManager.CallbackReceiver.PostEvent(Name, Volume);
-		Action result = ((!string.IsNullOrEmpty(StopName)) ? ((Action)delegate
-		{
-			animationManager.CallbackReceiver.PostEvent(StopName, Volume);
-		}) : ((Action)delegate
-		{
-			animationManager.CallbackReceiver.StopPlayingById(uniqueId);
-		}));
+		animationManager.SoundEventsManager.PostSoundEvent(this);
+	}
+
+	public virtual Action PostSoundEvent(MechanicEntityView view)
+	{
+		uint uniqueId = view.PostSoundEvent(Name, Volume);
 		if (!base.IsLooped)
 		{
 			return null;
 		}
-		return result;
-	}
-
-	public override bool DoNotStartIfStarted(AnimationClipEvent @object)
-	{
-		return (@object as AnimationClipEventSound)?.Name == Name;
+		if (!string.IsNullOrEmpty(StopName))
+		{
+			return delegate
+			{
+				view.PostSoundEvent(StopName, Volume);
+			};
+		}
+		return delegate
+		{
+			view.StopPlayingSoundById(uniqueId);
+		};
 	}
 
 	public override object Clone()

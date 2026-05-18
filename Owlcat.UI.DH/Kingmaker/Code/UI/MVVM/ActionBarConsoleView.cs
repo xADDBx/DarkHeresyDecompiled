@@ -11,7 +11,6 @@ using Kingmaker.View.Mechanics.Entities;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -44,13 +43,13 @@ public class ActionBarConsoleView : View<ActionBarVM>, ITurnBasedModeHandler, IS
 
 	[Header("Hints")]
 	[SerializeField]
-	private ConsoleHint m_InspectHint;
+	private HintView m_InspectHint;
 
 	[SerializeField]
-	private ConsoleHint m_HideActionBarHint;
+	private HintView m_HideActionBarHint;
 
 	[SerializeField]
-	private ConsoleHint m_ShowActionBarHint;
+	private HintView m_ShowActionBarHint;
 
 	[Header("ContainersForMarkers")]
 	[SerializeField]
@@ -85,7 +84,7 @@ public class ActionBarConsoleView : View<ActionBarVM>, ITurnBasedModeHandler, IS
 		{
 			if (m_IsVisible.CurrentValue)
 			{
-				UISounds.Instance.Sounds.ActionBar.ActionBarSwitch.Play();
+				CombatSounds.Instance.ActionBar.ActionBarSwitch.Play();
 			}
 		}).AddTo(this);
 		base.ViewModel.EndTurnText.Subscribe(delegate(string value)
@@ -101,33 +100,8 @@ public class ActionBarConsoleView : View<ActionBarVM>, ITurnBasedModeHandler, IS
 		}).AddTo(this);
 	}
 
-	protected override void OnUnbind()
+	public void AddInput()
 	{
-	}
-
-	public void AddInput(InputLayer inputLayer, bool inCombat)
-	{
-		m_QuickAccessConsoleView.AddInput(inputLayer, m_IsVisible, inCombat);
-		m_AbilitiesConsoleView.AddInput(inputLayer, m_IsVisible, inCombat);
-		m_InspectHint.Bind(inputLayer.AddButton(delegate
-		{
-			OnInspectUnit();
-		}, 19, m_IsInspectVisible, InputActionEventType.ButtonJustLongPressed)).AddTo(this);
-		m_InspectHint.SetLabel(UIStrings.Instance.MainMenu.Inspect);
-		if (!inCombat)
-		{
-			m_HideActionBarHint.Bind(inputLayer.AddButton(delegate
-			{
-				TriggerVisibility(trigger: false);
-			}, 9, m_IsVisible)).AddTo(this);
-			m_HideActionBarHint.SetLabel(UIStrings.Instance.HUDTexts.HideActionBar);
-			ReadOnlyReactiveProperty<bool> readOnlyReactiveProperty = m_IsVisible.Not().ToReadOnlyReactiveProperty(initialValue: false);
-			m_ShowActionBarHint.Bind(inputLayer.AddButton(delegate
-			{
-				TriggerVisibility(trigger: true);
-			}, 11, readOnlyReactiveProperty)).AddTo(this);
-			m_ShowActionBarHint.SetLabel(UIStrings.Instance.HUDTexts.ShowActionBar);
-		}
 	}
 
 	private void TriggerVisibility(bool trigger)
@@ -151,7 +125,7 @@ public class ActionBarConsoleView : View<ActionBarVM>, ITurnBasedModeHandler, IS
 		if (visible)
 		{
 			m_Animator.AppearAnimation();
-			UISounds.Instance.Sounds.ActionBar.ActionBarShow.Play();
+			CombatSounds.Instance.ActionBar.Show.Play();
 			m_ContainersForMarkers.ForEach(delegate(GameObject c)
 			{
 				c.Or(null)?.SetActive(value: true);
@@ -160,7 +134,7 @@ public class ActionBarConsoleView : View<ActionBarVM>, ITurnBasedModeHandler, IS
 		else
 		{
 			m_Animator.DisappearAnimation();
-			UISounds.Instance.Sounds.ActionBar.ActionBarHide.Play();
+			CombatSounds.Instance.ActionBar.Hide.Play();
 			m_ContainersForMarkers.ForEach(delegate(GameObject c)
 			{
 				c.Or(null)?.SetActive(value: false);

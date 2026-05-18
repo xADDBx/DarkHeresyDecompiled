@@ -27,6 +27,7 @@ public class TextTemplateEngine : BaseTextTemplateEngine
 		AddTemplate("race", new RaceTemplate());
 		AddTemplate("name", new NameTemplate());
 		AddTemplate("rt_name", new RtNameTemplate());
+		AddTemplate("vo_name", new VoiceOverNameTemplate());
 		AddTemplate("date", new DateTemplate());
 		AddTemplate("time", new TimeTempate());
 		AddTemplate("custom_companion_cost", new CustomCompanionCostTemplate());
@@ -79,6 +80,7 @@ public class TextTemplateEngine : BaseTextTemplateEngine
 		AddTemplate("round", new LogTemplateRound());
 		AddTemplate("previous_value", new PreviousValueTemplate());
 		AddTemplate("current_value", new CurrentValueTemplate());
+		AddTemplate("target_value", new LogTemplateTrivial<int>(() => GameLogContext.TargetValue));
 		AddTemplate("portraits_path", new UITemplatePortraitsPath());
 		AddTemplate("area_name", new UITemplateAreaName());
 		AddTemplate("unit_stat", new UnitStatStartTemplate());
@@ -106,13 +108,17 @@ public class TextTemplateEngine : BaseTextTemplateEngine
 		AddTemplate("vital_damage", new VitalDamageTemplate());
 		AddTemplate("damage.type", new DamageTypeTemplate());
 		AddTemplate("scaling_formula", new ScalingFormulaTemplate());
+		AddTemplate("uip", new UIPropertyTemplate());
+		AddTemplate("uicp", new UICommonPropertyTemplate());
 		AddTemplate("caseId", new CaseIdTemplate());
 		AddTemplate("clueId", new ClueIdTemplate());
 		AddTemplate("reportId", new ReportIdTemplate());
 		AddTemplate("case_name", new CaseNameTemplate());
 		AddTemplate("case_item_name", new CaseItemNameTemplate());
+		AddTemplate("case_item_area", new CaseItemAreaTemplate());
 		AddTemplate("case_item", new CaseItemTemplate());
 		AddTemplate("case_answer", new CaseAnswerTemplate());
+		AddTemplate("bullet", new BulletTemplate());
 	}
 
 	public override string[] GetTemplateTags()

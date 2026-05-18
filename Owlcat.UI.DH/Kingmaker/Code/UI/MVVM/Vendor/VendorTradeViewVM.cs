@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Items;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -18,6 +19,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Events;
+using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -148,15 +150,19 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 		var (value, value2) = (ReputationDescription)(ref VendorHelper.TradeLogic.Reputation);
 		m_VendorFearReputationLevel.Value = value;
 		m_VendorRespectReputationLevel.Value = value2;
-		m_IsMaxLevel.Value = ReputationHelper.IsMaxReputation(VendorFaction.CurrentValue.Value);
+		m_IsMaxLevel.Value = false;
 		ItemsSortingContext sortingCtx = new ItemsSortingContext
 		{
-			GetComparisonFunc = (ItemsSorterType _, ItemsFilterType _) => GetVendorComparison()
+			GetComparisonFunc = GetVendorComparison
 		};
 		VendorSlotsGroup = new ItemSlotsGroupVM(Vendor.StoreItems, 1, 10, sortingCtx);
 		VendorSlotsGroup.AddTo(this);
 		VendorItemsFilter = new ItemsFilterVM(VendorSlotsGroup).AddTo(this);
 		VendorItemsFilter.SetCurrentFilter(ItemsFilterType.NoFilter);
+		ObservableSubscribeExtensions.Subscribe(VendorSlotsGroup.CollectionChangedCommand, delegate
+		{
+			m_VendorHasItemsToSell.Value = VendorSlotsGroup.VisibleCollection.Any((ItemSlotVM i) => i.HasItem);
+		}).AddTo(this);
 		ItemsSortingContext sortingCtx2 = new ItemsSortingContext
 		{
 			SorterType = Game.Instance.Player.UISettings.InventorySorter,
@@ -180,7 +186,7 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
 			OnUpdateHandler();
-		});
+		}).AddTo(this);
 		m_VendorHasItemsToSell.Value = Vendor.StoreItems.Any();
 		PartyVM = new PartyVM().AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
@@ -194,7 +200,10 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 
 	public void HandleEquipmentSlotUpdated(ItemSlot slot, ItemEntity previousItem)
 	{
-		UpdatePlayerSide();
+		if (!(slot.Owner is BaseUnitEntity { IsPreviewUnit: not false }))
+		{
+			UpdatePlayerSide();
+		}
 	}
 
 	private void UpdateVendorSide()
@@ -292,12 +301,37 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 
 	public void Deal()
 	{
-		if (Vendor.IsDealPossible)
+		UISound dealSound = GetDealSound();
+		Vendor.Deal(VendorEntity);
+		UpdatePlayerSide();
+		UpdateVendorSide();
+		dealSound.Play();
+	}
+
+	private UISound GetDealSound()
+	{
+		if (Vendor.ItemsForBuyPrice == 0 || 1f * (float)Vendor.ItemsForSellPrice / (float)Vendor.ItemsForBuyPrice > UIConfig.Instance.VendorConfig.DealPriceRatio)
 		{
-			Vendor.Deal(VendorEntity);
-			UpdatePlayerSide();
-			UpdateVendorSide();
+			return FullScreenSounds.Instance.Vendor.DealButtonSell;
 		}
+		if (Vendor.ItemsForSellPrice == 0 || 1f * (float)Vendor.ItemsForBuyPrice / (float)Vendor.ItemsForSellPrice > UIConfig.Instance.VendorConfig.DealPriceRatio)
+		{
+			return FullScreenSounds.Instance.Vendor.DealButtonBuy;
+		}
+		return FullScreenSounds.Instance.Vendor.DealButtonNormal;
+	}
+
+	public string DealInactiveWarning()
+	{
+		if (!Vendor.IsDealPossible)
+		{
+			if (!Vendor.IsEnoughMoneyToDeal)
+			{
+				return UIStrings.Instance.Vendor.NotEnoughMoney.Text;
+			}
+			return UIStrings.Instance.Vendor.NoItemsToDeal.Text;
+		}
+		return string.Empty;
 	}
 
 	void IVendorDealPriceChangeHandler.HandlePlayerPriceChanged()
@@ -351,7 +385,7 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 		}
 		if (from.IsInVendor && to.Group == VendorExchangePart && from.HasItem)
 		{
-			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, split: true);
+			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, from.ItemEntity.Count, split: true);
 			return true;
 		}
 		return false;
@@ -361,7 +395,7 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 	{
 		if (from.ParentCollection == Vendor.ItemsForBuy && to.Group == VendorSlotsGroup && from.HasItem)
 		{
-			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, split: false);
+			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, from.ItemEntity.Count, split: false);
 			return true;
 		}
 		return false;
@@ -371,7 +405,7 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 	{
 		if (from.ParentCollection == Game.Instance.PartySharedInventory.Collection && to.Group == PlayerExchangePart && from.HasItem)
 		{
-			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, split: false);
+			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, from.ItemEntity.Count, split: false);
 			return true;
 		}
 		return false;
@@ -381,7 +415,7 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 	{
 		if (from.ParentCollection == Vendor.ItemsForSell && to.Group == StashVM.ItemSlotsGroup && from.HasItem)
 		{
-			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, split: false);
+			VendorHelper.TryMove(from.ItemEntity, from.ParentCollection, from.ItemEntity.Count, split: false);
 			return true;
 		}
 		return false;
@@ -399,8 +433,12 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 		m_TransitionWindowVM.Value = null;
 	}
 
-	private Comparison<ItemEntity> GetVendorComparison()
+	private Comparison<ItemEntity> GetVendorComparison(ItemsSorterType sorter, ItemsFilterType filter)
 	{
+		if (sorter != 0)
+		{
+			return ItemsFilter.GetItemsDefaultComparison(sorter, filter);
+		}
 		return (ItemEntity a, ItemEntity b) => CompareByVendorRestrictions(a, b, VendorFaction.CurrentValue.Value);
 	}
 

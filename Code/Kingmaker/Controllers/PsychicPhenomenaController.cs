@@ -4,6 +4,7 @@ using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Framework.GlobalEffectSystem;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -11,8 +12,6 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.UnitLogic.Parts;
 
 namespace Kingmaker.Controllers;
 
@@ -20,17 +19,15 @@ public class PsychicPhenomenaController : IControllerEnable, IController, IContr
 {
 	public void TryTriggerPsychicPhenomenaBeforeCast(AbilityExecutionContext context)
 	{
-		BlueprintAbilityWrapper blueprint = context.Ability.Blueprint;
-		MechanicEntity caster = context.Caster;
-		if (blueprint.IsPsykerAbility && caster.GetPsykerOptional() != null)
+		if (context.Ability.AffectsVeil)
 		{
-			Game.Instance.LoadedArea.Veil.UpdateDamage(caster, UpdateVeilEventType.BeforeAbilityCast, context.Ability);
+			Game.Instance.LoadedArea.Veil.UpdateDamage(context.Caster, UpdateVeilEventType.BeforeAbilityCast, context.Ability);
 		}
 	}
 
 	public void TryTriggerPsychicPhenomenaAfterCast(AbilityExecutionContext context)
 	{
-		if (context.Ability.Blueprint.IsPsykerAbility && context.MaybeCaster?.GetPsykerOptional() != null)
+		if (context.Ability.AffectsVeil)
 		{
 			Rulebook.Trigger(new RulePerformPsychicPhenomena(context.Caster, context));
 			Game.Instance.LoadedArea.Veil.UpdateDamage(context.Caster, UpdateVeilEventType.AfterAbilityCast, context.Ability);
@@ -71,7 +68,7 @@ public class PsychicPhenomenaController : IControllerEnable, IController, IContr
 		}
 	}
 
-	public static void TriggerPsychicPhenomenaForced(MechanicEntity target, MechanicsContext context, BlueprintPsykerRoot.PhenomenaData phenomena, bool isPerils)
+	public static void TriggerPsychicPhenomenaForced(MechanicEntity target, IEvalContext context, BlueprintPsykerRoot.PhenomenaData phenomena, bool isPerils)
 	{
 		RulePerformPsychicPhenomena.RunPsychicPhenomenaEffectOnTarget(target, context, phenomena, isPerils);
 		EventBus.RaiseEvent(delegate(IForcedPsychicPhenomenaHandler h)

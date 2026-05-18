@@ -3,8 +3,7 @@ using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.View;
+using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.View.Spawners;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -15,30 +14,27 @@ namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
 public class ForEachEntityInEntityGroup : GameAction
 {
 	[SerializeField]
-	[AllowedEntityType(typeof(EntityGroupView))]
+	[AllowedEntityType(typeof(AbstractEntityGroupView))]
 	private EntityReference m_Group;
 
 	public ActionList Actions;
 
 	public override string GetCaption()
 	{
-		return "Do Action for each Entity in Group";
+		return "Do Action for each Entity in group " + m_Group;
 	}
 
 	protected override void RunAction()
 	{
-		IEntityViewBase entityViewBase = m_Group.FindView();
-		if (entityViewBase == null)
+		if (!(m_Group.FindData() is AbstractEntityGroup abstractEntityGroup))
 		{
 			return;
 		}
-		EntityViewBase[] componentsInChildren = entityViewBase.ViewTransform.transform.GetComponentsInChildren<EntityViewBase>();
-		for (int i = 0; i < componentsInChildren.Length; i++)
+		foreach (Entity member in abstractEntityGroup.Members)
 		{
-			MechanicEntity mechanicEntity = (MechanicEntity)componentsInChildren[i].Data;
-			if (mechanicEntity != null)
+			if (member is MechanicEntity entity)
 			{
-				using (ContextData<MechanicEntityData>.Request().Setup(mechanicEntity))
+				using (ContextData<MechanicEntityData>.Request().Setup(entity))
 				{
 					Actions.Run();
 				}

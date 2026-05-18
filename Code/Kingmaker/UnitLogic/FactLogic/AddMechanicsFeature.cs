@@ -19,7 +19,7 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowMultipleComponents]
 [ComponentName("Facts And Buffs/AddMechanicsFeature")]
 [TypeId("05fab0d4998390a4cbf88da0ab1e4123")]
-public class AddMechanicsFeature : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class AddMechanicsFeature : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class Runtime : EntityFactComponent<BaseUnitEntity, AddMechanicsFeature>, IHashable, IOwlPackable<Runtime>

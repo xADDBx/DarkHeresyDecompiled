@@ -155,7 +155,7 @@ public class ParticleAttachmentAllocator : EntityAllocatorWithTransforms<Particl
 				{
 					DataSoA.IndexInBody[particleDataRange.x + i] = addedEntity.ParticleGroup.ParticleIndices[i];
 					Particle particle = addedEntity.Body.LayoutBase.BodyStructure.Particles[addedEntity.ParticleGroup.ParticleIndices[i]];
-					DataSoA.PositionOffset[particleDataRange.x + i] = matrix4x.MultiplyPoint3x4(particle.BasePosition);
+					DataSoA.PositionOffset[particleDataRange.x + i] = matrix4x.MultiplyPoint3x4((Vector3)particle.BasePosition);
 				}
 			}
 		}

@@ -3,7 +3,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework.VO;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.GameModes;
 using Kingmaker.Networking;
@@ -66,7 +66,6 @@ public class BookEventVM : ViewModel, IBookPageHandler, ISubscriber, IBookEventU
 	{
 		m_IsFirstCueInAllBookEvent = true;
 		EventBus.Subscribe(this).AddTo(this);
-		new DialogNotificationsVM().AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
 			OnUpdate();
@@ -188,7 +187,7 @@ public class BookEventVM : ViewModel, IBookPageHandler, ISubscriber, IBookEventU
 		return false;
 	}
 
-	private void SetMirror(BlueprintBookPage page)
+	private void SetMirror(BlueprintBookPage _)
 	{
 		m_Mirror.Value = Game.Instance.Player.MainCharacterEntity.Portrait.FullLengthPortrait;
 	}
@@ -233,6 +232,6 @@ public class BookEventVM : ViewModel, IBookPageHandler, ISubscriber, IBookEventU
 
 	public void HandleDialogAnswerVote(NetPlayer player, string answer)
 	{
-		m_CheckVotesActive.Execute();
+		m_CheckVotesActive.Execute(Unit.Default);
 	}
 }

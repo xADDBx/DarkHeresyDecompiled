@@ -1,36 +1,64 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Items;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class RemoveFromSellVendorGameCommand : GameCommand, IOwlPackable<RemoveFromSellVendorGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public class RemoveFromSellVendorGameCommand : GameCommand, IMemoryPackable<RemoveFromSellVendorGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<RemoveFromSellVendorGameCommand>
 {
+	[Preserve]
+	private sealed class RemoveFromSellVendorGameCommandFormatter : MemoryPackFormatter<RemoveFromSellVendorGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref RemoveFromSellVendorGameCommand value)
+		{
+			RemoveFromSellVendorGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref RemoveFromSellVendorGameCommand value)
+		{
+			RemoveFromSellVendorGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref RemoveFromSellVendorGameCommand value)
+		{
+			RemoveFromSellVendorGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref RemoveFromSellVendorGameCommand value)
+		{
+			RemoveFromSellVendorGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private EntityRef<ItemEntity> m_Item;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private int m_Count;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "RemoveFromSellVendorGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[2]
-		{
-			new FieldInfo("m_Item", typeof(EntityRef<ItemEntity>)),
-			new FieldInfo("m_Count", typeof(int))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
+	[MemoryPackConstructor]
 	private RemoveFromSellVendorGameCommand()
 	{
 	}
@@ -45,6 +73,202 @@ public class RemoveFromSellVendorGameCommand : GameCommand, IOwlPackable<RemoveF
 	protected override void ExecuteInternal()
 	{
 		GameCommandHelper.RemoveFromSell(m_Item, m_Count);
+	}
+
+	static RemoveFromSellVendorGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "RemoveFromSellVendorGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[2]
+			{
+				new FieldInfo("m_Item", typeof(EntityRef<ItemEntity>)),
+				new FieldInfo("m_Count", typeof(int))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<RemoveFromSellVendorGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new RemoveFromSellVendorGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<RemoveFromSellVendorGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<RemoveFromSellVendorGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref RemoveFromSellVendorGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(2);
+		writer.WritePackable(in value.m_Item);
+		writer.WriteUnmanaged(in value.m_Count);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref RemoveFromSellVendorGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		EntityRef<ItemEntity> value2;
+		int value3;
+		if (memberCount == 2)
+		{
+			if (value != null)
+			{
+				value2 = value.m_Item;
+				value3 = value.m_Count;
+				reader.ReadPackable(ref value2);
+				reader.ReadUnmanaged<int>(out value3);
+				goto IL_00a1;
+			}
+			value2 = reader.ReadPackable<EntityRef<ItemEntity>>();
+			reader.ReadUnmanaged<int>(out value3);
+		}
+		else
+		{
+			if (memberCount > 2)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(RemoveFromSellVendorGameCommand), 2, memberCount);
+				return;
+			}
+			if (value == null)
+			{
+				value2 = default(EntityRef<ItemEntity>);
+				value3 = 0;
+			}
+			else
+			{
+				value2 = value.m_Item;
+				value3 = value.m_Count;
+			}
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				if (memberCount != 1)
+				{
+					reader.ReadUnmanaged<int>(out value3);
+					_ = 2;
+				}
+			}
+			if (value != null)
+			{
+				goto IL_00a1;
+			}
+		}
+		value = new RemoveFromSellVendorGameCommand
+		{
+			m_Item = value2,
+			m_Count = value3
+		};
+		return;
+		IL_00a1:
+		value.m_Item = value2;
+		value.m_Count = value3;
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref RemoveFromSellVendorGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Item");
+		writer.WritePackable(value.m_Item);
+		writer.WriteProperty("m_Count");
+		writer.WriteUnmanaged(value.m_Count);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref RemoveFromSellVendorGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		EntityRef<ItemEntity> val;
+		int v;
+		if (value == null)
+		{
+			val = default(EntityRef<ItemEntity>);
+			v = 0;
+		}
+		else
+		{
+			val = value.m_Item;
+			v = value.m_Count;
+		}
+		bool[] array = new bool[2];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (!(text == "m_Item"))
+				{
+					if (text == "m_Count")
+					{
+						reader.ReadUnmanaged<int>(out v);
+						array[1] = true;
+					}
+				}
+				else
+				{
+					val = reader.ReadPackable<EntityRef<ItemEntity>>();
+					array[0] = true;
+				}
+			}
+			else if (!(text == "m_Item"))
+			{
+				if (text == "m_Count")
+				{
+					reader.ReadUnmanaged<int>(out v);
+				}
+			}
+			else
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		if (value != null)
+		{
+			value.m_Item = val;
+			value.m_Count = v;
+		}
+		else
+		{
+			value = new RemoveFromSellVendorGameCommand
+			{
+				m_Item = val,
+				m_Count = v
+			};
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

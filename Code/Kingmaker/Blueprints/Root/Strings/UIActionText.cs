@@ -8,8 +8,6 @@ public class UIActionText
 {
 	public LocalizedString Move;
 
-	public LocalizedString Stop;
-
 	public LocalizedString Interact;
 
 	public LocalizedString SplitItem;
@@ -23,6 +21,4 @@ public class UIActionText
 	public LocalizedString Inspect;
 
 	public LocalizedString Talk;
-
-	public LocalizedString Rotate;
 }

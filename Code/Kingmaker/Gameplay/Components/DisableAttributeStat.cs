@@ -1,6 +1,5 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -21,11 +20,11 @@ public sealed class DisableAttributeStat : MechanicEntityFactComponentDelegate
 
 	protected override void OnActivateOrPostLoad()
 	{
-		base.Owner.GetStatOptional<ModifiableValueAttributeStat>(Attribute.ToStatType())?.Disable(base.Runtime);
+		base.Owner.Actor.DisableStat(Attribute.ToStatType());
 	}
 
 	protected override void OnDeactivate()
 	{
-		base.Owner.GetStatOptional<ModifiableValueAttributeStat>(Attribute.ToStatType())?.Enable(base.Runtime);
+		base.Owner.Actor.EnableStat(Attribute.ToStatType());
 	}
 }

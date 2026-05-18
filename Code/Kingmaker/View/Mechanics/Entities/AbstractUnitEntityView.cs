@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Animancer;
 using Code.Framework.Utility.UnityExtensions;
 using Code.Visual.Animation;
 using JetBrains.Annotations;
@@ -11,14 +12,15 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Fx;
 using Kingmaker.Code._Legacy.Components;
 using Kingmaker.Code.Enums.Helper;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Code.View.Visual.Animation.AddOffset;
 using Kingmaker.Controllers;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Controllers.MapObjects;
 using Kingmaker.Controllers.TurnBased;
-using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.Framework.Mechanics.Utility.Damage;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Parts;
@@ -33,6 +35,7 @@ using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities.Components.TargetCheckers;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Interaction;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
@@ -66,7 +69,7 @@ namespace Kingmaker.View.Mechanics.Entities;
 
 [Serializable]
 [KnowledgeDatabaseID("140695237c9c40d0b269732622d8f9fc")]
-public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler, ISubscriber, IResource, IDetectHover, IGameModeHandler, IEntitySubscriber, IPartyCombatHandler
+public abstract class AbstractUnitEntityView : MechanicEntityView, IUnitEntityConfig, IMechanicEntityConfig, IEntityConfig, IAbstractUnitEntityView, IMechanicEntityView, IEntityView, IAreaHandler, ISubscriber, IResource, IDetectHover, IGameModeHandler, IEntitySubscriber, IPartyCombatHandler, IUnitClickHandler, ISubscriber<IMechanicEntity>
 {
 	public class LateUpdateDriver : RegisteredObjectBase, ILateUpdatable
 	{
@@ -144,29 +147,43 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 
 	private BloodyFaceController m_BloodyFaceController;
 
-	private UnitMovementAgentBase m_AgentOverride;
-
 	private bool m_DirectHover;
 
 	[CanBeNull]
 	public RigidbodyCreatureController RigidbodyController;
 
+	private List<AnimancerComponent> m_DisabledAnimancerComponents = new List<AnimancerComponent>();
+
+	private List<Collider> m_DisabledColliders = new List<Collider>();
+
+	private List<Rigidbody> m_DisabledRigidbodies = new List<Rigidbody>();
+
+	private List<StandardMaterialController> m_DisabledSMCs = new List<StandardMaterialController>();
+
+	private List<Renderer> m_DisabledRenderers = new List<Renderer>();
+
 	private readonly CountingGuard m_MouseHoverHighlighting = new CountingGuard();
 
+	private readonly CountingGuard m_SecondaryHighlighting = new CountingGuard();
+
+	private readonly CountingGuard m_PreciseAttackTargeting = new CountingGuard();
+
 	public bool HasOverriddenRotatablePart => OverrideRotatablePart != null;
+
+	public BlueprintUnit Blueprint { get; set; }
+
+	public new BlueprintMechanicEntityFact MechanicFactBlueprint => Blueprint ?? throw new Exception("Blueprint not set");
 
 	[CanBeNull]
 	public Character CharacterAvatar { get; set; }
 
 	public Animator Animator { get; private set; }
 
-	public UnitMovementAgentBase AgentASP { get; private set; }
+	public UnitMovementAgent AgentASP { get; private set; }
 
 	public bool IsProne { get; protected set; }
 
 	public bool IsHighlighted { get; private set; }
-
-	public BlueprintUnit Blueprint { get; set; }
 
 	public UnitViewMechadendritesEquipment MechadendritesEquipment { get; protected set; }
 
@@ -183,33 +200,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 
 	public new AbstractUnitEntity Data => (AbstractUnitEntity)base.Data;
 
-	public virtual UnitMovementAgentBase MovementAgent
-	{
-		get
-		{
-			if (!(AgentOverride == null))
-			{
-				return AgentOverride;
-			}
-			return AgentASP;
-		}
-	}
-
-	public UnitMovementAgentBase AgentOverride
-	{
-		get
-		{
-			return m_AgentOverride;
-		}
-		set
-		{
-			if (value == null)
-			{
-				UnityEngine.Object.DestroyImmediate(m_AgentOverride);
-			}
-			m_AgentOverride = value;
-		}
-	}
+	public virtual UnitMovementAgent MovementAgent => AgentASP;
 
 	public virtual bool KeepCollidersSetupAsIs => false;
 
@@ -234,6 +225,9 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 			return ObjectExtensions.Or(CharacterAvatar.ParticlesSnapMap, null) ?? ObjectExtensions.Or(m_ParticleSnapMap, null);
 		}
 	}
+
+	[CanBeNull]
+	RigidbodyCreatureController IAbstractUnitEntityView.RigidbodyController => RigidbodyController;
 
 	public Vector2 CameraOrientedBoundsSize
 	{
@@ -356,6 +350,8 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 	[CanBeNull]
 	public PartAdditionalCombatObjectiveUnit AdditionalCombatObjective => EntityData.GetOptional<PartAdditionalCombatObjectiveUnit>();
 
+	public bool WasHighlightedOnHover => m_WasHighlightedOnHover;
+
 	public bool MouseHoverHighlighting
 	{
 		get
@@ -369,13 +365,35 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 				UpdateHighlightView();
 				OnMouseHighlight(value);
 			}
-			static bool SetValueSafe(CountingGuard guard, bool b)
+		}
+	}
+
+	public bool SecondaryHighlighting
+	{
+		get
+		{
+			return m_SecondaryHighlighting;
+		}
+		set
+		{
+			if (SetValueSafe(m_SecondaryHighlighting, value))
 			{
-				if (guard.Value || b)
-				{
-					return guard.SetValue(b);
-				}
-				return false;
+				UpdateHighlightView();
+			}
+		}
+	}
+
+	public bool PreciseAttackTargeting
+	{
+		get
+		{
+			return m_PreciseAttackTargeting;
+		}
+		set
+		{
+			if (SetValueSafe(m_PreciseAttackTargeting, value))
+			{
+				UpdateHighlightView();
 			}
 		}
 	}
@@ -454,7 +472,10 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 				PartUnitProgression optional = EntityData.GetOptional<PartUnitProgression>();
 				AnimationManager.AttachToView(this, optional?.Race);
 			}
-			AnimationManager.FireEvents = true;
+			if ((bool)AgentASP)
+			{
+				AgentASP.MovementSettings = new MovementSettingsFromAnimations(AnimationManager);
+			}
 			EventBus.Subscribe(AnimationManager);
 		}
 		SpawnFxOnStart component2 = GetComponent<SpawnFxOnStart>();
@@ -531,6 +552,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		{
 			return null;
 		}
+		character.SetupOwner(this);
 		character.Initialize();
 		return character;
 	}
@@ -545,7 +567,6 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		base.OnWillDetachFromData();
 		if (AnimationManager != null)
 		{
-			AnimationManager.FireEvents = false;
 			EventBus.Unsubscribe(AnimationManager);
 		}
 		if (AgentASP != null)
@@ -571,7 +592,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 				}
 				else
 				{
-					m_CoreCollider.transform.position = base.ViewTransform.position;
+					m_CoreCollider.transform.position = base.transform.position;
 				}
 			}
 		}
@@ -637,9 +658,9 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 				Utils.EditorSafeDestroy(m_CoreCollider.gameObject);
 			}
 			m_SoftCollider = new GameObject("[soft collider]").AddComponent<CapsuleCollider>();
-			m_SoftCollider.transform.SetParent(base.ViewTransform, worldPositionStays: false);
+			m_SoftCollider.transform.SetParent(base.transform, worldPositionStays: false);
 			m_CoreCollider = new GameObject("[core collider]").AddComponent<MeshCollider>();
-			m_CoreCollider.transform.SetParent(base.ViewTransform, worldPositionStays: false);
+			m_CoreCollider.transform.SetParent(base.transform, worldPositionStays: false);
 			m_CoreCollider.sharedMesh = instance.Prefabs.UnitCoreCollider;
 		}
 		m_SoftCollider.gameObject.tag = "SecondarySelection";
@@ -659,7 +680,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 			m_SoftCollider.radius = Corpulence * instance.Prefabs.SecondaryColliderWidthCoeff + 0.5f;
 		}
 		m_SoftCollider.center = Vector3.zero;
-		Vector3 localScale = base.ViewTransform.localScale;
+		Vector3 localScale = base.transform.localScale;
 		m_CoreCollider.transform.localPosition = Vector3.zero;
 		m_CoreCollider.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
 		m_CoreCollider.transform.localScale = ((Mathf.Abs(localScale.x * localScale.y * localScale.z) > 0.01f) ? new Vector3((Corpulence + 0.5f) * 1f / localScale.x, (Corpulence + 0.5f) * 1f / localScale.z, instance.Prefabs.CoreColliderHeight * 3.57f / localScale.y) : Vector3.one);
@@ -674,7 +695,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		RefreshHighlighters();
 		if (m_StandardMaterialController != null || TryGetComponent<StandardMaterialController>(out m_StandardMaterialController))
 		{
-			m_StandardMaterialController.InvalidateRenderersAndMaterials();
+			m_StandardMaterialController.UpdateRenderers();
 			if (m_BloodyFaceController == null || m_BloodyFaceController.IsDisposed)
 			{
 				m_BloodyFaceController = new BloodyFaceController(EntityData, m_StandardMaterialController.BloodMaskController);
@@ -684,7 +705,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		m_RenderersAndCollidersAreUpdated = true;
 	}
 
-	protected void RefreshHighlighters()
+	public void RefreshHighlighters()
 	{
 		if ((bool)m_Highlighter)
 		{
@@ -750,9 +771,13 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		Bounds result = new Bounds(Vector3.zero, Vector3.zero);
 		foreach (Renderer renderer in Renderers)
 		{
-			if (renderer is SkinnedMeshRenderer && renderer.gameObject.activeInHierarchy)
+			if ((bool)renderer && renderer is SkinnedMeshRenderer)
 			{
-				result.Encapsulate(renderer.localBounds);
+				GameObject gameObject = renderer.gameObject;
+				if ((bool)gameObject && gameObject.activeInHierarchy)
+				{
+					result.Encapsulate(renderer.localBounds);
+				}
 			}
 		}
 		return result;
@@ -784,7 +809,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		if (!EntityData.Features.ControlledByDirector && Game.Instance.CurrentlyLoadedArea != null && Game.Instance.CurrentlyLoadedArea.IsNavmeshArea && !(Game.Instance.CurrentlyLoadedArea.AreaStatGameMode == GameModeType.StarSystem))
 		{
 			EntityData.Position = ObstacleAnalyzer.GetNearestNode(EntityData.Position, null, ObstacleAnalyzer.UnwalkableXZConstraint).position;
-			base.ViewTransform.position = GetViewPositionOnGround(EntityData.Position);
+			base.transform.position = GetViewPositionOnGround(EntityData.Position);
 		}
 	}
 
@@ -795,7 +820,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 	public void OnAreaDidLoad()
 	{
 		ForcePeacefulLook(peaceful: false);
-		ResetMouseHighlighted();
+		ResetHoverHighlighted();
 	}
 
 	public void HandleHoverChange(bool isHover)
@@ -812,7 +837,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 	{
 		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.Default)
 		{
-			ResetMouseHighlighted();
+			ResetHoverHighlighted();
 		}
 	}
 
@@ -838,7 +863,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		}
 	}
 
-	public void ResetMouseHighlighted()
+	public void ResetHoverHighlighted()
 	{
 		MassLootHelper.Clear();
 		if (MouseHoverHighlighting)
@@ -848,7 +873,9 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 				h.HandleHoverChange(this, isHover: false, isDirect: false);
 			});
 		}
-		ResetHighlightGuard();
+		m_MouseHoverHighlighting.Reset();
+		m_SecondaryHighlighting.Reset();
+		m_PreciseAttackTargeting.Reset();
 		UpdateHighlight();
 		if (!TurnController.IsInTurnBasedCombat())
 		{
@@ -866,34 +893,16 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		IsHighlighted = false;
 		bool isDead = EntityData.LifeState.IsDead;
 		bool flag = TurnController.IsInTurnBasedCombat();
-		InteractionHighlightController interactionHighlightController;
-		BaseUnitEntity baseUnitEntity2;
-		if (!isDead || (EntityData.IsDeadAndHasLoot && !flag) || (Game.Instance.Player.UISettings.ShowInspect && !flag) || Game.Instance.Controllers.SelectedAbilityHandler?.Ability?.Blueprint.GetComponent<ICanTargetDeadUnits>() != null)
+		bool flag2 = Game.Instance.Controllers.SelectedAbilityHandler?.Ability?.Blueprint?.GetComponent<ICanTargetDeadUnits>() != null;
+		IUnitInteraction unitInteractionFrom = UtilityUnit.GetUnitInteractionFrom(EntityData);
+		if (!isDead || flag2 || (flag && unitInteractionFrom != null) || (EntityData.IsDeadAndHasLoot && !flag) || (Game.Instance.Player.UISettings.ShowInspect && !flag))
 		{
-			interactionHighlightController = Game.Instance.Controllers.InteractionHighlightController;
-			TurnController turnController = Game.Instance.Controllers.TurnController;
-			if (flag && turnController != null)
-			{
-				MechanicEntity currentUnit = turnController.CurrentUnit;
-				if (currentUnit is BaseUnitEntity baseUnitEntity && currentUnit.IsPlayerFaction)
-				{
-					baseUnitEntity2 = baseUnitEntity;
-					goto IL_00e5;
-				}
-			}
-			baseUnitEntity2 = Game.Instance.Player.MainCharacterEntity;
-			goto IL_00e5;
+			InteractionHighlightController interactionHighlightController = Game.Instance.Controllers.InteractionHighlightController;
+			bool flag3 = flag && AdditionalCombatObjective != null && (AdditionalCombatObjective.HighlightType == HighlightType.Always || (AdditionalCombatObjective.HighlightType == HighlightType.Once && !m_WasHighlightedOnHover));
+			bool flag4 = flag && AdditionalCombatObjective != null && (AdditionalCombatObjective.HighlightType != HighlightType.Once || !m_WasHighlightedOnHover);
+			bool flag5 = (interactionHighlightController != null && interactionHighlightController.IsGlobalHighlighting && (unitInteractionFrom != null || isDead)) || MouseHoverHighlighting || SecondaryHighlighting || PreciseAttackTargeting || flag3 || IsInAoePattern || flag4 || (flag && (unitInteractionFrom?.AllowInCombat ?? false));
+			IsHighlighted = interactionHighlightController != null && flag5 && EntityData.IsVisibleForPlayer && (EntityData.IsPlayerFaction || EntityData.IsPlayerEnemy || (AdditionalCombatObjective != null && flag) || isDead || unitInteractionFrom != null);
 		}
-		goto IL_01eb;
-		IL_00e5:
-		BaseUnitEntity initiator = baseUnitEntity2;
-		IUnitInteraction unitInteraction = EntityData.SelectClickInteraction(initiator);
-		bool flag2 = AdditionalCombatObjective != null && (AdditionalCombatObjective.HighlightType == HighlightType.Always || (AdditionalCombatObjective.HighlightType == HighlightType.Once && !m_WasHighlightedOnHover));
-		bool flag3 = flag && AdditionalCombatObjective != null && (AdditionalCombatObjective.HighlightType != HighlightType.Once || !m_WasHighlightedOnHover);
-		bool flag4 = (interactionHighlightController != null && interactionHighlightController.IsGlobalHighlighting) || MouseHoverHighlighting || flag2 || IsInAoePattern || flag3 || (flag && (unitInteraction?.AllowInCombat ?? false));
-		IsHighlighted = interactionHighlightController != null && flag4 && EntityData.IsVisibleForPlayer && (EntityData.IsPlayerFaction || EntityData.IsPlayerEnemy || (AdditionalCombatObjective != null && flag) || isDead || unitInteraction != null);
-		goto IL_01eb;
-		IL_01eb:
 		m_Highlighter.BaseColor = GetHighlightColor();
 		if (raiseEvent && isHighlighted != IsHighlighted)
 		{
@@ -910,6 +919,15 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		{
 			return Color.clear;
 		}
+		if (PreciseAttackTargeting)
+		{
+			ViewHighlightingColorStates preciseAttackTarget = ConfigRoot.Instance.UIConfig.ViewHighlightingColors.PreciseAttackTarget;
+			if (!MouseHoverHighlighting)
+			{
+				return preciseAttackTarget.HighlightColor;
+			}
+			return preciseAttackTarget.HoverColor;
+		}
 		Player player = Game.Instance.Player;
 		IAbstractUnitEntity entity = player.MainCharacter.Entity;
 		bool flag = EntityData.IsEnemy(entity);
@@ -917,24 +935,33 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		bool flag3 = player.PartyAndPets.Contains(EntityData);
 		bool isDead = EntityData.LifeState.IsDead;
 		bool lootViewed = EntityData.LootViewed;
+		IUnitInteraction unitInteractionFrom = UtilityUnit.GetUnitInteractionFrom(EntityData);
 		ViewHighlightingColors viewHighlightingColors = ConfigRoot.Instance.UIConfig.ViewHighlightingColors;
+		if (isDead && unitInteractionFrom != null && unitInteractionFrom.AllowInCombat)
+		{
+			if (!MouseHoverHighlighting)
+			{
+				return viewHighlightingColors.AdditionalCombatObjective.HighlightColor;
+			}
+			return viewHighlightingColors.AdditionalCombatObjective.HoverColor;
+		}
 		if (isDead && lootViewed)
 		{
 			if (!MouseHoverHighlighting)
 			{
-				return viewHighlightingColors.UnitViewedLoot.HoverColor;
+				return viewHighlightingColors.UnitViewedLoot.HighlightColor;
 			}
-			return viewHighlightingColors.UnitViewedLoot.HighlightColor;
+			return viewHighlightingColors.UnitViewedLoot.HoverColor;
 		}
 		if (isDead)
 		{
 			if (!MouseHoverHighlighting)
 			{
-				return viewHighlightingColors.UnitLoot.HoverColor;
+				return viewHighlightingColors.UnitLoot.HighlightColor;
 			}
-			return viewHighlightingColors.UnitLoot.HighlightColor;
+			return viewHighlightingColors.UnitLoot.HoverColor;
 		}
-		if (AdditionalCombatObjective != null)
+		if (TurnController.IsInTurnBasedCombat() && (AdditionalCombatObjective != null || (unitInteractionFrom != null && unitInteractionFrom.AllowInCombat)))
 		{
 			if (MouseHoverHighlighting)
 			{
@@ -950,9 +977,10 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 			}
 			return viewHighlightingColors.AdditionalCombatObjective.HighlightColor;
 		}
+		bool flag4 = MouseHoverHighlighting || (unitInteractionFrom != null && (InteractionHighlightController.Instance?.IsGlobalHighlighting ?? false));
 		if (flag3)
 		{
-			if (!MouseHoverHighlighting)
+			if (!flag4)
 			{
 				return viewHighlightingColors.UnitAlly.HighlightColor;
 			}
@@ -960,7 +988,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		}
 		if (flag)
 		{
-			if (!MouseHoverHighlighting)
+			if (!flag4)
 			{
 				return viewHighlightingColors.UnitEnemy.HighlightColor;
 			}
@@ -968,13 +996,13 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		}
 		if (flag2)
 		{
-			if (!MouseHoverHighlighting)
+			if (!flag4)
 			{
 				return viewHighlightingColors.UnitNeutral.HighlightColor;
 			}
 			return viewHighlightingColors.UnitNeutral.HoverColor;
 		}
-		if (!MouseHoverHighlighting)
+		if (!flag4)
 		{
 			return viewHighlightingColors.UnitDefault.HighlightColor;
 		}
@@ -1001,7 +1029,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		}
 		static bool Cast(Vector3 point, float offsetUp, float offsetDown, float corpulence, out float hitOffset)
 		{
-			if (!UnitMovementAgentBase.FallbackToRayCast)
+			if (!UnitMovementAgent.FallbackToRayCast)
 			{
 				return SphereCast(point, offsetUp, offsetDown, corpulence, out hitOffset);
 			}
@@ -1038,7 +1066,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		}
 		if ((bool)CenterTorso && (flag || (IsProne && RigidbodyController != null && RigidbodyController.RagdollWorking && (AnimationManager == null || AnimationManager.CurrentAction == null))))
 		{
-			return base.ViewTransform.position;
+			return base.transform.position;
 		}
 		return mechanicsPosition + SizePathfindingHelper.GetSizePositionOffset(Data);
 	}
@@ -1063,7 +1091,7 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		if (IsProne)
 		{
 			m_StartGetUpTime = Game.Instance.Controllers.TimeController.GameTime;
-			m_CoreCollider.transform.position = base.ViewTransform.position;
+			m_CoreCollider.transform.position = base.transform.position;
 			IsProne = false;
 			if ((bool)AgentASP)
 			{
@@ -1099,6 +1127,108 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		if (AnimationManager != null)
 		{
 			AnimationManager.enabled = Data.IsViewActive;
+		}
+	}
+
+	private void DisableComponents(bool visible)
+	{
+		if (!visible)
+		{
+			m_DisabledRenderers.Clear();
+			Renderer[] componentsInChildren = GetComponentsInChildren<Renderer>();
+			foreach (Renderer renderer in componentsInChildren)
+			{
+				if (renderer.enabled)
+				{
+					renderer.enabled = false;
+					m_DisabledRenderers.Add(renderer);
+				}
+			}
+			m_DisabledSMCs.Clear();
+			StandardMaterialController[] componentsInChildren2 = GetComponentsInChildren<StandardMaterialController>();
+			foreach (StandardMaterialController standardMaterialController in componentsInChildren2)
+			{
+				if (standardMaterialController.enabled)
+				{
+					standardMaterialController.enabled = false;
+					m_DisabledSMCs.Add(standardMaterialController);
+				}
+			}
+			m_DisabledAnimancerComponents.Clear();
+			AnimancerComponent[] componentsInChildren3 = GetComponentsInChildren<AnimancerComponent>();
+			foreach (AnimancerComponent animancerComponent in componentsInChildren3)
+			{
+				if (animancerComponent.enabled)
+				{
+					animancerComponent.enabled = false;
+					m_DisabledAnimancerComponents.Add(animancerComponent);
+				}
+			}
+			m_DisabledColliders.Clear();
+			Collider[] componentsInChildren4 = GetComponentsInChildren<Collider>();
+			foreach (Collider collider in componentsInChildren4)
+			{
+				if (collider.enabled)
+				{
+					collider.enabled = false;
+					m_DisabledColliders.Add(collider);
+				}
+			}
+			m_DisabledRigidbodies.Clear();
+			Rigidbody[] componentsInChildren5 = GetComponentsInChildren<Rigidbody>();
+			foreach (Rigidbody rigidbody in componentsInChildren5)
+			{
+				if (rigidbody.detectCollisions)
+				{
+					rigidbody.detectCollisions = false;
+					m_DisabledRigidbodies.Add(rigidbody);
+				}
+			}
+		}
+		EntityFader fader = base.Fader;
+		fader.OnVisibleChangedEvent = (Action<bool>)Delegate.Remove(fader.OnVisibleChangedEvent, new Action<bool>(DisableComponents));
+	}
+
+	protected override void OnViewActiveChanged(bool active)
+	{
+		if (active)
+		{
+			m_DisabledRigidbodies.Where((Rigidbody x) => x != null).ForEach(delegate(Rigidbody x)
+			{
+				x.detectCollisions = true;
+			});
+			m_DisabledColliders.Where((Collider x) => x != null).ForEach(delegate(Collider x)
+			{
+				x.enabled = true;
+			});
+			m_DisabledAnimancerComponents.Where((AnimancerComponent x) => x != null).ForEach(delegate(AnimancerComponent x)
+			{
+				x.enabled = true;
+			});
+			m_DisabledSMCs.Where((StandardMaterialController x) => x != null).ForEach(delegate(StandardMaterialController x)
+			{
+				x.enabled = true;
+			});
+			m_DisabledRenderers.Where((Renderer x) => x != null).ForEach(delegate(Renderer x)
+			{
+				x.enabled = true;
+			});
+		}
+		else if (base.Fader.IsFading)
+		{
+			if (base.Fader.OnVisibleChangedEvent == null)
+			{
+				EntityFader fader = base.Fader;
+				fader.OnVisibleChangedEvent = (Action<bool>)Delegate.Combine(fader.OnVisibleChangedEvent, new Action<bool>(DisableComponents));
+			}
+		}
+		else
+		{
+			DisableComponents(visible: false);
+		}
+		if (active && !base.gameObject.activeSelf)
+		{
+			base.gameObject.SetActive(value: true);
 		}
 	}
 
@@ -1290,18 +1420,10 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 
 	public void MoveTo(ForcedPath path, Vector3 destination, float approachRadiusMeters)
 	{
-		if ((bool)AgentASP)
-		{
-			if (Game.Instance.CurrentlyLoadedArea.IsNavmeshArea && (bool)AstarPath.active && AstarPath.active.graphs.Length != 0)
-			{
-				AgentASP.FollowPath(path, destination, approachRadiusMeters);
-				return;
-			}
-			AgentASP.ForcePath(ForcedPath.Construct(new List<Vector3> { EntityData.Position, destination }));
-		}
+		EntityData.MoveTo(path, destination, approachRadiusMeters);
 	}
 
-	internal virtual void OnMovementStarted(Vector3 pathDestination, bool preview = false)
+	public virtual void OnMovementStarted(Vector3 pathDestination, bool preview = false)
 	{
 	}
 
@@ -1336,9 +1458,12 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		return 1f;
 	}
 
-	protected void ResetHighlightGuard()
+	public void HandleClickOnUnit()
 	{
-		m_MouseHoverHighlighting.Reset();
+		if (EventInvokerExtensions.MechanicEntity == Data)
+		{
+			UpdateHighlight();
+		}
 	}
 
 	protected virtual void UpdateHighlightView()
@@ -1360,5 +1485,39 @@ public abstract class AbstractUnitEntityView : MechanicEntityView, IAreaHandler,
 		{
 			MassLootHelper.HighlightLoot(this, value);
 		}
+	}
+
+	private bool SetValueSafe(CountingGuard guard, bool b)
+	{
+		if (guard.Value || b)
+		{
+			return guard.SetValue(b);
+		}
+		return false;
+	}
+
+	Coroutine IAbstractUnitEntityView.StartCoroutine(IEnumerator routine)
+	{
+		return StartCoroutine(routine);
+	}
+
+	void IAbstractUnitEntityView.StopCoroutine(Coroutine routine)
+	{
+		StopCoroutine(routine);
+	}
+
+	GameObject IMechanicEntityView.get_gameObject()
+	{
+		return base.gameObject;
+	}
+
+	T[] IMechanicEntityView.GetComponentsInChildren<T>()
+	{
+		return GetComponentsInChildren<T>();
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

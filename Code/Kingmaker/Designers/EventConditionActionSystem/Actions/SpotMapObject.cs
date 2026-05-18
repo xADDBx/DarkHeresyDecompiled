@@ -47,10 +47,9 @@ public class SpotMapObject : GameAction
 			spotter = baseUnitEntity;
 		}
 		MapObjectEntity value = Target.GetValue();
-		PartAwarenessCheck awarenessCheck = value.AwarenessCheck;
-		if (awarenessCheck != null && !awarenessCheck.IsPassed)
+		if (value.AwarenessCheck != null && !value.AwarenessCheck.GetPassed())
 		{
-			awarenessCheck.IsPassed = true;
+			value.AwarenessCheck.SetPassed(value: true);
 			EventBus.RaiseEvent((IMapObjectEntity)value, (Action<IAwarenessHandler>)delegate(IAwarenessHandler h)
 			{
 				h.OnEntityNoticed(spotter.ToBaseUnitEntity());

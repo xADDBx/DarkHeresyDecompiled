@@ -4,6 +4,7 @@ using Kingmaker._TmpTechArt;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.ResourceLinks;
@@ -14,7 +15,6 @@ using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.HitSystem;
 using Kingmaker.Visual.Particles;
 using Owlcat.Runtime.Core.Utility;
@@ -142,7 +142,7 @@ public static class DismembermentHandler
 		{
 			return DeathType.Animation;
 		}
-		AbstractUnitEntityView view = unit.View;
+		IAbstractUnitEntityView view = unit.View;
 		if (unit.LifeState.ForceDismember == UnitDismemberType.LimbsApart && view.DismembermentManager != null)
 		{
 			return DeathType.Dismemberment;
@@ -197,8 +197,8 @@ public static class DismembermentHandler
 		{
 			return;
 		}
-		AbstractUnitEntityView view = unit.View;
-		if (!(view == null))
+		IAbstractUnitEntityView view = unit.View;
+		if (view != null)
 		{
 			if (deathType == DeathType.Dismemberment)
 			{
@@ -214,7 +214,7 @@ public static class DismembermentHandler
 
 	private static void SpawnFxsOnDeath(AbstractUnitEntity unit, DeathType type)
 	{
-		SpawnFxOnStart component = unit.View.GetComponent<SpawnFxOnStart>();
+		SpawnFxOnStart component = unit.View.AsAbstractUnitEntityView().GetComponent<SpawnFxOnStart>();
 		if ((bool)component)
 		{
 			if (type == DeathType.Dismemberment)

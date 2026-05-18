@@ -1,9 +1,9 @@
 using System;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.Components;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
 
@@ -21,12 +21,17 @@ public sealed class CheckIsWarpEffect : BoolPropertyGetter, PropertyContextAcces
 
 	protected override bool GetBaseValue()
 	{
-		MechanicsContext mechanicContext = this.GetMechanicContext();
-		if (mechanicContext != null)
+		BlueprintScriptableObject blueprint = EvalContext.Current.Blueprint;
+		BlueprintAbility sourceAbilityBlueprint = EvalContext.Current.SourceAbilityBlueprint;
+		if (blueprint != null)
 		{
-			if (!IsWarpEffect(mechanicContext.Blueprint))
+			if (!IsWarpEffect(blueprint))
 			{
-				return IsWarpEffect(mechanicContext.SourceAbilityBlueprint);
+				if (sourceAbilityBlueprint != null)
+				{
+					return IsWarpEffect(sourceAbilityBlueprint);
+				}
+				return false;
 			}
 			return true;
 		}

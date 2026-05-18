@@ -1,33 +1,44 @@
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.PubSubSystem.Core;
-using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.DollRoom;
 using Owlcat.UI;
 using R3;
+using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class CharGenAppearancePhaseDetailedView : CharGenPhaseDetailedView<CharGenAppearanceComponentAppearancePhaseVM>, ICharGenAppearancePageComponentHandler, ISubscriber
+public class CharGenAppearancePhaseDetailedView : CharGenPhaseDetailedView<CharGenAppearanceComponentAppearancePhaseVM>
 {
 	[SerializeField]
-	protected CharGenAppearancePageSelectorView m_PageSelectorView;
+	private TextMeshProUGUI m_HeaderLabel;
+
+	[Header("Anchor Bar")]
+	[SerializeField]
+	protected CharGenAppearanceAnchorBarView m_AnchorBar;
+
+	[Header("Control Buttons")]
+	[SerializeField]
+	private OwlcatMultiButton m_ButtonRandom;
 
 	[SerializeField]
-	protected VirtualListVertical m_VirtualList;
+	private TextMeshProUGUI m_ButtonRandomText;
 
-	[Header("Portrait")]
 	[SerializeField]
-	private CharGenPortraitView m_PortraitFullView;
+	private OwlcatMultiButton m_ButtonReset;
+
+	[SerializeField]
+	private TextMeshProUGUI m_ButtonUndoText;
 
 	[Header("Doll")]
 	[SerializeField]
 	protected DollRoomTargetController m_CharacterController;
 
-	[Header("Components")]
+	[Header("Selectors Virtual List")]
 	[SerializeField]
-	private StringSequentialSelectorView m_StringSequentialSelectorView;
+	protected VirtualListVertical m_VirtualList;
 
+	[Header("Components")]
 	[SerializeField]
 	private SlideSelectorCommonView m_SlideSelectorCommonView;
 
@@ -38,104 +49,80 @@ public class CharGenAppearancePhaseDetailedView : CharGenPhaseDetailedView<CharG
 	private TextureSelectorCommonView m_TextureSelectorCommonView;
 
 	[SerializeField]
+	private TextureSelectorCommonView m_TextureSelectorColorView;
+
+	[SerializeField]
 	private TextureSelectorPagedView m_TextureSelectorPagedView;
 
 	[SerializeField]
-	private TextureSelectorTabsView m_TextureSelectorTabsView;
+	private TextureAndColorGroupSelectorView m_TextureAndColorGroupSelectorView;
 
-	[SerializeField]
-	private PortraitSelectorCommonView m_PortraitSelectorCommonView;
-
-	[SerializeField]
-	private CharGenVoiceSelectorCommonView m_CharGenVoiceSelectorCommonView;
+	private bool m_IsInitialized;
 
 	protected override bool HasYScrollBindInternal => false;
 
-	public void HandleComponentChanged(CharGenAppearancePageComponent pageComponent)
-	{
-		switch (pageComponent)
-		{
-		case CharGenAppearancePageComponent.FaceType:
-		case CharGenAppearancePageComponent.ScarsType:
-			base.ViewModel.DollState.ShowHelmTemp = true;
-			m_CharacterController.ZoomMin();
-			break;
-		case CharGenAppearancePageComponent.HairType:
-		case CharGenAppearancePageComponent.HairColour:
-		case CharGenAppearancePageComponent.EyebrowType:
-		case CharGenAppearancePageComponent.EyebrowColour:
-		case CharGenAppearancePageComponent.PortType1:
-		case CharGenAppearancePageComponent.PortType2:
-			base.ViewModel.DollState.ShowHelmTemp = false;
-			m_CharacterController.ZoomMin();
-			break;
-		case CharGenAppearancePageComponent.BodyType:
-		case CharGenAppearancePageComponent.Tattoo:
-			base.ViewModel.DollState.ShowHelmTemp = true;
-			m_CharacterController.ZoomMax();
-			break;
-		default:
-			base.ViewModel.DollState.ShowHelmTemp = true;
-			break;
-		}
-	}
-
 	public override void Initialize()
 	{
-		base.Initialize();
-		m_VirtualList.Initialize(new VirtualListElementTemplate<StringSequentialSelectorVM>(m_StringSequentialSelectorView), new VirtualListElementTemplate<SlideSequentialSelectorVM>(m_SlideSelectorCommonView), new VirtualListElementTemplate<TextureSequentialSelectorVM>(m_TextureSequentialSelectorView), new VirtualListElementTemplate<TextureSelectorVM>(m_TextureSelectorCommonView, 0), new VirtualListElementTemplate<TextureSelectorVM>(m_TextureSelectorPagedView, 1), new VirtualListElementTemplate<CharGenPortraitsSelectorVM>(m_PortraitSelectorCommonView), new VirtualListElementTemplate<CharGenVoiceSelectorVM>(m_CharGenVoiceSelectorCommonView), new VirtualListElementTemplate<TextureSelectorTabsVM>(m_TextureSelectorTabsView));
-		m_PortraitFullView.Initialize();
+		if (!m_IsInitialized)
+		{
+			base.Initialize();
+			m_VirtualList.Initialize(new VirtualListElementTemplate<SlideSequentialSelectorVM>(m_SlideSelectorCommonView), new VirtualListElementTemplate<TextureSequentialSelectorVM>(m_TextureSequentialSelectorView), new VirtualListElementTemplate<TextureSelectorVM>(m_TextureSelectorCommonView, 0), new VirtualListElementTemplate<TextureSelectorVM>(m_TextureSelectorPagedView, 1), new VirtualListElementTemplate<TextureSelectorVM>(m_TextureSelectorColorView, 2), new VirtualListElementTemplate<TextureAndColorGroupSelectorVM>(m_TextureAndColorGroupSelectorView));
+			m_IsInitialized = true;
+		}
 	}
 
 	protected override void OnBind()
 	{
+		if (!m_IsInitialized)
+		{
+			Initialize();
+		}
 		base.OnBind();
-		m_PageSelectorView.Bind(base.ViewModel.PagesSelectionGroupRadioVM);
+		m_HeaderLabel.text = base.ViewModel.PhaseName.CurrentValue;
 		m_VirtualList.Subscribe(base.ViewModel.VirtualListCollection).AddTo(this);
-		base.ViewModel.PortraitVM.Subscribe(m_PortraitFullView.Bind).AddTo(this);
-		base.ViewModel.OnPageChanged.Subscribe(HandlePageChanged).AddTo(this);
-		EventBus.Subscribe(this).AddTo(this);
+		m_AnchorBar.Bind(base.ViewModel.VirtualListCollection);
+		m_AnchorBar.ActiveAnchorChanged.Subscribe(delegate(CharGenAppearancePageType pt)
+		{
+			base.ViewModel.SelectPage(pt);
+		}).AddTo(this);
+		base.ViewModel.CurrentPageType.Subscribe(delegate(CharGenAppearancePageType pt)
+		{
+			if (!m_AnchorBar.IsActivePage(pt))
+			{
+				m_AnchorBar.SetActivePage(pt);
+			}
+		}).AddTo(this);
+		base.ViewModel.Zoom.Subscribe(delegate(DollZoomLevel z)
+		{
+			if (z == DollZoomLevel.Min)
+			{
+				m_CharacterController.ZoomMin();
+			}
+			else
+			{
+				m_CharacterController.ZoomMax();
+			}
+		}).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_ButtonRandom?.OnLeftClickAsObservable(), delegate
+		{
+			base.ViewModel.Randomize();
+		}).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_ButtonReset?.OnLeftClickAsObservable(), delegate
+		{
+			base.ViewModel.ResetToDefault();
+		}).AddTo(this);
+		m_ButtonRandomText.text = UIStrings.Instance.CharGen.Randomize;
+		m_ButtonUndoText.text = UIStrings.Instance.CharGen.Undo;
 	}
 
 	protected override void OnUnbind()
 	{
 		base.OnUnbind();
-		base.ViewModel.DollState.ShowHelmTemp = true;
-		base.ViewModel.DollState.ShowClothTemp = true;
-		m_CharacterController.ZoomMax();
-	}
-
-	public override void AddInput(ref InputLayer inputLayer, ref GridConsoleNavigationBehaviour navigationBehaviour, ConsoleHintsWidget hintsWidget, ReadOnlyReactiveProperty<bool> isMainCharacter)
-	{
+		m_AnchorBar.Unbind();
 	}
 
 	public override ReadOnlyReactiveProperty<bool> CanGoNextInMenuProperty()
 	{
 		return new ReactiveProperty<bool>(value: true);
-	}
-
-	protected virtual void HandlePageChanged(CharGenAppearancePageType pageType)
-	{
-		switch (pageType)
-		{
-		case CharGenAppearancePageType.Hair:
-			base.ViewModel.DollState.ShowHelmTemp = false;
-			base.ViewModel.DollState.ShowClothTemp = true;
-			m_CharacterController.ZoomMin();
-			break;
-		case CharGenAppearancePageType.Tattoo:
-			base.ViewModel.DollState.ShowClothTemp = false;
-			m_CharacterController.ZoomMax();
-			break;
-		case CharGenAppearancePageType.Implants:
-			base.ViewModel.DollState.ShowClothTemp = false;
-			m_CharacterController.ZoomMin();
-			break;
-		default:
-			base.ViewModel.DollState.ShowHelmTemp = true;
-			base.ViewModel.DollState.ShowClothTemp = true;
-			m_CharacterController.ZoomMax();
-			break;
-		}
 	}
 }

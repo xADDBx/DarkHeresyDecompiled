@@ -41,13 +41,13 @@ public class ContextActionHealTarget : ContextAction
 		{
 			Element.LogError(this, "Invalid target for effect '{0}'", GetType().Name);
 		}
-		else if (base.Context.MaybeCaster == null)
+		else if (base.Context.Caster == null)
 		{
 			Element.LogError(this, "Caster is missing");
 		}
 		else
 		{
-			RuleHealDamage rule = RuleHealDamage.Setup(base.Context.MaybeCaster, base.Target.Entity).WithMinMax(MinHealing.Calculate(base.Context), MaxHealing.Calculate(base.Context)).Base(Bonus.Calculate(base.Context))
+			RuleHealDamage rule = RuleHealDamage.Setup(base.Context.Caster, base.Target.Entity).WithMinMax(MinHealing.Calculate(base.Context), MaxHealing.Calculate(base.Context)).Base(Bonus.Calculate(base.Context))
 				.Strategy(HealStrategy)
 				.Create();
 			base.Context.TriggerRule(rule);

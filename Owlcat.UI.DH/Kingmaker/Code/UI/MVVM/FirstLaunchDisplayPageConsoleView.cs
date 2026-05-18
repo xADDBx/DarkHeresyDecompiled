@@ -1,6 +1,4 @@
 using Kingmaker.Blueprints.Root.Strings;
-using Owlcat.UI;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -43,7 +41,7 @@ public class FirstLaunchDisplayPageConsoleView : FirstLaunchSettingsPageBaseView
 		base.OnBind();
 	}
 
-	public void ScrollDescription(InputActionEventData _, float x)
+	public void ScrollDescription(float x)
 	{
 		if (base.gameObject.activeInHierarchy)
 		{
@@ -56,11 +54,5 @@ public class FirstLaunchDisplayPageConsoleView : FirstLaunchSettingsPageBaseView
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * m_InfoView.ScrollRectExtended.scrollSensitivity);
 		m_InfoView.ScrollRectExtended.OnSmoothlyScroll(pointerEventData);
-	}
-
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		navigationBehaviour.SetEntitiesVertical<SettingsEntitySliderGammaCorrectionConsoleView>(m_SettingsEntitySliderGammaCorrectionConsoleView, m_SettingsEntitySliderBrightnessConsoleView, m_SettingsEntitySliderContrastConsoleView);
-		navigationBehaviour.FocusOnFirstValidEntity();
 	}
 }

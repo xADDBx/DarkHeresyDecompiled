@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -59,10 +60,10 @@ public abstract class MechanicEntityFact : EntityFact, IMechanicEntityFact, IHas
 		}
 	}
 
-	public MechanicEntityFact(BlueprintMechanicEntityFact fact, [CanBeNull] MechanicsContext parentContext)
+	public MechanicEntityFact(BlueprintMechanicEntityFact fact, [CanBeNull] IEvalContext parentContext)
 		: base(fact)
 	{
-		m_ParentContext = parentContext;
+		m_ParentContext = EvalContext.ClaimMechanicsContext(parentContext);
 	}
 
 	public MechanicEntityFact()
@@ -80,6 +81,27 @@ public abstract class MechanicEntityFact : EntityFact, IMechanicEntityFact, IHas
 		m_Context?.Dispose();
 		m_Context = null;
 		base.OnDetach();
+	}
+
+	protected override void OnComponentsDidActivated()
+	{
+		Owner.Actor.HandleFactActivated(this);
+		base.OnComponentsDidActivated();
+	}
+
+	protected override void OnComponentsDidPostLoad()
+	{
+		base.OnComponentsDidPostLoad();
+		if (base.IsActive)
+		{
+			Owner.Actor.HandleFactActivated(this);
+		}
+	}
+
+	protected override void OnDeactivate()
+	{
+		Owner.Actor.HandleFactDeactivated(this);
+		base.OnDeactivate();
 	}
 
 	public override Hash128 GetHash128()
@@ -101,7 +123,7 @@ public abstract class MechanicEntityFact<TOwner> : MechanicEntityFact, IHashable
 
 	public new TOwner Owner => (TOwner)base.Owner;
 
-	public MechanicEntityFact(BlueprintMechanicEntityFact fact, MechanicsContext parentContext)
+	public MechanicEntityFact(BlueprintMechanicEntityFact fact, IEvalContext parentContext)
 		: base(fact, parentContext)
 	{
 	}

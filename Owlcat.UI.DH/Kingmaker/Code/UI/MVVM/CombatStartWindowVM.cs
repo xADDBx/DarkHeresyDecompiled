@@ -13,17 +13,26 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CombatStartWindowVM : ViewModel, IEntityPositionChangedHandler, ISubscriber<IEntity>, ISubscriber
 {
-	public readonly bool CanDeploy;
+	private enum StartCombatFailResult
+	{
+		None,
+		DeploymentNotFinished,
+		WaitingNetworkPlayer
+	}
 
 	private readonly ReactiveProperty<bool> m_CanStartCombat = new ReactiveProperty<bool>();
-
-	public readonly CombatStartCoopProgressVM CoopProgressVM;
 
 	private readonly ReactiveProperty<PartyVM> m_PartyVM;
 
 	private readonly ReactiveProperty<string> m_CannotStartCombatReason = new ReactiveProperty<string>();
 
 	private readonly Action m_StartBattle;
+
+	private StartCombatFailResult? m_CombatStartFailResult;
+
+	public readonly bool CanDeploy;
+
+	public readonly CombatStartCoopProgressVM CoopProgressVM;
 
 	public ReadOnlyReactiveProperty<bool> CanStartCombat => m_CanStartCombat;
 
@@ -64,15 +73,44 @@ public class CombatStartWindowVM : ViewModel, IEntityPositionChangedHandler, ISu
 
 	private void UpdateCanStartCombat()
 	{
-		bool flag = Game.Instance.Controllers.TurnController.CanFinishDeploymentPhase();
-		string value = ((!flag) ? UIStrings.Instance.TurnBasedTexts.CannotStartbattle.Text : string.Empty);
-		if (Game.Instance.Controllers.TurnController.GetStartBattleProgress(out var current, out var target, out var playerGroup) && playerGroup.Contains(NetworkingManager.LocalNetPlayer))
+		StartCombatFailResult result;
+		int currentStartProgress;
+		int targetStartProgress;
+		bool value = CheckCanStartCombat(out result, out currentStartProgress, out targetStartProgress);
+		if (result != m_CombatStartFailResult)
 		{
-			flag = false;
-			value = string.Format(UIStrings.Instance.CommonTexts.WaitingOtherPlayer, current, target);
+			m_CombatStartFailResult = result;
+			string value2 = result switch
+			{
+				StartCombatFailResult.None => string.Empty, 
+				StartCombatFailResult.WaitingNetworkPlayer => FormatNetworkMessage(currentStartProgress, targetStartProgress), 
+				_ => UIStrings.Instance.TurnBasedTexts.CannotStartbattle.Text, 
+			};
+			m_CannotStartCombatReason.Value = value2;
+			m_CanStartCombat.Value = value;
 		}
-		m_CannotStartCombatReason.Value = value;
-		m_CanStartCombat.Value = flag;
+		static string FormatNetworkMessage(int current, int target)
+		{
+			return string.Format(UIStrings.Instance.CommonTexts.WaitingOtherPlayer, current, target);
+		}
+	}
+
+	private bool CheckCanStartCombat(out StartCombatFailResult result, out int currentStartProgress, out int targetStartProgress)
+	{
+		currentStartProgress = 0;
+		targetStartProgress = 0;
+		if (!Game.Instance.Controllers.TurnController.CanFinishDeploymentPhase())
+		{
+			result = StartCombatFailResult.DeploymentNotFinished;
+			return false;
+		}
+		if (Game.Instance.Controllers.TurnController.GetStartBattleProgress(out currentStartProgress, out targetStartProgress, out var playerGroup) && playerGroup.Contains(NetworkingManager.LocalNetPlayer))
+		{
+			result = StartCombatFailResult.WaitingNetworkPlayer;
+			return false;
+		}
+		result = StartCombatFailResult.None;
+		return true;
 	}
 
 	private void ShowCantStartBattleWarning()

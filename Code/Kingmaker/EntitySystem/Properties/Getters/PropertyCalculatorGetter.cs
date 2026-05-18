@@ -1,11 +1,13 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework.ContextContract;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
 
 [Serializable]
 [TypeId("88a988badcc84ea8847e21626bee82e5")]
+[ReadsContext(new ContextField[] { ContextField.CurrentEntity })]
 public class PropertyCalculatorGetter : PropertyGetter
 {
 	public PropertyCalculator Value;
@@ -18,7 +20,7 @@ public class PropertyCalculatorGetter : PropertyGetter
 
 	protected override int GetBaseValueInternal()
 	{
-		return Value.GetValue(base.PropertyContext);
+		return Value.GetValue(base.CurrentEntity, base.Context, base.Context.Target);
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

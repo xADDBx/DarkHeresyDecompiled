@@ -55,6 +55,7 @@ public sealed class Updater
 
 	internal void OnBeginRendering(ScriptableRenderContext context, List<Camera> cameras)
 	{
+		m_Solver.SolverImpl.EnsureRenderBuffersInitialized(context);
 		m_Solver.Culler.CollectCameras(cameras);
 		int num;
 		float stepDelta;

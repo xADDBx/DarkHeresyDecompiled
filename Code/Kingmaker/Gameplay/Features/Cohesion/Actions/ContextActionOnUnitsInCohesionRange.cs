@@ -5,6 +5,7 @@ using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Framework.Mechanics;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Mechanics.Actions;
@@ -58,6 +59,15 @@ public sealed class ContextActionOnUnitsInCohesionRange : ContextAction
 		};
 		string text3 = ((TargetStrategy == TargetSelection.All) ? "units" : "unit");
 		return "Actions on" + text + text2 + " " + text3 + " in cohesion range";
+	}
+
+	public bool IsRestrictionsPassed(MechanicEntity unit, IEvalContext context)
+	{
+		if (IsValidTarget(base.Target.Entity, unit))
+		{
+			return Restriction.IsPassed(context, unit);
+		}
+		return false;
 	}
 
 	protected override void RunAction()
@@ -122,20 +132,25 @@ public sealed class ContextActionOnUnitsInCohesionRange : ContextAction
 		return unit.DistanceToInCells(base.Caster);
 	}
 
-	private bool IsSuitable(MechanicEntity unit)
+	private bool IsValidTarget(MechanicEntity owner, MechanicEntity target)
 	{
-		bool flag = base.Target.Entity != null;
+		bool flag = owner != null;
 		if (flag)
 		{
 			flag = Filter switch
 			{
-				TargetType.Enemy => base.Target.Entity.IsEnemy(unit), 
-				TargetType.Ally => base.Target.Entity.IsAlly(unit), 
+				TargetType.Enemy => owner.IsEnemy(target), 
+				TargetType.Ally => owner.IsAlly(target), 
 				TargetType.Any => true, 
 				_ => throw new ArgumentOutOfRangeException(), 
 			};
 		}
-		if (flag)
+		return flag;
+	}
+
+	private bool IsSuitable(MechanicEntity unit)
+	{
+		if (IsValidTarget(base.Target.Entity, unit))
 		{
 			return Restriction.IsPassed(base.Context, unit);
 		}

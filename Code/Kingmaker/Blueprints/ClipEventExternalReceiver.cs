@@ -63,10 +63,6 @@ public class ClipEventExternalReceiver : MonoBehaviour
 		{
 			typeof(AnimationClipEventPlaceFootprint),
 			ClipEventType.PlaceFootprint
-		},
-		{
-			typeof(AnimationClipEventTorchShow),
-			ClipEventType.TorchShow
 		}
 	};
 
@@ -85,13 +81,14 @@ public class ClipEventExternalReceiver : MonoBehaviour
 		}
 	}
 
-	public void StartEvent(ClipEventType clipEventType, AnimationManager animationManager, int id)
+	public void StartEvent(ClipEventType clipEventType, AnimationManager animationManager, int id, object userData)
 	{
 		Type key = s_EventTypeToName.Select((KeyValuePair<Type, ClipEventType> x) => x).FirstOrDefault((KeyValuePair<Type, ClipEventType> x) => x.Value == clipEventType).Key;
 		foreach (IDEventPair @event in Events)
 		{
 			if (@event != null && key != null && @event.Event.GetType() == key && @event.Id == id)
 			{
+				@event.Event.UserData = userData;
 				@event.Event.Start(animationManager);
 			}
 		}

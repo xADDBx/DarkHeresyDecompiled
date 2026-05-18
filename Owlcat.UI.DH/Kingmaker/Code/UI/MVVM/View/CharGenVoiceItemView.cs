@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
+using R3;
 using TMPro;
 using UnityEngine;
 
@@ -22,7 +23,6 @@ public class CharGenVoiceItemView : SelectionGroupEntityView<CharGenVoiceItemVM>
 
 	public void OnFunc01Click()
 	{
-		PlayBarkIfSelected();
 	}
 
 	public string GetFunc01ClickHint()
@@ -34,21 +34,18 @@ public class CharGenVoiceItemView : SelectionGroupEntityView<CharGenVoiceItemVM>
 	{
 		base.BindViewImplementation();
 		m_VoiceName.text = base.ViewModel.DisplayName;
-		PlayBarkIfSelected();
+		base.ViewModel.IsSelected.Subscribe(delegate
+		{
+			PlayBarkIfSelected();
+		}).AddTo(this);
 	}
 
 	protected override void OnClick()
 	{
-		if (base.ViewModel.IsSelected.Value)
-		{
-			PlayBarkIfSelected();
-			return;
-		}
 		if (UtilityNet.IsControlMainCharacter())
 		{
-			base.ViewModel.SetSelectedFromView(!base.ViewModel.IsSelected.Value);
+			base.ViewModel.OnClicked?.Invoke();
 		}
-		PlayBarkIfSelected();
 	}
 
 	public override void SetFocus(bool value)
@@ -56,7 +53,7 @@ public class CharGenVoiceItemView : SelectionGroupEntityView<CharGenVoiceItemVM>
 		base.SetFocus(value);
 		if (value && !base.ViewModel.IsSelected.Value)
 		{
-			base.ViewModel.Voice.PlayPreview();
+			base.ViewModel.Asks.PlayPreview();
 			if (UtilityNet.IsControlMainCharacter())
 			{
 				base.ViewModel.SetSelectedFromView(state: true);
@@ -68,14 +65,19 @@ public class CharGenVoiceItemView : SelectionGroupEntityView<CharGenVoiceItemVM>
 	{
 		if (!base.ViewModel.IsSelected.Value)
 		{
+			foreach (Animation audioAnimation in m_AudioAnimations)
+			{
+				audioAnimation.gameObject.SetActive(value: false);
+				audioAnimation.Stop();
+			}
 			return;
 		}
-		base.ViewModel.Voice.PlayPreview();
-		foreach (Animation audioAnimation in m_AudioAnimations)
+		base.ViewModel.Asks.PlayPreview();
+		foreach (Animation audioAnimation2 in m_AudioAnimations)
 		{
-			audioAnimation.gameObject.SetActive(value: true);
-			audioAnimation.Stop();
-			audioAnimation.Play();
+			audioAnimation2.gameObject.SetActive(value: true);
+			audioAnimation2.Stop();
+			audioAnimation2.Play();
 		}
 	}
 }

@@ -24,14 +24,24 @@ public class CommandMarkUnitControlled : CommandBase
 
 	public override bool IsContinuous => UnmarkAfter <= 0f;
 
+	public override bool ShouldHaveControlledUnit => true;
+
 	public override bool TrySkip(CutscenePlayerData player)
 	{
 		player.GetCommandData<Data>(this).SkippedByPlayer = true;
 		return true;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
+		if (GetControlledUnit() == null)
+		{
+			CommandResult result = default(CommandResult);
+			result.IsSuccess = false;
+			result.ErrorMessage = "Cant find unit to mark";
+			return result;
+		}
+		return CommandResult.Success;
 	}
 
 	public override IAbstractUnitEntity GetControlledUnit()
@@ -52,8 +62,20 @@ public class CommandMarkUnitControlled : CommandBase
 		return StopPlaySignalIsReady(player);
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		player.GetCommandData<Data>(this).IsFinished = true;
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -66,9 +88,10 @@ public class CommandMarkUnitControlled : CommandBase
 		return commandData.IsFinished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
-		player.GetCommandData<Data>(this).IsFinished = time > (double)UnmarkAfter;
+		player.GetCommandData<Data>(this).IsFinished |= time > (double)UnmarkAfter;
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

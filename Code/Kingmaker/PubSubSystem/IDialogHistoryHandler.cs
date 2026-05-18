@@ -1,4 +1,4 @@
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 
 namespace Kingmaker.PubSubSystem;

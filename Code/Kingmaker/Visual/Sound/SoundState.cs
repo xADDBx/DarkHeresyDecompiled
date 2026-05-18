@@ -31,7 +31,7 @@ using UnityEngine;
 
 namespace Kingmaker.Visual.Sound;
 
-public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IQuestHandler, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IAreaLoadingStagesHandler, IAwarenessHandler, ISubscriber<IMapObjectEntity>, ITimeOfDayChangedHandler, IAreaPartHandler, IPartyCombatHandler, IFullScreenUIHandler, IModalWindowUIHandler, IPowerBalanceHandler, ITurnBasedModeHandler, IPreparationTurnBeginHandler, IPreparationTurnEndHandler, IMoraleVictoryConfirmationRequest, IMoraleVictoryConfirmationHandler
+public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IQuestHandler, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IAreaLoadingStagesHandler, IAreaHandler, IAwarenessHandler, ISubscriber<IMapObjectEntity>, ITimeOfDayChangedHandler, IAreaPartHandler, IPartyCombatHandler, IFullScreenUIHandler, IModalWindowUIHandler, IPowerBalanceHandler, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, IPreparationTurnBeginHandler, IPreparationTurnEndHandler, IMoraleVictoryConfirmationRequest, IMoraleVictoryConfirmationHandler
 {
 	private enum DialogStates
 	{
@@ -257,7 +257,7 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 
 	private void UpdateBarksState(SoundStateType newState, SoundStateType oldState)
 	{
-		if (newState != SoundStateType.Default)
+		if (newState != SoundStateType.Default && newState != SoundStateType.Combat)
 		{
 			if (m_BarksState == DialogStates.Play)
 			{
@@ -340,11 +340,6 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 		}
 	}
 
-	public void OnChargenChange(bool chargen)
-	{
-		MusicStateHandler.OnChargenChange(chargen);
-	}
-
 	public void OnDetectiveJournalChange(MusicStateHandler.DetectiveBoardMusicState state)
 	{
 		MusicStateHandler.OnDetectiveJournalChange(state);
@@ -353,6 +348,16 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 	public void OnMusicStateChange(MusicStateHandler.MusicState state)
 	{
 		MusicStateHandler.OnMusicStateChange(state);
+	}
+
+	public void OnMusicChargenStateChange(MusicStateHandler.MusicChargenState state)
+	{
+		MusicStateHandler.SetMusicChargenState(state);
+	}
+
+	public void OnMusicChargenPCVoiceChange(MusicStateHandler.MusicChargenPCVoice voice)
+	{
+		MusicStateHandler.SetMusicChargenPCVoice(voice);
 	}
 
 	void IAreaLoadingStagesHandler.OnAreaScenesLoaded()
@@ -378,6 +383,16 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 		{
 			MusicStateHandler.UpdateCombatMusicState();
 		}
+	}
+
+	void IAreaHandler.OnAreaBeginUnloading()
+	{
+		MusicStateHandler.BeginAreaTransition();
+	}
+
+	void IAreaHandler.OnAreaDidLoad()
+	{
+		MusicStateHandler.EndAreaTransition();
 	}
 
 	void IAreaPartHandler.OnAreaPartChanged(BlueprintAreaPart previous)
@@ -472,13 +487,13 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 	{
 		if (inCombat)
 		{
-			UISounds.Instance.Sounds.Combat.CombatStart.Play();
+			CombatSounds.Instance.Combat.CombatStart.Play();
 			m_CombatTriggered = true;
 			MusicStateHandler.HandlePartyCombatStateChange(isCombatStarted: true);
 		}
 		else if (m_CombatTriggered)
 		{
-			UISounds.Instance.Sounds.Combat.CombatEnd.Play();
+			CombatSounds.Instance.Combat.CombatEnd.Play();
 			m_CombatTriggered = false;
 			MusicStateHandler.HandlePartyCombatStateChange(isCombatStarted: false);
 		}
@@ -510,6 +525,11 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 	}
 
 	void ITurnBasedModeHandler.HandleTurnBasedModeSwitched(bool isTurnBased)
+	{
+		MusicStateHandler.UpdateCombatMusicState();
+	}
+
+	void ITurnBasedModeResumeHandler.HandleTurnBasedModeResumed()
 	{
 		MusicStateHandler.UpdateCombatMusicState();
 	}

@@ -7,8 +7,9 @@ using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Gameplay.Features.Experience;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -25,6 +26,9 @@ namespace Kingmaker.Designers.Mechanics.Facts;
 [AllowMultipleComponents]
 [AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("6d519a34c3e747bfa7d858a3c9a4b978")]
+[ContextRole(ContextField.Owner, "fact holder")]
+[ContextRoleForField("ActionsOnKill", ContextField.Target, "killed unit (or Owner)", FallsBackTo = "rule.Target, Owner")]
+[ContextRoleForField("ActionsOnSurvive", ContextField.Target, "survivor (or Owner)", FallsBackTo = "rule.Target, Owner")]
 public class KillTrigger : UnitFactComponentDelegate, IInitiatorRulebookHandler<RuleDealDamage>, IRulebookHandler<RuleDealDamage>, ISubscriber, IInitiatorRulebookSubscriber
 {
 	public enum PropertyParameter
@@ -102,35 +106,32 @@ public class KillTrigger : UnitFactComponentDelegate, IInitiatorRulebookHandler<
 		{
 			if (PropertyToSave == PropertyParameter.EnemyDifficulty)
 			{
-				base.Context[ContextPropertyName] = (int)(((evt.Target as UnitEntity)?.Blueprint.DifficultyType + 1) ?? UnitDifficultyType.Common);
+				EvalContext.Current[ContextPropertyName] = (int)(((evt.Target as UnitEntity)?.Blueprint.DifficultyType + 1) ?? UnitDifficultyType.Common);
 			}
 			if (PropertyToSave == PropertyParameter.Damage)
 			{
-				base.Context[ContextPropertyName] = evt.ResultValue;
+				EvalContext.Current[ContextPropertyName] = evt.ResultValue;
 			}
 			if (PropertyToSave == PropertyParameter.DamageOverflow)
 			{
-				base.Context[ContextPropertyName] = Math.Max(evt.ResultValue - evt.HPBeforeDamage, 0);
+				EvalContext.Current[ContextPropertyName] = Math.Max(evt.ResultValue - evt.HPBeforeDamage, 0);
 			}
 		}
-		using (base.Context.SetScope(base.Owner.ToITargetWrapper()))
+		bool flag = TriggerOnArmorBreak && evt.TargetArmor != null && evt.TargetArmor.DurabilityLeft <= 0 && evt.DurabilityBeforeDamage > 0;
+		bool num = !OnlyEnemyKill || base.Owner.IsEnemy(evt.Target);
+		PartHealth targetHealth = evt.TargetHealth;
+		bool flag2 = targetHealth != null && targetHealth.HitPointsLeft > 0;
+		bool flag3 = num && ((!flag2 && !TriggerOnlyOnArmorBreak) || flag);
+		if (base.Owner.IsEnemy(evt.Target) && flag2 && !TriggerOnArmorBreak)
 		{
-			bool flag = TriggerOnArmorBreak && evt.TargetArmor != null && evt.TargetArmor.DurabilityLeft <= 0 && evt.DurabilityBeforeDamage > 0;
-			bool num = !OnlyEnemyKill || base.Owner.IsEnemy(evt.Target);
-			PartHealth targetHealth = evt.TargetHealth;
-			bool flag2 = targetHealth != null && targetHealth.HitPointsLeft > 0;
-			bool flag3 = num && ((!flag2 && !TriggerOnlyOnArmorBreak) || flag);
-			if (base.Owner.IsEnemy(evt.Target) && flag2 && !TriggerOnArmorBreak)
-			{
-				TryRunActionOnSurvive(evt);
-			}
-			else if (flag3)
+			TryRunActionOnSurvive(evt);
+		}
+		else if (flag3)
+		{
+			TryRunActionsOnKill(evt);
+			if (TriggerTwiceForKillThroughArmour && flag && !flag2)
 			{
 				TryRunActionsOnKill(evt);
-				if (TriggerTwiceForKillThroughArmour && flag && !flag2)
-				{
-					TryRunActionsOnKill(evt);
-				}
 			}
 		}
 	}
@@ -139,7 +140,7 @@ public class KillTrigger : UnitFactComponentDelegate, IInitiatorRulebookHandler<
 	{
 		if (ActionsOnSurvive.HasActions)
 		{
-			base.Fact.RunActionInContext(ActionsOnSurvive, (!ActionsOnTarget) ? base.Owner.ToITargetWrapper() : evt.ConcreteTarget.ToITargetWrapper());
+			base.Fact.RunActionInContext(ActionsOnSurvive, (!ActionsOnTarget) ? base.Owner : evt.ConcreteTarget);
 		}
 		TryRunAdditionalActions(evt, RefundActionPointsOnSurvive, ResetCooldownOnSurvive, RemoveOnSurvive);
 	}
@@ -148,7 +149,7 @@ public class KillTrigger : UnitFactComponentDelegate, IInitiatorRulebookHandler<
 	{
 		if (ActionsOnKill.HasActions)
 		{
-			base.Fact.RunActionInContext(ActionsOnKill, (!ActionsOnTarget) ? base.Owner.ToITargetWrapper() : evt.ConcreteTarget.ToITargetWrapper());
+			base.Fact.RunActionInContext(ActionsOnKill, (!ActionsOnTarget) ? base.Owner : evt.ConcreteTarget);
 		}
 		TryRunAdditionalActions(evt, RefundActionPointsOnKill, ResetCooldownOnKill, RemoveOnKill);
 	}

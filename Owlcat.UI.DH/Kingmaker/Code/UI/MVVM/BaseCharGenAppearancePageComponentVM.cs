@@ -13,6 +13,8 @@ public abstract class BaseCharGenAppearancePageComponentVM : VirtualListElementV
 {
 	private readonly ReactiveCommand<CharGenAppearancePageComponent> m_OnChanged = new ReactiveCommand<CharGenAppearancePageComponent>();
 
+	protected int m_DefaultIndex = -1;
+
 	public Observable<CharGenAppearancePageComponent> OnChanged => m_OnChanged;
 
 	public CharGenAppearancePageComponent Type { get; set; }
@@ -106,6 +108,7 @@ public abstract class BaseCharGenAppearancePageComponentVM : VirtualListElementV
 
 	public void Focused()
 	{
+		m_OnChanged.Execute(Type);
 		EventBus.RaiseEvent(delegate(ICharGenAppearancePageComponentHandler h)
 		{
 			h.HandleComponentChanged(Type);
@@ -113,6 +116,18 @@ public abstract class BaseCharGenAppearancePageComponentVM : VirtualListElementV
 	}
 
 	public virtual void OnBeginView()
+	{
+	}
+
+	public virtual void CaptureDefaults()
+	{
+	}
+
+	public virtual void Randomize()
+	{
+	}
+
+	public virtual void ResetToDefault()
 	{
 	}
 

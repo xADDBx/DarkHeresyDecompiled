@@ -1,7 +1,9 @@
 using System;
 using Kingmaker.Controllers.Interfaces;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
+using Kingmaker.View.Mechanics.Entities;
 using UnityEngine;
 
 namespace Kingmaker.Controllers.Units;
@@ -28,10 +30,11 @@ public class UpdatePreviousPositionController : IControllerTick, IController
 		}
 		static void ProcessUnit(AbstractUnitEntity unit)
 		{
-			if (!(unit.View == null))
+			AbstractUnitEntityView abstractUnitEntityView = unit.View.AsAbstractUnitEntityView();
+			if ((object)abstractUnitEntityView != null)
 			{
 				bool forceUpdatePositions = (bool)unit.Features.OnElevator || unit.GetOptional<EntityPartStayOnPlatform>() != null;
-				unit.View.InterpolationHelper.OnUnitSimulationTickCompleted(forceUpdatePositions);
+				abstractUnitEntityView.InterpolationHelper.OnUnitSimulationTickCompleted(forceUpdatePositions);
 				unit.Movable.PreviousSimulationTick = new PartMovable.PreviousSimulationTickInfo
 				{
 					HasMotion = (unit.Movable.HasMotionThisSimulationTick || unit.Movable.ForceHasMotion),

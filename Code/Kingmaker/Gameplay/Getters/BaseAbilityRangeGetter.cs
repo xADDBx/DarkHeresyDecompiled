@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Gameplay.Getters;
@@ -10,7 +11,7 @@ public sealed class BaseAbilityRangeGetter : IntPropertyGetter, PropertyContextA
 {
 	protected override int GetBaseValue()
 	{
-		return this.GetAbility().Blueprint.GetBlueprintRange();
+		return EvalContext.Current.Ability.Blueprint.GetBlueprintRange();
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

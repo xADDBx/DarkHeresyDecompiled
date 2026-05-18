@@ -2,6 +2,7 @@ using System;
 using Core.Cheats;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Items;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.GameCommands;
 using Kingmaker.Items;
@@ -15,7 +16,7 @@ public static class VendorHelper
 {
 	public static TradeLogic TradeLogic => Game.Instance.TradeLogic;
 
-	public static void TryMove(ItemEntity itemEntity, ItemsCollection collection, bool split)
+	public static void TryMove(ItemEntity itemEntity, ItemsCollection collection, int count, bool split)
 	{
 		if (!TradeLogic.IsTrading)
 		{
@@ -23,9 +24,9 @@ public static class VendorHelper
 		}
 		if (collection == TradeLogic.StoreItems)
 		{
-			if (itemEntity.Count <= 1)
+			if (count <= 1 || !split)
 			{
-				Game.Instance.GameCommandQueue.AddForBuyVendor(itemEntity, itemEntity.Count);
+				Game.Instance.GameCommandQueue.AddForBuyVendor(itemEntity, count);
 				return;
 			}
 			EventBus.RaiseEvent(delegate(IVendorTransferHandler h)
@@ -35,27 +36,33 @@ public static class VendorHelper
 		}
 		else if (collection == TradeLogic.PlayerStash)
 		{
-			if (itemEntity.IsNotable)
+			if (!itemEntity.IsNotable)
 			{
-				return;
+				if (count <= 1 || !split)
+				{
+					Game.Instance.GameCommandQueue.AddForSellVendor(itemEntity, count);
+					return;
+				}
+				EventBus.RaiseEvent(delegate(IVendorTransferHandler h)
+				{
+					h.HandleTransitionWindow(itemEntity);
+				});
 			}
-			if (itemEntity.Count <= 1)
+			else
 			{
-				Game.Instance.GameCommandQueue.AddForSellVendor(itemEntity, itemEntity.Count);
-				return;
+				EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
+				{
+					h.HandleWarning(UIStrings.Instance.Vendor.CantSellKeyItem.Text, addToLog: false, WarningNotificationFormat.Attention);
+				});
 			}
-			EventBus.RaiseEvent(delegate(IVendorTransferHandler h)
-			{
-				h.HandleTransitionWindow(itemEntity);
-			});
 		}
 		else if (collection == TradeLogic.ItemsForBuy)
 		{
-			Game.Instance.GameCommandQueue.RemoveFromBuyVendor(itemEntity, itemEntity.Count);
+			Game.Instance.GameCommandQueue.RemoveFromBuyVendor(itemEntity, count);
 		}
 		else if (collection == TradeLogic.ItemsForSell)
 		{
-			Game.Instance.GameCommandQueue.RemoveFromSellVendor(itemEntity, itemEntity.Count);
+			Game.Instance.GameCommandQueue.RemoveFromSellVendor(itemEntity, count);
 		}
 	}
 

@@ -55,7 +55,7 @@ public class InteractionSlotPartPCView : InteractionSlotPartView
 		base.ViewModel.ItemSlot.Subscribe(SetButtons).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_ConfirmButton.OnLeftClickAsObservable(), delegate
 		{
-			base.ViewModel.Close();
+			base.ViewModel.Confirm();
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_CloseButton.OnLeftClickAsObservable(), delegate
 		{

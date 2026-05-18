@@ -4,10 +4,8 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.QA;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -17,7 +15,6 @@ using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.QA.Validation;
-using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -85,6 +82,8 @@ public class CommandUnitCastSpell : CommandBase
 
 	public bool UseCustomAbility => m_Type == AbilityType.Custom;
 
+	public override bool ShouldHaveControlledUnit => true;
+
 	public override IAbstractUnitEntity GetControlledUnit()
 	{
 		if (m_UnitEvaluator == null || !m_UnitEvaluator.TryGetValue(out var value))
@@ -99,17 +98,11 @@ public class CommandUnitCastSpell : CommandBase
 		return ((TargetWrapper)(m_TargetUnitEvaluator?.GetValue())) ?? ((TargetWrapper)(m_TargetPointEvaluator?.GetValue()));
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		AbstractUnitEntity value = m_UnitEvaluator.GetValue();
-		if (!(value is BaseUnitEntity caster))
+		if (!m_UnitEvaluator.TryGetValue(out var value) || !(value is BaseUnitEntity caster))
 		{
-			string message = $"[IS NOT BASE UNIT ENTITY] Cutscene command {this}, {m_UnitEvaluator} returns {value} of type {value.GetType()} that is not BaseUnitEntity";
-			if (!QAModeExceptionReporter.MaybeShowError(message))
-			{
-				UberDebug.LogError(message);
-			}
-			return;
+			return CommandResult.Fail("Cant find unit to cast");
 		}
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Caster = caster;
@@ -125,11 +118,11 @@ public class CommandUnitCastSpell : CommandBase
 		}
 		commandData.Skipping = skipping;
 		RunCommand(commandData, skipping);
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.Caster != null && commandData.Ability != null)
 		{
@@ -143,16 +136,18 @@ public class CommandUnitCastSpell : CommandBase
 		commandData.Ability = null;
 		commandData.CommandHandle = null;
 		commandData.RemoveAbilityOnStop = false;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		CommandResult result = OnRun(player, skipping: true);
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.RemoveAbilityOnStop)
 		{
 			commandData.Caster.Abilities.Remove(commandData.Ability);
 		}
+		return result;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -179,7 +174,7 @@ public class CommandUnitCastSpell : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.Waiting)
@@ -204,14 +199,15 @@ public class CommandUnitCastSpell : CommandBase
 		{
 			player.GetCommandData<Data>(this).TakingTooLong = true;
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Skipping = true;
 		commandData.Command?.ConvertToOneFrame();
+		return CommandResult.Success;
 	}
 
 	private void RunCommand(Data data, bool immediate)

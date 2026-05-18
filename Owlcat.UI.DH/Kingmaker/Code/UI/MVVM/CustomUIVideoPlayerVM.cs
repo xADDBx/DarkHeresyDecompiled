@@ -35,11 +35,11 @@ public class CustomUIVideoPlayerVM : ViewModel
 		SoundStart = soundStart;
 		SoundStop = soundStop;
 		m_HasVideo.Value = Video != null;
-		m_ChangeVideo.Execute();
+		m_ChangeVideo.Execute(Unit.Default);
 	}
 
 	public void ResetVideo()
 	{
-		m_ResetVideoCommand.Execute();
+		m_ResetVideoCommand.Execute(Unit.Default);
 	}
 }

@@ -92,7 +92,8 @@ public class SimpleCaster : SimpleMechanicEntity, IHashable, IOwlPackable<Simple
 	{
 	}
 
-	protected SimpleCaster()
+	protected SimpleCaster(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
@@ -108,7 +109,7 @@ public class SimpleCaster : SimpleMechanicEntity, IHashable, IOwlPackable<Simple
 		Pool.Remove(this);
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -123,7 +124,7 @@ public class SimpleCaster : SimpleMechanicEntity, IHashable, IOwlPackable<Simple
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		SimpleCaster source = new SimpleCaster();
+		SimpleCaster source = new SimpleCaster(default(OwlPackConstructorParameter));
 		result = Unsafe.As<SimpleCaster, TPossiblyBase>(ref source);
 	}
 

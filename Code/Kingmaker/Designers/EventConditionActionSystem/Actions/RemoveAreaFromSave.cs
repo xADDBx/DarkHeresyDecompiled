@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
+using Kingmaker.EntitySystem.Persistence;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -39,20 +40,23 @@ public class RemoveAreaFromSave : GameAction
 		}
 		BlueprintAreaMechanics blueprintAreaMechanics = SpecificMechanic.Get();
 		SceneEntitiesState sceneEntitiesState = ((blueprintAreaMechanics != null && blueprintAreaMechanics.Scene.IsDefined) ? areaPersistentState.GetAdditionalSceneStates().FirstOrDefault((SceneEntitiesState s) => s.SceneName == SpecificMechanic.Get().Scene.SceneName) : areaPersistentState.MainState);
-		if (sceneEntitiesState != null)
+		if (sceneEntitiesState == null)
 		{
-			if (areaPersistentState == Game.Instance.State.LoadedAreaState)
-			{
-				sceneEntitiesState.SkipSerialize = true;
-			}
-			else if (sceneEntitiesState != areaPersistentState.MainState)
-			{
-				areaPersistentState.GetAdditionalSceneStates().Remove(sceneEntitiesState);
-			}
-			else
-			{
-				Game.Instance.State.SavedAreaStates.Remove(areaPersistentState);
-			}
+			return;
 		}
+		if (areaPersistentState == Game.Instance.State.LoadedAreaState)
+		{
+			sceneEntitiesState.SkipSerialize = true;
+			return;
+		}
+		if (sceneEntitiesState != areaPersistentState.MainState)
+		{
+			areaPersistentState.GetAdditionalSceneStates().Remove(sceneEntitiesState);
+		}
+		else
+		{
+			Game.Instance.State.SavedAreaStates.Remove(areaPersistentState);
+		}
+		SavedFogMasks.Get(areaPersistentState.AreaGuid).Wipe();
 	}
 }

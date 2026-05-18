@@ -1,12 +1,6 @@
 namespace Kingmaker.Code.UI.MVVM;
 
-public enum UnifiedStatus
+public enum UnifiedStatus : byte
 {
-	Info,
-	Warning,
-	Colonized,
-	Quest,
-	Enemies,
-	Rumour,
-	Detective
+	Detective = 6
 }

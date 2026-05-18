@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -10,7 +11,7 @@ public class CheckAbilityWeaponTwoHandedGetter : BoolPropertyGetter, PropertyCon
 {
 	protected override bool GetBaseValue()
 	{
-		return this.GetAbilityWeapon()?.Blueprint.IsTwoHanded ?? false;
+		return EvalContext.Current.AbilityWeapon?.Blueprint.IsTwoHanded ?? false;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

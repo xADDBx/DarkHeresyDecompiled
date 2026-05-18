@@ -13,7 +13,7 @@ public class TrapActorPosition : PositionEvaluator
 {
 	protected override Vector3 GetValueInternal()
 	{
-		return (ContextData<BlueprintTrap.ElementsData>.Current ?? throw new FailToEvaluateException(this)).TrapObject.Data.Position;
+		return (ContextData<BlueprintTrap.ElementsData>.Current ?? throw new FailToEvaluateException(this)).TrapObject.Position;
 	}
 
 	public override string GetCaption()

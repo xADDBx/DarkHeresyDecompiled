@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Owlcat.Runtime.Core.Utility;
 
@@ -14,13 +15,13 @@ public class CheckCanUseAbilityOnTargetGetter : BoolPropertyGetter, PropertyCont
 
 	protected override bool GetBaseValue()
 	{
-		AbilityData ability = this.GetAbility();
+		AbilityData ability = EvalContext.Current.Ability;
 		if (ability == null)
 		{
 			return false;
 		}
-		MechanicEntity targetByType = this.GetTargetByType(Target);
-		return ability.CanTarget(targetByType);
+		MechanicEntity entityByType = EvalContext.Current.GetEntityByType(Target);
+		return ability.CanTarget(entityByType);
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

@@ -2,6 +2,7 @@ using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -34,7 +35,7 @@ public class FactListGetter : IntPropertyGetter, PropertyContextAccessor.ITarget
 	{
 		return base.CurrentEntity.Facts.List.Sum(delegate(EntityFact p)
 		{
-			if (!Facts.Contains(p.Blueprint) || (OnlyFromCaster && p.MaybeContext?.MaybeCaster != this.GetTargetByType(Caster)))
+			if (!Facts.Contains(p.Blueprint) || (OnlyFromCaster && p.MaybeContext?.MaybeCaster != EvalContext.Current.GetEntityByType(Caster)))
 			{
 				return 0;
 			}

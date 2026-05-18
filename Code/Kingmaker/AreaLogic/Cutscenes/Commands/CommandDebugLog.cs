@@ -9,13 +9,25 @@ public class CommandDebugLog : CommandBase
 {
 	public string Text;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		PFLog.Default.Log("Command: " + Text);
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -23,7 +35,8 @@ public class CommandDebugLog : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

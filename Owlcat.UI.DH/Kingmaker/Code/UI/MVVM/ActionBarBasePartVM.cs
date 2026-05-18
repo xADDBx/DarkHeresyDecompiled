@@ -24,7 +24,7 @@ public abstract class ActionBarBasePartVM : ViewModel
 		if (unit != null)
 		{
 			OnUnitChanged();
-			m_UnitChanged.Execute();
+			m_UnitChanged.Execute(R3.Unit.Default);
 		}
 		else
 		{

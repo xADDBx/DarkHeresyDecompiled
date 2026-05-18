@@ -21,9 +21,5 @@ public class OwnerJoinTBCombatTrigger : MechanicEntityFactComponentDelegate, IEn
 
 	public void HandleEntityJoinTBCombat()
 	{
-		if (Restriction.IsPassed(base.Context))
-		{
-			base.Fact.RunActionInContext(Action);
-		}
 	}
 }

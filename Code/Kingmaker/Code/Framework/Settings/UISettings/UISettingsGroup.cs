@@ -17,7 +17,7 @@ public class UISettingsGroup : ScriptableObject
 
 	public bool IsVisible => SettingVisible(SettingPlatform);
 
-	public List<UISettingsEntityBase> VisibleSettingsList => SettingsList.Where((UISettingsEntityBase s) => SettingVisible(s.SettingsPlatform)).ToList();
+	public List<UISettingsEntityBase> VisibleSettingsList => SettingsList.Where((UISettingsEntityBase s) => s != null && SettingVisible(s.SettingsPlatform)).ToList();
 
 	private bool SettingVisible(UISettingsEntityBase.UISettingsPlatform platform)
 	{

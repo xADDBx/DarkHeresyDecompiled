@@ -37,20 +37,19 @@ public class SpawnBySummonPool : GameAction
 		List<(AbstractUnitEntity, SceneEntitiesState)> value;
 		using (CollectionPool<List<(AbstractUnitEntity, SceneEntitiesState)>, (AbstractUnitEntity, SceneEntitiesState)>.Get(out value))
 		{
-			foreach (UnitSpawnerBase.MyData temp in EntityService.Instance.GetTempList<UnitSpawnerBase.MyData>())
+			foreach (AbstractUnitSpawnerEntity temp in EntityService.Instance.GetTempList<AbstractUnitSpawnerEntity>())
 			{
-				UnitSpawner unitSpawner = temp.View as UnitSpawner;
-				if (unitSpawner == null)
+				if (temp == null)
 				{
 					continue;
 				}
 				SpawnerSummonPoolSettings.Part optional = temp.GetOptional<SpawnerSummonPoolSettings.Part>();
 				if (optional != null && optional.Source.Pools.HasReference(m_Pool.Get()))
 				{
-					AbstractUnitEntity abstractUnitEntity = unitSpawner.Spawn();
+					AbstractUnitEntity abstractUnitEntity = temp.Spawn();
 					if (abstractUnitEntity != null)
 					{
-						value.Add((abstractUnitEntity, unitSpawner.Data.HoldingState));
+						value.Add((abstractUnitEntity, temp.HoldingState));
 					}
 				}
 			}

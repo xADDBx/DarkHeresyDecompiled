@@ -45,30 +45,32 @@ public class HandEquipmentHelper : CustomYieldInstruction, IDisposable
 
 	public static HandEquipmentHelper StartEquipTwoHanded(UnitAnimationManager manager, UnitEquipmentAnimationSlotType slot, WeaponAnimationStyle style, Action callback)
 	{
-		return new HandEquipmentHelper(manager, equip: true, style, slot, UnitEquipmentAnimationSlotType.None, callback);
+		return new HandEquipmentHelper(manager, equip: true, style, slot, callback);
 	}
 
-	public static HandEquipmentHelper StartEquipDualWielding(UnitAnimationManager manager, UnitEquipmentAnimationSlotType mainSlot, UnitEquipmentAnimationSlotType offSlot, WeaponAnimationStyle style, Action callback)
+	public static HandEquipmentHelper StartEquipDualWielding(UnitAnimationManager manager, UnitEquipmentAnimationSlotType mainSlot, WeaponAnimationStyle style, Action callback)
 	{
-		return new HandEquipmentHelper(manager, equip: true, style, mainSlot, offSlot, callback);
+		return new HandEquipmentHelper(manager, equip: true, style, mainSlot, callback);
 	}
 
 	public static HandEquipmentHelper StartUnequipTwoHanded(UnitAnimationManager manager, UnitEquipmentAnimationSlotType mainSlot, WeaponAnimationStyle style, Action callback)
 	{
-		return new HandEquipmentHelper(manager, equip: false, style, mainSlot, UnitEquipmentAnimationSlotType.None, callback);
+		return new HandEquipmentHelper(manager, equip: false, style, mainSlot, callback);
 	}
 
-	public static HandEquipmentHelper StartUnequipDualWielding(UnitAnimationManager manager, UnitEquipmentAnimationSlotType mainSlot, UnitEquipmentAnimationSlotType offSlot, WeaponAnimationStyle style, Action callback)
+	public static HandEquipmentHelper StartUnequipDualWielding(UnitAnimationManager manager, UnitEquipmentAnimationSlotType mainSlot, WeaponAnimationStyle style, Action callback)
 	{
-		return new HandEquipmentHelper(manager, equip: false, style, mainSlot, offSlot, callback);
+		return new HandEquipmentHelper(manager, equip: false, style, mainSlot, callback);
 	}
 
-	private HandEquipmentHelper(UnitAnimationManager manager, bool equip, WeaponAnimationStyle style, UnitEquipmentAnimationSlotType mainSlot, UnitEquipmentAnimationSlotType offSlot, Action callback)
+	private HandEquipmentHelper(UnitAnimationManager manager, bool equip, WeaponAnimationStyle style, UnitEquipmentAnimationSlotType mainSlot, Action callback)
 	{
-		m_MainHandHandle = manager.CreateHandle(equip ? UnitAnimationType.Equip : UnitAnimationType.Unequip);
-		m_MainHandHandle.EquipmentSlot = mainSlot;
-		m_MainHandHandle.EquipActionWeaponStyle = style;
-		manager.Execute(m_MainHandHandle);
+		manager.TryExecute(equip ? UnitAnimationType.Equip : UnitAnimationType.Unequip, delegate(UnitAnimationActionHandle h)
+		{
+			h.EquipmentSlot = mainSlot;
+			h.EquipActionWeaponStyle = style;
+		}, out var handle);
+		m_MainHandHandle = handle;
 		m_Callback = callback;
 	}
 

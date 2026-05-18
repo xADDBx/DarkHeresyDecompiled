@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Evaluators;
 
-[ComponentName("Evaluators/LocatorPosition")]
+[ComponentName("Evaluators/Position Towards Position")]
 [AllowMultipleComponents]
 [TypeId("243d10d8d36f4abfb4acfedcfb820a44")]
 public class PositionTowardsPosition : PositionEvaluator

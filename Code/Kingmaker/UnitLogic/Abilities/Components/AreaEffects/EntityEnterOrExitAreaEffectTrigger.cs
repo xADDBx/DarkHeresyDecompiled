@@ -5,14 +5,13 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Components;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
-using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
@@ -67,7 +66,7 @@ public sealed class EntityEnterOrExitAreaEffectTrigger : MechanicEntityFactCompo
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(entity))
+		using (EvalContext.Current.PushTarget(entity))
 		{
 			OnUnitEnter.Run();
 			OnUnitEnterOrExit.Run();
@@ -81,7 +80,7 @@ public sealed class EntityEnterOrExitAreaEffectTrigger : MechanicEntityFactCompo
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(entity))
+		using (EvalContext.Current.PushTarget(entity))
 		{
 			OnUnitExit.Run();
 			OnUnitEnterOrExit.Run();

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.View;
 using UnityEngine;
@@ -29,4 +30,8 @@ public interface ISelectionManager
 	void Stop();
 
 	void Hold();
+
+	void MultiSelect(IEnumerable<IUnitEntityView> views, bool canAddToSelection = true);
+
+	void SelectUnit(IUnitEntityView unit, bool single = true, bool sendSelectionEvent = true, bool ask = true);
 }

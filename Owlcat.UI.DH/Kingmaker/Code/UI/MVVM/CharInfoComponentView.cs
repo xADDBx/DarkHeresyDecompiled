@@ -1,5 +1,6 @@
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.Sound;
+using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
@@ -10,8 +11,12 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public abstract class CharInfoComponentView<TViewModel> : View<TViewModel>, ICharInfoComponentView where TViewModel : CharInfoComponentVM
 {
+	[ShowIf("m_HasAnimation")]
 	[SerializeField]
 	protected FadeAnimator m_FadeAnimator;
+
+	[SerializeField]
+	private bool m_HasAnimation = true;
 
 	public bool IsBinded => base.ViewModel != null;
 
@@ -24,14 +29,10 @@ public abstract class CharInfoComponentView<TViewModel> : View<TViewModel>, ICha
 	protected override void OnBind()
 	{
 		Show();
-		base.ViewModel.Unit?.Subscribe(delegate
+		base.ViewModel.Unit.Subscribe(delegate
 		{
 			RefreshView();
 		}).AddTo(this);
-		if (base.ViewModel.Unit == null)
-		{
-			RefreshView();
-		}
 	}
 
 	protected override void OnUnbind()
@@ -57,7 +58,7 @@ public abstract class CharInfoComponentView<TViewModel> : View<TViewModel>, ICha
 	{
 		OnShow();
 		base.gameObject.SetActive(value: true);
-		if ((bool)m_FadeAnimator)
+		if ((bool)m_FadeAnimator && m_HasAnimation)
 		{
 			m_FadeAnimator.AppearAnimation();
 		}
@@ -65,12 +66,12 @@ public abstract class CharInfoComponentView<TViewModel> : View<TViewModel>, ICha
 
 	public void ShowLeftCanvasSound()
 	{
-		UISounds.Instance.Sounds.Character.CharacterStatsShow.Play();
+		ServiceWindowsSounds.Instance.Character.StatsShow.Play();
 	}
 
 	public void ShowRightCanvasSound()
 	{
-		UISounds.Instance.Sounds.Character.CharacterInfoShow.Play();
+		ServiceWindowsSounds.Instance.Character.InfoShow.Play();
 	}
 
 	protected virtual void OnShow()
@@ -80,7 +81,7 @@ public abstract class CharInfoComponentView<TViewModel> : View<TViewModel>, ICha
 	public void Hide(UnityAction onHideCallback = null)
 	{
 		OnHide();
-		if ((bool)m_FadeAnimator)
+		if ((bool)m_FadeAnimator && m_HasAnimation)
 		{
 			m_FadeAnimator.DisappearAnimation(delegate
 			{

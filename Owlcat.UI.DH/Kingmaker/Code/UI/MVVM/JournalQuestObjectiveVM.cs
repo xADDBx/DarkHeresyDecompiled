@@ -95,10 +95,10 @@ public class JournalQuestObjectiveVM : ViewModel
 				select mapPoint.Name);
 		}
 		IOrderedEnumerable<QuestObjective> orderedEnumerable = (from b in objective?.Blueprint?.Addendums?.Where((BlueprintQuestObjective b) => b != null)
-			select objective?.Quest?.TryGetObjective(b) into a
+			select objective.Quest?.TryGetObjective(b) into a
 			where a != null
 			where a.IsVisible
-			orderby a?.Order descending
+			orderby a.Order descending
 			select a);
 		Addendums = new List<JournalQuestObjectiveAddendumVM>();
 		if (orderedEnumerable != null)
@@ -123,7 +123,7 @@ public class JournalQuestObjectiveVM : ViewModel
 		IsCompleted = objective2 != null && objective2.State == QuestObjectiveState.Completed;
 		QuestObjective objective3 = Objective;
 		IsPostponed = objective3 != null && objective3.State == QuestObjectiveState.Postponed;
-		UpdateStatus?.Execute();
+		UpdateStatus?.Execute(Unit.Default);
 		Addendums.ForEach(delegate(JournalQuestObjectiveAddendumVM a)
 		{
 			a.UpdateState();

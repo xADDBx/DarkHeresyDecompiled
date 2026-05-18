@@ -58,7 +58,7 @@ public class RulebookSubscriptionManager<TSubscriber> : IAstarPooledObject where
 			}
 			value.AddSubscriber(subscriber2);
 		}
-		if (RulebookEventBus.DebugSubscriptions && !DebugStore.ContainsKey(subscriber.GetHashCode()))
+		if (EventBus.DebugSubscriptions && !DebugStore.ContainsKey(subscriber.GetHashCode()))
 		{
 			DebugStore.Add(subscriber.GetHashCode(), new DebugEntry(new StackTrace(2), subscriber.ToString(), subscriber.GetType().FullName));
 		}

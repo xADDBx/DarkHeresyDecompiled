@@ -3,6 +3,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Designers;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
@@ -100,6 +101,11 @@ public class DebugDialogPlayer : MonoBehaviour, IAreaActivationHandler, ISubscri
 	[ValidateNotNull]
 	public GameObject Garage;
 
+	public bool StartDialogImmediatelly = true;
+
+	[Header("Validation Parameters")]
+	public bool IsTerminationCheckRequested;
+
 	[NotNull]
 	private readonly Dictionary<BlueprintUnit, BaseUnitEntity> m_Units = new Dictionary<BlueprintUnit, BaseUnitEntity>();
 
@@ -141,7 +147,10 @@ public class DebugDialogPlayer : MonoBehaviour, IAreaActivationHandler, ISubscri
 
 	public void OnAreaActivated()
 	{
-		StartDialog();
+		if (StartDialogImmediatelly)
+		{
+			StartDialog();
+		}
 	}
 
 	public void StartDialog()

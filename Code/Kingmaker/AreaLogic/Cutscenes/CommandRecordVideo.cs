@@ -21,7 +21,7 @@ public class CommandRecordVideo : CommandBase
 
 	private VideoRecorder m_Player;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		m_Player = new GameObject("[Video recorder]").AddComponent<VideoRecorder>();
 		m_Player.Folder = Folder;
@@ -30,10 +30,22 @@ public class CommandRecordVideo : CommandBase
 		m_Player.Height = Height;
 		m_Player.RecordTime = RecordTime;
 		m_Player.StartRecording();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -41,7 +53,8 @@ public class CommandRecordVideo : CommandBase
 		return !m_Player.IsRecording;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

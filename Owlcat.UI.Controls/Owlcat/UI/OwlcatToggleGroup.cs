@@ -10,21 +10,22 @@ namespace Owlcat.UI;
 [DisallowMultipleComponent]
 public class OwlcatToggleGroup : MonoBehaviour
 {
+	public readonly ReactiveProperty<OwlcatToggle> ActiveToggle = new ReactiveProperty<OwlcatToggle>();
+
 	[SerializeField]
 	private bool m_AllowSwitchOff;
 
-	[SerializeField]
-	private OwlcatToggleGroupNavigation m_ConsoleNavigation;
-
-	public readonly ReactiveProperty<OwlcatToggle> ActiveToggle = new ReactiveProperty<OwlcatToggle>();
-
 	private readonly Dictionary<OwlcatToggle, IDisposable> m_Toggles = new Dictionary<OwlcatToggle, IDisposable>();
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
+	public bool AllowSwitchOff => m_AllowSwitchOff;
+
+	public IReadOnlyCollection<OwlcatToggle> Toggles => m_Toggles.Keys;
 
 	private OwlcatToggle FirstActiveToggle => ActiveToggles().FirstOrDefault();
 
-	public bool AllowSwitchOff => m_AllowSwitchOff;
+	public event Action<OwlcatToggle> ToggleRegistered;
+
+	public event Action<OwlcatToggle> ToggleUnregistered;
 
 	private void Start()
 	{
@@ -43,8 +44,6 @@ public class OwlcatToggleGroup : MonoBehaviour
 			value.Dispose();
 		}
 		m_Toggles.Clear();
-		m_NavigationBehaviour?.Clear();
-		m_NavigationBehaviour = null;
 	}
 
 	private void EnsureValidState()
@@ -68,26 +67,6 @@ public class OwlcatToggleGroup : MonoBehaviour
 		UpdateActiveToggle();
 	}
 
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		if (m_NavigationBehaviour != null)
-		{
-			return m_NavigationBehaviour;
-		}
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour();
-		m_NavigationBehaviour.ContextName = "OwlcatToggleGroupNav";
-		switch (m_ConsoleNavigation)
-		{
-		case OwlcatToggleGroupNavigation.Horizontal:
-			m_NavigationBehaviour.SetEntitiesHorizontal(m_Toggles.Keys.OrderBy((OwlcatToggle x) => x.transform.GetSiblingIndex()).ToList());
-			break;
-		case OwlcatToggleGroupNavigation.Vertical:
-			m_NavigationBehaviour.SetEntitiesVertical(m_Toggles.Keys.OrderBy((OwlcatToggle x) => x.transform.GetSiblingIndex()).ToList());
-			break;
-		}
-		return m_NavigationBehaviour;
-	}
-
 	public bool AnyTogglesOn()
 	{
 		return m_Toggles.Keys.Any((OwlcatToggle x) => x.IsOn.CurrentValue);
@@ -106,6 +85,7 @@ public class OwlcatToggleGroup : MonoBehaviour
 			{
 				HandleToggleChanged(toggle);
 			});
+			this.ToggleRegistered?.Invoke(toggle);
 		}
 	}
 
@@ -115,6 +95,7 @@ public class OwlcatToggleGroup : MonoBehaviour
 		{
 			value.Dispose();
 			m_Toggles.Remove(toggle);
+			this.ToggleUnregistered?.Invoke(toggle);
 		}
 	}
 

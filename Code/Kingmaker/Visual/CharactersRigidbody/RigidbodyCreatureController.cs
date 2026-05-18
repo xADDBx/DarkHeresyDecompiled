@@ -196,6 +196,10 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 
 	private TimeSpan m_StartTimeToStop;
 
+	private TimeSpan m_LastSlowCheckTime;
+
+	private bool m_LastSlowCheckResult;
+
 	private readonly List<BoneData> m_BonesData = new List<BoneData>();
 
 	public List<BoneData> RagdollCurrentPositions = new List<BoneData>();
@@ -210,6 +214,12 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 
 	private Vector3 m_DeathPoint;
 
+	private bool m_LootDropped;
+
+	private Collider[] m_CachedColliders;
+
+	private Dictionary<string, int> m_BoneNameToIndex;
+
 	public float minRagdollValue = 1f;
 
 	public float maxRagdollValue = 80f;
@@ -219,6 +229,8 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 	private List<GameObject> m_ActiveRagdollChildrens = new List<GameObject>();
 
 	public List<GameObject> skeletonBones;
+
+	private const float RagdollProjectionAngle = 10f;
 
 	public RagdollState State
 	{
@@ -297,7 +309,20 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 			rigidBone.ResetCenterOfMass();
 			rigidBone.detectCollisions = !enable;
 			rigidBone.isKinematic = enable;
-			rigidBone.collisionDetectionMode = ((!enable) ? CollisionDetectionMode.Continuous : CollisionDetectionMode.ContinuousSpeculative);
+			rigidBone.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+		}
+	}
+
+	private void ApplyJointProjection()
+	{
+		foreach (Rigidbody rigidBone in RigidBones)
+		{
+			CharacterJoint component = rigidBone.GetComponent<CharacterJoint>();
+			if (component != null)
+			{
+				component.enableProjection = true;
+				component.projectionAngle = 10f;
+			}
 		}
 	}
 
@@ -335,13 +360,20 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 				rigidBone.gameObject.layer = 9;
 			}
 			rigidBone.ResetInertiaTensor();
-			rigidBone.solverIterations = 0;
+			rigidBone.solverIterations = 6;
 			rigidBone.maxDepenetrationVelocity = 1f;
-			rigidBone.solverVelocityIterations = 0;
-			rigidBone.maxAngularVelocity = 0f;
+			rigidBone.solverVelocityIterations = 1;
+			rigidBone.maxAngularVelocity = 7f;
 			rigidBone.detectCollisions = false;
 			rigidBone.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 			rigidBone.isKinematic = true;
+		}
+		m_CachedColliders = new Collider[RigidBones.Count];
+		m_BoneNameToIndex = new Dictionary<string, int>(RigidBones.Count);
+		for (int i = 0; i < RigidBones.Count; i++)
+		{
+			m_CachedColliders[i] = RigidBones[i].GetComponent<Collider>();
+			m_BoneNameToIndex[RigidBones[i].name] = i;
 		}
 		SwitchRigidbodiesSleep(enable: false);
 	}
@@ -368,20 +400,21 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 
 	private void SwitchRigidbodiesSleep(bool enable)
 	{
-		foreach (Rigidbody rigidBone in RigidBones)
+		for (int i = 0; i < RigidBones.Count; i++)
 		{
+			Rigidbody rigidbody = RigidBones[i];
 			if (!enable)
 			{
-				rigidBone.Sleep();
+				rigidbody.Sleep();
 			}
 			else
 			{
-				rigidBone.WakeUp();
+				rigidbody.WakeUp();
 			}
-			Collider component = rigidBone.GetComponent<Collider>();
-			if ((bool)component)
+			Collider collider = ((m_CachedColliders != null && i < m_CachedColliders.Length) ? m_CachedColliders[i] : rigidbody.GetComponent<Collider>());
+			if ((bool)collider)
 			{
-				component.enabled = enable;
+				collider.enabled = enable;
 			}
 		}
 	}
@@ -409,17 +442,36 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 		if ((bool)RootBone && RigidBones.Count > 0 && State != RagdollState.Falling)
 		{
 			InitBakedCharactersBonesPosition();
+			SaveBonesPosition(m_BonesData);
 			State = RagdollState.Falling;
 			m_DeathPoint = base.transform.position;
-			SaveBonesPosition(m_BonesData);
+			ApplySavedBonePositions();
 			SwitchRigidbodies(enable: true);
 			SwitchKinematic(enable: false);
+			ApplyJointProjection();
 			SwitchRigidbodiesSleep(enable: true);
 			m_StartTime = Game.Instance.Controllers.TimeController.GameTime;
 			base.gameObject.GetComponent<HumanoidRagdollManager>()?.Enabled(flag: true);
 			if (m_LastImpulse != null && Game.Instance.Controllers.TimeController.GameTime - m_LastImpulse.Time < 0.2f.Seconds())
 			{
 				ApplyImpulseDirectly(m_LastImpulse.Direction, m_LastImpulse.MagnitudeModifier);
+			}
+		}
+	}
+
+	private void ApplySavedBonePositions()
+	{
+		if (m_BonesData.Count == 0 || m_BoneNameToIndex == null)
+		{
+			return;
+		}
+		foreach (BoneData bonesDatum in m_BonesData)
+		{
+			if (m_BoneNameToIndex.TryGetValue(bonesDatum.Name, out var value))
+			{
+				Rigidbody rigidbody = RigidBones[value];
+				rigidbody.transform.position = bonesDatum.Positions;
+				rigidbody.transform.rotation = bonesDatum.Rotations;
 			}
 		}
 	}
@@ -451,9 +503,6 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 		{
 			num4 = -1;
 		}
-		float multiplyVectorYAxis;
-		float impulseValueMultiplierToChildren;
-		float impulseValueMultiplierToParents;
 		if (ApplyImpulseToAllBones)
 		{
 			foreach (BoneImpulseMultiplier boneImpulseMultiplier in BoneImpulseMultipliers)
@@ -465,53 +514,72 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 				num2 = (BaseImpulseValue + PFStatefulRandom.Visuals.Rigidbody.Range(AdditionalImpulseMin, AdditionalImpulseMax)) * (float)num4 * (1f + additionalMagnitude) * num * num3;
 				num2 = Mathf.Clamp(num2, minRagdollValue, maxRagdollValue);
 				Vector3 impulseDirection = num2 * direction;
-				impulseValueMultiplierToParents = ImpulseValueMultiplierToParents;
-				impulseValueMultiplierToChildren = ImpulseValueMultiplierToChildren;
-				multiplyVectorYAxis = MultiplyVectorYAxis;
+				float impulseValueMultiplierToParents = ImpulseValueMultiplierToParents;
+				float impulseValueMultiplierToChildren = ImpulseValueMultiplierToChildren;
+				float multiplyVectorYAxis = MultiplyVectorYAxis;
 				ApplyImpulseToRagdoll(bone, impulseDirection, default(Vector3), zeroVerticalVector: false, default(Vector3), impulseValueMultiplierToParents, impulseValueMultiplierToChildren, multiplyVectorYAxis);
 			}
+		}
+		else
+		{
+			int num5 = PFStatefulRandom.Visuals.Rigidbody.Range(0, BoneImpulseMultipliers.Count);
+			Rigidbody bone2 = BoneImpulseMultipliers[num5].bone;
+			num = ((num5 < BoneImpulseMultipliers.Count) ? BoneImpulseMultipliers[num5].multiplier : 1f);
+			AbstractUnitEntity entityData2 = EntityView.EntityData;
+			num3 = ((entityData2 != null && entityData2.IsProne) ? InProneMultiplier : 1f);
+			num2 = (BaseImpulseValue + PFStatefulRandom.Visuals.Rigidbody.Range(AdditionalImpulseMin, AdditionalImpulseMax)) * (float)num4 * (1f + additionalMagnitude) * num * num3;
+			num2 = Mathf.Clamp(num2, minRagdollValue, maxRagdollValue);
+			Vector3 impulseDirection2 = num2 * direction;
+			float multiplyVectorYAxis = ImpulseValueMultiplierToParents;
+			float impulseValueMultiplierToChildren = ImpulseValueMultiplierToChildren;
+			float impulseValueMultiplierToParents = MultiplyVectorYAxis;
+			ApplyImpulseToRagdoll(bone2, impulseDirection2, default(Vector3), zeroVerticalVector: false, default(Vector3), multiplyVectorYAxis, impulseValueMultiplierToChildren, impulseValueMultiplierToParents);
+		}
+		ApplyWeaponImpulse(direction, additionalMagnitude, num4);
+	}
+
+	private void ApplyWeaponImpulse(Vector3 direction, float additionalMagnitude, int negativeCoefficient)
+	{
+		if (WeaponBoneImpulseMultipliers == null || WeaponBoneImpulseMultipliers.Count == 0)
+		{
 			return;
 		}
-		int num5 = PFStatefulRandom.Visuals.Rigidbody.Range(0, BoneImpulseMultipliers.Count);
-		Rigidbody bone2 = BoneImpulseMultipliers[num5].bone;
-		num = ((num5 < BoneImpulseMultipliers.Count) ? BoneImpulseMultipliers[num5].multiplier : 1f);
-		AbstractUnitEntity entityData2 = EntityView.EntityData;
-		num3 = ((entityData2 != null && entityData2.IsProne) ? InProneMultiplier : 1f);
-		num2 = (BaseImpulseValue + PFStatefulRandom.Visuals.Rigidbody.Range(AdditionalImpulseMin, AdditionalImpulseMax)) * (float)num4 * (1f + additionalMagnitude) * num * num3;
-		num2 = Mathf.Clamp(num2, minRagdollValue, maxRagdollValue);
-		Vector3 impulseDirection2 = num2 * direction;
-		multiplyVectorYAxis = ImpulseValueMultiplierToParents;
-		impulseValueMultiplierToChildren = ImpulseValueMultiplierToChildren;
-		impulseValueMultiplierToParents = MultiplyVectorYAxis;
-		ApplyImpulseToRagdoll(bone2, impulseDirection2, default(Vector3), zeroVerticalVector: false, default(Vector3), multiplyVectorYAxis, impulseValueMultiplierToChildren, impulseValueMultiplierToParents);
+		foreach (BoneImpulseMultiplier weaponBoneImpulseMultiplier in WeaponBoneImpulseMultipliers)
+		{
+			if (!(weaponBoneImpulseMultiplier.bone == null))
+			{
+				float num = ((weaponBoneImpulseMultiplier.multiplier != 0f) ? weaponBoneImpulseMultiplier.multiplier : 1f);
+				float value = BaseImpulseValue * (float)negativeCoefficient * (1f + additionalMagnitude) * num;
+				value = Mathf.Clamp(value, minRagdollValue, maxRagdollValue);
+				Vector3 vector = direction + Vector3.down * 0.5f;
+				weaponBoneImpulseMultiplier.bone.AddForce(vector.normalized * value, ForceMode.Impulse);
+				Vector3 torque = new Vector3(PFStatefulRandom.Visuals.Rigidbody.Range(-1f, 1f), PFStatefulRandom.Visuals.Rigidbody.Range(-0.5f, 0.5f), PFStatefulRandom.Visuals.Rigidbody.Range(-1f, 1f)) * value * 0.3f;
+				weaponBoneImpulseMultiplier.bone.AddTorque(torque, ForceMode.Impulse);
+			}
+		}
 	}
 
 	private void DisableAnimationComponents()
 	{
-		UnityEngine.Debug.Log("DisableAnimationComponents: Отключаем компоненты анимации");
 		AnimancerComponent component = GetComponent<AnimancerComponent>();
 		if (component != null)
 		{
-			UnityEngine.Debug.Log("Отключаем AnimancerComponent");
 			component.enabled = false;
 		}
 		Animator component2 = GetComponent<Animator>();
 		if (component2 != null)
 		{
-			UnityEngine.Debug.Log("Отключаем Animator");
 			component2.enabled = false;
 		}
 		UnitAnimationManager component3 = GetComponent<UnitAnimationManager>();
 		if (component3 != null)
 		{
-			UnityEngine.Debug.Log("Отключаем UnitAnimationManager");
 			component3.Disabled = true;
 		}
 	}
 
 	private void EnableAnimationComponents()
 	{
-		UnityEngine.Debug.Log("EnableAnimationComponents: Включаем компоненты анимации");
 		UnitAnimationManager component = GetComponent<UnitAnimationManager>();
 		if (component != null)
 		{
@@ -586,18 +654,15 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 		}
 		foreach (BoneData ragdollCurrentPosition in RagdollCurrentPositions)
 		{
-			foreach (Rigidbody rigidBone in RigidBones)
+			if (m_BoneNameToIndex != null && m_BoneNameToIndex.TryGetValue(ragdollCurrentPosition.Name, out var value))
 			{
-				if (ragdollCurrentPosition.Name == rigidBone.name)
-				{
-					Transform obj = rigidBone.transform;
-					Quaternion rotation = (rigidBone.rotation = ragdollCurrentPosition.Rotations);
-					obj.rotation = rotation;
-					Transform obj2 = rigidBone.transform;
-					Vector3 position = (rigidBone.position = ragdollCurrentPosition.Positions);
-					obj2.position = position;
-					break;
-				}
+				Rigidbody rigidbody = RigidBones[value];
+				Transform obj = rigidbody.transform;
+				Quaternion rotation = (rigidbody.rotation = ragdollCurrentPosition.Rotations);
+				obj.rotation = rotation;
+				Transform obj2 = rigidbody.transform;
+				Vector3 position = (rigidbody.position = ragdollCurrentPosition.Positions);
+				obj2.position = position;
 			}
 		}
 		GetComponent<HumanoidRagdollManager>().Or(null)?.CopyPoseFromRagdoll();
@@ -689,56 +754,47 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 			Logger.Error(this, "{0} EntityView link is empty. Abort!", this);
 			return;
 		}
-		if (State == RagdollState.Standing && ReturnBonesToAnimatePosition())
-		{
-			State = RagdollState.Off;
-		}
 		if (Game.Instance.Controllers.TimeController.GameTime > m_StartTime + RagdollTime.Seconds())
 		{
 			MaybeSpawnLootAtDeathPoint();
 			StopRagdoll();
 		}
-		if (CheckForEarlyStopRagdoll)
+		if (!CheckForEarlyStopRagdoll)
 		{
-			bool num = CheckRagdollIsSlow();
+			return;
+		}
+		TimeSpan gameTime = Game.Instance.Controllers.TimeController.GameTime;
+		if (gameTime > m_LastSlowCheckTime + 0.15f.Seconds())
+		{
+			m_LastSlowCheckResult = CheckRagdollIsSlow();
 			m_PreviousRootPosition = RootBone.transform.position;
-			if (num)
+			m_LastSlowCheckTime = gameTime;
+		}
+		if (m_LastSlowCheckResult)
+		{
+			if (gameTime > m_StartTimeToStop + MinTimeToStop.Seconds())
 			{
-				if (Game.Instance.Controllers.TimeController.GameTime > m_StartTimeToStop + MinTimeToStop.Seconds())
-				{
-					MaybeSpawnLootAtDeathPoint();
-					StopRagdoll();
-				}
-			}
-			else
-			{
-				m_StartTimeToStop = Game.Instance.Controllers.TimeController.GameTime;
+				MaybeSpawnLootAtDeathPoint();
+				StopRagdoll();
 			}
 		}
-		if (State == RagdollState.Lying)
+		else
 		{
-			MaybeSpawnLootAtDeathPoint();
+			m_StartTimeToStop = gameTime;
 		}
 	}
 
 	private void MaybeSpawnLootAtDeathPoint()
 	{
-		if (EntityView == null || EntityView.EntityData == null || !EntityView.EntityData.IsDeadAndHasLoot || m_DeathPoint == Vector3.zero)
+		if (!m_LootDropped && !(EntityView == null) && EntityView.EntityData != null && EntityView.EntityData.IsDeadAndHasLoot && !(m_DeathPoint == Vector3.zero))
 		{
-			return;
-		}
-		float num = float.MaxValue;
-		foreach (Rigidbody rigidBone in RigidBones)
-		{
-			float sqrMagnitude = (rigidBone.transform.position - m_DeathPoint).sqrMagnitude;
-			if (num > sqrMagnitude)
+			float sqrMagnitude = (RootBone.transform.position - m_DeathPoint).sqrMagnitude;
+			float ragdollDistanceForLootBag = ConfigRoot.Instance.HitSystemRoot.RagdollDistanceForLootBag;
+			if (sqrMagnitude > ragdollDistanceForLootBag * ragdollDistanceForLootBag)
 			{
-				num = sqrMagnitude;
+				EntityView.EntityData.GetOptional<PartInventory>()?.DropLootToGround(dismember: false, m_DeathPoint, dropAttached: true);
+				m_LootDropped = true;
 			}
-		}
-		if (num > ConfigRoot.Instance.HitSystemRoot.RagdollDistanceForLootBag * ConfigRoot.Instance.HitSystemRoot.RagdollDistanceForLootBag)
-		{
-			EntityView.EntityData.GetOptional<PartInventory>()?.DropLootToGround(dismember: false, m_DeathPoint, dropAttached: true);
 		}
 	}
 
@@ -769,18 +825,23 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 		}
 		if (m_ActiveRagdoll != null)
 		{
-			foreach (GameObject item in m_ActiveRagdollChildrens)
+			Dictionary<string, GameObject> dictionary = new Dictionary<string, GameObject>(skeletonBones.Count);
+			foreach (GameObject skeletonBone in skeletonBones)
 			{
-				item.SetActive(value: true);
-				GameObject gameObject = skeletonBones.FirstOrDefault((GameObject x) => x.name == item.name);
-				if (gameObject != null)
-				{
-					Transform transform = gameObject.transform;
-					item.transform.position = transform.position;
-					item.transform.rotation = transform.rotation;
-				}
+				dictionary[skeletonBone.name] = skeletonBone;
 			}
-			return;
+			{
+				foreach (GameObject activeRagdollChildren in m_ActiveRagdollChildrens)
+				{
+					activeRagdollChildren.SetActive(value: true);
+					if (dictionary.TryGetValue(activeRagdollChildren.name, out var value))
+					{
+						activeRagdollChildren.transform.position = value.transform.position;
+						activeRagdollChildren.transform.rotation = value.transform.rotation;
+					}
+				}
+				return;
+			}
 		}
 		if (RigidBones.Count <= 0)
 		{
@@ -791,15 +852,23 @@ public class RigidbodyCreatureController : MonoBehaviour, Kingmaker.Controllers.
 			m_ActiveRagdollChildrens.Add(rigidBone.gameObject);
 		}
 		SkinnedMeshRenderer componentInChildren = EntityView.GetComponentInChildren<SkinnedMeshRenderer>();
-		foreach (GameObject item in m_ActiveRagdollChildrens)
+		if (!(componentInChildren != null) || componentInChildren.bones.Length == 0)
 		{
-			Transform transform2 = componentInChildren.bones.FirstOrDefault((Transform x) => x.name == item.name);
-			item.SetActive(value: true);
-			if (transform2 != null)
+			return;
+		}
+		Dictionary<string, Transform> dictionary2 = new Dictionary<string, Transform>(componentInChildren.bones.Length);
+		Transform[] bones = componentInChildren.bones;
+		foreach (Transform transform in bones)
+		{
+			dictionary2[transform.name] = transform;
+		}
+		foreach (GameObject activeRagdollChildren2 in m_ActiveRagdollChildrens)
+		{
+			activeRagdollChildren2.SetActive(value: true);
+			if (dictionary2.TryGetValue(activeRagdollChildren2.name, out var value2) && value2.gameObject != activeRagdollChildren2)
 			{
-				Transform transform3 = transform2.transform;
-				item.transform.position = transform3.position;
-				item.transform.rotation = transform3.rotation;
+				activeRagdollChildren2.transform.position = value2.position;
+				activeRagdollChildren2.transform.rotation = value2.rotation;
 			}
 		}
 	}

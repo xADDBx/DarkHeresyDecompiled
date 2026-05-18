@@ -1,5 +1,4 @@
 using System.Linq;
-using Kingmaker.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Localization;
 using Kingmaker.Localization.Shared;
@@ -15,7 +14,7 @@ public class BarkPlayableAsset : PlayableAsset, ITimelineClipAsset
 {
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
 	[ValidateNotNull]
-	public SharedStringAsset Bark;
+	public LocalizedString Bark;
 
 	public bool AutoDuration;
 
@@ -47,11 +46,11 @@ public class BarkPlayableAsset : PlayableAsset, ITimelineClipAsset
 		}
 		else
 		{
-			LocalizedString localizedString = Bark?.String;
-			num = UtilityBark.GetBarkDuration((localizedString != null) ? ((string)localizedString) : "");
+			LocalizedString bark = Bark;
+			num = UtilityBark.GetBarkDuration((bark != null) ? ((string)bark) : "");
 		}
 		behaviour.Duration = num;
-		PFLog.Default.Log($"Playablebark: {scriptPlayable.GetBehaviour().Owner} says {scriptPlayable.GetBehaviour().SharedText.NameSafe()}");
+		PFLog.Default.Log($"Playablebark: {scriptPlayable.GetBehaviour().Owner} says {scriptPlayable.GetBehaviour().SharedText?.Text}");
 		return scriptPlayable;
 	}
 }

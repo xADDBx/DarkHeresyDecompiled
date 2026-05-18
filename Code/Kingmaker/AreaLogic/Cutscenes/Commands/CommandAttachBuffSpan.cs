@@ -28,25 +28,37 @@ public class CommandAttachBuffSpan : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
+		if (!Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Unit not found");
+		}
 		Data commandData = player.GetCommandData<Data>(this);
-		commandData.Unit = Unit.GetValue();
-		commandData.Buff = commandData.Unit?.Buffs.Add(Buff.Get(), commandData.Unit);
+		commandData.Unit = value;
+		commandData.Buff = value.Buffs.Add(Buff.Get(), commandData.Unit);
 		commandData.Buff?.AddSource(player);
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.Buff != null)
 		{
 			commandData.Unit?.Buffs.Remove(commandData.Buff);
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -54,8 +66,9 @@ public class CommandAttachBuffSpan : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

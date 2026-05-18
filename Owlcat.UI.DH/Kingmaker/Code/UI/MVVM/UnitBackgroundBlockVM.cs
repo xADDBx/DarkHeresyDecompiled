@@ -83,10 +83,10 @@ public class UnitBackgroundBlockVM : CharInfoComponentVM
 			m_Occupation.Value = GetCharGenSelectionFeature(unit, FeatureGroup.ChargenOccupation);
 			m_MomentOfTriumph.Value = (flag ? null : GetCharGenSelectionFeature(unit, FeatureGroup.ChargenMomentOfTriumph));
 			m_DarkestHour.Value = (flag ? null : GetCharGenSelectionFeature(unit, FeatureGroup.ChargenDarkestHour));
-			m_HomeworldTooltip.Value = new TooltipTemplateChargenBackground(Homeworld.CurrentValue, isInfoWindow: false);
-			m_OccupationTooltip.Value = new TooltipTemplateChargenBackground(Occupation.CurrentValue, isInfoWindow: false);
-			m_MomentOfTriumphTooltip.Value = new TooltipTemplateChargenBackground(MomentOfTriumph.CurrentValue, isInfoWindow: false);
-			m_DarkestHourTooltip.Value = new TooltipTemplateChargenBackground(DarkestHour.CurrentValue, isInfoWindow: false);
+			m_HomeworldTooltip.Value = new TooltipTemplateChargenBackground(Homeworld.CurrentValue, _: false);
+			m_OccupationTooltip.Value = new TooltipTemplateChargenBackground(Occupation.CurrentValue, _: false);
+			m_MomentOfTriumphTooltip.Value = new TooltipTemplateChargenBackground(MomentOfTriumph.CurrentValue, _: false);
+			m_DarkestHourTooltip.Value = new TooltipTemplateChargenBackground(DarkestHour.CurrentValue, _: false);
 		}
 	}
 

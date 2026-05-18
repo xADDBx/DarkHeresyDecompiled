@@ -76,12 +76,11 @@ public class DollData : IHashable, IOwlPackable, IOwlPackable<DollData>
 	[NotNull]
 	public UnitEntityView CreateUnitView(bool savedEquipment = false)
 	{
-		BlueprintCharGenRoot charGenRoot = ConfigRoot.Instance.CharGenRoot;
-		Character character = ((Gender == Gender.Male) ? charGenRoot.MaleDoll : charGenRoot.FemaleDoll);
-		UnitEntityView component = character.GetComponent<UnitEntityView>();
+		Character doll = ConfigRoot.Instance.CharGenRoot.GetDollConfig(Gender).Doll;
+		UnitEntityView component = doll.GetComponent<UnitEntityView>();
 		if (component == null)
 		{
-			throw new Exception($"Could not create unit view by doll data: invalid prefab {character}");
+			throw new Exception($"Could not create unit view by doll data: invalid prefab {doll}");
 		}
 		UnitEntityView unitEntityView = UnityEngine.Object.Instantiate(component);
 		Character component2 = unitEntityView.GetComponent<Character>();

@@ -1,4 +1,5 @@
 using System;
+using R3;
 
 namespace Owlcat.UI.Commands;
 
@@ -19,12 +20,20 @@ public static class CommandExtensions
 		return view.AddCommand(new Command(binding, action)
 		{
 			Phase = phase
-		});
+		}, null);
 	}
 
-	public static CommandHandle AddCommand(this IBindable view, Command command)
+	public static CommandHandle AddCommand(this IBindable view, string binding, Action action, CommandPhase phase, Observable<bool> enabled)
 	{
-		return new CommandHandle(command, view);
+		return view.AddCommand(new Command(binding, action)
+		{
+			Phase = phase
+		}, enabled);
+	}
+
+	public static CommandHandle AddCommand(this IBindable view, Command command, Observable<bool> enabled)
+	{
+		return new CommandHandle(command, view, enabled);
 	}
 
 	public static IDisposable SubscribeToHint(this CommandHandle command, CommandHint hint)

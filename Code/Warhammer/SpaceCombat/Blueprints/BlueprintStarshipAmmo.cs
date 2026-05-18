@@ -44,6 +44,10 @@ public class BlueprintStarshipAmmo : BlueprintItemEquipment
 		{
 			throw new NotImplementedException();
 		}
+		set
+		{
+			throw new NotImplementedException();
+		}
 	}
 
 	public BlueprintProjectile ShotProjectile => m_ShotProjectile?.Get();

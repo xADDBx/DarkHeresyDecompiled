@@ -21,12 +21,12 @@ public class LocatorReference : LocatorEvaluator
 		{
 			return null;
 		}
-		IEntityViewBase entityViewBase = Locator.FindView();
-		if (entityViewBase == null)
+		IEntityView entityView = Locator.FindView();
+		if (entityView == null)
 		{
 			return null;
 		}
-		return entityViewBase.Data as LocatorEntity;
+		return entityView.Data as LocatorEntity;
 	}
 
 	public override string GetCaption()

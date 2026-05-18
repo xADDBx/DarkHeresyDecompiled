@@ -12,6 +12,12 @@ public sealed class CombatHudSurfaceRendererAsset : ScriptableObject
 
 	public FillSettings fillSettings = FillSettings.Default;
 
+	public CombatHudCommand[] globalCommands = Array.Empty<CombatHudCommand>();
+
+	public CombatHudCommand[] AdditionalInfoMode = Array.Empty<CombatHudCommand>();
+
+	public CombatHudCommand[] pointCharacterInfoCommands = Array.Empty<CombatHudCommand>();
+
 	public CombatHudCommand[] deploymentCommands = Array.Empty<CombatHudCommand>();
 
 	public CombatHudCommand[] movementCommands = Array.Empty<CombatHudCommand>();
@@ -31,35 +37,50 @@ public sealed class CombatHudSurfaceRendererAsset : ScriptableObject
 	[UsedImplicitly]
 	private void OnValidate()
 	{
-		CombatHudCommand[] array = movementCommands;
+		CombatHudCommand[] array = globalCommands;
 		foreach (CombatHudCommand combatHudCommand in array)
 		{
 			combatHudCommand.OnValidate();
 		}
-		array = abilityRangeCommands;
+		array = AdditionalInfoMode;
 		foreach (CombatHudCommand combatHudCommand2 in array)
 		{
 			combatHudCommand2.OnValidate();
 		}
-		array = abilityPatternRangeCommands;
+		array = pointCharacterInfoCommands;
 		foreach (CombatHudCommand combatHudCommand3 in array)
 		{
 			combatHudCommand3.OnValidate();
 		}
-		array = abilityPatternCommands;
+		array = movementCommands;
 		foreach (CombatHudCommand combatHudCommand4 in array)
 		{
 			combatHudCommand4.OnValidate();
 		}
-		array = allyDebugCommands;
+		array = abilityRangeCommands;
 		foreach (CombatHudCommand combatHudCommand5 in array)
 		{
 			combatHudCommand5.OnValidate();
 		}
-		array = hostileDebugCommands;
+		array = abilityPatternRangeCommands;
 		foreach (CombatHudCommand combatHudCommand6 in array)
 		{
 			combatHudCommand6.OnValidate();
+		}
+		array = abilityPatternCommands;
+		foreach (CombatHudCommand combatHudCommand7 in array)
+		{
+			combatHudCommand7.OnValidate();
+		}
+		array = allyDebugCommands;
+		foreach (CombatHudCommand combatHudCommand8 in array)
+		{
+			combatHudCommand8.OnValidate();
+		}
+		array = hostileDebugCommands;
+		foreach (CombatHudCommand combatHudCommand9 in array)
+		{
+			combatHudCommand9.OnValidate();
 		}
 	}
 }

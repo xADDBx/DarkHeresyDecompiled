@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -15,7 +14,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetVM>
+public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetViewData>
 {
 	[Header("Common Block")]
 	[SerializeField]
@@ -67,30 +66,17 @@ public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetVM>
 	[SerializeField]
 	private TextMeshProUGUI m_NotEquipped;
 
-	private bool m_isPrimaryHand;
-
-	public void Initialize(bool isPrimaryHand, bool isEmpty = false)
-	{
-		m_isPrimaryHand = isPrimaryHand;
-		if (isEmpty)
-		{
-			m_Button.SetActiveLayer("EmptyHand");
-		}
-		m_Damage.text = UIStrings.Instance.Tooltips.Damage.Text;
-		m_NotEquipped.text = UIStrings.Instance.Tooltips.NotEquipped.Text;
-	}
-
 	protected override void OnBind()
 	{
-		string templateText = GetTemplateText();
-		EquipSlotVM equipSlotVM = (m_isPrimaryHand ? base.ViewModel.Primary : base.ViewModel.Secondary);
-		if (equipSlotVM.ItemWeapon == null)
+		m_Damage.text = UIStrings.Instance.Tooltips.Damage.Text;
+		m_NotEquipped.text = UIStrings.Instance.Tooltips.NotEquipped.Text;
+		EquipSlotVM equipSlotVM = ((!base.ViewModel.IsPrimary) ? base.ViewModel.WeaponSetVM?.Secondary : base.ViewModel.WeaponSetVM?.Primary);
+		if (equipSlotVM?.ItemWeapon == null)
 		{
 			m_Button.SetActiveLayer("EmptyHand");
 			return;
 		}
-		ItemEntityWeapon itemWeapon = equipSlotVM.ItemWeapon;
-		if (itemWeapon != null && itemWeapon.Blueprint.IsTwoHanded)
+		if (equipSlotVM.ItemWeapon.Blueprint.IsTwoHanded)
 		{
 			m_Button.SetActiveLayer("TwoHandedWeapon");
 		}
@@ -99,17 +85,18 @@ public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetVM>
 			m_Button.SetActiveLayer("Normal");
 		}
 		BindHandSlot(m_PrimaryHandView, equipSlotVM);
+		string templateText = GetTemplateText();
 		m_Title.text = equipSlotVM.DisplayName.CurrentValue;
 		m_Type.text = equipSlotVM.TypeName.CurrentValue;
 		if (equipSlotVM.ItemEntity is ItemEntityWeapon { Blueprint: var blueprint } itemEntityWeapon)
 		{
 			IntermediateDamage resultDamage = GetWeaponStats(itemEntityWeapon).ResultDamage;
 			m_DamageLabel.text = string.Format(templateText, resultDamage.MinValueBase, resultDamage.MaxValueBase);
-			m_VitalDamageValue.text = $"+{blueprint.DamageVital}";
+			m_VitalDamageValue.text = $"+{itemEntityWeapon.DamageVital}";
 			m_DistanceLabel.text = string.Format(templateText, itemEntityWeapon.AttackOptimalRange, itemEntityWeapon.AttackRange);
 			m_PenetrationLabel.text = $"{blueprint.WarhammerPenetration}";
 			m_AbilityShortName.text = (blueprint.IsMelee ? UIUtilityText.GetStatShortName(StatType.WeaponSkill) : UIUtilityText.GetStatShortName(StatType.BallisticSkill));
-			m_VitalDamageObj.SetActive(blueprint.DamageVital > 0);
+			m_VitalDamageObj.SetActive(itemEntityWeapon.DamageVital > 0);
 			DrawAbilities(itemEntityWeapon);
 		}
 	}
@@ -123,7 +110,7 @@ public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetVM>
 	private void BindHandSlot(HandSlotView slot, EquipSlotVM slotVm)
 	{
 		slot.Bind(slotVm);
-		base.ViewModel.SelectedHand.Subscribe(delegate(EquipSlotVM selectedVm)
+		base.ViewModel.WeaponSetVM.SelectedHand.Subscribe(delegate(EquipSlotVM selectedVm)
 		{
 			if (selectedVm != null)
 			{
@@ -131,10 +118,10 @@ public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetVM>
 				slot.Slot.SetActiveLayer(flag ? "Selected" : "Normal");
 			}
 		}).AddTo(this);
-		bool canConfirmClick = base.ViewModel.Primary.HasItem && base.ViewModel.Secondary.HasItem;
+		bool canConfirmClick = base.ViewModel.WeaponSetVM.Primary.HasItem && base.ViewModel.WeaponSetVM.Secondary.HasItem;
 		slot.SetClickAction(delegate
 		{
-			base.ViewModel.SelectHand(slotVm);
+			base.ViewModel.WeaponSetVM.SelectHand(slotVm);
 		});
 		slot.SetCanConfirmClick(canConfirmClick);
 	}
@@ -148,13 +135,6 @@ public class CharInfoWeaponSetPCView : View<CharInfoWeaponSetVM>
 			list.Add(item);
 		}
 		m_WidgetList.DrawEntries(list, m_WeaponSetAbilityViewPrefab);
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigation()
-	{
-		GridConsoleNavigationBehaviour gridConsoleNavigationBehaviour = new GridConsoleNavigationBehaviour();
-		gridConsoleNavigationBehaviour.AddRow(m_WidgetList.Entries.Select((IBindable e) => (e as CharInfoWeaponSetAbilityPCView)?.NavigationEntity).ToList());
-		return gridConsoleNavigationBehaviour;
 	}
 
 	private RuleCalculateStatsWeapon GetWeaponStats(ItemEntityWeapon weapon)

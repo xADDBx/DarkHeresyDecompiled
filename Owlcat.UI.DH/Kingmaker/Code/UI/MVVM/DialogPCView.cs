@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.View;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
+using Kingmaker.UI.Sound;
 using Kingmaker.Utility.DotNetExtensions;
 using ObservableCollections;
+using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -61,11 +64,17 @@ public class DialogPCView : View<DialogVM>
 	private CanvasGroup m_ScrollRectContentCanvasGroup;
 
 	[SerializeField]
-	private VerticalLayoutGroup m_CurrentPartLayoutGroup;
+	private OwlcatMultiButton m_scrollToBottomButton;
+
+	private Sequence m_ScrollAnimationSequence;
 
 	[Header("Cue Block")]
 	[SerializeField]
 	private DialogCuePCView m_CueView;
+
+	[Header("Cue Notify Answer Block")]
+	[SerializeField]
+	private RectTransform CueNotifyAnswerPlace;
 
 	[Header("Answer Block")]
 	[SerializeField]
@@ -81,6 +90,9 @@ public class DialogPCView : View<DialogVM>
 	private CanvasGroup m_AnswersCanvasGroup;
 
 	[Header("History Block")]
+	[SerializeField]
+	private TMP_Text m_ProtocolLabel;
+
 	[SerializeField]
 	private DialogHistoryEntityView m_HistoryEntityView;
 
@@ -100,7 +112,7 @@ public class DialogPCView : View<DialogVM>
 
 	[Header("Notification Block")]
 	[SerializeField]
-	private DialogNotificationsPCView m_DialogNotifications;
+	private DialogNotificationsView m_DialogNotifications;
 
 	[Header("Cue Notify Answer Block")]
 	[SerializeField]
@@ -128,13 +140,13 @@ public class DialogPCView : View<DialogVM>
 
 	private bool m_VisibleState;
 
-	private bool m_isAnimating;
+	private bool m_IsAnimating;
 
 	private IDisposable m_SetVisibleTask;
 
 	private IDisposable m_PortraitsAnimationTask;
 
-	private int paddingForAnimations = 40;
+	private const int PaddingForAnimations = 40;
 
 	[Header("Big Portrait")]
 	[SerializeField]
@@ -155,7 +167,6 @@ public class DialogPCView : View<DialogVM>
 		{
 			a.Initialize();
 		});
-		SetVisible(state: false);
 		base.gameObject.SetActive(value: false);
 	}
 
@@ -199,7 +210,11 @@ public class DialogPCView : View<DialogVM>
 		base.ViewModel.AnswererFullPortraitVM.Subscribe(m_AnswererBigPortraitView.Bind).AddTo(this);
 		m_DialogNotifications.Bind(base.ViewModel.DialogNotifications);
 		base.ViewModel.Cue.Subscribe(m_CueView.Bind).AddTo(this);
-		base.ViewModel.History.ForEach(AddHistoryView);
+		m_ProtocolLabel.Or(null)?.SetText(UIStrings.Instance.Dialog.ProtocolLabel.Text);
+		foreach (DialogHistoryEntityVM item in base.ViewModel.History)
+		{
+			AddHistoryView(item, withTweenToItem: false);
+		}
 		base.ViewModel.History.ObserveAdd().Subscribe(delegate(CollectionAddEvent<DialogHistoryEntityVM> historyEntity)
 		{
 			AddHistoryView(historyEntity.Value);
@@ -213,6 +228,10 @@ public class DialogPCView : View<DialogVM>
 		{
 			m_HistoryCanvasGroup.alpha = (m_ScrollRect.BottomEdgeNeeded ? m_HistoryShowedAlpha : m_HistoryHiddenAlpha);
 		}).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_scrollToBottomButton.OnLeftClickAsObservable(), delegate
+		{
+			PlayScrollDownAnimation();
+		}).AddTo(this);
 		base.ViewModel.IsVisible.Subscribe(SetVisible).AddTo(this);
 		base.ViewModel.OnCueUpdate.Subscribe(StartUpdateCoroutine).AddTo(this);
 		base.ViewModel.EmptySpeaker.Subscribe(UpdateSpeakerPortrait).AddTo(this);
@@ -220,18 +239,30 @@ public class DialogPCView : View<DialogVM>
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
-	private void ShowBigPortrait(Sprite portraitSprite)
+	protected override void OnUnbind()
 	{
+		SetVisible(state: false);
+		OwlcatR3UnitExtensions.Subscribe(Observable.Timer(Mathf.Max(m_FadeAnimators.Select((FadeAnimator f) => f.DisappearTime).ToArray()).Seconds()), delegate
+		{
+			m_HistoryViewEntities.ForEach(WidgetFactory.DisposeWidget);
+			m_HistoryViewEntities.Clear();
+		}).AddTo(this);
+		m_PortraitsAnimationTask?.Dispose();
+		m_ScrollAnimationSequence?.Kill();
+		m_ScrollAnimationSequence = null;
 	}
 
-	private void AddHistoryView(DialogHistoryEntityVM vm)
+	private void AddHistoryView(DialogHistoryEntityVM vm, bool withTweenToItem = true)
 	{
 		DialogHistoryEntityView widget = WidgetFactory.GetWidget(m_HistoryEntityView, activate: true, strictMatching: true);
 		widget.Initialize(m_DialogCueColors, m_TooltipPlace);
 		widget.transform.SetParent(m_HistoryContainer, worldPositionStays: false);
 		widget.Bind(vm);
 		m_HistoryViewEntities.Add(widget);
-		TweenCueHistoryPosition(widget);
+		if (withTweenToItem)
+		{
+			TweenCueHistoryPosition(widget);
+		}
 	}
 
 	private void DrawAnswers()
@@ -250,16 +281,6 @@ public class DialogPCView : View<DialogVM>
 	{
 	}
 
-	protected override void OnUnbind()
-	{
-		SetVisible(state: false);
-		OwlcatR3UnitExtensions.Subscribe(Observable.Timer(Mathf.Max(m_FadeAnimators.Select((FadeAnimator f) => f.DisappearTime).ToArray()).Seconds()), delegate
-		{
-			m_HistoryViewEntities.ForEach(WidgetFactory.DisposeWidget);
-			m_HistoryViewEntities.Clear();
-		}).AddTo(this);
-	}
-
 	private void UpdateSpeakerPortrait(bool isEmpty)
 	{
 		m_SpeakerFadeAnimator.PlayAnimation(!isEmpty);
@@ -270,11 +291,10 @@ public class DialogPCView : View<DialogVM>
 	{
 		CanvasGroup itemCanvasGroup;
 		LayoutElement itemLayoutElement;
-		if (!m_isAnimating)
+		if (!m_IsAnimating)
 		{
-			m_isAnimating = true;
+			m_IsAnimating = true;
 			m_AnswersCanvasGroup.alpha = 0f;
-			m_ScrollRect.ScrollToBottom();
 			itemCanvasGroup = EnsureComponent<CanvasGroup>(item.gameObject);
 			itemCanvasGroup.alpha = 0f;
 			itemLayoutElement = EnsureComponent<LayoutElement>(item.gameObject);
@@ -284,7 +304,7 @@ public class DialogPCView : View<DialogVM>
 		{
 			float preferredHeight = LayoutUtility.GetPreferredHeight(m_CueView.transform as RectTransform);
 			itemLayoutElement.preferredHeight = preferredHeight;
-			itemLayoutElement.preferredHeight += paddingForAnimations;
+			itemLayoutElement.preferredHeight += 40f;
 			VerticalLayoutGroup historyVerticalGroup = EnsureComponent<VerticalLayoutGroup>(m_HistoryContainer.gameObject);
 			int bottom = historyVerticalGroup.padding.bottom;
 			float num = preferredHeight + (float)historyVerticalGroup.padding.top + historyVerticalGroup.spacing;
@@ -292,30 +312,23 @@ public class DialogPCView : View<DialogVM>
 			historyVerticalGroup.padding.bottom = (int)num2;
 			VerticalLayoutGroup cueNotifyAnswerVerticalGroup = EnsureComponent<VerticalLayoutGroup>(m_CueNotifyAnswerPlace.gameObject);
 			int top = cueNotifyAnswerVerticalGroup.padding.top;
-			cueNotifyAnswerVerticalGroup.padding.top += (int)num + paddingForAnimations;
-			Sequence sequence = DOTween.Sequence().SetTarget(item).SetUpdate(isIndependentUpdate: true);
-			sequence.Append(DOTween.To(() => historyVerticalGroup.padding.bottom, delegate(int value)
+			cueNotifyAnswerVerticalGroup.padding.top += (int)num + 40;
+			m_ScrollAnimationSequence?.Kill();
+			m_ScrollAnimationSequence = DOTween.Sequence().SetTarget(item).SetUpdate(isIndependentUpdate: true);
+			m_ScrollAnimationSequence.Append(DOTween.To(() => historyVerticalGroup.padding.bottom, delegate(int value)
 			{
 				historyVerticalGroup.padding.bottom = value;
 			}, bottom, 0.1f));
-			sequence.Join(DOTween.To(() => cueNotifyAnswerVerticalGroup.padding.top, delegate(int value)
+			m_ScrollAnimationSequence.Join(DOTween.To(() => cueNotifyAnswerVerticalGroup.padding.top, delegate(int value)
 			{
 				cueNotifyAnswerVerticalGroup.padding.top = value;
 			}, top, 0.1f));
-			sequence.Join(itemCanvasGroup.DOFade(1f, 0.1f));
-			sequence.Append(DOTween.To(() => itemLayoutElement.preferredHeight, delegate(float value)
+			m_ScrollAnimationSequence.Join(itemCanvasGroup.DOFade(1f, 0.1f));
+			m_ScrollAnimationSequence.Append(DOTween.To(() => itemLayoutElement.preferredHeight, delegate(float value)
 			{
 				itemLayoutElement.preferredHeight = value;
 			}, preferredHeight, 0.15f));
-			sequence.Append(DOTween.To(() => m_ScrollRect.verticalNormalizedPosition, delegate(float value)
-			{
-				m_ScrollRect.verticalNormalizedPosition = value;
-			}, 0f, 0.15f));
-			sequence.Append(m_AnswersCanvasGroup.DOFade(1f, 0.1f));
-			sequence.OnComplete(delegate
-			{
-				m_isAnimating = false;
-			});
+			m_ScrollAnimationSequence.OnComplete(OnHistoryAnimationComplete);
 		}
 	}
 
@@ -339,7 +352,7 @@ public class DialogPCView : View<DialogVM>
 		m_VisibleState = state;
 		if (m_VisibleState)
 		{
-			m_isAnimating = false;
+			m_IsAnimating = false;
 			base.gameObject.SetActive(value: true);
 			UpdateSpeakerPortrait(base.ViewModel.EmptySpeaker.CurrentValue);
 		}
@@ -348,6 +361,7 @@ public class DialogPCView : View<DialogVM>
 			m_SpeakerFadeAnimator.DisappearAnimation();
 			m_SpeakerMoveAnimator.DisappearAnimation();
 			m_DownPortraitAnimator?.DisappearAnimation();
+			TooltipHelper.HideTooltip();
 		}
 		float value = Mathf.Max(m_MoveAnimators.Select((MoveAnimator f) => f.AnimationTime).ToArray());
 		m_PortraitsAnimationTask = OwlcatR3UnitExtensions.Subscribe(Observable.Timer(value.Seconds()), delegate
@@ -365,6 +379,7 @@ public class DialogPCView : View<DialogVM>
 		{
 			a.PlayAnimation(m_VisibleState);
 		});
+		(state ? FullScreenSounds.Instance.Dialogue.Open : FullScreenSounds.Instance.Dialogue.Close).Play();
 	}
 
 	public void OnGameModeStart(GameModeType gameMode)
@@ -381,5 +396,36 @@ public class DialogPCView : View<DialogVM>
 		{
 			SetVisible(state: true);
 		}
+	}
+
+	private void OnHistoryAnimationComplete()
+	{
+		float num = m_ScrollRect.content.rect.height - m_ScrollRect.viewport.rect.height;
+		float num2 = CueNotifyAnswerPlace.anchoredPosition.y + CueNotifyAnswerPlace.rect.height * 0.5f;
+		float value = ((num <= 0f) ? 0f : (1f + num2 / num));
+		value = Mathf.Clamp(value, 0f, 1f);
+		m_ScrollAnimationSequence?.Kill();
+		m_ScrollAnimationSequence = DOTween.Sequence().SetUpdate(isIndependentUpdate: true);
+		m_ScrollAnimationSequence.Join(m_AnswersCanvasGroup.DOFade(1f, 0.1f));
+		PlayScrollAnimation(value);
+		m_ScrollAnimationSequence.OnComplete(delegate
+		{
+			m_IsAnimating = false;
+		});
+	}
+
+	private void PlayScrollDownAnimation()
+	{
+		m_ScrollAnimationSequence?.Kill();
+		m_ScrollAnimationSequence = DOTween.Sequence().SetUpdate(isIndependentUpdate: true);
+		PlayScrollAnimation(0f);
+	}
+
+	private void PlayScrollAnimation(float verticalPosition)
+	{
+		m_ScrollAnimationSequence.Append(DOTween.To(() => m_ScrollRect.verticalNormalizedPosition, delegate(float value)
+		{
+			m_ScrollRect.verticalNormalizedPosition = value;
+		}, verticalPosition, 0.15f));
 	}
 }

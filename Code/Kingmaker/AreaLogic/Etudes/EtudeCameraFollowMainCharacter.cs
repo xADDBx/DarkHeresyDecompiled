@@ -10,7 +10,10 @@ public class EtudeCameraFollowMainCharacter : EtudeBracketTrigger
 	protected override void OnActivate()
 	{
 		base.OnActivate();
-		FollowMainCharacter();
+		if (FollowMainCharacter())
+		{
+			Game.Instance.Player.CameraScrollLocked.Retain();
+		}
 	}
 
 	protected override void OnResume()
@@ -19,14 +22,15 @@ public class EtudeCameraFollowMainCharacter : EtudeBracketTrigger
 		FollowMainCharacter();
 	}
 
-	private static void FollowMainCharacter()
+	private static bool FollowMainCharacter()
 	{
 		CameraController.CameraUnitFollower cameraUnitFollower = Game.Instance.Controllers.CameraController?.Follower;
 		if (cameraUnitFollower != null && !cameraUnitFollower.HasTarget)
 		{
 			Game.Instance.Controllers.CameraController?.Follower.FollowMainCharacter();
-			Game.Instance.Player.CameraScrollLocked.Retain();
+			return true;
 		}
+		return false;
 	}
 
 	protected override void OnDeactivate()

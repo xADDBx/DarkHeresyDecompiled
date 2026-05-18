@@ -7,5 +7,6 @@ public enum AskComponentType
 	PlayerCharacter,
 	DetectiveServoskull,
 	NPC,
-	NonCombatNPC
+	NonCombatNPC,
+	FakeCompanion
 }

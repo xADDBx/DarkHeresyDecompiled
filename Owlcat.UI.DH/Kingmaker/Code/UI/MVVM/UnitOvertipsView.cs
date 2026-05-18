@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints;
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.QA.Arbiter.Profiling;
 using Kingmaker.UnitLogic.FactLogic;
@@ -37,9 +38,7 @@ public class UnitOvertipsView : View<UnitOvertipsCollectionVM>
 
 	private bool m_ClearDeadOvertips;
 
-	private MechanicEntity m_IteratedUnit;
-
-	private bool m_CheckVisible;
+	private MechanicEntity m_IteractedUnit;
 
 	private bool m_ShouldBeVisible;
 
@@ -52,17 +51,7 @@ public class UnitOvertipsView : View<UnitOvertipsCollectionVM>
 		OvertipUtils.PrewarmOvertips(m_OvertipUnitView, 10, m_NpcContainer);
 	}
 
-	private bool ExtraUnitShouldHaveOvertip(BaseUnitEntity unit)
-	{
-		PartUnitInteractions optional = unit.GetOptional<PartUnitInteractions>();
-		if (optional == null || !optional.HasDialogInteractions)
-		{
-			return unit.Blueprint.GetComponent<AddLocalMapMarker>() != null;
-		}
-		return true;
-	}
-
-	public void Update()
+	public void LateUpdate()
 	{
 		if (base.ViewModel?.Overtips == null)
 		{
@@ -77,11 +66,8 @@ public class UnitOvertipsView : View<UnitOvertipsCollectionVM>
 				for (int i = 0; i < base.ViewModel.Overtips.Count; i++)
 				{
 					OvertipUnitVM overtipUnitVM = base.ViewModel.Overtips[i];
-					m_IteratedUnit = overtipUnitVM.Unit;
-					m_CheckVisible = m_IteratedUnit != null;
-					m_CheckVisible = m_CheckVisible && (!m_IteratedUnit.Features.IsUntargetable || overtipUnitVM.IsBarkActive.CurrentValue);
-					m_CheckVisible = m_CheckVisible && (!(m_IteratedUnit is BaseUnitEntity { IsExtra: not false } baseUnitEntity) || ExtraUnitShouldHaveOvertip(baseUnitEntity) || overtipUnitVM.IsBarkActive.CurrentValue || baseUnitEntity.View.IsHighlighted || baseUnitEntity.View.MouseHoverHighlighting || overtipUnitVM.HasSurrounding.CurrentValue);
-					m_ShouldBeVisible = m_CheckVisible && m_IteratedUnit.IsVisibleForPlayer && (overtipUnitVM.ForceOnScreen || (!overtipUnitVM.HideFromScreen && overtipUnitVM.IsInCameraFrustum) || overtipUnitVM.MechanicEntityUIState.IsInCombat.CurrentValue);
+					m_IteractedUnit = overtipUnitVM.Unit;
+					m_ShouldBeVisible = IsNeedToShowUnitOvertip(overtipUnitVM);
 					OvertipUnitView overtipUnitView = m_ActiveOvertips.Get(overtipUnitVM);
 					m_IsVisibleNow = overtipUnitView != null;
 					if (m_ShouldBeVisible == m_IsVisibleNow)
@@ -102,8 +88,7 @@ public class UnitOvertipsView : View<UnitOvertipsCollectionVM>
 						RemoveOvertip(overtipUnitVM);
 					}
 				}
-				m_IteratedUnit = null;
-				m_CheckVisible = false;
+				m_IteractedUnit = null;
 				m_ShouldBeVisible = false;
 				m_IsVisibleNow = false;
 			}
@@ -144,6 +129,67 @@ public class UnitOvertipsView : View<UnitOvertipsCollectionVM>
 			FreeOvertip(value);
 		}
 		m_ActiveOvertips.Clear();
+	}
+
+	private bool IsNeedToShowUnitOvertip(OvertipUnitVM vm)
+	{
+		if (vm.HideFromScreen)
+		{
+			return false;
+		}
+		bool currentValue = vm.IsBarkActive.CurrentValue;
+		bool currentValue2 = vm.HasActiveCombatMessage.CurrentValue;
+		if (currentValue || currentValue2)
+		{
+			return true;
+		}
+		if (!CanShowUnitOvertip(vm.Unit))
+		{
+			return false;
+		}
+		if (!vm.IsInCameraFrustum && !vm.MechanicEntityUIState.IsInCombat.CurrentValue)
+		{
+			return false;
+		}
+		bool currentValue3 = vm.HasCombatInteraction.CurrentValue;
+		bool currentValue4 = vm.HasSurrounding.CurrentValue;
+		MechanicEntity unit = vm.Unit;
+		return (unit != null && !unit.IsDisposed && !unit.IsDead) || currentValue3 || currentValue4;
+	}
+
+	private bool CanShowUnitOvertip(MechanicEntity unit)
+	{
+		if (unit == null)
+		{
+			return false;
+		}
+		if ((bool)unit.Features.IsUntargetable)
+		{
+			UnitUISettings component = unit.Blueprint.GetComponent<UnitUISettings>();
+			if (component != null && component.OvertipSettings.ShowForUntargetable)
+			{
+				return true;
+			}
+		}
+		if (unit is BaseUnitEntity baseUnitEntity && (ForceShowExtraUnitOvertip(baseUnitEntity) || (baseUnitEntity.View != null && (baseUnitEntity.View.IsHighlighted || baseUnitEntity.View.MouseHoverHighlighting))))
+		{
+			return true;
+		}
+		return !unit.Features.IsUntargetable;
+	}
+
+	private bool ForceShowExtraUnitOvertip(BaseUnitEntity unit)
+	{
+		if (!unit.IsExtra)
+		{
+			return false;
+		}
+		PartUnitInteractions optional = unit.GetOptional<PartUnitInteractions>();
+		if (optional == null || !optional.HasDialogInteractions)
+		{
+			return unit.Blueprint.GetComponent<AddLocalMapMarker>() != null;
+		}
+		return true;
 	}
 
 	private T GetWidget<T>(Queue<MonoBehaviour> queue, T prefab, Transform targetContainer) where T : MonoBehaviour

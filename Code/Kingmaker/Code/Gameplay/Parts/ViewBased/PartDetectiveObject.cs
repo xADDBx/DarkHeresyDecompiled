@@ -18,11 +18,11 @@ using UnityEngine;
 namespace Kingmaker.Code.Gameplay.Parts.ViewBased;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PartDetectiveObject : ViewBasedPart<DetectiveObjectSettings>, IHashable, IOwlPackable<PartDetectiveObject>
+public sealed class PartDetectiveObject : EntityPartWithConfig<DetectiveObjectSettings>, IHashable, IOwlPackable<PartDetectiveObject>
 {
 	private bool m_IsLoaded;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartDetectiveObject",
 		OldNames = null,
@@ -43,9 +43,9 @@ public sealed class PartDetectiveObject : ViewBasedPart<DetectiveObjectSettings>
 		m_IsLoaded = true;
 	}
 
-	protected override void OnSettingsDidSet(bool isNewSettings)
+	protected override void OnConfigDidSet(bool isNewConfig)
 	{
-		base.OnSettingsDidSet(isNewSettings);
+		base.OnConfigDidSet(isNewConfig);
 		bool revealed = (m_IsLoaded ? IsRevealed : base.Settings.DefaultRevealedState);
 		SetRevealed(revealed);
 		GameUIState.Instance.GameMode.Subscribe(DoStartMode).AddTo(base.View.GO);
@@ -120,7 +120,7 @@ public sealed class PartDetectiveObject : ViewBasedPart<DetectiveObjectSettings>
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		PartDetectiveObject source = new PartDetectiveObject();
 		result = Unsafe.As<PartDetectiveObject, TPossiblyBase>(ref source);

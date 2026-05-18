@@ -1,5 +1,4 @@
 using Kingmaker.Blueprints.Encyclopedia;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Owlcat.UI;
@@ -19,7 +18,6 @@ public class EncyclopediaVM : ViewModel
 	{
 		NavigationVM = new EncyclopediaNavigationVM().AddTo(this);
 		HandleEncyclopediaPage(node ?? Game.Instance.Player.UISettings.CurrentEncyclopediaPage);
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Encyclopedia).Send();
 	}
 
 	public void HandleEncyclopediaPage(INode node)
@@ -46,6 +44,5 @@ public class EncyclopediaVM : ViewModel
 				h.ShowTutorial(Game.Instance.TutorialSystem.ShowingData);
 			});
 		}
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Encyclopedia).Send();
 	}
 }

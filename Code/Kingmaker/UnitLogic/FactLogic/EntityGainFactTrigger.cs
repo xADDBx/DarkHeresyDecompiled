@@ -4,7 +4,6 @@ using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -28,7 +27,7 @@ public class EntityGainFactTrigger : MechanicEntityFactComponentDelegate, IEntit
 		if (fact != null)
 		{
 			MechanicsContext maybeContext = fact.MaybeContext;
-			if (maybeContext != null && Restriction.IsPassed(new PropertyContext(base.Owner, maybeContext)))
+			if (maybeContext != null && Restriction.IsPassed(maybeContext, base.Owner))
 			{
 				base.Fact.RunActionInContext(Action);
 			}

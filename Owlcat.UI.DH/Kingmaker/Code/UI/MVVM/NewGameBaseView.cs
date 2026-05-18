@@ -32,7 +32,7 @@ public class NewGameBaseView : View<NewGameVM>
 		{
 			h.HandleFullScreenUiChanged(state: true, FullScreenUIType.NewGame);
 		});
-		UISounds.Instance.Sounds.LocalMap.PlayOpen();
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayOpenSound(ServiceWindowsType.LocalMap);
 	}
 
 	private void Hide()
@@ -41,6 +41,6 @@ public class NewGameBaseView : View<NewGameVM>
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.NewGame);
 		});
-		UISounds.Instance.Sounds.LocalMap.PlayClose();
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayCloseSound(ServiceWindowsType.LocalMap);
 	}
 }

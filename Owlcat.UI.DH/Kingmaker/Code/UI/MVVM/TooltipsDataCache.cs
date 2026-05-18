@@ -7,29 +7,30 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class TooltipsDataCache : BaseDisposable
+public class TooltipsDataCache : ViewModel
 {
-	private static TooltipsDataCache m_Instance;
+	private static TooltipsDataCache s_Instance;
 
 	private readonly Dictionary<ItemEntity, ItemTooltipData> m_ItemTooltipDataCache = new Dictionary<ItemEntity, ItemTooltipData>();
 
 	private readonly Dictionary<BlueprintItem, ItemTooltipData> m_BlueprintItemTooltipDataCache = new Dictionary<BlueprintItem, ItemTooltipData>();
 
-	public static TooltipsDataCache Instance => m_Instance;
+	public static TooltipsDataCache Instance => s_Instance;
 
 	public TooltipsDataCache()
 	{
-		m_Instance = this;
-		AddDisposable(Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Subscribe(delegate
+		s_Instance = this;
+		Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Subscribe(delegate
 		{
 			Clear();
-		}));
+		}).AddTo(this);
 	}
 
-	protected override void DisposeImplementation()
+	protected override void OnDispose()
 	{
+		base.OnDispose();
 		Clear();
-		m_Instance = null;
+		s_Instance = null;
 	}
 
 	public void Clear()

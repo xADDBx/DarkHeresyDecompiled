@@ -128,17 +128,14 @@ public abstract class TutorialWindowBaseView<TViewModel> : View<TViewModel>, ISe
 
 	protected virtual void OnShow()
 	{
-		EscHotkeyManager.Instance.Subscribe(OnEscPressed).AddTo(this);
+		EscHotkeyManager.Instance.Subscribe(delegate
+		{
+			base.ViewModel.Hide();
+		}).AddTo(this);
 	}
 
 	protected virtual void OnHide()
 	{
-		EscHotkeyManager.Instance.Unsubscribe(OnEscPressed);
-	}
-
-	private void OnEscPressed()
-	{
-		base.ViewModel.Hide();
 	}
 
 	protected void SetPage(TutorialData.Page page)

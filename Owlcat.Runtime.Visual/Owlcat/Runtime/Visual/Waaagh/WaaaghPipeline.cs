@@ -14,8 +14,9 @@ using Owlcat.Runtime.Visual.Waaagh.Data;
 using Owlcat.Runtime.Visual.Waaagh.Debugging;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
 using Owlcat.Runtime.Visual.Waaagh.History;
-using Owlcat.Runtime.Visual.Waaagh.PostProcess;
+using Owlcat.Runtime.Visual.Waaagh.Recorders.Debugging;
 using Owlcat.Runtime.Visual.Waaagh.RendererFeatures.FogOfWar;
+using Owlcat.Runtime.Visual.Waaagh.Settings;
 using Owlcat.Runtime.Visual.Waaagh.Shadows;
 using Unity.Collections;
 using UnityEngine;
@@ -24,6 +25,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.SceneManagement;
+using UnityEngine.VFX;
 
 namespace Owlcat.Runtime.Visual.Waaagh;
 
@@ -99,6 +101,8 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 
 	public static Action<Camera> VolumeManagerUpdated;
 
+	private readonly WaaaghPipelineAsset m_PipelineAsset;
+
 	private Scene m_ActiveScene;
 
 	private readonly Comparison<Camera> m_CameraComparison = (Camera camera1, Camera camera2) => (int)camera1.depth - (int)camera2.depth;
@@ -120,6 +124,20 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 	private WaaaghCameraStack m_CameraStack;
 
 	private bool m_ApvIsEnabled;
+
+	internal static RTHandleResourcePool s_RTHandlePool;
+
+	private readonly WaaaghCameraData m_ReusableCameraData = new WaaaghCameraData();
+
+	private readonly WaaaghRenderingData m_ReusableRenderingData = new WaaaghRenderingData();
+
+	private readonly WaaaghShadowData m_ReusableShadowData = new WaaaghShadowData();
+
+	private readonly DebugContext m_DebugContext;
+
+	private readonly DebugRenderer m_DebugRenderer;
+
+	private static Dictionary<int, ProfilingSampler> s_HashSamplerCache = new Dictionary<int, ProfilingSampler>();
 
 	public static WaaaghPipelineAsset Asset => GraphicsSettings.currentRenderPipeline as WaaaghPipelineAsset;
 
@@ -145,30 +163,37 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 
 	public WaaaghPipeline(WaaaghPipelineAsset asset)
 	{
+		m_PipelineAsset = asset;
 		m_GlobalSettings = WaaaghPipelineGlobalSettings.Instance;
 		PlatformAutoDetect.Initialize();
 		SetSupportedRenderingFeatures();
 		Shader.globalRenderPipeline = "OwlcatPipeline";
-		VolumeManager.instance.Initialize();
+		WaaaghDefaultVolumeProfileSettings renderPipelineSettings = GraphicsSettings.GetRenderPipelineSettings<WaaaghDefaultVolumeProfileSettings>();
+		VolumeManager.instance.Initialize(renderPipelineSettings.volumeProfile);
 		Lightmapping.SetDelegate(LightmappingDelegate);
 		RenderingUtils.ClearSystemInfoCache();
 		m_RenderGraph = new RenderGraph("WaaaghGraph");
+		s_RTHandlePool = new RTHandleResourcePool();
 		m_ShadowManager = new ShadowManager(asset);
 		DebugManager.instance.RefreshEditor();
 		m_DebugData = asset.DebugData;
 		if (m_DebugData != null)
 		{
 			m_DebugData.RegisterDebug(this);
+			if (Debug.isDebugBuild)
+			{
+				m_DebugContext = new DebugContext(m_DebugData);
+				m_DebugRenderer = new DebugRenderer();
+			}
 		}
 		RTHandles.Initialize(Screen.width, Screen.height);
 		DebugManager.instance.enableRuntimeUI = false;
-		RenderGraph renderGraph = m_RenderGraph;
 		LightCookieManager.Settings settings = new LightCookieManager.Settings
 		{
 			atlasTextureResolution = asset.LightCookieSettings.Resolution,
 			atlasTextureFormat = asset.LightCookieSettings.Format
 		};
-		m_LightCookieManager = new LightCookieManager(renderGraph, in settings);
+		m_LightCookieManager = new LightCookieManager(in settings);
 		m_LocalVolumetricFogManager = new LocalVolumetricFogManager(asset.LocalVolumetricFogSettings, asset.RuntimeResources.Texture3DAtlasCS);
 		QualitySettings.enableLODCrossFade = asset.DitheringSettings.EnableLODCrossFade;
 		m_ApvIsEnabled = asset != null && asset.SupportProbeVolumes;
@@ -202,10 +227,14 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		ShaderGlobalKeywords.Initialize();
 		WaaaghPipeline.Created?.Invoke(this);
 		SceneManager.sceneUnloaded += OnSceneUnloaded;
+		IndirectRenderingSystem.Instance.Initialize();
 	}
 
 	protected override void Dispose(bool disposing)
 	{
+		IndirectRenderingSystem.Instance.Cleanup();
+		m_DebugRenderer?.Dispose();
+		m_DebugContext?.Dispose();
 		WaaaghPipeline.Destroying?.Invoke(this);
 		SceneManager.sceneUnloaded -= OnSceneUnloaded;
 		if (m_DebugData != null)
@@ -228,12 +257,14 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		Lightmapping.ResetDelegate();
 		m_RenderGraph.Cleanup();
 		m_RenderGraph = null;
+		s_RTHandlePool.Cleanup();
+		s_RTHandlePool = null;
 		m_ShadowManager.Dispose();
 		m_ShadowManager = null;
 		ConstantBuffer.ReleaseAll();
 		m_LightCookieManager.Dispose();
 		m_LocalVolumetricFogManager.ReleaseAtlas();
-		VirtualTextureManager.Dispose();
+		VirtualTextureManager?.Dispose();
 		GPUDrivenBatchRendererGroup.Dispose();
 		GPUDrivenInstanceCommandQueue.Cleanup();
 		GPUDrivenMaterialOverrides.Cleanup();
@@ -256,7 +287,19 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 
 	protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
 	{
-		RenderUsingContextContainer(context, cameras);
+		if (m_PipelineAsset.UnhandledExceptionLockActive())
+		{
+			return;
+		}
+		try
+		{
+			RenderUsingContextContainer(context, cameras);
+		}
+		catch (Exception exception)
+		{
+			m_PipelineAsset.IncrementUnhandledExceptionCounter();
+			Debug.LogException(exception, m_PipelineAsset);
+		}
 	}
 
 	private static void OnSceneUnloaded(Scene scene)
@@ -266,28 +309,32 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 
 	private void RenderUsingContextContainer(ScriptableRenderContext context, List<Camera> cameras)
 	{
-		using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.Prepare)))
+		using (new ProfilingScope(WaaaghProfileId.Prepare.Sampler()))
 		{
+			bool num = FrameId.Update();
 			WaaaghCameraHistoryManager.GC();
 			AdjustUIOverlayOwnership(cameras.Count);
+			if (num)
+			{
+				IndirectRenderingSystem.Instance.Submit();
+			}
 		}
 		using (new ContextRenderingScope(context, cameras))
 		{
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.Prepare)))
+			using (new ProfilingScope(WaaaghProfileId.Prepare.Sampler()))
 			{
-				UpdateFrameCount(cameras);
 				GraphicsSettings.lightsUseLinearIntensity = QualitySettings.activeColorSpace == ColorSpace.Linear;
 				GraphicsSettings.lightsUseColorTemperature = true;
 				GraphicsSettings.useScriptableRenderPipelineBatching = Asset.UseSRPBatcher;
 				SetupPerFrameShaderConstants();
 				SortCameras(cameras);
 			}
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.PreRender)))
+			using (new ProfilingScope(WaaaghProfileId.PreRender.Sampler()))
 			{
 				CommandBuffer commandBuffer = CommandBufferPool.Get();
 				commandBuffer.BeginSample("PreRender");
 				IndirectRenderingSystem.Instance.PreRender();
-				VirtualTextureManager.PreRender(commandBuffer, cameras);
+				VirtualTextureManager?.PreRender(commandBuffer, cameras);
 				GPUDrivenInstanceCommandQueue.Flush();
 				GPUDrivenMaterialOverrides.Flush();
 				if (GPUDrivenBatchRendererGroup.IsEnabledAndInitialized)
@@ -307,8 +354,9 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 				}
 			}
 			m_RenderGraph.EndFrame();
+			s_RTHandlePool.PurgeUnusedResources(Time.frameCount);
 		}
-		using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.PostRender)))
+		using (new ProfilingScope(WaaaghProfileId.PostRender.Sampler()))
 		{
 			CommandBuffer commandBuffer2 = CommandBufferPool.Get();
 			commandBuffer2.BeginSample("PostRender");
@@ -317,13 +365,13 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 				GPUDrivenBatchRendererGroup.PostRender();
 			}
 			CommandQueue.PostRender();
-			VirtualTextureManager.PostRender(commandBuffer2, cameras);
+			VirtualTextureManager?.PostRender(commandBuffer2, cameras);
 			if (cameras.Count == 0)
 			{
 				commandBuffer2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
 			}
 			commandBuffer2.EndSample("PostRender");
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.PostRenderSubmit)))
+			using (new ProfilingScope(WaaaghProfileId.PostRenderSubmit.Sampler()))
 			{
 				context.ExecuteCommandBuffer(commandBuffer2);
 				context.Submit();
@@ -334,45 +382,57 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 
 	private void RenderCameraStack(ScriptableRenderContext context, WaaaghCameraStack cameraStack)
 	{
-		using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.RenderCameraStack)))
+		using (new ProfilingScope(WaaaghProfileId.RenderCameraStack.Sampler()))
 		{
 			for (int i = 0; i < cameraStack.AdditionalCameraDataList.Count; i++)
 			{
 				Camera camera = cameraStack.Cameras[i];
 				using (new CameraRenderingScope(context, camera))
 				{
-					using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.UpdateVolumeFramework)))
+					using (new ProfilingScope(WaaaghProfileId.UpdateVolumeFramework.Sampler()))
 					{
 						UpdateVolumeFramework(camera, cameraStack.AdditionalCameraDataList[i]);
 					}
-					using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.RenderCamera)))
+					using (new ProfilingScope(WaaaghProfileId.RenderCamera.Sampler()))
 					{
-						WaaaghCameraData cameraData = CreateCameraData(cameraStack, i);
-						RenderSingleCamera(context, cameraData);
+						WaaaghCameraData reusableCameraData = m_ReusableCameraData;
+						WaaaghRenderingData reusableRenderingData = m_ReusableRenderingData;
+						WaaaghShadowData reusableShadowData = m_ReusableShadowData;
+						try
+						{
+							InitializeCameraData(cameraStack, i, reusableCameraData);
+							RenderSingleCamera(context, reusableCameraData, reusableRenderingData, reusableShadowData);
+						}
+						finally
+						{
+							reusableCameraData.Reset();
+							reusableRenderingData.Reset();
+							reusableShadowData.Reset();
+						}
 					}
 				}
 			}
 		}
 	}
 
-	private WaaaghCameraData CreateCameraData(WaaaghCameraStack cameraStack, int cameraIndex)
+	private void InitializeCameraData(WaaaghCameraStack cameraStack, int cameraIndex, WaaaghCameraData cameraData)
 	{
 		Camera camera = cameraStack.Cameras[cameraIndex];
 		WaaaghAdditionalCameraData waaaghAdditionalCameraData = cameraStack.AdditionalCameraDataList[cameraIndex];
-		ScriptableRenderer renderer = GetRenderer(camera, waaaghAdditionalCameraData);
-		WaaaghCameraData waaaghCameraData = renderer.FrameData.Create<WaaaghCameraData>();
-		waaaghCameraData.camera = camera;
-		waaaghCameraData.renderer = renderer;
-		waaaghCameraData.cameraType = camera.cameraType;
-		waaaghCameraData.historyManager = (waaaghAdditionalCameraData ? waaaghAdditionalCameraData.HistoryManager : null);
-		InitializeBaseCameraProperties(waaaghCameraData, cameraStack);
-		InitializeCameraProperties(waaaghCameraData, cameraStack, cameraIndex);
-		if (waaaghCameraData.renderType == CameraRenderType.Base)
+		IPipelineRenderer renderer = GetRenderer(camera, waaaghAdditionalCameraData);
+		cameraData.camera = camera;
+		cameraData.renderer = renderer;
+		cameraData.cameraType = camera.cameraType;
+		cameraData.StackInfo = new StackInfo
 		{
-			cameraStack.EnsureStackBuffer(waaaghCameraData);
-		}
-		waaaghCameraData.Buffer = cameraStack.Buffer;
-		return waaaghCameraData;
+			IsSingleCamera = (cameraStack.Cameras.Count == 1),
+			IsLastCamera = (cameraStack.LastCameraIndex == cameraIndex),
+			StackTargetHandles = cameraStack.TargetHandles,
+			RequiredTargets = CameraRequiredTargets.Unscaled
+		};
+		cameraData.historyManager = (waaaghAdditionalCameraData ? waaaghAdditionalCameraData.HistoryManager : null);
+		InitializeBaseCameraProperties(cameraData, cameraStack);
+		InitializeCameraProperties(cameraData, cameraStack, cameraIndex);
 	}
 
 	private void InitializeBaseCameraProperties(WaaaghCameraData cameraData, WaaaghCameraStack cameraStack)
@@ -382,7 +442,6 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		Camera baseCamera = cameraStack.BaseCamera;
 		WaaaghAdditionalCameraData baseAdditionalCameraData = cameraStack.BaseAdditionalCameraData;
 		cameraData.targetTexture = baseCamera.targetTexture;
-		cameraData.TargetDepthTexture = (baseAdditionalCameraData ? baseAdditionalCameraData.TargetDepthTexture : null);
 		if (isSceneViewCamera)
 		{
 			cameraData.allowHDROutput = false;
@@ -398,7 +457,6 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		cameraData.isHdrEnabled = baseCamera.allowHDR && asset.SupportsHDR;
 		cameraData.hdrColorBufferPrecision = (asset ? asset.HDRColorBufferPrecision : HDRColorBufferPrecision._32Bits);
 		cameraData.allowHDROutput &= asset.SupportsHDR;
-		cameraData.stackAnyPostProcessingEnabled = cameraStack.AnyPostProcessingEnabled;
 		SortingCriteria sortingCriteria = SortingCriteria.CommonOpaque;
 		SortingCriteria sortingCriteria2 = SortingCriteria.SortingLayer | SortingCriteria.RenderQueue | SortingCriteria.OptimizeStateChanges | SortingCriteria.CanvasOrder;
 		bool hasHiddenSurfaceRemovalOnGPU = SystemInfo.hasHiddenSurfaceRemovalOnGPU;
@@ -473,22 +531,44 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		cameraData.IrsData.IrsHasTransparents = cameraData.IrsData.Enabled && IndirectRenderingSystem.Instance.HasTransparentObjects();
 		cameraData.IrsData.IrsHasOpaqueDistortions = cameraData.IrsData.Enabled && IndirectRenderingSystem.Instance.HasOpaqueDistortion();
 		Rect rect = camera.rect;
-		cameraData.pixelRect = camera.pixelRect;
-		cameraData.pixelWidth = camera.pixelWidth;
-		cameraData.pixelHeight = camera.pixelHeight;
-		cameraData.isDefaultViewport = !(Math.Abs(rect.x) > 0f) && !(Math.Abs(rect.y) > 0f) && !(Math.Abs(rect.width) < 1f) && !(Math.Abs(rect.height) < 1f);
-		bool flag2 = cameraData.cameraType == CameraType.SceneView || cameraData.cameraType == CameraType.Preview || cameraData.cameraType == CameraType.Reflection;
-		if (camera.cameraType == CameraType.Game && cameraIndex == cameraStack.LastScaledCameraIndex && Mathf.Abs(1f - asset.RenderScale) > 0.05f && camera.targetTexture == null)
+		if (cameraData.renderType == CameraRenderType.Overlay)
 		{
-			cameraData.renderScale = asset.RenderScale;
+			Camera baseCamera = cameraStack.BaseCamera;
+			int pixelWidth = baseCamera.pixelWidth;
+			int pixelHeight = baseCamera.pixelHeight;
+			int num = (int)((float)pixelWidth * rect.x);
+			int num2 = (int)((float)pixelWidth * (rect.x + rect.width));
+			int num3 = (int)((float)pixelHeight * rect.y);
+			int num4 = (int)((float)pixelHeight * (rect.y + rect.height));
+			cameraData.pixelWidth = Mathf.Max(1, num2 - num);
+			cameraData.pixelHeight = Mathf.Max(1, num4 - num3);
+			cameraData.pixelRect = new Rect(num, num3, num2 - num, num4 - num3);
+		}
+		else
+		{
+			cameraData.pixelRect = camera.pixelRect;
+			cameraData.pixelWidth = camera.pixelWidth;
+			cameraData.pixelHeight = camera.pixelHeight;
+		}
+		cameraData.isDefaultViewport = !(Math.Abs(rect.x) > 0f) && !(Math.Abs(rect.y) > 0f) && !(Math.Abs(rect.width) < 1f) && !(Math.Abs(rect.height) < 1f);
+		bool flag2 = cameraData.cameraType != CameraType.SceneView && cameraData.cameraType != CameraType.Preview && cameraData.cameraType != CameraType.Reflection;
+		bool flag3 = !Mathf.Approximately(asset.RenderScale, 1f);
+		cameraData.renderScale = asset.RenderScale;
+		cameraData.StackInfo.StackHasScaling = camera.cameraType == CameraType.Game && cameraStack.LastScaledCameraIndex != -1 && flag3;
+		if (camera.cameraType == CameraType.Game && cameraIndex == cameraStack.LastScaledCameraIndex && camera.targetTexture == null)
+		{
 			cameraData.upscalingFilter = ResolveUpscalingFilterSelection(new Vector2(cameraData.pixelWidth, cameraData.pixelHeight), cameraData.renderScale, asset.UpscalingFilter);
+			bool flag4 = cameraData.upscalingFilter == ImageUpscalingFilter.STP;
+			bool flag5 = cameraData.upscalingFilter == ImageUpscalingFilter.FSR;
 			if (cameraData.renderScale > 1f)
 			{
 				cameraData.imageScalingMode = ImageScalingMode.Downscaling;
+				cameraData.StackInfo.RequiredTargets = CameraRequiredTargets.Both;
 			}
-			else if (cameraData.renderScale < 1f || (!flag2 && (cameraData.upscalingFilter == ImageUpscalingFilter.FSR || cameraData.upscalingFilter == ImageUpscalingFilter.STP)))
+			else if (cameraData.renderScale < 1f || (flag2 && (flag4 || flag5)))
 			{
 				cameraData.imageScalingMode = ImageScalingMode.Upscaling;
+				cameraData.StackInfo.RequiredTargets = CameraRequiredTargets.Both;
 				if (cameraData.upscalingFilter == ImageUpscalingFilter.STP)
 				{
 					cameraData.antialiasing = AntialiasingMode.TemporalAntialiasing;
@@ -497,19 +577,27 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 			else
 			{
 				cameraData.imageScalingMode = ImageScalingMode.None;
+				cameraData.StackInfo.RequiredTargets = CameraRequiredTargets.Unscaled;
 			}
 			cameraData.fsrOverrideSharpness = asset.FsrOverrideSharpness;
 			cameraData.fsrSharpness = asset.FsrSharpness;
 		}
 		else
 		{
-			cameraData.renderScale = 1f;
 			cameraData.imageScalingMode = ImageScalingMode.None;
 			cameraData.upscalingFilter = ImageUpscalingFilter.Linear;
 			cameraData.fsrSharpness = 0f;
 			cameraData.fsrOverrideSharpness = false;
+			if (cameraData.StackInfo.StackHasScaling)
+			{
+				cameraData.StackInfo.RequiredTargets = ((cameraIndex < cameraStack.LastScaledCameraIndex) ? CameraRequiredTargets.Scaled : CameraRequiredTargets.Unscaled);
+			}
+			else
+			{
+				cameraData.StackInfo.RequiredTargets = CameraRequiredTargets.Unscaled;
+			}
 		}
-		bool num = cameraData.renderType == CameraRenderType.Overlay;
+		bool num5 = cameraData.renderType == CameraRenderType.Overlay;
 		if (waaaghAdditionalCameraData != null)
 		{
 			UpdateTemporalAAData(cameraData, waaaghAdditionalCameraData);
@@ -521,30 +609,13 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 			SetupRawColorAndDepthHistory(cameraData, cameraData.historyManager);
 		}
 		Matrix4x4 projectionMatrix = camera.projectionMatrix;
-		if (num && !camera.orthographic && !Mathf.Approximately(cameraData.aspectRatio, camera.aspect))
+		if (num5 && !camera.orthographic && !Mathf.Approximately(cameraData.aspectRatio, camera.aspect))
 		{
 			float m = camera.projectionMatrix.m00 * camera.aspect / cameraData.aspectRatio;
 			projectionMatrix.m00 = m;
 		}
-		bool flag3 = !Mathf.Approximately(cameraData.renderScale, 1f);
-		cameraData.CameraRenderTargetBufferType = ((!flag3 || cameraIndex > cameraStack.LastScaledCameraIndex) ? CameraRenderTargetType.NonScaled : CameraRenderTargetType.Scaled);
-		if (cameraIndex == cameraStack.LastCameraIndex)
-		{
-			cameraData.CameraResolveTargetBufferType = CameraResolveTargetType.Backbuffer;
-			cameraData.CameraResolveRequired = true;
-		}
-		else if (!flag3 || cameraIndex >= cameraStack.LastScaledCameraIndex)
-		{
-			cameraData.CameraResolveTargetBufferType = CameraResolveTargetType.NonScaled;
-			cameraData.CameraResolveRequired = cameraData.CameraRenderTargetBufferType == CameraRenderTargetType.Scaled;
-		}
-		else
-		{
-			cameraData.CameraResolveTargetBufferType = CameraResolveTargetType.None;
-			cameraData.CameraResolveRequired = false;
-		}
 		bool preserveFramebufferAlpha = Graphics.preserveFramebufferAlpha;
-		Vector2 viewportSize = ((cameraData.CameraRenderTargetBufferType == CameraRenderTargetType.Scaled) ? new Vector2(cameraData.scaledWidth, cameraData.scaledHeight) : new Vector2(cameraData.pixelWidth, cameraData.pixelHeight));
+		Vector2 viewportSize = ((cameraData.StackInfo.RequiredTargets == CameraRequiredTargets.Unscaled) ? new Vector2(cameraData.pixelWidth, cameraData.pixelHeight) : new Vector2(cameraData.scaledWidth, cameraData.scaledHeight));
 		cameraData.cameraTargetDescriptor = CreateRenderTextureDescriptor(in camera, in viewportSize, cameraData.isHdrEnabled, cameraData.hdrColorBufferPrecision, preserveFramebufferAlpha);
 		TemporalAA.JitterFunc jitterFunc = (cameraData.IsSTPEnabled() ? StpUtils.s_JitterFunc : TemporalAA.s_JitterFunc);
 		Matrix4x4 jitterMatrix = TemporalAA.CalculateJitterMatrix(cameraData, jitterFunc);
@@ -556,15 +627,15 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		{
 			cameraData.isAlphaOutputEnabled = true;
 		}
-		bool flag4 = false;
-		bool flag5 = !cameraData.postProcessEnabled || (cameraData.postProcessEnabled && flag4);
-		cameraData.isAlphaOutputEnabled &= flag5;
+		bool flag6 = false;
+		bool flag7 = !cameraData.postProcessEnabled || (cameraData.postProcessEnabled && flag6);
+		cameraData.isAlphaOutputEnabled &= flag7;
 	}
 
-	private void RenderSingleCamera(ScriptableRenderContext context, WaaaghCameraData cameraData)
+	private void RenderSingleCamera(ScriptableRenderContext context, WaaaghCameraData cameraData, WaaaghRenderingData renderingData, WaaaghShadowData shadowData)
 	{
 		Camera camera = cameraData.camera;
-		ScriptableRenderer renderer = cameraData.renderer;
+		IPipelineRenderer renderer = cameraData.renderer;
 		if (renderer == null)
 		{
 			Debug.LogWarning($"Trying to render {camera.name} with an invalid renderer. Camera rendering will be skipped.");
@@ -575,10 +646,10 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 			{
 				return;
 			}
-			using ContextContainer contextContainer = renderer.FrameData;
-			ScriptableRenderer.Current = renderer;
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.CameraSetupData)))
+			GPUDrivenBatchRendererGroup.SupressCulling = !renderer.SupportsPipelineFeature(PipelineFeature.GpuDriven);
+			using (new ProfilingScope(WaaaghProfileId.CameraSetupData.Sampler()))
 			{
+				VFXManager.PrepareCamera(camera);
 				renderer.SetupCullingParameters(ref cullingParameters, cameraData);
 				if (camera.cameraType == CameraType.Reflection || camera.cameraType == CameraType.Preview)
 				{
@@ -608,98 +679,108 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 					UpdateCullingDepthTarget(cameraData);
 				}
 			}
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.CameraCull)))
+			using (new ProfilingScope(WaaaghProfileId.CameraCull.Sampler()))
 			{
-				contextContainer.Create<WaaaghRenderingData>().CullResults = context.Cull(ref cullingParameters);
+				renderingData.CullResults = context.Cull(ref cullingParameters);
 			}
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.CameraSetupData)))
+			using (new ProfilingScope(WaaaghProfileId.CameraSetupData.Sampler()))
 			{
-				CreateWaaaghResourceData(contextContainer);
-				CreateWaaaghRendererListData(contextContainer);
-				CreateShadowData(contextContainer);
-				CreatePostProcessingData(contextContainer);
-				CreateRenderingData(contextContainer);
+				InitializeShadowData(shadowData);
+				InitializeRenderingData(renderingData);
 			}
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.CameraSetupRenderer)))
+			CommandBuffer commandBuffer = CommandBufferPool.Get();
+			using (new ProfilingScope(commandBuffer, TryGetOrAddCameraSampler(camera)))
 			{
-				renderer.SetupInternal(context, renderer.FrameData);
+				RecordAndExecuteRenderGraph(m_RenderGraph, context, renderer, commandBuffer, camera, RenderTextureUVOriginStrategy.PropagateAttachmentOrientation, renderingData, cameraData, shadowData, VirtualTextureManager, GPUDrivenBatchRendererGroup, m_DebugContext);
 			}
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.CameraExecuteRenderer)))
-			{
-				renderer.Execute(context, renderer.FrameData);
-			}
-			using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.CameraSubmit)))
+			context.ExecuteCommandBuffer(commandBuffer);
+			CommandBufferPool.Release(commandBuffer);
+			using (new ProfilingScope(WaaaghProfileId.CameraSubmit.Sampler()))
 			{
 				context.Submit();
 			}
-			ScriptableRenderer.Current = null;
+			GPUDrivenBatchRendererGroup.SupressCulling = false;
 		}
 	}
 
-	private WaaaghRenderingData CreateRenderingData(ContextContainer frameData)
+	private static void RecordAndExecuteRenderGraph(RenderGraph renderGraph, ScriptableRenderContext context, IPipelineRenderer renderer, CommandBuffer cmd, Camera camera, RenderTextureUVOriginStrategy uvOriginStrategy, WaaaghRenderingData renderingData, WaaaghCameraData cameraData, WaaaghShadowData shadowData, VirtualTextureManager virtualTextureManager, GPUDrivenBatchRendererGroup gpuDrivenBatchRendererGroup, DebugContext debugContext)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghPipelineAsset asset = Asset;
-		waaaghRenderingData.RenderGraph = m_RenderGraph;
-		waaaghRenderingData.VisibleLights = waaaghRenderingData.CullResults.visibleLights;
-		waaaghRenderingData.SupportsDynamicBatching = asset.SupportsDynamicBatching;
-		waaaghRenderingData.PerObjectData = GetPerObjectData();
-		waaaghRenderingData.GPUDrivenBatchRendererGroup = GPUDrivenBatchRendererGroup;
-		waaaghRenderingData.VirtualTextureManager = VirtualTextureManager;
-		waaaghRenderingData.LightCookieManager = m_LightCookieManager;
-		InitializeTimeData(out waaaghRenderingData.TimeData);
-		return waaaghRenderingData;
-	}
-
-	private WaaaghPostProcessingData CreatePostProcessingData(ContextContainer frameData)
-	{
-		WaaaghPostProcessingData waaaghPostProcessingData = frameData.Create<WaaaghPostProcessingData>();
-		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
-		waaaghPostProcessingData.isEnabled = waaaghCameraData.stackAnyPostProcessingEnabled;
-		WaaaghPipelineAsset asset = Asset;
-		waaaghPostProcessingData.gradingMode = (asset.SupportsHDR ? asset.PostProcessSettings.ColorGradingMode : ColorGradingMode.LowDynamicRange);
-		if (waaaghCameraData.stackLastCameraOutputToHDR)
+		RendererSetupContext context2 = new RendererSetupContext
 		{
-			waaaghPostProcessingData.gradingMode = ColorGradingMode.HighDynamicRange;
+			ScriptableRenderContext = context,
+			RenderingData = renderingData,
+			CameraData = cameraData,
+			ShadowData = shadowData
+		};
+		renderer.Setup(in context2);
+		RenderGraphParameters parameters = new RenderGraphParameters
+		{
+			executionId = camera.GetEntityId(),
+			generateDebugData = (camera.cameraType != CameraType.Preview && !camera.isProcessingRenderRequest),
+			commandBuffer = cmd,
+			scriptableRenderContext = context,
+			currentFrameIndex = Time.frameCount,
+			renderTextureUVOriginStrategy = uvOriginStrategy
+		};
+		renderGraph.BeginRecording(in parameters);
+		try
+		{
+			RendererRecordContext context3 = new RendererRecordContext
+			{
+				RenderGraph = renderGraph,
+				RenderingData = renderingData,
+				CameraData = cameraData,
+				VirtualTextureManager = virtualTextureManager,
+				ShadowData = shadowData,
+				GPUDrivenBatchRendererGroup = gpuDrivenBatchRendererGroup,
+				DebugContext = debugContext
+			};
+			renderer.Record(in context3);
 		}
-		waaaghPostProcessingData.lutSize = asset.PostProcessSettings.ColorGradingLutSize;
-		waaaghPostProcessingData.useFastSRGBLinearConversion = asset.PostProcessSettings.UseFastSRGBLinearConversion;
-		waaaghPostProcessingData.supportScreenSpaceLensFlare = asset.PostProcessSettings.SupportScreenSpaceLensFlare;
-		waaaghPostProcessingData.supportDataDrivenLensFlare = asset.PostProcessSettings.SupportDataDrivenLensFlare;
-		return waaaghPostProcessingData;
+		catch (Exception)
+		{
+			throw;
+		}
+		finally
+		{
+			renderGraph.EndRecordingAndExecute();
+		}
+		renderer.Cleanup();
 	}
 
-	private WaaaghShadowData CreateShadowData(ContextContainer frameData)
+	private void InitializeRenderingData(WaaaghRenderingData renderingData)
 	{
-		WaaaghShadowData waaaghShadowData = frameData.Create<WaaaghShadowData>();
+		WaaaghPipelineAsset asset = Asset;
+		renderingData.RenderGraph = m_RenderGraph;
+		renderingData.VisibleLights = renderingData.CullResults.visibleLights;
+		renderingData.SupportsDynamicBatching = asset.SupportsDynamicBatching;
+		renderingData.PerObjectData = GetPerObjectData();
+		renderingData.GPUDrivenBatchRendererGroup = GPUDrivenBatchRendererGroup;
+		renderingData.VirtualTextureManager = VirtualTextureManager;
+		renderingData.LightCookieManager = m_LightCookieManager;
+		InitializeTimeData(out renderingData.TimeData);
+		renderingData.ShaderTimeData = new ShaderTimeData(in renderingData.TimeData);
+	}
+
+	private void InitializeShadowData(WaaaghShadowData shadowData)
+	{
 		ShadowSettings shadowSettings = Asset.ShadowSettings;
-		waaaghShadowData.StaticShadowsCacheEnabled = shadowSettings.StaticShadowsCacheEnabled;
-		waaaghShadowData.ShadowManager = m_ShadowManager;
-		waaaghShadowData.AtlasSize = shadowSettings.AtlasSize;
-		waaaghShadowData.CacheAtlasSize = shadowSettings.CacheAtlasSize;
-		waaaghShadowData.SpotLightResolution = shadowSettings.SpotLightResolution;
-		waaaghShadowData.DirectionalLightCascades = shadowSettings.DirectionalLightCascades;
-		waaaghShadowData.DirectionalLightCascadeResolution = shadowSettings.DirectionalLightCascadeResolution;
-		waaaghShadowData.PointLightResolution = shadowSettings.PointLightResolution;
-		waaaghShadowData.ShadowNearPlane = shadowSettings.ShadowNearPlane;
-		waaaghShadowData.ShadowQuality = shadowSettings.ShadowQuality;
-		waaaghShadowData.DepthBias = shadowSettings.DepthBias;
-		waaaghShadowData.NormalBias = shadowSettings.NormalBias;
-		waaaghShadowData.DirectionalSlopeBias = shadowSettings.DirectionalSlopeBias;
-		waaaghShadowData.PointSlopeBias = shadowSettings.PointSlopeBias;
-		waaaghShadowData.ReceiverNormalBias = shadowSettings.ReceiverNormalBias;
-		waaaghShadowData.ShadowUpdateDistances = shadowSettings.ShadowUpdateDistances;
-		return waaaghShadowData;
-	}
-
-	private WaaaghResourceData CreateWaaaghResourceData(ContextContainer frameData)
-	{
-		return frameData.Create<WaaaghResourceData>();
-	}
-
-	private WaaaghRendererListData CreateWaaaghRendererListData(ContextContainer frameData)
-	{
-		return frameData.Create<WaaaghRendererListData>();
+		shadowData.StaticShadowsCacheEnabled = shadowSettings.StaticShadowsCacheEnabled;
+		shadowData.ShadowManager = m_ShadowManager;
+		shadowData.AtlasSize = shadowSettings.AtlasSize;
+		shadowData.CacheAtlasSize = shadowSettings.CacheAtlasSize;
+		shadowData.SpotLightResolution = shadowSettings.SpotLightResolution;
+		shadowData.DirectionalLightCascades = shadowSettings.DirectionalLightCascades;
+		shadowData.DirectionalLightCascadeResolution = shadowSettings.DirectionalLightCascadeResolution;
+		shadowData.PointLightResolution = shadowSettings.PointLightResolution;
+		shadowData.ShadowNearPlane = shadowSettings.ShadowNearPlane;
+		shadowData.ShadowQuality = shadowSettings.ShadowQuality;
+		shadowData.DepthBias = shadowSettings.DepthBias;
+		shadowData.NormalBias = shadowSettings.NormalBias;
+		shadowData.DirectionalSlopeBias = shadowSettings.DirectionalSlopeBias;
+		shadowData.PointSlopeBias = shadowSettings.PointSlopeBias;
+		shadowData.ReceiverNormalBias = shadowSettings.ReceiverNormalBias;
+		shadowData.ShadowUpdateDistances = shadowSettings.ShadowUpdateDistances;
 	}
 
 	private static void UpdateTemporalAATargets(WaaaghCameraData cameraData)
@@ -884,11 +965,6 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		}
 	}
 
-	private void UpdateFrameCount(List<Camera> cameras)
-	{
-		FrameId.Update();
-	}
-
 	private static void UpdateVolumeFramework(Camera camera, WaaaghAdditionalCameraData additionalCameraData)
 	{
 		if (!((camera.cameraType == CameraType.SceneView) | (additionalCameraData != null && additionalCameraData.RequiresVolumeFrameworkUpdate)) && (bool)additionalCameraData)
@@ -959,8 +1035,12 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		}
 	}
 
-	private static ScriptableRenderer GetRenderer(Camera camera, WaaaghAdditionalCameraData additionalCameraData)
+	private IPipelineRenderer GetRenderer(Camera camera, WaaaghAdditionalCameraData additionalCameraData)
 	{
+		if (m_DebugRenderer != null && m_DebugRenderer.AnySupportedDebugActive(m_DebugContext))
+		{
+			return m_DebugRenderer;
+		}
 		if (!(additionalCameraData != null))
 		{
 			return Asset.ScriptableRenderer;
@@ -985,8 +1065,9 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		{
 			result = new RenderTextureDescriptor((int)viewportSize.x, (int)viewportSize.y);
 			result.graphicsFormat = MakeRenderTextureGraphicsFormat(hdrEnabled, hdrColorBufferPrecision, needsAlphaChannel);
-			result.depthBufferBits = 32;
 			result.msaaSamples = 1;
+			result.depthBufferBits = 0;
+			result.depthStencilFormat = GraphicsFormat.None;
 		}
 		else
 		{
@@ -1004,6 +1085,10 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 		result.bindMS = false;
 		result.useDynamicScale = camera.allowDynamicResolution;
 		result.msaaSamples = 1;
+		result.shadowSamplingMode = ShadowSamplingMode.None;
+		result.autoGenerateMips = false;
+		result.mipCount = 1;
+		result.useMipMap = false;
 		return result;
 	}
 
@@ -1172,5 +1257,17 @@ public class WaaaghPipeline : UnityEngine.Rendering.RenderPipeline
 			value.falloff = FalloffType.InverseSquared;
 			lightsOutput[j] = value;
 		}
+	}
+
+	public static ProfilingSampler TryGetOrAddCameraSampler(Camera camera)
+	{
+		ProfilingSampler value = null;
+		int hashCode = camera.GetHashCode();
+		if (!s_HashSamplerCache.TryGetValue(hashCode, out value))
+		{
+			value = new ProfilingSampler(camera.name ?? "");
+			s_HashSamplerCache.Add(hashCode, value);
+		}
+		return value;
 	}
 }

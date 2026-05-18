@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Kingmaker.Gameplay.Features.Encounter;
 using Owlcat.Analytics;
 
 namespace Kingmaker.Code.Middleware.Metrics;
@@ -28,8 +29,6 @@ public abstract class MetricsEvent
 
 	private static int _eventSessionIndex;
 
-	private readonly bool _isGameEvent;
-
 	private const int MEMORY_DURATION = 1000;
 
 	private const int MEMORY_SIZE = 100;
@@ -43,11 +42,6 @@ public abstract class MetricsEvent
 	private static StringBuilder _debugLogBuilder = new StringBuilder(100);
 
 	protected abstract string Name { get; }
-
-	protected MetricsEvent(bool isGameEvent)
-	{
-		_isGameEvent = isGameEvent;
-	}
 
 	public PauseToken Pause()
 	{
@@ -127,11 +121,26 @@ public abstract class MetricsEvent
 	private void AddDefaultParameters()
 	{
 		AddParamInternal("event_session_index", _eventSessionIndex++.ToString());
-		if (_isGameEvent)
+		if (!string.IsNullOrEmpty(Game.Instance.Player.GameId))
 		{
 			AddParamInternal("game_id", Game.Instance.Player.GameId);
-			AddParamInternal("save_id", Game.Instance.SaveId);
-			AddParamInternal("time_game", Convert.ToInt64(Game.Instance.Controllers.TimeController.GameTime.TotalMilliseconds).ToString());
+		}
+		if (Game.Instance.CurrentlyLoadedArea == null)
+		{
+			return;
+		}
+		AddParamInternal("save_id", Game.Instance.SaveId);
+		AddParamInternal("time_game", Convert.ToInt64(Game.Instance.Controllers.TimeController.GameTime.TotalMilliseconds).ToString());
+		AddParamInternal("location_id", Game.Instance.LoadedArea?.Blueprint.AssetGuid);
+		ActiveEncounter current = ActiveEncounter.Current;
+		if (current != null)
+		{
+			AddParamInternal("encounter_id", current.Blueprint.AssetGuid);
+			int combatRound = Game.Instance.Controllers.TurnController.CombatRound;
+			if (combatRound > 0)
+			{
+				AddParamInternal("encounter_round", combatRound.ToString());
+			}
 		}
 	}
 
@@ -202,26 +211,5 @@ public abstract class MetricsEvent
 			text += $"\n{parameter.Key} : {parameter.Value}";
 		}
 		PFLog.Metrics.Warning($"trying to repeat event {Name} {Hash}:\n{text}");
-	}
-
-	protected static string EnumToSnakeCase<T>(T enumValue) where T : Enum
-	{
-		string text = enumValue.ToString();
-		StringBuilder stringBuilder = new StringBuilder(text.Length + 4);
-		stringBuilder.Append(char.ToLower(text[0]));
-		for (int i = 1; i < text.Length; i++)
-		{
-			char c = text[i];
-			if (char.IsUpper(c))
-			{
-				stringBuilder.Append('_');
-				stringBuilder.Append(char.ToLower(c));
-			}
-			else
-			{
-				stringBuilder.Append(c);
-			}
-		}
-		return stringBuilder.ToString();
 	}
 }

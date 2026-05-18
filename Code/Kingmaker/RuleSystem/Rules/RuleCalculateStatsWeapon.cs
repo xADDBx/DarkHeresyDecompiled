@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
@@ -25,11 +27,7 @@ public class RuleCalculateStatsWeapon : RulebookOptionalTargetEvent
 
 	public readonly CompositeModifiersManager DamageBonusAttributeModifiers = new CompositeModifiersManager();
 
-	public readonly CompositeModifiersManager SingleAdditionalHitChanceModifiers = new CompositeModifiersManager();
-
-	public readonly CompositeModifiersManager BurstAdditionalHitChanceModifiers = new CompositeModifiersManager();
-
-	public readonly CompositeModifiersManager AoeAdditionalHitChanceModifiers = new CompositeModifiersManager();
+	public readonly CompositeModifiersManager AdditionalHitChanceModifiers = new CompositeModifiersManager();
 
 	public readonly CompositeModifiersManager MaxDistanceModifiers = new CompositeModifiersManager(1);
 
@@ -53,11 +51,16 @@ public class RuleCalculateStatsWeapon : RulebookOptionalTargetEvent
 
 	public StatType? DamageBonusAttribute { get; private set; }
 
-	public int ResultAdditionalSingleHitChance => SingleAdditionalHitChanceModifiers.Value;
+	public int ResultAdditionalHitChance => AdditionalHitChanceModifiers.Value;
 
-	public int ResultAdditionalBurstHitChance => BurstAdditionalHitChanceModifiers.Value;
+	[Obsolete("Per-mode HitChance unified — use ResultAdditionalHitChance. Recoil is now applied in RuleCalculateHitChances. WH2-48749.")]
+	public int ResultAdditionalSingleHitChance => ResultAdditionalHitChance;
 
-	public int ResultAdditionalAoeHitChance => AoeAdditionalHitChanceModifiers.Value;
+	[Obsolete("Per-mode HitChance unified — use ResultAdditionalHitChance. Recoil is now applied in RuleCalculateHitChances. WH2-48749.")]
+	public int ResultAdditionalBurstHitChance => ResultAdditionalHitChance;
+
+	[Obsolete("Per-mode HitChance unified — use ResultAdditionalHitChance. Recoil is now applied in RuleCalculateHitChances. WH2-48749.")]
+	public int ResultAdditionalAoeHitChance => ResultAdditionalHitChance;
 
 	public int ResultMaxDistance => MaxDistanceModifiers.Value;
 
@@ -80,7 +83,7 @@ public class RuleCalculateStatsWeapon : RulebookOptionalTargetEvent
 		int num = OverpenetrationChanceModifiers.Value;
 		if (Ability != null && Ability.Weapon != null)
 		{
-			num += Ability.Weapon.Blueprint._OverpenetrationChance;
+			num += Ability.Weapon.OverpenetrationChance;
 		}
 		return num;
 	}
@@ -100,22 +103,22 @@ public class RuleCalculateStatsWeapon : RulebookOptionalTargetEvent
 	{
 		Ability = ability;
 		Weapon = weapon ?? ability?.Weapon;
-		BaseDamage = baseDamageOverride ?? new IntermediateDamage(weapon?.Blueprint.DamageType.Type ?? Ability?.Blueprint.ElementsArray.OfType<ContextActionDealDamage>().FirstOrDefault()?.DamageType.Type ?? DamageType.Direct, weapon?.Blueprint.DamageMin ?? 0, weapon?.Blueprint.DamageMax ?? 0);
+		BaseDamage = baseDamageOverride ?? new IntermediateDamage(weapon?.Blueprint.DamageType.Type ?? Ability?.Blueprint.ElementsArray.OfType<ContextActionDealDamage>().FirstOrDefault()?.DamageType.Type ?? DamageType.Direct, weapon?.DamageMin ?? 0, weapon?.DamageMax ?? 0);
 		if (Weapon != null)
 		{
 			MaxDistanceModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.WarhammerMaxDistance, this, ModifierDescriptor.BaseValue);
-			RateOfFireModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.RateOfFire, this, ModifierDescriptor.BaseValue);
-			RecoilModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.Recoil, this, ModifierDescriptor.BaseValue);
+			RateOfFireModifiers.Add(ModifierType.ValAdd, Weapon.RateOfFire, this, ModifierDescriptor.BaseValue);
+			RecoilModifiers.Add(ModifierType.ValAdd, Weapon.Recoil, this, ModifierDescriptor.BaseValue);
 			BaseDamage.PushApplyStrategy(Weapon.Blueprint.DamageApplyStrategy, null, ModifierDescriptor.Weapon);
 			BaseDamage.CritsCountModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.AdditionalCrits, this, ModifierDescriptor.Weapon);
 			BaseDamage.CritsThroughArmorCount = Weapon.Blueprint.CritsThroughArmor;
-			if (Weapon.Blueprint.BrutalDamage > 0)
+			if (Weapon.BrutalDamage > 0)
 			{
-				BaseDamage.HealthDamageModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.BrutalDamage, this, ModifierDescriptor.Weapon);
+				BaseDamage.HealthDamageModifiers.Add(ModifierType.ValAdd, Weapon.BrutalDamage, this, ModifierDescriptor.Brutal);
 			}
-			if (Weapon.Blueprint.DestructiveDamage > 0)
+			if (Weapon.DestructiveDamage > 0)
 			{
-				BaseDamage.ArmorDamageModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.DestructiveDamage, this, ModifierDescriptor.Weapon);
+				BaseDamage.ArmorDamageModifiers.Add(ModifierType.ValAdd, Weapon.DestructiveDamage, this, ModifierDescriptor.Weapon);
 			}
 		}
 	}
@@ -129,7 +132,7 @@ public class RuleCalculateStatsWeapon : RulebookOptionalTargetEvent
 			AbilityData ability = Ability;
 			if ((object)ability != null && ability.Blueprint.IsWeaponAbility && !(base.Reason.Fact is Buff))
 			{
-				DamageBonusAttribute = MeleeDamageStats.MaxBy((StatType p) => (base.InitiatorUnit?.Stats.GetStat(p)?.ModifiedValue).GetValueOrDefault());
+				DamageBonusAttribute = MeleeDamageStats.MaxBy((StatType p) => ((int?)base.InitiatorUnit?.Actor.GetStat(p, null, default(StatContext), "OnTrigger")) ?? 0);
 			}
 		}
 		StatType valueOrDefault = DamageBonusAttribute.GetValueOrDefault();
@@ -144,28 +147,35 @@ public class RuleCalculateStatsWeapon : RulebookOptionalTargetEvent
 					DamageBonusAttributeModifiers.Add(ModifierType.PctMul, (int)(valueOrDefault2 * 100f), this, ModifierDescriptor.Weapon);
 				}
 			}
-			int value = base.ConcreteInitiator.GetAttributeOptional(valueOrDefault)?.WarhammerBonus ?? ((int)base.ConcreteInitiator.GetStatOptional(valueOrDefault) / 10);
-			int num2 = DamageBonusAttributeModifiers.Apply(value);
+			int statBonus = base.ConcreteInitiator.Actor.GetStatBonus(valueOrDefault);
+			int num2 = DamageBonusAttributeModifiers.Apply(statBonus);
 			BaseDamage.Modifiers.Add(ModifierType.PctAdd, num2 * 5, this, valueOrDefault);
 		}
 		if (Weapon != null)
 		{
-			if (Weapon.Blueprint.AdditionalHitChanceSingle != 0)
+			StatFactionModifierConfig[] fractionModifiers = Weapon.GetFractionModifiers();
+			foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
 			{
-				SingleAdditionalHitChanceModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.AdditionalHitChanceSingle, this, ModifierDescriptor.Weapon);
+				switch (statFactionModifierConfig.Stat)
+				{
+				case StatType.ItemWeaponDamage:
+					BaseDamage.Modifiers.Add(statFactionModifierConfig.ModifierType, statFactionModifierConfig.Value, this, ModifierDescriptor.Faction);
+					break;
+				case StatType.ItemWeaponRange:
+					MaxDistanceModifiers.Add(statFactionModifierConfig.ModifierType, statFactionModifierConfig.Value, this, ModifierDescriptor.Faction);
+					break;
+				case StatType.ItemWeaponAccuracy:
+					AdditionalHitChanceModifiers.Add(statFactionModifierConfig.ModifierType, statFactionModifierConfig.Value, this, ModifierDescriptor.Faction);
+					break;
+				}
 			}
-			if (Weapon.Blueprint.AdditionalHitChanceBurst != 0)
+		}
+		if (Weapon != null)
+		{
+			int additionalHitChance = Weapon.AdditionalHitChance;
+			if (additionalHitChance != 0)
 			{
-				BurstAdditionalHitChanceModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.AdditionalHitChanceBurst, this, ModifierDescriptor.Weapon);
-			}
-			if (Weapon.Blueprint.AdditionalHitChanceAoe != 0)
-			{
-				AoeAdditionalHitChanceModifiers.Add(ModifierType.ValAdd, Weapon.Blueprint.AdditionalHitChanceAoe, this, ModifierDescriptor.Weapon);
-			}
-			int num3 = 100 - RecoilModifiers.Value;
-			if (num3 < 100)
-			{
-				BurstAdditionalHitChanceModifiers.Add(ModifierType.PctMul, num3, this, ModifierDescriptor.Recoil);
+				AdditionalHitChanceModifiers.Add(ModifierType.ValAdd, additionalHitChance, this, ModifierDescriptor.Weapon);
 			}
 		}
 		ResultDamage = BaseDamage.Copy();

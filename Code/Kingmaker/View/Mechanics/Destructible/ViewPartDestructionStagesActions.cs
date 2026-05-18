@@ -8,6 +8,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View.MapObjects;
@@ -19,9 +20,9 @@ using UnityEngine;
 namespace Kingmaker.View.Mechanics.Destructible;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class ViewPartDestructionStagesActions : ViewBasedPart<DestructionStagesActionsSettings>, IDestructionStagesManager, IHashable, IOwlPackable<ViewPartDestructionStagesActions>
+public class ViewPartDestructionStagesActions : EntityPartWithConfig<DestructionStagesActionsSettings>, IDestructionStagesManager, IHashable, IOwlPackable<ViewPartDestructionStagesActions>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "ViewPartDestructionStagesActions",
 		OldNames = null,
@@ -71,7 +72,7 @@ public class ViewPartDestructionStagesActions : ViewBasedPart<DestructionStagesA
 		}
 		using ((mechanicEntity != null) ? ContextData<MechanicEntityData>.Request().Setup(mechanicEntity) : null)
 		{
-			using (mechanicsContext?.SetScope())
+			using (EvalContext.PushContextMaybe(mechanicsContext))
 			{
 				actions.Run();
 			}
@@ -97,7 +98,7 @@ public class ViewPartDestructionStagesActions : ViewBasedPart<DestructionStagesA
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		ViewPartDestructionStagesActions source = new ViewPartDestructionStagesActions();
 		result = Unsafe.As<ViewPartDestructionStagesActions, TPossiblyBase>(ref source);

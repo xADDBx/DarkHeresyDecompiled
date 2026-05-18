@@ -58,7 +58,7 @@ public class UnitAnimationActionLeap : UnitAnimationAction
 		nodeLinkTraverser.LeapTraverseTime = endTraverseTime - startTraverseTime;
 		nodeLinkTraverser.LeapInTime = startTraverseTime - num;
 		nodeLinkTraverser.LeapOutTime = num2 - endTraverseTime;
-		handle.AnimationLayer = AnimationLayerType.Locomotion;
+		handle.AnimationLayer = UnitAnimationLayerType.Locomotion;
 		handle.StartClip(clipWrapper, ClipDurationType.Oneshot);
 		handle.ActiveAnimation.SetTime(num);
 	}

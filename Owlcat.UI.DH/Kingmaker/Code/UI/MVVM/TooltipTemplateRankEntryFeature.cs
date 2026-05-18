@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
@@ -44,14 +44,14 @@ public class TooltipTemplateRankEntryFeature : TooltipTemplateUIFeature
 			using (GameLogContext.Scope)
 			{
 				GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
 				string fullDescription = TooltipTemplateUtils.GetFullDescription(UIFeature.Feature);
-				fullDescription = UIUtilityText.UpdateDescriptionWithUIProperties(fullDescription, m_Caster);
-				bricks.Add(new TooltipBrickText(UIUtilityText.UpdateDescriptionWithUIProperties(fullDescription, null)));
+				bricks.Add(new BrickTextVM(fullDescription, TooltipTextType.Simple, TooltipTextAlignment.Midl, m_Caster));
 			}
 		}
 		catch (Exception arg)
 		{
-			bricks.Add(new TooltipBrickText(UIUtilityText.UpdateDescriptionWithUIProperties(UIFeature.Description, null)));
+			bricks.Add(new BrickTextVM(UIFeature.Description, TooltipTextType.Simple, TooltipTextAlignment.Midl, m_Caster));
 			Debug.LogError($"Can't create TooltipTemplate for: {UIFeature.Feature.name}: {arg}");
 		}
 	}
@@ -61,7 +61,7 @@ public class TooltipTemplateRankEntryFeature : TooltipTemplateUIFeature
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
 		if (RankEntrySelectionFeaturesUtils.IsCommonSelectionItem(m_SelectionItem))
 		{
-			list.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.CommonFeatureDesc, TooltipTitleType.H4));
+			list.Add(new BrickTitleVM(UIStrings.Instance.Tooltips.CommonFeatureDesc, TooltipTitleType.H4));
 		}
 		list.AddRange(base.GetHeader(type));
 		return list;
@@ -73,7 +73,7 @@ public class TooltipTemplateRankEntryFeature : TooltipTemplateUIFeature
 		list.AddRange(base.GetBody(type));
 		if (Prerequisite != null)
 		{
-			list.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.Prerequisites, TooltipTitleType.H2));
+			list.Add(new BrickTitleVM(UIStrings.Instance.Tooltips.Prerequisites, TooltipTitleType.H2));
 			AddPrerequisiteGroup(UIUtilityAbilities.GetPrerequisiteEntries(Prerequisite), list);
 		}
 		return list;
@@ -88,15 +88,15 @@ public class TooltipTemplateRankEntryFeature : TooltipTemplateUIFeature
 		{
 			AddOr(result);
 		}
-		result.Add(new TooltipBrickPrerequisite(list));
+		result.Add(new BrickPrerequisiteVM(list));
 		if (list2.Any())
 		{
 			if (isOr)
 			{
 				AddOr(result);
 			}
-			result.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.NoFeature, TooltipTitleType.H3));
-			result.Add(new TooltipBrickPrerequisite(list2));
+			result.Add(new BrickTitleVM(UIStrings.Instance.Tooltips.NoFeature, TooltipTitleType.H3));
+			result.Add(new BrickPrerequisiteVM(list2));
 		}
 		if (isOr && list3.Any())
 		{
@@ -115,14 +115,14 @@ public class TooltipTemplateRankEntryFeature : TooltipTemplateUIFeature
 
 	private static void AddOr(List<ITooltipBrick> result)
 	{
-		result.Add(new TooltipBrickItemHeader($"<size={UIConfig.Instance.SubTextPercentSize}%>{UIStrings.Instance.Tooltips.or.Text}</size>"));
+		result.Add(new BrickItemHeaderVM($"<size={UIConfig.Instance.SubTextPercentSize}%>{UIStrings.Instance.Tooltips.or.Text}</size>"));
 	}
 
 	public override IEnumerable<ITooltipBrick> GetFooter(TooltipTemplateType type)
 	{
 		if (type != 0 && Game.Instance.IsControllerMouse && RankEntrySelectionFeaturesUtils.HasPrerequisiteFooter(Prerequisite, m_Owner))
 		{
-			yield return new TooltipBrickTitle(UIStrings.Instance.Tooltips.PrerequisitesFooter, TooltipTitleType.H6);
+			yield return new BrickTitleVM(UIStrings.Instance.Tooltips.PrerequisitesFooter, TooltipTitleType.H6);
 		}
 	}
 }

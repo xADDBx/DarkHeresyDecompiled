@@ -14,7 +14,7 @@ public class CharacterAtlas
 
 	private List<CharacterTextureDescription> m_SortedTextures;
 
-	private Dictionary<Texture, HashSet<BodyPartType>> m_TexturesTypesMap;
+	private Dictionary<Texture, SortedSet<BodyPartType>> m_TexturesTypesMap;
 
 	private Dictionary<CharacterTextureDescription, Texture> m_PrimaryTextureMap;
 
@@ -57,7 +57,7 @@ public class CharacterAtlas
 
 	public void RefreshData()
 	{
-		m_TexturesTypesMap = new Dictionary<Texture, HashSet<BodyPartType>>();
+		m_TexturesTypesMap = new Dictionary<Texture, SortedSet<BodyPartType>>();
 		m_PrimaryTextureMap = new Dictionary<CharacterTextureDescription, Texture>();
 		m_SortedTextures = new List<CharacterTextureDescription>();
 	}
@@ -91,7 +91,7 @@ public class CharacterAtlas
 			PFLog.Default.Warning($"Wrong texture channel {bodyPartType} {textureDesc.GetMainTextureName()}!");
 			return;
 		}
-		HashSet<BodyPartType> value;
+		SortedSet<BodyPartType> value;
 		bool flag = m_TexturesTypesMap.TryGetValue(textureDesc.GetSourceTexture(), out value);
 		if (flag && value.Contains(bodyPartType))
 		{
@@ -100,7 +100,7 @@ public class CharacterAtlas
 		}
 		if (!flag)
 		{
-			value = new HashSet<BodyPartType>(new BodyPartTypeEqualityComparer());
+			value = new SortedSet<BodyPartType>(BodyPartTypeNameComparer.Instance);
 			m_TexturesTypesMap[textureDesc.GetSourceTexture()] = value;
 			m_SortedTextures.Add(textureDesc);
 		}
@@ -115,7 +115,7 @@ public class CharacterAtlas
 		}
 		if (!m_TexturesTypesMap.TryGetValue(primaryTexture, out var value))
 		{
-			value = new HashSet<BodyPartType>(new BodyPartTypeEqualityComparer());
+			value = new SortedSet<BodyPartType>(BodyPartTypeNameComparer.Instance);
 			m_TexturesTypesMap[primaryTexture] = value;
 			m_SortedTextures.Add(textureDesc);
 		}
@@ -126,25 +126,25 @@ public class CharacterAtlas
 	public Texture Build(EquipmentEntity.PaintedTextures paintedTextures, MaterialProperties materialProperties)
 	{
 		CalculateRects();
-		bool isSwitch = Application.platform == RuntimePlatform.ReservedCFE;
+		bool isSwitch = Application.platform == RuntimePlatform.Switch2;
 		RenderTextureReadWrite colorSpace = ((Channel != 0) ? RenderTextureReadWrite.Linear : RenderTextureReadWrite.sRGB);
 		RenderTexture renderTexture = CreateAtlasRenderTexture(colorSpace, isSwitch);
 		renderTexture.name = $"{Channel}_RT";
 		RenderTexture renderTexture2 = CreatePreviousRenderTexture(colorSpace, isSwitch);
 		renderTexture2.name = $"{Channel}_prevRT";
 		RenderTexture active = RenderTexture.active;
-		RenderTexture.active = renderTexture;
+		Color backgroundColor;
 		switch (Channel)
 		{
 		case CharacterTextureChannel.Diffuse:
 			BakeMaterial.DisableKeyword("ALPHA_MASK_ON");
 			BakeMaterial.DisableKeyword("NORMAL_MAP_ON");
-			GL.Clear(clearDepth: false, clearColor: true, Color.clear);
+			backgroundColor = Color.clear;
 			break;
 		case CharacterTextureChannel.Normal:
 			BakeMaterial.EnableKeyword("ALPHA_MASK_ON");
 			BakeMaterial.EnableKeyword("NORMAL_MAP_ON");
-			GL.Clear(clearDepth: false, clearColor: true, new Color(0.5f, 0.5f, 0f, 0f));
+			backgroundColor = new Color(0.5f, 0.5f, 0f, 0f);
 			break;
 		case CharacterTextureChannel.Masks:
 			BakeMaterial.EnableKeyword("ALPHA_MASK_ON");
@@ -152,9 +152,16 @@ public class CharacterAtlas
 			BakeMaterial.SetFloat(ShaderProps._Roughness, materialProperties.Roughness);
 			BakeMaterial.SetFloat(ShaderProps._Emission, materialProperties.Emission);
 			BakeMaterial.SetFloat(ShaderProps._Metallic, materialProperties.Metallic);
-			GL.Clear(clearDepth: false, clearColor: true, new Color(0.85f, 0f, 0f, 0f));
+			backgroundColor = new Color(0.85f, 0f, 0f, 0f);
+			break;
+		default:
+			backgroundColor = Color.clear;
 			break;
 		}
+		RenderTexture.active = renderTexture2;
+		GL.Clear(clearDepth: false, clearColor: true, backgroundColor);
+		RenderTexture.active = renderTexture;
+		GL.Clear(clearDepth: false, clearColor: true, backgroundColor);
 		BakeMaterial.SetTexture(ShaderProps._PreviousTex, renderTexture2);
 		foreach (CharacterTextureDescription sortedTexture in m_SortedTextures)
 		{
@@ -361,13 +368,20 @@ public class CharacterAtlas
 	{
 		m_Rects.Clear();
 		Dictionary<BodyPartType, Rect> dictionary = new Dictionary<BodyPartType, Rect>();
-		foreach (KeyValuePair<Texture, HashSet<BodyPartType>> item in m_TexturesTypesMap)
+		HashSet<Texture> hashSet = new HashSet<Texture>();
+		foreach (CharacterTextureDescription sortedTexture in m_SortedTextures)
 		{
-			bool flag = false;
-			Rect value = new Rect(0f, 0f, 0f, 0f);
-			foreach (BodyPartType item2 in item.Value)
+			Texture value;
+			Texture texture = (m_PrimaryTextureMap.TryGetValue(sortedTexture, out value) ? value : sortedTexture.GetSourceTexture());
+			if (!hashSet.Add(texture) || !m_TexturesTypesMap.TryGetValue(texture, out var value2))
 			{
-				flag = dictionary.TryGetValue(item2, out value);
+				continue;
+			}
+			bool flag = false;
+			Rect value3 = new Rect(0f, 0f, 0f, 0f);
+			foreach (BodyPartType item in value2)
+			{
+				flag = dictionary.TryGetValue(item, out value3);
 				if (flag)
 				{
 					break;
@@ -375,12 +389,12 @@ public class CharacterAtlas
 			}
 			if (!flag)
 			{
-				foreach (BodyPartType item3 in item.Value)
+				foreach (BodyPartType item2 in value2)
 				{
-					value = (dictionary[item3] = GetMappedRect(item3));
+					value3 = (dictionary[item2] = GetMappedRect(item2));
 				}
 			}
-			m_Rects[item.Key] = value;
+			m_Rects[texture] = value3;
 		}
 	}
 

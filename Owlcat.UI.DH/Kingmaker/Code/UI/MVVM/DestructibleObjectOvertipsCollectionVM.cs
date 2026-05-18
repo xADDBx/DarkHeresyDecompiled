@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
@@ -30,7 +29,11 @@ public class DestructibleObjectOvertipsCollectionVM : BaseMapObjectOvertipsColle
 
 	protected override bool NeedOvertip(Entity entityData)
 	{
-		return entityData is DestructibleEntity;
+		if (entityData is DestructibleEntity && !entityData.IsDisposed)
+		{
+			return !entityData.Destroyed;
+		}
+		return false;
 	}
 
 	public void HandleObjectHighlightChange()
@@ -72,7 +75,9 @@ public class DestructibleObjectOvertipsCollectionVM : BaseMapObjectOvertipsColle
 	private void TryDelayedRemoveEntity(Entity entityData)
 	{
 		m_DelayedRemoveHandlers.Remove(entityData);
-		float seconds = GetOvertip(entityData)?.DeathDelay ?? DeathEntityRemoveDelay;
+		OvertipDestructibleObjectVM overtip = GetOvertip(entityData);
+		float seconds = overtip?.DeathDelay ?? DeathEntityRemoveDelay;
+		overtip?.MarkForRemoval();
 		m_DelayedRemoveHandlers[entityData] = DelayedInvoker.InvokeInTime(delegate
 		{
 			RemoveEntity(entityData);

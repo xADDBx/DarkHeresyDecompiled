@@ -25,21 +25,9 @@ public class OvertipLightweightUnitNameView : View<LightweightOvertipNameBlockVM
 
 	private CanvasRenderer CharacterNameCanvasRenderer => m_CharacterNameCanvasRenderer ?? (m_CharacterNameCanvasRenderer = m_NameText.GetComponent<CanvasRenderer>());
 
-	private bool CheckVisibility
-	{
-		get
-		{
-			if (base.ViewModel.MechanicEntityUIState.MechanicEntity.IsVisibleForPlayer && !base.ViewModel.MechanicEntityUIState.HasHiddenCondition.CurrentValue)
-			{
-				return base.ViewModel.MechanicEntityUIState.IsMouseOverUnit.CurrentValue;
-			}
-			return false;
-		}
-	}
-
 	protected override void OnBind()
 	{
-		base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer.CombineLatest(base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.HasHiddenCondition, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, base.ViewModel.MechanicEntityUIState.HoverSelfTargetAbility, (bool _, bool _, bool _, bool _, bool _) => true).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate
+		base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer.CombineLatest(base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.HideOvertip, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, base.ViewModel.MechanicEntityUIState.HoverSelfTargetAbility, (bool _, bool _, bool _, bool _, bool _) => true).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate
 		{
 			UpdateVisibility();
 		})
@@ -69,6 +57,6 @@ public class OvertipLightweightUnitNameView : View<LightweightOvertipNameBlockVM
 
 	private void UpdateVisibility()
 	{
-		m_Animator.PlayAnimation(CheckVisibility);
+		m_Animator.PlayAnimation(base.ViewModel.IsVisible());
 	}
 }

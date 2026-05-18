@@ -396,7 +396,7 @@ public class BodyAllocator : EntityAllocatorWithTransforms<AuthoringBase, BodyDe
 				for (int i = 0; i < bodyDescriptor.ParticlesRange.y; i++)
 				{
 					Particle value2 = addedEntity.LayoutBase.BodyStructure.Particles[i];
-					value2.BasePosition = localToWorldMatrix.MultiplyPoint3x4(value2.BasePosition);
+					value2.BasePosition = localToWorldMatrix.MultiplyPoint3x4((Vector3)value2.BasePosition);
 					value2.Position = value2.BasePosition;
 					value2.PrevPosition = value2.Position;
 					value2.JacobiPosDelta = int3.zero;
@@ -443,7 +443,7 @@ public class BodyAllocator : EntityAllocatorWithTransforms<AuthoringBase, BodyDe
 					}
 					for (int num3 = 0; num3 < bodyDescriptor.VerticesRange.y; num3++)
 					{
-						float3 @float = localToWorldMatrix.MultiplyVector(addedEntity.LayoutBase.BodyStructure.RestNormals[num3]);
+						float3 @float = localToWorldMatrix.MultiplyVector((Vector3)addedEntity.LayoutBase.BodyStructure.RestNormals[num3]);
 						VerticesSoA[bodyDescriptor.VerticesRange.x + num3] = new BodyVertex
 						{
 							Normal = @float,

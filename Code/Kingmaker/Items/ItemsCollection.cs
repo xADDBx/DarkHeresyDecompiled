@@ -14,10 +14,12 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Gameplay.Features.Items.Utility;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.Items.Slots;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
@@ -32,7 +34,7 @@ namespace Kingmaker.Items;
 
 [JsonObject(MemberSerialization.OptIn)]
 [OwlPackable(OwlPackableMode.Generate)]
-public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnumerable, IHashable, IOwlPackable, IOwlPackable<ItemsCollection>
+public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnumerable, IAreaCRChangedHandler, ISubscriber, IHashable, IOwlPackable, IOwlPackable<ItemsCollection>
 {
 	public class DoNotRemoveFromSlot : ContextFlag<DoNotRemoveFromSlot>
 	{
@@ -167,6 +169,10 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 			m_Items.Add(item);
 		}
 		item.Collection = this;
+		if (IsPlayerInventory || IsSharedStash)
+		{
+			item.SourceContainer = null;
+		}
 		item.UpdateSlotIndex();
 		if (!item.IsStackable && item.Count > 1)
 		{
@@ -192,6 +198,22 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 
 	public ItemEntity Add(ItemEntity newItem, bool noAutoMerge = false)
 	{
+		if (newItem.Blueprint is IBlueprintItemContainer)
+		{
+			BlueprintItem blueprint = newItem.Blueprint;
+			int count = newItem.Count;
+			newItem.Dispose();
+			ItemEntity itemEntity = ContainerResolver.TryResolveEntity(blueprint, ResolveEquipmentCR(null));
+			if (itemEntity == null)
+			{
+				return null;
+			}
+			if (count > 1 && (itemEntity.IsStackable || ForceStackable))
+			{
+				itemEntity.IncrementCount(count - 1, ForceStackable);
+			}
+			newItem = itemEntity;
+		}
 		newItem.SetOriginAreaIfNull(Game.Instance.CurrentlyLoadedArea);
 		if (IsPlayerInventory)
 		{
@@ -206,8 +228,8 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 			}
 			newItem.Time = Game.Instance.Player.GameTime;
 		}
-		int count = newItem.Count;
-		if (count == 0 && !KeepItemsWithZeroCount)
+		int count2 = newItem.Count;
+		if (count2 == 0 && !KeepItemsWithZeroCount)
 		{
 			return newItem;
 		}
@@ -218,51 +240,78 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 			{
 				if (((!flag && !item.IsFromVendorSlot()) || newItem.IsFromSameVendorSlot(item)) && item.TryMerge(newItem))
 				{
-					OnItemAdded(item, count);
+					OnItemAdded(item, count2);
 					return item;
 				}
 			}
 		}
 		Insert(newItem);
-		OnItemAdded(newItem, count);
+		OnItemAdded(newItem, count2);
 		return newItem;
 	}
 
-	public void Add(BlueprintItem newBpItem, int count, [CanBeNull] Action<ItemEntity> callback = null, bool noAutoMerge = false)
+	public void Add(BlueprintItem newBpItem, int count, [CanBeNull] Action<ItemEntity> callback = null, bool noAutoMerge = false, int? equipmentCR = null)
 	{
+		int? equipmentCR2 = ResolveEquipmentCR(equipmentCR);
 		if (newBpItem.IsActuallyStackable || ForceStackable)
 		{
-			ItemEntity itemEntity = newBpItem.CreateEntity();
-			itemEntity.IncrementCount(count - 1, ForceStackable);
-			itemEntity = Add(itemEntity, noAutoMerge);
-			try
+			ItemEntity itemEntity = ContainerResolver.TryResolveEntity(newBpItem, equipmentCR2);
+			if (itemEntity != null)
 			{
-				callback?.Invoke(itemEntity);
-				return;
+				itemEntity.IncrementCount(count - 1, ForceStackable);
+				itemEntity = Add(itemEntity, noAutoMerge);
+				InvokeAddCallback(callback, itemEntity);
 			}
-			catch (Exception ex)
-			{
-				PFLog.Default.Exception(ex);
-				return;
-			}
+			return;
 		}
 		while (count-- > 0)
 		{
-			ItemEntity obj = Add(newBpItem.CreateEntity(), noAutoMerge);
-			try
+			ItemEntity itemEntity2 = ContainerResolver.TryResolveEntity(newBpItem, equipmentCR2);
+			if (itemEntity2 != null)
 			{
-				callback?.Invoke(obj);
-			}
-			catch (Exception ex2)
-			{
-				PFLog.Default.Exception(ex2);
+				ItemEntity item = Add(itemEntity2, noAutoMerge);
+				InvokeAddCallback(callback, item);
 			}
 		}
 	}
 
-	public ItemEntity Add(BlueprintItem newBpItem)
+	public ItemEntity Add(BlueprintItem newBpItem, int? equipmentCR = null)
 	{
-		return Add(newBpItem.CreateEntity());
+		ItemEntity itemEntity = ContainerResolver.TryResolveEntity(newBpItem, ResolveEquipmentCR(equipmentCR));
+		if (itemEntity == null)
+		{
+			return null;
+		}
+		return Add(itemEntity);
+	}
+
+	private int? ResolveEquipmentCR(int? equipmentCR)
+	{
+		if (equipmentCR.HasValue)
+		{
+			return equipmentCR;
+		}
+		if (OwnerUnit != null)
+		{
+			return UnitEquipmentCRHelper.GetEquipmentCR(OwnerUnit);
+		}
+		return Game.Instance.CurrentlyLoadedArea?.GetCR();
+	}
+
+	private static void InvokeAddCallback([CanBeNull] Action<ItemEntity> callback, ItemEntity item)
+	{
+		if (callback == null)
+		{
+			return;
+		}
+		try
+		{
+			callback(item);
+		}
+		catch (Exception ex)
+		{
+			PFLog.Default.Exception(ex);
+		}
 	}
 
 	public ItemEntity Remove(ItemEntity item, int? count = null)
@@ -620,19 +669,20 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 			return false;
 		}
 		IAbstractUnitEntity player = Game.Instance.Player.MainCharacter.Entity;
-		DroppedLoot droppedLoot = UnityEngine.Object.FindObjectsOfType<DroppedLoot>().FirstOrDefault((DroppedLoot o) => o.IsDroppedByPlayer && player.DistanceTo(o.ViewTransform.position) < 5.Feet().Meters);
-		if (!droppedLoot)
+		DroppedLootView droppedLootView = UnityEngine.Object.FindObjectsOfType<DroppedLootView>().FirstOrDefault((DroppedLootView o) => o.IsDroppedByPlayer && player.DistanceTo(o.ViewTransform.position) < 5.Feet().Meters);
+		if (!droppedLootView)
 		{
-			droppedLoot = Game.Instance.Controllers.EntitySpawner.SpawnEntityWithView(ConfigRoot.Instance.Prefabs.DroppedLootBag, player.Position, player.ViewTransform.rotation, Game.Instance.State.LoadedAreaState.MainState);
-			droppedLoot.Loot = new ItemsCollection(droppedLoot.Data);
-			droppedLoot.DroppedBy = (BaseUnitEntity)player;
+			droppedLootView = Game.Instance.Controllers.EntitySpawner.SpawnEntityWithView(ConfigRoot.Instance.Prefabs.DroppedLootBag, player.Position, player.Rotation, Game.Instance.State.LoadedAreaState.MainState);
+			droppedLootView.Loot = new ItemsCollection(droppedLootView.Data);
+			droppedLootView.DroppedBy = (BaseUnitEntity)player;
 		}
-		Transfer(item, droppedLoot.Loot);
+		Transfer(item, droppedLootView.Loot);
 		return true;
 	}
 
 	public void Subscribe()
 	{
+		EventBus.Subscribe(this);
 		foreach (ItemEntity item in m_Items)
 		{
 			item.Subscribe();
@@ -641,9 +691,40 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 
 	public void Unsubscribe()
 	{
+		EventBus.Unsubscribe(this);
 		foreach (ItemEntity item in m_Items)
 		{
 			item.Unsubscribe();
+		}
+	}
+
+	void IAreaCRChangedHandler.HandleAreaCRChanged()
+	{
+		ReResolveContainerItems();
+	}
+
+	private void ReResolveContainerItems()
+	{
+		using (ContextData<SuppressEvents>.Request())
+		{
+			int? equipmentCR = ResolveEquipmentCR(null);
+			for (int num = m_Items.Count - 1; num >= 0; num--)
+			{
+				ReResolveContainerItem(m_Items[num], equipmentCR);
+			}
+		}
+	}
+
+	private void ReResolveContainerItem(ItemEntity item, int? equipmentCR)
+	{
+		ItemEntity itemEntity = ContainerResolver.ReResolve(item, equipmentCR);
+		if (itemEntity != null && itemEntity != item)
+		{
+			ItemSlot holdingSlot = item.HoldingSlot;
+			Extract(item);
+			item.Dispose();
+			Insert(itemEntity);
+			holdingSlot?.InsertItem(itemEntity);
 		}
 	}
 

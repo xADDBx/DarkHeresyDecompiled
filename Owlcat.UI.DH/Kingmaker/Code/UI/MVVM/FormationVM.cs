@@ -84,14 +84,14 @@ public class FormationVM : ViewModel, IFormationUIHandlers, ISubscriber, IPrepar
 
 	private void OnFormationSelectedEntityChange(FormationSelectionItemVM itemVM)
 	{
-		Game.Instance.GameCommandQueue.PartyFormationIndex(itemVM.FormationIndex);
+		Game.Instance.GameCommandQueue.PartyFormationIndex(itemVM.FormationIndex, fromUi: true);
 	}
 
 	public void CurrentFormationChanged(int currentFormationIndex)
 	{
 		m_SelectedFormationPresetIndex.Value = currentFormationIndex;
 		m_IsPreserveFormation.Value = FormationManager.GetPreserveFormation();
-		m_FormationUpdated?.Execute();
+		m_FormationUpdated?.Execute(Unit.Default);
 	}
 
 	public void Close()

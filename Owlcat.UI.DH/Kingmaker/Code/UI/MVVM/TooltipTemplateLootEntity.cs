@@ -29,20 +29,22 @@ public class TooltipTemplateLootEntity : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickIconAndName(m_Icon, m_Title);
+		yield return new BrickIconAndNameVM(m_Title, m_Icon);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickText(m_Description, TooltipTextType.Paragraph);
+		yield return new BrickTextVM(m_Description, TooltipTextType.Paragraph);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetFooter(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickSeparator();
+		yield return new BrickSeparatorVM();
+		MultipleTextData[] array = new MultipleTextData[2];
 		int count = m_Count;
-		string leftLine = count.ToString();
+		array[0] = new MultipleTextData(new TextEntity(count.ToString()));
 		float profitFactorCost = m_ProfitFactorCost;
-		yield return new TooltipBrickDoubleText(leftLine, profitFactorCost.ToString());
+		array[1] = new MultipleTextData(new TextEntity(profitFactorCost.ToString()));
+		yield return new BrickMultipleTextVM(array);
 	}
 }

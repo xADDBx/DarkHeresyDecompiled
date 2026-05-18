@@ -43,7 +43,7 @@ public static class OwlcatPlayerLoop
 		bool flag = false;
 		if (num2 < num3)
 		{
-			PFLog.Default.Log($"Swapping UnityEngine.PlayerLoop.PreLateUpdate subsystems order: ParticleSystemBeginUpdateAll (index:{num2}) and ScriptRunBehaviourLateUpdate (index:{num3})");
+			PFLog.System.Log($"Swapping UnityEngine.PlayerLoop.PreLateUpdate subsystems order: ParticleSystemBeginUpdateAll (index:{num2}) and ScriptRunBehaviourLateUpdate (index:{num3})");
 			list[num2] = playerLoopSystem.subSystemList[num3];
 			list[num3] = playerLoopSystem.subSystemList[num2];
 			flag = true;
@@ -51,7 +51,7 @@ public static class OwlcatPlayerLoop
 		if (IndexOfSubSystem<PreLateUpdate.SnapControllerSystemUpdate>(playerLoopSystem.subSystemList) < 0)
 		{
 			int num4 = Mathf.Max(num2, num3) + 1;
-			PFLog.Default.Log($"Inserting SnapController subsystem into UnityEngine.PlayerLoop.PreLateUpdate subsystems at (index:{num4})");
+			PFLog.System.Log($"Inserting SnapController subsystem into UnityEngine.PlayerLoop.PreLateUpdate subsystems at (index:{num4})");
 			list.Insert(num4, new PlayerLoopSystem
 			{
 				type = typeof(PreLateUpdate.SnapControllerSystemUpdate),
@@ -61,7 +61,7 @@ public static class OwlcatPlayerLoop
 		}
 		if (flag)
 		{
-			PFLog.Default.Log("Applying UnityEngine.PlayerLoop.PreLateUpdate subsystems modifications");
+			PFLog.System.Log("Applying UnityEngine.PlayerLoop.PreLateUpdate subsystems modifications");
 			playerLoopSystem.subSystemList = list.ToArray();
 			currentPlayerLoop.subSystemList[num] = playerLoopSystem;
 			PlayerLoop.SetPlayerLoop(currentPlayerLoop);

@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Fx;
 using Kingmaker.Controllers.Projectiles;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Framework.Mechanics.Utility.Damage;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -49,8 +50,7 @@ public static class HitFXPlayer
 
 	public static Vector3 GetProjectileHitFxSpawnPosition([NotNull] Projectile projectile, [NotNull] TargetWrapper target)
 	{
-		MechanicEntityView target2 = target.Entity?.View;
-		return GetHitFxSpawnPosition(projectile, target2, null, adjustHeight: false);
+		return GetHitFxSpawnPosition(projectile, (target.Entity?.View)?.AsMechanicEntityView(), null, adjustHeight: false);
 	}
 
 	public static void PlayProjectileHit([NotNull] Projectile projectile, [NotNull] TargetWrapper target)
@@ -75,12 +75,12 @@ public static class HitFXPlayer
 			}
 			break;
 		}
-		MechanicEntityView mechanicEntityView = target.Entity?.View;
-		BaseUnitEntity targetUnitForHitSnapFx = projectile.TargetUnitForHitSnapFx;
-		MechanicEntityView snapFxTarget = ((targetUnitForHitSnapFx != null) ? ObjectExtensions.Or(targetUnitForHitSnapFx.View, null) : null) ?? mechanicEntityView;
-		Vector3 hitFxSpawnPosition = GetHitFxSpawnPosition(projectile, mechanicEntityView, null, adjustHeight: false);
-		Quaternion hitFxSpawnRotation = GetHitFxSpawnRotation(projectile, mechanicEntityView, null);
-		PlayHits(projectile, mechanicEntityView, snapFxTarget, projectileHit.FollowTarget, in hitFxSpawnPosition, in hitFxSpawnRotation);
+		IMechanicEntityView mechanicEntityView = target.Entity?.View;
+		IMechanicEntityView mechanicEntityView2 = projectile.TargetUnitForHitSnapFx?.View;
+		IMechanicEntityView view = mechanicEntityView2 ?? mechanicEntityView;
+		Vector3 hitFxSpawnPosition = GetHitFxSpawnPosition(projectile, mechanicEntityView.AsMechanicEntityView(), null, adjustHeight: false);
+		Quaternion hitFxSpawnRotation = GetHitFxSpawnRotation(projectile, mechanicEntityView.AsMechanicEntityView(), null);
+		PlayHits(projectile, mechanicEntityView.AsMechanicEntityView(), view.AsMechanicEntityView(), projectileHit.FollowTarget, in hitFxSpawnPosition, in hitFxSpawnRotation);
 	}
 
 	public static void PlayDamageHit([NotNull] RuleDealDamage damageRule)
@@ -111,10 +111,10 @@ public static class HitFXPlayer
 			damageHitSettings = hitSystemRoot.DefaultDamage;
 			zero = (target.Position - initiator.Position).normalized;
 		}
-		MechanicEntityView mechanicEntityView = target?.View;
+		IMechanicEntityView mechanicEntityView = target?.View;
 		UnitEntityView unitEntityView = mechanicEntityView as UnitEntityView;
-		MechanicEntityView mechanicEntityView2 = initiator?.View;
-		if (!mechanicEntityView || !mechanicEntityView2)
+		IMechanicEntityView mechanicEntityView2 = initiator?.View;
+		if (mechanicEntityView == null || mechanicEntityView2 == null)
 		{
 			return;
 		}
@@ -163,9 +163,9 @@ public static class HitFXPlayer
 				AddHit(hitSystemRoot.GetVitalHitFX(surfaceType), flag2);
 			}
 		}
-		Vector3 hitFxSpawnPosition = GetHitFxSpawnPosition(projectile, mechanicEntityView, mechanicEntityView2, adjustHeight: false);
-		Quaternion hitFxSpawnRotation = GetHitFxSpawnRotation(projectile, mechanicEntityView, mechanicEntityView2);
-		PlayHits(projectile, mechanicEntityView, mechanicEntityView, damageHitSettings.FollowTarget, in hitFxSpawnPosition, in hitFxSpawnRotation);
+		Vector3 hitFxSpawnPosition = GetHitFxSpawnPosition(projectile, mechanicEntityView.AsMechanicEntityView(), mechanicEntityView2.AsMechanicEntityView(), adjustHeight: false);
+		Quaternion hitFxSpawnRotation = GetHitFxSpawnRotation(projectile, mechanicEntityView.AsMechanicEntityView(), mechanicEntityView2.AsMechanicEntityView());
+		PlayHits(projectile, mechanicEntityView.AsMechanicEntityView(), mechanicEntityView.AsMechanicEntityView(), damageHitSettings.FollowTarget, in hitFxSpawnPosition, in hitFxSpawnRotation);
 		if (!(unitEntityView != null) || !(zero != Vector3.zero))
 		{
 			return;
@@ -304,7 +304,7 @@ public static class HitFXPlayer
 
 	private static Vector3 GetHitFxSpawnPosition([CanBeNull] Projectile projectile, [CanBeNull] MechanicEntityView target, [CanBeNull] MechanicEntityView initiator, bool adjustHeight)
 	{
-		MechanicEntityView mechanicEntityView = projectile?.Target.Entity?.View;
+		IMechanicEntityView mechanicEntityView = projectile?.Target.Entity?.View;
 		if (projectile != null && mechanicEntityView == target)
 		{
 			return projectile.GetTargetPoint();
@@ -315,7 +315,7 @@ public static class HitFXPlayer
 			return Vector3.zero;
 		}
 		FxBone hitLocator = GetHitLocator(projectile, initiator, target);
-		Vector3 result = ((hitLocator?.Transform != null) ? hitLocator.Transform.position : (target.ViewTransform.position + Vector3.up));
+		Vector3 result = ((hitLocator?.Transform != null) ? hitLocator.Transform.position : (target.transform.position + Vector3.up));
 		if (adjustHeight && projectile == null && initiator != null)
 		{
 			ParticlesSnapMap component = initiator.GetComponent<ParticlesSnapMap>();
@@ -340,7 +340,7 @@ public static class HitFXPlayer
 		Transform orientFrom = GetOrientFrom(projectile, initiator);
 		if (hitLocator != null && orientFrom != null)
 		{
-			result += (orientFrom.position - target.ViewTransform.position).normalized * hitLocator.CameraOffset;
+			result += (orientFrom.position - target.transform.position).normalized * hitLocator.CameraOffset;
 		}
 		return result;
 	}
@@ -353,19 +353,11 @@ public static class HitFXPlayer
 		{
 			return null;
 		}
-		if (initiator == null || (bool)initiator.ParticlesSnapMap)
-		{
-			return null;
-		}
+		bool num = projectile == null;
 		ParticlesSnapMap particlesSnapMap2 = initiator.ParticlesSnapMap;
 		Vector3 vector;
 		Vector3 vector2;
-		if (projectile != null)
-		{
-			vector = projectile.LaunchPosition;
-			vector2 = projectile.CorePosition - vector;
-		}
-		else
+		if (num)
 		{
 			Transform transform = ObjectExtensions.Or(particlesSnapMap2, null)?.GetLocators(FxRoot.Instance.LocatorGroupHitter).Random(PFStatefulRandom.Visuals.HitSystem)?.Transform;
 			Transform transform2 = ObjectExtensions.Or(particlesSnapMap, null)?.GetLocators(FxRoot.Instance.LocatorGroupTorso).Random(PFStatefulRandom.Visuals.HitSystem)?.Transform;
@@ -376,7 +368,12 @@ public static class HitFXPlayer
 			vector = transform.position;
 			vector2 = transform2.position - vector;
 		}
-		float num = float.MaxValue;
+		else
+		{
+			vector = projectile.LaunchPosition;
+			vector2 = projectile.CorePosition - vector;
+		}
+		float num2 = float.MaxValue;
 		FxBone fxBone = null;
 		foreach (FxBone bone in particlesSnapMap.Bones)
 		{
@@ -386,9 +383,9 @@ public static class HitFXPlayer
 				Vector3 vector3 = transform3.position - vector;
 				Vector3 vector4 = Vector3.Dot(vector3, vector2) / Vector3.Dot(vector2, vector2) * vector2;
 				float sqrMagnitude = (vector3 - vector4).sqrMagnitude;
-				if (fxBone == null || sqrMagnitude < num)
+				if (fxBone == null || sqrMagnitude < num2)
 				{
-					num = sqrMagnitude;
+					num2 = sqrMagnitude;
 					fxBone = bone;
 				}
 			}
@@ -418,7 +415,7 @@ public static class HitFXPlayer
 		}
 		if (initiator != null)
 		{
-			return initiator.ViewTransform;
+			return initiator.transform;
 		}
 		return null;
 	}
@@ -443,7 +440,7 @@ public static class HitFXPlayer
 			{
 				snapToTransform = gameObject.AddComponent<SnapToTransform>();
 			}
-			snapToTransform.SetTrackedTransform(attachEntity.ViewTransform);
+			snapToTransform.SetTrackedTransform(attachEntity.transform);
 		}
 		return gameObject;
 	}

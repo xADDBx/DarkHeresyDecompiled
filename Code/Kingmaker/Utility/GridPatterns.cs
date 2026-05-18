@@ -336,11 +336,11 @@ public static class GridPatterns
 		float realRadius = vector2Int.magnitude;
 		Vector2 vector = Quaternion.Euler(0f, 0f, degrees / 2f) * dir;
 		Vector2 vector2 = Quaternion.Euler(0f, 0f, (0f - degrees) / 2f) * dir;
-		AddRayNodes(nodes, (Vector2Int n) => Vector2.Dot(dir, n) <= realRadius, vector);
+		AddRayNodes(nodes, (Vector2Int n) => Vector2.Dot(dir, (Vector2)n) <= realRadius, vector);
 		Vector2Int leftSideVertex = nodes.MaxBy((Vector2Int v) => GraphHelper.GetWarhammerLength(v));
-		AddRayNodes(nodes, (Vector2Int n) => Vector2.Dot(dir, n) <= realRadius, vector2);
+		AddRayNodes(nodes, (Vector2Int n) => Vector2.Dot(dir, (Vector2)n) <= realRadius, vector2);
 		nodes.Except((Vector2Int v) => v == leftSideVertex).MaxBy((Vector2Int v) => GraphHelper.GetWarhammerLength(v));
-		float num2 = Math.Min(Vector2.Dot(dir, vector), Vector3.Dot(dir, vector2));
+		float num2 = Math.Min(Vector2.Dot(dir, vector), Vector3.Dot((Vector3)dir, (Vector3)vector2));
 		int num3 = 0;
 		int num4 = 0;
 		int num5 = 0;
@@ -369,7 +369,7 @@ public static class GridPatterns
 			for (int j = num6; j < num5 + 1; j++)
 			{
 				Vector2Int vector2Int2 = new Vector2Int(i, j);
-				float num7 = Vector2.Dot(dir, vector2Int2);
+				float num7 = Vector2.Dot(dir, (Vector2)vector2Int2);
 				if (num7 / vector2Int2.magnitude >= num2 && num7 <= realRadius)
 				{
 					nodes.Add(vector2Int2);
@@ -438,7 +438,7 @@ public static class GridPatterns
 		}
 		foreach (Vector2Int item in new Linecast.Ray2NodeOffsets(Vector2Int.zero, dir))
 		{
-			if (GraphHelper.GetWarhammerLength(item) > length)
+			if (GraphHelper.GetWarhammerLength(item) >= length)
 			{
 				break;
 			}
@@ -457,7 +457,7 @@ public static class GridPatterns
 		Vector2 vector2 = Quaternion.Euler(0f, 0f, (float)(-degrees) / 2f) * dir;
 		AddRayNodes(nodes, radius, vector);
 		AddRayNodes(nodes, radius, vector2);
-		float num = Math.Min(Vector2.Dot(dir, vector), Vector3.Dot(dir, vector2));
+		float num = Math.Min(Vector2.Dot(dir, vector), Vector3.Dot((Vector3)dir, (Vector3)vector2));
 		for (int i = -radius; i < radius + 1; i++)
 		{
 			for (int j = -radius; j < radius + 1; j++)

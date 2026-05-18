@@ -14,6 +14,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.RuleSystem;
@@ -79,9 +80,9 @@ public static class GameHelper
 		}
 	}
 
-	public static UnitSpawnerBase GetUnitSpawner(EntityReference entityReference)
+	public static AbstractUnitSpawnerEntity GetUnitSpawner(EntityReference entityReference)
 	{
-		return entityReference.FindView() as UnitSpawnerBase;
+		return entityReference.FindData() as AbstractUnitSpawnerEntity;
 	}
 
 	public static BaseUnitEntity GetPlayerCharacter()
@@ -161,11 +162,11 @@ public static class GameHelper
 		{
 			if (ensureSuccess.GetValueOrDefault())
 			{
-				rulePerformSkillCheck.ForceResultModifiers.Add(1, rulePerformSkillCheck);
+				rulePerformSkillCheck.ChanceRule.ForceResultModifiers.Add(1, rulePerformSkillCheck);
 			}
 			else
 			{
-				rulePerformSkillCheck.ForceResultModifiers.Add(-1, rulePerformSkillCheck);
+				rulePerformSkillCheck.ChanceRule.ForceResultModifiers.Add(-1, rulePerformSkillCheck);
 			}
 		}
 		RulePerformSkillCheck rulePerformSkillCheck2 = TriggerSkillCheck(rulePerformSkillCheck);
@@ -173,7 +174,7 @@ public static class GameHelper
 		return rulePerformSkillCheck2.ResultIsSuccess;
 	}
 
-	public static RulePerformSkillCheck TriggerSkillCheck(RulePerformSkillCheck skillCheck, MechanicsContext context = null, bool allowPartyCheckInCamp = true)
+	public static RulePerformSkillCheck TriggerSkillCheck(RulePerformSkillCheck skillCheck, IEvalContext context = null, bool allowPartyCheckInCamp = true)
 	{
 		if (allowPartyCheckInCamp && Game.Instance.Player.CapitalPartyMode)
 		{
@@ -184,11 +185,12 @@ public static class GameHelper
 		return TriggerRule(skillCheck, context);
 	}
 
-	public static TEvent TriggerRule<TEvent>(TEvent rule, MechanicsContext context = null) where TEvent : RulebookEvent
+	public static TEvent TriggerRule<TEvent>(TEvent rule, IEvalContext context = null) where TEvent : RulebookEvent
 	{
-		if (context != null)
+		MechanicsContext mechanicsContext = context?.Fact?.MaybeContext;
+		if (mechanicsContext != null)
 		{
-			return context.TriggerRule(rule);
+			return mechanicsContext.TriggerRule(rule);
 		}
 		return Rulebook.Trigger(rule);
 	}

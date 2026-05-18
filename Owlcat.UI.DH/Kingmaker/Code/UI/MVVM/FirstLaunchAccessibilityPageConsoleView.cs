@@ -1,5 +1,3 @@
-using Owlcat.UI;
-using Rewired;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -28,7 +26,7 @@ public class FirstLaunchAccessibilityPageConsoleView : FirstLaunchSettingsPageBa
 		base.OnBind();
 	}
 
-	public void ScrollDescription(InputActionEventData _, float x)
+	public void ScrollDescription(float x)
 	{
 		if (base.gameObject.activeInHierarchy)
 		{
@@ -41,11 +39,5 @@ public class FirstLaunchAccessibilityPageConsoleView : FirstLaunchSettingsPageBa
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * m_InfoView.ScrollRectExtended.scrollSensitivity);
 		m_InfoView.ScrollRectExtended.OnSmoothlyScroll(pointerEventData);
-	}
-
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		navigationBehaviour.SetEntitiesVertical<SettingsEntitySliderConsoleView>(m_SettingsEntitySliderProtanopiaConsoleView, m_SettingsEntitySliderDeuteranopiaConsoleView, m_SettingsEntitySliderTritanopiaConsoleView);
-		navigationBehaviour.FocusOnFirstValidEntity();
 	}
 }

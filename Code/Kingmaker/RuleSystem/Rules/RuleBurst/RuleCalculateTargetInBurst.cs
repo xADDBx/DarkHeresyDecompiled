@@ -3,7 +3,6 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.Utility.Random;
 
 namespace Kingmaker.RuleSystem.Rules.RuleBurst;
 
@@ -36,7 +35,7 @@ public class RuleCalculateTargetInBurst : RulebookEvent
 
 		public FluentOptional UseMissWeight(bool state)
 		{
-			_src.m_UseMissWeight = state;
+			_src.UseMissWeight = state;
 			return this;
 		}
 
@@ -46,55 +45,44 @@ public class RuleCalculateTargetInBurst : RulebookEvent
 		}
 	}
 
-	private List<MechanicEntity> m_SecondaryTargets = new List<MechanicEntity>();
-
-	private bool m_UseMissWeight = true;
-
-	public MechanicEntity ResultTarget;
-
-	public Dictionary<MechanicEntity, int> UnitsWeights = new Dictionary<MechanicEntity, int>();
-
 	public BurstWeightSettings OverridenBurstSettings;
 
-	public int TotalWeight;
+	private List<MechanicEntity> m_SecondaryTargets = new List<MechanicEntity>();
 
-	private BurstWeightSettings BurstSettings => OverridenBurstSettings ?? BurstRoot.Instance.DefaultSettings;
+	public Dictionary<int, MechanicEntity> WeightToTargetMap { get; } = new Dictionary<int, MechanicEntity>();
+
+
+	public Dictionary<MechanicEntity, int> TargetWeights { get; } = new Dictionary<MechanicEntity, int>();
+
+
+	public bool UseMissWeight { get; private set; } = true;
+
+
+	public int TotalWeight { get; private set; }
+
+	public BurstWeightSettings BurstSettings => OverridenBurstSettings ?? BurstRoot.Instance.DefaultSettings;
+
+	public RuleCalculateTargetInBurst([NotNull] IMechanicEntity initiator)
+		: base(initiator)
+	{
+	}
 
 	public static Fluent Setup([NotNull] IMechanicEntity initiator)
 	{
 		return new Fluent(new RuleCalculateTargetInBurst(initiator));
 	}
 
-	private RuleCalculateTargetInBurst([NotNull] IMechanicEntity initiator)
-		: base(initiator)
-	{
-	}
-
 	public override void OnTrigger(RulebookEventContext context)
 	{
-		TotalWeight = (m_UseMissWeight ? BurstSettings.MissWeight : 0);
-		Dictionary<int, MechanicEntity> dictionary = new Dictionary<int, MechanicEntity>();
+		TotalWeight = (UseMissWeight ? BurstSettings.MissWeight : 0);
 		foreach (MechanicEntity secondaryTarget in m_SecondaryTargets)
 		{
 			int result = Rulebook.Trigger(new RuleCalculateWeightBurstTarget(base.ConcreteInitiator, secondaryTarget, BurstSettings)).Result;
 			if (result != 0)
 			{
-				dictionary[TotalWeight + result] = secondaryTarget;
-				UnitsWeights[secondaryTarget] = result;
+				WeightToTargetMap[TotalWeight + result] = secondaryTarget;
+				TargetWeights[secondaryTarget] = result;
 				TotalWeight += result;
-			}
-		}
-		int num = PFStatefulRandom.UnitLogic.Abilities.Range(0, TotalWeight);
-		if (m_UseMissWeight && num < BurstSettings.MissWeight)
-		{
-			return;
-		}
-		foreach (KeyValuePair<int, MechanicEntity> item in dictionary)
-		{
-			if (num < item.Key)
-			{
-				ResultTarget = item.Value;
-				break;
 			}
 		}
 	}

@@ -6,11 +6,6 @@ public class DetectiveCaseMetricsEvent : MetricsEvent
 {
 	protected override string Name => "detective_case";
 
-	public DetectiveCaseMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public DetectiveCaseMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -24,7 +19,7 @@ public class DetectiveCaseMetricsEvent : MetricsEvent
 			CaseStatus.None => "none", 
 			CaseStatus.Opened => "opened", 
 			CaseStatus.Closed => "closed", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}

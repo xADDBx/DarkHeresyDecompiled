@@ -22,20 +22,32 @@ public class CommandMarkUntargetableSpan : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
+		if (!Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find unit");
+		}
 		Data commandData = player.GetCommandData<Data>(this);
-		commandData.Unit = Unit.GetValue();
+		commandData.Unit = value;
 		commandData.Unit?.Features.IsUntargetable.Retain();
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		player.GetCommandData<Data>(this).Unit?.Features.IsUntargetable.Release();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -43,8 +55,9 @@ public class CommandMarkUntargetableSpan : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

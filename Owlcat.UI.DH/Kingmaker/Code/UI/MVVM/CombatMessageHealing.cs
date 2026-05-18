@@ -1,5 +1,6 @@
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.UnitLogic.Mechanics.Damage;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -9,6 +10,8 @@ public class CombatMessageHealing : CombatMessageBase
 	public int Amount;
 
 	public Sprite Sprite;
+
+	public DamageStrategy Strategy;
 
 	public override string GetText()
 	{

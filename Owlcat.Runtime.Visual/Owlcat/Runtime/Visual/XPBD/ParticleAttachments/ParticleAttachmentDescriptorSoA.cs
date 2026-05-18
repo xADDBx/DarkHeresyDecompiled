@@ -7,9 +7,9 @@ namespace Owlcat.Runtime.Visual.XPBD.ParticleAttachments;
 
 public class ParticleAttachmentDescriptorSoA : StructureOfArrays<ParticleAttachmentDescriptor>
 {
-	public NativeArray<int2> ParticleDataRange;
-
 	public NativeArray<int2> BodyParticlesRange;
+
+	public NativeArray<int2> ParticleDataRange;
 
 	public NativeArray<float4x4> LocalToWorld;
 
@@ -18,15 +18,15 @@ public class ParticleAttachmentDescriptorSoA : StructureOfArrays<ParticleAttachm
 		get
 		{
 			ParticleAttachmentDescriptor result = default(ParticleAttachmentDescriptor);
-			result.ParticleDataRange = ParticleDataRange[index];
 			result.BodyParticlesRange = BodyParticlesRange[index];
+			result.ParticleDataRange = ParticleDataRange[index];
 			result.LocalToWorld = LocalToWorld[index];
 			return result;
 		}
 		set
 		{
-			ParticleDataRange[index] = value.ParticleDataRange;
 			BodyParticlesRange[index] = value.BodyParticlesRange;
+			ParticleDataRange[index] = value.ParticleDataRange;
 			LocalToWorld[index] = value.LocalToWorld;
 		}
 	}
@@ -44,32 +44,32 @@ public class ParticleAttachmentDescriptorSoA : StructureOfArrays<ParticleAttachm
 	public override void Resize(int newSize)
 	{
 		base.Resize(newSize);
-		ParticleDataRange = new NativeArray<int2>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 		BodyParticlesRange = new NativeArray<int2>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+		ParticleDataRange = new NativeArray<int2>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 		LocalToWorld = new NativeArray<float4x4>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 	}
 
 	public override void CopyTo(StructureOfArraysBase dst, int offset, int dstOffset, int length)
 	{
 		ParticleAttachmentDescriptorSoA particleAttachmentDescriptorSoA = (ParticleAttachmentDescriptorSoA)dst;
-		NativeArray<int2>.Copy(ParticleDataRange, offset, particleAttachmentDescriptorSoA.ParticleDataRange, dstOffset, length);
 		NativeArray<int2>.Copy(BodyParticlesRange, offset, particleAttachmentDescriptorSoA.BodyParticlesRange, dstOffset, length);
+		NativeArray<int2>.Copy(ParticleDataRange, offset, particleAttachmentDescriptorSoA.ParticleDataRange, dstOffset, length);
 		NativeArray<float4x4>.Copy(LocalToWorld, offset, particleAttachmentDescriptorSoA.LocalToWorld, dstOffset, length);
 	}
 
 	public override void Dispose()
 	{
 		base.Dispose();
-		ParticleDataRange.Dispose();
 		BodyParticlesRange.Dispose();
+		ParticleDataRange.Dispose();
 		LocalToWorld.Dispose();
 	}
 
 	public ParticleAttachmentDescriptorSoASlice GetSlice(int offset, int count)
 	{
 		ParticleAttachmentDescriptorSoASlice result = default(ParticleAttachmentDescriptorSoASlice);
-		result.ParticleDataRange = new NativeSlice<int2>(ParticleDataRange, offset, count);
 		result.BodyParticlesRange = new NativeSlice<int2>(BodyParticlesRange, offset, count);
+		result.ParticleDataRange = new NativeSlice<int2>(ParticleDataRange, offset, count);
 		result.LocalToWorld = new NativeSlice<float4x4>(LocalToWorld, offset, count);
 		return result;
 	}

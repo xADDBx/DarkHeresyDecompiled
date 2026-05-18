@@ -1,20 +1,25 @@
 using JetBrains.Annotations;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.ContextContract;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items;
-using Kingmaker.Mechanics.Damage;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.Settings;
+using Kingmaker.Settings.Difficulty;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Mechanics.Damage;
+using Kingmaker.UnitLogic.Parts;
+using UnityEngine;
 
 namespace Kingmaker.RuleSystem.Rules.Damage;
 
+[RuleRoles(Initiator = "damage source", Target = "damage recipient (may be null)")]
 public class RuleCalculateDamage : RulebookOptionalTargetEvent, IDamageHolderRule
 {
 	private readonly IntermediateDamage m_DamageModifiersHolder;
@@ -76,82 +81,117 @@ public class RuleCalculateDamage : RulebookOptionalTargetEvent, IDamageHolderRul
 	{
 		Rulebook.Trigger(InitiatorWeaponStatsRule);
 		IntermediateDamage intermediateDamage = new IntermediateDamage(InitiatorWeaponStatsRule.ResultDamage);
-		MechanicEntity maybeTarget = MaybeTarget;
-		if (maybeTarget != null && maybeTarget.IsInPlayerParty)
+		intermediateDamage.CopyModifiersFrom(m_DamageModifiersHolder);
+		ApplyDifficultyDamageModifiers(intermediateDamage);
+		StatContext ctx = new StatContext(null, base.Initiator?.Actor, null, null, intermediateDamage.Type, TargetBodyPart, this);
+		int valueOrDefault = (MaybeTarget?.Actor?.GetStat(StatType.ArmorDamageReduction, null, ctx, "OnTrigger").ModifiedValue).GetValueOrDefault();
+		if (valueOrDefault > 0)
 		{
-			float num = SettingsHelper.CalculateCRModifier(SettingsRoot.Difficulty.PartyDamageDealtAfterArmorReductionPercentModifier);
-			int num2 = (int)((float)(int)SettingsRoot.Difficulty.PartyDamageDealtAfterArmorReductionPercentModifier * num);
-			if (num2 != 0)
+			intermediateDamage.DamageReduction.Add(ModifierType.ValAdd, valueOrDefault, this, ModifierDescriptor.BaseValue);
+		}
+		ItemEntityWeapon weapon = InitiatorWeaponStatsRule.Weapon;
+		if (weapon != null)
+		{
+			StatFactionModifierConfig[] fractionModifiers = weapon.GetFractionModifiers();
+			foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
 			{
-				intermediateDamage.Modifiers.Add(ModifierType.PctMul_Extra, 100 + num2, this, ModifierDescriptor.Difficulty);
+				if (statFactionModifierConfig.Stat == StatType.ItemWeaponDamageReductionIgnore)
+				{
+					intermediateDamage.DamageReduction.Add(ModifierType.ValAdd, -statFactionModifierConfig.Value, this, ModifierDescriptor.Faction);
+				}
 			}
-		}
-		ModifiableValue modifiableValue = MaybeTarget?.GetStatOptional(StatType.ArmorDamageReduction);
-		int num3 = ((modifiableValue != null) ? ((int)modifiableValue) : 0);
-		if (num3 > 0)
-		{
-			intermediateDamage.DamageReduction.Add(ModifierType.ValAdd, num3, this, ModifierDescriptor.BaseValue);
-		}
-		if (intermediateDamage.Type.GetInfo().IgnoreArmor)
-		{
-			intermediateDamage.DamageReduction.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Weapon);
-		}
-		BlueprintBodyPart targetBodyPart = TargetBodyPart;
-		if (targetBodyPart != null && targetBodyPart.IgnoreArmorDamageReduction)
-		{
-			intermediateDamage.DamageReduction.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Weakpoint);
 		}
 		if (intermediateDamage.ApplyVitalStrategy != VitalDamageStrategy.Always)
 		{
-			targetBodyPart = TargetBodyPart;
+			BlueprintBodyPart targetBodyPart = TargetBodyPart;
 			if (targetBodyPart == null || !targetBodyPart.IsVital)
 			{
-				goto IL_01d3;
+				goto IL_0245;
 			}
 		}
 		if (!IsDOT)
 		{
-			int num4 = base.Initiator.GetAttributeOptional(StatType.Perception)?.Bonus ?? 0;
-			int num5 = base.Initiator.GetAttributeOptional(StatType.Intelligence)?.Bonus ?? 0;
-			int value = num4 + num5;
+			int statBonus = base.Initiator.Actor.GetStatBonus(StatType.Perception);
+			int statBonus2 = base.Initiator.Actor.GetStatBonus(StatType.Intelligence);
+			int value = statBonus + statBonus2;
 			intermediateDamage.VitalModifiers.Add(ModifierType.ValAdd, value, this, ModifierDescriptor.BaseValue);
-			ItemEntityWeapon weapon = InitiatorWeaponStatsRule.Weapon;
-			if (weapon != null)
+			ItemEntityWeapon weapon2 = InitiatorWeaponStatsRule.Weapon;
+			if (weapon2 != null)
 			{
-				intermediateDamage.VitalModifiers.Add(ModifierType.ValAdd, weapon.Blueprint.DamageVital, this, ModifierDescriptor.Weapon);
+				intermediateDamage.VitalModifiers.Add(ModifierType.ValAdd, weapon2.DamageVital, this, ModifierDescriptor.Weapon);
+			}
+			ItemEntityWeapon weapon3 = InitiatorWeaponStatsRule.Weapon;
+			if (weapon3 != null)
+			{
+				StatFactionModifierConfig[] fractionModifiers = weapon3.GetFractionModifiers();
+				foreach (StatFactionModifierConfig statFactionModifierConfig2 in fractionModifiers)
+				{
+					if (statFactionModifierConfig2.Stat == StatType.ItemWeaponVitalDamage)
+					{
+						intermediateDamage.VitalModifiers.Add(statFactionModifierConfig2.ModifierType, statFactionModifierConfig2.Value, this, ModifierDescriptor.Faction);
+					}
+				}
 			}
 			if (intermediateDamage.ApplyVitalStrategy != VitalDamageStrategy.Always)
 			{
-				targetBodyPart = TargetBodyPart;
+				BlueprintBodyPart targetBodyPart = TargetBodyPart;
 				if (targetBodyPart == null || !targetBodyPart.IsVital)
 				{
-					goto IL_01d3;
+					goto IL_0245;
 				}
 			}
 			intermediateDamage.VitalModifiers.Add(ModifierType.PctAdd, TargetBodyPart.VitalDamageIncrease, this, ModifierDescriptor.BodyPartVital);
 		}
-		goto IL_01d3;
-		IL_01d3:
-		maybeTarget = Target;
-		if (maybeTarget != null && maybeTarget.IsMechanism)
+		goto IL_0245;
+		IL_0245:
+		PartHealth healthOptional = Target.GetHealthOptional();
+		if (intermediateDamage.ApplyStrategy == DamageStrategy.HealthOnly && healthOptional != null && healthOptional.IsForbidDirectHpDamage)
+		{
+			intermediateDamage.Modifiers.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Mechanism);
+		}
+		if (healthOptional != null && healthOptional.IsCountHpAsArmor)
 		{
 			intermediateDamage.HealthDamageModifiers.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Mechanism);
 			intermediateDamage.VitalModifiers.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Mechanism);
-			if (intermediateDamage.ApplyStrategy == DamageStrategy.HealthOnly)
-			{
-				intermediateDamage.Modifiers.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Mechanism);
-			}
-			else
+			if (intermediateDamage.ApplyStrategy != DamageStrategy.HealthOnly)
 			{
 				intermediateDamage.ForceArmorOnlyApplyStrategy(ModifierDescriptor.Mechanism);
 			}
 		}
-		intermediateDamage.CopyModifiersFrom(m_DamageModifiersHolder);
 		ResultDamage = new IntermediateDamage(intermediateDamage)
 		{
 			BodyPart = TargetBodyPart
 		};
 		ResultDamage.MarkCalculated();
+	}
+
+	private void ApplyDifficultyDamageModifiers(IntermediateDamage damage)
+	{
+		bool num = base.Initiator?.IsPlayerFaction ?? false;
+		bool flag = base.Initiator?.IsPlayerEnemy ?? false;
+		if (num)
+		{
+			int num2 = SettingsRoot.Difficulty.PartyDamageModifier;
+			if (num2 != 0)
+			{
+				damage.Modifiers.Add(ModifierType.PctMul_Extra, 100 + num2, this, ModifierDescriptor.Difficulty);
+			}
+		}
+		else if (flag)
+		{
+			int num3 = SettingsRoot.Difficulty.EnemyDamageModifier;
+			if (num3 != 0)
+			{
+				damage.Modifiers.Add(ModifierType.PctMul_Extra, 100 + num3, this, ModifierDescriptor.Difficulty);
+			}
+			int cr = (base.Initiator as BaseUnitEntity)?.CR ?? 0;
+			float damageFactor = DifficultyUtils.GetDamageFactor(SettingsRoot.Difficulty.EnemyDamage, cr);
+			if (!Mathf.Approximately(damageFactor, 1f))
+			{
+				int value = Mathf.RoundToInt(damageFactor * 100f);
+				damage.Modifiers.Add(ModifierType.PctMul_Extra, value, this, ModifierDescriptor.EnemyCombatVeterancy);
+			}
+		}
 	}
 
 	public void PushApplyStrategy(DamageStrategy strategy, [CanBeNull] EntityFactComponent source = null, ModifierDescriptor descriptor = ModifierDescriptor.None)

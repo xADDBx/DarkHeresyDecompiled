@@ -67,23 +67,15 @@ public class FadeVM : ViewModel, ILoadingScreen, IGameModeHandler, ISubscriber
 
 	public void HideLoadingScreen()
 	{
-		if (m_State == LoadingScreenState.Hidden || m_State == LoadingScreenState.HideAnimation)
+		if (m_State != 0 && m_State != LoadingScreenState.HideAnimation)
 		{
-			return;
-		}
-		PFLog.UI.Log("Hide fade");
-		m_State = LoadingScreenState.HideAnimation;
-		LoadingScreen.Value = new Params
-		{
-			Fade = false,
-			FadeParams = FadeParams
-		};
-		if (Game.Instance.CurrentModeType == GameModeType.StarSystem)
-		{
-			EventBus.RaiseEvent(delegate(ISystemMapRadarHandler h)
+			PFLog.UI.Log("Hide fade");
+			m_State = LoadingScreenState.HideAnimation;
+			LoadingScreen.Value = new Params
 			{
-				h.HandleShowSystemMapRadar();
-			});
+				Fade = false,
+				FadeParams = FadeParams
+			};
 		}
 	}
 

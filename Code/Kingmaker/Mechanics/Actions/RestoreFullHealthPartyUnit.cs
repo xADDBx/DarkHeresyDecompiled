@@ -1,7 +1,9 @@
 using Kingmaker.Blueprints;
+using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.UnitLogic.Parts;
+using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -11,21 +13,25 @@ namespace Kingmaker.Mechanics.Actions;
 public class RestoreFullHealthPartyUnit : ContextAction
 {
 	[SerializeField]
-	private BlueprintUnitReference m_TargetPartyUnit;
+	[HideIf("Evaluate")]
+	private BlueprintUnitReference? m_TargetPartyUnit;
+
+	[ShowIf("Evaluate")]
+	[SerializeReference]
+	public AbstractUnitEvaluator? UnitEvaluator;
+
+	[SerializeField]
+	public bool Evaluate;
 
 	public override string GetCaption()
 	{
-		BlueprintUnit blueprintUnit = m_TargetPartyUnit.Get();
-		if (blueprintUnit != null)
-		{
-			return "Restore full health " + blueprintUnit.CharacterName;
-		}
-		return "Restore full health failed! Target unit blueprint is null!";
+		string text = ((!Evaluate) ? m_TargetPartyUnit?.Get()?.CharacterName : UnitEvaluator?.GetCaption());
+		return "Restore full health for " + (text ?? "<null>");
 	}
 
 	protected override void RunAction()
 	{
-		BlueprintUnit blueprintUnit = m_TargetPartyUnit.Get();
+		BlueprintUnit blueprintUnit = ((!Evaluate) ? ((BlueprintUnit)m_TargetPartyUnit) : UnitEvaluator?.GetValue().Blueprint);
 		if (blueprintUnit == null)
 		{
 			return;

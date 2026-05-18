@@ -42,7 +42,7 @@ public class TaskInteractWithUnit : ClockworkRunnerTask
 		UnitLootUnit loot = Game.Instance.Player.Party.Select((BaseUnitEntity u) => u.Commands.Current as UnitLootUnit).NotNull().FirstOrDefault();
 		while (command != null && !command.IsFinished)
 		{
-			if (command != null && !command.Executor.View.MovementAgent.IsReallyMoving)
+			if (command != null && !command.Executor.IsReallyMoving)
 			{
 				PFLog.Clockwork.Error("Failed to reach unit " + m_Unit.CharacterName + " " + m_Unit.UniqueId);
 				Runner.Data.MarkUnreachable(m_Unit.UniqueId);
@@ -52,7 +52,7 @@ public class TaskInteractWithUnit : ClockworkRunnerTask
 		}
 		while (loot != null && !loot.IsFinished)
 		{
-			if (loot != null && loot.Executor.View.MovementAgent.IsReallyMoving && !loot.Executor.View.MovementAgent.IsReallyMoving)
+			if (loot != null && loot.Executor.IsReallyMoving && !loot.Executor.IsReallyMoving)
 			{
 				PFLog.Clockwork.Error("Failed to reach unit " + m_Unit.CharacterName + " " + m_Unit.UniqueId);
 				Runner.Data.MarkUnreachable(m_Unit.UniqueId);

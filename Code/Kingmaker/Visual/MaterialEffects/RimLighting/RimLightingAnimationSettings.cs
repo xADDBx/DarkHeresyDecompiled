@@ -56,7 +56,7 @@ public class RimLightingAnimationSettings
 		IsFinished = false;
 		NormalizedTime = 0f;
 		StartTime = 0f;
-		CurrentColor = Color.black;
+		CurrentColor = new Color(0f, 0f, 0f, 0f);
 		CurrentIntensity = 0f;
 		CurrentPower = 0f;
 		FadeOut = 1f;

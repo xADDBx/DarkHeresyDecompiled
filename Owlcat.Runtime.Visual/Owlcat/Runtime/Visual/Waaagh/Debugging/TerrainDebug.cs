@@ -64,7 +64,7 @@ internal sealed class TerrainDebug
 		return SplatMaskPositionType switch
 		{
 			MaskPositionType.Manual => SplatMapMaskCustomPosition, 
-			MaskPositionType.Auto => TerrainStreamingFeedbackFeature.FeedbackPosition, 
+			MaskPositionType.Auto => TerrainStreamingFeedback.FeedbackPosition, 
 			_ => Vector3.zero, 
 		};
 	}

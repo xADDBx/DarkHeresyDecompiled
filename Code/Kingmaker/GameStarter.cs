@@ -105,7 +105,7 @@ public class GameStarter : MonoBehaviour
 			{
 				if (i == commandLineArgs.Length - 1)
 				{
-					PFLog.Default.Error("convert-save requires path to save file");
+					PFLog.System.Error("convert-save requires path to save file");
 					return true;
 				}
 				text = commandLineArgs[i + 1];
@@ -119,12 +119,12 @@ public class GameStarter : MonoBehaviour
 		{
 			if (!SaveConverter.ConvertSave(text))
 			{
-				PFLog.Default.Error("Failed to convert " + text + ", check logs above");
+				PFLog.System.Error("Failed to convert " + text + ", check logs above");
 			}
 		}
 		catch (Exception ex)
 		{
-			PFLog.Default.Exception(ex, "Failed to convert " + text);
+			PFLog.System.Exception(ex, "Failed to convert " + text);
 		}
 		return true;
 	}
@@ -152,11 +152,11 @@ public class GameStarter : MonoBehaviour
 			AkAudioService.Init();
 			PFLog.System.Log("AkAudioService.EnsureAudioInitialized();");
 			SettingsRoot.Initialize(m_SettingValues);
+			PFLog.System.Log("SettingsRoot.Initialize(m_SettingValues);");
 			if ((SettingsRoot.Game.Main.AskedSendGameStatistic.GetValue() && SettingsRoot.Game.Main.SendGameStatistic.GetValue()) || Application.isEditor)
 			{
 				Metrics.StartDataCollection();
 			}
-			PFLog.System.Log("SettingsRoot.Initialize(m_SettingValues);");
 			SettingsController.Instance.InitializeSoundController();
 			PFLog.System.Log("SettingsController.Instance.InitializeSoundController();");
 			LocalizationManager.Instance.Init(SettingsRoot.Game.Main.Localization, SettingsController.Instance, !SettingsRoot.Game.Main.LocalizationWasTouched.GetValue());
@@ -166,7 +166,7 @@ public class GameStarter : MonoBehaviour
 			Game.EnsureGameLifetimeServices();
 			PFLog.System.Log("Game.EnsureGameLifetimeServices();");
 			PFLog.System.Log("GameStarter.Awake finished");
-			PFLog.Default.Log($"Startup options: {GameVersion.Mode}");
+			PFLog.System.Log($"Startup options: {GameVersion.Mode}");
 			InitComplete = true;
 			PFLog.System.Log("InitComplete = true;");
 			if (SoundState.Instance != null)
@@ -293,7 +293,15 @@ public class GameStarter : MonoBehaviour
 		PFLog.System.Log("GameStarter.StartGame: finished loading UI_Common_Scene");
 		Game.Instance.RootUIContext.StartUI();
 		PFLog.System.Log("GameStarter.StartGame: finished loading LoadingScreen");
+		if (ApplicationHelper.IsRunningOnSwitch2)
+		{
+			Game.Instance.ControllerMode = Game.ControllerModeType.Gamepad;
+		}
 		Game.Instance.RootUIContext.CreateLoadingScreen();
+		if (ApplicationHelper.IsRunningOnSwitch2)
+		{
+			Game.Instance.ControllerMode = ((!ApplicationHelper.IsRunningOnSwitch2 || !SettingsRoot.Game.Switch.SwitchJoyConAsMouse) ? Game.ControllerModeType.Gamepad : Game.ControllerModeType.Mouse);
+		}
 		CommandLineArguments commandLineArguments = CommandLineArguments.Parse();
 		if (commandLineArguments.Contains("copy-saves"))
 		{
@@ -303,11 +311,8 @@ public class GameStarter : MonoBehaviour
 		string startFrom = commandLineArguments.Get("-start_from");
 		if (!string.IsNullOrEmpty(startFrom) || ((bool)ConfigRoot.Instance.NewGameSettings.StartArea && ConfigRoot.Instance.NewGameSettings.SkipMainMenu))
 		{
-			BlueprintAreaPreset preset = ConfigRoot.Instance.NewGameSettings.StartArea?.DefaultPreset;
-			if (preset == null)
-			{
-				preset = ((BuildModeUtility.CheatsEnabled && !Guid.TryParse(startFrom, out var _)) ? (Utilities.GetScriptableObjects<BlueprintAreaPreset>().FirstOrDefault((BlueprintAreaPreset i) => i.name == startFrom) ?? Utilities.GetScriptableObjects<BlueprintArea>().FirstOrDefault((BlueprintArea i) => i.name == startFrom)?.DefaultPreset) : (BlueprintsDatabase.LoadById<BlueprintAreaPreset>(startFrom) ?? BlueprintsDatabase.LoadById<BlueprintArea>(startFrom)?.DefaultPreset));
-			}
+			Guid result;
+			BlueprintAreaPreset preset = ((BuildModeUtility.CheatsEnabled && !Guid.TryParse(startFrom, out result)) ? (Utilities.GetScriptableObjects<BlueprintAreaPreset>().FirstOrDefault((BlueprintAreaPreset i) => i.name == startFrom) ?? Utilities.GetScriptableObjects<BlueprintArea>().FirstOrDefault((BlueprintArea i) => i.name == startFrom)?.DefaultPreset) : (BlueprintsDatabase.LoadById<BlueprintAreaPreset>(startFrom) ?? BlueprintsDatabase.LoadById<BlueprintArea>(startFrom)?.DefaultPreset));
 			if (preset != null)
 			{
 				PFLog.System.Log("GameStarter.StartGame: starting from preset " + preset.name);

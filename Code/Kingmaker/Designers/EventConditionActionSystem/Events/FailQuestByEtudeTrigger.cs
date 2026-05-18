@@ -15,16 +15,29 @@ namespace Kingmaker.Designers.EventConditionActionSystem.Events;
 public class FailQuestByEtudeTrigger : QuestComponentDelegate, IEtudesUpdateHandler, ISubscriber
 {
 	[SerializeField]
-	private bool m_FailSilently = true;
+	private BlueprintEtudeReference? m_Etude;
 
 	[SerializeField]
-	private BlueprintEtudeReference? m_Etude;
+	private bool m_FailByPlay = true;
+
+	[SerializeField]
+	private bool m_FailByComplete;
+
+	[SerializeField]
+	private bool m_FailSilently = true;
 
 	public void OnEtudesUpdate()
 	{
-		if (m_Etude != null && base.Quest.State != QuestState.Failed && Game.Instance.EtudesSystem.EtudeIsCompleted(m_Etude.Get()))
+		if (m_Etude != null && base.Quest.State != QuestState.Failed)
 		{
-			base.Quest.FailQuest(m_FailSilently);
+			if (m_FailByPlay && Game.Instance.EtudesSystem.EtudeIsPlaying(m_Etude.Get()))
+			{
+				base.Quest.FailQuest(m_FailSilently);
+			}
+			else if (m_FailByComplete && Game.Instance.EtudesSystem.EtudeIsCompleted(m_Etude.Get()))
+			{
+				base.Quest.FailQuest(m_FailSilently);
+			}
 		}
 	}
 }

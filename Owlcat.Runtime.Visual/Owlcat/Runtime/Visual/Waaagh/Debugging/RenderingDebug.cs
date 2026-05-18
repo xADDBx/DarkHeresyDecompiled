@@ -14,7 +14,7 @@ public class RenderingDebug
 
 	public DebugOverdrawMode OverdrawMode;
 
-	public QuadOverdrawSettings QuadOverdrawSettings = new QuadOverdrawSettings();
+	public int OverdrawThreshold = 4;
 
 	public bool DebugMipMap;
 }

@@ -11,20 +11,29 @@ public class TextTypewriter : MonoBehaviour
 {
 	private int m_CurrentVisibleCharacterIndex;
 
-	private Coroutine m_TypewriterCoroutine;
+	private int m_FirstLetter;
 
-	private WaitForSecondsRealtime m_SimpleDelayWfS;
+	private Coroutine m_TypewriterCoroutine;
 
 	[Header("Typewriter Settings")]
 	[SerializeField]
-	private float m_CharactersPerSecond = 20f;
+	[Tooltip("Recommended typing speed. Effective speed may be increased if the full animation would otherwise exceed Max Animation Time.")]
+	private float m_CharactersPerSecond = 60f;
 
+	[SerializeField]
+	[Tooltip("Hard cap on total animation duration in seconds. If the text is too long for the recommended speed, base interval is scaled down so the whole animation fits.")]
+	private float m_MaxAnimationTime = 2.5f;
+
+	[SerializeField]
+	[Tooltip("Speed multiplier over typing progress (0 = first letter, 1 = last). Values < 1 slow down, > 1 speed up.")]
+	private AnimationCurve m_SpeedMultiplierCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 0.3f);
+
+	[field: SerializeField]
 	public TMP_Text Text { get; private set; }
 
 	private void Awake()
 	{
 		Text = GetComponent<TMP_Text>();
-		m_SimpleDelayWfS = new WaitForSecondsRealtime(1f / m_CharactersPerSecond);
 	}
 
 	private void OnDisable()
@@ -62,23 +71,48 @@ public class TextTypewriter : MonoBehaviour
 		}
 		Text.maxVisibleCharacters = firstLetter;
 		m_CurrentVisibleCharacterIndex = firstLetter;
+		m_FirstLetter = firstLetter;
 		m_TypewriterCoroutine = StartCoroutine(Typewriter());
 	}
 
 	private IEnumerator Typewriter()
 	{
 		TMP_TextInfo textInfo = Text.textInfo;
-		while (m_CurrentVisibleCharacterIndex < textInfo.characterCount + 1)
+		float totalRange = Mathf.Max(1, textInfo.characterCount - m_FirstLetter);
+		float num = 0f;
+		for (int i = m_FirstLetter; i < textInfo.characterCount; i++)
 		{
-			if (m_CurrentVisibleCharacterIndex >= textInfo.characterCount - 1)
+			float time = (float)(i - m_FirstLetter) / totalRange;
+			float num2 = Mathf.Max(0.01f, m_SpeedMultiplierCurve.Evaluate(time));
+			num += 1f / num2;
+		}
+		float num3 = 1f / m_CharactersPerSecond;
+		float b = ((num > 0f) ? (m_MaxAnimationTime / num) : num3);
+		float baseInterval = Mathf.Min(num3, b);
+		float accumulated = 0f;
+		while (m_CurrentVisibleCharacterIndex < textInfo.characterCount)
+		{
+			accumulated += Time.unscaledDeltaTime;
+			bool flag = false;
+			while (m_CurrentVisibleCharacterIndex < textInfo.characterCount)
 			{
+				float time2 = (float)(m_CurrentVisibleCharacterIndex - m_FirstLetter) / totalRange;
+				float num4 = Mathf.Max(0.01f, m_SpeedMultiplierCurve.Evaluate(time2));
+				float num5 = baseInterval / num4;
+				if (accumulated < num5)
+				{
+					break;
+				}
 				Text.maxVisibleCharacters++;
-				break;
+				m_CurrentVisibleCharacterIndex++;
+				accumulated -= num5;
+				flag = true;
 			}
-			Text.maxVisibleCharacters++;
-			m_CurrentVisibleCharacterIndex++;
-			UISounds.Instance.PlayButtonClickSound();
-			yield return m_SimpleDelayWfS;
+			if (flag)
+			{
+				UISounds.Instance.PlayButtonClickSound();
+			}
+			yield return null;
 		}
 	}
 }

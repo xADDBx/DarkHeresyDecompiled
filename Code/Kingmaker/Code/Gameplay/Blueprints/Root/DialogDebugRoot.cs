@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Owlcat.QA.Validation;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.WeaponStyles;
@@ -8,6 +9,7 @@ namespace Kingmaker.Visual.Animation.WeaponStyles;
 public class WeaponStyleLocomotionData : IWeaponStyleAnimationClipsProvider
 {
 	[Header("Idle")]
+	[ValidateNotNull]
 	public AnimationClipWrapper Idle;
 
 	public List<AnimationClipWrapper> Variants;
@@ -45,22 +47,6 @@ public class WeaponStyleLocomotionData : IWeaponStyleAnimationClipsProvider
 
 	public AnimationClipWrapper SprintOut;
 
-	[Header("Cover")]
-	public AnimationClipWrapper Cover;
-
-	public AnimationClipWrapper CoverIn;
-
-	public AnimationClipWrapper CoverOut;
-
-	[Header("Custom clips for short distances")]
-	public AnimationClipWrapper WalkOneCell;
-
-	public AnimationClipWrapper WalkOneDiagonalCell;
-
-	public AnimationClipWrapper WalkTwoCell;
-
-	public AnimationClipWrapper WalkTwoDiagonalCell;
-
 	public IEnumerable<AnimationClipWrapper> EnumerateClips()
 	{
 		yield return Idle;
@@ -83,12 +69,5 @@ public class WeaponStyleLocomotionData : IWeaponStyleAnimationClipsProvider
 		yield return Sprint;
 		yield return SprintIn;
 		yield return SprintOut;
-		yield return Cover;
-		yield return CoverIn;
-		yield return CoverOut;
-		yield return WalkOneCell;
-		yield return WalkOneDiagonalCell;
-		yield return WalkTwoCell;
-		yield return WalkTwoDiagonalCell;
 	}
 }

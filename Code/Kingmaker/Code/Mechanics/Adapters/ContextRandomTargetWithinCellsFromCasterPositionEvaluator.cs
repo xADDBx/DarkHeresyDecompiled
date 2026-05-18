@@ -1,13 +1,9 @@
 using System;
-using System.Linq;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
+using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.Utility.Random;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -29,21 +25,12 @@ public class ContextRandomTargetWithinCellsFromCasterPositionEvaluator : Positio
 
 	protected override Vector3 GetValueInternal()
 	{
-		MechanicsContext context = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		MechanicEntity caster = context?.MaybeCaster;
-		if (context == null || caster == null)
-		{
-			throw new FailToEvaluateException(this);
-		}
-		int range = Range.Calculate(context);
-		return Game.Instance.EntityPools.AllBaseUnits.Where((BaseUnitEntity p) => !p.Features.IsUntargetable && !p.LifeState.IsDead && p.IsInCombat && IsConditionPassed(context, p) && caster.InRangeInCells(p, range)).Cast<MechanicEntity>().ToList()
-			.Random(PFStatefulRandom.Mechanics)
-			.Position;
+		return Vector3.zero;
 	}
 
-	private bool IsConditionPassed(MechanicsContext context, BaseUnitEntity unit)
+	private bool IsConditionPassed(AbilityExecutionContext context, BaseUnitEntity unit)
 	{
-		using (context.SetScope(unit.ToITargetWrapper()))
+		using (EvalContext.PushContext(context, unit))
 		{
 			return ConditionsOnTarget.Check();
 		}

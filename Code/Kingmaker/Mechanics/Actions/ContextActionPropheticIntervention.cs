@@ -12,8 +12,8 @@ public class ContextActionPropheticIntervention : ContextAction
 {
 	protected override void RunAction()
 	{
-		UnitEntity target = base.Context.ClickedTarget.Entity as UnitEntity;
-		UnitEntity obj = base.Context.MaybeCaster as UnitEntity;
+		UnitEntity target = base.Context.ClickedTarget?.Entity as UnitEntity;
+		UnitEntity obj = base.Context.Caster as UnitEntity;
 		UnitPartPropheticIntervention unitPartPropheticIntervention = obj?.Parts.GetOptional<UnitPartPropheticIntervention>();
 		if (obj != null && target != null && unitPartPropheticIntervention != null && unitPartPropheticIntervention.Entries.Any((UnitPartPropheticIntervention.PropheticInterventionEntry p) => p.DeadTarget == target))
 		{

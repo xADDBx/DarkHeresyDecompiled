@@ -2,6 +2,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Framework.VO;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Kingmaker.Visual.Sound;
@@ -10,7 +11,7 @@ namespace Kingmaker.UnitLogic.Levelup.Selections.Voice;
 
 public class SelectionStateVoice : SelectionState
 {
-	private BlueprintUnitAsksList m_Asks;
+	public BlueprintUnitAsksList Asks { get; private set; }
 
 	public SelectionStateVoice([NotNull] LevelUpManager manager, [NotNull] BlueprintSelection blueprint, [NotNull] BlueprintPath path, int pathRank)
 		: base(manager, blueprint, path, pathRank)
@@ -35,15 +36,20 @@ public class SelectionStateVoice : SelectionState
 
 	public void SelectVoice(BlueprintUnitAsksList asks)
 	{
-		m_Asks = asks;
+		Asks = asks;
 		NotifySelectionChanged();
 	}
 
 	protected override void ApplyInternal(BaseUnitEntity unit)
 	{
-		if (m_Asks != null)
+		if (Asks != null)
 		{
-			unit.Asks.SetCustom(m_Asks);
+			unit.Asks.SetCustom(Asks);
+			CharacterEntry characterEntry = VOSettings.Instance.VOCharactersMap.Characters.FirstOrDefault((CharacterEntry e) => e.Asks.Get() == Asks);
+			if (characterEntry != null)
+			{
+				unit.SelectVoGuid(characterEntry.Guid);
+			}
 		}
 	}
 
@@ -58,7 +64,7 @@ public class SelectionStateVoice : SelectionState
 		{
 			BlueprintCharGenRoot charGenRoot = ConfigRoot.Instance.CharGenRoot;
 			int index = ((previewUnit.Gender == Gender.Male) ? charGenRoot.MaleVoiceDefaultId : charGenRoot.FemaleVoiceDefaultId);
-			m_Asks = charGenRoot.Voices.ElementAt(index);
+			Asks = charGenRoot.Voices.ElementAt(index);
 			return true;
 		}
 		return false;

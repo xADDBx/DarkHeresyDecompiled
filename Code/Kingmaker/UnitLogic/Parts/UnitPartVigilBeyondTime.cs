@@ -4,7 +4,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
@@ -73,7 +72,7 @@ public class UnitPartVigilBeyondTime : BaseUnitPart, IHashable, IOwlPackable<Uni
 			unit.LifeState.Health.SetDamage(entry.OldDamage);
 			if (unit.IsEnemy(base.Owner))
 			{
-				EventBus.RaiseEvent(delegate(IUnitAbilityNonPushForceMoveHandler h)
+				base.EventBus.RaiseEvent(delegate(IUnitAbilityNonPushForceMoveHandler h)
 				{
 					h.HandleUnitNonPushForceMove(distanceToInCells, entry.Buff.Context, unit);
 				});

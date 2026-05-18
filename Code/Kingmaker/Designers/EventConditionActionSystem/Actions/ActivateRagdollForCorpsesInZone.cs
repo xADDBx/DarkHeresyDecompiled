@@ -72,14 +72,13 @@ public class ActivateRagdollForCorpsesInZone : GameAction
 
 	protected override void RunAction()
 	{
-		ScriptZone scriptZone = ScriptZone.FindView() as ScriptZone;
-		if (scriptZone?.Data == null)
+		if (!(ScriptZone.FindData() is ScriptZoneEntity scriptZoneEntity))
 		{
 			PFLog.Default.Warning("ActivateRagdollForCorpsesInZone: ScriptZone not found or has no data: " + ScriptZone?.EntityNameInEditor);
 			return;
 		}
-		PFLog.Default.Log("ActivateRagdollForCorpsesInZone: Processing ScriptZone " + scriptZone.name);
-		List<BaseUnitEntity> unitsInZone = GetUnitsInZone(scriptZone);
+		PFLog.Default.Log("ActivateRagdollForCorpsesInZone: Processing ScriptZone " + scriptZoneEntity.Config.name);
+		List<BaseUnitEntity> unitsInZone = GetUnitsInZone(scriptZoneEntity);
 		PFLog.Default.Log($"ActivateRagdollForCorpsesInZone: Found {unitsInZone.Count} units in zone");
 		if (unitsInZone.Count == 0)
 		{
@@ -99,10 +98,10 @@ public class ActivateRagdollForCorpsesInZone : GameAction
 		PFLog.Default.Log($"ActivateRagdollForCorpsesInZone: Activated ragdoll for {num} units");
 	}
 
-	private List<BaseUnitEntity> GetUnitsInZone(ScriptZone scriptZone)
+	private List<BaseUnitEntity> GetUnitsInZone(ScriptZoneEntity scriptZone)
 	{
 		List<BaseUnitEntity> list = new List<BaseUnitEntity>();
-		List<ScriptZoneEntity.UnitInfo> insideUnits = scriptZone.Data.InsideUnits;
+		List<ScriptZoneEntity.UnitInfo> insideUnits = scriptZone.InsideUnits;
 		PFLog.Default.Log($"ActivateRagdollForCorpsesInZone: ScriptZone has {insideUnits.Count} units inside");
 		foreach (ScriptZoneEntity.UnitInfo item in insideUnits)
 		{

@@ -1,4 +1,5 @@
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.UI.InputSystems;
 using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
@@ -18,6 +19,6 @@ public class EscMenuPCView : EscMenuBaseView
 		base.OnBind();
 		UISounds.Instance.SetClickAndHoverSound(m_CloseButton, ButtonSoundsEnum.PlastickSound);
 		m_CloseButton.OnLeftClickAsObservable().Subscribe(base.ViewModel.OnClose).AddTo(this);
-		base.ViewModel.UpdateButtonsFocus.Subscribe(NavigationBehaviour.UnFocusCurrentEntity).AddTo(this);
+		EscHotkeyManager.Instance.Subscribe(base.ViewModel.OnClose).AddTo(this);
 	}
 }

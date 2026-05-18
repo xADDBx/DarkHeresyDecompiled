@@ -6,6 +6,7 @@ using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Blueprints.Quests;
 using Kingmaker.Code.UI.MVVM;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Items;
@@ -18,6 +19,10 @@ namespace Kingmaker.GameCommands;
 
 public static class GameCommandHelper
 {
+	public class PreviewItem : ContextFlag<PreviewItem>
+	{
+	}
+
 	private static void SetItem(ItemEntity item, int index)
 	{
 		if (item != null)
@@ -79,6 +84,24 @@ public static class GameCommandHelper
 				h.HandleDropItem(item, split);
 			});
 		}
+	}
+
+	public static void AddItemToTrash(ItemEntity item)
+	{
+		Game.Instance.VendorsManager.AddToTrash(item);
+		EventBus.RaiseEvent((IItemEntity)item, (Action<ITrashItemHandler>)delegate(ITrashItemHandler h)
+		{
+			h.HandleItemAddedToTrash(item);
+		}, isCheckRuntime: true);
+	}
+
+	public static void RemoveItemFromTrash(ItemEntity item)
+	{
+		Game.Instance.VendorsManager.RemoveFromTrash(item);
+		EventBus.RaiseEvent((IItemEntity)item, (Action<ITrashItemHandler>)delegate(ITrashItemHandler h)
+		{
+			h.HandleItemRemovedFromTrash(item);
+		}, isCheckRuntime: true);
 	}
 
 	public static void UnequipItem(MechanicEntity owner, ItemSlotRef from, ItemSlotRef to)
@@ -246,7 +269,7 @@ public static class GameCommandHelper
 
 	public static void EquipItemAutomatically(ItemEntity item, BaseUnitEntity unit)
 	{
-		if (TryEquipItemAutomatically(item, unit))
+		if (TryEquipItemAutomatically(item, unit) && ContextData<PreviewItem>.Current == null)
 		{
 			EventBus.RaiseEvent(delegate(IEquipItemAutomaticallyHandler h)
 			{
@@ -370,30 +393,32 @@ public static class GameCommandHelper
 	{
 		if (item == null)
 		{
-			EventBus.RaiseEvent(delegate(IInsertItemFailHandler h)
-			{
-				h.HandleInsertFail(targetSlot?.Owner);
-			});
+			RaiseHandleInsertFail(targetSlot?.Owner);
 			return false;
 		}
 		if (targetSlot == null)
 		{
-			EventBus.RaiseEvent((IItemEntity)item, (Action<IInsertItemFailHandler>)delegate(IInsertItemFailHandler h)
-			{
-				h.HandleInsertFail(null);
-			}, isCheckRuntime: true);
+			RaiseHandleInsertFail(null);
 			return false;
 		}
 		if (!targetSlot.CanInsertItem(item) || (targetSlot.HasItem && !targetSlot.CanRemoveItem()) || (item.HoldingSlot != null && item.HoldingSlot.Owner != targetSlot.Owner))
 		{
-			EventBus.RaiseEvent((IItemEntity)item, (Action<IInsertItemFailHandler>)delegate(IInsertItemFailHandler h)
-			{
-				h.HandleInsertFail(targetSlot.Owner);
-			}, isCheckRuntime: true);
+			RaiseHandleInsertFail(targetSlot.Owner);
 			return false;
 		}
 		targetSlot.InsertItem(item);
 		return true;
+	}
+
+	private static void RaiseHandleInsertFail(MechanicEntity owner)
+	{
+		if (ContextData<PreviewItem>.Current == null)
+		{
+			EventBus.RaiseEvent(delegate(IInsertItemFailHandler h)
+			{
+				h.HandleInsertFail(owner);
+			});
+		}
 	}
 
 	public static void TransferCount(ItemsCollection to, ItemEntity item, int count)

@@ -4,6 +4,7 @@ using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.Designers.EventConditionActionSystem.Actions;
+using Kingmaker.Designers.Mechanics.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Actions;
@@ -167,6 +168,10 @@ public static class AiBrainHelper
 		if (!areaEffect.IsSuitableTargetType(unit))
 		{
 			return false;
+		}
+		if (!areaEffect.Facts.GetComponents<MarkAreaDangerous>().Empty())
+		{
+			return true;
 		}
 		List<BlueprintComponent> list = TempList.Get<BlueprintComponent>();
 		list.AddRange(areaEffect.Blueprint.ComponentsArray);

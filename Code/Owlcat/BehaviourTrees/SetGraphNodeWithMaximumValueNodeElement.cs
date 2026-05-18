@@ -16,12 +16,11 @@ public class SetGraphNodeWithMaximumValueNodeElement : BehaviourTreeNodeElement<
 
 	public PropertyCalculator FunctionToMaximize;
 
+	[OptionalParameter]
+	public PropertyCalculatorBlueprintVariableReference CalculatorBlueprint;
+
 	protected override SetGraphNodeWithMaximumValueNode CreateTypedNode(Blackboard blackboard)
 	{
-		EntityVariable agentVariable = blackboard.GetAgentVariable();
-		GraphNodeVariable runtimeVariable = Variable.GetRuntimeVariable(blackboard);
-		GraphNodeListVariable runtimeVariable2 = NodesList.GetRuntimeVariable(blackboard);
-		MechanicEntityListVariable runtimeVariable3 = Entities.GetRuntimeVariable(blackboard);
-		return new SetGraphNodeWithMaximumValueNode(agentVariable, runtimeVariable, runtimeVariable2, runtimeVariable3, FunctionToMaximize);
+		return new SetGraphNodeWithMaximumValueNode(blackboard.GetAgentVariable(), Variable.GetRuntimeVariable(blackboard), NodesList.GetRuntimeVariable(blackboard), Entities.GetRuntimeVariable(blackboard), calculatorBlueprint: CalculatorBlueprint.GetOptionalRuntimeVariable<PropertyCalculatorBlueprintVariable>(blackboard), functionToMaximize: FunctionToMaximize);
 	}
 }

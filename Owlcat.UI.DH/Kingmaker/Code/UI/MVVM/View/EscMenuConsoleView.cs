@@ -7,7 +7,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 
@@ -33,7 +32,6 @@ public class EscMenuConsoleView : EscMenuBaseView, INetInviteHandler, ISubscribe
 	{
 		m_QuickSave.OnConfirmClickAsObservable().Subscribe(base.ViewModel.OnQuickSave).AddTo(this);
 		m_QuickLoad.OnConfirmClickAsObservable().Subscribe(OnQuickLoadConfirm).AddTo(this);
-		GamePad.Instance.OnLayerPushed.Subscribe(OnCurrentInputLayerChanged).AddTo(this);
 		m_QuickSave.SetInteractable(base.ViewModel.IsSavingAllowed);
 		base.OnBind();
 		EventBus.Subscribe(this).AddTo(this);
@@ -45,30 +43,6 @@ public class EscMenuConsoleView : EscMenuBaseView, INetInviteHandler, ISubscribe
 		m_QuickSave.SetInteractable(base.ViewModel.IsSavingAllowed);
 	}
 
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		base.BuildNavigationImpl(navigationBehaviour);
-		navigationBehaviour.InsertVertical(0, m_QuickSave);
-		navigationBehaviour.InsertVertical(1, m_QuickLoad);
-		navigationBehaviour.FocusOnFirstValidEntity();
-	}
-
-	protected override void CreateInputImpl(InputLayer inputLayer)
-	{
-		base.CreateInputImpl(inputLayer);
-		inputLayer.AddButton(delegate
-		{
-			base.ViewModel.OnClose();
-		}, 16, InputActionEventType.ButtonJustReleased).AddTo(this);
-		inputLayer.AddButton(delegate
-		{
-			if (!Input.GetKey(KeyCode.Escape))
-			{
-				base.ViewModel.OnClose();
-			}
-		}, 9).AddTo(this);
-	}
-
 	protected override void SetButtonsTexts()
 	{
 		base.SetButtonsTexts();
@@ -78,12 +52,6 @@ public class EscMenuConsoleView : EscMenuBaseView, INetInviteHandler, ISubscribe
 
 	private void OnCurrentInputLayerChanged()
 	{
-		GamePad instance = GamePad.Instance;
-		if (instance.CurrentInputLayer != InputLayer && !(instance.CurrentInputLayer.ContextName == BugReportBaseView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == BugReportDrawingView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == "BugReportDuplicatesViewInput") && !(instance.CurrentInputLayer.ContextName == OwlcatDropdown.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == OwlcatInputField.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == CrossPlatformConsoleVirtualKeyboard.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == MessageBoxConsoleView.InputLayerName) && !(instance.CurrentInputLayer.ContextName == NetLobbyConsoleView.InputLayerName))
-		{
-			instance.PopLayer(InputLayer);
-			instance.PushLayer(InputLayer);
-		}
 	}
 
 	private void OnQuickLoadConfirm()

@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Gameplay.Features.Scaling.Utility;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
@@ -33,6 +34,12 @@ public class ContextActionCastSpell : ContextAction
 	[ShowIf("CastOnTargetPoint")]
 	public PositionEvaluator TargetPoint;
 
+	[Tooltip("Append the source ability's modifiers to the cast spell's modifier list.")]
+	public bool InheritModifiers;
+
+	[Tooltip("Use the source ability's resolved scaling for the cast spell.")]
+	public bool InheritScalings;
+
 	public BlueprintAbility Spell => m_Spell?.Get();
 
 	public override string GetCaption()
@@ -42,20 +49,34 @@ public class ContextActionCastSpell : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity mechanicEntity = (CastByTarget ? base.Target.Entity : base.Context.MaybeCaster);
+		MechanicEntity mechanicEntity = (CastByTarget ? base.Target.Entity : base.Context.Caster);
 		if (mechanicEntity == null)
 		{
 			Element.LogError(this, "Caster is missing");
 			return;
 		}
 		TargetWrapper targetWrapper = (TargetPoint ? ((TargetWrapper)TargetPoint.GetValue()) : base.Target);
-		AbilityData ability = mechanicEntity.GetAbilityDataWithUpgrades(Spell) ?? new AbilityData(Spell, mechanicEntity);
+		AbilityData abilityData = mechanicEntity.GetAbilityDataWithUpgrades(Spell) ?? new AbilityData(Spell, mechanicEntity);
+		AbilityData sourceAbility = base.Context.SourceAbility;
+		ScalingInfo? scalingOverride = ((!InheritScalings) ? null : sourceAbility?.GetScaling());
+		if (InheritModifiers && sourceAbility != null)
+		{
+			abilityData = abilityData.Clone(sourceAbility.Modifiers);
+		}
+		else if (scalingOverride.HasValue)
+		{
+			abilityData = abilityData.Clone();
+		}
+		if (scalingOverride.HasValue)
+		{
+			abilityData.ScalingOverride = scalingOverride;
+		}
 		if (UseFullAbilityCastCycle)
 		{
 			PartUnitCommands commandsOptional = base.Caster.GetCommandsOptional();
 			if (commandsOptional != null)
 			{
-				UnitUseAbilityParams cmdParams = new UnitUseAbilityParams(ability, targetWrapper)
+				UnitUseAbilityParams cmdParams = new UnitUseAbilityParams(abilityData, targetWrapper)
 				{
 					IgnoreCooldown = true,
 					FreeAction = true
@@ -64,7 +85,7 @@ public class ContextActionCastSpell : ContextAction
 				return;
 			}
 		}
-		RulePerformAbility obj = new RulePerformAbility(ability, targetWrapper, base.Context)
+		RulePerformAbility obj = new RulePerformAbility(abilityData, targetWrapper, base.Context)
 		{
 			IgnoreCooldown = true,
 			ForceFreeAction = true

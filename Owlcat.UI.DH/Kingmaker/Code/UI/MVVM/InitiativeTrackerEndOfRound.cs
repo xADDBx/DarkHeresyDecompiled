@@ -25,7 +25,7 @@ public class InitiativeTrackerEndOfRound : MonoBehaviour
 		m_RoundText.text = $"{round}";
 		if (m_PreviousRound != round)
 		{
-			UISounds.Instance.Sounds.InitiativeTracker.InitiativeTrackerRoundCount.Play();
+			CombatSounds.Instance.InitiativeTracker.RoundCount.Play();
 		}
 		m_PreviousRound = round;
 	}

@@ -1,38 +1,30 @@
-using Kingmaker.Code.View.UI.Components.Text.ScrambledTextMeshPro;
+using Kingmaker.Blueprints.Root.Strings;
+using Owlcat.UI;
 using R3;
+using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenNameBaseView : CharInfoComponentWithLevelUpView<CharGenNameVM>
 {
+	[Header("Elements")]
 	[SerializeField]
-	private ScrambledTMP m_NameFieldScrambled;
+	private TMP_Text m_Title;
 
 	[SerializeField]
-	protected MessageBoxBaseView m_MessageBoxView;
+	private TMP_Text m_DisclaimerText;
+
+	[SerializeField]
+	private OwlcatMultiSelectable m_StateSelectable;
 
 	protected override void OnBind()
 	{
-		base.OnBind();
-		base.ViewModel.UnitName.Subscribe(delegate
+		m_Title.text = UIStrings.Instance.CharGen.SelectNameTitle.Text;
+		m_DisclaimerText.text = UIStrings.Instance.CharGen.SelectNameDisclaimer.Text;
+		base.ViewModel.CurrentDisplayName.Subscribe(delegate(string value)
 		{
-			SetName();
+			m_StateSelectable.SetActiveLayer(string.IsNullOrEmpty(value) ? "Choose" : "Normal");
 		}).AddTo(this);
-		base.ViewModel.MessageBoxVM.Subscribe(m_MessageBoxView.Bind).AddTo(this);
-	}
-
-	private void SetName()
-	{
-		string currentValue = base.ViewModel.UnitName.CurrentValue;
-		if (m_NameFieldScrambled != null && m_NameFieldScrambled.Text != currentValue)
-		{
-			m_NameFieldScrambled.SetText(string.Empty, currentValue);
-		}
-	}
-
-	protected void GenerateRandomName()
-	{
-		base.ViewModel.SetName(base.ViewModel.GetRandomName());
 	}
 }

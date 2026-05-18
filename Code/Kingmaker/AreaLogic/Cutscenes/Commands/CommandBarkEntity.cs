@@ -37,7 +37,7 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 
 	[ValidateNotNull]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	public SharedStringAsset SharedText;
+	public LocalizedString SharedText;
 
 	public bool ForceVoId;
 
@@ -52,7 +52,7 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 	public EntityEvaluator Entity;
 
 	[Tooltip("Bark duration depends on text length")]
-	public bool BarkDurationByText;
+	public bool BarkDurationByText = true;
 
 	[Tooltip("Wait until bark disappears before starting next command")]
 	public bool AwaitFinish;
@@ -72,17 +72,7 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 	[CanBeNull]
 	private LocalizedString m_SpeakerName;
 
-	public IEnumerable<LocalizedString> Barks
-	{
-		get
-		{
-			if (!(SharedText == null))
-			{
-				return new LocalizedString[1] { SharedText.String };
-			}
-			return Enumerable.Empty<LocalizedString>();
-		}
-	}
+	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { SharedText };
 
 	public bool IsVoIdForced => ForceVoId;
 
@@ -96,43 +86,56 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 		return SignalService.Instance.CheckReadyOrSend(ref commandData.StopPlaySignal);
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		player.GetCommandData<Data>(this).BarkHandle?.InterruptBark();
+		return CommandResult.Success;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		player.GetCommandData<Data>(this).BarkHandle?.InterruptBark();
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		float duration = UtilityBark.DefaultBarkTime;
 		if (BarkDurationByText)
 		{
-			duration = UtilityBark.GetBarkDuration(SharedText.String);
+			duration = UtilityBark.GetBarkDuration(SharedText);
 		}
 		if (OverrideBarkDuration)
 		{
 			duration = BarkDuration;
 		}
-		Entity entity = Entity?.GetValue();
-		if (!(entity is AbstractUnitEntity { IsDead: not false }))
+		Entity value = null;
+		if (Entity != null && !Entity.TryGetValue(out value))
 		{
-			string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, entity);
-			if (IsSubText)
-			{
-				commandData.BarkHandle = BarkPlayer.BarkSubtitle(entity, SharedText.String, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration, m_SpeakerName);
-			}
-			else
-			{
-				commandData.BarkHandle = BarkPlayer.Bark(entity, SharedText.String, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration);
-			}
-			commandData.StopPlaySignal = SignalService.Instance.RegisterNext();
+			return CommandResult.Fail("Cant find entity");
 		}
+		if (value is AbstractUnitEntity { IsDead: not false })
+		{
+			return CommandResult.Fail("Cant bark on dead unit");
+		}
+		string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, value);
+		if (IsSubText)
+		{
+			commandData.BarkHandle = BarkPlayer.BarkSubtitle(value, SharedText, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration, m_SpeakerName);
+		}
+		else
+		{
+			commandData.BarkHandle = BarkPlayer.Bark(value, SharedText, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration);
+		}
+		commandData.StopPlaySignal = SignalService.Instance.RegisterNext();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		player.GetCommandData<Data>(this).Finished = true;
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -140,14 +143,15 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 		return player.GetCommandData<Data>(this).Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (!AwaitFinish)
 		{
 			commandData.Finished = true;
+			return CommandResult.Success;
 		}
-		else if (commandData.BarkHandle == null)
+		if (commandData.BarkHandle == null)
 		{
 			if (time > (double)UtilityBark.DefaultBarkTime)
 			{
@@ -158,12 +162,12 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 		{
 			commandData.Finished = true;
 		}
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()
 	{
-		LocalizedString localizedString = SharedText?.String;
-		string text = ((localizedString != null) ? ((string)localizedString) : string.Empty);
+		string text = SharedText;
 		text = ((text.Length > 15) ? text.Substring(0, 15) : text);
 		text = " <b>bark</b> " + text;
 		if (Entity != null)

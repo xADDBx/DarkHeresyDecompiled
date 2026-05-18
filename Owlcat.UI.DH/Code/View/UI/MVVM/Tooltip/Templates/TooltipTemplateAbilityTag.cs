@@ -17,7 +17,7 @@ public class TooltipTemplateAbilityTag : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(AbilityTag.Name);
+		yield return new BrickTitleVM(AbilityTag.Name);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -25,7 +25,7 @@ public class TooltipTemplateAbilityTag : TooltipBaseTemplate
 		LocalizedString description = AbilityTag.Description;
 		if (description != null)
 		{
-			yield return new TooltipBrickText(description);
+			yield return new BrickTextVM(description);
 		}
 	}
 }

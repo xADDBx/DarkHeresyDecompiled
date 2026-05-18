@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Code.View.UI.MVVM.Tooltip;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Items;
@@ -14,6 +13,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.Designers;
 using Kingmaker.Designers.Mechanics.Facts.Damage;
 using Kingmaker.DLC;
@@ -21,9 +21,12 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.GameCommands;
 using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.Pathfinding;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Enum;
 using Kingmaker.RuleSystem.Rules;
@@ -42,8 +45,8 @@ using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.StatefulRandom;
 using Kingmaker.Utility.UnitDescription;
 using Owlcat.Runtime.Core.Logging;
+using R3;
 using UnityEngine;
-using WebSocketSharp;
 
 namespace Kingmaker.Code.View.UI.UIUtilities;
 
@@ -94,21 +97,15 @@ public static class UIUtilityItem
 	{
 		public BlueprintAbility BlueprintAbility;
 
-		public string AttackType;
-
 		public string DamageText;
 
 		public string BaseDamageText;
 
 		public int MinDamage;
 
-		public bool IsSpaceCombatAbility;
-
-		public bool IsReload;
+		public int MaxDamage;
 
 		public ItemEntityWeapon Weapon;
-
-		public int MaxDamage;
 
 		[Obsolete]
 		public int Penetration;
@@ -133,6 +130,8 @@ public static class UIUtilityItem
 
 		public Sprite Icon => BlueprintAbility.Icon;
 	}
+
+	private static CalculatorUnitPair s_CalculatorUnitPair;
 
 	private static readonly UIPatternData SingleShotPatternData = new UIPatternData
 	{
@@ -227,9 +226,10 @@ public static class UIUtilityItem
 				WarhammerArmorCategory.Medium => 0.75f, 
 				_ => 0f, 
 			};
+			StatFactionModifierConfig[] fractionModifiers = armor.GetFractionModifiers();
 			ArmorData armorData = default(ArmorData);
-			armorData.DamageReduction = armor.Blueprint.ArmorDamageReduction;
-			armorData.Durability = armor.Blueprint.ArmorDurability;
+			armorData.DamageReduction = ApplyFractionModifier(armor.GetStatBaseValue(StatType.ItemArmorDamageReduction).Value, StatType.ItemArmorDamageReduction, fractionModifiers);
+			armorData.Durability = ApplyFractionModifier(armor.GetStatBaseValue(StatType.ItemArmorAmount).Value, StatType.ItemArmorAmount, fractionModifiers);
 			armorData.MovePointAdjustment = 0;
 			armorData.RangedHitChanceBonus = 0;
 			armorData.ArmorDodgePenalty = ((num > 0f) ? $"{num}" : string.Empty);
@@ -277,67 +277,62 @@ public static class UIUtilityItem
 				return null;
 			}
 			AbilityData abilityData = CreateAbilityData(blueprintAbility, itemEntity, caster);
-			RuleCalculateStatsWeapon weaponStats = abilityData.GetWeaponStats();
-			BlueprintItemWeapon blueprintItemWeapon = abilityData.Weapon?.Blueprint;
-			if (blueprintItemWeapon != null)
+			using (EvalContext.Build().Ability(abilityData).Push())
 			{
-				damageText = (abilityData.Blueprint.IsBurst ? $"({weaponStats.ResultDamage}-{blueprintItemWeapon.DamageMax})x{abilityData.RateOfFire}" : $"{weaponStats.ResultDamage}-{blueprintItemWeapon.DamageMax}");
-				baseDamageText = $"{weaponStats.ResultDamage.MinValueBase}-{weaponStats.ResultDamage.MaxValueBase}";
-				int minValue = weaponStats.ResultDamage.MinValue;
-				int damageMax = blueprintItemWeapon.DamageMax;
-				minDamage = minValue;
-				maxDamage = damageMax;
-			}
-			if ((bool)(UnityEngine.Object)(object)AstarPath.active)
-			{
-				DamagePredictionData damagePrediction = abilityData.GetDamagePrediction(Game.Instance.DefaultUnit, Game.Instance.DefaultUnit.Position);
-				if (damagePrediction != null)
+				RuleCalculateStatsWeapon weaponStats = abilityData.GetWeaponStats();
+				ItemEntityWeapon weapon = abilityData.Weapon;
+				if (weapon != null)
 				{
-					damageText = ((damagePrediction.MinDamage != damagePrediction.MaxDamage) ? $"{damagePrediction.MinDamage}-{damagePrediction.MaxDamage}" : $"{damagePrediction.MinDamage}");
-					int minValue = damagePrediction.MinDamage;
-					int maxDamage2 = damagePrediction.MaxDamage;
+					int damageMax = weapon.DamageMax;
+					damageText = (abilityData.Blueprint.IsBurst ? $"({weaponStats.ResultDamage}-{damageMax})x{abilityData.RateOfFire}" : $"{weaponStats.ResultDamage}-{damageMax}");
+					baseDamageText = $"{weaponStats.ResultDamage.MinValueBase}-{weaponStats.ResultDamage.MaxValueBase}";
+					int minValue = weaponStats.ResultDamage.MinValue;
+					int num = damageMax;
 					minDamage = minValue;
-					maxDamage = maxDamage2;
+					maxDamage = num;
 				}
-			}
-			if (abilityData.Weapon != null)
-			{
-				if (abilityData.IsBurst)
+				if ((bool)(UnityEngine.Object)(object)AstarPath.active)
 				{
-					scatterHitChanceData = new UIScatterHitChanceData
+					DamagePredictionData damagePrediction = abilityData.GetDamagePrediction(Game.Instance.DefaultUnit, Game.Instance.DefaultUnit.Position);
+					if (damagePrediction != null)
 					{
-						MainLine = 0,
-						ScatterNear = 0,
-						ScatterFar = 0,
-						MainLineClose = 0,
-						ScatterClose = 0
-					};
+						damageText = ((damagePrediction.MinDamage != damagePrediction.MaxDamage) ? $"{damagePrediction.MinDamage}-{damagePrediction.MaxDamage}" : $"{damagePrediction.MinDamage}");
+						int num = damagePrediction.MinDamage;
+						int maxDamage2 = damagePrediction.MaxDamage;
+						minDamage = num;
+						maxDamage = maxDamage2;
+					}
 				}
-				else
+				if (abilityData.Weapon != null)
 				{
-					hitChance = GetHitChanceRoll(caster, abilityData)?.ResultHitChance;
+					if (abilityData.IsBurst)
+					{
+						scatterHitChanceData = new UIScatterHitChanceData();
+					}
+					else
+					{
+						hitChance = GetHitChanceRoll(caster, abilityData)?.ResultHitChance;
+					}
 				}
+				return new UIAbilityData
+				{
+					BlueprintAbility = blueprintAbility,
+					MinDamage = minDamage,
+					MaxDamage = maxDamage,
+					DamageText = damageText,
+					BaseDamageText = baseDamageText,
+					Penetration = 0,
+					CostAP = $"{abilityData.GetBaseActionPointCost()} {UIStrings.Instance.Tooltips.AP.Text}",
+					PatternData = GetAbilityPatternData(abilityData, itemEntity),
+					HitChance = hitChance,
+					ScatterHitChanceData = scatterHitChanceData,
+					IsRange = (weapon?.Blueprint.IsRanged ?? false),
+					IsScatter = abilityData.IsBurst,
+					BurstAttacksCount = abilityData.BurstAttacksCount,
+					UIProperties = abilityData.GetUIProperties(itemEntity),
+					Weapon = abilityData.Weapon
+				};
 			}
-			return new UIAbilityData
-			{
-				BlueprintAbility = blueprintAbility,
-				MinDamage = minDamage,
-				MaxDamage = maxDamage,
-				DamageText = damageText,
-				BaseDamageText = baseDamageText,
-				Penetration = 0,
-				CostAP = $"{abilityData.CalculateActionPointCost()} {UIStrings.Instance.Tooltips.AP.Text}",
-				PatternData = GetAbilityPatternData(abilityData, itemEntity),
-				HitChance = hitChance,
-				ScatterHitChanceData = scatterHitChanceData,
-				IsRange = (blueprintItemWeapon?.IsRanged ?? false),
-				IsScatter = abilityData.IsBurst,
-				BurstAttacksCount = abilityData.BurstAttacksCount,
-				UIProperties = abilityData.GetUIProperties(itemEntity),
-				IsSpaceCombatAbility = false,
-				IsReload = IsReload(abilityData),
-				Weapon = abilityData.Weapon
-			};
 		}
 	}
 
@@ -354,24 +349,37 @@ public static class UIUtilityItem
 			int val = itemEntityWeapon.Blueprint.WeaponAbilities.Select((WeaponAbility i) => i.Ability).IndexOf(blueprintAbility);
 			indexInItemSettings = Math.Max(0, val);
 		}
-		_cachedAbilityData = new AbilityData(blueprintAbility, caster, indexInItemSettings)
+		using (ContextData<DisableStatefulRandomContext>.Request())
 		{
-			OverrideWeapon = itemEntityWeapon
-		};
+			_cachedAbilityData = new AbilityData(blueprintAbility, caster, indexInItemSettings)
+			{
+				OverrideWeapon = itemEntityWeapon
+			};
+		}
 		return _cachedAbilityData;
+	}
+
+	private static AbilityData GetWeaponPreviewAbility(ItemEntityWeapon weapon, MechanicEntity caster)
+	{
+		if (weapon == null || caster == null)
+		{
+			return null;
+		}
+		BlueprintAbility blueprintAbility = weapon.Blueprint.WeaponAbilities.FirstOrDefault((WeaponAbility wa) => wa?.Ability != null)?.Ability;
+		if (blueprintAbility == null)
+		{
+			return null;
+		}
+		return CreateAbilityData(blueprintAbility, weapon, caster);
 	}
 
 	public static RuleCalculateHitChances GetHitChanceRoll(MechanicEntity caster, AbilityData abilityData)
 	{
-		try
+		if (RuleCalculateHitChances.TryGetHitChanceRule(caster, Game.Instance.DefaultUnit, abilityData, 0, Vector3.zero, Vector3.zero, out var rule))
 		{
-			return Rulebook.Trigger(new RuleCalculateHitChances(caster, Game.Instance.DefaultUnit, abilityData, 0, Vector3.zero, Vector3.zero));
+			return Rulebook.Trigger(rule);
 		}
-		catch (Exception ex)
-		{
-			PFLog.UI.Error(ex);
-			return null;
-		}
+		return null;
 	}
 
 	private static UIPatternData GetAbilityPatternData(AbilityData ability, ItemEntity itemEntity)
@@ -495,12 +503,12 @@ public static class UIUtilityItem
 		{
 			data.Texts[TooltipElement.MaxDistance] = weapon.AttackRange.ToString();
 		}
-		int resultAdditionalSingleHitChance = weapon.GetWeaponStats().ResultAdditionalSingleHitChance;
-		data.Texts[TooltipElement.SingleAdditionalHitChance] = ((resultAdditionalSingleHitChance > 0) ? UIUtilityText.AddPercentTo(resultAdditionalSingleHitChance) : string.Empty);
-		int resultAdditionalBurstHitChance = weapon.GetWeaponStats().ResultAdditionalBurstHitChance;
-		data.Texts[TooltipElement.BurstAdditionalHitChance] = ((resultAdditionalBurstHitChance > 0) ? UIUtilityText.AddPercentTo(resultAdditionalBurstHitChance) : string.Empty);
-		int resultAdditionalAoeHitChance = weapon.GetWeaponStats().ResultAdditionalAoeHitChance;
-		data.Texts[TooltipElement.AoeAdditionalHitChance] = ((resultAdditionalAoeHitChance > 0) ? UIUtilityText.AddPercentTo(resultAdditionalAoeHitChance) : string.Empty);
+		int resultAdditionalHitChance = weapon.GetWeaponStats().ResultAdditionalHitChance;
+		data.Texts[TooltipElement.HitChance] = ((resultAdditionalHitChance > 0) ? UIUtilityText.AddPercentTo(resultAdditionalHitChance) : string.Empty);
+		int overpenetrationChance = weapon.OverpenetrationChance;
+		data.Texts[TooltipElement.OverpenetrationChance] = ((overpenetrationChance != 0) ? UIUtilityText.AddPercentTo(overpenetrationChance) : string.Empty);
+		int recoil = weapon.Blueprint.Recoil;
+		data.Texts[TooltipElement.Recoil] = ((recoil != 0) ? UIUtilityText.AddPercentTo(recoil) : string.Empty);
 	}
 
 	private static void FillWeaponAbilities(ItemTooltipData data, ItemEntityWeapon weapon)
@@ -556,13 +564,131 @@ public static class UIUtilityItem
 		}
 	}
 
-	private static string GetMechanicDescription(ItemEntity item)
+	private static string GetMechanicDescription(ItemEntity item, MechanicEntity wielderOverride = null)
+	{
+		return GetDescriptionWithItemEquipped(item, () => item.Description, wielderOverride);
+	}
+
+	public static string GetDescriptionWithItemEquipped(ItemEntity item, Func<string> descriptionProvider, MechanicEntity wielderOverride = null)
 	{
 		if (item == null)
 		{
+			return descriptionProvider?.Invoke() ?? string.Empty;
+		}
+		using (GameLogContext.Scope)
+		{
+			if (wielderOverride != null)
+			{
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)wielderOverride;
+				ItemEntityWeapon weapon = (item.IsDisposed ? null : (item as ItemEntityWeapon));
+				AbilityData weaponPreviewAbility = GetWeaponPreviewAbility(weapon, wielderOverride);
+				using (EvalContext.Build().Weapon(weapon).Ability(weaponPreviewAbility)
+					.Push())
+				{
+					return descriptionProvider?.Invoke();
+				}
+			}
+			if (item.Owner == null)
+			{
+				ReactiveProperty<BaseUnitEntity> selectedUnitInUI = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI;
+				if (s_CalculatorUnitPair == null)
+				{
+					s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
+				}
+				if (s_CalculatorUnitPair.CurrentSelectedUnit == null)
+				{
+					s_CalculatorUnitPair.Dispose();
+					s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
+				}
+				ItemEntity itemEntity = item.Blueprint.CreateEntity();
+				if (itemEntity == null)
+				{
+					return item.Description;
+				}
+				using (ContextData<ItemSlot.IgnoreLock>.Request())
+				{
+					using (ContextData<GameCommandHelper.PreviewItem>.Request())
+					{
+						GameCommandHelper.EquipItemAutomatically(itemEntity, s_CalculatorUnitPair.CalculatorUnit);
+						GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)s_CalculatorUnitPair.CurrentSelectedUnit;
+						ItemEntityWeapon weapon2 = itemEntity as ItemEntityWeapon;
+						AbilityData weaponPreviewAbility2 = GetWeaponPreviewAbility(weapon2, s_CalculatorUnitPair.CurrentSelectedUnit);
+						using (EvalContext.Build().Weapon(weapon2).Ability(weaponPreviewAbility2)
+							.Push())
+						{
+							return descriptionProvider?.Invoke();
+						}
+					}
+				}
+			}
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)item.Owner;
+			ItemEntityWeapon weapon3 = item as ItemEntityWeapon;
+			AbilityData weaponPreviewAbility3 = GetWeaponPreviewAbility(weapon3, item.Owner);
+			using (EvalContext.Build().Weapon(weapon3).Ability(weaponPreviewAbility3)
+				.Push())
+			{
+				return descriptionProvider?.Invoke();
+			}
+		}
+	}
+
+	public static string GetDescriptionWithItemEquipped(BlueprintItem blueprintItem, Func<string> descriptionProvider)
+	{
+		if (blueprintItem == null)
+		{
 			return string.Empty;
 		}
-		return item.Description;
+		using (GameLogContext.Scope)
+		{
+			ReactiveProperty<BaseUnitEntity> selectedUnitInUI = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI;
+			if (s_CalculatorUnitPair == null)
+			{
+				s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
+			}
+			if (s_CalculatorUnitPair.CurrentSelectedUnit == null)
+			{
+				s_CalculatorUnitPair.Dispose();
+				s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
+			}
+			ItemEntity itemEntity = blueprintItem.CreateEntity();
+			if (itemEntity == null)
+			{
+				return blueprintItem.Description;
+			}
+			using (ContextData<ItemSlot.IgnoreLock>.Request())
+			{
+				using (ContextData<GameCommandHelper.PreviewItem>.Request())
+				{
+					GameCommandHelper.EquipItemAutomatically(itemEntity, s_CalculatorUnitPair.CalculatorUnit);
+					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)s_CalculatorUnitPair.CurrentSelectedUnit;
+					ItemEntityWeapon weapon = itemEntity as ItemEntityWeapon;
+					AbilityData weaponPreviewAbility = GetWeaponPreviewAbility(weapon, s_CalculatorUnitPair.CurrentSelectedUnit);
+					using (EvalContext.Build().Weapon(weapon).Ability(weaponPreviewAbility)
+						.Push())
+					{
+						return descriptionProvider?.Invoke();
+					}
+				}
+			}
+		}
+	}
+
+	private static string GetUsableDescription(ItemEntityUsable usable, BlueprintAbility ability, MechanicEntity wielderOverride = null)
+	{
+		return GetDescriptionWithItemEquipped(usable, delegate
+		{
+			object obj = usable.Abilities.FirstOrDefault()?.Data.ShortenedDescription;
+			if (obj == null)
+			{
+				BlueprintAbility blueprintAbility = ability;
+				if (blueprintAbility == null)
+				{
+					return (string)null;
+				}
+				obj = blueprintAbility.GetShortenedDescription();
+			}
+			return (string)obj;
+		}, wielderOverride);
 	}
 
 	private static string GetMechanicDescription(BlueprintItem blueprintItem)
@@ -602,20 +728,20 @@ public static class UIUtilityItem
 
 	public static string GetHandUse(ItemEntity item)
 	{
-		if (item is ItemEntityWeapon)
+		if (item is ItemEntityWeapon itemEntityWeapon)
 		{
-			return UIStrings.Instance.Tooltips.OneHanded;
+			return (itemEntityWeapon.Blueprint.IsTwoHanded || itemEntityWeapon.Blueprint.IsDoubleHanded) ? UIStrings.Instance.Tooltips.TwoHanded : UIStrings.Instance.Tooltips.OneHanded;
 		}
 		return string.Empty;
 	}
 
 	public static string GetHandUse(BlueprintItem blueprintItem)
 	{
-		if (!(blueprintItem is BlueprintItemWeapon))
+		if (!(blueprintItem is BlueprintItemWeapon blueprintItemWeapon))
 		{
 			return string.Empty;
 		}
-		return UIStrings.Instance.Tooltips.OneHanded;
+		return (blueprintItemWeapon.IsTwoHanded || blueprintItemWeapon.IsDoubleHanded) ? UIStrings.Instance.Tooltips.TwoHanded : UIStrings.Instance.Tooltips.OneHanded;
 	}
 
 	[Obsolete]
@@ -735,6 +861,32 @@ public static class UIUtilityItem
 		return damageEntry.MaxValue();
 	}
 
+	private static int ApplyFractionModifier(int baseValue, StatType stat, StatFactionModifierConfig[] fractionMods)
+	{
+		float num = 0f;
+		float num2 = 0f;
+		float num3 = 1f;
+		foreach (StatFactionModifierConfig statFactionModifierConfig in fractionMods)
+		{
+			if (statFactionModifierConfig.Stat == stat)
+			{
+				switch (statFactionModifierConfig.ModifierType)
+				{
+				case ModifierType.ValAdd:
+					num += (float)statFactionModifierConfig.Value;
+					break;
+				case ModifierType.PctAdd:
+					num2 += (float)statFactionModifierConfig.Value / 100f;
+					break;
+				case ModifierType.PctMul:
+					num3 *= (float)statFactionModifierConfig.Value / 100f;
+					break;
+				}
+			}
+		}
+		return Mathf.RoundToInt(((float)baseValue + num) * (1f + num2) * num3);
+	}
+
 	private static (int Min, int Max) GetDamageMinMax(IntermediateDamage damageInfo)
 	{
 		int val = 0;
@@ -746,8 +898,8 @@ public static class UIUtilityItem
 	private static (int Min, int Max) GetBaseDamageMinMax(IntermediateDamage damageInfo)
 	{
 		int val = 0;
-		int item = Math.Max(0, damageInfo.MinValueBase);
-		val = Math.Max(val, damageInfo.MaxValueBase);
+		int item = Math.Max(0, damageInfo.Modifiers.Apply(damageInfo.MinValueBase, (Modifier m) => m.Descriptor == ModifierDescriptor.Faction));
+		val = Math.Max(val, damageInfo.Modifiers.Apply(damageInfo.MaxValueBase, (Modifier m) => m.Descriptor == ModifierDescriptor.Faction));
 		return (Min: item, Max: val);
 	}
 
@@ -812,12 +964,6 @@ public static class UIUtilityItem
 		return ItemsFilter.GetItemType(blueprintItem).ToString();
 	}
 
-	public static bool CanEquipItem(ItemEntity item)
-	{
-		BaseUnitEntity unit = UtilityParty.GetCurrentSelectedUnit() ?? Game.Instance.Player.MainCharacterEntity;
-		return UIInventoryHelper.CanEquipItem(item, unit);
-	}
-
 	public static bool CanInsertItem(ItemEntity item)
 	{
 		return (UtilityParty.GetCurrentSelectedUnit() ?? Game.Instance.Player.MainCharacterEntity).Body.AllSlots.Any((ItemSlot sl) => sl.IsItemSupported(item));
@@ -851,8 +997,17 @@ public static class UIUtilityItem
 
 	public static ItemTooltipData GetItemTooltipData(ItemEntity item)
 	{
+		return GetItemTooltipData(item, null);
+	}
+
+	public static ItemTooltipData GetItemTooltipData(ItemEntity item, MechanicEntity wielderOverride)
+	{
 		using (ContextData<DisableStatefulRandomContext>.Request())
 		{
+			if (item.IsDisposed)
+			{
+				return GetItemTooltipData(item.Blueprint);
+			}
 			ItemTooltipData itemTooltipData = new ItemTooltipData(item);
 			ItemEntityUsable usable = itemTooltipData.Usable;
 			itemTooltipData.Texts[TooltipElement.Name] = item.Name;
@@ -862,7 +1017,9 @@ public static class UIUtilityItem
 			itemTooltipData.Texts[TooltipElement.Subname] = GetItemType(item);
 			try
 			{
-				itemTooltipData.Texts[TooltipElement.Price] = Game.Instance.TradeLogic.GetItemCost(item).ToString();
+				Dictionary<TooltipElement, string> texts = itemTooltipData.Texts;
+				MechanicEntity owner = item.Owner;
+				texts[TooltipElement.Price] = ((owner != null && !owner.IsDisposed) ? Game.Instance.TradeLogic.GetItemCost(item).ToString() : "0");
 			}
 			catch (Exception arg)
 			{
@@ -875,9 +1032,8 @@ public static class UIUtilityItem
 			FillItemRestrictions(itemTooltipData, item.Blueprint);
 			if (item.Blueprint is BlueprintItemWeapon blueprintItemWeapon)
 			{
-				StatsStrings stats = LocalizedTexts.Instance.Stats;
-				itemTooltipData.Texts[TooltipElement.WeaponCategory] = stats.GetText(blueprintItemWeapon.Category);
-				itemTooltipData.Texts[TooltipElement.WeaponFamily] = stats.GetText(blueprintItemWeapon.Family);
+				itemTooltipData.Texts[TooltipElement.WeaponCategory] = UIStrings.Instance.WeaponCategories.GetWeaponCategoryLabel(blueprintItemWeapon.Category);
+				itemTooltipData.Texts[TooltipElement.WeaponFamily] = UIStrings.Instance.WeaponCategories.GetWeaponFamilyLabel(blueprintItemWeapon.Family);
 			}
 			if (item.Blueprint is BlueprintItemNote || item.Blueprint is BlueprintItemKey)
 			{
@@ -885,8 +1041,8 @@ public static class UIUtilityItem
 				{
 					if (string.IsNullOrEmpty(GetFlavorDescription(item)))
 					{
-						itemTooltipData.Texts[TooltipElement.ArtisticDescription] = GetMechanicDescription(item);
-						itemTooltipData.Texts[TooltipElement.ShortDescription] = GetMechanicDescription(item);
+						itemTooltipData.Texts[TooltipElement.ArtisticDescription] = GetMechanicDescription(item, wielderOverride);
+						itemTooltipData.Texts[TooltipElement.ShortDescription] = GetMechanicDescription(item, wielderOverride);
 					}
 					else
 					{
@@ -898,9 +1054,9 @@ public static class UIUtilityItem
 			else
 			{
 				itemTooltipData.Texts[TooltipElement.ArtisticDescription] = GetFlavorDescription(item);
-				itemTooltipData.Texts[TooltipElement.ShortDescription] = GetMechanicDescription(item);
+				itemTooltipData.Texts[TooltipElement.ShortDescription] = GetMechanicDescription(item, wielderOverride);
 			}
-			string value = FillEnchantmentDescription(item, itemTooltipData);
+			FillItemStats(item, itemTooltipData, wielderOverride);
 			if (item.IsIdentified && usable != null)
 			{
 				itemTooltipData.Texts[TooltipElement.Charges] = usable.Charges.ToString();
@@ -909,9 +1065,9 @@ public static class UIUtilityItem
 				if (blueprintAbility != null)
 				{
 					itemTooltipData.Texts[TooltipElement.Cooldown] = blueprintAbility.CooldownRounds.ToString();
-					itemTooltipData.Texts[TooltipElement.Target] = blueprintAbility.GetTarget(-1, item.Owner);
+					itemTooltipData.Texts[TooltipElement.Target] = blueprintAbility.GetTarget(-1, wielderOverride ?? item.Owner);
 					itemTooltipData.BlueprintAbility = blueprintAbility;
-					itemTooltipData.Texts[TooltipElement.ShortDescription] = usable.Abilities.FirstOrDefault()?.Data.ShortenedDescription ?? blueprintAbility?.GetShortenedDescription();
+					itemTooltipData.Texts[TooltipElement.ShortDescription] = GetUsableDescription(usable, blueprintAbility, wielderOverride);
 					itemTooltipData.Texts[TooltipElement.LongDescription] = usable.Abilities.FirstOrDefault()?.Data.Description ?? blueprintAbility?.GetShortenedDescription();
 					itemTooltipData.Texts[TooltipElement.SpellDescriptor] = string.Empty;
 					itemTooltipData.Texts[TooltipElement.CastingTime] = string.Empty;
@@ -920,17 +1076,18 @@ public static class UIUtilityItem
 					FillEquipmentStatsBonuses(itemTooltipData, usable.Blueprint);
 				}
 			}
-			if (!string.IsNullOrEmpty(value))
-			{
-				itemTooltipData.Texts[TooltipElement.EnchantmentsDescription] = value;
-			}
 			return itemTooltipData;
 		}
 	}
 
 	public static ItemTooltipData GetItemTooltipData(ItemEntity item, bool replenishing)
 	{
-		ItemTooltipData itemTooltipData = GetItemTooltipData(item);
+		return GetItemTooltipData(item, replenishing, null);
+	}
+
+	public static ItemTooltipData GetItemTooltipData(ItemEntity item, bool replenishing, MechanicEntity wielderOverride)
+	{
+		ItemTooltipData itemTooltipData = GetItemTooltipData(item, wielderOverride);
 		if (replenishing)
 		{
 			itemTooltipData.Texts[TooltipElement.Replenishing] = UIStrings.Instance.Tooltips.ReplenishingItem;
@@ -955,9 +1112,9 @@ public static class UIUtilityItem
 			FillItemRestrictions(itemTooltipData, blueprintItem);
 			if (blueprintItem is BlueprintItemWeapon blueprintItemWeapon)
 			{
-				StatsStrings stats = LocalizedTexts.Instance.Stats;
-				itemTooltipData.Texts[TooltipElement.WeaponCategory] = stats.GetText(blueprintItemWeapon.Category);
-				itemTooltipData.Texts[TooltipElement.WeaponFamily] = stats.GetText(blueprintItemWeapon.Family);
+				_ = LocalizedTexts.Instance.Stats;
+				itemTooltipData.Texts[TooltipElement.WeaponCategory] = UIStrings.Instance.WeaponCategories.GetWeaponCategoryLabel(blueprintItemWeapon.Category);
+				itemTooltipData.Texts[TooltipElement.WeaponFamily] = UIStrings.Instance.WeaponCategories.GetWeaponFamilyLabel(blueprintItemWeapon.Family);
 			}
 			if (blueprintItem is BlueprintItemNote || blueprintItem is BlueprintItemKey)
 			{
@@ -987,7 +1144,6 @@ public static class UIUtilityItem
 				BlueprintAbility blueprintAbility = blueprintUsable.Abilities.FirstOrDefault();
 				if (blueprintAbility != null)
 				{
-					_ = (string)ConfigRoot.Instance.LocalizedTexts.AbilityTargets.Personal;
 					itemTooltipData.Texts[TooltipElement.Cooldown] = blueprintAbility.CooldownRounds.ToString();
 					itemTooltipData.Texts[TooltipElement.Target] = blueprintAbility.GetTarget();
 					itemTooltipData.BlueprintAbility = blueprintAbility;
@@ -1004,92 +1160,46 @@ public static class UIUtilityItem
 		}
 	}
 
-	[Obsolete("Removed Enchantments")]
-	private static string FillEnchantmentDescription(ItemEntity item, ItemTooltipData itemTooltipData)
+	private static void FillItemStats(ItemEntity item, ItemTooltipData itemTooltipData, MechanicEntity wielderOverride = null)
 	{
-		string text = string.Empty;
-		if (item is ItemEntityWeapon itemEntityWeapon)
+		if (!(item is ItemEntityWeapon itemEntityWeapon))
+		{
+			if (item is ItemEntityArmor itemEntityArmor)
+			{
+				ArmorData armorData = GetArmorData(itemEntityArmor);
+				itemTooltipData.Texts[TooltipElement.DamageReduction] = UIUtilityText.AddPercentTo(armorData.DamageReduction);
+				itemTooltipData.CompareData[TooltipElement.DamageReduction] = new CompareData
+				{
+					Value = armorData.DamageReduction
+				};
+				itemTooltipData.HasValues[TooltipElement.DamageReduction] = armorData.DamageReduction > 0;
+				itemTooltipData.Texts[TooltipElement.Durability] = armorData.Durability.ToString();
+				itemTooltipData.CompareData[TooltipElement.Durability] = new CompareData
+				{
+					Value = armorData.Durability
+				};
+				itemTooltipData.HasValues[TooltipElement.Durability] = armorData.Durability > 0;
+				itemTooltipData.Texts[TooltipElement.FullArmorClass] = LocalizedTexts.Instance.Stats.GetText(itemEntityArmor.Blueprint.Category);
+				if (!string.IsNullOrEmpty(armorData.ArmorDamageReduceDescription))
+				{
+					itemTooltipData.Texts[TooltipElement.ArmorDamageReduceDescription] = armorData.ArmorDamageReduceDescription;
+				}
+			}
+		}
+		else
 		{
 			RuleCalculateStatsWeapon weaponStats = itemEntityWeapon.GetWeaponStats();
-			MechanicEntity mechanicEntity = item.Owner ?? UtilityParty.GetCurrentSelectedUnit();
+			MechanicEntity mechanicEntity = wielderOverride ?? item.Owner ?? UtilityParty.GetCurrentSelectedUnit();
 			RuleCalculateStatsWeapon ruleCalculateStatsWeapon = ((mechanicEntity != null) ? itemEntityWeapon.GetWeaponStats(mechanicEntity) : null);
 			RuleCalculateStatsWeapon weaponStats2 = ruleCalculateStatsWeapon ?? weaponStats;
 			itemTooltipData.Texts[TooltipElement.AttackType] = GetRangeType(itemEntityWeapon);
 			itemTooltipData.Texts[TooltipElement.ProficiencyGroup] = GetProficiencyGroup(itemEntityWeapon);
-			text = FillWeaponQualities(itemTooltipData, itemEntityWeapon, text);
 			FillPenetration(itemTooltipData, itemEntityWeapon);
 			FillRateOfFire(itemTooltipData, itemEntityWeapon, weaponStats2);
 			FillWeaponDamage(itemTooltipData, weaponStats, ruleCalculateStatsWeapon, itemEntityWeapon);
 			FillWeaponStats(itemTooltipData, itemEntityWeapon);
 			FillWeaponAbilities(itemTooltipData, itemEntityWeapon);
 		}
-		else if (item is ItemEntityArmor itemEntityArmor)
-		{
-			ArmorData armorData = GetArmorData(itemEntityArmor);
-			itemTooltipData.Texts[TooltipElement.DamageReduction] = UIUtilityText.AddPercentTo(armorData.DamageReduction);
-			itemTooltipData.CompareData[TooltipElement.DamageReduction] = new CompareData
-			{
-				Value = armorData.DamageReduction
-			};
-			itemTooltipData.HasValues[TooltipElement.DamageReduction] = armorData.DamageReduction > 0;
-			itemTooltipData.Texts[TooltipElement.Durability] = armorData.Durability.ToString();
-			itemTooltipData.CompareData[TooltipElement.Durability] = new CompareData
-			{
-				Value = armorData.Durability
-			};
-			itemTooltipData.HasValues[TooltipElement.Durability] = armorData.Durability > 0;
-			itemTooltipData.Texts[TooltipElement.ArmorDodgePenalty] = armorData.ArmorDodgePenalty;
-			itemTooltipData.Texts[TooltipElement.FullArmorClass] = LocalizedTexts.Instance.Stats.GetText(itemEntityArmor.Blueprint.Category);
-			text = FillArmorEnchantments(itemTooltipData, itemEntityArmor, text);
-			itemTooltipData.Texts[TooltipElement.ArmorCheckPenalty] = armorData.RangedHitChanceBonus.ToString();
-			itemTooltipData.Texts[TooltipElement.ArcaneSpellFailure] = armorData.MovePointAdjustment.ToString();
-			if (!armorData.ArmorDamageReduceDescription.IsNullOrEmpty())
-			{
-				itemTooltipData.Texts[TooltipElement.ArmorDamageReduceDescription] = armorData.ArmorDamageReduceDescription;
-			}
-			if (!armorData.ArmourDodgeChanceDescription.IsNullOrEmpty())
-			{
-				itemTooltipData.Texts[TooltipElement.ArmourDodgeChanceDescription] = armorData.ArmourDodgeChanceDescription;
-			}
-		}
-		else if (item is ItemEntityShield itemEntityShield)
-		{
-			ArmorData armorData2 = GetArmorData(itemEntityShield.ArmorComponent);
-			itemTooltipData.Texts[TooltipElement.ArmorDodgePenalty] = armorData2.ArmorDodgePenalty;
-			itemTooltipData.Texts[TooltipElement.ArmorCheckPenalty] = armorData2.RangedHitChanceBonus.ToString();
-			itemTooltipData.Texts[TooltipElement.ArcaneSpellFailure] = armorData2.MovePointAdjustment.ToString();
-			text = FillShieldEnchantments(itemTooltipData, itemEntityShield, text);
-		}
-		return text;
-	}
-
-	[Obsolete("Removed Enchantments")]
-	private static string FillShieldEnchantments(ItemTooltipData itemTooltipData, ItemEntityShield shield, string enchantmentDescription)
-	{
-		return enchantmentDescription;
-	}
-
-	[Obsolete("Removed Enchantments")]
-	private static string FillArmorEnchantments(ItemTooltipData itemTooltipData, ItemEntityArmor armor, string enchantmentDescription)
-	{
-		if (armor.IsIdentified && GameHelper.GetItemEnhancementBonus(armor) > 0)
-		{
-			itemTooltipData.Texts[TooltipElement.Enhancement] = GetEnhancementBonus(armor);
-		}
-		return enchantmentDescription;
-	}
-
-	private static string FillWeaponQualities(ItemTooltipData itemTooltipData, ItemEntityWeapon weapon, string enchantmentDescription)
-	{
-		if (weapon.IsIdentified)
-		{
-			itemTooltipData.Texts[TooltipElement.Qualities] = GetQualities(weapon);
-			if (GameHelper.GetItemEnhancementBonus(weapon) > 0)
-			{
-				itemTooltipData.Texts[TooltipElement.Enhancement] = GetEnhancementBonus(weapon);
-			}
-		}
-		return enchantmentDescription;
 	}
 
 	[Obsolete("WH2-7361")]
@@ -1152,7 +1262,7 @@ public static class UIUtilityItem
 
 	public static Sprite GetItemIcon(ItemEntity item)
 	{
-		return item.Icon ?? ConfigRoot.Instance.UIConfig.UIIcons.DefaultItemIcon;
+		return item.Icon.GetDefaultIfNull(DefaultImageType.Item);
 	}
 
 	public static string GetArmorDamageBonus(ItemEntity item)
@@ -1187,5 +1297,143 @@ public static class UIUtilityItem
 	{
 		char prefix = modifierType.GetPrefix();
 		return $"{prefix}{value}";
+	}
+
+	public static string GetTagName<T>(T tag) where T : BlueprintComponent
+	{
+		if (!(tag.OwnerBlueprint is BlueprintFeature { Description: var description } blueprintFeature))
+		{
+			return null;
+		}
+		ReadOnlySpan<char> span = description.AsSpan(0, Math.Min(30, description.Length));
+		int num = span.IndexOf('—');
+		if (num < 0)
+		{
+			num = span.IndexOf(':');
+		}
+		if (num <= 0)
+		{
+			return StripTags(blueprintFeature.Name);
+		}
+		return CapitalizeWords(StripTags(description.Substring(0, num)).ToLower()).Trim();
+	}
+
+	public static string GetTagDescription<T>(T tag) where T : BlueprintComponent
+	{
+		if (!(tag.OwnerBlueprint is BlueprintFeature { Description: var description }))
+		{
+			return null;
+		}
+		ReadOnlySpan<char> span = description.AsSpan(0, Math.Min(30, description.Length));
+		int num = span.IndexOf('—');
+		if (num < 0)
+		{
+			num = span.IndexOf(':');
+		}
+		if (num <= 0)
+		{
+			return description;
+		}
+		string text = description;
+		int num2 = num + 1;
+		return text.Substring(num2, text.Length - num2).Trim();
+	}
+
+	private static string CapitalizeWords(string input)
+	{
+		if (string.IsNullOrEmpty(input))
+		{
+			return input;
+		}
+		StringBuilder stringBuilder = new StringBuilder(input.Length);
+		bool flag = true;
+		foreach (char c in input)
+		{
+			if (char.IsWhiteSpace(c))
+			{
+				flag = true;
+				stringBuilder.Append(c);
+			}
+			else if (flag)
+			{
+				stringBuilder.Append(char.ToUpperInvariant(c));
+				flag = false;
+			}
+			else
+			{
+				stringBuilder.Append(c);
+			}
+		}
+		return stringBuilder.ToString();
+	}
+
+	private static string StripTags(string input)
+	{
+		StringBuilder stringBuilder = new StringBuilder(input.Length);
+		bool flag = false;
+		foreach (char c in input)
+		{
+			switch (c)
+			{
+			case '<':
+				flag = true;
+				continue;
+			case '>':
+				flag = false;
+				continue;
+			}
+			if (!flag)
+			{
+				stringBuilder.Append(c);
+			}
+		}
+		return stringBuilder.ToString();
+	}
+
+	public static Dictionary<SpecialWeaponDamageType, string> GetSpecialDamageValues(BlueprintItemWeapon weapon)
+	{
+		Dictionary<SpecialWeaponDamageType, string> dictionary = new Dictionary<SpecialWeaponDamageType, string>();
+		if (weapon == null)
+		{
+			return dictionary;
+		}
+		int brutalDamage = weapon.GetBrutalDamage();
+		if (brutalDamage != 0)
+		{
+			dictionary.Add(SpecialWeaponDamageType.Brutal, brutalDamage.ToStringWithSign());
+		}
+		int damageVital = weapon.GetDamageVital();
+		if (damageVital != 0)
+		{
+			dictionary.Add(SpecialWeaponDamageType.Vital, damageVital.ToStringWithSign());
+		}
+		int destructiveDamage = weapon.GetDestructiveDamage();
+		if (destructiveDamage != 0)
+		{
+			dictionary.Add(SpecialWeaponDamageType.Destructive, destructiveDamage.ToStringWithSign());
+		}
+		return dictionary;
+	}
+
+	public static Dictionary<SpecialWeaponDamageType, string> GetSpecialDamageValues(ItemEntityWeapon weapon)
+	{
+		Dictionary<SpecialWeaponDamageType, string> dictionary = new Dictionary<SpecialWeaponDamageType, string>();
+		if (weapon == null)
+		{
+			return dictionary;
+		}
+		if (weapon.BrutalDamage != 0)
+		{
+			dictionary.Add(SpecialWeaponDamageType.Brutal, weapon.BrutalDamage.ToStringWithSign());
+		}
+		if (weapon.DestructiveDamage != 0)
+		{
+			dictionary.Add(SpecialWeaponDamageType.Destructive, weapon.DestructiveDamage.ToStringWithSign());
+		}
+		if (weapon.DamageVital != 0)
+		{
+			dictionary.Add(SpecialWeaponDamageType.Vital, weapon.DamageVital.ToStringWithSign());
+		}
+		return dictionary;
 	}
 }

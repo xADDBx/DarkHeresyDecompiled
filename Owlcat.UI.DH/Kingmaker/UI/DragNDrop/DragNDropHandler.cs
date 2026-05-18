@@ -66,7 +66,7 @@ public class DragNDropHandler : MonoBehaviour, IBeginDragHandler, IEventSystemHa
 	public void StartDrag()
 	{
 		m_Icon.DOFade(0.5f, 0.1f).SetUpdate(isIndependentUpdate: true);
-		m_OnDragStart.Execute();
+		m_OnDragStart.Execute(Unit.Default);
 	}
 
 	public void EndDrag(PointerEventData eventData)

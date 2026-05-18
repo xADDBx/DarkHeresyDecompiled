@@ -7,6 +7,6 @@ namespace Kingmaker.UnitLogic.Levelup.Selections.CharacterName;
 [Serializable]
 [OwlPackable(OwlPackableMode.NoGenerate)]
 [TypeId("743b530329cd4789bcac2f88e6e247db")]
-public class BlueprintCharacterNameSelection : BlueprintSelection
+public class BlueprintCharacterNameSelection : BlueprintSelectionWithUI
 {
 }

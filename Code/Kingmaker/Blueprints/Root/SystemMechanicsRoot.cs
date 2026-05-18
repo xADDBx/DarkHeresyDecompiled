@@ -60,10 +60,6 @@ public class SystemMechanicsRoot : BlueprintScriptableObject
 	[ValidateNotNull]
 	private BlueprintUnitFactReference m_CommonMobFact;
 
-	[SerializeField]
-	[ValidateNotNull]
-	private BlueprintUnitFactReference m_CommonMechanismFact;
-
 	[ValidateNotNull]
 	public BpRef<BlueprintBodyPart> FallbackBodyPart;
 
@@ -163,8 +159,6 @@ public class SystemMechanicsRoot : BlueprintScriptableObject
 	public BlueprintFeature AssassinCareerPath => m_AssassinCareerPath;
 
 	public BlueprintUnitFact CommonMobFact => m_CommonMobFact;
-
-	public BlueprintUnitFact CommonMechanismFact => m_CommonMechanismFact;
 
 	public BlueprintMechanicEntityFact CommonDestructibleEntityFact => m_CommonDestructibleEntityFact;
 

@@ -1,8 +1,6 @@
 using System.Text;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.UI.Pointer;
 using Owlcat.UI;
-using R3;
 using TMPro;
 using UnityEngine;
 
@@ -11,12 +9,10 @@ namespace Kingmaker.Code.UI.MVVM;
 public class InteractionVariantConsoleView : InteractionVariantView, IConsoleNavigationEntity, IConsoleEntity, IConfirmClickHandler
 {
 	[SerializeField]
-	private ConsoleHint m_Hint;
+	private HintView m_Hint;
 
 	[SerializeField]
 	private TextMeshProUGUI m_ResourcesHint;
-
-	private InputLayer m_InputLayer;
 
 	protected override void OnBind()
 	{
@@ -26,17 +22,8 @@ public class InteractionVariantConsoleView : InteractionVariantView, IConsoleNav
 		resourcesHint.text = ((requiredResourceCount.HasValue && requiredResourceCount.GetValueOrDefault() > 0) ? GetConsoleResourceHint() : string.Empty);
 	}
 
-	public void SetInputLayer(InputLayer inputLayer)
+	public void SetInputLayer()
 	{
-		m_InputLayer = inputLayer;
-		m_Hint.gameObject.SetActive(value: false);
-		ReadOnlyReactiveProperty<bool> hintIsActive = m_Button.OnFocusAsObservable().And(ConsoleCursor.Instance.IsNotActiveProperty).ToReadOnlyReactiveProperty(initialValue: false)
-			.AddTo(this);
-		m_Hint.BindCustomAction(8, m_InputLayer, hintIsActive).AddTo(this);
-		m_Button.OnFocusAsObservable().Subscribe(delegate
-		{
-			base.transform.SetAsLastSibling();
-		}).AddTo(this);
 	}
 
 	private string GetConsoleResourceHint()

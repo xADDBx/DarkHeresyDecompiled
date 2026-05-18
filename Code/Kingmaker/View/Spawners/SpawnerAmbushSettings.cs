@@ -17,9 +17,9 @@ namespace Kingmaker.View.Spawners;
 public class SpawnerAmbushSettings : EntityPartComponent<SpawnerAmbushSettings.Part>
 {
 	[OwlPackable(OwlPackableMode.Generate)]
-	public class Part : ViewBasedPart, IUnitInitializer, IHashable, IOwlPackable<Part>
+	public class Part : EntityPartWithConfig, IUnitInitializer, IHashable, IOwlPackable<Part>
 	{
-		public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 		{
 			Name = "Part",
 			OldNames = null,
@@ -59,7 +59,7 @@ public class SpawnerAmbushSettings : EntityPartComponent<SpawnerAmbushSettings.P
 			return result;
 		}
 
-		public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 		{
 			Part source = new Part();
 			result = Unsafe.As<Part, TPossiblyBase>(ref source);

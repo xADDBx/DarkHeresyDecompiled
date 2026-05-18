@@ -1,8 +1,12 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities.Base;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -74,6 +78,12 @@ public struct EntityFactRef : IEquatable<EntityFactRef>, IHashable, IOwlPackable
 		}
 	}
 
+	[OwlPackOnAfterDeserialize]
+	private void OnAfterDeserialize()
+	{
+		m_FactCache = new WeakReference<EntityFact>(null);
+	}
+
 	public EntityFactRef([CanBeNull] string entityId, [CanBeNull] string factId)
 	{
 		EntityId = entityId;
@@ -89,7 +99,7 @@ public struct EntityFactRef : IEquatable<EntityFactRef>, IHashable, IOwlPackable
 			EntityId = fact.Owner.UniqueId;
 			FactId = fact.UniqueId;
 			m_Proxy = fact.Owner.Proxy;
-			m_FactCache = new WeakReference<EntityFact>(null);
+			m_FactCache = new WeakReference<EntityFact>(fact);
 		}
 		else
 		{
@@ -214,12 +224,42 @@ public struct EntityFactRef : IEquatable<EntityFactRef>, IHashable, IOwlPackable
 			}
 		}
 		formatter.LeaveObject();
+		OnAfterDeserialize();
 	}
 }
 [JsonObject(IsReference = false)]
 [OwlPackable(OwlPackableMode.Generate)]
-public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPackable, IOwlPackable<EntityFactRef<T>> where T : EntityFact
+[MemoryPackable(GenerateType.Object)]
+public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IMemoryPackable<EntityFactRef<T>>, IMemoryPackFormatterRegister, IHashable, IOwlPackable, IOwlPackable<EntityFactRef<T>> where T : EntityFact
 {
+	[Preserve]
+	private sealed class EntityFactRefFormatter : MemoryPackFormatter<EntityFactRef<T>>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref EntityFactRef<T> value)
+		{
+			EntityFactRef<T>.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref EntityFactRef<T> value)
+		{
+			EntityFactRef<T>.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref EntityFactRef<T> value)
+		{
+			EntityFactRef<T>.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref EntityFactRef<T> value)
+		{
+			EntityFactRef<T>.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	private EntityServiceProxy m_Proxy;
 
 	[JsonProperty]
@@ -232,16 +272,9 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 
 	private WeakReference<T> m_FactCache;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "EntityFactRef",
-		Fields = new FieldInfo[2]
-		{
-			new FieldInfo("EntityId", typeof(string)),
-			new FieldInfo("FactId", typeof(string))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackIgnore]
 	public bool IsEmpty
 	{
 		get
@@ -255,6 +288,7 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 	}
 
 	[CanBeNull]
+	[MemoryPackIgnore]
 	public Entity Entity
 	{
 		get
@@ -267,6 +301,7 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 		}
 	}
 
+	[MemoryPackIgnore]
 	[CanBeNull]
 	public T Fact
 	{
@@ -290,6 +325,13 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 		}
 	}
 
+	[OwlPackOnAfterDeserialize]
+	private void OnAfterDeserialize()
+	{
+		m_FactCache = new WeakReference<T>(null);
+	}
+
+	[MemoryPackConstructor]
 	public EntityFactRef([CanBeNull] string entityId, [CanBeNull] string factId)
 	{
 		EntityId = entityId;
@@ -305,7 +347,7 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 			EntityId = fact.Owner.UniqueId;
 			FactId = fact.UniqueId;
 			m_Proxy = fact.Owner.Proxy;
-			m_FactCache = new WeakReference<T>(null);
+			m_FactCache = new WeakReference<T>(fact);
 		}
 		else
 		{
@@ -375,6 +417,127 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 		return @ref.Fact;
 	}
 
+	static EntityFactRef()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "EntityFactRef",
+			Fields = new FieldInfo[2]
+			{
+				new FieldInfo("EntityId", typeof(string)),
+				new FieldInfo("FactId", typeof(string))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<EntityFactRef<T>>())
+		{
+			MemoryPackFormatterProvider.Register(new EntityFactRefFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<EntityFactRef<T>[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<EntityFactRef<T>>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref EntityFactRef<T> value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		writer.WriteObjectHeader(2);
+		writer.WriteString(value.EntityId);
+		writer.WriteString(value.FactId);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref EntityFactRef<T> value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = default(EntityFactRef<T>);
+			return;
+		}
+		string entityId;
+		string factId;
+		if (memberCount == 2)
+		{
+			entityId = reader.ReadString();
+			factId = reader.ReadString();
+		}
+		else
+		{
+			if (memberCount > 2)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(EntityFactRef<T>), 2, memberCount);
+				return;
+			}
+			entityId = null;
+			factId = null;
+			if (memberCount != 0)
+			{
+				entityId = reader.ReadString();
+				if (memberCount != 1)
+				{
+					factId = reader.ReadString();
+					_ = 2;
+				}
+			}
+		}
+		value = new EntityFactRef<T>(entityId, factId);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref EntityFactRef<T> value)
+	{
+		writer.WriteObjectHeader();
+		writer.WriteProperty("EntityId");
+		writer.WriteString(value.EntityId);
+		writer.WriteProperty("FactId");
+		writer.WriteString(value.FactId);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref EntityFactRef<T> value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = default(EntityFactRef<T>);
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		string entityId = null;
+		string factId = null;
+		bool[] array = new bool[2];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (!(text == "EntityId"))
+			{
+				if (text == "FactId")
+				{
+					factId = reader.ReadString();
+					array[1] = true;
+				}
+			}
+			else
+			{
+				entityId = reader.ReadString();
+				array[0] = true;
+			}
+		}
+		value = new EntityFactRef<T>(entityId, factId);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
+	}
+
 	public Hash128 GetHash128()
 	{
 		Hash128 result = default(Hash128);
@@ -430,5 +593,6 @@ public struct EntityFactRef<T> : IEquatable<EntityFactRef<T>>, IHashable, IOwlPa
 			}
 		}
 		formatter.LeaveObject();
+		OnAfterDeserialize();
 	}
 }

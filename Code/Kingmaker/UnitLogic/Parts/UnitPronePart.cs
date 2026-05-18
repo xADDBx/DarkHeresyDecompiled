@@ -24,7 +24,7 @@ public class UnitPronePart : UnitPart, IUnitFeaturesHandler<EntitySubscriber>, I
 
 	private void Update()
 	{
-		if ((bool)base.Owner.View)
+		if (base.Owner.View != null)
 		{
 			if (base.Owner.IsProne)
 			{

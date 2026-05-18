@@ -34,10 +34,9 @@ public class VoiceOverController : IControllerTick, IController, IDialogFinishHa
 
 	public IEnumerable<VoiceOverPlayingEntry> Entries => m_Tracker.Entries;
 
-	public VoiceOverStatus DebugPlayDialogVoiceOver(LocalizedString locString, BlueprintUnit blueprintUnit, [CanBeNull] GameObject target = null)
+	public VoiceOverStatus DebugPlayDialogVoiceOver(LocalizedString locString, string voGuid, [CanBeNull] GameObject target = null)
 	{
-		string voGuidByBlueprintName = VOSettings.Instance.GetVoGuidByBlueprintName(blueprintUnit.name);
-		return PlayDialogVoiceOver(locString, voGuidByBlueprintName, target);
+		return PlayDialogVoiceOver(locString, voGuid, target);
 	}
 
 	public VoiceOverStatus PlayDialogVoiceOver(LocalizedString localizedString, string voGuid, GameObject target)
@@ -87,7 +86,7 @@ public class VoiceOverController : IControllerTick, IController, IDialogFinishHa
 			return null;
 		}
 		string voIdByGuid = VOSettings.Instance.GetVoIdByGuid(voGuid);
-		string key = LocalizedString.Dereference(locString).Key;
+		string key = locString.Key;
 		if (!SoundEventsManager.TryGetVoiceOverEvent(key, voIdByGuid, out var eventId))
 		{
 			PFLog.VO.Error("[VO] No event for string " + key + " for VoId: " + voIdByGuid);
@@ -106,7 +105,6 @@ public class VoiceOverController : IControllerTick, IController, IDialogFinishHa
 		string voIdByGuid = VOSettings.Instance.GetVoIdByGuid(voGuid);
 		if (!m_Tracker.CanPlayVoiceOver(voIdByGuid, voiceOverType, target))
 		{
-			m_Tracker.TrySchedule(voIdByGuid, soundEventId, voiceOverType, target);
 			return null;
 		}
 		VoiceOverStatus voiceOverStatus = m_Tracker.PlayVoiceOver(soundEventId, voIdByGuid, voiceOverType, target);
@@ -248,6 +246,6 @@ public class VoiceOverController : IControllerTick, IController, IDialogFinishHa
 
 	public void ScheduleAskTracesFound(AbstractUnitEntity toAbstractUnitEntity)
 	{
-		toAbstractUnitEntity.View.Asks?.DetectiveTracesFound.Schedule();
+		toAbstractUnitEntity.View.Asks?.TracesFound.Schedule();
 	}
 }

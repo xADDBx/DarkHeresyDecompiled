@@ -3,7 +3,6 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 
@@ -69,18 +68,6 @@ public class SelectorWindowBaseView<TEntityView, TEntityVM> : View<SelectorWindo
 	protected bool TakeControllableCharacter()
 	{
 		return ((BaseUnitEntity)(base.ViewModel.Slot?.ItemSlot?.Owner))?.CanBeControlled() ?? true;
-	}
-
-	protected void OnClose(InputActionEventData inputActionEventData)
-	{
-		if (RootUIContext.Instance.TooltipIsShown)
-		{
-			TooltipHelper.HideTooltip();
-		}
-		else
-		{
-			base.ViewModel.Back();
-		}
 	}
 
 	protected virtual void OnClose()

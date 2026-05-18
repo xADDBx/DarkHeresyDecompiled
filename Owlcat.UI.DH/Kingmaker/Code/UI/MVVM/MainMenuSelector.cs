@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 
 namespace Kingmaker.Code.UI.MVVM;
 

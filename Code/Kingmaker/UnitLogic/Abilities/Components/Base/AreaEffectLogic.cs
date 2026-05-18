@@ -2,10 +2,10 @@ using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -26,7 +26,7 @@ public abstract class AreaEffectLogic : BlueprintComponent
 	[SerializeField]
 	private Options m_Options;
 
-	public void HandleEntityEnter(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityEnter(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		OnEntityEnter(context, areaEffect, entity);
 		EventBus.RaiseEvent((IAreaEffectEntity)areaEffect, (Action<IAreaEffectEnterHandler>)delegate(IAreaEffectEnterHandler h)
@@ -39,75 +39,75 @@ public abstract class AreaEffectLogic : BlueprintComponent
 		}
 	}
 
-	public void HandleEntityTurnStart(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityTurnStart(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		OnEntityTurnStart(context, areaEffect, entity);
 	}
 
-	public void HandleEntityTurnEnd(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityTurnEnd(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		OnEntityTurnEnd(context, areaEffect, entity);
 	}
 
-	public void HandleEntityExit(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityExit(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		OnEntityExit(context, areaEffect, entity);
 	}
 
-	public void HandleEntityMove(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	public void HandleEntityMove(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		OnEntityMove(context, areaEffect, entity);
 	}
 
-	public void HandleRound(MechanicsContext context, AreaEffectEntity areaEffect)
+	public void HandleRound(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		OnRound(context, areaEffect);
 	}
 
-	public void HandleTick(MechanicsContext context, AreaEffectEntity areaEffect)
+	public void HandleTick(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		OnTick(context, areaEffect);
 	}
 
-	public void HandleEnd(MechanicsContext context, AreaEffectEntity areaEffect)
+	public void HandleEnd(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		OnEndForEachEntity(context, areaEffect);
 		OnEnd(context, areaEffect);
 	}
 
-	protected virtual void OnEntityEnter(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected virtual void OnEntityEnter(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 	}
 
-	protected virtual void OnEntityExit(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected virtual void OnEntityExit(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 	}
 
-	protected virtual void OnEntityMove(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected virtual void OnEntityMove(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 	}
 
-	protected virtual void OnRound(MechanicsContext context, AreaEffectEntity areaEffect)
+	protected virtual void OnRound(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 	}
 
-	protected virtual void OnTick(MechanicsContext context, AreaEffectEntity areaEffect)
+	protected virtual void OnTick(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 	}
 
-	protected virtual void OnEndForEachEntity(MechanicsContext context, AreaEffectEntity areaEffect)
+	protected virtual void OnEndForEachEntity(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 	}
 
-	protected virtual void OnEnd(MechanicsContext context, AreaEffectEntity areaEffect)
+	protected virtual void OnEnd(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 	}
 
-	protected virtual void OnEntityTurnStart(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected virtual void OnEntityTurnStart(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 	}
 
-	protected virtual void OnEntityTurnEnd(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected virtual void OnEntityTurnEnd(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 	}
 }

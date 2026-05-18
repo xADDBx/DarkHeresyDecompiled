@@ -90,7 +90,7 @@ public class UnitFollowUnitController : BaseUnitController
 		UnitMoveTo currentMoveTo = follower.Commands.CurrentMoveTo;
 		if (currentMoveTo != null)
 		{
-			if (currentMoveTo.IsStarted && !currentMoveTo.IsFinished && !follower.View.MovementAgent.IsReallyMoving)
+			if (currentMoveTo.IsStarted && !currentMoveTo.IsFinished && !follower.IsReallyMoving)
 			{
 				result = true;
 			}

@@ -8,5 +8,7 @@ public enum BuffUIFlags
 	None = 0,
 	LightStatusEffect = 1,
 	ModerateStatusEffect = 2,
-	SevereStatusEffect = 4
+	SevereStatusEffect = 4,
+	Negative = 8,
+	Positive = 0x10
 }

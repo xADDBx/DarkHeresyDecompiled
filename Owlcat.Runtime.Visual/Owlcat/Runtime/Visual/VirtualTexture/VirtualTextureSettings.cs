@@ -6,10 +6,6 @@ namespace Owlcat.Runtime.Visual.VirtualTexture;
 [Serializable]
 public class VirtualTextureSettings
 {
-	[HideInInspector]
-	[SerializeField]
-	private bool m_Enabled = true;
-
 	[Range(1f, 1594f)]
 	public int GPUAtlasSizeInMegaBytes = 128;
 
@@ -24,15 +20,5 @@ public class VirtualTextureSettings
 
 	public bool UseAsyncReadManager;
 
-	public bool Enabled
-	{
-		get
-		{
-			return true;
-		}
-		set
-		{
-			m_Enabled = value;
-		}
-	}
+	public VTFeedbackResolveMode FeedbackResolveMode;
 }

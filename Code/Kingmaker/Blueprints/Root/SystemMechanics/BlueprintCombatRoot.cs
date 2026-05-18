@@ -3,6 +3,7 @@ using Code.Enums;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -87,6 +88,15 @@ public class BlueprintCombatRoot : BlueprintScriptableObject
 
 	public float ForbiddenNodesTraverseCost = 1000f;
 
+	[Header("Squad Movement Planner")]
+	[Tooltip("Balances ideal-cell vs path-convenience when distributing squad members. Greedy assignment picks the (unit, cell) pair with the highest score = desirability - weight * pathCost. Low (0-0.5): squad stubbornly chases the best cells even over long paths (good for surround-at-any-cost). High (2+): squad prefers cheap-path cells near their current positions (tighter, faster approach). Default 1.0 is a neutral baseline.")]
+	[Range(0f, 10f)]
+	public float SquadMovementCostWeight = 1f;
+
+	[Tooltip("For ranged / pre-selected-node squads, the planner expands the BT-chosen target node into a Moore neighbourhood of this radius (in cells) so members distribute across the cluster instead of stacking. Radius 1 -> 3x3 cells, 2 -> 5x5, 3 -> 7x7. Raise for larger squads on open terrain, lower to keep them tight.")]
+	[Range(1f, 10f)]
+	public int SquadRangedClusterRadius = 3;
+
 	[Header("NavLinks & 2x2 Creatures")]
 	public bool UseManhattanHeuristic;
 
@@ -104,4 +114,6 @@ public class BlueprintCombatRoot : BlueprintScriptableObject
 	public int DefaultCohesionRange = 2;
 
 	public BpRef<BlueprintAreaEffect> CohesionAreaEffect;
+
+	public BpRef<BlueprintMechanicEntityFact> CohesionDangerousMark;
 }

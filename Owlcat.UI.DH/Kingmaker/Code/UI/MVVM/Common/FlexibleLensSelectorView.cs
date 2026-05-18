@@ -52,8 +52,8 @@ public class FlexibleLensSelectorView : View<LensSelectorVM>
 
 	protected override void OnUnbind()
 	{
-		UISounds.Instance.Sounds.Selector.SelectorStop.Play();
-		UISounds.Instance.Sounds.Selector.SelectorLoopStop.Play();
+		SystemSounds.Instance.Selector.Stop.Play();
+		SystemSounds.Instance.Selector.LoopStop.Play();
 		CurrentTabIndex = 0;
 	}
 

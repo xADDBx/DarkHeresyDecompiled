@@ -1,8 +1,5 @@
-using System;
-using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
 using R3;
-using Rewired;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
@@ -56,26 +53,11 @@ public class NetLobbyPlayerConsoleView : NetLobbyPlayerBaseView, IConsoleNavigat
 		}
 	}
 
-	public void AddPlayerInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, Action showGamersTagModeAction, ReadOnlyReactiveProperty<bool> canConfirmLaunch)
+	public void AddPlayerInput()
 	{
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			InviteEpicPlayer();
-		}, 10, base.InviteButtonInteractable.And(IsFocused).And(base.ViewModel.EpicGamesAuthorized).And(canConfirmLaunch.Not())
-			.ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased), UIStrings.Instance.NetLobbyTexts.InviteEpicGamesPlayer).AddTo(this);
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			InvitePlayer();
-		}, 8, base.InviteButtonInteractable.And(IsFocused).And(canConfirmLaunch.Not()).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased), UIStrings.Instance.NetLobbyTexts.InvitePlayer).AddTo(this);
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			KickPlayer();
-		}, 11, base.KickButtonInteractable.And(IsFocused).And(base.ViewModel.IsMeHost).And(canConfirmLaunch.Not())
-			.ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased), UIStrings.Instance.NetLobbyTexts.KickPlayer);
 	}
 
-	public void AddGamerTagInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, Action hideGamersTagModeAction, ReadOnlyReactiveProperty<bool> canConfirmLaunch)
+	public void AddGamerTagInput()
 	{
-		m_GamerTagAndName.AddGamerTagInput(inputLayer, hintsWidget, hideGamersTagModeAction, canConfirmLaunch);
 	}
 }

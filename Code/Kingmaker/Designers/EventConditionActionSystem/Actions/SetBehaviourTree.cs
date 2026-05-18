@@ -1,5 +1,6 @@
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Owlcat.AI;
 using Owlcat.BehaviourTrees;
 using Owlcat.Runtime.Core.Utility;
@@ -30,7 +31,7 @@ public class SetBehaviourTree : GameAction, IParameterizedBehaviourTreeProvider,
 	{
 		if (m_Unit?.GetValue() is BaseUnitEntity baseUnitEntity)
 		{
-			PFLog.AI.Log(baseUnitEntity.View, $"Activate {BehaviourTree.Title} brain for unit {baseUnitEntity}");
+			PFLog.AI.Log(baseUnitEntity.View.AsUnitEntityView(), $"Activate {BehaviourTree.Title} brain for unit {baseUnitEntity}");
 			Game.Instance.Controllers.BehaviourTreeTickController.Storage.Register(baseUnitEntity, this);
 			Game.Instance.Controllers.BehaviourTreeTickController.Storage.RegisterViewForDebug(baseUnitEntity, this);
 		}

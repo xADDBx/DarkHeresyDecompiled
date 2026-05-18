@@ -132,12 +132,12 @@ public class OvertipMapObjectVM : BaseOvertipMapObjectVM
 		BarkBlockVM = new OvertipBarkBlockVM().AddTo(this);
 		base.IsEnabled.CombineLatest(base.MapObjectIsHighlighted, base.IsMouseOverUI, (bool isEnabled, bool hover, bool mouseOver) => new { isEnabled, hover, mouseOver }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
 		{
-			m_VisibilityChanged.Execute();
+			m_VisibilityChanged.Execute(Unit.Default);
 		})
 			.AddTo(this);
 		CameraDistance.CombineLatest(IsBarkActive, ForceHotKeyPressed, ForceHideInCombat, (Vector3 _, bool _, bool _, bool _) => new { }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
 		{
-			m_VisibilityChanged.Execute();
+			m_VisibilityChanged.Execute(Unit.Default);
 		})
 			.AddTo(this);
 		m_IsEnabled.Subscribe(delegate
@@ -176,13 +176,13 @@ public class OvertipMapObjectVM : BaseOvertipMapObjectVM
 		{
 			UpdateAppearanceState();
 			UpdateAdditionalCombatObjective();
-			m_CombatObjStateChanged?.Execute();
+			m_CombatObjStateChanged?.Execute(Unit.Default);
 		}
 	}
 
 	private void UpdateAppearanceState()
 	{
-		if (!(MapObjectEntity.View == null) && FirstInteractionPart != null)
+		if (MapObjectEntity.View != null && FirstInteractionPart != null)
 		{
 			bool flag = OvertipUtils.IsAdditionalCombatOvertip(MapObjectEntity) && Game.Instance.Player.IsInCombat;
 			bool flag2 = OvertipUtils.IsVisited(FirstInteractionPart);
@@ -373,7 +373,7 @@ public class OvertipMapObjectVM : BaseOvertipMapObjectVM
 							{
 								if (firstInteractionPart is InteractionVariativePart interactionVariativePart)
 								{
-									m_Name.Value = interactionVariativePart.InteractionSettings.DisplayName?.String.Text;
+									m_Name.Value = interactionVariativePart.InteractionSettings.DisplayName?.Text;
 									m_ObjectSkillCheckText.Value = interactionVariativePart.GetSelectedVariantActor()?.GetInteractionName();
 								}
 							}
@@ -474,7 +474,7 @@ public class OvertipMapObjectVM : BaseOvertipMapObjectVM
 
 	public void TriggerInventoryChanged()
 	{
-		m_InventoryChanged?.Execute();
+		m_InventoryChanged?.Execute(Unit.Default);
 	}
 
 	private static string GetItemName(BlueprintItem item)
@@ -531,10 +531,10 @@ public class OvertipMapObjectVM : BaseOvertipMapObjectVM
 			return;
 		}
 		int count = interactionVariativePart.PassedConditions.Count;
-		int num = interactionVariativePart.InteractionSettings.InteractionsWithConditions.Count(delegate(InteractionWithConditions iwc)
+		int num = interactionVariativePart.InteractionSettings.Interactions.Count(delegate(InteractionWithConditions iwc)
 		{
 			IInteractionVariantActor variantActor = iwc.GetVariantActor();
-			return variantActor != null && variantActor.CanUse && (iwc.ShowReasons == null || iwc.ShowReasons.Count == 0 || iwc.ShowReasons.Any((InteractionWithConditions.ShowReason r) => r.Conditions.IsEmpty() || r.Conditions.Get().Check()));
+			return variantActor != null && variantActor.CanUse && (iwc.ShowConditions == null || iwc.ShowConditions.Count == 0 || iwc.ShowConditions.Any((InteractionWithConditions.ShowReason r) => r.Conditions.IsEmpty() || r.Conditions.Get().Check()));
 		});
 		if (num != count)
 		{
@@ -576,22 +576,22 @@ public class OvertipMapObjectVM : BaseOvertipMapObjectVM
 		}
 	}
 
-	private string GetString(SharedStringAsset stringAsset, string def = null)
+	private string GetString(LocalizedString stringAsset, string def = null)
 	{
 		if (stringAsset == null)
 		{
 			return def;
 		}
-		if (!UIUtilityText.IsNullOrInvisible(stringAsset.String))
+		if (!string.IsNullOrWhiteSpace(stringAsset))
 		{
-			return stringAsset.String;
+			return stringAsset;
 		}
 		return def;
 	}
 
 	protected override Vector3 GetEntityPosition()
 	{
-		if (!(MapObjectEntity?.View != null))
+		if (MapObjectEntity?.View == null)
 		{
 			return Vector3.zero;
 		}

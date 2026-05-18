@@ -53,8 +53,7 @@ public class OverrideAreaNodesTraverseCost : EntityFactComponentDelegate<AreaEff
 	private void AddOverride()
 	{
 		EntityFactSource source = GetSource();
-		PropertyContext valueCalculationContext = GetValueCalculationContext();
-		int overridePercentCost = m_CostProc?.GetValue(valueCalculationContext) ?? 0;
+		int overridePercentCost = m_CostProc?.GetValue(base.Owner, base.Context) ?? 0;
 		NodeTraverseCostHelper.AddOverrideCost(source, overridePercentCost, m_UnitRestriction);
 	}
 
@@ -66,10 +65,5 @@ public class OverrideAreaNodesTraverseCost : EntityFactComponentDelegate<AreaEff
 	private EntityFactSource GetSource()
 	{
 		return new EntityFactSource(base.Owner);
-	}
-
-	private PropertyContext GetValueCalculationContext()
-	{
-		return new PropertyContext(base.Owner, base.Context);
 	}
 }

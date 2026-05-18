@@ -9,6 +9,7 @@ using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Visual.Critters;
+using Owlcat.Fmw.Blueprints;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -21,11 +22,21 @@ public class AddFamiliar : UnitFactComponentDelegate, IAreaHandler, ISubscriber
 {
 	[SerializeField]
 	[ValidateNotNull]
-	private BlueprintUnit.Reference m_Blueprint;
+	private BpRef<BlueprintUnit> m_Blueprint;
 
 	public bool SpawnBaseUnit;
 
-	public BlueprintUnit Unit => m_Blueprint;
+	public BlueprintUnit Unit
+	{
+		get
+		{
+			return m_Blueprint;
+		}
+		set
+		{
+			m_Blueprint = value.Reference();
+		}
+	}
 
 	protected override void OnActivate()
 	{

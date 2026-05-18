@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Animancer.FSM;
 using Code.Visual.Animation;
-using Kingmaker.Pathfinding;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.Mechanics.Entities;
@@ -26,15 +25,6 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 		public CommonLocomotionData Data;
 
 		public StateMachine<LocomotionStateType, LocomotionState>.WithDefault Fsm;
-	}
-
-	public enum CustomCombatWalkType
-	{
-		None,
-		OneCell,
-		OneDiagonal,
-		TwoCells,
-		TwoDiagonals
 	}
 
 	public class WalkingTypeData
@@ -78,17 +68,6 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 		public AnimationClipWrapper Sprint;
 	}
 
-	private const float epsilon = 0.05f;
-
-	private static readonly List<float> DistanceList = new List<float>
-	{
-		0f,
-		1f * GraphParamsMechanicsCache.GridCellSize + 0.05f,
-		1.41f * GraphParamsMechanicsCache.GridCellSize + 0.05f,
-		2f * GraphParamsMechanicsCache.GridCellSize + 0.05f,
-		2.83f * GraphParamsMechanicsCache.GridCellSize + 0.05f
-	};
-
 	[SerializeField]
 	private bool m_ForDollRoom;
 
@@ -97,13 +76,31 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 	private TimedProbabilityCurve m_TriggerProbability;
 
 	[Header("Movement parameters")]
-	public MovingTypeParameters WalkParameters;
+	public float Acceleration = 10f;
 
-	public MovingTypeParameters RunParameters;
+	public float StoppingDistance = 1.35f;
 
-	public MovingTypeParameters SprintParameters;
+	public float MinSpeed = 0.2f;
 
-	public MovingTypeParameters CoverParameters;
+	public float AngularSpeedInCombat = 360f;
+
+	public float AngularSpeedInNonCombat = 180f;
+
+	public float AngularSpeedWhenMove = 220f;
+
+	[Tooltip("Unit is slowed down when turning while moving\nIts speed will be reduced to [Speed * SlowDownCoefficient]")]
+	public float SlowDownCoefficient = 0.7f;
+
+	public bool UseCustomStoppingAnimation;
+
+	[SerializeField]
+	private MovingTypeParameters m_WalkParameters;
+
+	[SerializeField]
+	private MovingTypeParameters m_RunParameters;
+
+	[SerializeField]
+	private MovingTypeParameters m_SprintParameters;
 
 	[Header("Common animations")]
 	public bool UseCommonLocomotionAnimations;
@@ -156,9 +153,23 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 
 	public override bool SupportCaching => true;
 
-	private AnimationLayerType AnimationLayer => AnimationLayerType.Locomotion;
+	private UnitAnimationLayerType AnimationLayer => UnitAnimationLayerType.Locomotion;
 
 	public BlueprintWeaponStyleList WeaponStyleSettings => m_WeaponStyleSettings?.Get();
+
+	public float WalkSpeed
+	{
+		get
+		{
+			if (!(m_WalkParameters.Speed > 0.2f))
+			{
+				return 1.5f;
+			}
+			return m_WalkParameters.Speed;
+		}
+	}
+
+	public float MaxSpeed => Mathf.Max(m_WalkParameters.Speed, m_RunParameters.Speed, m_SprintParameters.Speed);
 
 	public WeaponStyleLocomotionData NonCombatLocomotionData => WeaponStyleSettings[WeaponAnimationStyle.NonCombat].Locomotion;
 
@@ -273,16 +284,6 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 
 	public WalkingTypeData GetWalkingTypeData(WeaponStyleLocomotionData locomotionData, WalkSpeedType walkingType)
 	{
-		return GetWalkingTypeData(locomotionData, walkingType, CustomCombatWalkType.None);
-	}
-
-	public WalkingTypeData GetWalkingTypeData(WeaponStyleLocomotionData locomotionData, WalkSpeedType walkingType, CustomCombatWalkType combatWalkType)
-	{
-		WalkingTypeData customCombatWalkData = GetCustomCombatWalkData(locomotionData, walkingType, combatWalkType);
-		if (customCombatWalkData != null)
-		{
-			return customCombatWalkData;
-		}
 		switch (walkingType)
 		{
 		case WalkSpeedType.Walk:
@@ -292,7 +293,7 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 				{
 					Out = locomotionData.WalkOut,
 					Loop = locomotionData.Walk,
-					Parameters = WalkParameters
+					Parameters = m_WalkParameters
 				};
 			}
 			break;
@@ -303,7 +304,7 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 				{
 					Out = locomotionData.RunOut,
 					Loop = locomotionData.Run,
-					Parameters = RunParameters
+					Parameters = m_RunParameters
 				};
 			}
 			break;
@@ -314,18 +315,7 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 				{
 					Out = locomotionData.SprintOut,
 					Loop = locomotionData.Sprint,
-					Parameters = SprintParameters
-				};
-			}
-			break;
-		case WalkSpeedType.Crouch:
-			if (locomotionData.Cover != null)
-			{
-				return new WalkingTypeData
-				{
-					Out = locomotionData.CoverOut,
-					Loop = locomotionData.Cover,
-					Parameters = CoverParameters
+					Parameters = m_SprintParameters
 				};
 			}
 			break;
@@ -336,7 +326,7 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 			{
 				Out = locomotionData.RunOut,
 				Loop = locomotionData.Run,
-				Parameters = RunParameters
+				Parameters = m_RunParameters
 			};
 		}
 		WalkingTypeData walkingTypeData = ((locomotionData != NonCombatLocomotionData) ? GetWalkingTypeData(NonCombatLocomotionData, walkingType) : null);
@@ -352,58 +342,6 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 			PFLog.Animations.Error(this, $"Moving data not found for {walkingType}");
 		}
 		return walkingTypeData;
-	}
-
-	private WalkingTypeData GetCustomCombatWalkData(WeaponStyleLocomotionData locomotionData, WalkSpeedType walkingType, CustomCombatWalkType combatWalkType)
-	{
-		if (walkingType != WalkSpeedType.Walk || combatWalkType == CustomCombatWalkType.None)
-		{
-			return null;
-		}
-		if (locomotionData == NonCombatLocomotionData)
-		{
-			return null;
-		}
-		if (locomotionData.WalkOneCell == null && locomotionData.WalkTwoCell == null && locomotionData.WalkOneDiagonalCell == null && locomotionData.WalkTwoDiagonalCell == null)
-		{
-			return null;
-		}
-		AnimationClipWrapper animationClipWrapper = combatWalkType switch
-		{
-			CustomCombatWalkType.OneCell => locomotionData.WalkOneCell, 
-			CustomCombatWalkType.TwoCells => locomotionData.WalkTwoCell, 
-			CustomCombatWalkType.OneDiagonal => locomotionData.WalkOneDiagonalCell, 
-			CustomCombatWalkType.TwoDiagonals => locomotionData.WalkTwoDiagonalCell, 
-			_ => null, 
-		};
-		MovingTypeParameters movingTypeParameters = new MovingTypeParameters();
-		if (animationClipWrapper != null && animationClipWrapper.Length > 0f)
-		{
-			float num = DistanceList[(int)combatWalkType];
-			movingTypeParameters.Speed = num / animationClipWrapper.Length;
-		}
-		return new WalkingTypeData
-		{
-			Loop = animationClipWrapper,
-			Parameters = movingTypeParameters
-		};
-	}
-
-	public CustomCombatWalkType GetCustomCombatWalkType(PathCursor path)
-	{
-		if (path == null || !path.HasPath)
-		{
-			return CustomCombatWalkType.None;
-		}
-		float pathLength = path.GetPathLength(3);
-		for (int i = 1; i < DistanceList.Count; i++)
-		{
-			if (pathLength < DistanceList[i])
-			{
-				return (CustomCombatWalkType)i;
-			}
-		}
-		return CustomCombatWalkType.None;
 	}
 
 	public AnimationClipWrapper GetIdleClip(WeaponAnimationStyle style, bool isForDollRoom)
@@ -530,8 +468,9 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 
 	public LocomotionMixerAnimations GetLocomotionMixerAnimations(WeaponAnimationStyle style)
 	{
-		float num = (m_UseCustomBlending ? m_WalkBlendParam : (WalkParameters.Speed / SprintParameters.Speed));
-		float num2 = (m_UseCustomBlending ? m_RunBlendParam : (RunParameters.Speed / SprintParameters.Speed));
+		float maxSpeed = MaxSpeed;
+		float num = (m_UseCustomBlending ? m_WalkBlendParam : (m_WalkParameters.Speed / maxSpeed));
+		float num2 = (m_UseCustomBlending ? m_RunBlendParam : (m_RunParameters.Speed / maxSpeed));
 		float num3 = (m_UseCustomBlending ? m_SprintBlendParam : 1f);
 		bool flag = num < num2 && !Mathf.Approximately(num, num2);
 		bool flag2 = num3 > num2 && !Mathf.Approximately(num2, num3);

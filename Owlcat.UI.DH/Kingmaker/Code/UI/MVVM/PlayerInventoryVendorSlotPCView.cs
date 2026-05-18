@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.GameCommands;
 using R3;
 using R3.Triggers;
 using UnityEngine;
@@ -54,17 +53,11 @@ public class PlayerInventoryVendorSlotPCView : InventorySlotView
 
 	protected override void OnClick()
 	{
-		if (base.ViewModel.HasItem)
-		{
-			Game.Instance.GameCommandQueue.AddForSellVendor(base.ViewModel.ItemEntity, 1);
-		}
+		base.ViewModel.TryMove(1);
 	}
 
 	protected override void OnDoubleClick()
 	{
-		if (base.ViewModel.HasItem)
-		{
-			Game.Instance.GameCommandQueue.AddForSellVendor(base.ViewModel.ItemEntity, base.ViewModel.ItemEntity.Count);
-		}
+		base.ViewModel.TryMove(base.ViewModel.ItemEntity.Count);
 	}
 }

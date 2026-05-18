@@ -40,9 +40,6 @@ public class UITextCharSheet
 	public LocalizedString FellowshipShort;
 
 	[NotNull]
-	public LocalizedString LEVEL;
-
-	[NotNull]
 	public LocalizedString LvlShort;
 
 	[NotNull]
@@ -75,9 +72,6 @@ public class UITextCharSheet
 	public LocalizedString Skills;
 
 	[NotNull]
-	public LocalizedString Characteristics;
-
-	[NotNull]
 	public LocalizedString Convictions;
 
 	[NotNull]
@@ -96,22 +90,10 @@ public class UITextCharSheet
 	public LocalizedString DamageReductionLabel;
 
 	[NotNull]
-	public LocalizedString ActionPointsLabel;
-
-	[NotNull]
-	public LocalizedString MovePointsLabel;
-
-	[NotNull]
 	public LocalizedString RangedLabel;
 
 	[NotNull]
 	public LocalizedString StatsLabel;
-
-	[NotNull]
-	public LocalizedString SkillsLabel;
-
-	[NotNull]
-	public LocalizedString BuffsAndConditions;
 
 	[NotNull]
 	public LocalizedString Career;
@@ -143,12 +125,6 @@ public class UITextCharSheet
 	[NotNull]
 	public LocalizedString SoulMarkAbilities;
 
-	[NotNull]
-	public LocalizedString OtherTalents;
-
-	[Header("Defense Block")]
-	public LocalizedString TemporaryHP;
-
 	[Header("Buffs")]
 	[NotNull]
 	public LocalizedString NoBuffText;
@@ -159,8 +135,6 @@ public class UITextCharSheet
 	public LocalizedString DeactivatedFeature;
 
 	[Header("Stats")]
-	public LocalizedString Equipment;
-
 	public LocalizedString ArmorAbsorption;
 
 	public LocalizedString ArmorDeflection;
@@ -172,8 +146,6 @@ public class UITextCharSheet
 	public LocalizedString DodgeReduction;
 
 	public LocalizedString Resolve;
-
-	public LocalizedString History;
 
 	public LocalizedString WeaponSet;
 
@@ -280,6 +252,8 @@ public class UITextCharSheet
 
 	public LocalizedString NoTalentsYet;
 
+	public LocalizedString ToLevelUp;
+
 	[Header("Feature Groups")]
 	public LocalizedString AttributeFeatureGroupLabel;
 
@@ -381,6 +355,8 @@ public class UITextCharSheet
 
 	public LocalizedString NoAbilitiesLabel;
 
+	public LocalizedString NoModificationsHint;
+
 	public LocalizedString ActionPanelLabel;
 
 	public LocalizedString Chaos;
@@ -411,11 +387,19 @@ public class UITextCharSheet
 
 	public LocalizedString VisualSettingsShowHelmet;
 
-	public LocalizedString VisualSettingsShowHelmetAboveAll;
-
 	public LocalizedString VisualSettingsShowBackpack;
 
-	public LocalizedString VisualSettingsShowCloth;
+	public LocalizedString VisualSettingsShowCloak;
+
+	public LocalizedString VisualSettingsShowGloves;
+
+	public LocalizedString VisualSettingsShowBoots;
+
+	public LocalizedString VisualSettingsShowHood;
+
+	public LocalizedString VisualSettingsShowArmor;
+
+	public LocalizedString VisualSettingsShowBaseHeadwear;
 
 	public LocalizedString VisualSettingsEnableClothes;
 

@@ -24,7 +24,7 @@ public class ControllableReference : IHashable
 	{
 		if (!Game.Instance.Controllers.SceneControllables.TryGetControllable(UniqueId, out controllable))
 		{
-			PFLog.Default.Error("[Controllables] No controllable with id " + UniqueId);
+			PFLog.SceneControllables.Error("No controllable with id " + UniqueId);
 			return false;
 		}
 		return true;

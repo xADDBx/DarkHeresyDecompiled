@@ -2,6 +2,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.Networking;
 using Kingmaker.Networking.Hash;
 using Kingmaker.Networking.Serialization;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Signals;
 using StateHasher.Core;
 
@@ -17,14 +18,14 @@ public readonly ref struct StateHasherContext
 		RandomState.Instance.Refresh();
 	}
 
+	[HashCommitRoot]
 	public HashableState GetHashableState()
 	{
 		HashableState result = default(HashableState);
 		result.player = Game.Instance.Player;
-		result.sceneEntitiesState = Game.Instance.Player.CrossSceneState;
+		result.sceneEntitiesState = Game.Instance.State.CrossSceneState;
 		result.areaPersistentState = Game.Instance.State.LoadedAreaState;
 		result.randomState = RandomState.Instance;
-		result.synchronizedData = Game.Instance.Controllers.SynchronizedDataController.SynchronizedData;
 		result.signalService = SignalService.Instance.State;
 		return result;
 	}

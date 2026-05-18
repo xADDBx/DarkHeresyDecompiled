@@ -1,35 +1,61 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class SwitchHandEquipmentGameCommand : GameCommand, IOwlPackable<SwitchHandEquipmentGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class SwitchHandEquipmentGameCommand : GameCommand, IMemoryPackable<SwitchHandEquipmentGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<SwitchHandEquipmentGameCommand>
 {
+	[Preserve]
+	private sealed class SwitchHandEquipmentGameCommandFormatter : MemoryPackFormatter<SwitchHandEquipmentGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref SwitchHandEquipmentGameCommand value)
+		{
+			SwitchHandEquipmentGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref SwitchHandEquipmentGameCommand value)
+		{
+			SwitchHandEquipmentGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref SwitchHandEquipmentGameCommand value)
+		{
+			SwitchHandEquipmentGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref SwitchHandEquipmentGameCommand value)
+		{
+			SwitchHandEquipmentGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly EntityRef<BaseUnitEntity> m_Unit;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly sbyte m_HandEquipmentSetIndex;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "SwitchHandEquipmentGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[2]
-		{
-			new FieldInfo("m_Unit", typeof(EntityRef<BaseUnitEntity>)),
-			new FieldInfo("m_HandEquipmentSetIndex", typeof(sbyte))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
@@ -38,6 +64,7 @@ public sealed class SwitchHandEquipmentGameCommand : GameCommand, IOwlPackable<S
 	{
 	}
 
+	[MemoryPackConstructor]
 	private SwitchHandEquipmentGameCommand(EntityRef<BaseUnitEntity> m_unit, sbyte m_handEquipmentSetIndex)
 	{
 		m_Unit = m_unit;
@@ -68,6 +95,182 @@ public sealed class SwitchHandEquipmentGameCommand : GameCommand, IOwlPackable<S
 		{
 			entity.Body.CurrentHandEquipmentSetIndex = m_HandEquipmentSetIndex;
 		}
+	}
+
+	static SwitchHandEquipmentGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "SwitchHandEquipmentGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[2]
+			{
+				new FieldInfo("m_Unit", typeof(EntityRef<BaseUnitEntity>)),
+				new FieldInfo("m_HandEquipmentSetIndex", typeof(sbyte))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<SwitchHandEquipmentGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new SwitchHandEquipmentGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<SwitchHandEquipmentGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<SwitchHandEquipmentGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref SwitchHandEquipmentGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(2);
+		writer.WritePackable(in value.m_Unit);
+		writer.WriteUnmanaged(in value.m_HandEquipmentSetIndex);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref SwitchHandEquipmentGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		EntityRef<BaseUnitEntity> value2;
+		sbyte value3;
+		if (memberCount == 2)
+		{
+			if (value == null)
+			{
+				value2 = reader.ReadPackable<EntityRef<BaseUnitEntity>>();
+				reader.ReadUnmanaged<sbyte>(out value3);
+			}
+			else
+			{
+				value2 = value.m_Unit;
+				value3 = value.m_HandEquipmentSetIndex;
+				reader.ReadPackable(ref value2);
+				reader.ReadUnmanaged<sbyte>(out value3);
+			}
+		}
+		else
+		{
+			if (memberCount > 2)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(SwitchHandEquipmentGameCommand), 2, memberCount);
+				return;
+			}
+			if (value == null)
+			{
+				value2 = default(EntityRef<BaseUnitEntity>);
+				value3 = 0;
+			}
+			else
+			{
+				value2 = value.m_Unit;
+				value3 = value.m_HandEquipmentSetIndex;
+			}
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				if (memberCount != 1)
+				{
+					reader.ReadUnmanaged<sbyte>(out value3);
+					_ = 2;
+				}
+			}
+			_ = value;
+		}
+		value = new SwitchHandEquipmentGameCommand(value2, value3);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref SwitchHandEquipmentGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Unit");
+		writer.WritePackable(value.m_Unit);
+		writer.WriteProperty("m_HandEquipmentSetIndex");
+		writer.WriteUnmanaged(value.m_HandEquipmentSetIndex);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref SwitchHandEquipmentGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		EntityRef<BaseUnitEntity> val;
+		sbyte v;
+		if (value == null)
+		{
+			val = default(EntityRef<BaseUnitEntity>);
+			v = 0;
+		}
+		else
+		{
+			val = value.m_Unit;
+			v = value.m_HandEquipmentSetIndex;
+		}
+		bool[] array = new bool[2];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (!(text == "m_Unit"))
+				{
+					if (text == "m_HandEquipmentSetIndex")
+					{
+						reader.ReadUnmanaged<sbyte>(out v);
+						array[1] = true;
+					}
+				}
+				else
+				{
+					val = reader.ReadPackable<EntityRef<BaseUnitEntity>>();
+					array[0] = true;
+				}
+			}
+			else if (!(text == "m_Unit"))
+			{
+				if (text == "m_HandEquipmentSetIndex")
+				{
+					reader.ReadUnmanaged<sbyte>(out v);
+				}
+			}
+			else
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		_ = value;
+		value = new SwitchHandEquipmentGameCommand(val, v);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

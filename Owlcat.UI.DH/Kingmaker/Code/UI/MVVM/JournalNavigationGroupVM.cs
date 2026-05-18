@@ -23,7 +23,7 @@ public class JournalNavigationGroupVM : ViewModel
 
 	public ReadOnlyReactiveProperty<bool> IsSelected => m_IsSelected;
 
-	public bool HasActiveQuests => Quests.Any((JournalQuestVM q) => q.IsActive);
+	public bool HasActiveQuests => Quests.Any((JournalQuestVM q) => q.IsActive || !q.IsViewed);
 
 	public bool IsCollapse
 	{
@@ -52,10 +52,7 @@ public class JournalNavigationGroupVM : ViewModel
 
 	private void OnSelectedQuestChange(Quest quest)
 	{
-		if (quest != null)
-		{
-			bool value = Quests.Any((JournalQuestVM questVM) => questVM.Quest == quest);
-			m_IsSelected.Value = value;
-		}
+		bool value = Quests.Any((JournalQuestVM questVM) => questVM.Quest == quest);
+		m_IsSelected.Value = value;
 	}
 }

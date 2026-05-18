@@ -1,7 +1,6 @@
+using JetBrains.Annotations;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.GameModes;
-using Kingmaker.Globalmap.SectorMap;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -33,6 +32,8 @@ public abstract class IngameMenuBaseVM : ViewModel, IHideUIWhileActionCameraHand
 
 	protected readonly ReactiveProperty<bool> m_ShouldShow = new ReactiveProperty<bool>(value: false);
 
+	public readonly ReadOnlyReactiveProperty<bool> IsForceHidden;
+
 	protected bool IsAppropriateGameMode
 	{
 		get
@@ -61,8 +62,9 @@ public abstract class IngameMenuBaseVM : ViewModel, IHideUIWhileActionCameraHand
 
 	public ReadOnlyReactiveProperty<bool> IsDetectiveJournalActive => m_IsDetectiveJournalActive;
 
-	protected IngameMenuBaseVM()
+	protected IngameMenuBaseVM([CanBeNull] ReadOnlyReactiveProperty<bool> isForceHidden)
 	{
+		IsForceHidden = isForceHidden ?? new ReactiveProperty<bool>(value: false).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
@@ -126,29 +128,5 @@ public abstract class IngameMenuBaseVM : ViewModel, IHideUIWhileActionCameraHand
 	public void HandleUIEvent(UIEventType type)
 	{
 		m_IsFormationActive.Value = type == UIEventType.FormationWindowOpen;
-	}
-
-	public void HandleWarpTravelBeforeStart()
-	{
-		m_ShouldShow.Value = false;
-		m_IsWarpTravelInProgress = true;
-	}
-
-	public void HandleWarpTravelStarted(SectorMapPassageEntity passage)
-	{
-	}
-
-	public void HandleWarpTravelStopped()
-	{
-		m_ShouldShow.Value = IsAppropriateGameMode && !m_IsExplorationOpened;
-		m_IsWarpTravelInProgress = false;
-	}
-
-	public void HandleWarpTravelPaused()
-	{
-	}
-
-	public void HandleWarpTravelResumed()
-	{
 	}
 }

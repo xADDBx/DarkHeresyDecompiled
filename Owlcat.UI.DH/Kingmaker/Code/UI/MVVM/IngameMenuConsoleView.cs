@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Linq;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.UI.MVVM.View;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Common.Animations;
@@ -44,21 +40,9 @@ public class IngameMenuConsoleView : View<IngameMenuVM>
 
 	[Header("Console")]
 	[SerializeField]
-	private FloatConsoleNavigationBehaviour.NavigationParameters m_Parameters;
-
-	[SerializeField]
-	private ConsoleHintsWidget m_ConsoleHintsWidget;
-
-	[SerializeField]
 	private OwlcatMultiButton m_FirstSelectionButton;
 
-	private FloatConsoleNavigationBehaviour m_NewNavigationBehaviour;
-
-	private SimpleConsoleNavigationEntity m_FirstSelection;
-
 	private readonly ReactiveProperty<bool> m_CanCancel = new ReactiveProperty<bool>();
-
-	private InputLayer m_InputLayer;
 
 	public void Initialize()
 	{
@@ -70,50 +54,22 @@ public class IngameMenuConsoleView : View<IngameMenuVM>
 	{
 		BindItems();
 		m_FirstSelectionButton.gameObject.SetActive(value: true);
-		CreateNavigation();
-		GamePad.Instance.PushLayer(GetInputLayer()).AddTo(this);
 		m_FadeAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.MessageBox.MessageBoxShow.Play();
+		ModalWindowsSounds.Instance.MessageBox.Show.Play();
 		EventBus.RaiseEvent(delegate(IModalWindowUIHandler h)
 		{
 			h.HandleModalWindowUiChanged(state: true, ModalWindowUIType.InGameMenu);
 		});
-		GamePad.Instance.OnLayerPushed.Subscribe(OnCurrentInputLayerChanged).AddTo(this);
 	}
 
 	protected override void OnUnbind()
 	{
 		m_FadeAnimator.DisappearAnimation();
-		UISounds.Instance.Sounds.MessageBox.MessageBoxHide.Play();
-		IngameMenuItemConsoleView ingameMenuItemConsoleView = m_NewNavigationBehaviour.CurrentEntity as IngameMenuItemConsoleView;
-		if (ingameMenuItemConsoleView != null)
-		{
-			ingameMenuItemConsoleView.OnConfirmClick();
-		}
-		m_NewNavigationBehaviour.Clear();
+		ModalWindowsSounds.Instance.MessageBox.Hide.Play();
 		EventBus.RaiseEvent(delegate(IModalWindowUIHandler h)
 		{
 			h.HandleModalWindowUiChanged(state: false, ModalWindowUIType.InGameMenu);
 		});
-	}
-
-	private InputLayer GetInputLayer()
-	{
-		InputLayer inputLayer = m_NewNavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = "IngameMenuConsoleView"
-		}, null, leftStick: true, rightStick: true);
-		m_ConsoleHintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			m_NewNavigationBehaviour.ResetCurrentEntity();
-			base.ViewModel.Dispose();
-		}, 9, m_CanCancel), UIStrings.Instance.CommonTexts.Cancel).AddTo(this);
-		inputLayer.AddButton(delegate
-		{
-			base.ViewModel.Dispose();
-		}, 8, m_CanCancel).AddTo(this);
-		m_InputLayer = inputLayer;
-		return inputLayer;
 	}
 
 	private void InitializeItems()
@@ -140,51 +96,5 @@ public class IngameMenuConsoleView : View<IngameMenuVM>
 			m_LevelUp.Bind(base.ViewModel.OpenLevelUpOnFirstDecentUnit);
 		}
 		m_LevelUp.gameObject.SetActive(base.ViewModel.HasLevelUp());
-	}
-
-	private void CreateNavigation()
-	{
-		if (m_NewNavigationBehaviour == null)
-		{
-			m_NewNavigationBehaviour = new FloatConsoleNavigationBehaviour(m_Parameters).AddTo(this);
-		}
-		else
-		{
-			m_NewNavigationBehaviour.Clear();
-		}
-		List<IngameMenuItemConsoleView> entities = m_Content.GetComponentsInChildren<IngameMenuItemConsoleView>().ToList();
-		m_FirstSelection = new SimpleConsoleNavigationEntity(m_FirstSelectionButton);
-		m_NewNavigationBehaviour.AddEntities(entities);
-		m_NewNavigationBehaviour.AddEntity(m_FirstSelection);
-		m_NewNavigationBehaviour.DeepestFocusAsObservable.Skip(1).Subscribe(OnFocusEntity);
-		DelayedInvoker.InvokeInFrames(delegate
-		{
-			m_NewNavigationBehaviour.FocusOnEntityManual(m_FirstSelection);
-		}, 1);
-	}
-
-	private void OnFocusEntity(IConsoleEntity entity)
-	{
-		m_CanCancel.Value = entity != m_FirstSelection && entity != null;
-		if (entity != m_FirstSelection && m_NewNavigationBehaviour.Entities.Contains(m_FirstSelection))
-		{
-			m_NewNavigationBehaviour.RemoveEntity(m_FirstSelection);
-			m_FirstSelectionButton.gameObject.SetActive(value: false);
-		}
-	}
-
-	private void OnCurrentInputLayerChanged()
-	{
-		InputLayer currentInputLayer = GamePad.Instance.CurrentInputLayer;
-		if (currentInputLayer != m_InputLayer && !(currentInputLayer.ContextName == BugReportBaseView.InputLayerContextName) && !(currentInputLayer.ContextName == BugReportDrawingView.InputLayerContextName))
-		{
-			if (currentInputLayer.ContextName == TutorialBigWindowConsoleView.InputLayerContextName || currentInputLayer.ContextName == TutorialBigWindowConsoleView.GlossaryContextName)
-			{
-				base.ViewModel.Dispose();
-				return;
-			}
-			GamePad.Instance.PopLayer(m_InputLayer);
-			GamePad.Instance.PushLayer(m_InputLayer);
-		}
 	}
 }

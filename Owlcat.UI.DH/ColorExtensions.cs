@@ -9,6 +9,6 @@ public static class ColorExtensions
 
 	public static string HTML(this Color32 color)
 	{
-		return ColorUtility.ToHtmlStringRGB(color);
+		return ColorUtility.ToHtmlStringRGB((Color)color);
 	}
 }

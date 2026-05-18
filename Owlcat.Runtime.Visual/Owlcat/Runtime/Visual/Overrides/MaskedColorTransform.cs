@@ -21,7 +21,7 @@ public class MaskedColorTransform : VolumeComponent, IPostProcessComponent
 
 	public ClampedFloatParameter Brightness = new ClampedFloatParameter(0f, 0f, 1f);
 
-	public ClampedFloatParameter Contrast = new ClampedFloatParameter(0f, -1f, 1f);
+	public ClampedFloatParameter Contrast = new ClampedFloatParameter(0.5f, 0f, 1f);
 
 	public bool IsActive()
 	{

@@ -11,22 +11,22 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public abstract class MapObjectOvertipsView<TOvertipTransitionView, TOvertipMapObjectSimpleView, TOvertipMapObjectInteractionView, TOvertipDestructibleObjectView> : View<MapObjectOvertipsVM> where TOvertipTransitionView : OvertipTransitionView where TOvertipMapObjectSimpleView : OvertipMapObjectSimpleView where TOvertipMapObjectInteractionView : OvertipMapObjectInteractionView where TOvertipDestructibleObjectView : OvertipDestructibleObjectView
+public class MapObjectOvertipsView : View<MapObjectOvertipsVM>
 {
 	[SerializeField]
 	private RectTransform m_TargetContainer;
 
 	[SerializeField]
-	private TOvertipTransitionView m_OvertipTransitionView;
+	private OvertipTransitionView m_OvertipTransitionView;
 
 	[SerializeField]
-	private TOvertipMapObjectSimpleView m_OvertipMapObjectSimpleView;
+	private OvertipMapObjectSimpleView m_OvertipMapObjectSimpleView;
 
 	[SerializeField]
-	private TOvertipMapObjectInteractionView m_OvertipMapObjectInteractionView;
+	private OvertipMapObjectInteractionView m_OvertipMapObjectInteractionView;
 
 	[SerializeField]
-	private TOvertipDestructibleObjectView m_OvertipDestructibleObjectView;
+	private OvertipDestructibleObjectView m_OvertipDestructibleObjectView;
 
 	private readonly Queue<MonoBehaviour> m_FreeTransitionOvertips = new Queue<MonoBehaviour>();
 
@@ -117,7 +117,7 @@ public abstract class MapObjectOvertipsView<TOvertipTransitionView, TOvertipMapO
 		m_ActiveOvertips.Clear();
 	}
 
-	public void Update()
+	public void LateUpdate()
 	{
 		using (Counters.Overtips?.Measure())
 		{
@@ -188,7 +188,7 @@ public abstract class MapObjectOvertipsView<TOvertipTransitionView, TOvertipMapO
 	private bool IsObjectVisible(BaseOvertipMapObjectVM vm, bool checkFrustum)
 	{
 		MapObjectEntity mapObjectEntity = vm.MapObjectEntity;
-		if (mapObjectEntity != null && mapObjectEntity.IsVisibleForPlayer && !vm.HideFromScreen)
+		if (mapObjectEntity != null && mapObjectEntity.IsVisibleForPlayer && !vm.IsMarkedForRemoval && !vm.HideFromScreen)
 		{
 			if (checkFrustum)
 			{
@@ -236,7 +236,7 @@ public abstract class MapObjectOvertipsView<TOvertipTransitionView, TOvertipMapO
 
 	private void AddTransition(OvertipTransitionVM transitionVM)
 	{
-		TOvertipTransitionView widget = GetWidget(m_FreeTransitionOvertips, m_OvertipTransitionView);
+		OvertipTransitionView widget = GetWidget(m_FreeTransitionOvertips, m_OvertipTransitionView);
 		widget.Bind(transitionVM);
 		m_ActiveOvertips.Add(transitionVM, widget);
 	}
@@ -272,7 +272,7 @@ public abstract class MapObjectOvertipsView<TOvertipTransitionView, TOvertipMapO
 
 	private void AddDestructibleObject(OvertipDestructibleObjectVM destructibleVM)
 	{
-		TOvertipDestructibleObjectView widget = GetWidget(m_FreeDestructibleObjectOvertips, m_OvertipDestructibleObjectView);
+		OvertipDestructibleObjectView widget = GetWidget(m_FreeDestructibleObjectOvertips, m_OvertipDestructibleObjectView);
 		widget.Bind(destructibleVM);
 		m_ActiveOvertips.Add(destructibleVM, widget);
 	}
@@ -292,7 +292,7 @@ public abstract class MapObjectOvertipsView<TOvertipTransitionView, TOvertipMapO
 		view.Unbind();
 		if (view is MonoBehaviour item)
 		{
-			((view is TOvertipTransitionView) ? m_FreeTransitionOvertips : ((view is TOvertipMapObjectSimpleView) ? m_FreeMapObjectSimpleOvertips : ((view is TOvertipMapObjectInteractionView) ? m_FreeMapObjectInteractionOvertips : ((!(view is TOvertipDestructibleObjectView)) ? null : m_FreeDestructibleObjectOvertips))))?.Enqueue(item);
+			((view is OvertipTransitionView) ? m_FreeTransitionOvertips : ((view is OvertipMapObjectSimpleView) ? m_FreeMapObjectSimpleOvertips : ((view is OvertipMapObjectInteractionView) ? m_FreeMapObjectInteractionOvertips : ((!(view is OvertipDestructibleObjectView)) ? null : m_FreeDestructibleObjectOvertips))))?.Enqueue(item);
 		}
 	}
 }

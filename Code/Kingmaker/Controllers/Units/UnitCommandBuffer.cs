@@ -6,6 +6,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Networking;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Replay;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -50,16 +51,19 @@ public class UnitCommandBuffer : IControllerTick, IController, IControllerStart,
 		return m_CommandQueue.GetMaxReadyTick(playerGroup);
 	}
 
+	[ValidCommitPoint]
 	public bool TryAdd([NotNull] Entity owner, [NotNull] UnitCommandParams unitCommand)
 	{
 		return TryAddInternal(owner, unitCommand, UnitCommandParams.CommandType.Run);
 	}
 
+	[ValidCommitPoint]
 	public bool TryAddToQueue([NotNull] Entity owner, [NotNull] UnitCommandParams unitCommand)
 	{
 		return TryAddInternal(owner, unitCommand, UnitCommandParams.CommandType.AddToQueue);
 	}
 
+	[ValidCommitPoint]
 	public bool TryAddToQueueFirst([NotNull] Entity owner, [NotNull] UnitCommandParams unitCommand)
 	{
 		return TryAddInternal(owner, unitCommand, UnitCommandParams.CommandType.AddToQueueFirst);
@@ -104,32 +108,62 @@ public class UnitCommandBuffer : IControllerTick, IController, IControllerStart,
 			m_UnitCommandsInProcessCache.Clear();
 			m_CommandQueue.LoadCommands(m_UnitCommandsInProcessCache);
 			m_UnitCommandsInProcessCache.Fill(m_UnitCommandsInProcess);
-			foreach (UnitCommandParams item in m_UnitCommandsInProcess)
+			try
 			{
-				BaseUnitEntity entity = item.OwnerRef.Entity;
-				if (entity == null)
+				foreach (UnitCommandParams item in m_UnitCommandsInProcess)
 				{
-					PFLog.Replay.Error("UnitEntity is null. ownerRef='" + item.OwnerRef.Id + "'");
-					continue;
-				}
-				PartUnitCommands commands = entity.Commands;
-				switch (item.Type)
-				{
-				case UnitCommandParams.CommandType.Run:
-					commands.RunImmediate(item);
-					break;
-				case UnitCommandParams.CommandType.AddToQueue:
-					commands.ForceAddToQueue(item);
-					break;
-				case UnitCommandParams.CommandType.AddToQueueFirst:
-					commands.ForceAddToQueueFirst(item);
-					break;
-				default:
-					throw new ArgumentOutOfRangeException($"unitCommandWrapper.type={item.Type}");
+					ProcessCommandParams(item);
 				}
 			}
-			m_UnitCommandsInProcess.Clear();
+			catch (Exception ex)
+			{
+				PFLog.Default.Exception(ex, "Unhandled exception while processing commands");
+			}
+			finally
+			{
+				m_UnitCommandsInProcess.Clear();
+			}
 		}
+	}
+
+	private static void ProcessCommandParams(UnitCommandParams commandParams)
+	{
+		BaseUnitEntity entity = commandParams.OwnerRef.Entity;
+		if (entity != null)
+		{
+			PartUnitCommands commands = entity.Commands;
+			if (commands != null)
+			{
+				if (commandParams.PreprocessingFlags.Has(CommandPreprocessingFlags.InterruptCurrentAsSoonAsPossible))
+				{
+					AbstractUnitCommand current = commands.Current;
+					if (current != null)
+					{
+						current.Params.InterruptAsSoonAsPossible = true;
+					}
+				}
+				if (commandParams.PreprocessingFlags.Has(CommandPreprocessingFlags.ClearQueue))
+				{
+					commands.InterruptAll((AbstractUnitCommand cmd) => !cmd.IsStarted);
+				}
+				switch (commandParams.Type)
+				{
+				case UnitCommandParams.CommandType.Run:
+					commands.RunImmediate(commandParams);
+					break;
+				case UnitCommandParams.CommandType.AddToQueue:
+					commands.ForceAddToQueue(commandParams);
+					break;
+				case UnitCommandParams.CommandType.AddToQueueFirst:
+					commands.ForceAddToQueueFirst(commandParams);
+					break;
+				default:
+					throw new ArgumentOutOfRangeException($"unitCommandWrapper.type={commandParams.Type}");
+				}
+				return;
+			}
+		}
+		PFLog.Replay.Error("UnitEntity is null. ownerRef='" + commandParams.OwnerRef.Id + "'");
 	}
 
 	void IControllerStart.OnStart()

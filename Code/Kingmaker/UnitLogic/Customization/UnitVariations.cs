@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Attributes;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -17,6 +18,7 @@ public class UnitVariations
 	private BlueprintUnitReference[] m_Units = new BlueprintUnitReference[0];
 
 	[NotNull]
+	[NonFoldout]
 	public List<UnitCustomizationVariation> Variations = new List<UnitCustomizationVariation>();
 
 	public ReferenceArrayProxy<BlueprintUnit> Units

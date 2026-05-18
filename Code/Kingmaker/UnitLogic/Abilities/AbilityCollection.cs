@@ -6,7 +6,6 @@ using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
@@ -62,7 +61,7 @@ public class AbilityCollection : MechanicEntityFactsCollection<Ability>
 		base.OnFactDidAttach(fact);
 		if (Owner.Faction.IsPlayer)
 		{
-			EventBus.RaiseEvent(delegate(IPlayerAbilitiesHandler h)
+			base.EventBus.RaiseEvent(delegate(IPlayerAbilitiesHandler h)
 			{
 				h.HandleAbilityAdded(fact);
 			});
@@ -73,7 +72,7 @@ public class AbilityCollection : MechanicEntityFactsCollection<Ability>
 	{
 		if (Owner.Faction.IsPlayer)
 		{
-			EventBus.RaiseEvent(delegate(IPlayerAbilitiesHandler h)
+			base.EventBus.RaiseEvent(delegate(IPlayerAbilitiesHandler h)
 			{
 				h.HandleAbilityRemoved(fact);
 			});

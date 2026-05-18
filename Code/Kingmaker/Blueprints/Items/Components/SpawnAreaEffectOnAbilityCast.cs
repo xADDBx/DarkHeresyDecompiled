@@ -7,6 +7,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.Features.AreaEffects;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -46,6 +47,7 @@ public class SpawnAreaEffectOnAbilityCast : UnitFactComponentDelegate, IInitiato
 
 	[HideIf("m_OnUnit")]
 	[SerializeField]
+	[InspectorReadOnly]
 	private bool m_GetOrientationFromCaster;
 
 	[SerializeField]
@@ -83,20 +85,22 @@ public class SpawnAreaEffectOnAbilityCast : UnitFactComponentDelegate, IInitiato
 		{
 			return null;
 		}
+		IEvalContext ctx;
 		if (!m_NeedCurrentTargetForPrediction)
 		{
-			using (AbilityExecutionContext context = ability.ClaimExecutionContext(base.Owner))
+			using (EvalContext.PushAbility(ability, base.Owner).Get(out ctx))
 			{
-				return m_Restrictions.IsPassed(context, base.Owner) ? AreaEffect : null;
+				return m_Restrictions.IsPassed(ctx, base.Owner) ? AreaEffect : null;
 			}
 		}
 		PointerController clickEventsController = Game.Instance.Controllers.ClickEventsController;
 		TargetWrapper target = Game.Instance.Controllers.SelectedAbilityHandler.GetTarget(clickEventsController.PointerOn, clickEventsController.WorldPosition, ability, ability.Caster.Position);
+		IEvalContext ctx2;
 		if (target.Entity != null && target.Entity != ability.Caster && ability.Caster.DistanceToInCells(target.Entity) == 1)
 		{
-			using (AbilityExecutionContext context2 = ability.ClaimExecutionContext(target))
+			using (EvalContext.PushAbility(ability, target).Get(out ctx2))
 			{
-				return m_Restrictions.IsPassed(context2, base.Owner) ? AreaEffect : null;
+				return m_Restrictions.IsPassed(ctx2, base.Owner) ? AreaEffect : null;
 			}
 		}
 		return null;
@@ -109,8 +113,7 @@ public class SpawnAreaEffectOnAbilityCast : UnitFactComponentDelegate, IInitiato
 			return;
 		}
 		TimeSpan seconds = m_DurationValue.Calculate(base.Context).Seconds;
-		AreaEffectEntity areaEffectEntity = AreaEffectsController.CreateSpawner(AreaEffect, base.Context, evt.AbilityTarget).Duration(seconds).GetOrientationFromCaster(m_GetOrientationFromCaster)
-			.OnUnit(m_OnUnit)
+		AreaEffectEntity areaEffectEntity = AreaEffectsController.CreateSpawner(AreaEffect, base.Context, evt.AbilityTarget).Duration(seconds).OnUnit(m_OnUnit)
 			.Spawn();
 		if (areaEffectEntity == null)
 		{

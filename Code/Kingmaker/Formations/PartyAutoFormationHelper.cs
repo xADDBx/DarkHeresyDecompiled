@@ -4,6 +4,8 @@ using Core.Cheats;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items;
 using Kingmaker.QA;
 using Owlcat.Runtime.Core.Utility;
@@ -105,7 +107,7 @@ public static class PartyAutoFormationHelper
 		{
 			return true;
 		}
-		if (candidate.FormationAC == existingCandidate.FormationAC && candidate.FormationAC == existingCandidate.FormationAC && (int)candidate.Unit.Health.HitPoints > (int)existingCandidate.Unit.Health.HitPoints)
+		if (candidate.FormationAC == existingCandidate.FormationAC && candidate.FormationAC == existingCandidate.FormationAC && (int)candidate.Unit.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "IsSuitableTank") > (int)existingCandidate.Unit.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "IsSuitableTank"))
 		{
 			return true;
 		}

@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using Kingmaker.Blueprints;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Framework;
+using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Levelup;
@@ -18,9 +18,12 @@ public class CharGenLevelUpSelectorAbilityUpgradeItemVM : CharGenLevelUpSelector
 
 	public UIFeature UIFeature { get; private set; }
 
+	public IUIDataProvider BaseAbilityData { get; private set; }
+
 	public CharGenLevelUpSelectorAbilityUpgradeItemVM(FeatureSelectionItem featureSelectionItem, Action<CharGenLevelUpSelectorBaseItemVM> onHover, LevelUpManager levelUpManager, CharGenLevelUpNestedListHeaderVM parenNodeVm = null)
 		: base(featureSelectionItem.Feature, onHover, parenNodeVm)
 	{
+		m_LevelUpManager = levelUpManager;
 		FeatureSelectionItem = featureSelectionItem;
 		UIFeature = new UIFeature(featureSelectionItem.Feature);
 		m_Blueprint = featureSelectionItem.Feature;
@@ -30,25 +33,23 @@ public class CharGenLevelUpSelectorAbilityUpgradeItemVM : CharGenLevelUpSelector
 		}
 		else if (facts[0] != null && addFacts.Facts[0] is BlueprintAbility blueprintAbility)
 		{
-			BlueprintAbility baseAbility = null;
+			BlueprintAbility blueprintAbility2 = null;
 			if (blueprintAbility.ComponentsArray.FirstOrDefault((BlueprintComponent c) => c is UpgradeAbility) is UpgradeAbility upgradeAbility)
 			{
-				baseAbility = upgradeAbility.BaseAbility;
+				blueprintAbility2 = upgradeAbility.BaseAbility;
 			}
-			base.Template = new TooltipTemplateLevelUpAbilityUpgrade(blueprintAbility, baseAbility, null, m_LevelUpManager);
+			BaseAbilityData = blueprintAbility2;
+			base.Template = new TooltipTemplateLevelUpAbilityUpgrade(blueprintAbility, blueprintAbility2, null, m_LevelUpManager);
 		}
 		else if (addFacts.Facts[0] != null && addFacts.Facts[0] is BlueprintToggleAbility blueprintToggleAbility)
 		{
-			BlueprintToggleAbility baseAbility2 = null;
+			BlueprintToggleAbility blueprintToggleAbility2 = null;
 			if (blueprintToggleAbility.ComponentsArray.FirstOrDefault((BlueprintComponent c) => c is UpgradeToggleAbility) is UpgradeToggleAbility upgradeToggleAbility)
 			{
-				baseAbility2 = upgradeToggleAbility.BaseAbility;
+				blueprintToggleAbility2 = upgradeToggleAbility.BaseAbility;
 			}
-			base.Template = new TooltipTemplateLevelUpAbilityUpgrade(blueprintToggleAbility, baseAbility2, null, m_LevelUpManager);
-		}
-		else
-		{
-			m_LevelUpManager = levelUpManager;
+			BaseAbilityData = blueprintToggleAbility2;
+			base.Template = new TooltipTemplateLevelUpAbilityUpgrade(blueprintToggleAbility, blueprintToggleAbility2, null, m_LevelUpManager);
 		}
 	}
 }

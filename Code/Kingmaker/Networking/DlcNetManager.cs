@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Code.GameCore.Mics;
@@ -88,7 +89,7 @@ public sealed class DlcNetManager
 			{
 				return (from dlc in InterfaceServiceLocator.TryGetService<IDlcRootService>()?.Dlcs
 					where dlc.IsAvailable
-					select dlc.Id).ToArray();
+					select dlc.Id).ToArray() ?? Array.Empty<string>();
 			}
 		}
 	}

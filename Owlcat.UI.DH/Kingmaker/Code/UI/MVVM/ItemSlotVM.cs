@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.Blueprints.Items.Equipment;
@@ -25,7 +26,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, ISubscriber, ISplitItemHandler, IEquipItemHandler, ISubscriber<IItemEntity>, IInventorySlotHoverHandler, ISubscriber<ItemEntity>, IInventorySlotPossibleTarget
+public class ItemSlotVM : VirtualListElementVMBase, IEntitySubscriber, IInventoryChangedHandler, ISubscriber, ISplitItemHandler, IEquipItemHandler, ISubscriber<IItemEntity>, ITrashItemHandler<EntitySubscriber>, ITrashItemHandler, IEventTag<ITrashItemHandler, EntitySubscriber>, IInventorySlotHoverHandler, ISubscriber<ItemEntity>, IInventorySlotPossibleTarget
 {
 	private enum VendorItemLayerType
 	{
@@ -82,6 +83,10 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 
 	private readonly ReactiveProperty<List<TooltipBaseTemplate>> m_Tooltip = new ReactiveProperty<List<TooltipBaseTemplate>>();
 
+	private readonly ReactiveProperty<List<TooltipBaseTemplate>> m_MainTooltips = new ReactiveProperty<List<TooltipBaseTemplate>>(new List<TooltipBaseTemplate>());
+
+	private readonly ReactiveProperty<List<TooltipBaseTemplate>> m_CompareTooltips = new ReactiveProperty<List<TooltipBaseTemplate>>(new List<TooltipBaseTemplate>());
+
 	private readonly ReactiveProperty<List<ContextMenuCollectionEntity>> m_ContextMenu = new ReactiveProperty<List<ContextMenuCollectionEntity>>();
 
 	private readonly ReactiveCommand<Unit> m_NeedBlink = new ReactiveCommand<Unit>();
@@ -91,6 +96,9 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 	protected readonly ReactiveProperty<bool> m_PossibleTarget = new ReactiveProperty<bool>();
 
 	protected readonly ReactiveProperty<Sprite> m_Icon = new ReactiveProperty<Sprite>(null);
+
+	[CanBeNull]
+	private ItemEntity m_PreviousItem;
 
 	public ReadOnlyReactiveProperty<ItemEntity> Item => m_Item;
 
@@ -127,6 +135,10 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 	public ReadOnlyReactiveProperty<bool> PossibleTarget => m_PossibleTarget;
 
 	public ReadOnlyReactiveProperty<List<TooltipBaseTemplate>> Tooltip => m_Tooltip;
+
+	public ReadOnlyReactiveProperty<List<TooltipBaseTemplate>> MainTooltips => m_MainTooltips;
+
+	public ReadOnlyReactiveProperty<List<TooltipBaseTemplate>> CompareTooltips => m_CompareTooltips;
 
 	public ReadOnlyReactiveProperty<List<ContextMenuCollectionEntity>> ContextMenu => m_ContextMenu;
 
@@ -168,18 +180,6 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 			if (HasItem)
 			{
 				return !ItemEntity.IsNotable;
-			}
-			return false;
-		}
-	}
-
-	public bool CanEquip
-	{
-		get
-		{
-			if (HasItem && UIUtilityItem.CanEquipItem(Item.CurrentValue))
-			{
-				return IsInStash;
 			}
 			return false;
 		}
@@ -229,14 +229,24 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 
 	public ItemSlotVM(ItemEntity item, int index, ISlotsGroupVM group = null, bool compareTooltipEnabled = true)
 	{
-		Item.Subscribe(ItemChangedHandler).AddTo(this);
 		Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Subscribe(delegate
 		{
 			Observable.NextFrame().Subscribe(OnUnitChanged);
 		}).AddTo(this);
-		EventBus.Subscribe(this).AddTo(this);
 		ReputationLockedHintText = UIStrings.Instance.Vendor.ReputationLockHint;
 		CompareTooltipEnabled = compareTooltipEnabled;
+		EventBus.Subscribe(this).AddTo(this);
+		m_Item.Pairwise().Subscribe(this, delegate((ItemEntity Previous, ItemEntity Current) pair, ItemSlotVM vm)
+		{
+			(ItemEntity Previous, ItemEntity Current) tuple = pair;
+			ItemEntity item2 = tuple.Previous;
+			ItemEntity item3 = tuple.Current;
+			m_PreviousItem = item2;
+			EventBus.Unsubscribe(this);
+			m_PreviousItem = null;
+			EventBus.Subscribe(this).AddTo(this);
+			vm.ItemChangedHandler(item3);
+		}).AddTo(this);
 		m_Item.Value = item;
 		Index = index;
 		Group = group;
@@ -276,22 +286,42 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 		LocalizedString localizedString = item?.Blueprint?.LocalizedName;
 		displayName.Value = ((localizedString != null) ? ((string)localizedString) : string.Empty);
 		m_Tooltip.Value = GetTooltips();
-		m_UpdateView.Execute();
+		m_MainTooltips.Value = GetMainTooltipTemplates();
+		m_CompareTooltips.Value = GetCompareTooltipTemplates();
+		m_UpdateView.Execute(Unit.Default);
 	}
 
 	public void UpdateTooltips(bool force = false)
 	{
 		m_Tooltip.Value = GetTooltips(force);
+		m_MainTooltips.Value = GetMainTooltipTemplates(force);
+		m_CompareTooltips.Value = GetCompareTooltipTemplates(force);
 	}
 
-	private void OnUnitChanged()
+	public List<TooltipBaseTemplate> GetMainTooltipTemplates(bool force = false)
 	{
-		bool canUse = GetCanUse();
-		m_ItemStatus.Value = GetItemStatus(canUse, IsTrash.CurrentValue);
-		m_CanUse.Value = GetCanUse();
-		m_IsUsable.Value = GetIsUsable();
-		UpdateTooltips(force: true);
-		m_UpdateView.Execute();
+		if (ItemEntity == null)
+		{
+			return DefaultTooltipList;
+		}
+		List<TooltipBaseTemplate> list = new List<TooltipBaseTemplate>
+		{
+			new TooltipTemplateItem(ItemEntity, null, force)
+		};
+		if (ItemEntity is ItemEntityWeapon { Second: not null } itemEntityWeapon)
+		{
+			list.Add(new TooltipTemplateItem(itemEntityWeapon.Second, null, force));
+		}
+		return list;
+	}
+
+	public List<TooltipBaseTemplate> GetCompareTooltipTemplates(bool force = false)
+	{
+		if (ItemEntity != null)
+		{
+			return GetCompareTooltipTemplatesInternal(force);
+		}
+		return DefaultTooltipList;
 	}
 
 	private List<TooltipBaseTemplate> GetTooltips(bool force = false)
@@ -300,42 +330,49 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 		{
 			return DefaultTooltipList;
 		}
+		List<TooltipBaseTemplate> compareTooltipTemplates = GetCompareTooltipTemplates(force);
+		compareTooltipTemplates.Add(new TooltipTemplateItem(ItemEntity, null, force));
+		return compareTooltipTemplates;
+	}
+
+	private List<TooltipBaseTemplate> GetCompareTooltipTemplatesInternal(bool force)
+	{
 		List<TooltipBaseTemplate> list = new List<TooltipBaseTemplate>();
-		if (CompareTooltipEnabled && GetType() == typeof(ItemSlotVM) && !IsUsable.CurrentValue)
+		if (!CompareTooltipEnabled || GetType() != typeof(ItemSlotVM) || IsUsable.CurrentValue)
 		{
-			List<ItemSlot> list2 = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Value?.Body.EquipmentSlots.Where(IsSlotAllowedToCompare).EmptyIfNull().ToList();
-			if (list2 != null && list2.Count > 2)
+			return list;
+		}
+		List<ItemSlot> list2 = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Value?.Body.EquipmentSlots.Where(IsSlotAllowedToCompare).EmptyIfNull().ToList();
+		if (list2 != null && list2.Count > 2)
+		{
+			list2 = list2.Where((ItemSlot i) => i.Active).ToList();
+		}
+		List<TooltipTemplateItem> list3 = new List<TooltipTemplateItem>();
+		if (list2 != null && list2.Count >= 4)
+		{
+			for (int j = 0; j < list2.Count - 1; j += 2)
 			{
-				list2 = list2.Where((ItemSlot i) => i.Active).ToList();
-			}
-			List<TooltipTemplateItem> list3 = new List<TooltipTemplateItem>();
-			if (list2 != null && list2.Count >= 4)
-			{
-				for (int j = 0; j < list2.Count - 1; j += 2)
+				List<ItemEntity> fewItems = new List<ItemEntity>
 				{
-					List<ItemEntity> fewItems = new List<ItemEntity>
-					{
-						GetItemToCompare(list2[j]),
-						GetItemToCompare(list2[j + 1])
-					};
-					list3.Add(new TooltipTemplateItem(null, ItemEntity, force, replenishing: false, fewItems));
-				}
-				if (list2.Count % 2 != 0)
-				{
-					ItemEntity itemToCompare = GetItemToCompare(list2.Last());
-					list3.Add(new TooltipTemplateItem(itemToCompare, ItemEntity, force));
-				}
+					GetItemToCompare(list2[j]),
+					GetItemToCompare(list2[j + 1])
+				};
+				list3.Add(new TooltipTemplateItem(null, ItemEntity, force, replenishing: false, fewItems));
 			}
-			else
+			if (list2.Count % 2 != 0)
 			{
-				list3 = list2?.Select((ItemSlot i) => new TooltipTemplateItem(GetItemToCompare(i), ItemEntity, force)).ToList();
-			}
-			if (list3 != null)
-			{
-				list.AddRange(list3);
+				ItemEntity itemToCompare = GetItemToCompare(list2.Last());
+				list3.Add(new TooltipTemplateItem(itemToCompare, ItemEntity, force));
 			}
 		}
-		list.Add(new TooltipTemplateItem(ItemEntity, null, force));
+		else
+		{
+			list3 = list2?.Select((ItemSlot i) => new TooltipTemplateItem(GetItemToCompare(i), ItemEntity, force)).ToList();
+		}
+		if (list3 != null)
+		{
+			list.AddRange(list3);
+		}
 		return list;
 	}
 
@@ -351,6 +388,16 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 			return itemEntityWeapon.Blueprint.IsRanged == itemEntityWeapon2.Blueprint.IsRanged;
 		}
 		return true;
+	}
+
+	private void OnUnitChanged()
+	{
+		bool canUse = GetCanUse();
+		m_ItemStatus.Value = GetItemStatus(canUse, IsTrash.CurrentValue);
+		m_CanUse.Value = GetCanUse();
+		m_IsUsable.Value = GetIsUsable();
+		UpdateTooltips(force: true);
+		m_UpdateView.Execute();
 	}
 
 	private static ItemEntity GetItemToCompare(ItemSlot slot)
@@ -467,7 +514,7 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 	{
 		if (CanBuy())
 		{
-			VendorHelper.TryMove(ItemEntity, ParentCollection, split);
+			VendorHelper.TryMove(ItemEntity, ParentCollection, ItemEntity.Count, split);
 		}
 	}
 
@@ -479,9 +526,17 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 		}
 	}
 
+	public void TryMove(int count)
+	{
+		if (HasItem)
+		{
+			VendorHelper.TryMove(ItemEntity, ParentCollection, count, split: false);
+		}
+	}
+
 	public void Blink()
 	{
-		m_NeedBlink?.Execute();
+		m_NeedBlink?.Execute(Unit.Default);
 	}
 
 	private bool CanBuy()
@@ -510,15 +565,18 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 	{
 		if (isMarkedAsTrash)
 		{
-			Game.Instance.VendorsManager.AddToTrash(Item.CurrentValue);
+			Game.Instance.GameCommandQueue.AddItemToTrash(Item.CurrentValue);
 		}
 		else
 		{
-			Game.Instance.VendorsManager.RemoveFromTrash(Item.CurrentValue);
+			Game.Instance.GameCommandQueue.RemoveItemFromTrash(Item.CurrentValue);
 		}
-		m_MarkedAsTrash.Value = isMarkedAsTrash;
+	}
+
+	private void Refresh()
+	{
 		UpdateItemTag();
-		m_UpdateView.Execute();
+		m_UpdateView.Execute(Unit.Default);
 		EventBus.RaiseEvent(delegate(IRefreshVisibleCollectionHandler h)
 		{
 			h.Refresh();
@@ -544,6 +602,11 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 	private void UpdateHasInteractions()
 	{
 		m_HasInteractions.Value = ItemEntity?.UIInteractions.Any() ?? false;
+	}
+
+	IEntity IEntitySubscriber.GetSubscribingEntity()
+	{
+		return m_PreviousItem ?? Item.CurrentValue;
 	}
 
 	void IInventoryChangedHandler.HandleSetItem(ItemEntity item, int oldItemIndex)
@@ -605,6 +668,16 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 	void IEquipItemHandler.OnWillUnequip()
 	{
 		HandleItemEquip();
+	}
+
+	void ITrashItemHandler.HandleItemAddedToTrash(ItemEntity item)
+	{
+		Refresh();
+	}
+
+	void ITrashItemHandler.HandleItemRemovedFromTrash(ItemEntity item)
+	{
+		Refresh();
 	}
 
 	private void HandleItemEquip()
@@ -704,5 +777,9 @@ public class ItemSlotVM : VirtualListElementVMBase, IInventoryChangedHandler, IS
 		{
 			i.Interact(ItemEntity, Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Value);
 		});
+		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
+		{
+			UpdateHasInteractions();
+		}).AddTo(this);
 	}
 }

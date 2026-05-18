@@ -3,6 +3,7 @@ using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -40,6 +41,8 @@ public class DamageModifierGlobal_Obsolete : DamageModifier, IGlobalRulebookHand
 			return buffs;
 		}
 	}
+
+	protected override StatModifierScope Scope => StatModifierScope.Owner;
 
 	public void OnEventAboutToTrigger(RuleCalculateDamage evt)
 	{

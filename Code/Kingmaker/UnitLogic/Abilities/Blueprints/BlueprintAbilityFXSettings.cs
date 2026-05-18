@@ -2,7 +2,9 @@ using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Sound;
 using Kingmaker.UnitLogic.Abilities.Visual.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
@@ -33,6 +35,22 @@ public class BlueprintAbilityFXSettings : BlueprintScriptableObject
 	private BlueprintAbilitySoundFXSettings.Reference m_SoundFXSettings;
 
 	[SerializeField]
+	private AkSwitchReference m_SoundSizeSwitch;
+
+	[SerializeField]
+	private AkSwitchReference m_MuffledTypeSwitch;
+
+	[SerializeField]
+	private AkSwitchReference m_ProjectileTypeSwitch;
+
+	[SerializeField]
+	private bool m_OverrideDamageType;
+
+	[SerializeField]
+	[ShowIf("m_OverrideDamageType")]
+	private DamageType m_DamageType;
+
+	[SerializeField]
 	[Tooltip("Поворачиваться к цели со смещением. Помогает точнее направлять атаки особо широких юнитов.")]
 	private bool m_ShouldOffsetTargetRelativePosition;
 
@@ -45,6 +63,16 @@ public class BlueprintAbilityFXSettings : BlueprintScriptableObject
 
 	[CanBeNull]
 	public BlueprintAbilitySoundFXSettings SoundFXSettings => m_SoundFXSettings;
+
+	public AkSwitchReference SoundSizeSwitch => m_SoundSizeSwitch;
+
+	public AkSwitchReference MuffledTypeSwitch => m_MuffledTypeSwitch;
+
+	public AkSwitchReference ProjectileTypeSwitch => m_ProjectileTypeSwitch;
+
+	public bool OverrideDamageType => m_OverrideDamageType;
+
+	public DamageType DamageType => m_DamageType;
 
 	public bool ShouldOffsetTargetRelativePosition => m_ShouldOffsetTargetRelativePosition;
 

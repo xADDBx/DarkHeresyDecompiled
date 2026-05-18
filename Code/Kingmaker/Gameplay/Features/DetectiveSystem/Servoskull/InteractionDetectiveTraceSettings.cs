@@ -7,6 +7,7 @@ using Kingmaker.Code.Framework.VO;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.Localization;
+using Kingmaker.Localization.Shared;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Visual.Sound;
 using Owlcat.Fmw.Blueprints;
@@ -22,11 +23,14 @@ public class InteractionDetectiveTraceSettings : IBarkSource
 
 	public bool IsVariative;
 
+	public bool ShowNotFollowedOnMap;
+
 	public int ProximityRadius = 5;
 
-	public SharedStringAsset Bark;
+	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
+	public LocalizedString Bark;
 
-	public SharedStringAsset DisplayName;
+	public LocalizedString DisplayName;
 
 	public bool ForceVoId;
 
@@ -46,7 +50,7 @@ public class InteractionDetectiveTraceSettings : IBarkSource
 	[AkEventReference]
 	public string SoundFX = "FX_DetectiveTrace_Activate";
 
-	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { Bark.String };
+	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { Bark };
 
 	public bool IsVoIdForced => ForceVoId;
 

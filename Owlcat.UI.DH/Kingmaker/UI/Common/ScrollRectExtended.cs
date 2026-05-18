@@ -104,7 +104,13 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 	private ScrollbarVisibility m_HorizontalScrollbarVisibility;
 
 	[SerializeField]
+	private GameObject[] m_HorizontalScrollbarVisibilityObjects;
+
+	[SerializeField]
 	private ScrollbarVisibility m_VerticalScrollbarVisibility;
+
+	[SerializeField]
+	private GameObject[] m_VerticalScrollbarVisibilityObjects;
 
 	[SerializeField]
 	private float m_HorizontalScrollbarSpacing;
@@ -366,6 +372,19 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 		}
 	}
 
+	public GameObject[] horizontalScrollbarVisibilityObjects
+	{
+		get
+		{
+			return m_HorizontalScrollbarVisibilityObjects;
+		}
+		set
+		{
+			m_HorizontalScrollbarVisibilityObjects = value;
+			SetDirtyCaching();
+		}
+	}
+
 	public ScrollbarVisibility verticalScrollbarVisibility
 	{
 		get
@@ -375,6 +394,19 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 		set
 		{
 			m_VerticalScrollbarVisibility = value;
+			SetDirtyCaching();
+		}
+	}
+
+	public GameObject[] verticalScrollbarVisibilityObjects
+	{
+		get
+		{
+			return m_VerticalScrollbarVisibilityObjects;
+		}
+		set
+		{
+			m_VerticalScrollbarVisibilityObjects = value;
 			SetDirtyCaching();
 		}
 	}
@@ -926,7 +958,7 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 		if (m_Dragging && m_Inertia)
 		{
 			Vector3 b = (m_Content.anchoredPosition - m_PrevPosition) / unscaledDeltaTime;
-			m_Velocity = Vector3.Lerp(m_Velocity, b, unscaledDeltaTime * 10f);
+			m_Velocity = Vector3.Lerp((Vector3)m_Velocity, b, unscaledDeltaTime * 10f);
 		}
 		if (m_ViewBounds != m_PrevViewBounds || m_ContentBounds != m_PrevContentBounds || m_Content.anchoredPosition != m_PrevPosition)
 		{
@@ -1104,20 +1136,20 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 			viewRect.sizeDelta = Vector2.zero;
 			viewRect.anchoredPosition = Vector2.zero;
 			LayoutRebuilder.ForceRebuildLayoutImmediate(content);
-			m_ViewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
+			m_ViewBounds = new Bounds((Vector3)viewRect.rect.center, (Vector3)viewRect.rect.size);
 			m_ContentBounds = GetBounds(m_Content);
 		}
 		if (m_VSliderExpand && vScrollingNeeded)
 		{
 			viewRect.sizeDelta = new Vector2(0f - (m_VSliderWidth + m_VerticalScrollbarSpacing), viewRect.sizeDelta.y);
 			LayoutRebuilder.ForceRebuildLayoutImmediate(content);
-			m_ViewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
+			m_ViewBounds = new Bounds((Vector3)viewRect.rect.center, (Vector3)viewRect.rect.size);
 			m_ContentBounds = GetBounds(m_Content);
 		}
 		if (m_HSliderExpand && hScrollingNeeded)
 		{
 			viewRect.sizeDelta = new Vector2(viewRect.sizeDelta.x, 0f - (m_HSliderHeight + m_HorizontalScrollbarSpacing));
-			m_ViewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
+			m_ViewBounds = new Bounds((Vector3)viewRect.rect.center, (Vector3)viewRect.rect.size);
 			m_ContentBounds = GetBounds(m_Content);
 		}
 		if (m_VSliderExpand && vScrollingNeeded && viewRect.sizeDelta.x == 0f && viewRect.sizeDelta.y < 0f)
@@ -1129,17 +1161,17 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 	public virtual void SetLayoutVertical()
 	{
 		UpdateScrollbarLayout();
-		m_ViewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
+		m_ViewBounds = new Bounds((Vector3)viewRect.rect.center, (Vector3)viewRect.rect.size);
 		m_ContentBounds = GetBounds(m_Content);
 	}
 
 	private void UpdateScrollbarVisibility()
 	{
-		UpdateOneScrollbarVisibility(vScrollingNeeded, m_Vertical, m_VerticalScrollbarVisibility, m_VerticalScrollbar);
-		UpdateOneScrollbarVisibility(hScrollingNeeded, m_Horizontal, m_HorizontalScrollbarVisibility, m_HorizontalScrollbar);
+		UpdateOneScrollbarVisibility(vScrollingNeeded, m_Vertical, m_VerticalScrollbarVisibility, m_VerticalScrollbar, m_VerticalScrollbarVisibilityObjects);
+		UpdateOneScrollbarVisibility(hScrollingNeeded, m_Horizontal, m_HorizontalScrollbarVisibility, m_HorizontalScrollbar, m_HorizontalScrollbarVisibilityObjects);
 	}
 
-	private static void UpdateOneScrollbarVisibility(bool xScrollingNeeded, bool xAxisEnabled, ScrollbarVisibility scrollbarVisibility, Scrollbar scrollbar)
+	private static void UpdateOneScrollbarVisibility(bool xScrollingNeeded, bool xAxisEnabled, ScrollbarVisibility scrollbarVisibility, Scrollbar scrollbar, GameObject[] visibilityObjects)
 	{
 		if (!scrollbar)
 		{
@@ -1150,11 +1182,21 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 			if (scrollbar.gameObject.activeSelf != xAxisEnabled)
 			{
 				scrollbar.gameObject.SetActive(xAxisEnabled);
+				GameObject[] array = visibilityObjects;
+				for (int i = 0; i < array.Length; i++)
+				{
+					array[i]?.SetActive(xAxisEnabled);
+				}
 			}
 		}
 		else if (scrollbar.gameObject.activeSelf != xScrollingNeeded)
 		{
 			scrollbar.gameObject.SetActive(xScrollingNeeded);
+			GameObject[] array = visibilityObjects;
+			for (int i = 0; i < array.Length; i++)
+			{
+				array[i]?.SetActive(xScrollingNeeded);
+			}
 		}
 	}
 
@@ -1194,7 +1236,7 @@ public class ScrollRectExtended : UIBehaviour, IInitializePotentialDragHandler, 
 
 	protected void UpdateBounds()
 	{
-		m_ViewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
+		m_ViewBounds = new Bounds((Vector3)viewRect.rect.center, (Vector3)viewRect.rect.size);
 		m_ContentBounds = GetBounds(m_Content);
 		if (m_Content == null)
 		{

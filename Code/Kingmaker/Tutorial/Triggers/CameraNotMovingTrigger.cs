@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Code.Framework.PubSubSystem;
 using Kingmaker.Controllers;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem.Core.Interfaces;

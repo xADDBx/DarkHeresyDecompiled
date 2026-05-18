@@ -1,9 +1,10 @@
 using System.Runtime.InteropServices;
 using Owlcat.Runtime.Visual.Lighting;
+using Owlcat.Runtime.Visual.Utilities;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
-using Owlcat.Runtime.Visual.Waaagh.Passes;
 using Owlcat.Runtime.Visual.Waaagh.RendererFeatures.VolumetricLighting.Jobs;
 using Owlcat.Runtime.Visual.Waaagh.Utilities;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -11,56 +12,85 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.VolumetricLighting.Passes;
 
-public class LocalVolumetricFogCullingPass : ScriptableRenderPass<LocalVolumetricFogCullingPassData>
+internal static class LocalVolumetricFogCullingPass
 {
-	private VolumetricLightingFeature m_Feature;
-
-	private ComputeShaderKernelDescriptor? m_BuilFogTilesKernel;
-
-	public override string Name => "LocalVolumetricFogCullingPass";
-
-	public LocalVolumetricFogCullingPass(RenderPassEvent evt, VolumetricLightingFeature feature)
-		: base(evt)
+	private sealed class PassData
 	{
-		m_Feature = feature;
+		public Texture3DAtlas Atlas;
+
+		public NativeArray<LocalVolumetricFogBounds> VisibleVolumeBoundsList;
+
+		public NativeArray<LocalVolumetricFogEngineData> VisibleVolumeDataList;
+
+		public NativeArray<ZBin> ZBins;
+
+		public int VisibleVolumesCount;
+
+		public BufferHandle VisibleVolumeBoundsBuffer;
+
+		public BufferHandle VisibleVolumeDataBuffer;
+
+		public BufferHandle FogTilesBuffer;
+
+		public BufferHandle ZBinsBuffer;
+
+		public int FogTilesBufferSize;
+
+		public ComputeShader CullingShader;
+
+		public ComputeShaderKernelDescriptor BuildFogTilesKernelDesc;
+
+		public Vector4 ClusteringParams;
+
+		public Matrix4x4 ScreenProjMatrix;
+
+		public int3 DispatchSize;
 	}
 
-	protected override void Setup(RenderGraphBuilder builder, LocalVolumetricFogCullingPassData data, ContextContainer frameData)
+	public static void Record(in RecordContext context, VolumetricLightingRendererFeature feature, ComputeShader localVolumetricFogCullingShader, ComputeShaderKernelDescriptor buildFogTilesKernel, VolumetricLightingData volumetricLightingData)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghCameraData cameraData = frameData.Get<WaaaghCameraData>();
-		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
-		ComputeShaderKernelDescriptor valueOrDefault = m_BuilFogTilesKernel.GetValueOrDefault();
-		if (!m_BuilFogTilesKernel.HasValue)
-		{
-			valueOrDefault = m_Feature.Resources.LocalVolumetricFogCullingCS.GetKernelDescriptor("BuildFogTiles");
-			m_BuilFogTilesKernel = valueOrDefault;
-		}
-		data.ZBins = m_Feature.ZBins;
-		data.VisibleVolumeDataList = m_Feature.VisibleVolumeDataList;
-		data.VisibleVolumeBoundsList = m_Feature.VisibleVolumeBoundsList;
-		data.VisibleVolumesCount = m_Feature.VisibleVolumesCount;
-		m_Feature.VisibleVolumesBoundsBufferHandle = waaaghRenderingData.RenderGraph.ImportBuffer(m_Feature.VisibleVolumeBoundsBuffer);
-		m_Feature.VisibleVolumesDataBufferHandle = waaaghRenderingData.RenderGraph.ImportBuffer(m_Feature.VisibleVolumeDataBuffer);
-		m_Feature.FogTilesBufferHandle = waaaghRenderingData.RenderGraph.ImportBuffer(m_Feature.FogTilesBuffer);
-		m_Feature.ZBinsBufferHandle = waaaghRenderingData.RenderGraph.ImportBuffer(m_Feature.ZBinsBuffer);
-		data.VisibleVolumeDataBuffer = builder.ReadBuffer(in m_Feature.VisibleVolumesDataBufferHandle);
-		data.VisibleVolumeBoundsBuffer = builder.ReadBuffer(in m_Feature.VisibleVolumesBoundsBufferHandle);
-		data.ZBinsBuffer = builder.ReadBuffer(in m_Feature.ZBinsBufferHandle);
-		data.FogTilesBuffer = builder.WriteBuffer(in m_Feature.FogTilesBufferHandle);
-		data.FogTilesBufferSize = m_Feature.FogTilesBuffer.count;
-		data.Atlas = LocalVolumetricFogManager.Instance.VolumeAtlas;
-		data.CullingShader = m_Feature.Resources.LocalVolumetricFogCullingCS;
-		data.BuildFogTilesKernelDesc = m_BuilFogTilesKernel.Value;
-		Vector4 fogClusteringParams = m_Feature.FogClusteringParams;
+		PassData passData;
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("LocalVolumetricFogCulling", out passData, WaaaghProfileId.LocalVolumetricFogCulling.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\LocalVolumetricFogCullingPass.cs", 42);
+		Vector4 fogClusteringParams = feature.FogClusteringParams;
 		int x = (int)(fogClusteringParams.x * fogClusteringParams.y);
-		data.TileMinMaxZTexture = builder.ReadTexture(in waaaghResourceData.TilesMinMaxZTexture);
-		data.DispatchSize = new int3(RenderingUtils.DivRoundUp(x, (int)m_BuilFogTilesKernel.Value.ThreadGroupSize.x), 1, math.max(1, RenderingUtils.DivRoundUp(data.VisibleVolumesCount, 32)));
-		data.ClusteringParams = fogClusteringParams;
-		data.ScreenProjMatrix = GetScreenProjMatrix(cameraData);
+		passData.ZBins = feature.ZBins;
+		passData.VisibleVolumeDataList = feature.VisibleVolumeDataList;
+		passData.VisibleVolumeBoundsList = feature.VisibleVolumeBoundsList;
+		passData.VisibleVolumesCount = feature.VisibleVolumesCount;
+		passData.VisibleVolumeDataBuffer = volumetricLightingData.VisibleVolumesDataBuffer;
+		passData.VisibleVolumeBoundsBuffer = volumetricLightingData.VisibleVolumesBoundsBuffer;
+		passData.ZBinsBuffer = volumetricLightingData.ZBinsBuffer;
+		passData.FogTilesBuffer = volumetricLightingData.FogTilesBuffer;
+		passData.FogTilesBufferSize = volumetricLightingData.FogTilesBufferCount;
+		passData.Atlas = LocalVolumetricFogManager.Instance.VolumeAtlas;
+		passData.CullingShader = feature.Resources.LocalVolumetricFogCullingCS;
+		passData.BuildFogTilesKernelDesc = buildFogTilesKernel;
+		passData.DispatchSize = new int3(RenderingUtils.DivRoundUp(x, (int)buildFogTilesKernel.ThreadGroupSize.x), 1, math.max(1, RenderingUtils.DivRoundUp(passData.VisibleVolumesCount, 32)));
+		passData.ClusteringParams = fogClusteringParams;
+		passData.ScreenProjMatrix = GetScreenProjMatrix(in context.CameraData);
+		unsafeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._TilesMinMaxZTexture);
+		unsafeRenderGraphBuilder.UseBuffer(in volumetricLightingData.VisibleVolumesDataBuffer);
+		unsafeRenderGraphBuilder.UseBuffer(in volumetricLightingData.VisibleVolumesBoundsBuffer);
+		unsafeRenderGraphBuilder.UseBuffer(in volumetricLightingData.ZBinsBuffer);
+		unsafeRenderGraphBuilder.UseBuffer(in volumetricLightingData.FogTilesBuffer, AccessFlags.Write);
+		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
+		unsafeRenderGraphBuilder.SetRenderFunc(delegate(PassData data, UnsafeGraphContext context)
+		{
+			data.Atlas.Update(CommandBufferHelpers.GetNativeCommandBuffer(context.cmd));
+			context.cmd.SetBufferData(data.VisibleVolumeDataBuffer, data.VisibleVolumeDataList, 0, 0, data.VisibleVolumesCount);
+			context.cmd.SetBufferData(data.VisibleVolumeBoundsBuffer, data.VisibleVolumeBoundsList, 0, 0, data.VisibleVolumesCount);
+			context.cmd.SetBufferData(data.ZBinsBuffer, data.ZBins.Reinterpret<float4>(Marshal.SizeOf<ZBin>()), 0, 0, 1024);
+			context.cmd.SetComputeBufferParam(data.CullingShader, data.BuildFogTilesKernelDesc.Index, ShaderPropertyId._FogTilesBufferUAV, data.FogTilesBuffer);
+			context.cmd.SetComputeIntParam(data.CullingShader, ShaderPropertyId._FogTilesBufferUAVSize, data.FogTilesBufferSize);
+			context.cmd.SetComputeBufferParam(data.CullingShader, data.BuildFogTilesKernelDesc.Index, ShaderPropertyId._VisibleVolumeBoundsBuffer, data.VisibleVolumeBoundsBuffer);
+			context.cmd.SetComputeIntParam(data.CullingShader, ShaderPropertyId._LocalFogVolumesCount, data.VisibleVolumesCount);
+			context.cmd.SetComputeVectorParam(data.CullingShader, ShaderPropertyId._LocalVolumetricFogClusteringParams, data.ClusteringParams);
+			context.cmd.SetComputeMatrixParam(data.CullingShader, ShaderPropertyId._ScreenProjMatrix, data.ScreenProjMatrix);
+			context.cmd.DispatchCompute(data.CullingShader, data.BuildFogTilesKernelDesc.Index, data.DispatchSize.x, data.DispatchSize.y, data.DispatchSize.z);
+		});
 	}
 
-	private Matrix4x4 GetScreenProjMatrix(WaaaghCameraData cameraData)
+	private static Matrix4x4 GetScreenProjMatrix(in WaaaghCameraData cameraData)
 	{
 		Matrix4x4 matrix4x = default(Matrix4x4);
 		float num = cameraData.cameraTargetDescriptor.width;
@@ -70,21 +100,5 @@ public class LocalVolumetricFogCullingPass : ScriptableRenderPass<LocalVolumetri
 		matrix4x.SetRow(2, new Vector4(0f, 0f, 0.5f, 0.5f));
 		matrix4x.SetRow(3, new Vector4(0f, 0f, 0f, 1f));
 		return matrix4x * cameraData.GetProjectionMatrix();
-	}
-
-	protected override void Render(LocalVolumetricFogCullingPassData data, RenderGraphContext context)
-	{
-		data.Atlas.Update(context.cmd);
-		context.cmd.SetBufferData(data.VisibleVolumeDataBuffer, data.VisibleVolumeDataList, 0, 0, data.VisibleVolumesCount);
-		context.cmd.SetBufferData(data.VisibleVolumeBoundsBuffer, data.VisibleVolumeBoundsList, 0, 0, data.VisibleVolumesCount);
-		context.cmd.SetBufferData(data.ZBinsBuffer, data.ZBins.Reinterpret<float4>(Marshal.SizeOf<ZBin>()), 0, 0, 1024);
-		context.cmd.SetComputeTextureParam(data.CullingShader, data.BuildFogTilesKernelDesc.Index, ShaderPropertyId._TilesMinMaxZTexture, data.TileMinMaxZTexture);
-		context.cmd.SetComputeBufferParam(data.CullingShader, data.BuildFogTilesKernelDesc.Index, ShaderPropertyId._FogTilesBufferUAV, data.FogTilesBuffer);
-		context.cmd.SetComputeIntParam(data.CullingShader, ShaderPropertyId._FogTilesBufferUAVSize, data.FogTilesBufferSize);
-		context.cmd.SetComputeBufferParam(data.CullingShader, data.BuildFogTilesKernelDesc.Index, ShaderPropertyId._VisibleVolumeBoundsBuffer, data.VisibleVolumeBoundsBuffer);
-		context.cmd.SetComputeIntParam(data.CullingShader, ShaderPropertyId._LocalFogVolumesCount, data.VisibleVolumesCount);
-		context.cmd.SetComputeVectorParam(data.CullingShader, ShaderPropertyId._LocalVolumetricFogClusteringParams, data.ClusteringParams);
-		context.cmd.SetComputeMatrixParam(data.CullingShader, ShaderPropertyId._ScreenProjMatrix, data.ScreenProjMatrix);
-		context.cmd.DispatchCompute(data.CullingShader, data.BuildFogTilesKernelDesc.Index, data.DispatchSize.x, data.DispatchSize.y, data.DispatchSize.z);
 	}
 }

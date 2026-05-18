@@ -5,6 +5,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Framework.Mechanics.Utility.Damage;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Parts;
 
 namespace Kingmaker.RuleSystem.Rules.Damage;
@@ -17,6 +18,8 @@ public sealed class RulePerformCriticalEffects : RulebookTargetEvent
 
 	[CanBeNull]
 	public readonly RolledDamage Damage;
+
+	public readonly FlagModifiersManager Immunity = new FlagModifiersManager();
 
 	public bool DisableResistanceCheck { get; set; }
 
@@ -47,6 +50,11 @@ public sealed class RulePerformCriticalEffects : RulebookTargetEvent
 		int criticalStage = healthOptional.GetCriticalStage(BodyPart);
 		int num = Math.Min(BodyPart.CriticalEffectStagesCount - criticalStage, Amount);
 		int num2 = 0;
+		if ((bool)Immunity)
+		{
+			ResultAmount = 0;
+			return;
+		}
 		if (DisableResistanceCheck)
 		{
 			num2 = num;

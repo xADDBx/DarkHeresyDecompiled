@@ -45,4 +45,7 @@ public class BlueprintCameraFollowSettings : BlueprintScriptableObject
 
 	[Tooltip("Фокус камеры при невозможности совершить/завершить свой ход (пример оглушении)")]
 	public CameraFollowTaskParams ToCasterOnMissedTurn;
+
+	[Tooltip("Фокус камеры при атаке ведущей к победе по морали")]
+	public CameraFollowTaskParams ToTargetOnMoraleVictory;
 }

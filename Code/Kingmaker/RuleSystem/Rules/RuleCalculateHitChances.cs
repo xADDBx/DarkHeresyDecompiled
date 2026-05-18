@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
@@ -97,6 +98,17 @@ public class RuleCalculateHitChances : RulebookTargetEvent<MechanicEntity, Mecha
 
 	public int RawResult { get; private set; }
 
+	public static bool TryGetHitChanceRule([NotNull] MechanicEntity initiator, [NotNull] MechanicEntity target, [NotNull] AbilityData ability, int burstIndex, Vector3 effectiveCasterPosition, Vector3 abilityTargetPosition, out RuleCalculateHitChances rule)
+	{
+		if (ability.Blueprint.GetComponent<AbilityAttackDelivery>() == null)
+		{
+			rule = null;
+			return false;
+		}
+		rule = new RuleCalculateHitChances(initiator, target, ability, burstIndex, effectiveCasterPosition, abilityTargetPosition);
+		return true;
+	}
+
 	public RuleCalculateHitChances([NotNull] MechanicEntity initiator, [NotNull] MechanicEntity target, [NotNull] AbilityData ability, int burstIndex, Vector3 effectiveCasterPosition, Vector3 abilityTargetPosition)
 		: base(initiator, target)
 	{
@@ -120,25 +132,52 @@ public class RuleCalculateHitChances : RulebookTargetEvent<MechanicEntity, Mecha
 			Modifiers.Add(ModifierType.ValAdd, GetHitChancePenalty(Ability.PreciseBodyPart), this, ModifierDescriptor.PreciseAttack);
 		}
 		IAbilityAoEPatternProvider patternSettings = Ability.GetPatternSettings();
-		LosDescription losDescription = ((patternSettings != null && patternSettings.CalculateAttackFromPatternCentre) ? LosCalculations.GetWarhammerLos(AbilityTargetPosition, default(IntRect), base.Target) : LosCalculations.GetWarhammerLos(EffectiveCasterPosition, base.Initiator.SizeRect, base.Target));
-		if ((losDescription.CoverType == LosCalculations.CoverType.Obstacle || IgnoreRealCoverByFakeCover) && FakeCover.HasValue)
+		int num;
+		LosDescription obj;
+		if (patternSettings == null)
+		{
+			num = 0;
+		}
+		else
+		{
+			num = (patternSettings.IsIgnoreLos ? 1 : 0);
+			if (num != 0)
+			{
+				obj = default(LosDescription);
+				goto IL_0098;
+			}
+		}
+		obj = ((patternSettings != null && patternSettings.CalculateAttackFromPatternCentre) ? LosCalculations.GetWarhammerLos(AbilityTargetPosition, default(IntRect), base.Target) : LosCalculations.GetWarhammerLos(EffectiveCasterPosition, base.Initiator.SizeRect, base.Target));
+		goto IL_0098;
+		IL_0098:
+		LosDescription losDescription = obj;
+		if (num == 0 && FakeCover.HasValue && (losDescription.CoverType == LosCalculations.CoverType.Obstacle || IgnoreRealCoverByFakeCover))
 		{
 			losDescription = new LosDescription(FakeCover.Value, losDescription.Obstacle);
 		}
 		ResultLos = losDescription;
 		ResultCoverEntity = losDescription.ObstacleEntity;
 		RuleCalculateStatsWeapon weaponStats = Ability.GetWeaponStats();
-		if (Ability.IsSingleTarget)
-		{
-			Modifiers.CopyFrom(weaponStats.SingleAdditionalHitChanceModifiers);
-		}
+		Modifiers.CopyFrom(weaponStats.AdditionalHitChanceModifiers);
 		if (Ability.IsBurst)
 		{
-			Modifiers.CopyFrom(weaponStats.BurstAdditionalHitChanceModifiers);
+			int num2 = 100 - weaponStats.RecoilModifiers.Value;
+			if (num2 < 100)
+			{
+				Modifiers.Add(ModifierType.PctMul, num2, this, ModifierDescriptor.Recoil);
+			}
 		}
-		if (Ability.IsAoe)
+		ItemEntityWeapon itemEntityWeapon = weaponStats?.Weapon;
+		if (itemEntityWeapon != null)
 		{
-			Modifiers.CopyFrom(weaponStats.AoeAdditionalHitChanceModifiers);
+			StatFactionModifierConfig[] fractionModifiers = itemEntityWeapon.GetFractionModifiers();
+			foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
+			{
+				if (statFactionModifierConfig.Stat == StatType.ItemWeaponDefenceIgnore)
+				{
+					Modifiers.Add(statFactionModifierConfig.ModifierType, statFactionModifierConfig.Value, this, ModifierDescriptor.Faction);
+				}
+			}
 		}
 		if (base.Target is DestructibleEntity { HitChanceModifier: var hitChanceModifier } && hitChanceModifier > 0)
 		{
@@ -175,7 +214,7 @@ public class RuleCalculateHitChances : RulebookTargetEvent<MechanicEntity, Mecha
 	private void OnTriggerMelee()
 	{
 		ResultAttackStatType = OverrideAttackStatType ?? StatType.WeaponSkill;
-		ResultAttackStatValue = base.Initiator.GetAttributeOptional(ResultAttackStatType)?.ModifiedValue ?? 0;
+		ResultAttackStatValue = base.Initiator.Actor.GetStat(ResultAttackStatType, null, default(StatContext), "OnTriggerMelee");
 		int hitChanceOverkillBorder = ConfigRoot.Instance.CombatRoot.HitChanceOverkillBorder;
 		RawResult = Modifiers.Apply(ResultAttackStatValue);
 		ResultHitChance = Mathf.Clamp(RawResult, 0, hitChanceOverkillBorder);
@@ -186,15 +225,14 @@ public class RuleCalculateHitChances : RulebookTargetEvent<MechanicEntity, Mecha
 	private void OnTriggerRanged()
 	{
 		ResultAttackStatType = OverrideAttackStatType ?? StatType.BallisticSkill;
-		ModifiableValueAttributeStat attributeOptional = base.Initiator.GetAttributeOptional(ResultAttackStatType);
-		ResultAttackStatValue = attributeOptional?.ModifiedValue ?? 0;
+		ResultAttackStatValue = base.Initiator.Actor.GetStat(ResultAttackStatType, null, default(StatContext), "OnTriggerRanged");
 		int rawResult = Modifiers.Apply(ResultAttackStatValue);
 		int hitChanceOverkillBorder = ConfigRoot.Instance.CombatRoot.HitChanceOverkillBorder;
 		RawResult = rawResult;
 		ResultHitChance = Mathf.Clamp(RawResult, 0, hitChanceOverkillBorder);
-		int value = attributeOptional?.CalculateFilteredModifiedValue((Modifier m) => FactIsNotCritEffectFilter(m.Fact)) ?? 0;
-		int value2 = Modifiers.Apply(value, (Modifier m) => FactIsNotCritEffectFilter(m.Fact));
-		ResultHitChanceWithoutCritEffects = Mathf.Clamp(value2, 0, hitChanceOverkillBorder);
+		int statFiltered = base.Initiator.Actor.GetStatFiltered(ResultAttackStatType, (Modifier m) => FactIsNotCritEffectFilter(m.Fact));
+		int value = Modifiers.Apply(statFiltered, (Modifier m) => FactIsNotCritEffectFilter(m.Fact));
+		ResultHitChanceWithoutCritEffects = Mathf.Clamp(value, 0, hitChanceOverkillBorder);
 	}
 
 	private static bool FactIsNotCritEffectFilter(EntityFact fact)
@@ -236,7 +274,7 @@ public class RuleCalculateHitChances : RulebookTargetEvent<MechanicEntity, Mecha
 		}
 		if (IsAutoHit)
 		{
-			RawResult = 100;
+			RawResult = Math.Max(100, RawResult);
 			ResultHitChance = 100;
 			ResultHitChanceWithoutCritEffects = ResultHitChance;
 		}

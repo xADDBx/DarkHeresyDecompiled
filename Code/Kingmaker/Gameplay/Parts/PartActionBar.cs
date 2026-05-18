@@ -25,13 +25,13 @@ using Kingmaker.UnitLogic.Parts;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
-using UnityEngine;
 using UnityEngine.Pool;
 
 namespace Kingmaker.Gameplay.Parts;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntitySubscriber>, IEntityLostFactHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IEntityLostFactHandler, EntitySubscriber>, IAbilityReplacementsUpdatedHandler<EntitySubscriber>, IAbilityReplacementsUpdatedHandler, IEventTag<IAbilityReplacementsUpdatedHandler, EntitySubscriber>, IHiddenFactsUpdatedHandler<EntitySubscriber>, IHiddenFactsUpdatedHandler, IEventTag<IHiddenFactsUpdatedHandler, EntitySubscriber>, IHashable, IOwlPackable<PartActionBar>
+[HashNoGenerate]
+public sealed class PartActionBar : BaseUnitPart, IEntityGainFactHandler<EntitySubscriber>, IEntityGainFactHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IEntityGainFactHandler, EntitySubscriber>, IEntityLostFactHandler<EntitySubscriber>, IEntityLostFactHandler, IEventTag<IEntityLostFactHandler, EntitySubscriber>, IAbilityReplacementsUpdatedHandler<EntitySubscriber>, IAbilityReplacementsUpdatedHandler, IEventTag<IAbilityReplacementsUpdatedHandler, EntitySubscriber>, IHiddenFactsUpdatedHandler<EntitySubscriber>, IHiddenFactsUpdatedHandler, IEventTag<IHiddenFactsUpdatedHandler, EntitySubscriber>, IOwlPackable<PartActionBar>
 {
 	public interface IOwner : IEntityPartOwner<PartUnitProgression>, IEntityPartOwner
 	{
@@ -82,6 +82,10 @@ public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntityS
 
 	private void TryInitilizeAbilitySlots()
 	{
+		if (Slots.Any((MechanicActionBarSlot s) => !(s is MechanicActionBarSlotEmpty)))
+		{
+			return;
+		}
 		List<AbilityWrapper> value;
 		using (CollectionPool<List<AbilityWrapper>, AbilityWrapper>.Get(out value))
 		{
@@ -182,7 +186,7 @@ public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntityS
 		{
 			FillSlots(index);
 			Slots[index] = slot;
-			EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
+			base.EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
 			{
 				h.HandleActionBarSlotsUpdated();
 			});
@@ -207,7 +211,7 @@ public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntityS
 			{
 				Unit = base.Owner
 			};
-			EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
+			base.EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
 			{
 				h.HandleActionBarSlotsUpdated();
 			});
@@ -253,7 +257,7 @@ public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntityS
 				{
 					Unit = base.Owner
 				};
-				EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
+				base.EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
 				{
 					h.HandleActionBarSlotsUpdated();
 				});
@@ -267,6 +271,29 @@ public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntityS
 		int num = f1.GetComponent<ActionPanelLogic>()?.Priority ?? 0;
 		int value = f2.GetComponent<ActionPanelLogic>()?.Priority ?? 0;
 		return -num.CompareTo(value);
+	}
+
+	void IEntityGainFactHandler.HandleEntityGainFact(EntityFact fact)
+	{
+		if (fact is Ability ability)
+		{
+			if (!ability.Hidden)
+			{
+				EntityFactSource firstSource = ability.FirstSource;
+				if (((object)firstSource == null || !firstSource.IsMissing) && !IsWeaponOrItemAbility(ability) && !ability.Data.Blueprint.IsHeroic && !ability.Data.Blueprint.IsBroken && !ContainsSlot(ability))
+				{
+					SetToFirstFreeSlot(new AbilityWrapper(ability));
+				}
+			}
+		}
+		else if (fact is ToggleAbility { Hidden: false } toggleAbility)
+		{
+			EntityFactSource firstSource2 = toggleAbility.FirstSource;
+			if (((object)firstSource2 == null || !firstSource2.IsMissing) && !ContainsSlot(toggleAbility))
+			{
+				SetToFirstFreeSlot(new AbilityWrapper(toggleAbility));
+			}
+		}
 	}
 
 	void IEntityLostFactHandler.HandleEntityLostFact(EntityFact fact)
@@ -310,13 +337,13 @@ public sealed class PartActionBar : BaseUnitPart, IEntityLostFactHandler<EntityS
 		}
 	}
 
-	public override Hash128 GetHash128()
+	private static bool IsWeaponOrItemAbility(Ability ability)
 	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		result.Append(ref m_SlotRowIndexConsole);
-		return result;
+		if (!ability.Blueprint.IsWeaponAbility && ability.Blueprint.AbilityParamsSource != WarhammerAbilityParamsSource.Item)
+		{
+			return ability.Data.SourceItemIsWeapon;
+		}
+		return true;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

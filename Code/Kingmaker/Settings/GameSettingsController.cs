@@ -15,10 +15,6 @@ public class GameSettingsController
 				h.HandleBloodSettingChanged();
 			});
 		};
-		SettingsRoot.Game.Main.AcceleratedMove.OnValueChanged += delegate(bool value)
-		{
-			Metrics.Settings.Value(value.ToString()).SettingType(SettingsMetricsEvent.SettingTypes.AnimationSpeed).Send();
-		};
 	}
 
 	private void SendStatisticOnChanged(bool sendStatistics)

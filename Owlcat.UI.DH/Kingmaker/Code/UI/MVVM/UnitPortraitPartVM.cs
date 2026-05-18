@@ -1,3 +1,4 @@
+using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
@@ -21,6 +22,8 @@ public class UnitPortraitPartVM : ViewModel, IEntitySubscriber, IUnitPortraitCha
 
 	private EntityRef<BaseUnitEntity> m_Unit;
 
+	private IDisposable m_Subscription;
+
 	public ReadOnlyReactiveProperty<Sprite> Portrait => m_Portrait;
 
 	public ReadOnlyReactiveProperty<bool> IsDead => m_IsDead;
@@ -34,7 +37,6 @@ public class UnitPortraitPartVM : ViewModel, IEntitySubscriber, IUnitPortraitCha
 
 	public UnitPortraitPartVM()
 	{
-		EventBus.Subscribe(this).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
 			UpdateFields();
@@ -54,13 +56,25 @@ public class UnitPortraitPartVM : ViewModel, IEntitySubscriber, IUnitPortraitCha
 
 	public void SetUnitData(BaseUnitEntity unit)
 	{
+		m_Subscription?.Dispose();
+		m_Subscription = null;
 		m_Unit = unit;
 		m_Portrait.Value = m_Unit.Entity?.Portrait.SmallPortrait;
 		UpdateFields();
+		if (m_Unit.Entity != null)
+		{
+			m_Subscription = EventBus.Subscribe(this);
+		}
 	}
 
 	public void HandlePortraitChanged()
 	{
 		m_Portrait.Value = m_Unit.Entity?.Portrait.SmallPortrait;
+	}
+
+	protected override void OnDispose()
+	{
+		m_Subscription?.Dispose();
+		m_Subscription = null;
 	}
 }

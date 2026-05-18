@@ -10,6 +10,8 @@ public class SoundComponent : ComponentBase
 	[AkEventReference]
 	public string SoundEventName;
 
+	public string EffectRtpcName;
+
 	public override ControllerBase CreateController()
 	{
 		return new SoundController(this);

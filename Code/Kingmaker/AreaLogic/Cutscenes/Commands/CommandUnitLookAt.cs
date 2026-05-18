@@ -3,7 +3,6 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Visual.Animation;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -18,19 +17,7 @@ public class CommandUnitLookAt : CommandBase
 	{
 		public float InitialOrientation;
 
-		public float AngularSpeed;
-
-		public Vector3? TargetPosition;
-
-		public bool TurnFullBody;
-
 		public bool Finished;
-
-		public double LastTime;
-
-		public double? TimeToReset;
-
-		public bool IsAlreadyReset;
 
 		public bool Signalled;
 
@@ -48,15 +35,8 @@ public class CommandUnitLookAt : CommandBase
 	private PositionEvaluator m_Position;
 
 	[SerializeField]
-	private Vector3 m_Offset = new Vector3(0f, 1.7f, 0f);
-
-	[SerializeField]
 	[Tooltip("Angular speed in degrees per second\nIf set to 0, used Unit's default angular speed")]
 	private float m_AngularSpeed;
-
-	[SerializeField]
-	[Tooltip("If true, Unit will turn to target position\nIf false, Unit will try to turn only head and upper body to look at target position. If it's not possible, Unit will turn full body")]
-	private bool m_TurnFullBody = true;
 
 	[SerializeField]
 	private bool m_Continuous;
@@ -72,88 +52,66 @@ public class CommandUnitLookAt : CommandBase
 	private bool m_FreezeAfterTurn = true;
 
 	[SerializeField]
-	[ShowIf("HasDuration")]
-	[Tooltip("Unit will stop to look at target position after this Duration in seconds")]
-	private float m_Duration;
-
-	[SerializeField]
 	private CommandSignalData m_OnTurned = new CommandSignalData
 	{
 		Name = "OnTurned"
 	};
 
-	private bool HasDuration
-	{
-		get
-		{
-			if (!IsContinuous)
-			{
-				return !m_TurnFullBody;
-			}
-			return false;
-		}
-	}
-
-	private float Duration
-	{
-		get
-		{
-			if (!HasDuration)
-			{
-				return 0f;
-			}
-			return Mathf.Max(m_Duration, 0.1f);
-		}
-	}
-
 	public override bool IsContinuous => m_Continuous;
 
-	private void TurnImmediately(CutscenePlayerData player)
+	public override bool ShouldHaveControlledUnit => true;
+
+	private CommandResult TurnImmediately(CutscenePlayerData player)
 	{
-		AbstractUnitEntity value = m_Unit.GetValue();
+		if (!m_Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find unit");
+		}
+		value.MovementAgent.OverridenAngularSpeed = null;
 		if (!(value is LightweightUnitEntity) && (value == null || !value.CanRotate))
 		{
 			player.GetCommandData<Data>(this).Finished = !m_Continuous;
+			return CommandResult.Success;
 		}
-		else if (m_TurnFullBody)
-		{
-			value.SetOrientation(value.GetOrientationTo(m_Position.GetValue()));
-		}
-		else if (!HasDuration)
-		{
-			value.LookAt(m_Position.GetValue(), 0.1f);
-		}
+		value.SetOrientation(value.GetOrientationTo(m_Position.GetValue()));
+		player.GetCommandData<Data>(this).Finished = true;
+		return CommandResult.Success;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		AbstractUnitEntity value = m_Unit.GetValue();
-		Vector3 point = m_Position.GetValue() + m_Offset;
-		float orientationTo = value.GetOrientationTo(point);
+		if (!m_Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find unit");
+		}
 		commandData.InitialOrientation = value.DesiredOrientation;
-		commandData.AngularSpeed = ((m_AngularSpeed > 0f) ? m_AngularSpeed : value.MovementAgent.AngularSpeedWhenStand);
-		commandData.TurnFullBody = m_TurnFullBody || UnitLookAtIKExtensions.GetDeltaAngle(commandData.InitialOrientation, orientationTo) > 80f;
-		if (skipping)
+		value.MovementAgent.OverridenAngularSpeed = ((m_AngularSpeed > 0f) ? m_AngularSpeed : value.MovementAgent.CurrentAngularSpeed);
+		if (!skipping)
 		{
-			TurnImmediately(player);
+			return CommandResult.Success;
 		}
+		return TurnImmediately(player);
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		Data commandData = player.GetCommandData<Data>(this);
-		AbstractUnitEntity value = m_Unit.GetValue();
-		if (m_RestoreOrientation || !m_TurnFullBody)
+		if (!m_Unit.TryGetValue(out var value))
 		{
-			value.StopLookAt();
+			return CommandResult.Fail("Failed to find unit");
+		}
+		value.MovementAgent.OverridenAngularSpeed = null;
+		if (m_RestoreOrientation)
+		{
+			Data commandData = player.GetCommandData<Data>(this);
 			value.DesiredOrientation = commandData.InitialOrientation;
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		TurnImmediately(player);
+		return TurnImmediately(player);
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -161,30 +119,33 @@ public class CommandUnitLookAt : CommandBase
 		return player.GetCommandData<Data>(this).Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
-		AbstractUnitEntity value = m_Unit.GetValue();
-		Vector3 vector = m_Position.GetValue() + m_Offset;
-		float orientationTo = value.GetOrientationTo(vector);
-		Data commandData = player.GetCommandData<Data>(this);
-		if (!commandData.Freezed || HasDuration)
+		if (!m_Unit.TryGetValue(out var value))
 		{
-			TickTurning(time, commandData, value, vector, orientationTo);
+			return CommandResult.Fail("Failed to find unit");
+		}
+		if (!m_Position.TryGetValue(out var value2))
+		{
+			return CommandResult.Fail("Failed to find target position");
+		}
+		float orientationTo = value.GetOrientationTo(value2);
+		Data commandData = player.GetCommandData<Data>(this);
+		bool flag = commandData.Freezed || IsTurningCompleted(value, orientationTo);
+		if (!flag)
+		{
+			TickTurning(value, orientationTo);
 		}
 		if (!IsContinuous && (value == null || !value.IsInGame || !value.CanRotate))
 		{
 			commandData.Finished = true;
-			return;
+			return CommandResult.Success;
 		}
-		if (commandData.Freezed || IsTurningCompleted(value, vector, orientationTo))
+		if (flag)
 		{
-			if (!commandData.TimeToReset.HasValue && HasDuration)
-			{
-				commandData.TimeToReset = time + (double)Duration;
-			}
 			if (!m_Continuous)
 			{
-				commandData.Finished = !HasDuration || commandData.IsAlreadyReset;
+				commandData.Finished = true;
 			}
 			if (m_FreezeAfterTurn)
 			{
@@ -200,71 +161,17 @@ public class CommandUnitLookAt : CommandBase
 		{
 			player.GetCommandData<Data>(this).Finished = true;
 		}
+		return CommandResult.Success;
 	}
 
-	private void TickTurning(double time, Data data, AbstractUnitEntity unit, Vector3 targetPosition, float targetAngle)
+	private static void TickTurning(AbstractUnitEntity unit, float targetAngle)
 	{
-		if (!data.IsAlreadyReset)
-		{
-			if (data.TurnFullBody)
-			{
-				TickTurningFullBody(time, data, unit, targetAngle);
-			}
-			else
-			{
-				TickTurningUpperBody(time, data, unit, targetPosition, targetAngle);
-			}
-		}
+		unit.DesiredOrientation = targetAngle;
 	}
 
-	private void TickTurningFullBody(double time, Data data, AbstractUnitEntity unit, float targetAngle)
+	private static bool IsTurningCompleted(AbstractUnitEntity unit, float targetAngle)
 	{
-		bool num = IsTimeToReset(time, data);
-		targetAngle = (num ? data.InitialOrientation : targetAngle);
-		float num2 = Mathf.MoveTowardsAngle(maxDelta: (float)(time - data.LastTime) * data.AngularSpeed, current: unit.Orientation, target: targetAngle);
-		unit.SetOrientation(num2);
-		data.LastTime = time;
-		if (num && Mathf.Approximately(num2, targetAngle))
-		{
-			data.IsAlreadyReset = true;
-		}
-	}
-
-	private void TickTurningUpperBody(double time, Data data, AbstractUnitEntity unit, Vector3 targetPosition, float targetAngle)
-	{
-		UnitLookAtIKExtensions.GetDeltaAngle(data.InitialOrientation, targetAngle);
-		if (IsTimeToReset(time, data))
-		{
-			float turningTime = (data.TargetPosition.HasValue ? (unit.GetDeltaAngle(data.TargetPosition.Value) / data.AngularSpeed) : 0.3f);
-			unit.StopLookAt(turningTime);
-			data.IsAlreadyReset = true;
-			return;
-		}
-		Vector3? targetPosition2 = data.TargetPosition;
-		if (targetPosition != targetPosition2 && (!data.TargetPosition.HasValue || unit.IsLookingAt(data.TargetPosition.Value, targetAngle)))
-		{
-			float turningTime2 = UnitLookAtIKExtensions.GetDeltaAngle(data.TargetPosition.HasValue ? unit.GetOrientationTo(data.TargetPosition.Value) : unit.Orientation, targetAngle) / data.AngularSpeed;
-			data.TargetPosition = targetPosition;
-			unit.LookAt(targetPosition, turningTime2);
-		}
-	}
-
-	private bool IsTurningCompleted(AbstractUnitEntity unit, Vector3 targetPosition, float targetAngle)
-	{
-		if (m_TurnFullBody)
-		{
-			return Mathf.Approximately(unit.Orientation, targetAngle);
-		}
-		return unit.IsLookingAt(targetPosition);
-	}
-
-	private bool IsTimeToReset(double time, Data data)
-	{
-		if (HasDuration && data.TimeToReset.HasValue)
-		{
-			return time > data.TimeToReset;
-		}
-		return false;
+		return Mathf.Approximately(unit.Orientation, targetAngle);
 	}
 
 	public override CommandSignalData[] GetExtraSignals()
@@ -276,10 +183,9 @@ public class CommandUnitLookAt : CommandBase
 		return base.GetExtraSignals();
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
-		TurnImmediately(player);
+		return TurnImmediately(player);
 	}
 
 	public override string GetCaption()

@@ -22,6 +22,8 @@ public class WarhammerBuffLoopAction : UnitAnimationAction
 		public WeaponStyleCustomLoopActionData.Entry Data;
 
 		public State State;
+
+		public WeaponAnimationStyle WeaponStyle;
 	}
 
 	[SerializeField]
@@ -54,20 +56,37 @@ public class WarhammerBuffLoopAction : UnitAnimationAction
 
 	public override void OnStart(UnitAnimationActionHandle handle)
 	{
+		StartAnimation(handle);
+	}
+
+	public override void OnUpdate(UnitAnimationActionHandle handle, float deltaTime)
+	{
+		ActionData actionData = handle.ActionData as ActionData;
+		if (actionData == null || actionData.WeaponStyle != handle.WeaponStyle)
+		{
+			StartAnimation(handle, actionData);
+		}
+	}
+
+	private void StartAnimation(UnitAnimationActionHandle handle, ActionData actionData = null)
+	{
 		WeaponStyleCustomLoopActionData.Entry animationData = GetAnimationData(handle);
 		if (animationData == null)
 		{
-			PFLog.Animations.Warning("BuffLoopAction: no animation found");
+			PFLog.Animations.Warning($"BuffLoopAction: no animation found for {handle.WeaponStyle}");
 			return;
 		}
-		ActionData actionData = (ActionData)(handle.ActionData = new ActionData
+		if (actionData == null)
 		{
-			Data = animationData,
-			State = State.Start
-		});
-		handle.AnimationLayer = AnimationLayerType.BuffLoopAction;
+			actionData = new ActionData();
+		}
+		actionData.Data = animationData;
+		actionData.WeaponStyle = handle.WeaponStyle;
+		handle.ActionData = actionData;
+		handle.AnimationLayer = UnitAnimationLayerType.BuffLoopAction;
 		if ((bool)animationData.In)
 		{
+			actionData.State = State.Start;
 			handle.StartClip(animationData.In, ClipDurationType.Oneshot);
 			handle.ActiveAnimation.DoNotZeroOtherAnimations = true;
 		}
@@ -107,13 +126,11 @@ public class WarhammerBuffLoopAction : UnitAnimationAction
 
 	public void SwitchToExit(UnitAnimationActionHandle handle)
 	{
-		if (handle.ActionData == null)
+		if (!(handle.ActionData is ActionData actionData))
 		{
 			handle.Release();
-			return;
 		}
-		ActionData actionData = handle.ActionData as ActionData;
-		if (actionData.State != State.End)
+		else if (actionData.State != State.End)
 		{
 			actionData.State = State.End;
 			WeaponStyleCustomLoopActionData.Entry animationData = GetAnimationData(handle);
@@ -125,6 +142,18 @@ public class WarhammerBuffLoopAction : UnitAnimationAction
 			{
 				handle.Release();
 			}
+		}
+	}
+
+	public void InterruptAnimation(UnitAnimationActionHandle handle)
+	{
+		if (!(handle.ActionData is ActionData actionData))
+		{
+			handle.Release();
+		}
+		else
+		{
+			actionData.State = State.End;
 		}
 	}
 

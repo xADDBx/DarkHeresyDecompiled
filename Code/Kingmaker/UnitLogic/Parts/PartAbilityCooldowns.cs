@@ -7,6 +7,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.SystemMechanics;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Items;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem;
@@ -251,13 +252,40 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 		{
 			foreach (BlueprintAbilityGroup abilityGroup in ability.AbilityGroups)
 			{
-				StartGroupCooldown(abilityGroup, ruleCalculateCooldown);
+				if (IsShouldStartCooldown(ability, abilityGroup))
+				{
+					StartGroupCooldown(abilityGroup, ruleCalculateCooldown);
+				}
 			}
 		}
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitAbilityCooldownHandler>)delegate(IUnitAbilityCooldownHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitAbilityCooldownHandler>)delegate(IUnitAbilityCooldownHandler h)
 		{
 			h.HandleAbilityCooldownStarted(ability);
 		}, isCheckRuntime: true);
+	}
+
+	private bool IsShouldStartCooldown(AbilityData ability, BlueprintAbilityGroup groupRef)
+	{
+		PartTwoWeaponFighting optional = base.Owner.Parts.GetOptional<PartTwoWeaponFighting>();
+		if (optional != null && !optional.EnableAttackWithPairedWeapon)
+		{
+			return true;
+		}
+		BlueprintCombatRoot combatRoot = ConfigRoot.Instance.CombatRoot;
+		HandsEquipmentSet handsEquipmentSet = base.Owner.GetBodyOptional()?.CurrentHandsEquipmentSet;
+		ItemEntityWeapon sourceWeapon = ability.SourceWeapon;
+		if (sourceWeapon != null && !sourceWeapon.HoldInTwoHands)
+		{
+			if (sourceWeapon.HoldingSlot == handsEquipmentSet?.PrimaryHand && groupRef == combatRoot.SecondaryHandAbilityGroup.Blueprint)
+			{
+				return false;
+			}
+			if (sourceWeapon.HoldingSlot == handsEquipmentSet?.SecondaryHand && groupRef == combatRoot.PrimaryHandAbilityGroup.Blueprint)
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public void StartAutonomousCooldown(BlueprintAbility ability, int rounds)
@@ -345,7 +373,7 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 		{
 			foreach (BlueprintAbilityGroup abilityGroup in ability.AbilityGroups)
 			{
-				if (abilityGroup != null && m_GroupCooldowns.ContainsKey(abilityGroup) && !IsIgnoredByComponent(abilityGroup, ability))
+				if (abilityGroup != null && IsShouldStartCooldown(ability, abilityGroup) && m_GroupCooldowns.ContainsKey(abilityGroup) && !IsIgnoredByComponent(abilityGroup, ability))
 				{
 					return true;
 				}
@@ -470,7 +498,7 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 		foreach (BlueprintAbilityGroup group in abilityGroup.GetAllAbilityGroups())
 		{
 			m_GroupCooldowns.Remove(group);
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitAbilityCooldownHandler>)delegate(IUnitAbilityCooldownHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitAbilityCooldownHandler>)delegate(IUnitAbilityCooldownHandler h)
 			{
 				h.HandleGroupCooldownRemoved(group);
 			}, isCheckRuntime: true);
@@ -496,7 +524,7 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 			m_AbilityCooldowns = GetUntilEndOfCombatCooldowns();
 			m_GroupCooldowns = GetUntilEndOfCombatGroupCooldowns();
 		}
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitAbilityCooldownHandler>)delegate(IUnitAbilityCooldownHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitAbilityCooldownHandler>)delegate(IUnitAbilityCooldownHandler h)
 		{
 			h.HandleCooldownReset();
 		}, isCheckRuntime: true);

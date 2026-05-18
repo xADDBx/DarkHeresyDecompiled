@@ -71,11 +71,17 @@ public class LocalizedTexts : BlueprintScriptableObject
 	[ValidateNotNull]
 	public MoralePhasesStrings MoralePhases;
 
+	[ValidateNotNull]
+	public MoralePhasesStrings MoralePhaseTitles;
+
 	[FormerlySerializedAs("SpellDescriptorConditions")]
 	public ConditionsString UnitConditions;
 
 	[ValidateNotNull]
 	public CalculatedPrerequisiteStrings CalculatedPrerequisites;
+
+	[ValidateNotNull]
+	public CasterRestrictionsStrings CasterRestrictionsStrings;
 
 	public LocalizedString LockedContainer;
 

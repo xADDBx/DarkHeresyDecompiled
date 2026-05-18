@@ -28,7 +28,7 @@ public class UnitPartGuard : BaseUnitPart, IHashable, IOwlPackable<UnitPartGuard
 		Fields = new FieldInfo[3]
 		{
 			new FieldInfo("Range", typeof(float)),
-			new FieldInfo("Source", typeof(EntityRef<UnitSpawnerBase.MyData>)),
+			new FieldInfo("Source", typeof(EntityRef<AbstractUnitSpawnerEntity>)),
 			new FieldInfo("UseLosInsteadOfVisibility", typeof(bool))
 		}
 	};
@@ -39,12 +39,12 @@ public class UnitPartGuard : BaseUnitPart, IHashable, IOwlPackable<UnitPartGuard
 
 	[JsonProperty]
 	[OwlPackInclude]
-	public EntityRef<UnitSpawnerBase.MyData> Source { get; private set; }
+	public EntityRef<AbstractUnitSpawnerEntity> Source { get; private set; }
 
 	internal void Init(SpawnerGuardSettings.Part spawner)
 	{
 		Range = spawner.Source.Range;
-		Source = new EntityRef<UnitSpawnerBase.MyData>(spawner.Owner.UniqueId);
+		Source = new EntityRef<AbstractUnitSpawnerEntity>(spawner.Owner.UniqueId);
 		UseLosInsteadOfVisibility = spawner.Source.UseLosInsteadOfVisibility;
 	}
 
@@ -55,8 +55,8 @@ public class UnitPartGuard : BaseUnitPart, IHashable, IOwlPackable<UnitPartGuard
 		result.Append(ref val);
 		float val2 = Range;
 		result.Append(ref val2);
-		EntityRef<UnitSpawnerBase.MyData> obj = Source;
-		Hash128 val3 = StructHasher<EntityRef<UnitSpawnerBase.MyData>>.GetHash128(ref obj);
+		EntityRef<AbstractUnitSpawnerEntity> obj = Source;
+		Hash128 val3 = StructHasher<EntityRef<AbstractUnitSpawnerEntity>>.GetHash128(ref obj);
 		result.Append(ref val3);
 		result.Append(ref UseLosInsteadOfVisibility);
 		return result;
@@ -81,7 +81,7 @@ public class UnitPartGuard : BaseUnitPart, IHashable, IOwlPackable<UnitPartGuard
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 		float value = Range;
 		formatter.UnmanagedField(0, "Range", ref value, state);
-		EntityRef<UnitSpawnerBase.MyData> value2 = Source;
+		EntityRef<AbstractUnitSpawnerEntity> value2 = Source;
 		formatter.Field(1, "Source", ref value2, state);
 		formatter.UnmanagedField(2, "UseLosInsteadOfVisibility", ref UseLosInsteadOfVisibility, state);
 		formatter.EndObject();
@@ -105,7 +105,7 @@ public class UnitPartGuard : BaseUnitPart, IHashable, IOwlPackable<UnitPartGuard
 				Range = formatter.ReadUnmanaged<float>(state);
 				break;
 			case 1:
-				Source = formatter.ReadPackable<EntityRef<UnitSpawnerBase.MyData>>(state);
+				Source = formatter.ReadPackable<EntityRef<AbstractUnitSpawnerEntity>>(state);
 				break;
 			case 2:
 				UseLosInsteadOfVisibility = formatter.ReadUnmanaged<bool>(state);

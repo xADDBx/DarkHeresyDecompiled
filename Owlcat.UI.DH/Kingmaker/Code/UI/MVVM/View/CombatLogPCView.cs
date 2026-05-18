@@ -1,7 +1,9 @@
 using System.Collections;
 using DG.Tweening;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Framework.Settings.UISettings;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
@@ -42,6 +44,10 @@ public class CombatLogPCView : CombatLogBaseView
 
 	private bool m_BottomEdgeVisible;
 
+	private bool m_SaveInited;
+
+	private int m_SaveFilterIndex;
+
 	private bool BottomEdgeNeeded
 	{
 		get
@@ -76,7 +82,11 @@ public class CombatLogPCView : CombatLogBaseView
 	protected override void OnBind()
 	{
 		base.OnBind();
-		SetSizeDelta(Game.Instance.Player.UISettings.LogSize);
+		m_SaveFilterIndex = ((Game.Instance.Player.UISettings.LogSelectedFilterIndex >= 0 && Game.Instance.Player.UISettings.LogSelectedFilterIndex < m_Toggles.Count) ? Game.Instance.Player.UISettings.LogSelectedFilterIndex : 0);
+		Vector2 combatLogMinSize = ConfigRoot.Instance.UIConfig.CombatLogMinSize;
+		Vector2 logSize = Game.Instance.Player.UISettings.LogSize;
+		logSize = new Vector2(Mathf.Max(logSize.x, combatLogMinSize.x), Mathf.Max(logSize.y, combatLogMinSize.y));
+		SetSizeDelta(logSize);
 		OwlcatR3UnitExtensions.Subscribe(m_ForceScrollToBottomButton.OnLeftClickAsObservable(), delegate
 		{
 			m_VirtualList.ScrollController.ForceScrollToBottom();
@@ -94,7 +104,9 @@ public class CombatLogPCView : CombatLogBaseView
 		UISounds.Instance.SetClickAndHoverSound(m_SwitchPinButton, ButtonSoundsEnum.PlastickSound);
 		OwlcatR3UnitExtensions.Subscribe(m_SwitchPinButton.OnLeftClickAsObservable(), delegate
 		{
-			IsPinned.Value = !IsPinned.Value;
+			bool flag2 = (IsPinned.Value = !IsPinned.Value);
+			bool flag3 = flag2;
+			Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.CombatLog).State((!flag3) ? InterfaceMetricsEvent.InterfaceStates.Close : InterfaceMetricsEvent.InterfaceStates.Open).Send();
 		}).AddTo(this);
 		m_SwitchPinButton.SetHint(UIStrings.Instance.CombatTexts.CombatLogShowHide, "ShowHideCombatLog").AddTo(this);
 		Observable.EveryUpdate(UnityFrameProvider.PreLateUpdate).Subscribe(OnLateUpdate).AddTo(this);
@@ -152,17 +164,24 @@ public class CombatLogPCView : CombatLogBaseView
 
 	private IEnumerator PlayFiltersAppearAnimationCoroutine()
 	{
-		UISounds.Instance.Sounds.CombatLog.CombatLogFiltersOpen.Play();
+		CombatSounds.Instance.CombatLog.FiltersOpen.Play();
 		for (int i = 0; i < m_FiltersAnimators.Length; i++)
 		{
 			yield return new WaitForSeconds(0.1f);
-			m_FiltersAnimators[i].AppearAnimation();
+			if (i == m_FiltersAnimators.Length - 1)
+			{
+				m_FiltersAnimators[i].AppearAnimation(OnCompleteFiltersAnimation);
+			}
+			else
+			{
+				m_FiltersAnimators[i].AppearAnimation();
+			}
 		}
 	}
 
 	private IEnumerator PlayFiltersDisappearAnimationCoroutine()
 	{
-		UISounds.Instance.Sounds.CombatLog.CombatLogFiltersClose.Play();
+		CombatSounds.Instance.CombatLog.FiltersClose.Play();
 		for (int i = m_FiltersAnimators.Length - 1; i >= 0; i--)
 		{
 			yield return new WaitForSeconds(0.1f);
@@ -202,6 +221,16 @@ public class CombatLogPCView : CombatLogBaseView
 			}
 			image.enabled = true;
 			StartedTweeners.Add(image.rectTransform.DOShakeScale(0.1f, 1f, 10, 45f).SetUpdate(isIndependentUpdate: true).SetAutoKill(autoKillOnCompletion: true));
+		}
+		Game.Instance.Player.UISettings.LogSelectedFilterIndex = num;
+	}
+
+	private void OnCompleteFiltersAnimation()
+	{
+		if (!m_SaveInited)
+		{
+			m_Toggles[m_SaveFilterIndex].Set(value: true);
+			m_SaveInited = false;
 		}
 	}
 }

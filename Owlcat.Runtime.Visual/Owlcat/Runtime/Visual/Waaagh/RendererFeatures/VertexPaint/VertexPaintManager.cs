@@ -158,9 +158,38 @@ public class VertexPaintManager : IDisposable
 
 	private ResizableGraphicsBuffer m_Buffer;
 
+	private bool LoggingEnabled => m_Parameters.Logging;
+
 	public static bool IsInitialized => s_Instance != null;
 
-	private bool LoggingEnabled => m_Parameters.Logging;
+	private void LogDataSourceUsages(DataSourceKey dataSourceKey, DataSourceAllocation dataSourceAllocation)
+	{
+		if (LoggingEnabled)
+		{
+			Log($"{dataSourceKey} has {dataSourceAllocation.Usages.Count} usages.");
+		}
+	}
+
+	private void LogAllocation(DataSourceKey dataSourceKey)
+	{
+		if (LoggingEnabled)
+		{
+			Log($"Allocated {dataSourceKey}.");
+		}
+	}
+
+	private void LogDeallocation(DataSourceKey dataSourceKey)
+	{
+		if (LoggingEnabled)
+		{
+			Log($"Deallocated {dataSourceKey}.");
+		}
+	}
+
+	private static void Log(string message)
+	{
+		Debug.Log("VertexPaintManager: " + message);
+	}
 
 	private VertexPaintManager(WaaaghPipeline pipeline, VertexPaintManagerParameters parameters)
 	{
@@ -497,34 +526,5 @@ public class VertexPaintManager : IDisposable
 			s_Instance.Dispose();
 			s_Instance = null;
 		}
-	}
-
-	private void LogDataSourceUsages(DataSourceKey dataSourceKey, DataSourceAllocation dataSourceAllocation)
-	{
-		if (LoggingEnabled)
-		{
-			Log($"{dataSourceKey} has {dataSourceAllocation.Usages.Count} usages.");
-		}
-	}
-
-	private void LogAllocation(DataSourceKey dataSourceKey)
-	{
-		if (LoggingEnabled)
-		{
-			Log($"Allocated {dataSourceKey}.");
-		}
-	}
-
-	private void LogDeallocation(DataSourceKey dataSourceKey)
-	{
-		if (LoggingEnabled)
-		{
-			Log($"Deallocated {dataSourceKey}.");
-		}
-	}
-
-	private static void Log(string message)
-	{
-		Debug.Log("VertexPaintManager: " + message);
 	}
 }

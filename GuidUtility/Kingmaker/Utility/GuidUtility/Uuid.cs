@@ -1,5 +1,6 @@
 using System;
 using Faithlife.Utility;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.Utility.StatefulRandom;
 using UnityEngine;
 
@@ -7,15 +8,15 @@ namespace Kingmaker.Utility.GuidUtility;
 
 public class Uuid
 {
+	private const string GlobalGuidString = "27bb4190-9b93-4cc5-a460-2bfd9db5802e";
+
+	public static readonly Uuid Instance = new Uuid("GlobalUuid", new Guid("27bb4190-9b93-4cc5-a460-2bfd9db5802e"));
+
 	private static readonly byte[] NameBytes = new byte[16];
 
 	private readonly Guid m_SeedGuid;
 
 	private readonly Kingmaker.Utility.StatefulRandom.StatefulRandom m_Random;
-
-	private const string GlobalGuidString = "27bb4190-9b93-4cc5-a460-2bfd9db5802e";
-
-	public static readonly Uuid Instance = new Uuid("GlobalUuid", new Guid("27bb4190-9b93-4cc5-a460-2bfd9db5802e"));
 
 	public Kingmaker.Utility.StatefulRandom.StatefulRandom Random => m_Random;
 
@@ -48,6 +49,10 @@ public class Uuid
 
 	public Guid CreateGuid()
 	{
+		if ((bool)ContextData<DisableStatefulRandomContext>.Current)
+		{
+			return Guid.NewGuid();
+		}
 		int i = 0;
 		for (int num = NameBytes.Length; i < num; i++)
 		{

@@ -5,12 +5,12 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Groups;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using UnityEngine;
@@ -33,7 +33,7 @@ public class RulePerformSummonUnit : RulebookEvent
 
 	public BaseUnitEntity SummonedUnit { get; private set; }
 
-	public MechanicsContext Context { get; set; }
+	public IEvalContext Context { get; set; }
 
 	public bool DoNotLinkToCaster { get; set; }
 

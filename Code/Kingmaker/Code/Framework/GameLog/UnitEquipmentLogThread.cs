@@ -30,7 +30,7 @@ public class UnitEquipmentLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 						GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)slot.Owner;
 						GameLogContext.Text = slot.MaybeItem.Name;
 						GameLogContext.Description = slot.MaybeItem.Description;
-						TooltipBaseTemplate template = CombatLogTooltipService.CreateTooltipTemplateItemBlueprint(itemEntity.Blueprint);
+						TooltipBaseTemplate template = CombatLogTooltipService.CreateTooltipTemplateItemForLog(itemEntity, slot.Owner);
 						AddMessage(new CombatLogMessage(LogThreadBase.Strings.ItemEquipped.CreateCombatLogMessage(), template));
 					}
 					else if (previousItem != null)
@@ -40,7 +40,7 @@ public class UnitEquipmentLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 						GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)slot.Owner;
 						GameLogContext.Text = previousItem.Name;
 						GameLogContext.Description = previousItem.Description;
-						TooltipBaseTemplate template2 = CombatLogTooltipService.CreateTooltipTemplateItemBlueprint(itemEntity.Blueprint);
+						TooltipBaseTemplate template2 = CombatLogTooltipService.CreateTooltipTemplateItemForLog(itemEntity, slot.Owner);
 						AddMessage(new CombatLogMessage(LogThreadBase.Strings.ItemUnequipped.CreateCombatLogMessage(), template2));
 					}
 				}

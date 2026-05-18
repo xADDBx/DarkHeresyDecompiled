@@ -65,7 +65,7 @@ public class TermsOfUseBaseView : View<TermsOfUseVM>
 			{
 				h.HandleFullScreenUiChanged(state: true, FullScreenUIType.Settings);
 			});
-			UISounds.Instance.Sounds.LocalMap.PlayOpen();
+			UISounds.Instance.Sounds.ServiceWindowsSounds.PlayOpenSound(ServiceWindowsType.LocalMap);
 		}
 	}
 
@@ -82,7 +82,7 @@ public class TermsOfUseBaseView : View<TermsOfUseVM>
 			{
 				h.HandleFullScreenUiChanged(state: false, FullScreenUIType.Settings);
 			});
-			UISounds.Instance.Sounds.LocalMap.PlayClose();
+			UISounds.Instance.Sounds.ServiceWindowsSounds.PlayCloseSound(ServiceWindowsType.LocalMap);
 		}
 	}
 }

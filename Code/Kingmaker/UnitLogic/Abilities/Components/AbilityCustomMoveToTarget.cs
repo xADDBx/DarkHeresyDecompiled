@@ -7,8 +7,8 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -92,26 +92,25 @@ public class AbilityCustomMoveToTarget : AbilityCustomLogic, IAbilityTargetRestr
 			PFLog.Default.Error("Commands is missing");
 			yield break;
 		}
-		UnitMovementAgentBase maybeMovementAgent = caster.MaybeMovementAgent;
+		UnitMovementAgent maybeMovementAgent = caster.MaybeMovementAgent;
 		if (maybeMovementAgent == null)
 		{
 			PFLog.Default.Error("Caster movement agent is missing");
 			yield break;
 		}
-		caster.View.StopMoving();
-		maybeMovementAgent.IsCharging = true;
+		caster.StopMoving();
 		maybeMovementAgent.MaxSpeedOverride = (m_OverrideMaxSpeed ? new float?(m_MaxSpeedOverride) : null);
 		caster.Features.IsCharging.Retain(context.Ability.Fact);
 		TargetWrapper target = targetWrapper;
 		AbilityUnrestrictedRangeForTarget component = context.Ability.Blueprint.GetComponent<AbilityUnrestrictedRangeForTarget>();
 		bool restrictRange = component == null || !component.IsRangeUnrestrictedForTarget(context.Ability, targetWrapper);
-		if (TryGetExplicitTargetNode(caster, targetWrapper, restrictRange, out var result))
-		{
-			target = new TargetWrapper(result.Vector3Position());
-		}
 		if (m_PassThroughAllUnits)
 		{
 			caster.Features.CanPassThroughUnits.Retain();
+		}
+		if (TryGetExplicitTargetNode(caster, targetWrapper, restrictRange, out var result))
+		{
+			target = new TargetWrapper(result.Vector3Position());
 		}
 		using PathDisposable<WarhammerPathPlayer> pd = PathfindingService.Instance.FindPathTB_Delayed(caster.MaybeMovementAgent, target, limitRangeByActionPoints: false, 1, this);
 		WarhammerPathPlayer path = pd.Path;
@@ -150,9 +149,9 @@ public class AbilityCustomMoveToTarget : AbilityCustomLogic, IAbilityTargetRestr
 				break;
 			}
 		}
-		if (targetWrapper.Entity is UnitEntity entity)
+		if (targetWrapper.Entity is UnitEntity unitEntity)
 		{
-			using (context.SetScope(entity.ToITargetWrapper()))
+			using (EvalContext.PushContext(context, unitEntity))
 			{
 				m_ActionsOnTargetAfterMoved?.Run();
 			}
@@ -165,7 +164,6 @@ public class AbilityCustomMoveToTarget : AbilityCustomLogic, IAbilityTargetRestr
 	{
 		if (context.Caster is UnitEntity unitEntity)
 		{
-			unitEntity.View.MovementAgent.IsCharging = false;
 			unitEntity.View.MovementAgent.MaxSpeedOverride = null;
 			unitEntity.Features.IsCharging.Release(context.Ability.Fact);
 		}

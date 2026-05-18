@@ -13,8 +13,6 @@ public class CharInfoWeaponSetAbilityPCView : View<CharInfoWeaponSetAbilityVM>
 	[SerializeField]
 	private OwlcatMultiButton m_Button;
 
-	public SimpleConsoleNavigationEntity NavigationEntity { get; private set; }
-
 	protected override void OnBind()
 	{
 		base.ViewModel.Icon.Subscribe(delegate(Sprite value)
@@ -22,6 +20,5 @@ public class CharInfoWeaponSetAbilityPCView : View<CharInfoWeaponSetAbilityVM>
 			m_Icon.sprite = value;
 		}).AddTo(this);
 		m_Icon.SetTooltip(base.ViewModel.Tooltip).AddTo(this);
-		NavigationEntity = new SimpleConsoleNavigationEntity(m_Button, base.ViewModel.Tooltip);
 	}
 }

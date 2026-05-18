@@ -15,8 +15,11 @@ using Kingmaker.Designers.EventConditionActionSystem.Actions;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.GameCommands;
+using Kingmaker.Gameplay.Parts;
 using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.Mechanics.Entities;
@@ -27,6 +30,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
+using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UI.AR;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Commands;
@@ -52,32 +56,7 @@ namespace Kingmaker.UnitLogic;
 
 public static class UnitHelper
 {
-	public class PreviewUnit : ContextFlag<PreviewUnit>
-	{
-	}
-
-	public class ChargenUnit : ContextFlag<ChargenUnit>
-	{
-	}
-
-	public class RespecInProgress : ContextFlag<RespecInProgress>
-	{
-	}
-
-	public class DoNotCreateItems : ContextFlag<DoNotCreateItems>
-	{
-	}
-
-	public struct DamageEstimate
-	{
-		public int Value;
-
-		public bool BypassDR;
-
-		public IntermediateDamage[] Chunks;
-	}
-
-	private class CloseToFarNodesEnumerator : IDisposable, IEnumerator<GridNodeBase>, IEnumerator
+	public class CloseToFarNodesEnumerator : IDisposable, IEnumerator<GridNodeBase>, IEnumerator
 	{
 		private class NodeData : IComparable<NodeData>
 		{
@@ -192,13 +171,40 @@ public static class UnitHelper
 		CannotMove
 	}
 
-	public static BaseUnitEntity Copy(this BaseUnitEntity unit, bool createView, bool preview, bool copyItems = true)
+	public class PreviewUnit : ContextFlag<PreviewUnit>
+	{
+	}
+
+	public class ChargenUnit : ContextFlag<ChargenUnit>
+	{
+	}
+
+	public class RespecInProgress : ContextFlag<RespecInProgress>
+	{
+	}
+
+	public class DoNotCreateItems : ContextFlag<DoNotCreateItems>
+	{
+	}
+
+	public struct DamageEstimate
+	{
+		public int Value;
+
+		public bool BypassDR;
+
+		public IntermediateDamage[] Chunks;
+	}
+
+	private static readonly LogChannel Logger = LogChannelFactory.GetOrCreate("FindPositionForUnit");
+
+	public static BaseUnitEntity Copy(this BaseUnitEntity unit, bool createView, bool preview, bool copyItems = true, bool copyBuffs = false, EventBusInstance eventBus = null)
 	{
 		try
 		{
 			using (ProfileScope.New("Copy Unit"))
 			{
-				return CopyInternal(unit, createView, preview, copyItems);
+				return CopyInternal(unit, createView, preview, copyItems, copyBuffs, eventBus);
 			}
 		}
 		catch (Exception exception)
@@ -208,42 +214,54 @@ public static class UnitHelper
 		}
 	}
 
-	private static BaseUnitEntity CopyInternal(BaseUnitEntity unit, bool createView, bool preview, bool copyItems)
+	private static BaseUnitEntity CopyInternal(BaseUnitEntity unit, bool createView, bool preview, bool copyItems, bool copyBuffs = false, EventBusInstance eventBus = null)
 	{
-		BaseUnitEntity baseUnitEntity;
-		using (ContextData<PreviewUnit>.RequestIf(preview))
+		using (SimpleContextData<EventBusInstance, EventBus.OverrideShared>.SetIfNotNull(eventBus))
 		{
-			using (ContextData<DoNotCreateItems>.Request())
+			BaseUnitEntity baseUnitEntity;
+			using (ContextData<PreviewUnit>.RequestIf(preview))
 			{
-				using (ContextData<AddClassLevels.DoNotCreatePlan>.RequestIf(preview))
+				using (ContextData<DoNotCreateItems>.Request())
 				{
-					baseUnitEntity = unit.OriginalBlueprint.CreateEntity();
+					using (ContextData<AddClassLevels.DoNotCreatePlan>.RequestIf(preview))
+					{
+						baseUnitEntity = unit.OriginalBlueprint.CreateEntity();
+					}
 				}
 			}
+			baseUnitEntity.CopyOf = unit;
+			baseUnitEntity.Unsubscribe();
+			baseUnitEntity.Description.SetCustomName(unit.Description.CustomName);
+			baseUnitEntity.Description.SetCustomNameLocalizedString(unit.Description.CustomNameKey);
+			baseUnitEntity.UISettings.SetPortrait(unit.Portrait);
+			baseUnitEntity.ViewSettings.SetDoll(unit.ViewSettings.Doll);
+			baseUnitEntity.Inventory.EnsureOwn();
+			if (preview && !copyBuffs)
+			{
+				baseUnitEntity.Facts.EnsureFactProcessor<BuffCollection>().SetupPreview(baseUnitEntity);
+			}
+			baseUnitEntity.Progression.CopyFrom(unit.Progression);
+			CopyFacts(unit, baseUnitEntity);
+			if (copyItems)
+			{
+				CopyItems(unit, baseUnitEntity);
+			}
+			SyncParts(unit, baseUnitEntity);
+			baseUnitEntity.Progression.FixCharacterLevelAfterCopy();
+			if (createView)
+			{
+				baseUnitEntity.AttachToViewOnLoad(null);
+			}
+			baseUnitEntity.Subscribe();
+			return baseUnitEntity;
 		}
-		baseUnitEntity.CopyOf = unit;
-		baseUnitEntity.Unsubscribe();
-		baseUnitEntity.Description.SetName(unit.Description.CustomName);
-		baseUnitEntity.UISettings.SetPortrait(unit.Portrait);
-		baseUnitEntity.ViewSettings.SetDoll(unit.ViewSettings.Doll);
-		baseUnitEntity.Inventory.EnsureOwn();
-		if (preview)
-		{
-			baseUnitEntity.Facts.EnsureFactProcessor<BuffCollection>().SetupPreview(baseUnitEntity);
-		}
-		baseUnitEntity.Progression.CopyFrom(unit.Progression);
-		CopyFacts(unit, baseUnitEntity);
-		if (copyItems)
-		{
-			CopyItems(unit, baseUnitEntity);
-		}
-		baseUnitEntity.Progression.FixCharacterLevelAfterCopy();
-		if (createView)
-		{
-			baseUnitEntity.AttachToViewOnLoad(null);
-		}
-		baseUnitEntity.Subscribe();
-		return baseUnitEntity;
+	}
+
+	private static void SyncParts(BaseUnitEntity unit, BaseUnitEntity copy)
+	{
+		PartAbilityModifiers optional = unit.GetOptional<PartAbilityModifiers>();
+		PartAbilityModifiers optional2 = copy.GetOptional<PartAbilityModifiers>();
+		optional?.CopyModifiersTo(optional2);
 	}
 
 	private static void CopyFacts(BaseUnitEntity original, BaseUnitEntity target)
@@ -329,7 +347,8 @@ public static class UnitHelper
 			baseUnitEntity = bp.CreateEntity();
 		}
 		baseUnitEntity.ViewSettings.SetCustomPrefabGuid(source.ViewSettings.PrefabGuid);
-		baseUnitEntity.Description.SetName(source.CharacterName);
+		baseUnitEntity.Description.SetCustomNameLocalizedString(source.GetDescriptionOptional()?.CustomNameKey);
+		baseUnitEntity.Description.SetCustomName(source.GetDescriptionOptional()?.CustomName);
 		baseUnitEntity.Description.SetGender(source.Gender);
 		baseUnitEntity.Asks.SetCustom(source.Asks.List);
 		baseUnitEntity.Faction.Set(ConfigRoot.Instance.SystemMechanics.FactionCutsceneNeutral);
@@ -354,6 +373,450 @@ public static class UnitHelper
 		baseUnitEntity.AttachToViewOnLoad(null);
 		Game.Instance.Controllers.EntitySpawner.SpawnEntityImmediately(baseUnitEntity, state, moveView: true);
 		return baseUnitEntity;
+	}
+
+	public static void UpdateDropTransform(BaseUnitEntity ownerUnit, Transform loot, Vector3 rotation)
+	{
+		float scaleMultiplierBySize = GetScaleMultiplierBySize(ownerUnit);
+		loot.localScale = new Vector3(scaleMultiplierBySize, scaleMultiplierBySize, scaleMultiplierBySize);
+		loot.rotation = Quaternion.Euler(rotation);
+	}
+
+	public static float GetScaleMultiplierBySize(BaseUnitEntity ownerUnit)
+	{
+		BlueprintUnit blueprintUnit = ownerUnit?.Blueprint;
+		if (blueprintUnit == null)
+		{
+			return 1f;
+		}
+		return blueprintUnit.Size switch
+		{
+			Size.Fine => 0.1f, 
+			Size.Diminutive => 0.25f, 
+			Size.Tiny => 0.5f, 
+			Size.Small => 0.75f, 
+			Size.Medium => 1f, 
+			Size.Large => 1.5f, 
+			Size.Huge => 2f, 
+			Size.Gargantuan => 2.5f, 
+			Size.Colossal => 3f, 
+			_ => 1f, 
+		};
+	}
+
+	public static void SnapToGrid(this IEnumerable<BaseUnitEntity> units)
+	{
+		foreach (BaseUnitEntity unit in units)
+		{
+			unit.MovementAgent.Blocker.Unblock();
+		}
+		foreach (BaseUnitEntity item in units.OrderByDescending((BaseUnitEntity v) => v.SizeRect.Height * v.SizeRect.Width))
+		{
+			try
+			{
+				PartPreventSnapToGrid optional = item.GetOptional<PartPreventSnapToGrid>();
+				if (optional != null && optional.ShouldPreventSnapToGrid)
+				{
+					Logger.Log("SnapToGrid: Skipped for " + item.View.name + " (flag set by PreventSnapToGrid)");
+					continue;
+				}
+				GridNodeBase gridNodeBase = FindPositionForUnit(item);
+				if (gridNodeBase != null)
+				{
+					item.Movable.ForceHasMotion = true;
+					item.Position = gridNodeBase.Vector3Position();
+				}
+			}
+			catch (Exception exception)
+			{
+				Logger.ExceptionWithReport(exception, null);
+			}
+			finally
+			{
+				item.MovementAgent.UpdateBlocker();
+			}
+		}
+	}
+
+	public static void SnapToGrid(this BaseUnitEntity unit)
+	{
+		UnitMovementAgent maybeMovementAgent = unit.MaybeMovementAgent;
+		if (maybeMovementAgent == null)
+		{
+			return;
+		}
+		PartPreventSnapToGrid optional = unit.GetOptional<PartPreventSnapToGrid>();
+		if (optional != null && optional.ShouldPreventSnapToGrid)
+		{
+			Logger.Log("SnapToGrid: Skipped for " + unit.View.name + " (flag set by PreventSnapToGrid)");
+			return;
+		}
+		try
+		{
+			maybeMovementAgent.Blocker.Unblock();
+			GridNodeBase gridNodeBase = FindPositionForUnit(unit);
+			if (gridNodeBase != null)
+			{
+				unit.Movable.ForceHasMotion = true;
+				unit.Position = gridNodeBase.Vector3Position();
+			}
+		}
+		catch (Exception exception)
+		{
+			Logger.ExceptionWithReport(exception, null);
+		}
+		finally
+		{
+			maybeMovementAgent.UpdateBlocker();
+		}
+	}
+
+	public static bool CanStandHere(this MechanicEntity unit, GraphNode node)
+	{
+		UnitMovementAgent maybeMovementAgent = unit.MaybeMovementAgent;
+		if (maybeMovementAgent == null)
+		{
+			return true;
+		}
+		NodeList nodes = GridAreaHelper.GetNodes(node, unit.SizeRect);
+		bool result = true;
+		foreach (GridNodeBase item in nodes)
+		{
+			if (item == null || !item.Walkable || WarhammerBlockManager.Instance.NodeContainsAnyExcept(item, maybeMovementAgent.Blocker) || !IsNodeConnected(item, nodes))
+			{
+				result = false;
+				break;
+			}
+		}
+		return result;
+	}
+
+	private static bool IsNodeConnected(GridNodeBase node, IEnumerable<GridNodeBase> nodes)
+	{
+		if (!(node.Graph is GridGraph gridGraph))
+		{
+			return true;
+		}
+		for (int i = node.XCoordinateInGrid - 1; i < node.XCoordinateInGrid + 1; i++)
+		{
+			for (int j = node.ZCoordinateInGrid - 1; j < node.ZCoordinateInGrid + 1; j++)
+			{
+				if (i != node.XCoordinateInGrid || j != node.ZCoordinateInGrid)
+				{
+					GridNodeBase node2 = gridGraph.GetNode(i, j);
+					if (nodes.Contains(node2) && !node.ContainsConnection(node2))
+					{
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	[CanBeNull]
+	public static GridNodeBase FindPositionForUnit(MechanicEntity unit)
+	{
+		GridNodeBase gridNodeBase = (GridNodeBase)(GraphNode)unit.CurrentNode;
+		if (gridNodeBase == null)
+		{
+			Logger.ErrorWithReport($"Can't find origin node for {unit}");
+			return null;
+		}
+		Logger.Log($"Unit: {unit}, CurrentNode: {gridNodeBase.Vector3Position()}, unit.Position: {unit.Position}");
+		BlueprintAreaPart currentlyLoadedAreaPart = Game.Instance.CurrentlyLoadedAreaPart;
+		Bounds? bounds = ((currentlyLoadedAreaPart == null) ? null : ObjectExtensions.Or(currentlyLoadedAreaPart.Bounds, null)?.MechanicBounds);
+		bool flag = gridNodeBase.ContainsPoint(unit.Position);
+		bool flag2 = unit.CanStandHere(gridNodeBase);
+		bool flag3 = !bounds.HasValue || bounds.Value.ContainsXZ(gridNodeBase.Vector3Position());
+		Logger.Log($"CurrentNode check: ContainsPoint={flag}, CanStandHere={flag2}, InBounds={flag3}");
+		if (flag && flag2 && flag3)
+		{
+			Logger.Log($"Returning CurrentNode: {gridNodeBase.Vector3Position()}");
+			return gridNodeBase;
+		}
+		using (CloseToFarNodesEnumerator closeToFarNodesEnumerator = new CloseToFarNodesEnumerator(unit.Position))
+		{
+			int num = 0;
+			while (closeToFarNodesEnumerator.MoveNext())
+			{
+				num++;
+				GridNodeBase current = closeToFarNodesEnumerator.Current;
+				if (current != null && unit.CanStandHere(current) && (!bounds.HasValue || bounds.Value.ContainsXZ(current.Vector3Position())))
+				{
+					Logger.Log($"Found valid tile after {num} checks: {current.Vector3Position()}");
+					return current;
+				}
+			}
+			Logger.Log($"No valid tile found after {num} checks");
+		}
+		if (!unit.CanStandHere(gridNodeBase))
+		{
+			Logger.ErrorWithReport($"Can't find position for {unit}");
+		}
+		return gridNodeBase;
+	}
+
+	public static UnitMoveToProperParams TryCreateMoveCommandTB(this BaseUnitEntity unit, MoveCommandSettings settings, bool showMovePrediction)
+	{
+		MoveCommandStatus status;
+		return unit.TryCreateMoveCommandTB(settings, showMovePrediction, out status);
+	}
+
+	public static UnitMoveToProperParams TryCreateMoveCommandTB(this BaseUnitEntity unit, MoveCommandSettings settings, bool showMovePrediction, out MoveCommandStatus status)
+	{
+		return TryCreateMoveCommandTBUnit(unit, settings, showMovePrediction, out status);
+	}
+
+	private static UnitMoveToProperParams TryCreateMoveCommandTBUnit(BaseUnitEntity unit, MoveCommandSettings settings, bool showMovePrediction, out MoveCommandStatus status)
+	{
+		if (!unit.CanMove)
+		{
+			status = MoveCommandStatus.CannotMove;
+			return null;
+		}
+		WarhammerPathPlayer warhammerPathPlayer = PathfindingService.Instance.FindPathTB_Blocking(unit.View.MovementAgent, settings.Destination, limitRangeByActionPoints: false);
+		using (PathDisposable<WarhammerPathPlayer>.Get(warhammerPathPlayer, unit))
+		{
+			object obj;
+			if (unit != null)
+			{
+				obj = Rulebook.Trigger(new RuleCalculateMovementCost(unit, warhammerPathPlayer));
+			}
+			else
+			{
+				obj = null;
+			}
+			int num = ((RuleCalculateMovementCost)obj)?.ResultPointCount ?? 0;
+			float[] costPerEveryCell = ((RuleCalculateMovementCost)obj)?.ResultAPCostPerPoint ?? Array.Empty<float>();
+			while (num > 0)
+			{
+				NodeList nodes = GridAreaHelper.GetNodes(warhammerPathPlayer.path[num - 1], unit.SizeRect);
+				if (!WarhammerBlockManager.Instance.NodeContainsAnyExcept(nodes, unit.View.MovementAgent.Blocker))
+				{
+					break;
+				}
+				num--;
+			}
+			if (num < 2)
+			{
+				status = MoveCommandStatus.NotEnoughPoints;
+				return null;
+			}
+			IEnumerable<GraphNode> nodes2 = warhammerPathPlayer.path.Take(num);
+			ForcedPath forcedPath = ForcedPath.Construct(warhammerPathPlayer.vectorPath.Take(num), nodes2);
+			Path path = UnitPathManager.Instance.GetPath(unit);
+			if (path != null && path.vectorPath.SequenceEqual(forcedPath.vectorPath))
+			{
+				forcedPath.Claim(unit);
+				forcedPath.Release(unit);
+				status = MoveCommandStatus.SamePath;
+				return null;
+			}
+			status = MoveCommandStatus.NewCommandCreated;
+			UnitMoveToProperParams unitMoveToProperParams = CreateMoveCommandUnit(unit, settings, costPerEveryCell, forcedPath);
+			if (showMovePrediction)
+			{
+				DrawMovePrediction(unit, forcedPath, costPerEveryCell, unitMoveToProperParams);
+			}
+			return unitMoveToProperParams;
+		}
+	}
+
+	public static void DrawMovePrediction([NotNull] BaseUnitEntity unit, [NotNull] Path forcedPath, [CanBeNull] float[] costPerEveryCell, [CanBeNull] UnitCommandParams unitCommandParams = null)
+	{
+		if (forcedPath.vectorPath != null)
+		{
+			Game.Instance.GameCommandQueue.DrawMovePrediction(unit, forcedPath, costPerEveryCell, unitCommandParams);
+		}
+	}
+
+	public static void DrawMovePredictionLocal(BaseUnitEntity unit, Path forcedPath, float[] costPerEveryCell)
+	{
+		UnitPathManager.Instance.RemovePath(unit);
+		UnitPathManager.Instance.AddPath(unit, forcedPath, unit.Blueprint.WarhammerMovementApPerCell, unit.CombatState.MovementPoints, unit.CombatState.LastDiagonalCount % 2 == 1, costPerEveryCell);
+		try
+		{
+			List<Vector3> vectorPath = forcedPath.vectorPath;
+			Vector3 vector = vectorPath[vectorPath.Count - 1];
+			Vector3 vector2;
+			if (forcedPath.vectorPath.Count <= 1 || unit.SizeRect.Height == unit.SizeRect.Width)
+			{
+				vector2 = Vector3.zero;
+			}
+			else
+			{
+				List<Vector3> vectorPath2 = forcedPath.vectorPath;
+				vector2 = (vector - vectorPath2[vectorPath2.Count - 2]).normalized;
+			}
+			Vector3 direction = vector2;
+			UnitPredictionManager.Instance.SetHologramPosition(unit, vector, direction);
+		}
+		catch (Exception ex)
+		{
+			PFLog.Default.Exception(ex);
+		}
+	}
+
+	public static void ClearPrediction(BaseUnitEntity unit = null)
+	{
+		UnitPredictionManager.Instance.ClearAll();
+		if (unit != null)
+		{
+			UnitPathManager.Instance.RemovePath(unit);
+		}
+		else
+		{
+			UnitPathManager.Instance.RemoveAllPaths();
+		}
+	}
+
+	private static UnitMoveToProperParams CreateMoveCommandUnit(AbstractUnitEntity unit, MoveCommandSettings settings, float[] costPerEveryCell, ForcedPath forcedPath)
+	{
+		UnitMoveToProperParams unitMoveToProperParams = new UnitMoveToProperParams(forcedPath, unit.Blueprint.WarhammerMovementApPerCell, costPerEveryCell)
+		{
+			IsSynchronized = true
+		};
+		float num = forcedPath.Length();
+		if (BuildModeUtility.IsDevelopment)
+		{
+			if (CheatsAnimation.SpeedForce > 0f)
+			{
+				unitMoveToProperParams.OverrideSpeed = CheatsAnimation.SpeedForce;
+			}
+			if (unit.IsInPlayerParty && unit.IsInCombat)
+			{
+				if (num >= (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistanceInCombatCells * GraphParamsMechanicsCache.GridCellSize)
+				{
+					unitMoveToProperParams.MovementType = WalkSpeedType.Sprint;
+				}
+				else
+				{
+					unitMoveToProperParams.MovementType = WalkSpeedType.Run;
+				}
+			}
+			else
+			{
+				unitMoveToProperParams.MovementType = (WalkSpeedType)CheatsAnimation.MoveType;
+			}
+		}
+		else if (unit.IsInPlayerParty && unit.IsInCombat)
+		{
+			if (num >= (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistanceInCombatCells * GraphParamsMechanicsCache.GridCellSize)
+			{
+				unitMoveToProperParams.MovementType = WalkSpeedType.Sprint;
+			}
+			else
+			{
+				unitMoveToProperParams.MovementType = WalkSpeedType.Run;
+			}
+		}
+		return unitMoveToProperParams;
+	}
+
+	public static UnitMoveToParams CreateMoveCommandParamsRT(BaseUnitEntity unit, MoveCommandSettings settings, ForcedPath path)
+	{
+		UnitMoveToParams unitMoveToParams = new UnitMoveToParams(path, settings.Destination)
+		{
+			IsSynchronized = true
+		};
+		float num = path.Length();
+		if (BuildModeUtility.IsDevelopment)
+		{
+			if (CheatsAnimation.SpeedForce > 0f)
+			{
+				unitMoveToParams.OverrideSpeed = CheatsAnimation.SpeedForce;
+			}
+			if (unit.IsInPlayerParty && !unit.IsInCombat)
+			{
+				if (num > (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistance)
+				{
+					unitMoveToParams.MovementType = WalkSpeedType.Sprint;
+				}
+				else if (num < (float)ConfigRoot.Instance.SystemMechanics.MaxWalkDistance)
+				{
+					unitMoveToParams.MovementType = WalkSpeedType.Walk;
+				}
+				else
+				{
+					unitMoveToParams.MovementType = WalkSpeedType.Run;
+				}
+			}
+			else
+			{
+				unitMoveToParams.MovementType = (WalkSpeedType)CheatsAnimation.MoveType;
+			}
+		}
+		else if (unit.IsInPlayerParty && !unit.IsInCombat)
+		{
+			if (num > (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistance)
+			{
+				unitMoveToParams.MovementType = WalkSpeedType.Sprint;
+			}
+			else if (num < (float)ConfigRoot.Instance.SystemMechanics.MaxWalkDistance)
+			{
+				unitMoveToParams.MovementType = WalkSpeedType.Walk;
+			}
+			else
+			{
+				unitMoveToParams.MovementType = WalkSpeedType.Run;
+			}
+		}
+		return unitMoveToParams;
+	}
+
+	public static UnitFollowParams CreateUnitFollowCommandParamsRT(BaseUnitEntity unit, MoveCommandSettings settings)
+	{
+		bool isSynchronized = !ContextData<GameCommandContext>.Current && !ContextData<UnitCommandContext>.Current;
+		return new UnitFollowParams(settings.FollowedUnit, settings.Destination)
+		{
+			IsSynchronized = isSynchronized
+		};
+	}
+
+	[Cheat(Name = "respec", Description = "Respec selected unit", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	[UsedImplicitly]
+	public static void CheatRespecUnit()
+	{
+		RespecCompanion respecCompanion = new RespecCompanion();
+		respecCompanion.ForFree = true;
+		respecCompanion.Run();
+	}
+
+	public static void Restore(this BaseUnitEntity unit)
+	{
+		if (unit.LifeState.IsDead)
+		{
+			unit.LifeState.Resurrect();
+			unit.Position = Game.Instance.Player.MainCharacter.Entity.Position;
+		}
+		Rulebook.Trigger(RuleHealDamage.Setup(unit, unit).Base(unit.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "Restore")).Create());
+		unit.CombatState.ResetActionAndMovementPoints();
+		unit.CombatState.AttackInRoundCount = 0;
+		unit.CombatState.AttackedInRoundCount = 0;
+		unit.CombatState.HitInRoundCount = 0;
+		unit.CombatState.GotHitInRoundCount = 0;
+		unit.GetAbilityCooldownsOptional()?.Clear();
+		unit.GetTwoWeaponFightingOptional()?.ResetAttacks();
+		TryResetDebuffs(unit);
+		unit.Health.HealAll();
+		unit.Armor.HealDamageAll();
+		foreach (ItemEntity item in Game.Instance.PartySharedInventory.Collection)
+		{
+			item.RestoreCharges();
+		}
+		EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
+		{
+			h.HandleActionBarSlotsUpdated();
+		});
+	}
+
+	private static void TryResetDebuffs(BaseUnitEntity unit)
+	{
+		SkillCheckRoot skillCheckRoot = ConfigRoot.Instance.SkillCheckRoot;
+		unit.Buffs.Remove(skillCheckRoot.Fatigued);
+		unit.Buffs.Remove(skillCheckRoot.Disturbed);
+		unit.Buffs.Remove(skillCheckRoot.Perplexed);
 	}
 
 	public static bool IsCustomCompanion(this BaseUnitEntity _this)
@@ -637,391 +1100,5 @@ public static class UnitHelper
 	public static bool IsStoryCompanion(this BaseUnitEntity unit)
 	{
 		return unit.Blueprint.GetComponent<UnitIsStoryCompanion>() != null;
-	}
-
-	public static void UpdateDropTransform(BaseUnitEntity ownerUnit, Transform loot, Vector3 rotation)
-	{
-		float scaleMultiplierBySize = GetScaleMultiplierBySize(ownerUnit);
-		loot.localScale = new Vector3(scaleMultiplierBySize, scaleMultiplierBySize, scaleMultiplierBySize);
-		loot.rotation = Quaternion.Euler(rotation);
-	}
-
-	public static float GetScaleMultiplierBySize(BaseUnitEntity ownerUnit)
-	{
-		BlueprintUnit blueprintUnit = ownerUnit?.Blueprint;
-		if (blueprintUnit == null)
-		{
-			return 1f;
-		}
-		return blueprintUnit.Size switch
-		{
-			Size.Fine => 0.1f, 
-			Size.Diminutive => 0.25f, 
-			Size.Tiny => 0.5f, 
-			Size.Small => 0.75f, 
-			Size.Medium => 1f, 
-			Size.Large => 1.5f, 
-			Size.Huge => 2f, 
-			Size.Gargantuan => 2.5f, 
-			Size.Colossal => 3f, 
-			_ => 1f, 
-		};
-	}
-
-	public static void SnapToGrid(this IEnumerable<BaseUnitEntity> units)
-	{
-		foreach (BaseUnitEntity unit in units)
-		{
-			unit.MovementAgent.Blocker.Unblock();
-		}
-		foreach (BaseUnitEntity item in units.OrderByDescending((BaseUnitEntity v) => v.SizeRect.Height * v.SizeRect.Width))
-		{
-			try
-			{
-				GridNodeBase gridNodeBase = FindPositionForUnit(item);
-				if (gridNodeBase != null)
-				{
-					item.Movable.ForceHasMotion = true;
-					item.Position = gridNodeBase.Vector3Position();
-				}
-			}
-			catch (Exception exception)
-			{
-				PFLog.Default.ExceptionWithReport(exception, null);
-			}
-			finally
-			{
-				item.MovementAgent.UpdateBlocker();
-			}
-		}
-	}
-
-	public static void SnapToGrid(this BaseUnitEntity unit)
-	{
-		UnitMovementAgentBase maybeMovementAgent = unit.MaybeMovementAgent;
-		if (maybeMovementAgent == null)
-		{
-			return;
-		}
-		try
-		{
-			maybeMovementAgent.Blocker.Unblock();
-			GridNodeBase gridNodeBase = FindPositionForUnit(unit);
-			if (gridNodeBase != null)
-			{
-				unit.Movable.ForceHasMotion = true;
-				unit.Position = gridNodeBase.Vector3Position();
-			}
-		}
-		catch (Exception exception)
-		{
-			PFLog.Default.ExceptionWithReport(exception, null);
-		}
-		finally
-		{
-			maybeMovementAgent.UpdateBlocker();
-		}
-	}
-
-	public static bool CanStandHere(this MechanicEntity unit, GraphNode node)
-	{
-		UnitMovementAgentBase maybeMovementAgent = unit.MaybeMovementAgent;
-		if (maybeMovementAgent == null)
-		{
-			return true;
-		}
-		NodeList nodes = GridAreaHelper.GetNodes(node, unit.SizeRect);
-		bool result = true;
-		foreach (GridNodeBase item in nodes)
-		{
-			if (item == null || !item.Walkable || WarhammerBlockManager.Instance.NodeContainsAnyExcept(item, maybeMovementAgent.Blocker) || !IsNodeConnected(item, nodes))
-			{
-				result = false;
-				break;
-			}
-		}
-		return result;
-	}
-
-	private static bool IsNodeConnected(GridNodeBase node, IEnumerable<GridNodeBase> nodes)
-	{
-		if (!(node.Graph is GridGraph gridGraph))
-		{
-			return true;
-		}
-		for (int i = node.XCoordinateInGrid - 1; i < node.XCoordinateInGrid + 1; i++)
-		{
-			for (int j = node.ZCoordinateInGrid - 1; j < node.ZCoordinateInGrid + 1; j++)
-			{
-				if (i != node.XCoordinateInGrid || j != node.ZCoordinateInGrid)
-				{
-					GridNodeBase node2 = gridGraph.GetNode(i, j);
-					if (nodes.Contains(node2) && !node.ContainsConnection(node2))
-					{
-						return false;
-					}
-				}
-			}
-		}
-		return true;
-	}
-
-	[CanBeNull]
-	private static GridNodeBase FindPositionForUnit(MechanicEntity unit)
-	{
-		GridNodeBase gridNodeBase = (GridNodeBase)(GraphNode)unit.CurrentNode;
-		if (gridNodeBase == null)
-		{
-			PFLog.Default.ErrorWithReport($"UnitHelper.FindPositionForUnit: can't find origin node for {unit}");
-			return null;
-		}
-		BlueprintAreaPart currentlyLoadedAreaPart = Game.Instance.CurrentlyLoadedAreaPart;
-		Bounds? bounds = ((currentlyLoadedAreaPart == null) ? null : ObjectExtensions.Or(currentlyLoadedAreaPart.Bounds, null)?.MechanicBounds);
-		if (gridNodeBase.ContainsPoint(unit.Position) && unit.CanStandHere(gridNodeBase) && (!bounds.HasValue || bounds.Value.ContainsXZ(gridNodeBase.Vector3Position())))
-		{
-			return gridNodeBase;
-		}
-		using (CloseToFarNodesEnumerator closeToFarNodesEnumerator = new CloseToFarNodesEnumerator(unit.Position))
-		{
-			while (closeToFarNodesEnumerator.MoveNext())
-			{
-				GridNodeBase current = closeToFarNodesEnumerator.Current;
-				if (current != null && unit.CanStandHere(current) && (!bounds.HasValue || bounds.Value.ContainsXZ(current.Vector3Position())))
-				{
-					return current;
-				}
-			}
-		}
-		if (!unit.CanStandHere(gridNodeBase))
-		{
-			PFLog.Default.ErrorWithReport($"UnitHelper.FindPositionForUnit: can't find position for {unit}");
-		}
-		return gridNodeBase;
-	}
-
-	public static UnitMoveToProperParams TryCreateMoveCommandTB(this BaseUnitEntity unit, MoveCommandSettings settings, bool showMovePrediction)
-	{
-		MoveCommandStatus status;
-		return unit.TryCreateMoveCommandTB(settings, showMovePrediction, out status);
-	}
-
-	public static UnitMoveToProperParams TryCreateMoveCommandTB(this BaseUnitEntity unit, MoveCommandSettings settings, bool showMovePrediction, out MoveCommandStatus status)
-	{
-		return TryCreateMoveCommandTBUnit(unit, settings, showMovePrediction, out status);
-	}
-
-	private static UnitMoveToProperParams TryCreateMoveCommandTBUnit(BaseUnitEntity unit, MoveCommandSettings settings, bool showMovePrediction, out MoveCommandStatus status)
-	{
-		if (!unit.CanMove)
-		{
-			status = MoveCommandStatus.CannotMove;
-			return null;
-		}
-		WarhammerPathPlayer warhammerPathPlayer = PathfindingService.Instance.FindPathTB_Blocking(unit.View.MovementAgent, settings.Destination, limitRangeByActionPoints: false);
-		using (PathDisposable<WarhammerPathPlayer>.Get(warhammerPathPlayer, unit))
-		{
-			object obj;
-			if (unit != null)
-			{
-				obj = Rulebook.Trigger(new RuleCalculateMovementCost(unit, warhammerPathPlayer));
-			}
-			else
-			{
-				obj = null;
-			}
-			int num = ((RuleCalculateMovementCost)obj)?.ResultPointCount ?? 0;
-			float[] costPerEveryCell = ((RuleCalculateMovementCost)obj)?.ResultAPCostPerPoint ?? Array.Empty<float>();
-			while (num > 0)
-			{
-				NodeList nodes = GridAreaHelper.GetNodes(warhammerPathPlayer.path[num - 1], unit.SizeRect);
-				if (!WarhammerBlockManager.Instance.NodeContainsAnyExcept(nodes, unit.View.MovementAgent.Blocker))
-				{
-					break;
-				}
-				num--;
-			}
-			if (num < 2)
-			{
-				status = MoveCommandStatus.NotEnoughPoints;
-				return null;
-			}
-			IEnumerable<GraphNode> nodes2 = warhammerPathPlayer.path.Take(num);
-			ForcedPath forcedPath = ForcedPath.Construct(warhammerPathPlayer.vectorPath.Take(num), nodes2);
-			Path path = UnitPathManager.Instance.GetPath(unit);
-			if (path != null && path.vectorPath.SequenceEqual(forcedPath.vectorPath))
-			{
-				forcedPath.Claim(unit);
-				forcedPath.Release(unit);
-				status = MoveCommandStatus.SamePath;
-				return null;
-			}
-			status = MoveCommandStatus.NewCommandCreated;
-			UnitMoveToProperParams unitMoveToProperParams = CreateMoveCommandUnit(unit, settings, costPerEveryCell, forcedPath);
-			if (showMovePrediction)
-			{
-				DrawMovePrediction(unit, forcedPath, costPerEveryCell, unitMoveToProperParams);
-			}
-			return unitMoveToProperParams;
-		}
-	}
-
-	public static void DrawMovePrediction([NotNull] BaseUnitEntity unit, [NotNull] Path forcedPath, [CanBeNull] float[] costPerEveryCell, [CanBeNull] UnitCommandParams unitCommandParams = null)
-	{
-		if (forcedPath.vectorPath != null)
-		{
-			Game.Instance.GameCommandQueue.DrawMovePrediction(unit, forcedPath, costPerEveryCell, unitCommandParams);
-		}
-	}
-
-	public static void DrawMovePredictionLocal(BaseUnitEntity unit, Path forcedPath, float[] costPerEveryCell)
-	{
-		UnitPathManager.Instance.RemovePath(unit);
-		UnitPathManager.Instance.AddPath(unit, forcedPath, unit.Blueprint.WarhammerMovementApPerCell, unit.CombatState.MovementPoints, unit.CombatState.LastDiagonalCount % 2 == 1, costPerEveryCell);
-		try
-		{
-			List<Vector3> vectorPath = forcedPath.vectorPath;
-			Vector3 vector = vectorPath[vectorPath.Count - 1];
-			Vector3 vector2;
-			if (forcedPath.vectorPath.Count <= 1 || unit.SizeRect.Height == unit.SizeRect.Width)
-			{
-				vector2 = Vector3.zero;
-			}
-			else
-			{
-				List<Vector3> vectorPath2 = forcedPath.vectorPath;
-				vector2 = (vector - vectorPath2[vectorPath2.Count - 2]).normalized;
-			}
-			Vector3 direction = vector2;
-			UnitPredictionManager.Instance.SetHologramPosition(unit, vector, direction);
-		}
-		catch (Exception ex)
-		{
-			PFLog.Default.Exception(ex);
-		}
-	}
-
-	public static void ClearPrediction(BaseUnitEntity unit = null)
-	{
-		UnitPredictionManager.Instance.ClearAll();
-		if (unit != null)
-		{
-			UnitPathManager.Instance.RemovePath(unit);
-		}
-		else
-		{
-			UnitPathManager.Instance.RemoveAllPaths();
-		}
-	}
-
-	private static UnitMoveToProperParams CreateMoveCommandUnit(AbstractUnitEntity unit, MoveCommandSettings settings, float[] costPerEveryCell, ForcedPath forcedPath)
-	{
-		UnitMoveToProperParams unitMoveToProperParams = new UnitMoveToProperParams(forcedPath, unit.Blueprint.WarhammerMovementApPerCell, costPerEveryCell)
-		{
-			IsSynchronized = true
-		};
-		float num = forcedPath.Length();
-		if (BuildModeUtility.IsDevelopment)
-		{
-			if (CheatsAnimation.SpeedForce > 0f)
-			{
-				unitMoveToProperParams.OverrideSpeed = CheatsAnimation.SpeedForce;
-			}
-			if (unit.IsInPlayerParty && unit.IsInCombat)
-			{
-				if (num >= (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistanceInCombatCells * GraphParamsMechanicsCache.GridCellSize)
-				{
-					unitMoveToProperParams.MovementType = WalkSpeedType.Sprint;
-				}
-				else
-				{
-					unitMoveToProperParams.MovementType = WalkSpeedType.Run;
-				}
-			}
-			else
-			{
-				unitMoveToProperParams.MovementType = (WalkSpeedType)CheatsAnimation.MoveType;
-			}
-		}
-		else if (unit.IsInPlayerParty && unit.IsInCombat)
-		{
-			if (num >= (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistanceInCombatCells * GraphParamsMechanicsCache.GridCellSize)
-			{
-				unitMoveToProperParams.MovementType = WalkSpeedType.Sprint;
-			}
-			else
-			{
-				unitMoveToProperParams.MovementType = WalkSpeedType.Run;
-			}
-		}
-		return unitMoveToProperParams;
-	}
-
-	public static UnitMoveToParams CreateMoveCommandParamsRT(BaseUnitEntity unit, MoveCommandSettings settings, ForcedPath path)
-	{
-		UnitMoveToParams unitMoveToParams = new UnitMoveToParams(path, settings.Destination)
-		{
-			IsSynchronized = true
-		};
-		float num = path.Length();
-		if (BuildModeUtility.IsDevelopment)
-		{
-			if (CheatsAnimation.SpeedForce > 0f)
-			{
-				unitMoveToParams.OverrideSpeed = CheatsAnimation.SpeedForce;
-			}
-			if (unit.IsInPlayerParty && !unit.IsInCombat)
-			{
-				if (num > (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistance)
-				{
-					unitMoveToParams.MovementType = WalkSpeedType.Sprint;
-				}
-				else if (num < (float)ConfigRoot.Instance.SystemMechanics.MaxWalkDistance)
-				{
-					unitMoveToParams.MovementType = WalkSpeedType.Walk;
-				}
-				else
-				{
-					unitMoveToParams.MovementType = WalkSpeedType.Run;
-				}
-			}
-			else
-			{
-				unitMoveToParams.MovementType = (WalkSpeedType)CheatsAnimation.MoveType;
-			}
-		}
-		else if (unit.IsInPlayerParty && !unit.IsInCombat)
-		{
-			if (num > (float)ConfigRoot.Instance.SystemMechanics.MinSprintDistance)
-			{
-				unitMoveToParams.MovementType = WalkSpeedType.Sprint;
-			}
-			else if (num < (float)ConfigRoot.Instance.SystemMechanics.MaxWalkDistance)
-			{
-				unitMoveToParams.MovementType = WalkSpeedType.Walk;
-			}
-			else
-			{
-				unitMoveToParams.MovementType = WalkSpeedType.Run;
-			}
-		}
-		return unitMoveToParams;
-	}
-
-	public static UnitFollowParams CreateUnitFollowCommandParamsRT(BaseUnitEntity unit, MoveCommandSettings settings)
-	{
-		bool isSynchronized = !ContextData<GameCommandContext>.Current && !ContextData<UnitCommandContext>.Current;
-		return new UnitFollowParams(settings.FollowedUnit, settings.Destination)
-		{
-			IsSynchronized = isSynchronized
-		};
-	}
-
-	[Cheat(Name = "respec", Description = "Respec selected unit", ExecutionPolicy = ExecutionPolicy.PlayMode)]
-	[UsedImplicitly]
-	public static void CheatRespecUnit()
-	{
-		RespecCompanion respecCompanion = new RespecCompanion();
-		respecCompanion.ForFree = true;
-		respecCompanion.Run();
 	}
 }

@@ -6,6 +6,8 @@ using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.Utility.Random;
@@ -18,7 +20,7 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects.Traps.Simple;
 
 [KnowledgeDatabaseID("3f97579788494ffdb20292bb50f3b2e7")]
-public class SimpleTrapObjectView : TrapObjectView
+public class SimpleTrapObjectView : TrapObjectView, ISimpleTrapEntityConfig, ITrapEntityConfig, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig
 {
 	[SerializeField]
 	private LocalizedString m_NameInLog;
@@ -38,7 +40,7 @@ public class SimpleTrapObjectView : TrapObjectView
 	[SerializeField]
 	public SimpleTrapObjectInfo Info;
 
-	public string NameInLog
+	public override string NameInLog
 	{
 		get
 		{
@@ -50,11 +52,11 @@ public class SimpleTrapObjectView : TrapObjectView
 		}
 	}
 
-	[CanBeNull]
-	public ActionsHolder DisableActions => m_DisableActions;
+	ActionList ISimpleTrapEntityConfig.TriggerActions => m_TrapActions?.Get()?.Actions;
 
-	[CanBeNull]
-	public ActionsHolder TrapActions => m_TrapActions;
+	ActionList ISimpleTrapEntityConfig.DisarmActions => m_DisableActions?.Get()?.Actions;
+
+	SimpleTrapObjectInfo ISimpleTrapEntityConfig.Info => Info;
 
 	public new SimpleTrapObjectData Data => (SimpleTrapObjectData)base.Data;
 
@@ -69,7 +71,7 @@ public class SimpleTrapObjectView : TrapObjectView
 		{
 			return null;
 		}
-		GameObject gameObject = new GameObject(data.Name);
+		GameObject gameObject = new GameObject(data.ViewName);
 		gameObject.SetActive(value: false);
 		SimpleTrapObjectView simpleTrapObjectView = gameObject.AddComponent<SimpleTrapObjectView>();
 		ScriptZone scriptZoneTrigger = TrapObjectView.SetupViewAndFindScriptZone(simpleTrapObjectView, scriptZoneId, UnitAnimationInteractionType.DisarmTrap);
@@ -92,7 +94,7 @@ public class SimpleTrapObjectView : TrapObjectView
 		int disableDC = ((Info.DisableDifficulty == TrapDisableDifficulty.Easy) ? (settings.DisableDC.from + blueprintTrapSettingsRoot.EasyDisableDCDelta * num) : (settings.DisableDC.to + blueprintTrapSettingsRoot.HardDisableDCDelta * num));
 		SimpleTrapObjectData simpleTrapObjectData = Entity.Initialize(new SimpleTrapObjectData(this)
 		{
-			Name = base.gameObject.name,
+			ViewName = base.gameObject.name,
 			DisableDC = disableDC,
 			PerceptionDC = settings.PerceptionDC.PickRandom(),
 			PerceptionRadius = (Info.OverridePerceptionRadius ? Info.PerceptionRadius : blueprintTrapSettingsRoot.DefaultPerceptionRadius),

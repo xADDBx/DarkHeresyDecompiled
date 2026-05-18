@@ -1,172 +1,49 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Kingmaker.Code.UI.MVVM.View;
+using Code.View.UI.Helpers;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI;
-using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.UI.Pointer;
 using Owlcat.UI;
 using R3;
 using R3.Triggers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
+public class PrerequisiteEntryView : View<PrerequisiteEntryVM>
 {
-	private class TMPPrerequisiteLinkNavigationEntity : TMPLinkNavigationEntity, IPrerequisiteLinkEntity
-	{
-		public string LinkId { get; }
+	[Header("Elements")]
+	[SerializeField]
+	protected TextValueTupleView m_Text;
 
-		public TMPPrerequisiteLinkNavigationEntity(TextMeshProUGUI text, OwlcatMultiButton firstFocus, OwlcatMultiButton secondFocus, GlossaryPoint glossaryPoint, Action<string> onLinkClicked = null, Action<string> onLinkFocused = null)
-			: base(text, firstFocus, secondFocus, glossaryPoint, onLinkClicked, onLinkFocused)
+	[Header("Selectables")]
+	[SerializeField]
+	private OwlcatMultiSelectable m_StateSelectable;
+
+	protected int? m_LinkIndex;
+
+	protected string m_LinkKey;
+
+	private AccessibilityTextHelper m_TextHelper;
+
+	protected override void OnBind()
+	{
+		m_Text.Bind(base.ViewModel.Info);
+		m_StateSelectable.SetActiveLayer(base.ViewModel.Done ? "Done" : "Required");
+		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
 		{
-			string[] keysFromLink = UtilityLink.GetKeysFromLink(m_LinkId);
-			if (keysFromLink.Length > 1)
-			{
-				LinkId = keysFromLink[1];
-			}
-		}
+			SetLinkHighlight().AddTo(this);
+		}).AddTo(this);
 	}
 
-	[SerializeField]
-	private TextMeshProUGUI m_Text;
-
-	[SerializeField]
-	private TextMeshProUGUI m_Value;
-
-	[SerializeField]
-	private Image m_Background;
-
-	[Header("Colors")]
-	[SerializeField]
-	private Color32 m_DoneBGColor;
-
-	[SerializeField]
-	private Color32 m_RequiredBGColor;
-
-	[SerializeField]
-	private Color32 m_DoneTextColor;
-
-	[SerializeField]
-	private Color32 m_RequiredTextColor;
-
-	[Header("Font Settings")]
-	[SerializeField]
-	private float m_DefaultFontSizeText = 18f;
-
-	[SerializeField]
-	private float m_DefaultFontSizeValue = 22f;
-
-	[SerializeField]
-	private float m_DefaultConsoleFontSizeText = 18f;
-
-	[SerializeField]
-	private float m_DefaultConsoleFontSizeValue = 22f;
-
-	[Header("Focus")]
-	[SerializeField]
-	private SingleLinkMultiButton m_Focus;
-
-	[SerializeField]
-	private OwlcatMultiButton m_MultiButtonFirstFocus;
-
-	[SerializeField]
-	private OwlcatMultiButton m_MultiButtonSecondFocus;
-
-	[Header("Console")]
-	[SerializeField]
-	private FloatConsoleNavigationBehaviour.NavigationParameters m_NavigationParameters;
-
-	private int? m_LinkIndex;
-
-	private string m_LinkKey;
-
-	private List<TMPPrerequisiteLinkNavigationEntity> m_LinkEntities = new List<TMPPrerequisiteLinkNavigationEntity>();
-
-	private FloatConsoleNavigationBehaviour m_NavigationBehaviour;
-
-	protected override void BindViewImplementation()
-	{
-		m_Text.text = base.ViewModel.Text;
-		m_Value.text = base.ViewModel.Value;
-		TextMeshProUGUI text = m_Text;
-		Color color2 = (m_Value.color = (base.ViewModel.Done ? m_DoneTextColor : m_RequiredTextColor));
-		text.color = color2;
-		m_Background.color = (base.ViewModel.Done ? m_DoneBGColor : m_RequiredBGColor);
-		bool isControllerMouse = Game.Instance.IsControllerMouse;
-		m_Text.fontSize = (isControllerMouse ? m_DefaultFontSizeText : m_DefaultConsoleFontSizeText) * base.ViewModel.FontMultiplier;
-		m_Value.fontSize = (isControllerMouse ? m_DefaultFontSizeValue : m_DefaultConsoleFontSizeValue) * base.ViewModel.FontMultiplier;
-		AddDisposable(m_NavigationBehaviour = new FloatConsoleNavigationBehaviour(m_NavigationParameters));
-		AddDisposable(m_NavigationBehaviour.DeepestFocusAsObservable.Subscribe(OnFocusEntity));
-		Observable.NextFrame().Subscribe(CreateNavigation).AddTo(this);
-		if (Game.Instance.IsControllerMouse)
-		{
-			ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
-			{
-				SetLinkHighlight().AddTo(this);
-			}).AddTo(this);
-		}
-	}
-
-	protected override void DestroyViewImplementation()
+	protected override void OnUnbind()
 	{
 		m_LinkIndex = null;
 		m_LinkKey = null;
-	}
-
-	private void CreateNavigation()
-	{
-		m_LinkEntities = GenerateEntityList(m_Text, m_MultiButtonFirstFocus, m_MultiButtonSecondFocus, delegate
-		{
-			HighlightCurrentOnce();
-		}, null);
-		if (m_LinkEntities.Count > 1)
-		{
-			m_NavigationBehaviour.AddEntities(m_LinkEntities);
-			return;
-		}
-		string linkId = string.Empty;
-		if (m_LinkEntities.Count > 0)
-		{
-			linkId = m_LinkEntities.ElementAt(0).LinkId;
-			AddDisposable(m_Focus.Button.OnConfirmClickAsObservable().Subscribe(HighlightCurrentOnce));
-		}
-		m_Focus.Initialize(linkId);
-		m_NavigationBehaviour.AddEntity(m_Focus);
-	}
-
-	private void OnFocusEntity(IConsoleEntity entity)
-	{
-		ClearLinkIndexIfNeeded();
-		if (entity == null)
-		{
-			return;
-		}
-		m_LinkIndex = m_NavigationBehaviour.Entities.IndexOf(entity);
-		if (m_LinkIndex < 0 || m_LinkIndex > m_LinkEntities.Count - 1)
-		{
-			ClearLinkIndexIfNeeded();
-			return;
-		}
-		m_LinkKey = m_LinkEntities[m_LinkIndex.Value].LinkId;
-		if (m_LinkKey != null)
-		{
-			EventBus.RaiseEvent(delegate(IUIHighlighter h)
-			{
-				h.StartHighlight(m_LinkKey);
-			});
-		}
-	}
-
-	public FloatConsoleNavigationBehaviour GetNavigation()
-	{
-		return m_NavigationBehaviour;
 	}
 
 	private IDisposable SetLinkHighlight()
@@ -175,7 +52,7 @@ public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
 		{
 			return Disposable.Empty;
 		}
-		bool entered = TMP_TextUtilities.IsIntersectingRectTransform(m_Text.rectTransform, Input.mousePosition, UICamera.Claim());
+		bool entered = TMP_TextUtilities.IsIntersectingRectTransform(m_Text.Text.rectTransform, CursorController.CursorPosition, UICamera.Claim());
 		IDisposable enter = m_Text.OnPointerEnterAsObservable().Subscribe(delegate
 		{
 			entered = true;
@@ -193,7 +70,7 @@ public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
 			}
 			else
 			{
-				int num = TMP_TextUtilities.FindIntersectingLink(m_Text, Input.mousePosition, UICamera.Claim());
+				int num = TMP_TextUtilities.FindIntersectingLink(m_Text.Text, CursorController.CursorPosition, UICamera.Claim());
 				if (num == -1)
 				{
 					ClearFocusIfNeeded();
@@ -202,8 +79,7 @@ public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
 				else if (num != m_LinkIndex)
 				{
 					m_LinkIndex = num;
-					m_LinkEntities.ElementAtOrDefault(m_LinkIndex.Value)?.SetFocus(value: true);
-					m_LinkKey = UtilityLink.GetKeysFromLink(m_Text.textInfo.linkInfo[m_LinkIndex.Value].GetLinkID())[1];
+					m_LinkKey = UtilityLink.GetKeysFromLink(m_Text.Text.textInfo.linkInfo[m_LinkIndex.Value].GetLinkID())[1];
 					EventBus.RaiseEvent(delegate(IUIHighlighter h)
 					{
 						h.StartHighlight(m_LinkKey);
@@ -220,14 +96,14 @@ public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
 		});
 		return Disposable.Create(delegate
 		{
-			enter?.Dispose();
-			exit?.Dispose();
-			update?.Dispose();
-			click?.Dispose();
+			enter.Dispose();
+			exit.Dispose();
+			update.Dispose();
+			click.Dispose();
 		});
 	}
 
-	private void HighlightCurrentOnce()
+	protected void HighlightCurrentOnce()
 	{
 		if (!string.IsNullOrEmpty(m_LinkKey))
 		{
@@ -240,13 +116,9 @@ public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
 
 	private void ClearFocusIfNeeded()
 	{
-		if (m_LinkIndex.HasValue && !string.IsNullOrEmpty(m_LinkKey))
-		{
-			m_LinkEntities.ElementAtOrDefault(m_LinkIndex.Value)?.SetFocus(value: false);
-		}
 	}
 
-	private void ClearLinkIndexIfNeeded()
+	protected void ClearLinkIndexIfNeeded()
 	{
 		int? linkIndex = m_LinkIndex;
 		string linkKey = m_LinkKey;
@@ -259,11 +131,5 @@ public class PrerequisiteEntryView : ViewBase<PrerequisiteEntryVM>, IWidgetView
 				h.StopHighlight(m_LinkKey);
 			});
 		}
-	}
-
-	private List<TMPPrerequisiteLinkNavigationEntity> GenerateEntityList(TextMeshProUGUI text, OwlcatMultiButton firstFocus, OwlcatMultiButton secondFocus, Action<string> onLinkClicked, Action<string> onLinkFocused)
-	{
-		return (from glossaryEntity in GlossaryPointsUtils.GetLinksCoordinatesDictionary(text)
-			select new TMPPrerequisiteLinkNavigationEntity(text, firstFocus, secondFocus, glossaryEntity, onLinkClicked, onLinkFocused)).ToList();
 	}
 }

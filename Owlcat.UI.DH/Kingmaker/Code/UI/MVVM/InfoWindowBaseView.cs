@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.Sound;
@@ -80,7 +79,7 @@ public abstract class InfoWindowBaseView : InfoBaseView<InfoWindowVM>
 	{
 		if (m_IsShowed)
 		{
-			UISounds.Instance.Sounds.Tooltip.TooltipHide.Play();
+			ModalWindowsSounds.Instance.Tooltip.Hide.Play();
 		}
 		m_IsShowed = false;
 		base.OnUnbind();
@@ -94,7 +93,7 @@ public abstract class InfoWindowBaseView : InfoBaseView<InfoWindowVM>
 		m_Animator.CanvasGroup.blocksRaycasts = true;
 		DelayedInvoker.InvokeInTime(delegate
 		{
-			UISounds.Instance.Sounds.Tooltip.TooltipShow.Play();
+			ModalWindowsSounds.Instance.Tooltip.Show.Play();
 			m_IsShowed = true;
 		}, m_Animator.AppearTime);
 	}
@@ -106,7 +105,7 @@ public abstract class InfoWindowBaseView : InfoBaseView<InfoWindowVM>
 		CanvasGroup component = base.gameObject.GetComponent<CanvasGroup>();
 		if (component != null && Math.Abs(component.alpha - 1f) < 0.0001f)
 		{
-			UISounds.Instance.Sounds.Tooltip.TooltipHide.Play();
+			ModalWindowsSounds.Instance.Tooltip.Hide.Play();
 		}
 	}
 

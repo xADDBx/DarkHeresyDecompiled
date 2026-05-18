@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -16,7 +17,7 @@ public sealed class DealtDamageGetter : IntPropertyGetter, PropertyContextAccess
 
 	protected override int GetBaseValue()
 	{
-		RulebookEvent rule = this.GetRule();
+		RulebookEvent rule = EvalContext.Current.Rule;
 		if (Vital)
 		{
 			if (!(rule is RulePerformAttack rulePerformAttack))

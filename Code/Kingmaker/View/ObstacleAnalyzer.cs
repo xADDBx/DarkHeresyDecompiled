@@ -252,9 +252,7 @@ public struct ObstacleAnalyzer
 		NNInfo nearestNode = GetNearestNode(m_Input.Position3D);
 		if (nearestNode.node == null)
 		{
-			LogChannel @default = PFLog.Default;
-			Vector2 position2D = m_Input.Position2D;
-			@default.Warning("Could not find navmesh position for: " + position2D.ToString());
+			PFLog.Default.Warning("Could not find navmesh position for: " + m_Input.Position2D);
 			return false;
 		}
 		Vector2 b = m_Input.Position2D - nearestNode.position.To2D();

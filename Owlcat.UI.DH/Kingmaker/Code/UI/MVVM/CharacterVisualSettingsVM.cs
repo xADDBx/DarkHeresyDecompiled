@@ -18,73 +18,90 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CharacterVisualSettingsVM : ViewModel, ICharGenVisualHandler, ISubscriber
 {
-	public readonly BaseUnitEntity Unit;
+	private static readonly IReadOnlyList<VisualSettingsToggle> m_EmptyToggles = new List<VisualSettingsToggle>();
+
+	private readonly Action m_DisposeAction;
 
 	private readonly DollState m_DollState;
 
-	public readonly CharacterVisualSettingsEntityVM Cloth;
+	public readonly BaseUnitEntity Unit;
 
-	public readonly CharacterVisualSettingsEntityVM Helmet;
-
-	public readonly CharacterVisualSettingsEntityVM HelmetAboveAll;
-
-	public readonly CharacterVisualSettingsEntityVM Backpack;
+	public readonly IReadOnlyList<VisualSettingsToggle> ToggleVMs;
 
 	public readonly TextureSelectorVM OutfitMainColorSelector;
-
-	private readonly Action m_DisposeAction;
 
 	private CharacterVisualSettingsVM(Action disposeAction)
 	{
 		m_DisposeAction = disposeAction;
-		UISounds.Instance.Sounds.Inventory.InventoryVisualSettingsShow.Play();
+		ServiceWindowsSounds.Instance.Inventory.VisualSettingsShow.Play();
 	}
 
 	public CharacterVisualSettingsVM(DollState dollState, Action disposeAction)
 		: this(disposeAction)
 	{
 		m_DollState = dollState;
-		if (dollState != null)
+		if (dollState == null)
 		{
-			OutfitMainColorSelector = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
-			CreateOutfitColorSelector(secondary: false);
-			EventBus.Subscribe(this).AddTo(this);
-			Cloth = new CharacterVisualSettingsEntityVM(m_DollState.ShowCloth, SwitchCloth).AddTo(this);
-			Helmet = new CharacterVisualSettingsEntityVM(m_DollState.ShowHelm, SwitchHelmet).AddTo(this);
-			HelmetAboveAll = new CharacterVisualSettingsEntityVM(m_DollState.ShowHelmAboveAll, SwitchHelmetAboveAll).AddTo(this);
-			Backpack = new CharacterVisualSettingsEntityVM(m_DollState.ShowBackpack, SwitchBackpack).AddTo(this);
-			Helmet.SetValue(m_DollState.ShowHelm && m_DollState.ShowCloth);
-			HelmetAboveAll.SetValue(m_DollState.ShowHelmAboveAll);
-			Backpack.SetValue(m_DollState.ShowBackpack && m_DollState.ShowCloth);
-			Helmet.SetLock(!m_DollState.ShowCloth);
-			Backpack.SetLock(!m_DollState.ShowCloth && Unit.HasMechadendrites());
+			ToggleVMs = m_EmptyToggles;
+			return;
 		}
+		OutfitMainColorSelector = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color);
+		CreateOutfitColorSelector(secondary: false);
+		List<VisualSettingsToggle> list = new List<VisualSettingsToggle>();
+		UITextCharSheet characterSheet = UIStrings.Instance.CharacterSheet;
+		list.Add(new VisualSettingsToggle(new CharacterVisualSettingsEntityVM(m_DollState.ShowHelm, SwitchHelmet).SetValue(m_DollState.ShowHelm && m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth).AddTo(this), characterSheet.VisualSettingsShowHelmet));
+		list.Add(new VisualSettingsToggle(new CharacterVisualSettingsEntityVM(m_DollState.ShowArmor, SwitchArmor).SetValue(m_DollState.ShowArmor && m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth).AddTo(this), characterSheet.VisualSettingsShowArmor));
+		if (!Unit.HasMechadendrites())
+		{
+			list.Add(new VisualSettingsToggle(new CharacterVisualSettingsEntityVM(m_DollState.ShowBackpack, SwitchBackpack).SetValue(m_DollState.ShowBackpack && m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth || Unit.HasMechadendrites()).AddTo(this), characterSheet.VisualSettingsShowBackpack));
+		}
+		list.Add(new VisualSettingsToggle(new CharacterVisualSettingsEntityVM(m_DollState.ShowCloak, SwitchCloak).SetValue(m_DollState.ShowCloak && m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth).AddTo(this), characterSheet.VisualSettingsShowCloak));
+		list.Add(new VisualSettingsToggle(new CharacterVisualSettingsEntityVM(m_DollState.ShowGloves, SwitchGloves).SetValue(m_DollState.ShowGloves && m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth).AddTo(this), characterSheet.VisualSettingsShowGloves));
+		list.Add(new VisualSettingsToggle(new CharacterVisualSettingsEntityVM(m_DollState.ShowBoots, SwitchBoots).SetValue(m_DollState.ShowBoots && m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth).AddTo(this), characterSheet.VisualSettingsShowBoots));
+		ToggleVMs = list;
+		EventBus.Subscribe(this).AddTo(this);
 	}
 
 	public CharacterVisualSettingsVM(BaseUnitEntity unit, Action disposeAction)
 		: this(disposeAction)
 	{
 		Unit = unit;
-		if (unit != null)
+		if (unit == null)
 		{
-			OutfitMainColorSelector = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Paged);
-			CreateOutfitColorSelector(secondary: false);
-			Helmet = new CharacterVisualSettingsEntityVM(Unit.UISettings.ShowHelm, SwitchHelmet).AddTo(this);
-			HelmetAboveAll = new CharacterVisualSettingsEntityVM(Unit.UISettings.ShowHelmAboveAll, SwitchHelmetAboveAll).AddTo(this);
-			Backpack = new CharacterVisualSettingsEntityVM(Unit.UISettings.ShowBackpack, SwitchBackpack).AddTo(this);
-			Backpack.SetLock(Unit.HasMechadendrites());
+			ToggleVMs = m_EmptyToggles;
+			return;
 		}
-	}
-
-	protected override void OnDispose()
-	{
-		base.OnDispose();
-		UISounds.Instance.Sounds.Inventory.InventoryVisualSettingsHide.Play();
+		OutfitMainColorSelector = new TextureSelectorVM(new SelectionGroupRadioVM<TextureSelectorItemVM>(new ObservableList<TextureSelectorItemVM>()), TextureSelectorType.Color);
+		CreateOutfitColorSelector(secondary: false);
+		List<VisualSettingsToggle> list = new List<VisualSettingsToggle>();
+		UITextCharSheet characterSheet = UIStrings.Instance.CharacterSheet;
+		CharacterVisualSettingsEntityVM entity = new CharacterVisualSettingsEntityVM(unit.UISettings.ShowHelm, SwitchHelmet).AddTo(this);
+		list.Add(new VisualSettingsToggle(entity, characterSheet.VisualSettingsShowHelmet));
+		CharacterVisualSettingsEntityVM entity2 = new CharacterVisualSettingsEntityVM(unit.UISettings.ShowArmor, SwitchArmor).AddTo(this);
+		list.Add(new VisualSettingsToggle(entity2, characterSheet.VisualSettingsShowArmor));
+		if (!unit.HasMechadendrites())
+		{
+			CharacterVisualSettingsEntityVM entity3 = new CharacterVisualSettingsEntityVM(unit.UISettings.ShowBackpack, SwitchBackpack).AddTo(this);
+			list.Add(new VisualSettingsToggle(entity3, characterSheet.VisualSettingsShowBackpack));
+		}
+		CharacterVisualSettingsEntityVM entity4 = new CharacterVisualSettingsEntityVM(unit.UISettings.ShowCloak, SwitchCloak).AddTo(this);
+		list.Add(new VisualSettingsToggle(entity4, characterSheet.VisualSettingsShowCloak));
+		CharacterVisualSettingsEntityVM entity5 = new CharacterVisualSettingsEntityVM(unit.UISettings.ShowGloves, SwitchGloves).AddTo(this);
+		list.Add(new VisualSettingsToggle(entity5, characterSheet.VisualSettingsShowGloves));
+		CharacterVisualSettingsEntityVM entity6 = new CharacterVisualSettingsEntityVM(unit.UISettings.ShowBoots, SwitchBoots).AddTo(this);
+		list.Add(new VisualSettingsToggle(entity6, characterSheet.VisualSettingsShowBoots));
+		ToggleVMs = list;
 	}
 
 	public void Close()
 	{
 		m_DisposeAction?.Invoke();
+	}
+
+	protected override void OnDispose()
+	{
+		base.OnDispose();
+		ServiceWindowsSounds.Instance.Inventory.VisualSettingsHide.Play();
 	}
 
 	private void SwitchCloth()
@@ -95,15 +112,16 @@ public class CharacterVisualSettingsVM : ViewModel, ICharGenVisualHandler, ISubs
 
 	void ICharGenVisualHandler.HandleShowCloth(bool showCloth)
 	{
-		if (m_DollState != null)
+		if (m_DollState == null)
 		{
-			Helmet.SetValue(m_DollState.ShowCloth);
-			Backpack.SetValue(m_DollState.ShowCloth);
-			Helmet.SetLock(!m_DollState.ShowCloth);
-			Backpack.SetLock(!m_DollState.ShowCloth && Unit.HasMechadendrites());
-			RefreshTextureSelector(OutfitMainColorSelector, secondary: false);
-			OutfitMainColorSelector.SetActiveState(m_DollState.ShowCloth);
+			return;
 		}
+		foreach (VisualSettingsToggle toggleVM in ToggleVMs)
+		{
+			toggleVM.EntityVM.SetValue(m_DollState.ShowCloth).SetLock(!m_DollState.ShowCloth);
+		}
+		RefreshTextureSelector(OutfitMainColorSelector, secondary: false);
+		OutfitMainColorSelector.SetActiveState(m_DollState.ShowCloth);
 	}
 
 	private void SwitchHelmet()
@@ -118,18 +136,6 @@ public class CharacterVisualSettingsVM : ViewModel, ICharGenVisualHandler, ISubs
 		}
 	}
 
-	private void SwitchHelmetAboveAll()
-	{
-		if (m_DollState != null)
-		{
-			m_DollState.ShowHelmAboveAll = !m_DollState.ShowHelmAboveAll;
-		}
-		if (Unit != null)
-		{
-			Unit.UISettings.ShowHelmAboveAll = !Unit.UISettings.ShowHelmAboveAll;
-		}
-	}
-
 	private void SwitchBackpack()
 	{
 		if (m_DollState != null)
@@ -139,6 +145,78 @@ public class CharacterVisualSettingsVM : ViewModel, ICharGenVisualHandler, ISubs
 		if (Unit != null)
 		{
 			Unit.UISettings.ShowBackpack = !Unit.UISettings.ShowBackpack;
+		}
+	}
+
+	private void SwitchCloak()
+	{
+		if (m_DollState != null)
+		{
+			m_DollState.ShowCloak = !m_DollState.ShowCloak;
+		}
+		if (Unit != null)
+		{
+			Unit.UISettings.ShowCloak = !Unit.UISettings.ShowCloak;
+		}
+	}
+
+	private void SwitchGloves()
+	{
+		if (m_DollState != null)
+		{
+			m_DollState.ShowGloves = !m_DollState.ShowGloves;
+		}
+		if (Unit != null)
+		{
+			Unit.UISettings.ShowGloves = !Unit.UISettings.ShowGloves;
+		}
+	}
+
+	private void SwitchBoots()
+	{
+		if (m_DollState != null)
+		{
+			m_DollState.ShowBoots = !m_DollState.ShowBoots;
+		}
+		if (Unit != null)
+		{
+			Unit.UISettings.ShowBoots = !Unit.UISettings.ShowBoots;
+		}
+	}
+
+	private void SwitchHood()
+	{
+		if (m_DollState != null)
+		{
+			m_DollState.ShowHood = !m_DollState.ShowHood;
+		}
+		if (Unit != null)
+		{
+			Unit.UISettings.ShowHood = !Unit.UISettings.ShowHood;
+		}
+	}
+
+	private void SwitchArmor()
+	{
+		if (m_DollState != null)
+		{
+			m_DollState.ShowArmor = !m_DollState.ShowArmor;
+		}
+		if (Unit != null)
+		{
+			Unit.UISettings.ShowArmor = !Unit.UISettings.ShowArmor;
+		}
+	}
+
+	private void SwitchBaseHeadwear()
+	{
+		if (m_DollState != null)
+		{
+			m_DollState.ShowBaseHeadwear = !m_DollState.ShowBaseHeadwear;
+		}
+		if (Unit != null)
+		{
+			Unit.UISettings.ShowBaseHeadwear = !Unit.UISettings.ShowBaseHeadwear;
 		}
 	}
 

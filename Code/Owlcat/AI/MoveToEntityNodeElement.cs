@@ -1,3 +1,4 @@
+using Kingmaker.UnitLogic.Squads.Goals;
 using Owlcat.BehaviourTrees;
 using Owlcat.Runtime.Core.Utility;
 
@@ -13,11 +14,13 @@ public class MoveToEntityNodeElement : BehaviourTreeNodeElement<MoveToEntityNode
 
 	public PreferredPositionNearEntity PreferredPositionNearEntity;
 
+	public SquadGoalKind SquadGoalKind;
+
 	protected override MoveToEntityNode CreateTypedNode(Blackboard blackboard)
 	{
 		EntityVariable agentVariable = blackboard.GetAgentVariable();
 		EntityVariable runtimeVariable = TargetEntity.GetRuntimeVariable(blackboard);
 		AiAgentRuntimeInternalDataVariable runtimeInternalDataVariable = blackboard.GetRuntimeInternalDataVariable();
-		return new MoveToEntityNode(agentVariable, runtimeVariable, runtimeInternalDataVariable, ThreatsHandlingStrategy, PreferredPositionNearEntity);
+		return new MoveToEntityNode(agentVariable, runtimeVariable, runtimeInternalDataVariable, ThreatsHandlingStrategy, PreferredPositionNearEntity, SquadGoalKind);
 	}
 }

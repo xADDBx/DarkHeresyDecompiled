@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
@@ -54,7 +54,7 @@ public class UnitOvertipsCollectionVM : OvertipsCollectionVM<OvertipUnitVM>, IUn
 	{
 		TryCancelDelayedRemoveHandler(entityData);
 		OvertipUnitVM overtip = GetOvertip(entityData);
-		if (overtip == null || !overtip.MechanicEntityUIState.HasLoot.CurrentValue)
+		if (overtip == null || (!overtip.MechanicEntityUIState.HasLoot.CurrentValue && UtilityUnit.GetUnitInteractionFrom(overtip.MechanicEntityUIState.MechanicEntity.MechanicEntity) == null))
 		{
 			base.RemoveEntity(entityData);
 		}
@@ -62,7 +62,11 @@ public class UnitOvertipsCollectionVM : OvertipsCollectionVM<OvertipUnitVM>, IUn
 
 	protected override bool NeedOvertip(Entity entityData)
 	{
-		return true;
+		if (!entityData.Destroyed && !entityData.IsDisposed)
+		{
+			return entityData.View != null;
+		}
+		return false;
 	}
 
 	public void HandleUnitSpawned()
@@ -164,7 +168,7 @@ public class UnitOvertipsCollectionVM : OvertipsCollectionVM<OvertipUnitVM>, IUn
 		float seconds = GetOvertip(entityData)?.DeathDelay ?? DeathEntityRemoveDelay;
 		m_DelayedRemoveHandlers[entityData] = DelayedInvoker.InvokeInTime(delegate
 		{
-			RemoveEntity(entityData);
+			RemoveEntityDelayed(entityData);
 		}, seconds);
 	}
 
@@ -175,9 +179,23 @@ public class UnitOvertipsCollectionVM : OvertipsCollectionVM<OvertipUnitVM>, IUn
 
 	private void TryCancelDelayedRemoveHandler(Entity entityData)
 	{
-		if (m_DelayedRemoveHandlers.TryGetValue(entityData, out var _))
+		if (m_DelayedRemoveHandlers.TryGetValue(entityData, out var value))
 		{
+			value?.Dispose();
 			m_DelayedRemoveHandlers.Remove(entityData);
+		}
+	}
+
+	private void RemoveEntityDelayed(Entity entityData)
+	{
+		OvertipUnitVM overtip = GetOvertip(entityData);
+		if (overtip.IsBarkActive.CurrentValue || overtip.CombatTextBlockVM.HasActiveCombatMessage.CurrentValue)
+		{
+			TryDelayedRemoveEntity(entityData);
+		}
+		else
+		{
+			RemoveEntity(entityData);
 		}
 	}
 

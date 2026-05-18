@@ -4,7 +4,6 @@ using Kingmaker.Code.UI.MVVM;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -12,9 +11,9 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class LocalMapMarkerPart : ViewBasedPart<LocalMapMarkerSettings>, ILocalMapMarker, IHashable, IOwlPackable<LocalMapMarkerPart>
+public class LocalMapMarkerPart : EntityPartWithConfig<LocalMapMarkerSettings>, ILocalMapMarker, IHashable, IOwlPackable<LocalMapMarkerPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "LocalMapMarkerPart",
 		OldNames = null,
@@ -47,6 +46,8 @@ public class LocalMapMarkerPart : ViewBasedPart<LocalMapMarkerSettings>, ILocalM
 
 	public bool IsRuntimeCreated { get; set; }
 
+	public Vector3? OverridePosition { get; set; }
+
 	public LocalMapMarkType GetMarkerType()
 	{
 		return base.Settings.Type;
@@ -60,14 +61,14 @@ public class LocalMapMarkerPart : ViewBasedPart<LocalMapMarkerSettings>, ILocalM
 		}
 		if (base.Settings.Description != null)
 		{
-			return base.Settings.Description.String;
+			return base.Settings.Description;
 		}
 		return NonLocalizedDescription;
 	}
 
 	public Vector3 GetPosition()
 	{
-		return ((EntityViewBase)base.View).Or(null)?.ViewTransform.position ?? Vector3.zero;
+		return OverridePosition ?? base.Owner.ViewPosition;
 	}
 
 	bool ILocalMapMarker.IsMapObject()
@@ -118,7 +119,7 @@ public class LocalMapMarkerPart : ViewBasedPart<LocalMapMarkerSettings>, ILocalM
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		LocalMapMarkerPart source = new LocalMapMarkerPart();
 		result = Unsafe.As<LocalMapMarkerPart, TPossiblyBase>(ref source);

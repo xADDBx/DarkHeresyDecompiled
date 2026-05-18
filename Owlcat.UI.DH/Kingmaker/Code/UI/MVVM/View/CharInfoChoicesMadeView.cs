@@ -3,6 +3,7 @@ using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
@@ -14,8 +15,9 @@ public class CharInfoChoicesMadeView : CharInfoComponentView<CharInfoAlignmentHi
 	[SerializeField]
 	private WidgetList m_WidgetList;
 
+	[FormerlySerializedAs("m_SoulMarkShiftRecordView")]
 	[SerializeField]
-	private CharInfoSoulMarkShiftRecordPCView m_SoulMarkShiftRecordView;
+	private CharInfoAlignmentShiftRecordPCView AlignmentShiftRecordView;
 
 	[SerializeField]
 	private TextMeshProUGUI m_Biography;
@@ -53,6 +55,6 @@ public class CharInfoChoicesMadeView : CharInfoComponentView<CharInfoAlignmentHi
 
 	private void DrawEntities()
 	{
-		m_WidgetList.DrawEntries(base.ViewModel.SoulMarkShiftsHistory, m_SoulMarkShiftRecordView);
+		m_WidgetList.DrawEntries(base.ViewModel.SoulMarkShiftsHistory, AlignmentShiftRecordView);
 	}
 }

@@ -1,3 +1,4 @@
+using Kingmaker.Code.Gameplay.Components;
 using Owlcat.UI;
 using R3;
 
@@ -15,5 +16,14 @@ public class LightweightOvertipNameBlockVM : ViewModel
 	{
 		MechanicEntityUIState = mechanicEntityUIState;
 		m_Name.Value = mechanicEntityUIState.MechanicEntity.Name;
+	}
+
+	public bool IsVisible()
+	{
+		if (MechanicEntityUIState.MechanicEntity.IsVisibleForPlayer && !MechanicEntityUIState.HideOvertip.CurrentValue && MechanicEntityUIState.IsMouseOverUnit.CurrentValue)
+		{
+			return !MechanicEntityUIState.IsOvertipPartHiddenBySettings(UnitOvertipUIPart.Name);
+		}
+		return false;
 	}
 }

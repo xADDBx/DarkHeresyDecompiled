@@ -110,7 +110,8 @@ public class DialogCuePCView : View<CueVM>, ISettingsFontSizeUIHandler, ISubscri
 
 	private void SetupTextContent()
 	{
-		m_SpeakerNameFormatedText = (base.ViewModel.HasSpeaker ? ("<smallcaps><b><color=#" + ColorUtility.ToHtmlStringRGB(base.ViewModel.SpeakerColor * m_DialogCueColors.NameColorMultiplyer) + ">" + base.ViewModel.SpeakerName + "</color></b></smallcaps>: ") : string.Empty);
+		Color color = m_DialogCueColors.GetSpeakerColor(base.ViewModel.SpeakerName, base.ViewModel.IsOverrideSpeakerColor, base.ViewModel.SpeakerColor);
+		m_SpeakerNameFormatedText = (base.ViewModel.HasSpeaker ? ("<smallcaps><b><color=#" + ColorUtility.ToHtmlStringRGB(color * m_DialogCueColors.NameColorMultiplayer) + ">" + base.ViewModel.SpeakerName + "</color></b></smallcaps>: ") : string.Empty);
 		m_SkillcheckFormatedText = (base.ViewModel.HasSkillchecks ? UtilitySkillcheck.SkillCheckText(base.ViewModel.SkillChecks, m_DialogCueColors.SkillCheckColors) : string.Empty);
 		m_SoulmarkFormatedText = (base.ViewModel.HasSoulMarkShift ? UIUtilityUnit.SoulMarkShiftsText(base.ViewModel.SoulMarkShifts, m_DialogCueColors.SoulMarkShiftColors) : string.Empty);
 		string text = UIUtilityText.StringIDToColor(base.ViewModel.RawText, DialogCueColors.NarratorColorStringID, m_DialogCueColors.Narrator);

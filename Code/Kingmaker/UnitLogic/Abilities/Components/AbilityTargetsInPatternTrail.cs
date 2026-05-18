@@ -4,7 +4,7 @@ using Kingmaker.Controllers.Projectiles;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Abilities.Components.PatternAttack;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
@@ -104,7 +104,7 @@ public class AbilityTargetsInPatternTrail : AbilitySelectTarget, IAbilityAoEPatt
 			}
 			if (m_Condition.HasConditions)
 			{
-				using (context.SetScope(targetableEntity.ToITargetWrapper()))
+				using (EvalContext.PushContext(context, targetableEntity))
 				{
 					if (!m_Condition.Check())
 					{

@@ -12,6 +12,8 @@ namespace Kingmaker.Blueprints.Items.Equipment;
 [JsonObject]
 public class AsksContainer : IReadOnlyList<AskEntry>, IEnumerable<AskEntry>, IEnumerable, IReadOnlyCollection<AskEntry>
 {
+	private const int EntryCount = 12;
+
 	public AskEntry AskEntry0 = new AskEntry();
 
 	public AskEntry AskEntry1 = new AskEntry();
@@ -26,9 +28,19 @@ public class AsksContainer : IReadOnlyList<AskEntry>, IEnumerable<AskEntry>, IEn
 
 	public AskEntry AskEntry6 = new AskEntry();
 
+	public AskEntry AskEntry7 = new AskEntry();
+
+	public AskEntry AskEntry8 = new AskEntry();
+
+	public AskEntry AskEntry9 = new AskEntry();
+
+	public AskEntry AskEntry10 = new AskEntry();
+
+	public AskEntry AskEntry11 = new AskEntry();
+
 	public int Count => Length;
 
-	public int Length => All.Count();
+	public int Length => 12;
 
 	[NotNull]
 	public AskEntry this[int index]
@@ -44,6 +56,11 @@ public class AsksContainer : IReadOnlyList<AskEntry>, IEnumerable<AskEntry>, IEn
 				4 => AskEntry4, 
 				5 => AskEntry5, 
 				6 => AskEntry6, 
+				7 => AskEntry7, 
+				8 => AskEntry8, 
+				9 => AskEntry9, 
+				10 => AskEntry10, 
+				11 => AskEntry11, 
 				_ => throw new IndexOutOfRangeException(), 
 			};
 		}
@@ -72,6 +89,21 @@ public class AsksContainer : IReadOnlyList<AskEntry>, IEnumerable<AskEntry>, IEn
 			case 6:
 				AskEntry6 = value;
 				break;
+			case 7:
+				AskEntry7 = value;
+				break;
+			case 8:
+				AskEntry8 = value;
+				break;
+			case 9:
+				AskEntry9 = value;
+				break;
+			case 10:
+				AskEntry10 = value;
+				break;
+			case 11:
+				AskEntry11 = value;
+				break;
 			}
 		}
 	}
@@ -87,6 +119,11 @@ public class AsksContainer : IReadOnlyList<AskEntry>, IEnumerable<AskEntry>, IEn
 			yield return AskEntry4 ?? (AskEntry4 = new AskEntry());
 			yield return AskEntry5 ?? (AskEntry5 = new AskEntry());
 			yield return AskEntry6 ?? (AskEntry6 = new AskEntry());
+			yield return AskEntry7 ?? (AskEntry7 = new AskEntry());
+			yield return AskEntry8 ?? (AskEntry8 = new AskEntry());
+			yield return AskEntry9 ?? (AskEntry9 = new AskEntry());
+			yield return AskEntry10 ?? (AskEntry10 = new AskEntry());
+			yield return AskEntry11 ?? (AskEntry11 = new AskEntry());
 		}
 	}
 

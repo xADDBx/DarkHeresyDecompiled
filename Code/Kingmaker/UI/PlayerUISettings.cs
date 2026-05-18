@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints;
@@ -15,6 +14,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
 using Kingmaker.UI.Common;
 using Kingmaker.UnitLogic.Progression.Features;
+using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -29,12 +29,22 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 	[JsonProperty]
 	[GameStateIgnore]
 	[OwlPackInclude]
-	private Vector2 m_LogSize = new Vector2(365f, 200f);
+	private Vector2 m_LogSize = new Vector2(500f, 200f);
 
 	[JsonProperty]
 	[GameStateIgnore]
 	[OwlPackInclude]
 	private Vector2 m_LogSizeConsole = new Vector2(415f, 200f);
+
+	[JsonProperty]
+	[GameStateIgnore]
+	[OwlPackInclude]
+	private bool m_LogIsPinned;
+
+	[JsonProperty]
+	[GameStateIgnore]
+	[OwlPackInclude]
+	private int m_LogSelectedFilterIndex;
 
 	[JsonProperty]
 	[OwlPackInclude]
@@ -131,6 +141,11 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 	[OwlPackInclude]
 	public EncyclopediaData EncyclopediaData = new EncyclopediaData();
 
+	[JsonProperty]
+	[GameStateIgnore]
+	[OwlPackInclude]
+	public CharGenSaveData ChargenData = new CharGenSaveData();
+
 	private IPage m_CurrentEncyclopediaPage;
 
 	public UISettingsManager.SettingsScreen LastSettingsMenuType;
@@ -154,19 +169,28 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 	public bool AutoEnTurnOptionSeen;
 
 	[JsonProperty]
+	[GameStateIgnore]
 	[OwlPackInclude]
 	public DetectiveSystemData DetectiveSystemData = new DetectiveSystemData();
 
 	public bool IsTBMSpeedUp;
 
+	private const float LocalMapFastMoveSpeedScale = 3f;
+
+	public float LocalMapZoomScale;
+
+	private bool m_IsLocalMapOpen;
+
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PlayerUISettings",
 		OldNames = null,
-		Fields = new FieldInfo[28]
+		Fields = new FieldInfo[31]
 		{
 			new FieldInfo("m_LogSize", typeof(Vector2)),
 			new FieldInfo("m_LogSizeConsole", typeof(Vector2)),
+			new FieldInfo("m_LogIsPinned", typeof(bool)),
+			new FieldInfo("m_LogSelectedFilterIndex", typeof(int)),
 			new FieldInfo("m_GlobalMapPartyHide", typeof(bool)),
 			new FieldInfo("m_GlobalMapShowLocationName", typeof(bool)),
 			new FieldInfo("m_IronManMode", typeof(bool)),
@@ -188,6 +212,7 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 			new FieldInfo("SavedUnitProgressionWindowData", typeof(SavedUnitProgressionWindowData)),
 			new FieldInfo("CurrentQuest", typeof(Quest)),
 			new FieldInfo("EncyclopediaData", typeof(EncyclopediaData)),
+			new FieldInfo("ChargenData", typeof(CharGenSaveData)),
 			new FieldInfo("DelayNotificatioinSeen", typeof(bool)),
 			new FieldInfo("HoldCombatLog", typeof(bool)),
 			new FieldInfo("CombatLogSizeIndex", typeof(int)),
@@ -249,6 +274,30 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 		set
 		{
 			m_LogSizeConsole = value;
+		}
+	}
+
+	public bool LogIsPinned
+	{
+		get
+		{
+			return m_LogIsPinned;
+		}
+		set
+		{
+			m_LogIsPinned = value;
+		}
+	}
+
+	public int LogSelectedFilterIndex
+	{
+		get
+		{
+			return m_LogSelectedFilterIndex;
+		}
+		set
+		{
+			m_LogSelectedFilterIndex = value;
 		}
 	}
 
@@ -429,6 +478,19 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 
 	public float TimeScaleAverage => (AnimSpeedUpPlayer + AnimSpeedUpNPC) / 2f;
 
+	public bool IsLocalMapOpen
+	{
+		get
+		{
+			return m_IsLocalMapOpen;
+		}
+		set
+		{
+			m_IsLocalMapOpen = value;
+			Game.Instance.Controllers.TimeController.SetLocalMapFastMove(value, 3f);
+		}
+	}
+
 	public void DoSpeedUp()
 	{
 		IsTBMSpeedUp = true;
@@ -484,8 +546,6 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 		}
 		result.Append(ref DelayNotificatioinSeen);
 		result.Append(ref AutoEnTurnOptionSeen);
-		Hash128 val7 = ClassHasher<DetectiveSystemData>.GetHash128(DetectiveSystemData);
-		result.Append(ref val7);
 		return result;
 	}
 
@@ -508,32 +568,35 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 		formatter.Field(0, "m_LogSize", ref m_LogSize, state);
 		formatter.Field(1, "m_LogSizeConsole", ref m_LogSizeConsole, state);
-		formatter.UnmanagedField(2, "m_GlobalMapPartyHide", ref m_GlobalMapPartyHide, state);
-		formatter.UnmanagedField(3, "m_GlobalMapShowLocationName", ref m_GlobalMapShowLocationName, state);
-		formatter.UnmanagedField(4, "m_IronManMode", ref m_IronManMode, state);
-		formatter.UnmanagedField(5, "m_OnlyActiveCompanionExpMode", ref m_OnlyActiveCompanionExpMode, state);
-		formatter.UnmanagedField(6, "m_TermsOfUseSeen", ref m_TermsOfUseSeen, state);
-		formatter.UnmanagedField(7, "m_JournalShowCompletedQuest", ref m_JournalShowCompletedQuest, state);
-		formatter.UnmanagedField(8, "m_GlobalMapLocalMapPin", ref m_GlobalMapLocalMapPin, state);
-		formatter.UnmanagedField(9, "m_ShowReviewHint", ref m_ShowReviewHint, state);
-		formatter.UnmanagedField(10, "m_ShowInspect", ref m_ShowInspect, state);
-		formatter.UnmanagedField(11, "ShowFailedPerceptionChecks", ref ShowFailedPerceptionChecks, state);
-		formatter.Field(12, "SettingsList", ref SettingsList, state);
-		formatter.Field(13, "OptionsDictionaryMap", ref OptionsDictionaryMap, state);
-		formatter.EnumField(14, "InventoryFilter", ref InventoryFilter, state);
-		formatter.EnumField(15, "InventorySorter", ref InventorySorter, state);
-		formatter.UnmanagedField(16, "ShowUnavailableItems", ref ShowUnavailableItems, state);
-		formatter.UnmanagedField(17, "ShowUnavailableFeatures", ref ShowUnavailableFeatures, state);
-		formatter.Field(18, "UnitToFavoritesMap", ref UnitToFavoritesMap, state);
-		formatter.UnmanagedField(19, "LootExtendedView", ref LootExtendedView, state);
-		formatter.Field(20, "SavedUnitProgressionWindowData", ref SavedUnitProgressionWindowData, state);
-		formatter.Field(21, "CurrentQuest", ref CurrentQuest, state);
-		formatter.Field(22, "EncyclopediaData", ref EncyclopediaData, state);
-		formatter.UnmanagedField(23, "DelayNotificatioinSeen", ref DelayNotificatioinSeen, state);
-		formatter.UnmanagedField(24, "HoldCombatLog", ref HoldCombatLog, state);
-		formatter.UnmanagedField(25, "CombatLogSizeIndex", ref CombatLogSizeIndex, state);
-		formatter.UnmanagedField(26, "AutoEnTurnOptionSeen", ref AutoEnTurnOptionSeen, state);
-		formatter.Field(27, "DetectiveSystemData", ref DetectiveSystemData, state);
+		formatter.UnmanagedField(2, "m_LogIsPinned", ref m_LogIsPinned, state);
+		formatter.UnmanagedField(3, "m_LogSelectedFilterIndex", ref m_LogSelectedFilterIndex, state);
+		formatter.UnmanagedField(4, "m_GlobalMapPartyHide", ref m_GlobalMapPartyHide, state);
+		formatter.UnmanagedField(5, "m_GlobalMapShowLocationName", ref m_GlobalMapShowLocationName, state);
+		formatter.UnmanagedField(6, "m_IronManMode", ref m_IronManMode, state);
+		formatter.UnmanagedField(7, "m_OnlyActiveCompanionExpMode", ref m_OnlyActiveCompanionExpMode, state);
+		formatter.UnmanagedField(8, "m_TermsOfUseSeen", ref m_TermsOfUseSeen, state);
+		formatter.UnmanagedField(9, "m_JournalShowCompletedQuest", ref m_JournalShowCompletedQuest, state);
+		formatter.UnmanagedField(10, "m_GlobalMapLocalMapPin", ref m_GlobalMapLocalMapPin, state);
+		formatter.UnmanagedField(11, "m_ShowReviewHint", ref m_ShowReviewHint, state);
+		formatter.UnmanagedField(12, "m_ShowInspect", ref m_ShowInspect, state);
+		formatter.UnmanagedField(13, "ShowFailedPerceptionChecks", ref ShowFailedPerceptionChecks, state);
+		formatter.Field(14, "SettingsList", ref SettingsList, state);
+		formatter.Field(15, "OptionsDictionaryMap", ref OptionsDictionaryMap, state);
+		formatter.EnumField(16, "InventoryFilter", ref InventoryFilter, state);
+		formatter.EnumField(17, "InventorySorter", ref InventorySorter, state);
+		formatter.UnmanagedField(18, "ShowUnavailableItems", ref ShowUnavailableItems, state);
+		formatter.UnmanagedField(19, "ShowUnavailableFeatures", ref ShowUnavailableFeatures, state);
+		formatter.Field(20, "UnitToFavoritesMap", ref UnitToFavoritesMap, state);
+		formatter.UnmanagedField(21, "LootExtendedView", ref LootExtendedView, state);
+		formatter.Field(22, "SavedUnitProgressionWindowData", ref SavedUnitProgressionWindowData, state);
+		formatter.Field(23, "CurrentQuest", ref CurrentQuest, state);
+		formatter.Field(24, "EncyclopediaData", ref EncyclopediaData, state);
+		formatter.Field(25, "ChargenData", ref ChargenData, state);
+		formatter.UnmanagedField(26, "DelayNotificatioinSeen", ref DelayNotificatioinSeen, state);
+		formatter.UnmanagedField(27, "HoldCombatLog", ref HoldCombatLog, state);
+		formatter.UnmanagedField(28, "CombatLogSizeIndex", ref CombatLogSizeIndex, state);
+		formatter.UnmanagedField(29, "AutoEnTurnOptionSeen", ref AutoEnTurnOptionSeen, state);
+		formatter.Field(30, "DetectiveSystemData", ref DetectiveSystemData, state);
 		formatter.EndObject();
 	}
 
@@ -558,81 +621,90 @@ public class PlayerUISettings : IHashable, IOwlPackable, IOwlPackable<PlayerUISe
 				m_LogSizeConsole = formatter.ReadPackable<Vector2>(state);
 				break;
 			case 2:
-				m_GlobalMapPartyHide = formatter.ReadUnmanaged<bool>(state);
+				m_LogIsPinned = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 3:
-				m_GlobalMapShowLocationName = formatter.ReadUnmanaged<bool>(state);
+				m_LogSelectedFilterIndex = formatter.ReadUnmanaged<int>(state);
 				break;
 			case 4:
-				m_IronManMode = formatter.ReadUnmanaged<bool>(state);
+				m_GlobalMapPartyHide = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 5:
-				m_OnlyActiveCompanionExpMode = formatter.ReadUnmanaged<bool>(state);
+				m_GlobalMapShowLocationName = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 6:
-				m_TermsOfUseSeen = formatter.ReadUnmanaged<bool>(state);
+				m_IronManMode = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 7:
-				m_JournalShowCompletedQuest = formatter.ReadUnmanaged<bool>(state);
+				m_OnlyActiveCompanionExpMode = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 8:
-				m_GlobalMapLocalMapPin = formatter.ReadUnmanaged<bool>(state);
+				m_TermsOfUseSeen = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 9:
-				m_ShowReviewHint = formatter.ReadUnmanaged<bool>(state);
+				m_JournalShowCompletedQuest = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 10:
-				m_ShowInspect = formatter.ReadUnmanaged<bool>(state);
+				m_GlobalMapLocalMapPin = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 11:
-				ShowFailedPerceptionChecks = formatter.ReadUnmanaged<bool>(state);
+				m_ShowReviewHint = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 12:
-				SettingsList = formatter.ReadPackable<Dictionary<string, string>>(state);
+				m_ShowInspect = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 13:
-				OptionsDictionaryMap = formatter.ReadPackable<Dictionary<SaleOptions, bool>>(state);
+				ShowFailedPerceptionChecks = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 14:
-				InventoryFilter = formatter.ReadEnum<ItemsFilterType>(state);
+				SettingsList = formatter.ReadPackable<Dictionary<string, string>>(state);
 				break;
 			case 15:
-				InventorySorter = formatter.ReadEnum<ItemsSorterType>(state);
+				OptionsDictionaryMap = formatter.ReadPackable<Dictionary<SaleOptions, bool>>(state);
 				break;
 			case 16:
-				ShowUnavailableItems = formatter.ReadUnmanaged<bool>(state);
+				InventoryFilter = formatter.ReadEnum<ItemsFilterType>(state);
 				break;
 			case 17:
-				ShowUnavailableFeatures = formatter.ReadUnmanaged<bool>(state);
+				InventorySorter = formatter.ReadEnum<ItemsSorterType>(state);
 				break;
 			case 18:
-				UnitToFavoritesMap = formatter.ReadPackable<Dictionary<EntityRef<MechanicEntity>, List<BlueprintFeature.Reference>>>(state);
+				ShowUnavailableItems = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 19:
-				LootExtendedView = formatter.ReadUnmanaged<bool>(state);
+				ShowUnavailableFeatures = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 20:
-				SavedUnitProgressionWindowData = formatter.ReadPackable<SavedUnitProgressionWindowData>(state);
+				UnitToFavoritesMap = formatter.ReadPackable<Dictionary<EntityRef<MechanicEntity>, List<BlueprintFeature.Reference>>>(state);
 				break;
 			case 21:
-				CurrentQuest = formatter.ReadPackable<Quest>(state);
+				LootExtendedView = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 22:
-				EncyclopediaData = formatter.ReadPackable<EncyclopediaData>(state);
+				SavedUnitProgressionWindowData = formatter.ReadPackable<SavedUnitProgressionWindowData>(state);
 				break;
 			case 23:
-				DelayNotificatioinSeen = formatter.ReadUnmanaged<bool>(state);
+				CurrentQuest = formatter.ReadPackable<Quest>(state);
 				break;
 			case 24:
-				HoldCombatLog = formatter.ReadUnmanaged<bool>(state);
+				EncyclopediaData = formatter.ReadPackable<EncyclopediaData>(state);
 				break;
 			case 25:
-				CombatLogSizeIndex = formatter.ReadUnmanaged<int>(state);
+				ChargenData = formatter.ReadPackable<CharGenSaveData>(state);
 				break;
 			case 26:
-				AutoEnTurnOptionSeen = formatter.ReadUnmanaged<bool>(state);
+				DelayNotificatioinSeen = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 27:
+				HoldCombatLog = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 28:
+				CombatLogSizeIndex = formatter.ReadUnmanaged<int>(state);
+				break;
+			case 29:
+				AutoEnTurnOptionSeen = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 30:
 				DetectiveSystemData = formatter.ReadPackable<DetectiveSystemData>(state);
 				break;
 			}

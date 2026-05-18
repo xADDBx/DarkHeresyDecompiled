@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
@@ -9,6 +10,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.ResourceManagement;
 using Kingmaker.UnitLogic.Customization;
@@ -60,6 +62,11 @@ public class EntitySpawnController : IControllerTick, IController, IControllerRe
 
 	[NotNull]
 	public IEnumerable<SpawnEntry> CreationQueue => m_ToSpawn;
+
+	public bool IsEntityInCreationQueue(Entity entity)
+	{
+		return CreationQueue.Any((SpawnEntry s) => s.Entity == entity);
+	}
 
 	public T SpawnEntityWithView<T>(T prefab, Vector3 position, Quaternion rotation, [CanBeNull] SceneEntitiesState state) where T : EntityViewBase
 	{
@@ -117,7 +124,7 @@ public class EntitySpawnController : IControllerTick, IController, IControllerRe
 	{
 		if (entity.View != null)
 		{
-			((state == Game.Instance.Player.CrossSceneState) ? Game.Instance.CrossSceneRoot : Game.Instance.DynamicRoot).Add(entity.View.ViewTransform);
+			((state == Game.Instance.Player.CrossSceneState) ? Game.Instance.CrossSceneRoot : Game.Instance.DynamicRoot).Add(entity.View);
 		}
 	}
 
@@ -255,7 +262,7 @@ public class EntitySpawnController : IControllerTick, IController, IControllerRe
 		return lightweightUnitEntity;
 	}
 
-	public DynamicMapObjectView.EntityData SpawnMapObject(BlueprintDynamicMapObject blueprint, Vector3 position, Quaternion rotation, SceneEntitiesState state)
+	public DynamicMapObjectEntity SpawnMapObject(BlueprintDynamicMapObject blueprint, Vector3 position, Quaternion rotation, SceneEntitiesState state)
 	{
 		if (blueprint.Prefab == null)
 		{
@@ -264,12 +271,12 @@ public class EntitySpawnController : IControllerTick, IController, IControllerRe
 		}
 		DynamicMapObjectView component = blueprint.Prefab.GetComponent<DynamicMapObjectView>();
 		component.Blueprint = blueprint;
-		return (DynamicMapObjectView.EntityData)SpawnEntityWithView(component, position, rotation, state).Data;
+		return (DynamicMapObjectEntity)SpawnEntityWithView(component, position, rotation, state).Data;
 	}
 
 	public BaseUnitEntity ChangeUnitBlueprint(BaseUnitEntity unit, BlueprintUnit newBlueprint, bool toCrossState, bool keepOld = false)
 	{
-		UnitEntityView view = unit.View;
+		UnitEntityView unitEntityView = unit.View.AsUnitEntityView();
 		if (!keepOld)
 		{
 			Game.Instance.Controllers.EntityDestroyer.Destroy(unit);
@@ -279,15 +286,15 @@ public class EntitySpawnController : IControllerTick, IController, IControllerRe
 			unit.IsInGame = false;
 		}
 		unit.DetachView();
-		view.Blueprint = newBlueprint;
-		view.UniqueId = Uuid.Instance.CreateGuidForSceneObject(view);
-		UnitEntity unitEntity = Entity.Initialize(new UnitEntity(view));
-		foreach (WeaponSet value in view.HandsEquipment.Sets.Values)
+		unitEntityView.Blueprint = newBlueprint;
+		unitEntityView.UniqueId = Uuid.Instance.CreateGuidForSceneObject(unitEntityView);
+		UnitEntity unitEntity = Entity.Initialize(new UnitEntity(unitEntityView));
+		foreach (WeaponSet value in unitEntityView.HandsEquipment.Sets.Values)
 		{
 			value.MainHand.DestroyModel();
 			value.OffHand.DestroyModel();
 		}
-		unitEntity.AttachView(view);
+		unitEntity.AttachView(unitEntityView);
 		unitEntity.Position = unit.Position;
 		unitEntity.SetOrientation(unit.Orientation);
 		SpawnEntry spawnEntry = default(SpawnEntry);
@@ -348,7 +355,7 @@ public class EntitySpawnController : IControllerTick, IController, IControllerRe
 	public void SpawnEntityImmediately([NotNull] Entity entity, [NotNull] SceneEntitiesState state, bool moveView = false)
 	{
 		state.AddEntityData(entity);
-		if (state == Game.Instance.Player.CrossSceneState)
+		if (state == Game.Instance.Player.CrossSceneState && entity is AbstractUnitEntity)
 		{
 			entity.GetOrCreate<PartHoldPrefabBundle>();
 		}

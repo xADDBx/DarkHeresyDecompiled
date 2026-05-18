@@ -339,10 +339,10 @@ public class WarhammerLocalMapRenderer : MonoBehaviour
 		Ray ray4 = cam.ViewportPointToRay(new Vector3(0f, 1f, 1f));
 		CameraRig instance = CameraRig.Instance;
 		Plane plane = new Plane(Vector3.up, instance.transform.position);
-		plane.Raycast(ray, out var enter);
-		plane.Raycast(ray2, out var enter2);
-		plane.Raycast(ray3, out var enter3);
-		plane.Raycast(ray4, out var enter4);
+		plane.Raycast(ray, out float enter);
+		plane.Raycast(ray2, out float enter2);
+		plane.Raycast(ray3, out float enter3);
+		plane.Raycast(ray4, out float enter4);
 		float3 x = ray.origin + ray.direction * enter;
 		float3 y = ray2.origin + ray2.direction * enter2;
 		float3 x2 = ray3.origin + ray3.direction * enter3;
@@ -360,7 +360,7 @@ public class WarhammerLocalMapRenderer : MonoBehaviour
 		y2 /= float2;
 		float2 float3 = math.max(math.max(x, y), math.max(x2, y2)).xz - math.min(math.min(x, y), math.min(x2, y2)).xz;
 		float3 float4 = (instance.transform.position - (Vector3)@float) / float2;
-		return new Rect(new Vector2(float4.x, float4.z), float3);
+		return new Rect(new Vector2(float4.x, float4.z), (Vector2)float3);
 	}
 
 	public Vector3 ViewportToWorldPoint(Vector3 localPos)
@@ -374,7 +374,7 @@ public class WarhammerLocalMapRenderer : MonoBehaviour
 			return hitInfo.point;
 		}
 		Plane plane = ((m_CachedArea != null) ? new Plane(Vector3.up, localMapBounds.center) : new Plane(Vector3.up, default(Vector3)));
-		plane.Raycast(ray, out var enter);
+		plane.Raycast(ray, out float enter);
 		return ray.origin + ray.direction * enter;
 	}
 

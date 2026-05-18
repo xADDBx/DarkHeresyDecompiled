@@ -23,8 +23,7 @@ public class StartDetectiveTrace : GameAction
 
 	protected override void RunAction()
 	{
-		DetectiveTraceRootView detectiveTraceRootView = DetectiveTraceRoot.DetectiveTraceRoot.FindView() as DetectiveTraceRootView;
-		if (!(detectiveTraceRootView == null) && detectiveTraceRootView.EntityData is DetectiveTraceRootEntity detectiveTraceRootEntity)
+		if (DetectiveTraceRoot.DetectiveTraceRoot.FindData() is DetectiveTraceRootEntity detectiveTraceRootEntity)
 		{
 			detectiveTraceRootEntity.FoundRootTraces();
 			InteractionPartDetectiveTrace optional = detectiveTraceRootEntity.GetOptional<InteractionPartDetectiveTrace>();

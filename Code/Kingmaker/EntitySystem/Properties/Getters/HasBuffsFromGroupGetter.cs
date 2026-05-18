@@ -2,6 +2,7 @@ using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
@@ -37,7 +38,7 @@ public class HasBuffsFromGroupGetter : BoolPropertyGetter, PropertyContextAccess
 		}
 		if (OnlyFromEntity)
 		{
-			BaseUnitEntity caster = this.GetTargetByType(Target) as BaseUnitEntity;
+			BaseUnitEntity caster = EvalContext.Current.GetEntityByType(Target) as BaseUnitEntity;
 			return unitEntity.Buffs.Enumerable.Where((Buff buffCheck) => buffCheck.Context.MaybeCaster == caster).Any((Buff buff) => buff.Blueprint.AbilityGroups.Any((BlueprintAbilityGroup group) => Groups.Contains(group)));
 		}
 		return unitEntity.Buffs.Enumerable.Any((Buff buff) => buff.Blueprint.AbilityGroups.Any((BlueprintAbilityGroup group) => Groups.Contains(group)));

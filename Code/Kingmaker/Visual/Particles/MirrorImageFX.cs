@@ -127,8 +127,8 @@ public class MirrorImageFX : MonoBehaviour
 				Renderer[] componentsInChildren = activeEntry.MainFxInstance.GetComponentsInChildren<Renderer>();
 				foreach (Renderer obj in componentsInChildren)
 				{
-					Vector2 vector = CameraRig.Instance.WorldToViewport(m_Unit.ViewTransform.position);
-					Vector2 vector2 = CameraRig.Instance.WorldToViewport(m_Unit.ViewTransform.position + componentInChildren.CurrentOffset);
+					Vector2 vector = CameraRig.Instance.WorldToViewport(m_Unit.transform.position);
+					Vector2 vector2 = CameraRig.Instance.WorldToViewport(m_Unit.transform.position + componentInChildren.CurrentOffset);
 					Material material = obj.material;
 					material.SetVector(ShaderProps._DistortionOffset, vector - vector2);
 					obj.material = material;

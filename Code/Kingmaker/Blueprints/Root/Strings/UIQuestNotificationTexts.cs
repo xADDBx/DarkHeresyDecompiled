@@ -27,10 +27,6 @@ public class UIQuestNotificationTexts
 
 	public LocalizedString Quest;
 
-	public LocalizedString Rumour;
-
-	public LocalizedString Order;
-
 	public LocalizedString Failed;
 
 	public LocalizedString Completed;
@@ -50,7 +46,6 @@ public class UIQuestNotificationTexts
 			QuestState.None => "", 
 			QuestState.Started => "", 
 			QuestState.Completed => QuestComplite, 
-			QuestState.Postponed => QuestPostponed, 
 			QuestState.Failed => QuestFailed, 
 			_ => "", 
 		};

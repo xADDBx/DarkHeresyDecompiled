@@ -25,6 +25,7 @@ using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Kingmaker.Controllers.Clicks;
 
@@ -52,7 +53,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 
 	private bool m_MouseDown;
 
-	private int m_MouseDownButton;
+	private MouseButton m_MouseDownButton;
 
 	private IClickEventHandler m_MouseDownHandler;
 
@@ -70,8 +71,6 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 
 	private int m_DragFrames;
 
-	private IClickEventHandler m_SimulateClickHandler;
-
 	private readonly List<IDetectHover> m_HoverComponents = new List<IDetectHover>();
 
 	private readonly IClickEventHandler[] m_ClickHandlers;
@@ -79,8 +78,6 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 	private bool m_IsTurnBased;
 
 	private RaycastHit[] m_Hits = new RaycastHit[16];
-
-	public static bool SimulatingClick { get; set; }
 
 	public static bool DebugThisFrame { get; set; }
 
@@ -98,7 +95,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 
 	public static Vector3 WorldPositionForSimulation { get; private set; }
 
-	private static Vector2 PointerPosition => Game.Instance.CursorController.CursorPosition;
+	private static CursorController Cursor => Game.Instance.CursorController;
 
 	private static MultiplySelection MultiSelection
 	{
@@ -126,9 +123,9 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		get
 		{
 			bool flag = (bool)EventSystem.current && EventSystem.current.IsPointerOverGameObject();
-			if (Game.Instance.IsControllerGamepad && (bool)ConsoleCursor.Instance)
+			if (Game.Instance.IsControllerGamepad)
 			{
-				flag = flag || !ConsoleCursor.Instance.IsActive;
+				flag = flag || !Game.Instance.CursorController.IsCursorActive;
 			}
 			return flag;
 		}
@@ -159,17 +156,17 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		{
 			DebugThisFrame = false;
 		}
-		_ = Game.Instance.IsControllerGamepad;
+		bool isControllerGamepad = Game.Instance.IsControllerGamepad;
 		bool flag = true;
-		Vector2 pointerPosition = PointerPosition;
+		bool inGui = InGui;
+		Vector2 position = Cursor.Position;
 		Vector3 worldPosition = Vector3.zero;
 		Vector3? groundPosition = null;
 		GameObject resultGameObject = null;
 		IClickEventHandler resultHandler = null;
-		if (!InGui)
+		if (!inGui)
 		{
-			SelectClickObject(pointerPosition, out resultGameObject, out worldPosition, out groundPosition, out resultHandler);
-			m_SimulateClickHandler = resultHandler;
+			SelectClickObject(position, out resultGameObject, out worldPosition, out groundPosition, out resultHandler);
 			WorldPositionForSimulation = WorldPosition;
 			if (resultGameObject != null)
 			{
@@ -177,7 +174,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 				GroundPosition = groundPosition ?? worldPosition;
 			}
 		}
-		if (!Input.GetMouseButton(m_MouseDownButton) && m_MouseDown)
+		if (!Cursor.GetMouseButton(m_MouseDownButton) && m_MouseDown)
 		{
 			m_MouseDown = false;
 			if (m_MouseDrag && m_DragFrames < 2)
@@ -189,13 +186,13 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 				}
 			}
 			bool flag2 = InteractionHighlightController.Instance?.IsGlobalHighlighting ?? false;
-			if (m_MouseDownButton == 1 && !flag2 && Mode != 0)
+			if (m_MouseDownButton == MouseButton.Right && !flag2 && Mode != 0)
 			{
 				ClearPointerMode();
 			}
 			else if (m_MouseDrag && Mode == PointerMode.Default)
 			{
-				if (m_MouseDownButton == 0)
+				if (m_MouseDownButton == MouseButton.Left)
 				{
 					if ((bool)MultiSelection)
 					{
@@ -213,7 +210,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 			else if (flag && m_MouseDownHandler != null && m_MouseDownOn != null)
 			{
 				Vector3 clickPosition = ((m_MouseDownHandler is ClickGroundHandler) ? m_MouseDownGroundPosition : m_MouseDownWorldPosition);
-				if (m_MouseDownHandler.OnClick(m_MouseDownOn, clickPosition, m_MouseDownButton))
+				if (m_MouseDownHandler.OnClick(m_MouseDownOn, clickPosition, (int)m_MouseDownButton))
 				{
 					EventBus.RaiseEvent(delegate(IClickMarkHandler h)
 					{
@@ -229,11 +226,11 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 			OnHoverChanged(PointerOn, resultGameObject);
 			PointerOn = resultGameObject;
 		}
-		if (m_MouseDown && Vector2.Distance(m_MouseDownCoord, pointerPosition) > 4f && !m_MouseDrag && Mode == PointerMode.Default)
+		if (!isControllerGamepad && m_MouseDown && Vector2.Distance(m_MouseDownCoord, position) > 4f && !m_MouseDrag && Mode == PointerMode.Default)
 		{
 			m_MouseDrag = true;
 			m_DragFrames = 0;
-			if (m_MouseDownButton == 0)
+			if (m_MouseDownButton == MouseButton.Left)
 			{
 				if ((bool)MultiSelection && MultiSelection.ShouldMultiSelect)
 				{
@@ -247,24 +244,24 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		}
 		if (m_MouseDrag && Time.unscaledTime - m_MouseButtonTime >= 0.07f)
 		{
-			if (m_MouseDownButton == 0 && (bool)MultiSelection)
+			if (m_MouseDownButton == MouseButton.Left && (bool)MultiSelection)
 			{
 				MultiSelection.DragBoxSelection();
 			}
 			m_DragFrames++;
 		}
-		if (!m_MouseDown && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)) && !InGui)
+		if (!m_MouseDown && (Cursor.GetMouseButtonDown(MouseButton.Left) || Cursor.GetMouseButtonDown(MouseButton.Right)) && !inGui)
 		{
-			m_MouseDownButton = ((!Input.GetMouseButtonDown(0)) ? 1 : 0);
+			m_MouseDownButton = ((!Cursor.GetMouseButtonDown(MouseButton.Left)) ? MouseButton.Right : MouseButton.Left);
 			m_MouseDown = true;
 			m_MouseDownOn = resultGameObject;
 			m_MouseDownHandler = resultHandler;
-			m_MouseDownCoord = pointerPosition;
+			m_MouseDownCoord = position;
 			m_MouseDownWorldPosition = WorldPosition;
 			m_MouseDownGroundPosition = GroundPosition;
 			m_MouseButtonTime = Time.unscaledTime;
 		}
-		if (m_MouseDown && m_MouseDownButton == 1 && !TurnController.IsInTurnBasedCombat() && m_MouseDown && m_MouseDownButton == 1 && !TurnController.IsInTurnBasedCombat() && m_MouseDownHandler is IDragClickEventHandler dragClickEventHandler3 && m_MouseDownOn != null)
+		if (!isControllerGamepad && m_MouseDown && m_MouseDownButton == MouseButton.Right && !TurnController.IsInTurnBasedCombat() && m_MouseDownHandler is IDragClickEventHandler dragClickEventHandler3 && m_MouseDownOn != null)
 		{
 			dragClickEventHandler3.OnDrag(m_MouseDownOn, m_MouseDownWorldPosition, worldPosition);
 		}
@@ -572,7 +569,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		{
 			Camera camera = Game.Instance.GetCamera();
 			UnitEntityView componentInParent = gameObject.GetComponentInParent<UnitEntityView>();
-			Vector3 position = (componentInParent ? (componentInParent.ViewTransform.position + Vector3.up * ConfigRoot.Instance.Prefabs.CoreColliderHeight) : h.collider.transform.position);
+			Vector3 position = (componentInParent ? (componentInParent.transform.position + Vector3.up * ConfigRoot.Instance.Prefabs.CoreColliderHeight) : h.collider.transform.position);
 			Vector3 vector = camera.WorldToScreenPoint(position);
 			Vector3 vector2 = camera.WorldToScreenPoint(h.point);
 			float sqrMagnitude = (vector - vector2).sqrMagnitude;
@@ -596,15 +593,20 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 
 	public void SimulateClick(GameObject onObject, bool muteEvents)
 	{
-		try
+		Vector3 position = onObject.transform.position;
+		IClickEventHandler clickEventHandler = null;
+		float num = float.MinValue;
+		IClickEventHandler[] clickHandlers = m_ClickHandlers;
+		foreach (IClickEventHandler clickEventHandler2 in clickHandlers)
 		{
-			SimulatingClick = true;
-			m_SimulateClickHandler?.OnClick(onObject, WorldPositionForSimulation, 0, simulate: true, muteEvents);
+			float priority = clickEventHandler2.GetPriority(onObject, position).Priority;
+			if (priority > num || clickEventHandler == null)
+			{
+				clickEventHandler = clickEventHandler2;
+				num = priority;
+			}
 		}
-		finally
-		{
-			SimulatingClick = false;
-		}
+		clickEventHandler?.OnClick(onObject, position, 0, simulate: true, muteEvents);
 	}
 
 	private void TickPointerDebug()
@@ -617,7 +619,7 @@ public class PointerController : IControllerEnable, IController, IControllerDisa
 		{
 			PointerEventData eventData = new PointerEventData(EventSystem.current)
 			{
-				position = PointerPosition
+				position = Cursor.Position
 			};
 			List<RaycastResult> list = new List<RaycastResult>();
 			EventSystem.current.RaycastAll(eventData, list);

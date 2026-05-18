@@ -1,6 +1,6 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
-using Kingmaker.View.MapObjects.SriptZones;
+using Kingmaker.Mechanics.Entities;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -27,8 +27,7 @@ public class UnitInScriptZone : Condition
 
 	protected override bool CheckCondition()
 	{
-		ScriptZone scriptZone = ScriptZone.GetValue().View as ScriptZone;
-		if (scriptZone != null && scriptZone.Data.ContainsUnit(Unit.GetValue()))
+		if (ScriptZone.GetValue() is ScriptZoneEntity scriptZoneEntity && scriptZoneEntity.ContainsUnit(Unit.GetValue()))
 		{
 			return true;
 		}

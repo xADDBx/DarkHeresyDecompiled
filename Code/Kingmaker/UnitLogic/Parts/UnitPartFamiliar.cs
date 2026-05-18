@@ -4,6 +4,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.FactLogic;
@@ -115,7 +116,7 @@ public class UnitPartFamiliar : EntityPart<AbstractUnitEntity>, IHashable, IOwlP
 		base.OnViewDidAttach();
 		if (Leader != null)
 		{
-			base.Owner.View.EnsureComponent<FamiliarUnit>().TeleportToLeader();
+			base.Owner.View.AsEntityView().EnsureComponent<FamiliarUnit>().TeleportToLeader();
 			UpdateViewVisibility();
 		}
 	}

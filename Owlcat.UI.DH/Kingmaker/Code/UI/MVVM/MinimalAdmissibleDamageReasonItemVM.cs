@@ -1,10 +1,9 @@
-using System;
 using Owlcat.UI;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class MinimalAdmissibleDamageReasonItemVM : BaseDisposable, IViewModel, IBaseDisposable, IDisposable
+public class MinimalAdmissibleDamageReasonItemVM : ViewModel
 {
 	public readonly Sprite IconSprite;
 
@@ -14,9 +13,5 @@ public class MinimalAdmissibleDamageReasonItemVM : BaseDisposable, IViewModel, I
 	{
 		IconSprite = iconSprite;
 		Text = text;
-	}
-
-	protected override void DisposeImplementation()
-	{
 	}
 }

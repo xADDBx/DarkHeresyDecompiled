@@ -44,4 +44,11 @@ public readonly struct StatBaseValue : IEquatable<StatBaseValue>
 	{
 		return HashCode.Combine(Value, Enabled, Forced);
 	}
+
+	public override string ToString()
+	{
+		string arg = (Enabled ? "enabled" : "disabled");
+		string arg2 = (Forced ? "forced" : "not forced");
+		return $"{Value} ({arg}, {arg2})";
+	}
 }

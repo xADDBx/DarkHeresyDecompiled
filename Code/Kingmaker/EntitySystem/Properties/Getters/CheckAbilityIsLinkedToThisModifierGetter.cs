@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -11,7 +12,7 @@ public class CheckAbilityIsLinkedToThisModifierGetter : BoolPropertyGetter, Prop
 {
 	protected override bool GetBaseValue()
 	{
-		return this.GetAbility()?.Blueprint.AllModifiers.Contains(base.Owner as BlueprintAbilityModifier) ?? false;
+		return EvalContext.Current.Ability?.Blueprint.AllModifiers.Contains(base.Owner as BlueprintAbilityModifier) ?? false;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

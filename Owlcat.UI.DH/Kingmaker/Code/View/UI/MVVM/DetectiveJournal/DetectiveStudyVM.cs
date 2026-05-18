@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Sound;
@@ -15,6 +16,8 @@ public class DetectiveStudyVM : ViewModel
 
 	private readonly Action m_OnStudyClick;
 
+	public bool IsInteractable => UtilityNet.IsControlMainCharacter();
+
 	public DetectiveStudyVM(StudyGroup study, Action onStudyClick)
 	{
 		StudyGroup = study;
@@ -27,7 +30,7 @@ public class DetectiveStudyVM : ViewModel
 		if (m_OnStudyClick != null)
 		{
 			m_OnStudyClick?.Invoke();
-			UISounds.Instance.Play(UISounds.Instance.Sounds.DetectiveSystem.ClueResearch, isButton: true);
+			UISounds.Instance.Play(ServiceWindowsSounds.Instance.DetectiveJournal.ClueResearch, isButton: true);
 		}
 	}
 }

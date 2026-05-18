@@ -4,9 +4,9 @@ using System.Reflection;
 using Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.Bridge.Services;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Items;
 using Kingmaker.UI;
+using Kingmaker.UI.Pointer;
 using Kingmaker.Utility;
 using Owlcat.UI;
 using UnityEngine;
@@ -42,28 +42,42 @@ internal static class BugReportServiceInit
 								{
 									if (!(tooltip is TooltipTemplateAbilityTag tooltipTemplateAbilityTag))
 									{
-										if (tooltip is TooltipTemplateItem tooltipTemplateItem)
+										if (!(tooltip is TooltipTemplateTalent tooltipTemplateTalent))
 										{
-											try
+											if (!(tooltip is TooltipTemplateCareer tooltipTemplateCareer))
 											{
-												bugContext = new BugContext("Item");
-												if (tooltipTemplateItem.Item != null)
+												if (tooltip is TooltipTemplateItem tooltipTemplateItem)
 												{
-													bugContext.ContextObject = tooltipTemplateItem.Item.Blueprint;
-												}
-												else
-												{
-													ItemEntity itemEntity = (ItemEntity)(typeof(TooltipTemplateItem).GetField("m_Item", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(tooltipTemplateItem));
-													if (itemEntity != null)
+													try
 													{
-														bugContext.ContextObject = itemEntity.Blueprint;
+														bugContext = new BugContext("Item");
+														if (tooltipTemplateItem.Item != null)
+														{
+															bugContext.ContextObject = tooltipTemplateItem.Item.Blueprint;
+														}
+														else
+														{
+															ItemEntity itemEntity = (ItemEntity)(typeof(TooltipTemplateItem).GetField("m_Item", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(tooltipTemplateItem));
+															if (itemEntity != null)
+															{
+																bugContext.ContextObject = itemEntity.Blueprint;
+															}
+														}
+													}
+													catch (Exception ex)
+													{
+														PFLog.Default.Log("BugReport collect  Item tooltip exception: " + ex.Message + "\n" + ex.StackTrace);
 													}
 												}
 											}
-											catch (Exception ex)
+											else
 											{
-												PFLog.Default.Log("BugReport collect  Item tooltip exception: " + ex.Message + "\n" + ex.StackTrace);
+												bugContext.ContextObject = tooltipTemplateCareer.BlueprintCareerPath;
 											}
+										}
+										else
+										{
+											bugContext.ContextObject = tooltipTemplateTalent.BlueprintFeature;
 										}
 									}
 									else
@@ -117,7 +131,7 @@ internal static class BugReportServiceInit
 				RectTransform component = item.transform.GetChild(0).GetComponent<RectTransform>();
 				if (component != null)
 				{
-					RectTransformUtility.ScreenPointToLocalPointInRectangle(component, Input.mousePosition, UICamera.Instance, out var localPoint);
+					RectTransformUtility.ScreenPointToLocalPointInRectangle(component, CursorController.CursorPosition, UICamera.Instance, out var localPoint);
 					if (Math.Abs(localPoint.x) < component.rect.width && localPoint.y >= 0f && localPoint.y < component.rect.height)
 					{
 						return true;

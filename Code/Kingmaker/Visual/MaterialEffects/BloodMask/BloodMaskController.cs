@@ -10,6 +10,8 @@ public class BloodMaskController
 		public BloodMaskMaterial Material;
 
 		public BloodMaskMaterial.Snapshot Snapshot;
+
+		public int RendererId;
 	}
 
 	private bool m_Resetted;
@@ -18,13 +20,19 @@ public class BloodMaskController
 
 	public List<BloodMaskSettings> SettingsEntries = new List<BloodMaskSettings>();
 
-	public void AddMaterial(BloodMaskMaterial material)
+	public void AddMaterial(BloodMaskMaterial material, int rendererId)
 	{
 		m_MaterialEntries.Add(new MaterialEntry
 		{
 			Material = material,
-			Snapshot = material.TakeSnapshot()
+			Snapshot = material.TakeSnapshot(),
+			RendererId = rendererId
 		});
+	}
+
+	public void ClearMaterial(int rendererId)
+	{
+		m_MaterialEntries.RemoveAll((MaterialEntry entry) => entry.RendererId == rendererId);
 	}
 
 	public void ClearMaterials()

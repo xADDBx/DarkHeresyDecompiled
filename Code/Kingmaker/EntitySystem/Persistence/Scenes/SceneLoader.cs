@@ -335,7 +335,7 @@ public class SceneLoader
 					select SceneManager.GetSceneAt(i)).ToList();
 				foreach (Scene scene in list)
 				{
-					if (scene.isLoaded && !(scene.name == "BaseMechanics") && !(scene.name == "EntityBounds") && !(scene.name == "UI_Common_Scene") && !(scene.name == "IngameConsole") && !(scene.name == "LoadingScreen") && !(scene.name == "[global effects]") && (CrossSceneRoot == null || !(scene.name == CrossSceneRoot.Name)) && !m_LoadedAreaScenes.Any((SceneReference sr) => sr.SceneName == scene.name) && !HotScenesManager.IsSceneDeactivated(scene.name))
+					if (scene.isLoaded && !(scene.name == "BaseMechanics") && !(scene.name == "EntityBounds") && !(scene.name == "UI_Common_Scene") && !(scene.name == "IngameConsole") && !(scene.name == "LoadingScreen") && !(scene.name == "[global effects]") && !scene.name.StartsWith("InitTestScene") && (CrossSceneRoot == null || !(scene.name == CrossSceneRoot.Name)) && !m_LoadedAreaScenes.Any((SceneReference sr) => sr.SceneName == scene.name) && !HotScenesManager.IsSceneDeactivated(scene.name))
 					{
 						PFLog.SceneLoader.Log("Unload scene: {0}", scene.name);
 						reload = BundledSceneLoader.UnloadSceneAsync(scene.name);
@@ -459,7 +459,7 @@ public class SceneLoader
 				if (allEntityDatum != null && allEntityDatum.NeedsView && allEntityDatum.View == null)
 				{
 					allEntityDatum.AttachToViewOnLoad(null);
-					Game.Instance.CrossSceneRoot.Add(allEntityDatum.View.ViewTransform);
+					Game.Instance.CrossSceneRoot.Add(allEntityDatum.View);
 					Logger.Warning("Cross-scene entity {0} had no view on area change. Created {1}", allEntityDatum, allEntityDatum.View);
 				}
 			}
@@ -584,7 +584,7 @@ public class SceneLoader
 		}
 	}
 
-	public IEnumerator<object> ReloadAreaMechanicsCoroutine()
+	public IEnumerator<object> ReloadAreaMechanicsCoroutine(bool needNavMeshRescan)
 	{
 		if (!Application.isPlaying)
 		{
@@ -603,6 +603,14 @@ public class SceneLoader
 			yield return null;
 		}
 		reload.Wait();
+		if (needNavMeshRescan)
+		{
+			AstarPath active = AstarPath.active;
+			if ((bool)active)
+			{
+				active.Scan();
+			}
+		}
 		AreaPersistentState state = Game.Instance.State.LoadedAreaState;
 		Game.Instance.Controllers.EntitySpawner.SuppressSpawn.Retain();
 		foreach (SceneReference activeDynamicScene in CurrentlyLoadedArea.GetActiveDynamicScenes())
@@ -685,10 +693,10 @@ public class SceneLoader
 		{
 			yield break;
 		}
-		List<UnitSpawnerBase.MyData> list = (from s in Game.Instance.EntityPools.Entities.OfType<UnitSpawnerBase.MyData>()
+		List<AbstractUnitSpawnerEntity> list = (from s in Game.Instance.EntityPools.Entities.OfType<AbstractUnitSpawnerEntity>()
 			where s.ShouldProcessActivation(alsoRaiseDead)
 			select s).ToList();
-		list.Sort(delegate(UnitSpawnerBase.MyData s1, UnitSpawnerBase.MyData s2)
+		list.Sort(delegate(AbstractUnitSpawnerEntity s1, AbstractUnitSpawnerEntity s2)
 		{
 			string prefabId2 = GetPrefabId(s1);
 			string prefabId3 = GetPrefabId(s2);
@@ -697,12 +705,12 @@ public class SceneLoader
 		HashSet<string> loaded = new HashSet<string>();
 		string lastPrefabId = "";
 		bool unloadUnitsWhenSpawning = (BuildModeUtility.Data?.Loading?.UnloadUnitsWhenSpawning).GetValueOrDefault();
-		foreach (UnitSpawnerBase.MyData spawner in list)
+		foreach (AbstractUnitSpawnerEntity spawner in list)
 		{
 			string prefabId = GetPrefabId(spawner);
 			if (prefabId.IsNullOrEmpty())
 			{
-				PFLog.Default.Warning($"Spawner {spawner.View} has no prefab Id");
+				PFLog.Default.Warning($"Spawner {spawner.Config} has no prefab Id");
 				continue;
 			}
 			if (unloadUnitsWhenSpawning && prefabId != lastPrefabId && loaded.Count >= 3)
@@ -722,17 +730,17 @@ public class SceneLoader
 			loaded.Add(prefabId);
 			try
 			{
-				spawner.View.HandleAreaSpawnerInit();
+				spawner.HandleAreaSpawnerInit();
 			}
 			catch (Exception ex)
 			{
-				PFLog.Default.Exception(ex, $"When spawning {spawner} in {spawner.View?.GO.scene.name}");
+				PFLog.Default.Exception(ex, $"When spawning {spawner} in {spawner.Config?.sceneName}");
 			}
 			yield return null;
 		}
 		foreach (AbstractUnitEntity allUnit in Game.Instance.EntityPools.AllUnits)
 		{
-			if (!allUnit.View)
+			if (allUnit.View == null)
 			{
 				PFLog.System.Warning($"Unit {allUnit} has no view, attempting fix");
 				try
@@ -746,9 +754,9 @@ public class SceneLoader
 			}
 			yield return null;
 		}
-		static string GetPrefabId(UnitSpawnerBase.MyData s1)
+		static string GetPrefabId(AbstractUnitSpawnerEntity s1)
 		{
-			return s1.View?.Blueprint?.Prefab?.AssetId;
+			return ((UnitSpawnerBase)s1.Config)?.Blueprint?.Prefab?.AssetId;
 		}
 	}
 
@@ -852,12 +860,12 @@ public class SceneLoader
 		if (stash && FogOfWarArea.Active != null && (ignoreParts || fowArea != FogOfWarArea.Active))
 		{
 			byte[] data = await FogOfWarArea.Active.RequestData();
-			Game.Instance.LoadedAreaState.SavedFogOfWarMasks.Add(FogOfWarArea.Active.gameObject.scene.name, data);
+			await SavedFogMasks.Get(Game.Instance.LoadedAreaState.AreaGuid).Save(FogOfWarArea.Active.gameObject.scene.name, data);
 		}
 		FogOfWarArea.Active = (fowArea ? fowArea : null);
 		if (fowArea != null)
 		{
-			byte[] array = Game.Instance.LoadedAreaState.SavedFogOfWarMasks.Get(fowArea.gameObject.scene.name);
+			byte[] array = await SavedFogMasks.Get(Game.Instance.LoadedAreaState.AreaGuid).Load(fowArea.gameObject.scene.name);
 			if ((bool)fowArea && array != null)
 			{
 				fowArea.RestoreFogOfWarMask(array);
@@ -1057,16 +1065,24 @@ public class SceneLoader
 	{
 		using (CodeTimer.New(Logger, "Match Light: De/activate static scenes for parts"))
 		{
+			Dictionary<string, bool> dictionary = new Dictionary<string, bool>();
 			foreach (BlueprintAreaPartReference part in CurrentlyLoadedArea.Parts)
 			{
 				BlueprintAreaPart blueprintAreaPart = part.Get();
 				if ((bool)blueprintAreaPart && blueprintAreaPart.StaticScene.IsDefined)
 				{
-					Scene sceneByName = SceneManager.GetSceneByName(blueprintAreaPart.StaticScene.SceneName);
-					SetSceneEnabled(sceneByName, currentAreaPart == null || blueprintAreaPart == currentAreaPart);
+					string sceneName = blueprintAreaPart.StaticScene.SceneName;
+					bool flag = currentAreaPart == null || blueprintAreaPart == currentAreaPart;
+					dictionary[sceneName] = (dictionary.TryGetValue(sceneName, out var value) ? (value || flag) : flag);
 				}
 			}
-			SetSceneEnabled(SceneManager.GetSceneByName(CurrentlyLoadedArea.StaticScene.SceneName), currentAreaPart == null || currentAreaPart == CurrentlyLoadedArea);
+			string sceneName2 = CurrentlyLoadedArea.StaticScene.SceneName;
+			bool flag2 = currentAreaPart == null || currentAreaPart == CurrentlyLoadedArea;
+			dictionary[sceneName2] = (dictionary.TryGetValue(sceneName2, out var value2) ? (value2 || flag2) : flag2);
+			foreach (KeyValuePair<string, bool> item in dictionary)
+			{
+				SetSceneEnabled(SceneManager.GetSceneByName(item.Key), item.Value);
+			}
 		}
 	}
 
@@ -1222,6 +1238,7 @@ public class SceneLoader
 	private IEnumerator LoadSceneEntitiesCoroutine(SceneEntitiesState state, IEnumerable<EntityViewBase> viewList)
 	{
 		Dictionary<string, EntityViewBase> allViews = new Dictionary<string, EntityViewBase>();
+		Dictionary<string, EntityViewBase> previousIdToView = new Dictionary<string, EntityViewBase>();
 		foreach (EntityViewBase view in viewList)
 		{
 			try
@@ -1230,7 +1247,21 @@ public class SceneLoader
 			}
 			catch (ArgumentException)
 			{
-				PFLog.SceneLoader.ErrorWithReport(view, "Area contains views with conflicting ID [{0}]: '{1}' in {3} and '{2}' in {4}. Skipping the second one.", view.UniqueId, allViews[view.UniqueId].name, view.name, allViews[view.UniqueId].gameObject.scene.name, view.gameObject.scene.name);
+				EntityViewBase entityViewBase = allViews[view.UniqueId];
+				PFLog.SceneLoader.ErrorWithReport(view, "Area contains views with conflicting ID [" + view.UniqueId + "]: '" + entityViewBase.name + "' in " + view.name + " and '" + entityViewBase.gameObject.scene.name + "' in " + view.gameObject.scene.name + ". Skipping the second one.");
+			}
+			string[] previousUniqueIds = view.PreviousUniqueIds;
+			foreach (string text in previousUniqueIds)
+			{
+				try
+				{
+					previousIdToView.Add(text, view);
+				}
+				catch (ArgumentException)
+				{
+					EntityViewBase entityViewBase2 = previousIdToView[text];
+					PFLog.SceneLoader.ErrorWithReport(view, "Area contains views with conflicting previous ID [" + text + "]: '" + entityViewBase2.name + "' in " + view.name + " and '" + entityViewBase2.gameObject.scene.name + "' in " + view.gameObject.scene.name + ". Skipping the second one.");
+				}
 			}
 		}
 		foreach (Entity allEntityDatum in state.AllEntityData)
@@ -1240,29 +1271,31 @@ public class SceneLoader
 				continue;
 			}
 			EntityViewBase value = null;
+			bool assetIdEquality = true;
 			if (allEntityDatum.UniqueId == null)
 			{
 				PFLog.SceneLoader.Error($"Entity with null UniqueId while loading: {allEntityDatum}");
 			}
-			else
+			else if (!allViews.TryGetValue(allEntityDatum.UniqueId, out value))
 			{
-				allViews.TryGetValue(allEntityDatum.UniqueId, out value);
+				previousIdToView.TryGetValue(allEntityDatum.UniqueId, out value);
+				assetIdEquality = value == null;
 			}
 			if (TraceLoading)
 			{
 				PFLog.SceneLoader.Log("Loaded entity {0}: {1}. View found: {2}", allEntityDatum.GetType().Name, allEntityDatum.UniqueId, value ? value.name : "none");
 			}
-			allEntityDatum.AttachToViewOnLoad(value);
-			if (!value && (bool)allEntityDatum.View?.GO)
+			allEntityDatum.AttachToViewOnLoad(value, assetIdEquality);
+			if (!value && allEntityDatum.View != null)
 			{
-				((state == Game.Instance.Player.CrossSceneState) ? CrossSceneRoot : DynamicRoot).Add(allEntityDatum.View.ViewTransform);
+				((state == Game.Instance.Player.CrossSceneState) ? CrossSceneRoot : DynamicRoot).Add(allEntityDatum.View);
 				if (state == Game.Instance.Player.CrossSceneState)
 				{
 					allEntityDatum.GetOrCreate<PartHoldPrefabBundle>();
 				}
 				if (TraceLoading)
 				{
-					PFLog.SceneLoader.Log("Spawned dynamic view " + allEntityDatum.View.GO.name + " #" + allEntityDatum.View.UniqueViewId);
+					PFLog.SceneLoader.Log("Spawned dynamic view " + allEntityDatum.View.GO.name + " #" + allEntityDatum.View.EntityId);
 				}
 			}
 			yield return null;
@@ -1711,10 +1744,10 @@ public class SceneLoader
 		{
 			foreach (Entity allEntityDatum in Game.Instance.Player.CrossSceneState.AllEntityData)
 			{
-				if (allEntityDatum?.View?.GO == null)
+				if (allEntityDatum?.View == null)
 				{
 					allEntityDatum.AttachToViewOnLoad(null);
-					Game.Instance.CrossSceneRoot.Add(allEntityDatum.View.ViewTransform);
+					Game.Instance.CrossSceneRoot.Add(allEntityDatum.View);
 					Logger.Warning("Cross-scene entity {0} had no view on area change. Created {1}", allEntityDatum, allEntityDatum.View);
 				}
 			}
@@ -1799,19 +1832,43 @@ public class SceneLoader
 	public IEnumerator<object> LoadMainMenuCoroutine(Exception exception = null)
 	{
 		PFLog.System.Log("Returning to main menu");
+		Task op = UnloadAllBeforeMainMenu(exception);
+		while (op.MoveNext())
+		{
+			yield return null;
+		}
+		SoundState.Instance.ScheduleNewAreaMusic();
+		op = BundledSceneLoader.LoadSceneAsync(GameScenes.MainMenu);
+		while (!op.IsCompleted)
+		{
+			yield return null;
+		}
+		op.Wait();
+		using (CodeTimer.New(Logger, "Initialize UI Scene"))
+		{
+			WidgetPool.Clear();
+			yield return null;
+			yield return null;
+			yield return null;
+			Game.Instance.RootUIContext.StartUI();
+		}
+		PFLog.System.Log("Returning to main menu: game done");
+	}
+
+	public IEnumerator UnloadAllBeforeMainMenu(Exception exception = null)
+	{
 		if (PhotonManager.Instance != null)
 		{
-			PhotonManager.Instance.StopPlaying("LoadMainMenuCoroutine");
+			PhotonManager.Instance.StopPlaying("UnloadAllBeforeMainMenu");
 		}
 		Game.Instance.RootUIContext.ClearForLoadMainMenu();
 		SoundState.Instance.ResetBeforeUnloading();
-		Task op;
 		if (CurrentlyLoadedArea != null)
 		{
 			List<string> bankNames = CurrentlyLoadedArea.GetActiveSoundBankNames().ToList();
 			bankNames.AddRange(CurrentlyLoadedArea.GetActiveSoundBankNames(isCurrentPart: true));
 			float banksUnloadDelay = CurrentlyLoadedArea.UnloadBanksDelay;
-			op = UnloadAreaCoroutine(forDispose: true);
+			IEnumerator<object> op = UnloadAreaCoroutine(forDispose: true);
 			while (op.MoveNext())
 			{
 				yield return null;
@@ -1841,7 +1898,7 @@ public class SceneLoader
 			bugReportCanvas.BindKeyboard(Game.Instance.Keyboard);
 		}
 		CrushDumpMessage.Exception = exception;
-		PFLog.System.Log("Returning to main menu: game reset");
+		PFLog.System.Log("Game reset");
 		Scene[] array = Enumerable.Range(0, SceneManager.sceneCount).Select(SceneManager.GetSceneAt).ToArray();
 		Scene[] array2 = array;
 		for (int i = 0; i < array2.Length; i++)
@@ -1858,30 +1915,17 @@ public class SceneLoader
 			case "LoadingScreen":
 				continue;
 			}
-			PFLog.SceneLoader.Log("Unload scene: {0}", scene.name);
-			op = BundledSceneLoader.UnloadSceneAsync(scene.name);
-			while (!op.IsCompleted)
+			if (!scene.name.StartsWith("InitTestScene"))
 			{
-				yield return null;
+				PFLog.SceneLoader.Log("Unload scene: {0}", scene.name);
+				Task op = BundledSceneLoader.UnloadSceneAsync(scene.name);
+				while (!op.IsCompleted)
+				{
+					yield return null;
+				}
+				op.Wait();
 			}
-			op.Wait();
 		}
-		SoundState.Instance.ScheduleNewAreaMusic();
-		op = BundledSceneLoader.LoadSceneAsync(GameScenes.MainMenu);
-		while (!op.IsCompleted)
-		{
-			yield return null;
-		}
-		op.Wait();
-		using (CodeTimer.New(Logger, "Initialize UI Scene"))
-		{
-			WidgetPool.Clear();
-			yield return null;
-			yield return null;
-			yield return null;
-			Game.Instance.RootUIContext.StartUI();
-		}
-		PFLog.System.Log("Returning to main menu: game done");
 	}
 
 	private static void ClearCachedData()

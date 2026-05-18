@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.UnitLogic.Levelup;
 using R3;
@@ -34,8 +33,8 @@ public class CharInfoSkillsBlockVM : CharInfoBaseAbilityScoresBlockVM
 	protected override List<StatType> StatsTypes { get; } = SkillsOrdered;
 
 
-	public CharInfoSkillsBlockVM(StatsContainer stats)
-		: base(stats)
+	public CharInfoSkillsBlockVM(BaseUnitEntity unit)
+		: base(unit)
 	{
 	}
 

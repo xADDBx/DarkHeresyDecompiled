@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items.Slots;
-using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.DotNetExtensions;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -17,13 +17,17 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Parts;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class UnitPartNonStackBonuses : BaseUnitPart, IHashable, IOwlPackable<UnitPartNonStackBonuses>
+public class UnitPartNonStackBonuses : BaseUnitPart, IActorStatChangedHandler<EntitySubscriber>, IActorStatChangedHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IActorStatChangedHandler, EntitySubscriber>, IEntitySubscriber, IHashable, IOwlPackable<UnitPartNonStackBonuses>
 {
 	private List<Modifier> m_NonStuckModifiers = new List<Modifier>();
 
 	private Dictionary<ItemSlot, List<Modifier>> m_NonStuckSlots = new Dictionary<ItemSlot, List<Modifier>>();
 
 	private Dictionary<Buff, List<Modifier>> m_NonStuckBuffs = new Dictionary<Buff, List<Modifier>>();
+
+	private Dictionary<StatType, List<Modifier>> m_ConflictsByStat = new Dictionary<StatType, List<Modifier>>();
+
+	private readonly StatQueryOutput _queryBuffer = new StatQueryOutput();
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -88,101 +92,104 @@ public class UnitPartNonStackBonuses : BaseUnitPart, IHashable, IOwlPackable<Uni
 		return list;
 	}
 
-	public void HandleModifierAdded(ModifiableValue modifiable, Modifier newMod)
+	void IActorStatChangedHandler.HandleActorStatChanged(StatChangeSet stats)
 	{
-		if (!(modifiable.Owner is BaseUnitEntity baseUnitEntity) || !baseUnitEntity.Faction.IsPlayer || !baseUnitEntity.IsInCompanionRoster() || newMod.Stackable || newMod.Value <= 0 || (newMod.Item == null && ((!(newMod.Fact?.MaybeContext?.MaybeCaster?.IsPlayerFaction)) ?? false)))
-		{
-			return;
-		}
 		bool flag = false;
-		foreach (Modifier modifier in modifiable.GetModifiers(newMod.Descriptor))
+		StatType[] allStats = StatTypeHelper.AllStats;
+		foreach (StatType statType in allStats)
 		{
-			if (modifier != newMod && !modifier.Stackable)
+			if (!stats.Contains(statType))
 			{
+				continue;
+			}
+			bool flag2 = m_ConflictsByStat.Remove(statType);
+			flag = flag || flag2;
+			_queryBuffer.Clear();
+			base.Owner.Actor.GetStat(statType, _queryBuffer, default(StatContext), "HandleActorStatChanged");
+			ReadonlyList<Modifier> list = _queryBuffer.AllModifiers.List;
+			List<Modifier> list2 = null;
+			for (int j = 0; j < list.Count; j++)
+			{
+				Modifier modifier = list[j];
+				if (modifier.Stackable || modifier.Value <= 0 || !PassesSourceFilter(modifier))
+				{
+					continue;
+				}
+				for (int k = j + 1; k < list.Count; k++)
+				{
+					Modifier modifier2 = list[k];
+					if (!modifier2.Stackable && modifier2.Value > 0 && PassesSourceFilter(modifier2) && modifier.SameStack(modifier2))
+					{
+						if (list2 == null)
+						{
+							list2 = new List<Modifier>();
+						}
+						if (!list2.Contains(modifier))
+						{
+							list2.Add(modifier);
+						}
+						if (!list2.Contains(modifier2))
+						{
+							list2.Add(modifier2);
+						}
+					}
+				}
+			}
+			if (list2 != null && list2.Count > 0)
+			{
+				m_ConflictsByStat[statType] = list2;
 				flag = true;
-				AddNewModifier(newMod, modifier);
 			}
 		}
 		if (flag)
 		{
-			m_NonStuckModifiers.Add(newMod);
-			PFLog.EntityFact.Log("Add non-stack " + newMod);
-			EventBus.RaiseEvent(delegate(INonStackModifierHandler h)
-			{
-				h.HandleNonStackModifierAdded(this, modifiable, newMod);
-			});
+			RebuildAggregateMaps();
 		}
 	}
 
-	public void HandleModifierRemoving(ModifiableValue modifiable, Modifier mod)
+	private static bool PassesSourceFilter(Modifier mod)
 	{
-		if (!m_NonStuckModifiers.Remove(mod))
+		if (mod.Item == null)
 		{
-			return;
+			return mod.Fact?.MaybeContext?.MaybeCaster?.IsPlayerFaction ?? true;
 		}
-		PFLog.EntityFact.Log("Remove non-stack " + mod);
-		using PooledList<Modifier> pooledList = PooledList<Modifier>.Get();
-		if (mod.Fact is Buff key && m_NonStuckBuffs.TryGetValue(key, out var value))
+		return true;
+	}
+
+	private void RebuildAggregateMaps()
+	{
+		m_NonStuckModifiers.Clear();
+		m_NonStuckSlots.Clear();
+		m_NonStuckBuffs.Clear();
+		foreach (KeyValuePair<StatType, List<Modifier>> item in m_ConflictsByStat)
 		{
-			pooledList.AddRange(value);
-			ListPool<Modifier>.Release(value);
-			m_NonStuckBuffs.Remove(key);
-		}
-		ItemSlot itemSlot = mod.Item?.HoldingSlot;
-		if (itemSlot != null && m_NonStuckSlots.TryGetValue(itemSlot, out var value2))
-		{
-			pooledList.AddRange(value2);
-			value2.Clear();
-		}
-		foreach (Modifier item in pooledList)
-		{
-			if (item.Fact is Buff key2)
+			List<Modifier> value = item.Value;
+			for (int i = 0; i < value.Count; i++)
 			{
-				List<Modifier> list = m_NonStuckBuffs.Get(key2);
-				if (list != null)
+				Modifier modifier = value[i];
+				if (!m_NonStuckModifiers.Contains(modifier))
 				{
-					list.Remove(mod);
-					if (list.Count == 0)
+					m_NonStuckModifiers.Add(modifier);
+				}
+				for (int j = 0; j < value.Count; j++)
+				{
+					if (i != j)
 					{
-						m_NonStuckBuffs.Remove(key2);
-						m_NonStuckModifiers.Remove(item);
+						Modifier modifier2 = value[j];
+						AddToSourceCollection(modifier, modifier2);
 					}
 				}
 			}
-			ItemSlot itemSlot2 = item.Item?.HoldingSlot;
-			if (itemSlot2 == null)
-			{
-				continue;
-			}
-			List<Modifier> list2 = m_NonStuckSlots.Get(itemSlot2);
-			if (list2 != null)
-			{
-				list2.Remove(mod);
-				if (list2.Count == 0)
-				{
-					m_NonStuckModifiers.Remove(item);
-				}
-			}
 		}
 	}
 
-	private void AddNewModifier(Modifier newModifier, Modifier modifier)
+	private void AddToSourceCollection(Modifier source, Modifier modifier)
 	{
-		if (!m_NonStuckModifiers.Contains(modifier))
-		{
-			m_NonStuckModifiers.Add(modifier);
-		}
-		AddModifierToSourceCollection(newModifier, modifier);
-		AddModifierToSourceCollection(modifier, newModifier);
-	}
-
-	private void AddModifierToSourceCollection(Modifier collectionProvider, Modifier modifier)
-	{
-		if (collectionProvider.Fact is Buff key)
+		if (source.Fact is Buff key)
 		{
 			if (!m_NonStuckBuffs.TryGetValue(key, out var value))
 			{
-				value = ListPool<Modifier>.Claim();
+				value = new List<Modifier>();
 				m_NonStuckBuffs.Add(key, value);
 			}
 			if (!value.Contains(modifier))
@@ -191,12 +198,12 @@ public class UnitPartNonStackBonuses : BaseUnitPart, IHashable, IOwlPackable<Uni
 			}
 			return;
 		}
-		ItemSlot itemSlot = collectionProvider.Item?.HoldingSlot;
+		ItemSlot itemSlot = source.Item?.HoldingSlot;
 		if (itemSlot != null)
 		{
 			if (!m_NonStuckSlots.TryGetValue(itemSlot, out var value2))
 			{
-				value2 = ListPool<Modifier>.Claim();
+				value2 = new List<Modifier>();
 				m_NonStuckSlots.Add(itemSlot, value2);
 			}
 			if (!value2.Contains(modifier))

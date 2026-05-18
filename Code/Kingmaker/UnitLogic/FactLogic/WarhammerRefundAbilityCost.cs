@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.Controllers.Combat;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules;
@@ -46,10 +44,6 @@ public class WarhammerRefundAbilityCost : UnitFactComponentDelegate, IInitiatorR
 
 	private void RunAction(AbilityData ability, TargetWrapper _)
 	{
-		if ((!ForOneAbility || ability.Blueprint.SameAbility(Ability)) && (!ForMultipleAbilities || Abilities.ContainsAbility(ability.Blueprint)) && (!ForAbilityGroup || ability.Blueprint.AbilityGroups.Contains(AbilityGroup)) && refundAP && base.Context.MaybeCaster != null)
-		{
-			base.Context.MaybeCaster.GetCombatStateOptional()?.GainActionPoints(ability.CalculateActionPointCost(), base.Context);
-		}
 	}
 
 	public void OnEventAboutToTrigger(RulePerformAbility evt)

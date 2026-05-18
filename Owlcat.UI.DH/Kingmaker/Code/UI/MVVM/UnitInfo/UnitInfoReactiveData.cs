@@ -3,8 +3,8 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.Gameplay.Parts;
+using Kingmaker.Predictions;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -13,6 +13,7 @@ using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.View.Covers;
+using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -127,7 +128,7 @@ public class UnitInfoReactiveData
 
 	private readonly ReactiveProperty<bool> m_HasConcentration = new ReactiveProperty<bool>();
 
-	private readonly ReactiveProperty<TooltipTemplateBuff> m_ConcentrationAbilityTooltip = new ReactiveProperty<TooltipTemplateBuff>();
+	private readonly ReactiveProperty<TooltipBaseTemplate> m_ConcentrationAbilityTooltip = new ReactiveProperty<TooltipBaseTemplate>();
 
 	public ReadOnlyReactiveProperty<string> Name => m_Name;
 
@@ -195,7 +196,7 @@ public class UnitInfoReactiveData
 
 	public ReadOnlyReactiveProperty<bool> HasConcentration => m_HasConcentration;
 
-	public ReadOnlyReactiveProperty<TooltipTemplateBuff> ConcentrationAbilityTooltip => m_ConcentrationAbilityTooltip;
+	public ReadOnlyReactiveProperty<TooltipBaseTemplate> ConcentrationAbilityTooltip => m_ConcentrationAbilityTooltip;
 
 	public ReadOnlyReactiveProperty<PredictedDamage> Damage => m_Damage;
 
@@ -228,8 +229,7 @@ public class UnitInfoReactiveData
 			MechanicEntityUIWrapper mechanicEntity = mechanicEntityUIState.MechanicEntity;
 			int num = mechanicEntity.Health?.MaxHitPoints ?? 0;
 			int num2 = mechanicEntity.Health?.HitPointsLeft ?? 0;
-			ModifiableValue modifiableValue = mechanicEntity.Armor?.Durability;
-			int num3 = ((modifiableValue != null) ? ((int)modifiableValue) : 0);
+			int num3 = mechanicEntity.Armor?.DurabilityValue ?? 0;
 			int num4 = mechanicEntity.Armor?.DurabilityLeft ?? 0;
 			m_HitPointTotalMax.Value = num + num3;
 			m_HitPointMax.Value = num;
@@ -274,7 +274,7 @@ public class UnitInfoReactiveData
 		m_ConcentrationIcon.Value = buff?.Icon;
 		m_ConcentrationName.Value = buff?.Name;
 		m_HasConcentration.Value = m_ConcentrationBuff != null;
-		m_ConcentrationAbilityTooltip.Value = ((buff == null) ? null : new TooltipTemplateBuff(m_ConcentrationBuff, null, isConcentration: true));
+		m_ConcentrationAbilityTooltip.Value = ((buff == null) ? null : new TooltipTemplateConcentrationBuff(m_ConcentrationBuff));
 	}
 
 	public void UpdateBodyPartData(MechanicEntityUIState mechanicEntityUIState, AbilityData ability, Vector3 worldPosition, PreciseAttackController.BodyPartUIData bodyPartUIData)
@@ -295,10 +295,10 @@ public class UnitInfoReactiveData
 		m_BodyPart.Value = bodyPartUIData.BodyPart;
 		m_IsVitalBodyPart.Value = bodyPartUIData.BodyPart.IsVital;
 		mechanicEntityUIState.UpdatePreciseAttackBodyPartData(bodyPartUIData, m_IsCompareData);
-		CollectAbilityProperty(mechanicEntityUIState, ability, worldPosition, isPreciseAttack: true, show: true);
+		CollectAbilityProperty(mechanicEntityUIState, ability, isPreciseAttack: true, show: true);
 	}
 
-	public void CollectAbilityProperty(MechanicEntityUIState mechanicEntityUIState, AbilityData ability, Vector3 worldPosition, bool isPreciseAttack, bool show)
+	public void CollectAbilityProperty(MechanicEntityUIState mechanicEntityUIState, AbilityData ability, bool isPreciseAttack, bool show)
 	{
 		MechanicEntity mechanicEntity = mechanicEntityUIState.MechanicEntity.MechanicEntity;
 		if (!show || mechanicEntity.HasMechanicFeature(MechanicsFeatureType.HideRealHealthInUI))
@@ -317,7 +317,7 @@ public class UnitInfoReactiveData
 				ClearFields();
 				return;
 			}
-			bool flag = ((!(Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(mechanicEntity.View.gameObject, worldPosition) != null) || ability.TargetAnchor != AbilityTargetAnchor.Point || ability.HasCustomDirectMovement()) ? ability.CanTargetFromDesiredPosition(mechanicEntity) : (mechanicEntityUIState.IsAoETarget.CurrentValue && CanAoETarget(mechanicEntityUIState, ability.Blueprint.AoETargets)));
+			bool flag = (((!mechanicEntityUIState.AbilityTargetUIData.CurrentValue.CanTargetFromDesiredPosition && !mechanicEntityUIState.IsTarget.CurrentValue) || ability.TargetAnchor != AbilityTargetAnchor.Point || ability.HasCustomDirectMovement()) ? ability.CanTargetFromDesiredPosition(mechanicEntity) : (mechanicEntityUIState.IsAoETarget.CurrentValue && CanAoETarget(mechanicEntityUIState, ability.Blueprint.AoETargets)));
 			if (!isPreciseAttack)
 			{
 				m_HasHit.Value = flag;

@@ -16,9 +16,9 @@ public class LocatorView : EntityViewBase
 
 	protected override void OnDrawGizmos()
 	{
-		Gizmos.DrawIcon(base.ViewTransform.position, "locator");
+		Gizmos.DrawIcon(base.transform.position, "locator");
 		Gizmos.color = Color.red;
-		Vector3 vector = base.ViewTransform.rotation * Vector3.forward;
-		Gizmos.DrawLine(base.ViewTransform.position, base.ViewTransform.position + vector);
+		Vector3 vector = base.transform.rotation * Vector3.forward;
+		Gizmos.DrawLine(base.transform.position, base.transform.position + vector);
 	}
 }

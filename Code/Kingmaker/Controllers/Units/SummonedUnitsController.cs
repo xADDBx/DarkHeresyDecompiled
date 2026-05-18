@@ -43,7 +43,6 @@ public class SummonedUnitsController : BaseUnitController
 		PartCombatGroup combatGroupOptional = unit.GetCombatGroupOptional();
 		if (unit.IsInCombat || (unit != null && !unit.CanMove) || part.Summoner == null || (combatGroupOptional != null && unitEntity.CombatGroup.Group != combatGroupOptional.Group))
 		{
-			unit.View.MovementAgent.ForceRoaming = false;
 			part.MoveTo?.Interrupt();
 			part.MoveTo = null;
 			return;
@@ -76,10 +75,6 @@ public class SummonedUnitsController : BaseUnitController
 		if (moveTo != null && moveTo.IsFinished)
 		{
 			part.MoveTo = null;
-		}
-		if ((bool)unit.View)
-		{
-			unit.View.MovementAgent.ForceRoaming = true;
 		}
 	}
 }

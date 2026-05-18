@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -61,8 +62,16 @@ public static class TransformExtention
 		return transform.Children().FirstOrDefault(predicate);
 	}
 
-	public static string GetHierarchyPath(this Transform transform, bool addInstanceId = false, bool addGlobalObjectId = false)
+	public static string GetHierarchyPath(this Transform transform, bool addInstanceId = false, bool addGlobalObjectId = false, bool addSceneName = true)
 	{
 		return transform.name;
+	}
+
+	public static IEnumerable<Transform> GetChildren(this Transform parentTransform)
+	{
+		for (int i = 0; i < parentTransform.childCount; i++)
+		{
+			yield return parentTransform.GetChild(i);
+		}
 	}
 }

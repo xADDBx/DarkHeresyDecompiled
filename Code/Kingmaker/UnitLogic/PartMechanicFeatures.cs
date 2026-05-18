@@ -37,7 +37,7 @@ public class PartMechanicFeatures : MechanicEntityPart, IHashable, IOwlPackable<
 
 	public FeatureCountableFlag DisablePush;
 
-	public FeatureCountableFlag DoNotReviveOutOfCombat;
+	public FeatureCountableFlag DoNotHealOutOfCombat;
 
 	public FeatureCountableFlag AutoHit;
 
@@ -159,6 +159,8 @@ public class PartMechanicFeatures : MechanicEntityPart, IHashable, IOwlPackable<
 
 	public FeatureCountableFlag CantMove;
 
+	public FeatureCountableFlag CantMoveInCombat;
+
 	public FeatureCountableFlag DisableAttacksOfOpportunity;
 
 	public FeatureCountableFlag Vanguard;
@@ -198,7 +200,7 @@ public class PartMechanicFeatures : MechanicEntityPart, IHashable, IOwlPackable<
 		DisableAttacksOfOpportunity = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.DisableAttacksOfOpportunity);
 		SuppressedDismember = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.SuppressedDismember);
 		SuppressedDecomposition = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.SuppressedDecomposition);
-		DoNotReviveOutOfCombat = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.DoNotReviveOutOfCombat);
+		DoNotHealOutOfCombat = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.DoNotHealOutOfCombat);
 		AutoHit = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.AutoHit);
 		AutoMiss = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.AutoMiss);
 		CanRerollSavingThrow = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.CanRerollSavingThrow);
@@ -214,8 +216,6 @@ public class PartMechanicFeatures : MechanicEntityPart, IHashable, IOwlPackable<
 		ImmuneToMovementPointReduction = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.ImmuneToMovementPointReduction);
 		SecondaryCriticalChance = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.SecondaryCriticalChance);
 		OverpenetrationDoesNotDecreaseDamage = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.OverpenetrationDoesNotDecreaseDamage);
-		IsFirstInFight = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.IsFirstInFight);
-		IsLastInFight = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.IsLastInFight);
 		IgnoreMeleeOutnumbering = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.IgnoreMeleeOutnumbering);
 		DoesNotCountTurns = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.DoesNotCountTurns);
 		HasNoAPPenaltyCostForTwoWeaponFighting = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.HasNoAPPenaltyCostForTwoWeaponFighting);
@@ -260,6 +260,7 @@ public class PartMechanicFeatures : MechanicEntityPart, IHashable, IOwlPackable<
 		PassThroughSmallUnits = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.PassThroughSmallUnits);
 		CanAoODuringOwnTurn = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.CanAoODuringOwnTurn);
 		IgnoreDefence = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.IgnoreDefence);
+		CantMoveInCombat = new FeatureCountableFlag(base.Owner, MechanicsFeatureType.CantMoveInCombat);
 	}
 
 	protected override void OnAttach()

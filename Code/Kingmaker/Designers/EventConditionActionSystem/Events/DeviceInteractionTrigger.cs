@@ -8,7 +8,6 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Owlcat.Runtime.Core.Utility;
 
@@ -26,8 +25,8 @@ public class DeviceInteractionTrigger : EntityFactComponentDelegate, IInteractio
 
 	public void OnInteract(AbstractInteractionPart interaction)
 	{
-		MapObjectView mapObjectView = interaction.View.Or(null);
-		if ((object)mapObjectView != null && mapObjectView.IsOwnerOf(base.Runtime))
+		IMapObjectView view = interaction.View;
+		if (view != null && view.IsOwnerOf(base.Runtime))
 		{
 			using (ContextData<InteractingUnitData>.Request().Setup(EventInvokerExtensions.BaseUnitEntity))
 			{
@@ -42,8 +41,8 @@ public class DeviceInteractionTrigger : EntityFactComponentDelegate, IInteractio
 		{
 			return;
 		}
-		MapObjectView mapObjectView = interaction.View.Or(null);
-		if ((object)mapObjectView != null && mapObjectView.IsOwnerOf(base.Runtime))
+		IMapObjectView view = interaction.View;
+		if (view != null && view.IsOwnerOf(base.Runtime))
 		{
 			using (ContextData<InteractingUnitData>.Request().Setup(EventInvokerExtensions.BaseUnitEntity))
 			{

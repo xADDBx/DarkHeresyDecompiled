@@ -66,7 +66,7 @@ public class StatCheckLootUnitsPageVM : StatCheckLootPageVM
 		{
 			AddSmallUnitSlot(item, statType);
 		}
-		m_UpdateSmallUnitSlots.Execute();
+		m_UpdateSmallUnitSlots.Execute(Unit.Default);
 		UpdateSelectedUnit();
 	}
 
@@ -84,7 +84,7 @@ public class StatCheckLootUnitsPageVM : StatCheckLootPageVM
 
 	private void ClearSmallUnitSlotVMs()
 	{
-		m_ClearSmallUnitSlots.Execute();
+		m_ClearSmallUnitSlots.Execute(Unit.Default);
 		SmallUnitSlotsVMs.Clear();
 	}
 

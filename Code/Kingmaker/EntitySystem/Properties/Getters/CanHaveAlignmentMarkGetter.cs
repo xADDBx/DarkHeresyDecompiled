@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Alignments;
 using Owlcat.Runtime.Core.Utility;
 
@@ -23,7 +24,8 @@ public class CanHaveAlignmentMarkGetter : BoolPropertyGetter
 	{
 		if (base.CurrentEntity is BaseUnitEntity baseUnitEntity)
 		{
-			return baseUnitEntity.Alignment.CanHaveMarkInAxis(AlignmentAxis, Mark);
+			ReasonCannotHaveMark reason;
+			return baseUnitEntity.Alignment.CanHaveMarkInAxis(AlignmentAxis, Mark, out reason);
 		}
 		return false;
 	}

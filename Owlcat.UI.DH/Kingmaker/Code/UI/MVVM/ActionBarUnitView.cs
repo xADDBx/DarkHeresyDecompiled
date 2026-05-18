@@ -37,7 +37,7 @@ public sealed class ActionBarUnitView : CombatUnitView<CombatMechanicEntityVM>
 	private SurfaceCombatUnitPortraitZone[] m_SquadPortraits;
 
 	[SerializeField]
-	protected TextMeshProUGUI m_SquadRoleLabel;
+	private TextMeshProUGUI m_SquadRoleLabel;
 
 	[SerializeField]
 	private Image m_Frame;
@@ -48,6 +48,9 @@ public sealed class ActionBarUnitView : CombatUnitView<CombatMechanicEntityVM>
 	[SerializeField]
 	private Sprite m_EnemyFrame;
 
+	[SerializeField]
+	private GameObject[] m_HideOnPortraitHiddenObjects;
+
 	private readonly CompositeDisposable m_Disposable = new CompositeDisposable();
 
 	protected override void OnBind()
@@ -57,6 +60,14 @@ public sealed class ActionBarUnitView : CombatUnitView<CombatMechanicEntityVM>
 			return;
 		}
 		base.OnBind();
+		base.ViewModel.ForceHidePortrait.Subscribe(delegate(bool forceHide)
+		{
+			GameObject[] hideOnPortraitHiddenObjects = m_HideOnPortraitHiddenObjects;
+			for (int i = 0; i < hideOnPortraitHiddenObjects.Length; i++)
+			{
+				hideOnPortraitHiddenObjects[i].SetActive(!forceHide);
+			}
+		}).AddTo(this);
 		base.ViewModel.MechanicEntityUIState.IsInCombat.And(base.ViewModel.IsCurrent.Or(base.ViewModel.MechanicEntityUIState.IsPreparationTurn)).Subscribe(SetPredictionVisuals).AddTo(this);
 		base.ViewModel.ActionPointVM.Subscribe(delegate(ActionPointsVM points)
 		{
@@ -84,7 +95,7 @@ public sealed class ActionBarUnitView : CombatUnitView<CombatMechanicEntityVM>
 		{
 			InvokeUnitInspect();
 		}).AddTo(this);
-		SetupFrame(base.ViewModel.IsEnemy.CurrentValue);
+		SetupFrame(base.ViewModel.FactionInfo.CurrentValue.isEnemy);
 		SetupName();
 	}
 

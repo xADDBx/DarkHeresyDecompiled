@@ -10,11 +10,6 @@ public class EquipmentMetricsEvent : MetricsEvent
 
 	protected override string Name => "equipment";
 
-	public EquipmentMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public EquipmentMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -33,7 +28,7 @@ public class EquipmentMetricsEvent : MetricsEvent
 		{
 			EquipmentStates.Equip => "equip", 
 			EquipmentStates.Remove => "remove", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}

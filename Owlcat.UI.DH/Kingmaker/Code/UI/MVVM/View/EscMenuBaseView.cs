@@ -93,10 +93,6 @@ public abstract class EscMenuBaseView : View<EscMenuVM>
 	[SerializeField]
 	private TextMeshProUGUI m_AreaNameText;
 
-	protected GridConsoleNavigationBehaviour NavigationBehaviour;
-
-	protected InputLayer InputLayer;
-
 	public static readonly string InputLayerContextName = "EscMenu";
 
 	public void Awake()
@@ -109,7 +105,7 @@ public abstract class EscMenuBaseView : View<EscMenuVM>
 		Game.Instance.RequestPauseUi(isPaused: true);
 		base.gameObject.SetActive(value: true);
 		m_CurrentLocationText.text = UIStrings.Instance.EscapeMenu.CurrentAreaLabel.Text + ":";
-		UISounds.Instance.Sounds.Systems.FullscreenWindowFadeShow.Play();
+		FullScreenUniqueSounds.Instance.EscMenu.Open.Play();
 		base.ViewModel.AreaName.Subscribe(delegate(string value)
 		{
 			m_AreaNameText.SetText(value);
@@ -203,7 +199,6 @@ public abstract class EscMenuBaseView : View<EscMenuVM>
 		{
 			m_SaveButton.SetHint(UIStrings.Instance.SaveLoadTexts.SaveIsNotPossibleInIronMan).AddTo(this);
 		}
-		BuildNavigation();
 		ObservableSubscribeExtensions.Subscribe(base.ViewModel.UpdateButtonsInteractable, delegate
 		{
 			UpdateInteractableButtons();
@@ -222,7 +217,7 @@ public abstract class EscMenuBaseView : View<EscMenuVM>
 		}
 		base.ViewModel.InternalWindowOpened = false;
 		base.gameObject.SetActive(value: false);
-		UISounds.Instance.Sounds.Systems.FullscreenWindowFadeHide.Play();
+		FullScreenUniqueSounds.Instance.EscMenu.Close.Play();
 		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.EscapeMenu);
@@ -250,36 +245,7 @@ public abstract class EscMenuBaseView : View<EscMenuVM>
 	{
 	}
 
-	private void BuildNavigation()
-	{
-		NavigationBehaviour = new GridConsoleNavigationBehaviour();
-		NavigationBehaviour.AddTo(this);
-		List<OwlcatMultiButton> list = new List<OwlcatMultiButton> { m_SaveButton, m_LoadButton, m_OptionsButton, m_BugReportButton, m_MainMenuButton, m_QuitButton };
-		if (!PhotonManager.Lobby.IsActive)
-		{
-			list.Add(m_ModsButton);
-		}
-		if (BuildModeUtility.IsCoopEnabled)
-		{
-			list.Add(m_MultiplayerButton);
-			list.Add(m_MultiplayerRolesButton);
-		}
-		list.Sort((OwlcatMultiButton x, OwlcatMultiButton y) => x.transform.GetSiblingIndex().CompareTo(y.transform.GetSiblingIndex()));
-		NavigationBehaviour.SetEntitiesVertical(new List<IConsoleEntity>(list));
-		BuildNavigationImpl(NavigationBehaviour);
-		InputLayer = NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = InputLayerContextName
-		});
-		CreateInputImpl(InputLayer);
-		GamePad.Instance.PushLayer(InputLayer).AddTo(this);
-	}
-
-	protected virtual void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-	}
-
-	protected virtual void CreateInputImpl(InputLayer inputLayer)
+	protected virtual void CreateInputImpl()
 	{
 		EscHotkeyManager.Instance.Subscribe(base.ViewModel.OnClose).AddTo(this);
 	}

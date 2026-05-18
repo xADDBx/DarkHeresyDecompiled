@@ -1,3 +1,4 @@
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.EntitySystem.Entities;
 using Owlcat.UI;
 using R3;
@@ -6,25 +7,22 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class OvertipBuffBlockVM : ViewModel
 {
-	private readonly MechanicEntityUIState m_EntityState;
-
-	private readonly ImportantBuffsVM m_ImportantBuffs;
+	private readonly MechanicEntityUIState m_EntityUIState;
 
 	public UnitBuffBlockVM UnitBuffBlockVM { get; }
 
 	public ReadOnlyReactiveProperty<bool> IsVisible { get; }
 
-	public OvertipBuffBlockVM(MechanicEntity target)
+	public OvertipBuffBlockVM(MechanicEntity target, UnitBuffBlockVM buffBlockVM)
 	{
-		m_EntityState = UnitUIStateHolder.Instance.GetOrCreateUnitState(target);
-		UnitBuffBlockVM = new UnitBuffBlockVM(target).AddTo(this);
-		m_ImportantBuffs = new ImportantBuffsVM(target).AddTo(this);
-		IsVisible = m_EntityState.IsInCombat.CombineLatest(m_EntityState.IsDeadOrUnconsciousIsDead, IsBuffsBlockVisible).ToReadOnlyReactiveProperty(initialValue: false).AddTo(this);
+		m_EntityUIState = UnitUIStateHolder.Instance.GetOrCreateUnitState(target);
+		UnitBuffBlockVM = buffBlockVM;
+		IsVisible = m_EntityUIState.IsInCombat.CombineLatest(m_EntityUIState.IsDeadOrUnconsciousIsDead, IsBuffsBlockVisible).ToReadOnlyReactiveProperty(initialValue: false).AddTo(this);
 	}
 
 	private bool IsBuffsBlockVisible(bool isInCombat, bool isDead)
 	{
-		if (!isInCombat)
+		if (!isInCombat || m_EntityUIState.IsOvertipPartHiddenBySettings(UnitOvertipUIPart.Buffs))
 		{
 			return false;
 		}

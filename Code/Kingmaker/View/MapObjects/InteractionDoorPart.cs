@@ -8,19 +8,26 @@ using Kingmaker.Designers;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Framework.Pathfinding;
+using Kingmaker.Gameplay.Utility;
 using Kingmaker.Interaction;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Sound.Base;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Kingmaker.View.MapObjects.InteractionRestrictions;
 using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using Pathfinding;
+using Pathfinding.Util;
 using StateHasher.Core;
 using UnityEngine;
 using UnityEngine.Playables;
@@ -29,7 +36,7 @@ using UnityEngine.Timeline;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHasInteractionVariantActors, IUpdatable, IInterpolatable, IHashable, IOwlPackable<InteractionDoorPart>
+public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHasInteractionVariantActors, IUpdatable, IInterpolatable, IInGameHandler<EntitySubscriber>, IInGameHandler, ISubscriber<IEntity>, ISubscriber, IEventTag<IInGameHandler, EntitySubscriber>, IHashable, IOwlPackable<InteractionDoorPart>
 {
 	private const float OpenSpeed = 1f;
 
@@ -65,7 +72,15 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 
 	private bool m_InteractThroughVariants;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	private int _blockerCacheFrame = -1;
+
+	private bool _blockerCacheResult;
+
+	private bool _lastBlockerState;
+
+	private bool _lastBlockerInitialized;
+
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionDoorPart",
 		OldNames = null,
@@ -115,6 +130,34 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 
 	public float OvertipCorrection => 0f;
 
+	public override bool Enabled
+	{
+		get
+		{
+			if (!base.Settings.AlwaysDisabled && m_Enabled)
+			{
+				return !IsClosingBlocked();
+			}
+			return false;
+		}
+		set
+		{
+			bool flag = !base.Settings.AlwaysDisabled && value;
+			if (m_Enabled != flag)
+			{
+				m_Enabled = flag;
+				base.View?.UpdateHighlight();
+				OnEnabledChanged();
+				base.EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+				{
+					h.HandleObjectInteractChanged();
+				}, isCheckRuntime: true);
+			}
+		}
+	}
+
+	public bool CanClose => CheckCanClose(checkOutsideCombat: false);
+
 	protected override UIInteractionType GetDefaultUIType()
 	{
 		return UIInteractionType.Action;
@@ -124,12 +167,12 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 	{
 		base.OnViewDidAttach();
 		base.View.FogOfWarFudgeRadius = 0.5f;
-		m_Animator = base.View.Or(null)?.GetComponentInChildren<Animator>();
+		m_Animator = base.View?.GetComponentInChildren<Animator>();
 		if (m_Animator != null)
 		{
 			m_Animator.fireEvents = true;
 		}
-		StaticRendererLink[] array = base.View.Or(null)?.GetComponents<StaticRendererLink>();
+		StaticRendererLink[] array = base.View?.GetComponents<StaticRendererLink>();
 		if (array != null)
 		{
 			StaticRendererLink[] array2 = array;
@@ -170,10 +213,10 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 		Open(user);
 	}
 
-	public override void HandleDestructionSuccess(MapObjectView mapObjectView)
+	protected override void OnDidInteract(BaseUnitEntity user)
 	{
-		base.HandleDestructionSuccess(mapObjectView);
-		Open();
+		base.OnDidInteract(user);
+		SetUnlocked();
 	}
 
 	public void Open(BaseUnitEntity user = null)
@@ -191,13 +234,13 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 		string text = (m_State ? base.Settings.OpenSound : base.Settings.CloseSound);
 		if (!string.IsNullOrEmpty(text))
 		{
-			SoundEventsManager.PostEvent(text, base.View.Or(null)?.gameObject);
+			SoundEventsManager.PostEvent(text, base.View?.gameObject);
 		}
 		if (base.Settings.DisableOnOpen)
 		{
 			Enabled = false;
 		}
-		EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+		base.EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
 		{
 			h.HandleObjectInteractChanged();
 		}, isCheckRuntime: true);
@@ -244,7 +287,7 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 
 	private void SetNavmeshCutState()
 	{
-		List<NavmeshCut> list = ((base.Settings.NavmeshCutAction == InteractionDoorSettings.NavMeshCutActionSettings.DoNotTouchNavmeshCut) ? null : base.View.Or(null)?.NavmeshCuts);
+		List<NavmeshCut> list = ((base.Settings.NavmeshCutAction == InteractionDoorSettings.NavMeshCutActionSettings.DoNotTouchNavmeshCut) ? null : base.View?.NavmeshCuts);
 		if (list == null)
 		{
 			return;
@@ -257,12 +300,12 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 
 	private void SetGridObstacleState()
 	{
-		List<GridObstacle> list = ((base.Settings.GridObstacleAction == InteractionDoorSettings.GridObstacleActionSettings.DoNotTouchGridObstacle) ? null : base.View.Or(null)?.GridObstacles);
-		if (list == null)
+		ReadonlyList<GridObstacle>? readonlyList = ((base.Settings.GridObstacleAction == InteractionDoorSettings.GridObstacleActionSettings.DoNotTouchGridObstacle) ? null : base.View?.GridObstacles);
+		if (!readonlyList.HasValue)
 		{
 			return;
 		}
-		foreach (GridObstacle item in list)
+		foreach (GridObstacle item in readonlyList.Value)
 		{
 			item.enabled = base.Settings.GridObstacleAction == InteractionDoorSettings.GridObstacleActionSettings.EnableGridObstacleWhenOpen == m_State;
 		}
@@ -310,7 +353,8 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 
 	void IUpdatable.Tick(float delta)
 	{
-		if (m_PlayableDirector.state != 0)
+		TickBlockerStateEvent();
+		if (!(m_PlayableDirector == null) && m_PlayableDirector.state != 0)
 		{
 			m_PreviousTime = m_CurrentTime;
 			m_CurrentTime += ((m_PlayableDirector.playableGraph.GetRootPlayable(0).GetSpeed() > 0.0) ? delta : (0f - delta));
@@ -418,13 +462,231 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 	{
 		foreach (InteractionDoorPart item in from mapObj in Game.Instance.EntityPools.MapObjects
 			where mapObj.IsInGame
-			where (bool)mapObj.View && mapObj.View.name.Contains(name, StringComparison.InvariantCultureIgnoreCase)
+			where mapObj.View != null && mapObj.View.name.Contains(name, StringComparison.InvariantCultureIgnoreCase)
 			let doorPart = mapObj.GetOptional<InteractionDoorPart>()
 			where doorPart != null
 			where doorPart.IsOpen != newState
 			select doorPart)
 		{
 			item.Open();
+		}
+	}
+
+	public void HandleObjectInGameChanged()
+	{
+		if (base.Owner.IsInGame)
+		{
+			if (!m_IsPlayableDirectorAttached)
+			{
+				AttachPlayableDirector();
+			}
+		}
+		else
+		{
+			DetachPlayableDirector();
+		}
+	}
+
+	public bool CheckCanClose(bool checkOutsideCombat)
+	{
+		if (IsOpen)
+		{
+			return !IsClosingBlocked(checkOutsideCombat);
+		}
+		return true;
+	}
+
+	private void TickBlockerStateEvent()
+	{
+		bool flag = IsClosingBlocked();
+		if (!_lastBlockerInitialized)
+		{
+			_lastBlockerInitialized = true;
+			_lastBlockerState = flag;
+		}
+		else if (_lastBlockerState != flag)
+		{
+			_lastBlockerState = flag;
+			base.View?.UpdateHighlight();
+			base.EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+			{
+				h.HandleObjectInteractChanged();
+			}, isCheckRuntime: true);
+		}
+	}
+
+	private bool IsClosingBlocked(bool checkOutsideCombat = false)
+	{
+		if (checkOutsideCombat)
+		{
+			return ComputeIsClosingBlocked(checkOutsideCombat: true);
+		}
+		int frameCount = Time.frameCount;
+		if (_blockerCacheFrame == frameCount)
+		{
+			return _blockerCacheResult;
+		}
+		_blockerCacheFrame = frameCount;
+		_blockerCacheResult = ComputeIsClosingBlocked(checkOutsideCombat: false);
+		return _blockerCacheResult;
+	}
+
+	private bool ComputeIsClosingBlocked(bool checkOutsideCombat)
+	{
+		if (!checkOutsideCombat)
+		{
+			Game instance = Game.Instance;
+			if (instance == null || instance.Controllers?.TurnController?.TurnBasedModeActive != true)
+			{
+				return false;
+			}
+		}
+		IMapObjectView view = base.View;
+		if (view == null)
+		{
+			return false;
+		}
+		bool flag = WouldGridObstacleActivateOnToggle() && view.GridObstacles.Count > 0;
+		int num;
+		if (WouldNavmeshCutActivateOnToggle())
+		{
+			List<NavmeshCut> navmeshCuts = view.NavmeshCuts;
+			num = ((navmeshCuts != null && navmeshCuts.Count > 0) ? 1 : 0);
+		}
+		else
+		{
+			num = 0;
+		}
+		bool flag2 = (byte)num != 0;
+		if (!flag && !flag2)
+		{
+			return false;
+		}
+		GridNodeToEntityCache gridNodeToEntityCache = Game.Instance?.GridNodeToEntityCache;
+		if (gridNodeToEntityCache == null)
+		{
+			return false;
+		}
+		if (flag && AnyObstacleBlocked(view.GridObstacles, gridNodeToEntityCache))
+		{
+			return true;
+		}
+		if (flag2 && AnyCutBlocked(view.NavmeshCuts))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	private bool WouldNavmeshCutActivateOnToggle()
+	{
+		InteractionDoorSettings settings = base.Settings;
+		if (settings == null)
+		{
+			return false;
+		}
+		return settings.NavmeshCutAction switch
+		{
+			InteractionDoorSettings.NavMeshCutActionSettings.EnableNavmeshCutWhenClosed => m_State, 
+			InteractionDoorSettings.NavMeshCutActionSettings.EnableNavmeshCutWhenOpen => !m_State, 
+			_ => false, 
+		};
+	}
+
+	private bool WouldGridObstacleActivateOnToggle()
+	{
+		InteractionDoorSettings settings = base.Settings;
+		if (settings == null)
+		{
+			return false;
+		}
+		return settings.GridObstacleAction switch
+		{
+			InteractionDoorSettings.GridObstacleActionSettings.EnableGridObstacleWhenClosed => m_State, 
+			InteractionDoorSettings.GridObstacleActionSettings.EnableGridObstacleWhenOpen => !m_State, 
+			_ => false, 
+		};
+	}
+
+	private bool AnyObstacleBlocked(IReadOnlyList<GridObstacle> obstacles, GridNodeToEntityCache cache)
+	{
+		GridGraph gridGraph = AstarPath.active?.data?.gridGraph;
+		if (gridGraph == null)
+		{
+			return false;
+		}
+		GraphTransform transform = gridGraph.transform;
+		for (int i = 0; i < obstacles.Count; i++)
+		{
+			GridObstacle gridObstacle = obstacles[i];
+			if (!(gridObstacle == null))
+			{
+				var (node, node2) = gridObstacle.GetAffectedNodes(transform);
+				if (cache.ContainsEntity(node, IsBlocker) || cache.ContainsEntity(node2, IsBlocker))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private bool AnyCutBlocked(IReadOnlyList<NavmeshCut> cuts)
+	{
+		EntityPools entityPools = Game.Instance?.EntityPools;
+		if (entityPools == null)
+		{
+			return false;
+		}
+		foreach (AbstractUnitEntity allUnit in entityPools.AllUnits)
+		{
+			if (!IsBlocker(allUnit))
+			{
+				continue;
+			}
+			Vector3 position = allUnit.Position;
+			for (int i = 0; i < cuts.Count; i++)
+			{
+				NavmeshCut navmeshCut = cuts[i];
+				if (navmeshCut != null && IsPointInsideCut(navmeshCut, position))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private bool IsBlocker(MechanicEntity entity)
+	{
+		if (entity == null || entity.IsDisposed || !entity.IsInGame)
+		{
+			return false;
+		}
+		if (entity == base.Owner)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	private static bool IsPointInsideCut(NavmeshCut cut, Vector3 worldPos)
+	{
+		Vector3 vector = cut.transform.InverseTransformPoint(worldPos) - cut.center;
+		switch (cut.type)
+		{
+		case NavmeshCut.MeshType.Rectangle:
+		case NavmeshCut.MeshType.Box:
+			if (Mathf.Abs(vector.x) <= cut.rectangleSize.x * 0.5f)
+			{
+				return Mathf.Abs(vector.z) <= cut.rectangleSize.y * 0.5f;
+			}
+			return false;
+		case NavmeshCut.MeshType.Circle:
+		case NavmeshCut.MeshType.Sphere:
+			return vector.x * vector.x + vector.z * vector.z <= cut.circleRadius * cut.circleRadius;
+		default:
+			return vector.x * vector.x + vector.z * vector.z <= cut.circleRadius * cut.circleRadius;
 		}
 	}
 
@@ -438,7 +700,7 @@ public class InteractionDoorPart : InteractionPart<InteractionDoorSettings>, IHa
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionDoorPart source = new InteractionDoorPart();
 		result = Unsafe.As<InteractionDoorPart, TPossiblyBase>(ref source);

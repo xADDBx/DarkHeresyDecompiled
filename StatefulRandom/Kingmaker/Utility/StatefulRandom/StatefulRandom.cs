@@ -25,27 +25,6 @@ public class StatefulRandom : IHashable, IOwlPackable, IOwlPackable<StatefulRand
 		}
 	};
 
-	[JsonProperty]
-	[OwlPackInclude]
-	public string Name { get; private set; }
-
-	[JsonProperty(IsReference = false)]
-	[OwlPackInclude]
-	public Rand Rand { get; private set; } = new Rand();
-
-
-	public RandState State
-	{
-		get
-		{
-			return Rand.State;
-		}
-		set
-		{
-			Rand.State = value;
-		}
-	}
-
 	public int Sign
 	{
 		get
@@ -70,19 +49,25 @@ public class StatefulRandom : IHashable, IOwlPackable, IOwlPackable<StatefulRand
 
 	public uint uintValue => Rand.Get();
 
-	private StatefulRandom()
-	{
-	}
+	[JsonProperty]
+	[OwlPackInclude]
+	public string Name { get; private set; }
 
-	public StatefulRandom(string name, uint seed = 0u)
-	{
-		Name = name;
-		Seed(seed);
-	}
+	[JsonProperty(IsReference = false)]
+	[OwlPackInclude]
+	public Rand Rand { get; private set; } = new Rand();
 
-	public void Seed(uint seed)
+
+	public RandState State
 	{
-		Rand.Seed = seed;
+		get
+		{
+			return Rand.State;
+		}
+		set
+		{
+			Rand.State = value;
+		}
 	}
 
 	[Conditional("ALWAYS_FALSE")]
@@ -125,6 +110,21 @@ public class StatefulRandom : IHashable, IOwlPackable, IOwlPackable<StatefulRand
 		float x = Mathf.Cos(f);
 		float y = Mathf.Sin(f);
 		return new Vector2(x, y);
+	}
+
+	private StatefulRandom()
+	{
+	}
+
+	public StatefulRandom(string name, uint seed = 0u)
+	{
+		Name = name;
+		Seed(seed);
+	}
+
+	public void Seed(uint seed)
+	{
+		Rand.Seed = seed;
 	}
 
 	public virtual Hash128 GetHash128()

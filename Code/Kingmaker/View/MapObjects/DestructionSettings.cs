@@ -7,6 +7,7 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [Serializable]
+[Obsolete("Unused mechanic")]
 public class DestructionSettings
 {
 	public int DC;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
@@ -102,10 +103,10 @@ public static class MassLootHelper
 		for (int i = 0; i < Highlighted.Count; i++)
 		{
 			_ = (bool)(Highlighted[i] as UnitEntityView);
-			DroppedLoot droppedLoot = Highlighted[i] as DroppedLoot;
-			if ((bool)droppedLoot)
+			DroppedLootView droppedLootView = Highlighted[i] as DroppedLootView;
+			if ((bool)droppedLootView)
 			{
-				droppedLoot.ForceHighlightExternal(value);
+				droppedLootView.ForceHighlightExternal(value);
 			}
 		}
 	}
@@ -117,23 +118,23 @@ public static class MassLootHelper
 		{
 			EntityViewBase entityViewBase = objects[i];
 			UnitEntityView unitEntityView = entityViewBase as UnitEntityView;
-			if ((!(unitEntityView != null) || !unitEntityView.EntityData.IsDeadAndHasLoot) && (!(entityViewBase is DroppedLoot) || (bool)entityViewBase.Data.ToEntity().GetOptional<DroppedLoot.EntityPartBreathOfMoney>()))
+			if ((!(unitEntityView != null) || !unitEntityView.EntityData.IsDeadAndHasLoot) && (!(entityViewBase is DroppedLootView) || (bool)entityViewBase.Data.ToEntity().GetOptional<EntityPartBreathOfMoney>()))
 			{
 				continue;
 			}
 			foreach (AbstractUnitEntity item in Game.Instance.EntityPools.AllUnits.Where((AbstractUnitEntity uu) => uu.IsDeadAndHasLoot))
 			{
-				if (item.IsDeadAndHasLoot && !objects.HasItem(item.View) && !((entityViewBase.ViewTransform.position - item.View.ViewTransform.position).To2D().sqrMagnitude > 36f))
+				if (item.IsDeadAndHasLoot && !objects.HasItem(item.View.AsEntityView()) && !((entityViewBase.transform.position - item.ViewPosition).To2D().sqrMagnitude > 36f))
 				{
-					objects.Add(item.View);
+					objects.Add(item.View.AsEntityView());
 				}
 			}
-			foreach (MapObjectEntity item2 in Game.Instance.EntityPools.MapObjects.Where((MapObjectEntity mo) => mo.View is DroppedLoot))
+			foreach (MapObjectEntity item2 in Game.Instance.EntityPools.MapObjects.Where((MapObjectEntity mo) => mo.View is DroppedLootView))
 			{
-				DroppedLoot droppedLoot = item2.View as DroppedLoot;
-				if (!(droppedLoot == null) && droppedLoot.Loot.HasLoot && !((MapObjectView)droppedLoot).Data.GetOptional<DroppedLoot.EntityPartBreathOfMoney>() && !objects.HasItem(droppedLoot) && !((entityViewBase.ViewTransform.position - droppedLoot.ViewTransform.position).To2D().sqrMagnitude > 36f))
+				DroppedLootView droppedLootView = item2.View as DroppedLootView;
+				if (!(droppedLootView == null) && droppedLootView.Loot.HasLoot && !((MapObjectView)droppedLootView).Data.GetOptional<EntityPartBreathOfMoney>() && !objects.HasItem(droppedLootView) && !((entityViewBase.transform.position - droppedLootView.transform.position).To2D().sqrMagnitude > 36f))
 				{
-					objects.Add(droppedLoot);
+					objects.Add(droppedLootView);
 				}
 			}
 		}
@@ -170,7 +171,7 @@ public static class MassLootHelper
 		List<InteractionLootPart> list2 = TempList.Get<InteractionLootPart>();
 		foreach (InteractionLootPart item2 in enumerable)
 		{
-			if (item2.Owner.IsRevealed && item2.Loot.HasLoot && item2.Settings.LootContainerType != LootContainerType.PlayerChest && (item2.LootViewed || (item2.View is DroppedLoot && !item2.Owner.GetOptional<DroppedLoot.EntityPartBreathOfMoney>()) || (bool)item2.View.GetComponent<SkinnedMeshRenderer>()))
+			if (item2.Owner.IsRevealed && item2.Loot.HasLoot && item2.Settings.LootContainerType != LootContainerType.PlayerChest && (item2.LootViewed || (item2.View is DroppedLootView && !item2.Owner.GetOptional<EntityPartBreathOfMoney>()) || (bool)item2.View.GetComponent<SkinnedMeshRenderer>()))
 			{
 				list2.Add(item2);
 			}

@@ -40,7 +40,7 @@ public class PartWarhammerMovementApPerCellThreateningArea : UnitPart, IHashable
 				}
 			}
 		}
-		return unit.View.Blueprint.WarhammerMovementApPerCellThreateningArea;
+		return unit.Blueprint.WarhammerMovementApPerCellThreateningArea;
 	}
 
 	public void Add(OverrideWarhammerMovementApPerCellThreateningArea component)

@@ -1,12 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Actions;
+using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
 using Owlcat.Runtime.Core.Utility;
@@ -30,14 +28,14 @@ public class ContextActionRunActionOnNearestUnit : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicsContext current = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current == null)
+		TargetWrapper clickedTarget = base.Context.ClickedTarget;
+		if (clickedTarget == null)
 		{
 			return;
 		}
-		Vector3 target = current.ClickedTarget.Point;
-		MechanicEntity targetEntity = current.ClickedTarget.Entity;
-		List<MechanicEntity> targets = Game.Instance.EntityPools.AllBaseUnits.Where((BaseUnitEntity p) => !p.Features.IsUntargetable && !p.LifeState.IsDead && p.IsInCombat && IsConditionPassed(base.Context, p)).Cast<MechanicEntity>().ToList();
+		Vector3 target = clickedTarget.Point;
+		MechanicEntity targetEntity = clickedTarget.Entity;
+		List<MechanicEntity> targets = Game.Instance.EntityPools.AllBaseUnits.Where((BaseUnitEntity p) => !p.Features.IsUntargetable && !p.LifeState.IsDead && p.IsInCombat && IsConditionPassed(p)).Cast<MechanicEntity>().ToList();
 		IEnumerable<MechanicEntity> enumerable = targets.Where((MechanicEntity p) => p.DistanceToInCells(target) == targets.Min((MechanicEntity p1) => p1.DistanceToInCells(target)) && p != targetEntity);
 		if (!RunOnAllTargets)
 		{
@@ -46,7 +44,7 @@ public class ContextActionRunActionOnNearestUnit : ContextAction
 			{
 				return;
 			}
-			using (base.Context.SetScope(mechanicEntity, null))
+			using (base.Context.PushTarget(mechanicEntity))
 			{
 				Actions.Run();
 				return;
@@ -54,16 +52,16 @@ public class ContextActionRunActionOnNearestUnit : ContextAction
 		}
 		foreach (MechanicEntity item in enumerable)
 		{
-			using (base.Context.SetScope(item, null))
+			using (base.Context.PushTarget(item))
 			{
 				Actions.Run();
 			}
 		}
 	}
 
-	private bool IsConditionPassed(MechanicsContext context, BaseUnitEntity unit)
+	private bool IsConditionPassed(BaseUnitEntity unit)
 	{
-		using (context.SetScope(unit.ToITargetWrapper()))
+		using (base.Context.PushTarget(unit))
 		{
 			return Condition.Check();
 		}

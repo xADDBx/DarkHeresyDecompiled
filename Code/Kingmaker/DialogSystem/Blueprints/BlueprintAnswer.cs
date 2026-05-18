@@ -6,13 +6,11 @@ using Kingmaker.Code.Gameplay.Blueprints.Root;
 using Kingmaker.Controllers.Dialog;
 using Kingmaker.Designers.EventConditionActionSystem.Actions;
 using Kingmaker.Designers.EventConditionActionSystem.Conditions;
-using Kingmaker.DialogSystem.Interfaces;
 using Kingmaker.DialogSystem.State;
 using Kingmaker.ElementsSystem;
+using Kingmaker.ElementsSystem.Interfaces;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework.DetectiveSystem;
-using Kingmaker.Globalmap.Colonization.Requirements;
-using Kingmaker.Globalmap.Colonization.Rewards;
 using Kingmaker.Localization;
 using Kingmaker.Localization.Shared;
 using Kingmaker.RuleSystem;
@@ -28,7 +26,7 @@ using UnityEngine.Serialization;
 namespace Kingmaker.DialogSystem.Blueprints;
 
 [TypeId("df78945bb9f434e40b897758499cb714")]
-public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAlignmentShiftProvider
+public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAlignmentShiftProvider, IPossibleDialogEnding
 {
 	[Header("Text")]
 	[Tooltip("Text of answer.")]
@@ -80,7 +78,13 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 	[Header("Description")]
 	public LocalizedString Description;
 
+	[SerializeField]
+	[KDB("Set it to true, if dialogue can end on this Cue and it's a valid ending \n For example: dialog should break with cutscene and continue after that")]
+	private bool IsPossibleDialogEnding;
+
 	public bool DebugMode;
+
+	public static Func<BaseUnitEntity, BlueprintAnswer, SkillCheckResult> OverrideShowCheckResult;
 
 	public LocalizedString LocalizedStringText => Text;
 
@@ -104,29 +108,9 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 		}
 	}
 
-	public bool HasExchangeData
-	{
-		get
-		{
-			if (!GetRewards().Any())
-			{
-				return HasExchangeDataOnSelect();
-			}
-			return true;
-		}
-	}
+	public bool HasExchangeData => HasExchangeDataOnSelect();
 
-	public bool HasConditions
-	{
-		get
-		{
-			if (!GetRequirements().Any())
-			{
-				return HasConditionsOnSelect();
-			}
-			return true;
-		}
-	}
+	public bool HasConditions => HasConditionsOnSelect();
 
 	public IEnumerable<AlignmentShift> AlignmentShifts => from AddAlignmentRank a in OnSelect.Actions.Where((GameAction a) => a is AddAlignmentRank)
 		select a.Shift;
@@ -155,22 +139,19 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 		}
 	}
 
+	public bool IsPossibleEnding => IsPossibleDialogEnding;
+
 	public List<SkillCheckDC> CollectNextCueSkillChecks()
 	{
 		List<SkillCheckDC> list = new List<SkillCheckDC>();
 		BaseUnitEntity baseUnitEntity = CharacterSelection.SelectUnit(this, Game.Instance.Player.MainCharacterEntity);
 		foreach (BlueprintCueBase item in NextCue.Cues.Dereference())
 		{
-			BlueprintCheck blueprintCheck = item as BlueprintCheck;
-			if (blueprintCheck != null && !blueprintCheck.Conditions.Check())
+			if (!(item is BlueprintCheck blueprintCheck) || !blueprintCheck.Conditions.Check() || !blueprintCheck.CanShow() || blueprintCheck.Hidden)
 			{
 				continue;
 			}
 			baseUnitEntity = blueprintCheck?.GetTargetUnit() ?? CharacterSelection.SelectUnit(this, Game.Instance.Player.MainCharacterEntity);
-			if (!blueprintCheck || blueprintCheck == null || blueprintCheck.Hidden)
-			{
-				continue;
-			}
 			try
 			{
 				if (baseUnitEntity != null)
@@ -227,6 +208,7 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 	{
 		DialogState dialogState = Game.Instance.DialogState;
 		DialogController dialogController = Game.Instance.Controllers.DialogController;
+		DialogDebug.Clear(this);
 		if (DebugMode && !Debug.isDebugBuild)
 		{
 			DialogDebug.Add(this, "not in debug build", Color.red);
@@ -260,9 +242,9 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 			}
 			else
 			{
-				RulePerformPartySkillCheck rulePerformPartySkillCheck = Rulebook.Trigger(new RulePerformPartySkillCheck(ShowCheck.Type, ShowCheck.GetDC(), CapitalPartyChecksEnabled));
-				dialogState.AnswerChecksAdd(this, (!rulePerformPartySkillCheck.Success) ? CheckResult.Failed : CheckResult.Passed);
-				if (rulePerformPartySkillCheck.Success)
+				bool flag = (OverrideShowCheckResult?.Invoke(null, this))?.Passed ?? Rulebook.Trigger(new RulePerformPartySkillCheck(ShowCheck.Type, ShowCheck.GetDC(), CapitalPartyChecksEnabled)).Success;
+				dialogState.AnswerChecksAdd(this, (!flag) ? CheckResult.Failed : CheckResult.Passed);
+				if (flag)
 				{
 					OnCheckSuccess?.Run();
 				}
@@ -270,7 +252,7 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 				{
 					OnCheckFail?.Run();
 				}
-				if (!rulePerformPartySkillCheck.Success)
+				if (!flag)
 				{
 					DialogDebug.Add(this, "check failed", Color.red);
 					return false;
@@ -299,34 +281,7 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 
 	public bool CanSelect()
 	{
-		if (SelectConditions.Check())
-		{
-			return IsRequirementsSatisfied();
-		}
-		return false;
-	}
-
-	public IEnumerable<Requirement> GetRequirements()
-	{
-		return this.GetComponents<Requirement>();
-	}
-
-	public IEnumerable<Reward> GetRewards()
-	{
-		return this.GetComponents<Reward>();
-	}
-
-	public bool IsRequirementsSatisfied()
-	{
-		return true;
-	}
-
-	public void ApplyRequirements()
-	{
-	}
-
-	public void ReceiveRewards()
-	{
+		return SelectConditions.Check();
 	}
 
 	private bool HasExchangeDataOnSelect()
@@ -360,8 +315,7 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 		{
 			typeof(ContextConditionHasItem),
 			typeof(ItemsEnough),
-			typeof(CheckCaseStatus),
-			typeof(CheckCaseStatus_Obsolete)
+			typeof(CheckCaseStatus)
 		};
 		if (SelectConditions.HasConditions)
 		{

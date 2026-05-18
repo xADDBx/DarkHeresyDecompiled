@@ -70,7 +70,7 @@ public class FogOfWarRevealer
 		m_Blockers2.Clear();
 		foreach (FogOfWarBlocker value in FogOfWarBlocker.All.Values)
 		{
-			if (!value.Indices.IsCreated || (HeightMinMax.x > value.HeightMinMax.y && HeightMinMax.y > value.HeightMinMax.y) || (HeightMinMax.x < value.HeightMinMax.x && HeightMinMax.y < value.HeightMinMax.x))
+			if (value.IgnoredByRevealer || !value.Indices.IsCreated || (HeightMinMax.x > value.HeightMinMax.y && HeightMinMax.y > value.HeightMinMax.y) || (HeightMinMax.x < value.HeightMinMax.x && HeightMinMax.y < value.HeightMinMax.x))
 			{
 				continue;
 			}

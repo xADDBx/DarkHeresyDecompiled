@@ -11,9 +11,8 @@ public class BugReportDuplicatesPCView : BugReportDuplicatesBaseView
 	[SerializeField]
 	private OwlcatMultiButton m_BackButton;
 
-	protected override void CreateInput()
+	protected void CreateInput()
 	{
-		base.CreateInput();
 		m_BackButton.OnLeftClickAsObservable().Subscribe(base.ViewModel.Close).AddTo(this);
 		EscHotkeyManager.Instance.Subscribe(base.ViewModel.Close).AddTo(this);
 	}

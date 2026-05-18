@@ -86,6 +86,7 @@ public class SystemNotificationView : View<SystemNotificationVM>
 		m_Padding.bottom = 0;
 		m_Group.padding = m_Padding;
 		DoPaddingFromTo(0f - m_RectTransform.rect.width, 0f, 0f, 0f, m_MoveTime);
+		base.ViewModel.GetSound()?.Play();
 		m_FadeAnimator.AppearAnimation();
 	}
 
@@ -124,6 +125,7 @@ public class SystemNotificationView : View<SystemNotificationVM>
 		m_Icon.DOShakeRotation(0.3f, new Vector3(10f, 10f, 30f), 23, 54f).SetUpdate(isIndependentUpdate: true).SetLoops(5, LoopType.Yoyo);
 		m_FadeAnimator.CanvasGroup.alpha = m_RefreshAlphaFrom;
 		m_FadeAnimator.AppearAnimation();
+		base.ViewModel.GetSound()?.Play();
 		DoPaddingFromTo((0f - m_RectTransform.rect.width) * (1f - m_RefreshMovePercent), 0f, 0f, 0f, m_RefreshMoveTime);
 	}
 

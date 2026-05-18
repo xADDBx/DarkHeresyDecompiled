@@ -241,7 +241,7 @@ internal sealed class TerrainStreamingImplementation : IDisposable
 	{
 		Span<int> layerLods = m_LayerLods.AsArray().AsSpan();
 		layerLods.Fill(int.MaxValue);
-		TerrainStreamingFeedbackFeature.GetFeedback(layerLods);
+		TerrainStreamingFeedback.GetFeedback(layerLods);
 		layerLods[0] = 2;
 	}
 

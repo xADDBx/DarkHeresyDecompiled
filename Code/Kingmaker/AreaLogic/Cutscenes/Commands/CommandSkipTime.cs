@@ -1,4 +1,3 @@
-using System;
 using Kingmaker.AreaLogic.TimeOfDay;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
@@ -28,7 +27,7 @@ public class CommandSkipTime : CommandBase
 
 	public bool ReloadStaticIfNeeded;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		_ = Game.Instance.TimeOfDay;
 		switch (m_Type)
@@ -49,17 +48,28 @@ public class CommandSkipTime : CommandBase
 			Game.Instance.AdvanceGameTime(Minutes.Minutes());
 			break;
 		default:
-			throw new ArgumentOutOfRangeException();
+			return CommandResult.Fail("Unknown skip type");
 		}
 		if (ReloadStaticIfNeeded)
 		{
 			Game.Instance.MatchTimeOfDay();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -67,8 +77,9 @@ public class CommandSkipTime : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()
@@ -79,7 +90,7 @@ public class CommandSkipTime : CommandBase
 			SkipType.TimeOfDay => "<b>Wait</b> till " + TimeOfDay, 
 			SkipType.MinutesAndTime => "<b>Time</b> +" + Minutes + " and till " + TimeOfDay, 
 			SkipType.TimeThenMinutes => "<b>Wait</b> till " + TimeOfDay.ToString() + " and " + Minutes + " min", 
-			_ => throw new ArgumentOutOfRangeException(), 
+			_ => "Unset type", 
 		};
 	}
 }

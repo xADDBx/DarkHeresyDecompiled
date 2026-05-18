@@ -78,10 +78,6 @@ public static class TraitUtility
 		{
 			throw new Exception("Locale traits does not contain Generated trait '" + traitUnityConfig.GeneratedTrait + "'!");
 		}
-		if (!LocaleTraits.Contains(traitUnityConfig.TextIPApprovedTrait))
-		{
-			throw new Exception("Locale traits does not contain TextIPApprovedTrait trait '" + traitUnityConfig.TextIPApprovedTrait + "'!");
-		}
 		return traitUnityConfig;
 	}
 

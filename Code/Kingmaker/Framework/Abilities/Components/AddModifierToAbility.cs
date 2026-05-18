@@ -2,12 +2,9 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Gameplay.Parts;
-using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Fmw.Blueprints;
@@ -36,7 +33,7 @@ public sealed class AddModifierToAbility : MechanicEntityFactComponentDelegate, 
 	{
 		if (OnSourceAbility)
 		{
-			BlueprintAbility targetAbility = SimpleContextData<AbilityData, MechanicsContext.Scope.SourceAbility>.Current?.OriginalBlueprint ?? base.Context.SourceAbility?.OriginalBlueprint ?? throw new InvalidOperationException();
+			BlueprintAbility targetAbility = base.Context.SourceAbility?.OriginalBlueprint ?? throw new InvalidOperationException();
 			base.Owner.GetOrCreate<PartAbilityModifiers>().AddModifier(Modifier, targetAbility, base.Fact, this);
 			return;
 		}

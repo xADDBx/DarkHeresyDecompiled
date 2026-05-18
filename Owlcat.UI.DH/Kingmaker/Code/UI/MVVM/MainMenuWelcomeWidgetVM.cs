@@ -9,6 +9,7 @@ using Kingmaker.Localization;
 using Kingmaker.Localization.Shared;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.Utility.UnityExtensions;
 using Newtonsoft.Json;
 using Owlcat.UI;
 using R3;
@@ -75,13 +76,18 @@ public class MainMenuWelcomeWidgetVM : ViewModel, ILocalizationHandler, ISubscri
 	private static IEnumerator DownloadText(string url, Action<string> callback, string fallbackFileName)
 	{
 		using UnityWebRequest www = UnityWebRequest.Get(url);
-		string text = Path.Combine(Application.streamingAssetsPath, fallbackFileName);
-		string cachedFilePath = Path.Combine(Application.persistentDataPath, fallbackFileName);
+		string text = Path.Combine(ApplicationPaths.streamingAssetsPath, fallbackFileName);
+		string cachedFilePath = Path.Combine(ApplicationPaths.persistentDataPath, fallbackFileName);
 		if (!TryGetIntroductoryLocalFileText(cachedFilePath, out var text2) && !TryGetIntroductoryLocalFileText(text, out text2))
 		{
 			PFLog.UI.Error("Failed to load Introductory Text from default path: " + text);
 		}
 		callback?.Invoke(text2);
+		if (Application.internetReachability == NetworkReachability.NotReachable)
+		{
+			PFLog.UI.Warning("Skipping download of introductory text from URL: {0}. Internet is not connected", url);
+			yield break;
+		}
 		PFLog.UI.Log("Downloading introductory text from URL: " + url);
 		yield return www.SendWebRequest();
 		if (www.result == UnityWebRequest.Result.Success)

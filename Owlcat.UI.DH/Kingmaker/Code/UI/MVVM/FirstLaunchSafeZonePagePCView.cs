@@ -1,4 +1,3 @@
-using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -26,12 +25,5 @@ public class FirstLaunchSafeZonePagePCView : FirstLaunchSettingsPageBaseView<Fir
 			m_Frame.offsetMax = new Vector2((float)(-ScreenWidth) * num, (float)(-ScreenWidth) * num);
 		}).AddTo(this);
 		base.OnBind();
-	}
-
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		navigationBehaviour.SetEntitiesVertical<SettingsEntitySliderPCView>(m_OffsetSlider);
-		navigationBehaviour.AddRow(AdditionalEntities);
-		navigationBehaviour.FocusOnFirstValidEntity();
 	}
 }

@@ -86,69 +86,6 @@ public static class StbDxt
 
 	public static readonly int[] prods = new int[4] { 589824, 2304, 262402, 66562 };
 
-	public unsafe static void stb__DitherBlock(DxtContext ctx, byte* dest, byte* block)
-	{
-		int* ptr = stackalloc int[8];
-		int* ptr2 = ptr;
-		int* ptr3 = ptr + 4;
-		for (int i = 0; i < 3; i++)
-		{
-			byte* ptr4 = block + i;
-			byte* ptr5 = dest + i;
-			byte* ptr6 = ((i == 1) ? ctx.stb__QuantGTab : ctx.stb__QuantRBTab);
-			CRuntime.memset(ptr, 0, 32uL);
-			for (int j = 0; j < 4; j++)
-			{
-				*ptr5 = ptr6[*ptr4 + (3 * ptr3[1] + 5 * *ptr3 >> 4)];
-				*ptr2 = *ptr4 - *ptr5;
-				ptr5[4] = ptr6[ptr4[4] + (7 * *ptr2 + 3 * ptr3[2] + 5 * ptr3[1] + *ptr3 >> 4)];
-				ptr2[1] = ptr4[4] - ptr5[4];
-				ptr5[8] = ptr6[ptr4[8] + (7 * ptr2[1] + 3 * ptr3[3] + 5 * ptr3[2] + ptr3[1] >> 4)];
-				ptr2[2] = ptr4[8] - ptr5[8];
-				ptr5[12] = ptr6[ptr4[12] + (7 * ptr2[2] + 5 * ptr3[3] + ptr3[2] >> 4)];
-				ptr2[3] = ptr4[12] - ptr5[12];
-				ptr4 += 16;
-				ptr5 += 16;
-				int* intPtr = ptr2;
-				ptr2 = ptr3;
-				ptr3 = intPtr;
-			}
-		}
-	}
-
-	public unsafe static Error.Value CompressDxt(DxtContext ctx, int width, int height, byte* data, byte* dest, bool hasAlpha, CompressionMode mode)
-	{
-		if (width % 4 != 0 || height % 4 != 0)
-		{
-			return Error.Value.ERROR_DIMENSIONS;
-		}
-		byte* ptr = stackalloc byte[64];
-		byte* ptr2 = dest;
-		for (int i = 0; i < height; i += 4)
-		{
-			for (int j = 0; j < width; j += 4)
-			{
-				for (int k = 0; k < 4 && i + k < height; k++)
-				{
-					CRuntime.memcpy(ptr + k * 16, data + width * 4 * (i + k) + j * 4, 16L);
-				}
-				stb_compress_dxt_block(ctx, ptr2, ptr, hasAlpha ? 1 : 0, (int)mode);
-				ptr2 += (hasAlpha ? 16 : 8);
-			}
-		}
-		return Error.Value.NO_ERROR;
-	}
-
-	public unsafe static Error.Value CompressDxt1(DxtContext ctx, int width, int height, byte* data, byte* dest, CompressionMode mode = CompressionMode.None)
-	{
-		return CompressDxt(ctx, width, height, data, dest, hasAlpha: false, mode);
-	}
-
-	public unsafe static Error.Value CompressDxt5(DxtContext ctx, int width, int height, byte* data, byte* dest, CompressionMode mode = CompressionMode.None)
-	{
-		return CompressDxt(ctx, width, height, data, dest, hasAlpha: true, mode);
-	}
-
 	public static int stb__Mul8Bit(int a, int b)
 	{
 		int num = a * b + 128;
@@ -670,5 +607,68 @@ public static class StbDxt
 	{
 		stb__CompressAlphaBlock(dest, src, 2);
 		stb__CompressAlphaBlock(dest + 8, src + 1, 2);
+	}
+
+	public unsafe static void stb__DitherBlock(DxtContext ctx, byte* dest, byte* block)
+	{
+		int* ptr = stackalloc int[8];
+		int* ptr2 = ptr;
+		int* ptr3 = ptr + 4;
+		for (int i = 0; i < 3; i++)
+		{
+			byte* ptr4 = block + i;
+			byte* ptr5 = dest + i;
+			byte* ptr6 = ((i == 1) ? ctx.stb__QuantGTab : ctx.stb__QuantRBTab);
+			CRuntime.memset(ptr, 0, 32uL);
+			for (int j = 0; j < 4; j++)
+			{
+				*ptr5 = ptr6[*ptr4 + (3 * ptr3[1] + 5 * *ptr3 >> 4)];
+				*ptr2 = *ptr4 - *ptr5;
+				ptr5[4] = ptr6[ptr4[4] + (7 * *ptr2 + 3 * ptr3[2] + 5 * ptr3[1] + *ptr3 >> 4)];
+				ptr2[1] = ptr4[4] - ptr5[4];
+				ptr5[8] = ptr6[ptr4[8] + (7 * ptr2[1] + 3 * ptr3[3] + 5 * ptr3[2] + ptr3[1] >> 4)];
+				ptr2[2] = ptr4[8] - ptr5[8];
+				ptr5[12] = ptr6[ptr4[12] + (7 * ptr2[2] + 5 * ptr3[3] + ptr3[2] >> 4)];
+				ptr2[3] = ptr4[12] - ptr5[12];
+				ptr4 += 16;
+				ptr5 += 16;
+				int* intPtr = ptr2;
+				ptr2 = ptr3;
+				ptr3 = intPtr;
+			}
+		}
+	}
+
+	public unsafe static Error.Value CompressDxt(DxtContext ctx, int width, int height, byte* data, byte* dest, bool hasAlpha, CompressionMode mode)
+	{
+		if (width % 4 != 0 || height % 4 != 0)
+		{
+			return Error.Value.ERROR_DIMENSIONS;
+		}
+		byte* ptr = stackalloc byte[64];
+		byte* ptr2 = dest;
+		for (int i = 0; i < height; i += 4)
+		{
+			for (int j = 0; j < width; j += 4)
+			{
+				for (int k = 0; k < 4 && i + k < height; k++)
+				{
+					CRuntime.memcpy(ptr + k * 16, data + width * 4 * (i + k) + j * 4, 16L);
+				}
+				stb_compress_dxt_block(ctx, ptr2, ptr, hasAlpha ? 1 : 0, (int)mode);
+				ptr2 += (hasAlpha ? 16 : 8);
+			}
+		}
+		return Error.Value.NO_ERROR;
+	}
+
+	public unsafe static Error.Value CompressDxt1(DxtContext ctx, int width, int height, byte* data, byte* dest, CompressionMode mode = CompressionMode.None)
+	{
+		return CompressDxt(ctx, width, height, data, dest, hasAlpha: false, mode);
+	}
+
+	public unsafe static Error.Value CompressDxt5(DxtContext ctx, int width, int height, byte* data, byte* dest, CompressionMode mode = CompressionMode.None)
+	{
+		return CompressDxt(ctx, width, height, data, dest, hasAlpha: true, mode);
 	}
 }

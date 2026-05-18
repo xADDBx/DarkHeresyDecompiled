@@ -45,7 +45,7 @@ public class CommandMoveCamera : CommandBase
 
 	public bool MoveToInitialPosition;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		CameraRig.Instance.SetWorldOffset(Vector2.zero);
 		Vector3 vector;
@@ -57,7 +57,7 @@ public class CommandMoveCamera : CommandBase
 		{
 			if (Target == null)
 			{
-				return;
+				return CommandResult.Fail("No target");
 			}
 			vector = CameraRig.Instance.ClampByLevelBounds(Target.GetValue());
 		}
@@ -85,21 +85,23 @@ public class CommandMoveCamera : CommandBase
 		{
 			commandData.TargetTime = Game.Instance.Controllers.TimeController.GameTime + targetTime.Seconds();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		CameraRig.Instance.StopCoroutine(commandData.ScrollCoroutine);
 		commandData.ScrollCoroutine = null;
 		commandData.TargetTime = TimeSpan.Zero;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		Vector3 position = CameraRig.Instance.ClampByLevelBounds(Target.GetValue());
 		CameraRig.Instance.ScrollToImmediately(position);
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -116,22 +118,24 @@ public class CommandMoveCamera : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		if (time > 20.0)
 		{
 			player.GetCommandData<Data>(this).TakingTooLong = true;
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
-		if ((bool)Target)
+		if (!Target)
 		{
-			Vector3 originalTarget = player.GetCommandData<Data>(this).OriginalTarget;
-			CameraRig.Instance.ScrollTo(originalTarget);
+			return CommandResult.Fail("No target");
 		}
+		Vector3 originalTarget = player.GetCommandData<Data>(this).OriginalTarget;
+		CameraRig.Instance.ScrollTo(originalTarget);
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

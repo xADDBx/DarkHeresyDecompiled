@@ -191,7 +191,7 @@ public class UnitViewHandSlotData
 			float num = Owner.View.GetSizeScale();
 			if (Owner.View.DoNotAdjustScale)
 			{
-				num = Owner.View.ViewTransform.localScale.x / Owner.View.OriginalScale.x;
+				num = Owner.GetView().transform.localScale.x / Owner.GetView().OriginalScale.x;
 			}
 			EquipmentOffsets component = VisualModel.GetComponent<EquipmentOffsets>();
 			if (component != null && component.raceScaleList.Count > 0)
@@ -287,28 +287,8 @@ public class UnitViewHandSlotData
 
 	private void ReattachSheath()
 	{
-		Transform transform = null;
-		if (VisibleItemBlueprint.VisualParameters.HasQuiver)
-		{
-			UnitViewHandSlotData unitViewHandSlotData = m_Equipment.QuiverHandSlot;
-			if (unitViewHandSlotData == this)
-			{
-				unitViewHandSlotData = null;
-			}
-			if (unitViewHandSlotData != null && (IsActiveSet || unitViewHandSlotData.SheathVisualModel == null || unitViewHandSlotData.VisibleItemBlueprint == null || !unitViewHandSlotData.VisibleItemBlueprint.VisualParameters.HasQuiver))
-			{
-				unitViewHandSlotData.DestroySheathModelIfExists();
-			}
-		}
-		else
-		{
-			if (m_Equipment.QuiverHandSlot == this)
-			{
-				m_Equipment.QuiverHandSlot = null;
-			}
-			transform = m_Equipment.GetVisualSlotBone(VisualSlot);
-		}
-		if ((bool)transform)
+		Transform visualSlotBone = m_Equipment.GetVisualSlotBone(VisualSlot);
+		if ((bool)visualSlotBone)
 		{
 			if (!SheathVisualModel)
 			{
@@ -318,7 +298,7 @@ public class UnitViewHandSlotData
 				SheathVisualModel.transform.localRotation = Quaternion.identity;
 				SheathVisualModel.transform.localScale *= OwnerWeaponScale;
 			}
-			SheathVisualModel.transform.parent = transform;
+			SheathVisualModel.transform.parent = visualSlotBone;
 			EquipmentOffsets component = SheathVisualModel.GetComponent<EquipmentOffsets>();
 			if (!component && (bool)VisibleItemBlueprint.VisualParameters.Model)
 			{
@@ -360,12 +340,12 @@ public class UnitViewHandSlotData
 			Transform transform;
 			if (IsInHand)
 			{
-				transform = ((VisibleItemBlueprint.VisualParameters.IsBow && !IsOff) ? OffHandTransform : HandTransform);
+				transform = HandTransform;
 				VisualModel.SetActive(value: true);
 			}
 			else
 			{
-				if (((VisualSlot == UnitEquipmentVisualSlotType.RightBack01 || VisualSlot == UnitEquipmentVisualSlotType.LeftBack01) && Character.EquipmentEntities.SelectMany((EquipmentEntity ee) => ee.OutfitParts).Any((OutfitPart p) => p.HasFeature(EquipmentFeatureFlag.IsBackpack))) || Owner.GetOptional<UnitPartMechadendrites>() != null)
+				if (((VisualSlot == UnitEquipmentVisualSlotType.RightBack01 || VisualSlot == UnitEquipmentVisualSlotType.LeftBack01) && Character.EquipmentEntities.Any((EquipmentEntity ee) => ee.HasFeature(EquipmentFeatureFlag.IsBackpack))) || Owner.GetOptional<UnitPartMechadendrites>() != null)
 				{
 					VisualModel.SetActive(value: false);
 				}
@@ -398,10 +378,10 @@ public class UnitViewHandSlotData
 					UnitPartMechadendrites optional = Owner.GetOptional<UnitPartMechadendrites>();
 					if (optional != null && optional.Mechadendrites.ContainsKey(MechadendritesType.Ballistic))
 					{
-						goto IL_0272;
+						goto IL_0214;
 					}
 				}
-				component.Apply((!IsInHand) ? VisualSlot : UnitEquipmentVisualSlotType.None, IsOff || VisibleItemBlueprint.VisualParameters.IsBow, Character);
+				component.Apply((!IsInHand) ? VisualSlot : UnitEquipmentVisualSlotType.None, IsOff, Character);
 				if ((bool)component.JointsParent)
 				{
 					component.JointsParent.SetParent(Character.transform);
@@ -409,8 +389,8 @@ public class UnitViewHandSlotData
 					MirrorRigidbodyWeaponForMirroredCharacter(component);
 				}
 			}
-			goto IL_0272;
-			IL_0272:
+			goto IL_0214;
+			IL_0214:
 			ShowItem(Owner.View.IsVisible);
 			m_Equipment.RaiseModelSpawned();
 			EventBus.RaiseEvent(delegate(IVisualWeaponStateChangeHandle h)
@@ -558,7 +538,7 @@ public class UnitViewHandSlotData
 		UnitEquipmentVisualSlotType[] attachSlots = VisibleItemBlueprint.VisualParameters.AttachSlots;
 		foreach (UnitEquipmentVisualSlotType unitEquipmentVisualSlotType in attachSlots)
 		{
-			if ((VisibleItemBlueprint.VisualParameters.IsTwoHanded || !IsOff || !unitEquipmentVisualSlotType.IsLeft()) && (VisibleItemBlueprint.VisualParameters.IsTwoHanded || IsOff || !unitEquipmentVisualSlotType.IsRight()) && (!VisibleItemBlueprint.VisualParameters.IsBow || !unitEquipmentVisualSlotType.IsLeft()))
+			if ((VisibleItemBlueprint.VisualParameters.IsTwoHanded || !IsOff || !unitEquipmentVisualSlotType.IsLeft()) && (VisibleItemBlueprint.VisualParameters.IsTwoHanded || IsOff || !unitEquipmentVisualSlotType.IsRight()))
 			{
 				possibleSlots.Add(unitEquipmentVisualSlotType);
 			}

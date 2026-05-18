@@ -32,7 +32,7 @@ public sealed class ElevatorPlatformStopEntity : Entity, IHashable, IOwlPackable
 		}
 	};
 
-	public IElevatorPlatformStopConfig Config => (base.View as IElevatorPlatformStopConfig) ?? throw new InvalidOperationException();
+	public new IElevatorPlatformStopConfig Config => (base.View as IElevatorPlatformStopConfig) ?? throw new InvalidOperationException();
 
 	public ElevatorPlatformStopEntity(IElevatorPlatformStopConfig config)
 		: base(config.EntityId, config.IsInGame)
@@ -44,7 +44,7 @@ public sealed class ElevatorPlatformStopEntity : Entity, IHashable, IOwlPackable
 	{
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}

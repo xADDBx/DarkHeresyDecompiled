@@ -26,7 +26,16 @@ public class BlueprintItemMechadendrite : BlueprintItemEquipment
 
 	public override ItemsItemType ItemType => ItemsItemType.Mechadendrite;
 
-	public override string InventoryEquipSound => "";
+	public override string InventoryEquipSound
+	{
+		get
+		{
+			return string.Empty;
+		}
+		set
+		{
+		}
+	}
 
 	public GameObject Model => m_MechadendriteModel;
 }

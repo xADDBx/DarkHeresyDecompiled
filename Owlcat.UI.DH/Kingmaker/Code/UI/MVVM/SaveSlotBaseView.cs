@@ -6,14 +6,16 @@ using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.UI.Common;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
+using Owlcat.UI.Commands;
 using R3;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class SaveSlotBaseView : SelectionGroupEntityView<SaveSlotVM>
+public class SaveSlotBaseView : SelectionGroupEntityView<SaveSlotVM>, IConfirmClickHandler, IConsoleEntity, ISelectHandler, IEventSystemHandler, ICommandProvider
 {
 	[SerializeField]
 	protected bool m_IsDetailedView;
@@ -60,11 +62,17 @@ public class SaveSlotBaseView : SelectionGroupEntityView<SaveSlotVM>
 	[SerializeField]
 	private WidgetList m_WidgetListMvvm;
 
+	public IReadOnlyCollection<Command> Commands { get; } = new List<Command>();
+
+
 	protected UISaveLoadTexts Texts => ConfigRoot.Instance.LocalizedTexts.UserInterfacesText.SaveLoadTexts;
 
 	protected override void BindViewImplementation()
 	{
 		base.BindViewImplementation();
+		this.AddCommand("keyboard:backspace", base.ViewModel.Delete);
+		this.AddCommand("keyboard:space", base.ViewModel.ShowScreenshot);
+		this.AddCommand("keyboard:space#release", base.ViewModel.HideScreenshot);
 		base.gameObject.SetActive(value: true);
 		if (!(this is NewSaveSlotPCView) && !(this is NewSaveSlotConsoleView))
 		{
@@ -97,6 +105,8 @@ public class SaveSlotBaseView : SelectionGroupEntityView<SaveSlotVM>
 		{
 			m_IronManIcon.SetHint(UIStrings.Instance.SaveLoadTexts.SaveHasIronManMode);
 		}
+		AddDisposable(base.ViewModel.IsAvailable.Subscribe(OnAvailableChanged));
+		OnAvailableChanged(base.ViewModel.IsAvailable.CurrentValue);
 	}
 
 	protected override void DestroyViewImplementation()
@@ -186,5 +196,25 @@ public class SaveSlotBaseView : SelectionGroupEntityView<SaveSlotVM>
 			m_DlcRequiredBlock.SetActive(b);
 		}
 		UpdateDLCView();
+	}
+
+	public new bool CanConfirmClick()
+	{
+		return true;
+	}
+
+	public new void OnConfirmClick()
+	{
+		base.ViewModel.SaveOrLoad();
+	}
+
+	private void OnAvailableChanged(bool isAvailable)
+	{
+		base.gameObject.SetActive(isAvailable);
+	}
+
+	public void OnSelect(BaseEventData eventData)
+	{
+		base.ViewModel.SetSelectedFromView(state: true);
 	}
 }

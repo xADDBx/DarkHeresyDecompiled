@@ -17,6 +17,8 @@ public abstract class EntityPart : IEntitySubscriber, IHashable, IOwlPackable, I
 
 	public Entity ConcreteOwner => (Entity)Owner;
 
+	protected IEntityEventBus EventBus => ConcreteOwner.EventBus;
+
 	public bool IsSubscribedOnEventBus { get; private set; }
 
 	public void Attach(Entity owner)

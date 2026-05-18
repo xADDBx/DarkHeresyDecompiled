@@ -83,6 +83,7 @@ public class GraphicsSettings
 		SSRQuality = new SettingsEntityEnum<QualityOptionDisactivatable>(settingsController, "ssr", defaultPreset.SSRQuality);
 		AntialiasingMode = new SettingsEntityEnum<AntialiasingMode>(settingsController, "antialiasing-option", defaultPreset.AntialiasingMode);
 		AntialiasingQuality = new SettingsEntityEnum<QualityOption>(settingsController, "antialiasing-quality", defaultPreset.AntialiasingQuality);
+		AntialiasingMode.SetValueAndConfirm(Kingmaker.Settings.AntialiasingMode.TAA);
 		FootprintsMode = new SettingsEntityEnum<FootprintsMode>(settingsController, "footprints-mode", defaultPreset.FootprintsMode);
 		FsrMode = new SettingsEntityEnum<FsrMode>(settingsController, "fsr-mode", defaultPreset.FsrMode);
 		FsrSharpness = new SettingsEntityFloat(settingsController, "fsr-sharpness", defaultPreset.FsrSharpness);

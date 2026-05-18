@@ -3,7 +3,8 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -16,6 +17,9 @@ namespace Kingmaker.Designers.Mechanics.Facts;
 [AllowMultipleComponents]
 [AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("b3c64e68baa2498bbe1de319d0259e3a")]
+[ContextRoleForField("ActionsOnCaster", ContextField.Target, "buff caster", FallsBackTo = "Caster")]
+[ContextRoleForField("ActionsOnKiller", ContextField.Target, "killer", FallsBackTo = "rule.Initiator")]
+[ContextRoleForField("ActionsOnTarget", ContextField.Target, "killed unit", FallsBackTo = "rule.Target")]
 public class KillTargetTrigger : UnitFactComponentDelegate, ITargetRulebookHandler<RuleDealDamage>, IRulebookHandler<RuleDealDamage>, ISubscriber, ITargetRulebookSubscriber
 {
 	[SerializeField]
@@ -49,25 +53,25 @@ public class KillTargetTrigger : UnitFactComponentDelegate, ITargetRulebookHandl
 		if (maybeCaster != null && initiator != null && target != null)
 		{
 			bool flag;
-			using (base.Context.SetScope(maybeCaster.ToITargetWrapper()))
+			using (EvalContext.PushFact(base.Fact, maybeCaster))
 			{
 				flag = ConditionsOnCaster.Check();
 			}
 			bool flag2;
-			using (base.Context.SetScope(initiator.ToITargetWrapper()))
+			using (EvalContext.PushFact(base.Fact, initiator))
 			{
 				flag2 = ConditionsOnKiller.Check();
 			}
 			bool flag3;
-			using (base.Context.SetScope(target.ToITargetWrapper()))
+			using (EvalContext.PushFact(base.Fact, target))
 			{
 				flag3 = ConditionsOnTarget.Check();
 			}
 			if (flag2 && flag && flag3)
 			{
-				base.Fact.RunActionInContext(ActionsOnCaster, maybeCaster.ToITargetWrapper());
-				base.Fact.RunActionInContext(ActionsOnKiller, initiator.ToITargetWrapper());
-				base.Fact.RunActionInContext(ActionsOnTarget, target.ToITargetWrapper());
+				base.Fact.RunActionInContext(ActionsOnCaster, maybeCaster);
+				base.Fact.RunActionInContext(ActionsOnKiller, initiator);
+				base.Fact.RunActionInContext(ActionsOnTarget, target);
 			}
 		}
 	}

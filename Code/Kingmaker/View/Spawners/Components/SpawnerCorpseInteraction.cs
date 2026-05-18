@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
@@ -21,14 +22,16 @@ using UnityEngine;
 
 namespace Kingmaker.View.Spawners.Components;
 
+[Obsolete]
 [RequireComponent(typeof(UnitSpawnerBase))]
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("4cc3ab944f8c67e49bb75ef42129855a")]
 public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInteraction.Part>
 {
 	[OwlPackable(OwlPackableMode.Generate)]
-	public class Part : ViewBasedPart, IUnitInitializer, IHashable, IOwlPackable<Part>
+	public class Part : EntityPartWithConfig, IUnitInitializer, IHashable, IOwlPackable<Part>
 	{
-		public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 		{
 			Name = "Part",
 			OldNames = null,
@@ -59,7 +62,7 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 			return result;
 		}
 
-		public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 		{
 			Part source = new Part();
 			result = Unsafe.As<Part, TPossiblyBase>(ref source);
@@ -118,13 +121,13 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 			Fields = new FieldInfo[2]
 			{
 				new FieldInfo("m_SourceRef", typeof(EntityRef)),
-				new FieldInfo("InteractionObjectRef", typeof(EntityRef<DynamicMapObjectView.EntityData>))
+				new FieldInfo("InteractionObjectRef", typeof(EntityRef<DynamicMapObjectEntity>))
 			}
 		};
 
 		[JsonProperty]
 		[OwlPackInclude]
-		public EntityRef<DynamicMapObjectView.EntityData> InteractionObjectRef { get; private set; }
+		public EntityRef<DynamicMapObjectEntity> InteractionObjectRef { get; private set; }
 
 		public void SetSource(Entity source)
 		{
@@ -170,25 +173,10 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 
 		private void AddInteraction()
 		{
-			EntityViewBase entityViewBase = (EntityViewBase)(m_SourceRef.Entity?.View);
-			if (entityViewBase == null)
-			{
-				return;
-			}
-			SpawnerCorpseInteraction component = entityViewBase.GetComponent<SpawnerCorpseInteraction>();
-			if (!(component == null))
-			{
-				DynamicMapObjectView.EntityData entityData = EnsureObject(component);
-				InteractionSkillCheck component2 = entityData.View.GetComponent<InteractionSkillCheck>();
-				if (!(component2 == null))
-				{
-					component2.EnsurePart().SetSettings(component.m_Settings);
-					InteractionObjectRef = entityData;
-				}
-			}
+			throw new NotImplementedException();
 		}
 
-		private DynamicMapObjectView.EntityData EnsureObject(SpawnerCorpseInteraction source)
+		private DynamicMapObjectEntity EnsureObject(SpawnerCorpseInteraction source)
 		{
 			if (InteractionObjectRef != null)
 			{
@@ -196,9 +184,9 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 			}
 			BlueprintDynamicMapObject blueprint = source.m_ObjectReference.Get();
 			SceneEntitiesState mainState = Game.Instance.LoadedAreaState.MainState;
-			DynamicMapObjectView.EntityData entityData = Game.Instance.Controllers.EntitySpawner.SpawnMapObject(blueprint, base.Owner.Position, Quaternion.identity, mainState);
-			entityData.IsInGame = source.m_EnableInteractionOnDeath;
-			return entityData;
+			DynamicMapObjectEntity dynamicMapObjectEntity = Game.Instance.Controllers.EntitySpawner.SpawnMapObject(blueprint, base.Owner.Position, Quaternion.identity, mainState);
+			dynamicMapObjectEntity.IsInGame = source.m_EnableInteractionOnDeath;
+			return dynamicMapObjectEntity;
 		}
 
 		public override Hash128 GetHash128()
@@ -209,8 +197,8 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 			EntityRef obj = m_SourceRef;
 			Hash128 val2 = EntityRefHasher.GetHash128(ref obj);
 			result.Append(ref val2);
-			EntityRef<DynamicMapObjectView.EntityData> obj2 = InteractionObjectRef;
-			Hash128 val3 = StructHasher<EntityRef<DynamicMapObjectView.EntityData>>.GetHash128(ref obj2);
+			EntityRef<DynamicMapObjectEntity> obj2 = InteractionObjectRef;
+			Hash128 val3 = StructHasher<EntityRef<DynamicMapObjectEntity>>.GetHash128(ref obj2);
 			result.Append(ref val3);
 			return result;
 		}
@@ -233,7 +221,7 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 			ushort type = state.TypeLibrary.RegisterType<CorpseInteractionPart>(OwlPackTypeInfo);
 			formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 			formatter.Field(0, "m_SourceRef", ref m_SourceRef, state);
-			EntityRef<DynamicMapObjectView.EntityData> value = InteractionObjectRef;
+			EntityRef<DynamicMapObjectEntity> value = InteractionObjectRef;
 			formatter.Field(1, "InteractionObjectRef", ref value, state);
 			formatter.EndObject();
 		}
@@ -256,7 +244,7 @@ public class SpawnerCorpseInteraction : EntityPartComponent<SpawnerCorpseInterac
 					m_SourceRef = formatter.ReadPackable<EntityRef>(state);
 					break;
 				case 1:
-					InteractionObjectRef = formatter.ReadPackable<EntityRef<DynamicMapObjectView.EntityData>>(state);
+					InteractionObjectRef = formatter.ReadPackable<EntityRef<DynamicMapObjectEntity>>(state);
 					break;
 				}
 			}

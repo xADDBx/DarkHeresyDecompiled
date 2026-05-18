@@ -110,7 +110,7 @@ public class ClueDotsPositions
 		widget.transform.SetParent(panelByDirection, worldPositionStays: false);
 		m_Dots.Add((conclusion, widget));
 		widget.SetState(State(conclusion));
-		UISounds.Instance.Sounds.DetectiveSystem.SetLineTargetDot.Play();
+		ServiceWindowsSounds.Instance.DetectiveJournal.SetLineTargetDot.Play();
 		UpdatePanelsVisual();
 		return widget;
 	}

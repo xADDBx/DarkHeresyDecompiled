@@ -77,7 +77,7 @@ public class SceneControllablesController : IControllerStop, IController
 		state2.MergeWith(state);
 		if (!m_Components.TryGetValue(idOfObject, out var value))
 		{
-			PFLog.Entity.Warning("Cant find controllable with id " + idOfObject);
+			PFLog.SceneControllables.Warning("Cant find controllable with id " + idOfObject);
 		}
 		else
 		{

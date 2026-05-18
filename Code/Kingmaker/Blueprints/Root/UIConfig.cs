@@ -72,6 +72,8 @@ public class UIConfig : BlueprintScriptableObject
 
 	public PowerBalanceColors PowerBalanceColors;
 
+	public Color StatDefaultColor;
+
 	public Color StatPositiveColor;
 
 	public Color StatNegativeColor;
@@ -123,6 +125,8 @@ public class UIConfig : BlueprintScriptableObject
 
 	public const float OvertipDistanceReveal = 6.35f;
 
+	public Vector2 CombatLogMinSize = new Vector2(500f, 200f);
+
 	public TMP_FontAsset DefaultTMPFontAsset;
 
 	public TMP_SpriteAsset DefaultTMPSriteAsset;
@@ -134,11 +138,9 @@ public class UIConfig : BlueprintScriptableObject
 	public FeatureFiltersIcons FiltersIcons;
 
 	[Header("Talent Groups")]
-	public Color SingleAcronymColor;
+	public TooltipsConfig TooltipsConfig;
 
-	public Color GroupAcronymColor;
-
-	public TalentGroups TalentGroups = new TalentGroups();
+	public AbilityTooltipConfig AbilityTooltipConfig;
 
 	public static UIConfig Instance => ConfigRoot.Instance.UIConfig;
 
@@ -153,9 +155,25 @@ public class UIConfig : BlueprintScriptableObject
 	[field: SerializeField]
 	public FeatureTagsConfig FeatureTagsConfig { get; private set; }
 
+	[field: SerializeField]
+	public VendorConfig VendorConfig { get; private set; }
+
+	[field: SerializeField]
+	public ExplorationConfig ExplorationConfig { get; private set; }
+
+	[field: SerializeField]
+	public DialogConfig DialogConfig { get; private set; }
+
+	[field: SerializeField]
+	public ConsoleConfig ConsoleConfig { get; private set; }
+
 	[Header("Detective")]
 	[field: SerializeField]
 	public DetectiveConfig DetectiveConfig { get; private set; }
+
+	[Header("Transition Map")]
+	[field: SerializeField]
+	public TransitionMapConfig TransitionMapConfig { get; private set; }
 
 	public BlueprintUISound BlueprintUISound => m_BlueprintUISound?.Get();
 

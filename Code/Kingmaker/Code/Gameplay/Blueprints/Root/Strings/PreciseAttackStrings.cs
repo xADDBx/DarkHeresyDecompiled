@@ -31,8 +31,6 @@ public class PreciseAttackStrings : StringsContainer
 
 	public LocalizedString CriticalEffectsAndVitalDamageDoApply;
 
-	public LocalizedString VitalDamagePointDesc;
-
 	public LocalizedString Confirm;
 
 	public LocalizedString CanBreakTargetConcentrationIfHit;

@@ -5,10 +5,8 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.QA;
 using Kingmaker.Utility.GuidUtility;
 using Owlcat.QA.Validation;
-using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -34,57 +32,64 @@ public class CommandIgnoreCombat : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	public override bool ShouldHaveControlledUnit => true;
+
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		if (!(Unit.GetValue() is BaseUnitEntity unit))
+		if (!Unit.TryGetValue(out var value) || !(value is BaseUnitEntity baseUnitEntity))
 		{
-			string message = $"[IS NOT BASE UNIT ENTITY] Cutscene command {this}, {Unit} is not BaseUnitEntity";
-			if (!QAModeExceptionReporter.MaybeShowError(message))
-			{
-				UberDebug.LogError(message);
-			}
-			return;
+			return CommandResult.Fail("Unit not found");
 		}
 		Data commandData = player.GetCommandData<Data>(this);
-		UnitReference unitReference = (commandData.Unit = unit.FromBaseUnitEntity());
-		if (!(unitReference == null))
+		if ((commandData.Unit = baseUnitEntity.FromBaseUnitEntity()) == null)
 		{
-			if (KeepWeaponsOut)
-			{
-				unitReference.Entity.ToBaseUnitEntity().View.HandsEquipment.SetCombatVisualState(inCombat: true);
-			}
-			if (commandData.Unit.Entity.ToBaseUnitEntity().CombatGroup.Count > 1)
-			{
-				commandData.OriginalGroupId = commandData.Unit.Entity.ToBaseUnitEntity().CombatGroup.Id;
-				commandData.Unit.Entity.ToBaseUnitEntity().CombatGroup.Id = Uuid.Instance.CreateString();
-			}
-			commandData.Unit.Entity.ToBaseUnitEntity().Features.IsUntargetable.Retain();
-			commandData.Unit.Entity.ToBaseUnitEntity().Features.IsIgnoredByCombat.Retain();
-			commandData.Unit.Entity.ToBaseUnitEntity().Passive.Retain();
+			return CommandResult.Fail("Unit not found");
 		}
+		if (KeepWeaponsOut)
+		{
+			baseUnitEntity.View.HandsEquipment.SetCombatVisualState(inCombat: true);
+		}
+		if (baseUnitEntity.CombatGroup.Count > 1)
+		{
+			commandData.OriginalGroupId = baseUnitEntity.CombatGroup.Id;
+			baseUnitEntity.CombatGroup.Id = Uuid.Instance.CreateString();
+		}
+		baseUnitEntity.Features.IsUntargetable.Retain();
+		baseUnitEntity.Features.IsIgnoredByCombat.Retain();
+		baseUnitEntity.Passive.Retain();
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		if (!(commandData.Unit == null))
+		if (commandData.Unit == null)
 		{
-			if (!commandData.OriginalGroupId.IsNullOrEmpty())
-			{
-				commandData.Unit.Entity.ToBaseUnitEntity().CombatGroup.Id = commandData.OriginalGroupId;
-			}
-			commandData.Unit.Entity.ToBaseUnitEntity().Features.IsUntargetable.Release();
-			commandData.Unit.Entity.ToBaseUnitEntity().Features.IsIgnoredByCombat.Release();
-			commandData.Unit.Entity.ToBaseUnitEntity().Passive.Release();
-			if (KeepWeaponsOut && commandData.Unit != null)
-			{
-				commandData.Unit.Entity.ToBaseUnitEntity().View.HandsEquipment.SetCombatVisualState(inCombat: false);
-			}
+			return CommandResult.Fail("Unit not found");
 		}
+		BaseUnitEntity baseUnitEntity = commandData.Unit.Entity.ToBaseUnitEntity();
+		if (!commandData.OriginalGroupId.IsNullOrEmpty())
+		{
+			baseUnitEntity.CombatGroup.Id = commandData.OriginalGroupId;
+		}
+		baseUnitEntity.Features.IsUntargetable.Release();
+		baseUnitEntity.Features.IsIgnoredByCombat.Release();
+		baseUnitEntity.Passive.Release();
+		if (KeepWeaponsOut)
+		{
+			baseUnitEntity.View.HandsEquipment.SetCombatVisualState(inCombat: false);
+		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -92,8 +97,9 @@ public class CommandIgnoreCombat : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override IAbstractUnitEntity GetControlledUnit()

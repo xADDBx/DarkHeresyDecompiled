@@ -6,11 +6,12 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.Gameplay.Features.Cohesion;
+using Kingmaker.Gameplay.Features.Encounter;
 using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.PubSubSystem.Core;
@@ -24,7 +25,6 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.StatefulRandom;
-using Kingmaker.View;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using Pathfinding;
@@ -40,7 +40,7 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 	{
 		Name = "UnitEntity",
 		OldNames = null,
-		Fields = new FieldInfo[28]
+		Fields = new FieldInfo[29]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -69,6 +69,7 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 			new FieldInfo("LastRestTime", typeof(TimeSpan?)),
 			new FieldInfo("m_AppliedUpgraders", typeof(List<BlueprintUnitUpgrader>)),
 			new FieldInfo("m_IsExtra", typeof(bool)),
+			new FieldInfo("m_EncounterCROverride", typeof(int?), new string[1] { "m_OverrideCR" }),
 			new FieldInfo("SpawnFromPsychicPhenomena", typeof(bool))
 		}
 	};
@@ -104,14 +105,12 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 
 	public override PartCombatGroup CombatGroup => GetRequired<PartCombatGroup>();
 
-	public override PartStatsAttributes Attributes => GetRequired<PartStatsAttributes>();
-
-	public override PartStatsSkills Skills => GetRequired<PartStatsSkills>();
-
 	public override PartHealth Health => GetRequired<PartHealth>();
 
-	public UnitEntity(UnitEntityView view)
-		: this(view.UniqueId, view.IsInGameBySettings, view.Blueprint)
+	public override PartArmor Armor => GetRequired<PartArmor>();
+
+	public UnitEntity(IUnitEntityConfig config)
+		: base(config)
 	{
 	}
 
@@ -120,26 +119,25 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 	{
 	}
 
-	protected UnitEntity(JsonConstructorMark _)
+	protected UnitEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected UnitEntity()
 	{
 	}
 
 	protected override void OnCreateParts()
 	{
 		base.OnCreateParts();
-		GetOrCreate<PartStatsAttributes>();
-		GetOrCreate<PartStatsSkills>();
 		GetOrCreate<PartUnitViewSettings>();
 		GetOrCreate<PartUnitCommands>();
 		GetOrCreate<PartUnitCombatState>();
 		GetOrCreate<PartCohesion>();
 		GetOrCreate<PartFaction>();
 		GetOrCreate<PartCombatGroup>();
+		EncounterData current = ContextData<EncounterData>.Current;
+		if (current != null)
+		{
+			GetOrCreate<PartEncounter>().SetupOnSpawn(current.Blueprint, current.SpawnerId);
+		}
 		GetOrCreate<PartVision>();
 		GetOrCreate<PartUnitStealth>();
 		GetOrCreate<PartMorale>();
@@ -197,7 +195,7 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 	protected override void OnNodeChanged(GraphNode oldNode)
 	{
 		base.OnNodeChanged(oldNode);
-		EventBus.RaiseEvent((IBaseUnitEntity)this, (Action<IUnitNodeChangedHandler>)delegate(IUnitNodeChangedHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)this, (Action<IUnitNodeChangedHandler>)delegate(IUnitNodeChangedHandler h)
 		{
 			h.HandleUnitNodeChanged(oldNode);
 		}, isCheckRuntime: true);
@@ -305,7 +303,7 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		UnitEntity source = new UnitEntity();
+		UnitEntity source = new UnitEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<UnitEntity, TPossiblyBase>(ref source);
 	}
 
@@ -359,8 +357,9 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 		formatter.NullableField(24, "LastRestTime", ref value12, state);
 		formatter.Field(25, "m_AppliedUpgraders", ref m_AppliedUpgraders, state);
 		formatter.UnmanagedField(26, "m_IsExtra", ref m_IsExtra, state);
+		formatter.UnmanagedNullableField(27, "m_EncounterCROverride", ref m_EncounterCROverride, state);
 		bool value13 = base.SpawnFromPsychicPhenomena;
-		formatter.UnmanagedField(27, "SpawnFromPsychicPhenomena", ref value13, state);
+		formatter.UnmanagedField(28, "SpawnFromPsychicPhenomena", ref value13, state);
 		formatter.EndObject();
 	}
 
@@ -460,6 +459,9 @@ public class UnitEntity : BaseUnitEntity, IAreaHandler, ISubscriber, IUnitEntity
 				m_IsExtra = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 27:
+				m_EncounterCROverride = formatter.ReadNullableUnmanaged<int>(state);
+				break;
+			case 28:
 				base.SpawnFromPsychicPhenomena = formatter.ReadUnmanaged<bool>(state);
 				break;
 			}

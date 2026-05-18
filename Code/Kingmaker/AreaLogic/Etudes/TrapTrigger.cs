@@ -22,7 +22,7 @@ public class TrapTrigger : EntityFactComponentDelegate, IDisarmTrapHandler, ISub
 
 	public ActionList OnDisarm;
 
-	public void HandleDisarmTrapSuccess(TrapObjectView trap)
+	public void HandleDisarmTrapSuccess(TrapObjectData trap)
 	{
 		if (EqualsToReferenced(trap))
 		{
@@ -30,15 +30,15 @@ public class TrapTrigger : EntityFactComponentDelegate, IDisarmTrapHandler, ISub
 		}
 	}
 
-	public void HandleDisarmTrapFail(TrapObjectView trap)
+	public void HandleDisarmTrapFail(TrapObjectData trap)
 	{
 	}
 
-	public void HandleDisarmTrapCriticalFail(TrapObjectView trap)
+	public void HandleDisarmTrapCriticalFail(TrapObjectData trap)
 	{
 	}
 
-	public void HandleTrapActivation(TrapObjectView trap)
+	public void HandleTrapActivation(TrapObjectData trap)
 	{
 		if (EqualsToReferenced(trap))
 		{
@@ -46,11 +46,11 @@ public class TrapTrigger : EntityFactComponentDelegate, IDisarmTrapHandler, ISub
 		}
 	}
 
-	private bool EqualsToReferenced(TrapObjectView trap)
+	private bool EqualsToReferenced(TrapObjectData trap)
 	{
 		if (Trap.TryGetValue(out var value))
 		{
-			return value.UniqueId == trap.Data.UniqueId;
+			return value.UniqueId == trap.UniqueId;
 		}
 		return false;
 	}

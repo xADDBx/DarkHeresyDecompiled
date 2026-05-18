@@ -33,14 +33,14 @@ public class CommandSaveFogOfWar : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		FogOfWarArea active = FogOfWarArea.Active;
 		if (active == null)
 		{
 			commandData.Reset();
-			return;
+			return CommandResult.Fail("No active area");
 		}
 		try
 		{
@@ -64,12 +64,19 @@ public class CommandSaveFogOfWar : CommandBase
 		catch
 		{
 			commandData.Reset();
-			throw;
+			return CommandResult.Fail("Failed to set fog of war");
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -77,9 +84,8 @@ public class CommandSaveFogOfWar : CommandBase
 		return false;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		try
 		{
@@ -103,9 +109,11 @@ public class CommandSaveFogOfWar : CommandBase
 		{
 			commandData.Reset();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

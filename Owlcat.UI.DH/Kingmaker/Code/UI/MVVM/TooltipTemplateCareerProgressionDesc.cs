@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Localization;
 using Owlcat.UI;
 
@@ -19,17 +20,17 @@ public class TooltipTemplateCareerProgressionDesc : TooltipBaseTemplate
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
 		LocalizedString careerUpgradeHeader = Strings.CareerUpgradeHeader;
-		yield return new TooltipBrickTitle(careerUpgradeHeader.Text);
+		yield return new BrickTitleVM(careerUpgradeHeader.Text);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		if (m_CareerPath.CanCommit.CurrentValue)
 		{
-			yield return new TooltipBrickText(UIStrings.Instance.CharacterSheet.CareerUpgradedDescription);
+			yield return new BrickTextVM(UIStrings.Instance.CharacterSheet.CareerUpgradedDescription, TooltipTextType.Simple, TooltipTextAlignment.Midl, m_CareerPath.Unit);
 			yield break;
 		}
 		LocalizedString careerUpgradeDescription = Strings.CareerUpgradeDescription;
-		yield return new TooltipBrickText(careerUpgradeDescription);
+		yield return new BrickTextVM(careerUpgradeDescription, TooltipTextType.Simple, TooltipTextAlignment.Midl, m_CareerPath.Unit);
 	}
 }

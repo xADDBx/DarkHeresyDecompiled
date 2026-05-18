@@ -46,14 +46,21 @@ public abstract class BaseOvertipMapObjectVM : OvertipEntityVM
 
 	public bool IsInCameraFrustum => MapObjectEntity.IsInCameraFrustum;
 
+	public bool IsMarkedForRemoval { get; private set; }
+
 	protected BaseOvertipMapObjectVM(MapObjectEntity mapObjectEntity)
 	{
 		MapObjectEntity = mapObjectEntity;
 		IsEnabled.CombineLatest(MapObjectIsHighlighted, IsMouseOverUI, (bool isEnabled, bool hover, bool mouseOver) => new { isEnabled, hover, mouseOver }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
 		{
-			m_VisibilityChanged.Execute();
+			m_VisibilityChanged.Execute(Unit.Default);
 		})
 			.AddTo(this);
+	}
+
+	public void MarkForRemoval()
+	{
+		IsMarkedForRemoval = true;
 	}
 
 	protected override Vector3 GetEntityPosition()

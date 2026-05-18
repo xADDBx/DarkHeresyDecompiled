@@ -1,19 +1,13 @@
 using System.Collections.Generic;
-using JetBrains.Annotations;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class ContextMenuEntityConsoleView : ContextMenuEntityView, IFloatConsoleNavigationEntity, IConsoleNavigationEntity, IConsoleEntity
 {
-	[SerializeField]
-	[UsedImplicitly]
-	private Image m_HintIcon;
-
-	public void Initialize()
+	public void Awake()
 	{
 		base.gameObject.SetActive(value: false);
 	}
@@ -21,11 +15,6 @@ public class ContextMenuEntityConsoleView : ContextMenuEntityView, IFloatConsole
 	protected override void OnBind()
 	{
 		base.OnBind();
-		if ((bool)m_HintIcon)
-		{
-			m_HintIcon.gameObject.SetActive(value: true);
-			m_HintIcon.sprite = GamePadIcons.Instance.GetIcon(8);
-		}
 		if (m_ButtonFx != null)
 		{
 			m_Button.OnFocusAsObservable().Subscribe(delegate(bool value)

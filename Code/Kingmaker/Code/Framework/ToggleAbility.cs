@@ -195,7 +195,7 @@ public sealed class ToggleAbility : MechanicEntityFact, IEntityGainFactHandler<E
 
 	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (!isTurnBased || !Blueprint.HasBuffModifierTag)
+		if (!isTurnBased || !Enabled || !Blueprint.HasBuffModifierTag)
 		{
 			return;
 		}

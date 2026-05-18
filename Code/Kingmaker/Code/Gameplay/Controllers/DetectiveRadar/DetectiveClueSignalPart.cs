@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Kingmaker.Code.Gameplay.Controllers.DetectiveRadar;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class DetectiveClueSignalPart : ViewBasedPart<DetectiveRadarSignalSettings>, IInGameHandler<EntitySubscriber>, IInGameHandler, ISubscriber<IEntity>, ISubscriber, IEventTag<IInGameHandler, EntitySubscriber>, IHashable, IOwlPackable<DetectiveClueSignalPart>
+public class DetectiveClueSignalPart : EntityPartWithConfig<DetectiveRadarSignalSettings>, IInGameHandler<EntitySubscriber>, IInGameHandler, ISubscriber<IEntity>, ISubscriber, IEventTag<IInGameHandler, EntitySubscriber>, IHashable, IOwlPackable<DetectiveClueSignalPart>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -22,7 +22,7 @@ public class DetectiveClueSignalPart : ViewBasedPart<DetectiveRadarSignalSetting
 	[OwlPackInclude]
 	public bool Enabled = true;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "DetectiveClueSignalPart",
 		OldNames = null,
@@ -61,7 +61,7 @@ public class DetectiveClueSignalPart : ViewBasedPart<DetectiveRadarSignalSetting
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		DetectiveClueSignalPart source = new DetectiveClueSignalPart();
 		result = Unsafe.As<DetectiveClueSignalPart, TPossiblyBase>(ref source);

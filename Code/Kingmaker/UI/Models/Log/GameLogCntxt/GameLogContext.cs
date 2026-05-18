@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints.Area;
 using Kingmaker.Code.Framework.GameLog;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Framework.DetectiveSystem;
@@ -172,6 +173,8 @@ public static class GameLogContext
 
 	public static Property<int> CurrentValue;
 
+	public static Property<int> TargetValue;
+
 	public static Property<AbilityData> DescriptionAbility;
 
 	public static Property<BlueprintMechanicEntityFact> DescriptionFactBlueprint;
@@ -183,6 +186,8 @@ public static class GameLogContext
 	public static Property<BlueprintCaseItem> CaseItem;
 
 	public static Property<BlueprintCaseAnswer> CaseAnswer;
+
+	public static Property<BlueprintArea> CaseItemArea;
 
 	public static Property<TextStyle> TextStyle;
 

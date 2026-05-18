@@ -40,7 +40,7 @@ public class CommandPlay3DSound : CommandBase
 	[Tooltip("Sets SoundSourceObject as current dialog speaker")]
 	public bool SetCurrentSpeaker;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.SoundName = SoundName;
@@ -49,15 +49,27 @@ public class CommandPlay3DSound : CommandBase
 		commandData.SetRace = SetRace;
 		commandData.SetCurrentSpeaker = SetCurrentSpeaker;
 		Play3DSound.Play(commandData.SoundName, commandData.SoundSourceObject, commandData.SetSex, commandData.SetRace, commandData.SetCurrentSpeaker, this);
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)

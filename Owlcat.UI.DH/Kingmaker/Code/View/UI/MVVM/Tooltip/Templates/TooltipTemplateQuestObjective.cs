@@ -21,23 +21,23 @@ public class TooltipTemplateQuestObjective : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_Objective.Title.Text);
+		yield return new BrickTitleVM(m_Objective.Title.Text);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickText(m_Objective.Description.Text, TooltipTextType.Paragraph);
+		yield return new BrickTextVM(m_Objective.Description.Text, TooltipTextType.Paragraph);
 		if (m_Addendums == null)
 		{
 			yield break;
 		}
-		yield return new TooltipBrickSeparator(TooltipBrickElementType.Small);
+		yield return new BrickSeparatorVM(TooltipBrickElementType.Small);
 		foreach (BlueprintQuestObjective addendum in m_Addendums)
 		{
 			if (!string.IsNullOrEmpty(m_Objective.Description.Text))
 			{
 				string text = string.Format(UIConfig.Instance.TextFormats.QuestionFormat, addendum.Description.Text);
-				yield return new TooltipBrickText(text, TooltipTextType.Paragraph);
+				yield return new BrickTextVM(text, TooltipTextType.Paragraph);
 			}
 		}
 	}

@@ -6,12 +6,13 @@ using Code.Visual.Animation;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Enums.Helper;
+using Kingmaker.Code.Framework;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Clicks.Handlers;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Formations;
 using Kingmaker.GameCommands;
-using Kingmaker.GameModes;
 using Kingmaker.Interaction;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
@@ -27,6 +28,7 @@ using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.Utility;
+using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.View;
@@ -49,6 +51,12 @@ public static class UnitCommandsRunner
 	private static IDisposable s_EscManagerHandle;
 
 	private static bool s_MovePreview;
+
+	private static readonly List<BaseUnitEntity> PreviewSelectedUnits = new List<BaseUnitEntity>();
+
+	private static readonly List<BaseUnitEntity> PreviewAllUnits = new List<BaseUnitEntity>();
+
+	private static Vector3[] s_PreviewResultPositions = Array.Empty<Vector3>();
 
 	private static NNConstraint s_ClosestWithAreaConstraint = new NNConstraint
 	{
@@ -83,13 +91,21 @@ public static class UnitCommandsRunner
 	public static void CancelMoveCommandLocal()
 	{
 		UnitHelper.ClearPrediction();
+		if (s_VirtualMoveCommand?.CmdParams != null)
+		{
+			s_VirtualMoveCommand.CmdParams.ForcedPath = null;
+		}
 		s_VirtualMoveCommand = null;
 		TryUnsubscribeEscManager();
 	}
 
 	public static void SetVirtualMoveCommand([NotNull] BaseUnitEntity unit, [NotNull] UnitCommandParams cmdParams)
 	{
-		UISounds.Instance.Sounds.Combat.CombatGridSetWaypointClick.Play();
+		CombatSounds.Instance.Combat.CombatGridSetWaypointClick.Play();
+		if (s_VirtualMoveCommand?.CmdParams != null)
+		{
+			s_VirtualMoveCommand.CmdParams.ForcedPath = null;
+		}
 		s_VirtualMoveCommand = new VirtualMoveCommand(cmdParams, unit);
 		if (!unit.ToBaseUnitEntity().IsDirectlyControllable())
 		{
@@ -229,6 +245,22 @@ public static class UnitCommandsRunner
 		PFLog.Default.ErrorWithReport($"{abilityData.Caster} can't execute cast command");
 	}
 
+	public static void TryUnitToggleAbility(BaseUnitEntity caster, ToggleAbility ability)
+	{
+		PartUnitCommands commandsOptional = caster.GetCommandsOptional();
+		if (commandsOptional != null)
+		{
+			commandsOptional.AddToQueue(new UnitToggleAbilityParams(ability.Blueprint)
+			{
+				IsSynchronized = true
+			});
+		}
+		else
+		{
+			PFLog.Default.ErrorWithReport($"{caster} can't execute toggle ability command");
+		}
+	}
+
 	public static void MoveSelectedUnitsToPoint(Vector3 worldPosition)
 	{
 		if (Game.Instance.Controllers.TurnController.TurnBasedModeActive)
@@ -279,7 +311,7 @@ public static class UnitCommandsRunner
 		switch (status)
 		{
 		case UnitHelper.MoveCommandStatus.SamePath:
-			UISounds.Instance.Sounds.Combat.CombatGridConfirmActionClick.Play();
+			CombatSounds.Instance.Combat.CombatGridConfirmActionClick.Play();
 			TryRunVirtualMoveCommand();
 			break;
 		case UnitHelper.MoveCommandStatus.NotEnoughPoints:
@@ -312,86 +344,158 @@ public static class UnitCommandsRunner
 
 	public static void MoveSelectedUnitsToPointRT(BaseUnitEntity mainUnit, Vector3 worldPosition, Vector3 direction, bool isControllerGamepad, bool preview = false, float formationSpaceFactor = 1f, List<BaseUnitEntity> selectedUnits = null, Action<BaseUnitEntity, MoveCommandSettings> commandRunner = null, List<BaseUnitEntity> allUnits = null)
 	{
-		if (Game.Instance.Controllers.TurnController.TurnBasedModeActive)
+		using (ProfileScope.New(preview ? "UnitCommandsRunner.MoveSelectedUnitsToPointRT.Preview" : "UnitCommandsRunner.MoveSelectedUnitsToPointRT"))
 		{
-			throw new InvalidOperationException("Not expecting to be in TBM mode here");
-		}
-		s_MovePreview = preview;
-		if (!preview)
-		{
-			UnitWaitAgentList.Clear();
-		}
-		if (Game.Instance.CurrentlyLoadedArea.AreaStatGameMode == GameModeType.StarSystem)
-		{
-			MoveSelectedUnitsToPointInSpace(worldPosition, direction, isControllerGamepad, preview, commandRunner);
-			return;
-		}
-		bool flag = mainUnit?.View?.AgentOverride != null;
-		IPartyFormation currentFormation = Game.Instance.Player.FormationManager.CurrentFormation;
-		if (selectedUnits == null)
-		{
-			selectedUnits = Game.Instance.Controllers.SelectionCharacter.SelectedUnits.ToList();
-		}
-		if (allUnits == null)
-		{
-			allUnits = ((selectedUnits.Count == 1) ? selectedUnits : Game.Instance.Player.PartyAndPets.Where((BaseUnitEntity c) => c.IsDirectlyControllable()).ToList());
-		}
-		if (selectedUnits.Count <= 0)
-		{
-			return;
-		}
-		Vector3[] array = new Vector3[allUnits.Count];
-		PartyFormationHelper.FillFormationPositions(worldPosition, FormationAnchor.Front, direction, allUnits, selectedUnits, currentFormation, array, formationSpaceFactor);
-		CoroutineRunner.Start(MoveUnitsToDestinationConsistently(mainUnit, isControllerGamepad, preview, selectedUnits, commandRunner, allUnits, flag, array));
-		float num = 0f;
-		for (int i = 0; i < allUnits.Count; i++)
-		{
-			if (selectedUnits.HasItem(allUnits[i]))
+			if (Game.Instance.Controllers.TurnController.TurnBasedModeActive)
 			{
-				float magnitude = (worldPosition - array[i]).To2D().magnitude;
-				if (magnitude > num)
-				{
-					num = magnitude;
-				}
+				throw new InvalidOperationException("Not expecting to be in TBM mode here");
 			}
-		}
-		foreach (BaseUnitEntity selectedUnit in selectedUnits)
-		{
-			if (allUnits.HasItem(selectedUnit))
+			s_MovePreview = preview;
+			if (!preview)
 			{
-				continue;
+				UnitWaitAgentList.Clear();
 			}
-			if (isControllerGamepad && selectedUnit == mainUnit && flag)
-			{
-				commandRunner?.Invoke(selectedUnit, new MoveCommandSettings
-				{
-					Destination = selectedUnit.Position
-				});
-				continue;
-			}
-			Vector3 vector = ((selectedUnits.Count == 1) ? worldPosition : GeometryUtils.ProjectToGround(worldPosition - direction.normalized * (num + 2f)));
+			bool valueOrDefault = (mainUnit?.MaybeMovementAgent?.IsDirectionalMovementActive).GetValueOrDefault();
+			IPartyFormation currentFormation = Game.Instance.Player.FormationManager.CurrentFormation;
 			if (preview)
 			{
-				ShowDestination(selectedUnit, vector);
-				continue;
+				if (selectedUnits == null)
+				{
+					PreviewSelectedUnits.Clear();
+					foreach (BaseUnitEntity selectedUnit in Game.Instance.Controllers.SelectionCharacter.SelectedUnits)
+					{
+						PreviewSelectedUnits.Add(selectedUnit);
+					}
+					selectedUnits = PreviewSelectedUnits;
+				}
+				if (allUnits == null)
+				{
+					if (selectedUnits.Count == 1)
+					{
+						allUnits = selectedUnits;
+					}
+					else
+					{
+						PreviewAllUnits.Clear();
+						foreach (BaseUnitEntity partyAndPet in Game.Instance.Player.PartyAndPets)
+						{
+							if (partyAndPet.IsDirectlyControllable())
+							{
+								PreviewAllUnits.Add(partyAndPet);
+							}
+						}
+						allUnits = PreviewAllUnits;
+					}
+				}
 			}
-			(commandRunner ?? new Action<BaseUnitEntity, MoveCommandSettings>(RunMoveCommandRT))(selectedUnit, new MoveCommandSettings
+			else
 			{
-				Destination = vector
+				if (selectedUnits == null)
+				{
+					selectedUnits = Game.Instance.Controllers.SelectionCharacter.SelectedUnits.ToList();
+				}
+				if (allUnits == null)
+				{
+					allUnits = ((selectedUnits.Count == 1) ? selectedUnits : Game.Instance.Player.PartyAndPets.Where((BaseUnitEntity c) => c.IsDirectlyControllable()).ToList());
+				}
+			}
+			if (selectedUnits.Count <= 0)
+			{
+				return;
+			}
+			Vector3[] array;
+			if (preview)
+			{
+				if (s_PreviewResultPositions.Length < allUnits.Count)
+				{
+					s_PreviewResultPositions = new Vector3[allUnits.Count];
+				}
+				array = s_PreviewResultPositions;
+			}
+			else
+			{
+				array = new Vector3[allUnits.Count];
+			}
+			using (ProfileScope.New("UnitCommandsRunner.FillFormationPositions"))
+			{
+				PartyFormationHelper.FillFormationPositions(worldPosition, FormationAnchor.Front, direction, allUnits, selectedUnits, currentFormation, array, formationSpaceFactor);
+			}
+			if (preview)
+			{
+				using (ProfileScope.New("UnitCommandsRunner.PreviewMarkers"))
+				{
+					for (int i = 0; i < allUnits.Count; i++)
+					{
+						BaseUnitEntity baseUnitEntity = allUnits[i];
+						if (selectedUnits.HasItem(baseUnitEntity))
+						{
+							Vector3 pathDestination = SizePathfindingHelper.FromViewToMechanicsPosition(baseUnitEntity, array[i]);
+							baseUnitEntity.View?.OnMovementStarted(pathDestination, preview: true);
+						}
+					}
+				}
+			}
+			else
+			{
+				CoroutineRunner.Start(MoveUnitsToDestinationConsistently(mainUnit, isControllerGamepad, preview, selectedUnits, commandRunner, allUnits, valueOrDefault, array));
+			}
+			using (ProfileScope.New("UnitCommandsRunner.CrossSceneUnits"))
+			{
+				float num = 0f;
+				for (int j = 0; j < allUnits.Count; j++)
+				{
+					if (selectedUnits.HasItem(allUnits[j]))
+					{
+						float magnitude = (worldPosition - array[j]).To2D().magnitude;
+						if (magnitude > num)
+						{
+							num = magnitude;
+						}
+					}
+				}
+				foreach (BaseUnitEntity selectedUnit2 in selectedUnits)
+				{
+					if (allUnits.HasItem(selectedUnit2))
+					{
+						continue;
+					}
+					if (isControllerGamepad && selectedUnit2 == mainUnit && valueOrDefault)
+					{
+						commandRunner?.Invoke(selectedUnit2, new MoveCommandSettings
+						{
+							Destination = selectedUnit2.Position
+						});
+						continue;
+					}
+					Vector3 vector = ((selectedUnits.Count == 1) ? worldPosition : GeometryUtils.ProjectToGround(worldPosition - direction.normalized * (num + 2f)));
+					if (preview)
+					{
+						Vector3 pathDestination2 = SizePathfindingHelper.FromViewToMechanicsPosition(selectedUnit2, vector);
+						selectedUnit2.View?.OnMovementStarted(pathDestination2, preview: true);
+					}
+					else
+					{
+						(commandRunner ?? new Action<BaseUnitEntity, MoveCommandSettings>(RunMoveCommandRT))(selectedUnit2, new MoveCommandSettings
+						{
+							Destination = vector
+						});
+					}
+				}
+			}
+			if (preview)
+			{
+				using (ProfileScope.New("UnitCommandsRunner.ShowPreviewArrow"))
+				{
+					ClickPointerManager.Instance?.ShowPreviewArrow(worldPosition, direction);
+					return;
+				}
+			}
+			ClickPointerManager.Instance?.CancelPreview();
+			EventBus.RaiseEvent(delegate(IClickActionHandler h)
+			{
+				h.OnMoveRequested(worldPosition);
 			});
 		}
-		if (preview)
-		{
-			ClickPointerManager.Instance?.ShowPreviewArrow(worldPosition, direction);
-		}
-		else
-		{
-			ClickPointerManager.Instance?.CancelPreview();
-		}
-		EventBus.RaiseEvent(delegate(IClickActionHandler h)
-		{
-			h.OnMoveRequested(worldPosition);
-		});
 	}
 
 	private static IEnumerator MoveUnitsToDestinationConsistently(BaseUnitEntity mainUnit, bool isControllerGamepad, bool preview, List<BaseUnitEntity> selectedUnits, Action<BaseUnitEntity, MoveCommandSettings> commandRunner, List<BaseUnitEntity> allUnits, bool mainUnitMovingDirectly, Vector3[] resultPositions)
@@ -427,51 +531,6 @@ public static class UnitCommandsRunner
 		}
 	}
 
-	private static void MoveSelectedUnitsToPointInSpace(Vector3 worldPosition, Vector3 direction, bool isControllerGamepad, bool preview = false, Action<BaseUnitEntity, MoveCommandSettings> commandRunner = null)
-	{
-		BaseUnitEntity value = Game.Instance.Controllers.SelectionCharacter.SingleSelectedUnit.Value;
-		bool flag = value?.View?.AgentOverride != null;
-		Span<Vector3> span = stackalloc Vector3[1];
-		if (isControllerGamepad)
-		{
-			if (flag)
-			{
-				commandRunner?.Invoke(value, new MoveCommandSettings
-				{
-					Destination = value.Position
-				});
-			}
-		}
-		else
-		{
-			Vector3 mechanicsPosition = span[0];
-			mechanicsPosition = SizePathfindingHelper.FromViewToMechanicsPosition(value, mechanicsPosition);
-			if (preview)
-			{
-				ShowDestination(value, mechanicsPosition);
-			}
-			else
-			{
-				(commandRunner ?? new Action<BaseUnitEntity, MoveCommandSettings>(RunMoveCommandRT))(value, new MoveCommandSettings
-				{
-					Destination = mechanicsPosition
-				});
-			}
-		}
-		if (preview)
-		{
-			ClickPointerManager.Instance?.ShowPreviewArrow(worldPosition, direction);
-		}
-		else
-		{
-			ClickPointerManager.Instance?.CancelPreview();
-		}
-		EventBus.RaiseEvent(delegate(IClickActionHandler h)
-		{
-			h.OnMoveRequested(worldPosition);
-		});
-	}
-
 	public static void ShowDestination(BaseUnitEntity unit, Vector3 point)
 	{
 		if (unit.GetSaddledUnit() != null || !unit.View.MovementAgent || UnitWaitAgentList.HasItem(unit))
@@ -483,6 +542,7 @@ public static class UnitCommandsRunner
 		{
 			if (p.error)
 			{
+				UnitWaitAgentList.Remove(unit);
 				PFLog.Pathfinding.Error("An error path was returned. Ignoring");
 				return;
 			}
@@ -532,23 +592,22 @@ public static class UnitCommandsRunner
 
 	private static void RunMoveCommand(BaseUnitEntity unit, UnitCommandParams cmdParams)
 	{
-		if (unit.Commands.Current is UnitMoveTo unitMoveTo)
+		if (unit.Commands.Current is UnitMoveTo)
 		{
-			UnitMovementAgentBase maybeMovementAgent = unit.MaybeMovementAgent;
+			UnitMovementAgent maybeMovementAgent = unit.MaybeMovementAgent;
 			if ((object)maybeMovementAgent != null && maybeMovementAgent.IsTraverseInProgress)
 			{
-				unitMoveTo.Params.InterruptAsSoonAsPossible = true;
-				unit.Commands.ClearLocalQueueAndBreakNetwork();
-				unit.Commands.AddToQueue(cmdParams);
-				goto IL_0059;
+				cmdParams.PreprocessingFlags = CommandPreprocessingFlags.SoftInterruptAll;
+				unit.Commands.AddToQueueFirst(cmdParams);
+				goto IL_0047;
 			}
 		}
 		unit.Commands.Run(cmdParams);
-		goto IL_0059;
-		IL_0059:
+		goto IL_0047;
+		IL_0047:
 		if (cmdParams.ForcedPath != null && cmdParams.ForcedPath.vectorPath.Count > 0)
 		{
-			UnitEntityView view = unit.View;
+			IUnitEntityView view = unit.View;
 			List<Vector3> vectorPath = cmdParams.ForcedPath.vectorPath;
 			view.TryShowPointer(vectorPath[vectorPath.Count - 1]);
 		}
@@ -576,7 +635,7 @@ public static class UnitCommandsRunner
 		}
 		s_ClosestWithAreaConstraint.area = (int)unit.CurrentNode.node.Area;
 		NNInfo nearest = AstarPath.active.data.gridGraph.GetNearest(settings.Destination, s_ClosestWithAreaConstraint);
-		settings.Destination = UnitMovementAgentBase.PushAwayFromBorders(nearest.position, nearest.node as GridNodeBase, unit.View.MovementAgent.Corpulence);
+		settings.Destination = UnitMovementAgent.PushAwayFromBorders(nearest.position, nearest.node as GridNodeBase, unit.Corpulence);
 		unit.View.TryShowPointer(settings.Destination);
 		PathfindingService.Instance.FindPathRT(unit.MovementAgent, settings.Destination, 0.3f, delegate(ForcedPath path)
 		{

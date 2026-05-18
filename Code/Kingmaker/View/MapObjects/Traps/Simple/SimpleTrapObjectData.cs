@@ -13,7 +13,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.StateHasher.Hashers;
@@ -33,7 +32,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 {
 	[JsonProperty]
 	[OwlPackInclude]
-	public new string Name;
+	public string ViewName;
 
 	[JsonProperty]
 	[OwlPackInclude]
@@ -76,7 +75,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 			new FieldInfo("IsNewInGame", typeof(bool)),
 			new FieldInfo("TrapActive", typeof(bool)),
 			new FieldInfo("ScriptZoneId", typeof(string)),
-			new FieldInfo("Name", typeof(string)),
+			new FieldInfo("ViewName", typeof(string)),
 			new FieldInfo("PerceptionDC", typeof(int)),
 			new FieldInfo("PerceptionRadius", typeof(float)),
 			new FieldInfo("TrapSettings", typeof(BlueprintTrapSettings)),
@@ -84,7 +83,9 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 		}
 	};
 
-	public new SimpleTrapObjectView View => (SimpleTrapObjectView)base.View;
+	public new ISimpleTrapEntityConfig Config => (ISimpleTrapEntityConfig)base.Config;
+
+	public override string Name => Config.NameInLog;
 
 	public override int DisableDC
 	{
@@ -98,7 +99,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 		}
 	}
 
-	public SimpleTrapObjectInfo Info => View.Info;
+	public SimpleTrapObjectInfo Info => Config.Info;
 
 	public override bool IsHiddenWhenInactive => !Info.DoNotHideWhenInactive;
 
@@ -106,21 +107,17 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 
 	protected override StatType DisarmSkill => Info.DisarmSkill;
 
-	public SimpleTrapObjectData(SimpleTrapObjectView trapView)
-		: base(trapView)
+	public SimpleTrapObjectData(ISimpleTrapEntityConfig config)
+		: base(config)
 	{
 	}
 
-	protected SimpleTrapObjectData(JsonConstructorMark _)
+	protected SimpleTrapObjectData(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	protected SimpleTrapObjectData()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return SimpleTrapObjectView.CreateView(this, base.UniqueId, base.ScriptZoneId);
 	}
@@ -142,22 +139,22 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 		float barkDuration = UtilityBark.GetBarkDuration(Info.TrapTriggeredText);
 		BaseUnitEntity baseUnitEntity = ContextData<BlueprintTrap.ElementsData>.Current?.TriggeringUnit;
 		BarkPlayer.Bark(baseUnitEntity, Info.TrapTriggeredText, VoiceOverType.Bark, baseUnitEntity?.VoGuid, barkDuration, baseUnitEntity);
-		ActionsHolder trapActions = View.TrapActions;
-		if (trapActions != null && trapActions.HasActions)
+		ActionList triggerActions = Config.TriggerActions;
+		if (triggerActions != null && triggerActions.HasActions)
 		{
-			View.TrapActions.Run();
+			triggerActions.Run();
 		}
 	}
 
 	public override void RunDisableActions(BaseUnitEntity unit)
 	{
-		Experience.GainForSkillCheck(DisableDC, unit);
-		ActionsHolder disableActions = View.DisableActions;
-		if (disableActions != null && disableActions.HasActions)
+		Experience.GainForSkillCheck((Info.DisableDifficulty == TrapDisableDifficulty.Easy) ? SkillCheckDifficulty.Easy : SkillCheckDifficulty.Hard, unit);
+		ActionList disarmActions = Config.DisarmActions;
+		if (disarmActions != null && disarmActions.HasActions)
 		{
 			using (ContextData<InteractingUnitData>.Request().Setup(unit))
 			{
-				View.DisableActions.Run();
+				disarmActions.Run();
 			}
 		}
 	}
@@ -167,7 +164,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 		Hash128 result = default(Hash128);
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
-		result.Append(Name);
+		result.Append(ViewName);
 		result.Append(ref PerceptionDC);
 		result.Append(ref PerceptionRadius);
 		Hash128 val2 = SimpleBlueprintHasher.GetHash128(TrapSettings);
@@ -178,7 +175,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		SimpleTrapObjectData source = new SimpleTrapObjectData();
+		SimpleTrapObjectData source = new SimpleTrapObjectData(default(OwlPackConstructorParameter));
 		result = Unsafe.As<SimpleTrapObjectData, TPossiblyBase>(ref source);
 	}
 
@@ -219,7 +216,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 		formatter.UnmanagedField(17, "TrapActive", ref value6, state);
 		string value7 = base.ScriptZoneId;
 		formatter.StringField(18, "ScriptZoneId", ref value7, state);
-		formatter.StringField(19, "Name", ref Name, state);
+		formatter.StringField(19, "ViewName", ref ViewName, state);
 		formatter.UnmanagedField(20, "PerceptionDC", ref PerceptionDC, state);
 		formatter.UnmanagedField(21, "PerceptionRadius", ref PerceptionRadius, state);
 		formatter.Field(22, "TrapSettings", ref TrapSettings, state);
@@ -299,7 +296,7 @@ public class SimpleTrapObjectData : TrapObjectData, IHashable, IOwlPackable<Simp
 				base.ScriptZoneId = formatter.ReadString(state);
 				break;
 			case 19:
-				Name = formatter.ReadString(state);
+				ViewName = formatter.ReadString(state);
 				break;
 			case 20:
 				PerceptionDC = formatter.ReadUnmanaged<int>(state);

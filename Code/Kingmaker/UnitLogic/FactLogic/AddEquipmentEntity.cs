@@ -1,5 +1,5 @@
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.ResourceLinks;
-using Kingmaker.View;
 using Kingmaker.Visual.CharacterSystem;
 using Owlcat.Runtime.Core.Utility;
 
@@ -12,8 +12,8 @@ public class AddEquipmentEntity : UnitFactComponentDelegate
 
 	protected override void OnActivateOrPostLoad()
 	{
-		UnitEntityView view = base.Owner.View;
-		if (!(view == null))
+		IUnitEntityView view = base.Owner.View;
+		if (view != null)
 		{
 			Character characterAvatar = view.CharacterAvatar;
 			if (!(characterAvatar == null))
@@ -25,8 +25,8 @@ public class AddEquipmentEntity : UnitFactComponentDelegate
 
 	protected override void OnDeactivate()
 	{
-		UnitEntityView view = base.Owner.View;
-		if (!(view == null))
+		IUnitEntityView view = base.Owner.View;
+		if (view != null)
 		{
 			Character characterAvatar = view.CharacterAvatar;
 			if (!(characterAvatar == null))

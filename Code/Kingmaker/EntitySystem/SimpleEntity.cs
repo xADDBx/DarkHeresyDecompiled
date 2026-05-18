@@ -1,6 +1,5 @@
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -10,26 +9,17 @@ namespace Kingmaker.EntitySystem;
 [OwlPackable(OwlPackableMode.Generate)]
 public abstract class SimpleEntity : Entity, IHashable, IOwlPackable<SimpleEntity>
 {
-	protected SimpleEntity(IEntityViewBase view)
-		: base(view.UniqueViewId, view.IsInGameBySettings)
+	protected SimpleEntity(IEntityConfig config)
+		: base(config)
 	{
 	}
 
-	protected SimpleEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	protected SimpleEntity(JsonConstructorMark _)
+	protected SimpleEntity(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	protected SimpleEntity()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}

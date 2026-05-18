@@ -3,28 +3,34 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Gameplay.Features.AreaEffects;
+using Kingmaker.Gameplay.Features.Channeling;
 using Kingmaker.Gameplay.Features.Cohesion;
+using Kingmaker.Gameplay.Features.Concentration.Events;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
+using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
+using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.View.Covers;
+using Kingmaker.View.Mechanics.Entities;
 using Pathfinding;
 using UnityEngine;
 using UnityEngine.Pool;
 
 namespace Kingmaker.UI.AR;
 
-public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscriber, ITurnBasedModeResumeHandler, IUnitMovableAreaHandler, ISubscriber<IMechanicEntity>, IAreaEffectHandler, ISubscriber<IAreaEffectEntity>, IAreaHandler, INetRoleSetHandler, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, IUnitFactionHandler, ITurnStartHandler
+public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscriber, ITurnBasedModeResumeHandler, IUnitMovableAreaHandler, ISubscriber<IMechanicEntity>, IAreaEffectHandler, ISubscriber<IAreaEffectEntity>, IAreaHandler, INetRoleSetHandler, IHologramPositionChangedHandler, IHologramClearHandler, IChannellingStart, IChannellingSuccessfulRelease, IConcentrationBrokenHandler, IInteractionHighlightUIHandler, IUnitDirectHoverUIHandler, IEntityGainFactHandler, IEntityLostFactHandler, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, ITurnStartHandler
 {
 	public struct AbilityAreaHudInfo
 	{
@@ -163,9 +169,13 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 
 	private readonly CombatHubCollectionAreaSource m_SecondaryAoeArea = new CombatHubCollectionAreaSource();
 
-	private readonly CombatHubCollectionAreaSource m_AllyCohesionArea = new CombatHubCollectionAreaSource();
+	private readonly CombatHubCollectionAreaSource m_ChannelingAbilityArea = new CombatHubCollectionAreaSource();
 
-	private readonly CombatHubCollectionAreaSource m_HostileCohesionArea = new CombatHubCollectionAreaSource();
+	private readonly CombatHubCollectionAreaSource m_HarmfulArea = new CombatHubCollectionAreaSource();
+
+	private readonly CombatHubCollectionAreaSource m_HoveredUnitCohesionArea = new CombatHubCollectionAreaSource();
+
+	private BaseUnitEntity m_HoveredUnit;
 
 	private readonly RingAreaSource m_WeaponEffectiveRangeArea = new RingAreaSource();
 
@@ -193,13 +203,17 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 
 	private bool m_LosBlockerAreaSourceValid;
 
-	private bool m_AllyCohesionAreaValid;
+	private bool m_ChannelingAbilityAreaValid;
 
-	private bool m_HostileCohesionAreaValid;
+	private bool m_HarmfulAreaValid;
+
+	private bool m_HoveredUnitCohesionAreaValid;
 
 	private bool m_PendingRefresh;
 
 	private CombatHudCommandSetAsset m_AbilityCommandsOverride;
+
+	private bool m_IsAdditionalInfoMode;
 
 	private GridNodeBase m_CurrentUnitNode;
 
@@ -216,7 +230,9 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 
 	private IDisposable m_ShowShowMovementAreas;
 
-	private List<PartCohesion> cohesionInCombat = new List<PartCohesion>();
+	private IDisposable m_ChannelingAreasRefresh;
+
+	private IDisposable m_AdditionalInfoRefresh;
 
 	public static CombatHUDRenderer Instance { get; private set; }
 
@@ -253,6 +269,10 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 	private void OnDisable()
 	{
 		Instance = this;
+		m_ChannelingAreasRefresh?.Dispose();
+		m_ChannelingAreasRefresh = null;
+		m_AdditionalInfoRefresh?.Dispose();
+		m_AdditionalInfoRefresh = null;
 		EventBus.Unsubscribe(this);
 		AstarPath.OnGraphsUpdated = (OnScanDelegate)Delegate.Remove(AstarPath.OnGraphsUpdated, new OnScanDelegate(OnGraphsUpdated));
 	}
@@ -310,6 +330,7 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 			}
 		}
 		m_PendingRefresh = true;
+		ScheduleAdditionalInfoRefresh();
 	}
 
 	void IAreaEffectHandler.HandleAreaEffectSpawned()
@@ -331,6 +352,7 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 				m_HostileDebugAreas.SetupArea(areaEffectEntity, in patternNodes);
 			}
 			m_PendingRefresh = true;
+			ScheduleAdditionalInfoRefresh();
 		}
 	}
 
@@ -347,6 +369,7 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 			{
 				m_PendingRefresh |= m_HostileDebugAreas.CleanupArea(areaEffectEntity);
 			}
+			ScheduleAdditionalInfoRefresh();
 		}
 	}
 
@@ -429,6 +452,9 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 	{
 		ClearAreas();
 		ClearLosBlocker();
+		PopulateChannelingAbilityAreas();
+		PopulateAdditionalInfoAreas();
+		PopulateHoveredUnitCohesionArea();
 		UpdateSurfaceRenderer();
 	}
 
@@ -442,7 +468,9 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 			PopulateThreateningArea();
 			PopulateMovementArea(movementNodes);
 			PopulateLosBlockerArea();
-			PopulateCohesionAreas();
+			PopulateChannelingAbilityAreas();
+			PopulateAdditionalInfoAreas();
+			PopulateHoveredUnitCohesionArea();
 			UpdateSurfaceRenderer();
 		}
 		catch
@@ -450,39 +478,6 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 			ClearAreas();
 			UpdateSurfaceRenderer();
 			throw;
-		}
-	}
-
-	private void PopulateCohesionAreas()
-	{
-		if (cohesionInCombat.Count != 0 && m_ActiveUnit != null && m_ActiveUnit.IsMyNetRole())
-		{
-			PopulateAllyCohesionArea();
-			PopulateHostileCohesionArea();
-		}
-	}
-
-	private void PopulateAllyCohesionArea()
-	{
-		foreach (PartCohesion item in cohesionInCombat)
-		{
-			if (item.Owner.Faction.IsPlayer)
-			{
-				m_AllyCohesionAreaValid = true;
-				m_AllyCohesionArea.AddRange(item.PatternNodes.Value);
-			}
-		}
-	}
-
-	private void PopulateHostileCohesionArea()
-	{
-		foreach (PartCohesion item in cohesionInCombat)
-		{
-			if (item.Owner.Faction.IsPlayerEnemy)
-			{
-				m_HostileCohesionAreaValid = true;
-				m_HostileCohesionArea.AddRange(item.PatternNodes.Value);
-			}
 		}
 	}
 
@@ -517,6 +512,9 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 			{
 				PopulateAbilityPatternAreas(abilityAreaHudInfo.pattern, abilityAreaHudInfo.haloPattern, buildPrimaryArea);
 			}
+			PopulateChannelingAbilityAreas();
+			PopulateAdditionalInfoAreas();
+			PopulateHoveredUnitCohesionArea();
 			UpdateSurfaceRenderer();
 		}
 		catch
@@ -538,8 +536,9 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 		m_PrimaryAoeArea.Clear();
 		m_SecondaryAoeArea.Clear();
 		m_WeaponEffectiveRangeArea.Clear();
-		m_AllyCohesionArea.Clear();
-		m_HostileCohesionArea.Clear();
+		m_ChannelingAbilityArea.Clear();
+		m_HarmfulArea.Clear();
+		m_HoveredUnitCohesionArea.Clear();
 		m_MovementAreaValid = false;
 		m_ActiveUnitAreaValid = false;
 		m_ThreateningAreaValid = false;
@@ -548,8 +547,9 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 		m_PrimaryAoeAreaValid = false;
 		m_SecondaryAoeAreaValid = false;
 		m_WeaponEffectiveRangeAreaValid = false;
-		m_AllyCohesionAreaValid = false;
-		m_HostileCohesionAreaValid = false;
+		m_ChannelingAbilityAreaValid = false;
+		m_HarmfulAreaValid = false;
+		m_HoveredUnitCohesionAreaValid = false;
 		m_AbilityCommandsOverride = null;
 	}
 
@@ -870,8 +870,11 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 				m_SurfaceRenderer.EffectiveRangeAreaSource = (m_WeaponEffectiveRangeAreaValid ? m_WeaponEffectiveRangeArea : null);
 				m_SurfaceRenderer.LosBlockerAreaSource = (m_LosBlockerAreaSourceValid ? m_LosBlockerArea : null);
 				m_SurfaceRenderer.AbilityCommandsOverride = m_AbilityCommandsOverride;
-				m_SurfaceRenderer.AllyCohesionAreaSource = (m_AllyCohesionAreaValid ? m_AllyCohesionArea : null);
-				m_SurfaceRenderer.HostileCohesionAreaSource = (m_HostileCohesionAreaValid ? m_HostileCohesionArea : null);
+				m_SurfaceRenderer.ChannelingAbilityAreaSource = (m_ChannelingAbilityAreaValid ? m_ChannelingAbilityArea : null);
+				m_SurfaceRenderer.HarmfulAreaSource = (m_HarmfulAreaValid ? m_HarmfulArea : null);
+				m_SurfaceRenderer.AdditionalInfoModeEnabled = m_IsAdditionalInfoMode;
+				m_SurfaceRenderer.HoveredUnitCohesionAreaSource = (m_HoveredUnitCohesionAreaValid ? m_HoveredUnitCohesionArea : null);
+				m_SurfaceRenderer.PointCharacterInfoModeEnabled = m_HoveredUnitCohesionAreaValid;
 				m_AllyDebugAreas.GetAreaDataList(m_SurfaceRenderer.AllyDebugAreaDataList);
 				m_HostileDebugAreas.GetAreaDataList(m_SurfaceRenderer.HostileDebugAreaDataList);
 				m_SurfaceRenderer.Display();
@@ -890,6 +893,48 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 			return AreaDisplayMode.Movement;
 		}
 		return AreaDisplayMode.Default;
+	}
+
+	public void HandleHologramPositionChanged()
+	{
+		if (EvaluateAreaDisplayMode() == AreaDisplayMode.Movement)
+		{
+			m_PendingRefresh = true;
+		}
+	}
+
+	public void HandleHologramClear()
+	{
+		if (EvaluateAreaDisplayMode() == AreaDisplayMode.Movement)
+		{
+			m_PendingRefresh = true;
+		}
+	}
+
+	public void HandleHighlightChange(bool isOn)
+	{
+		if (m_IsAdditionalInfoMode != isOn)
+		{
+			m_IsAdditionalInfoMode = isOn;
+			m_AdditionalInfoRefresh?.Dispose();
+			m_AdditionalInfoRefresh = null;
+			RefreshAdditionalInfoAreas();
+		}
+	}
+
+	public void HandleChannelingStart()
+	{
+		ScheduleChannelingAbilityRefresh();
+	}
+
+	public void HandleSuccessfulRelease()
+	{
+		ScheduleChannelingAbilityRefresh();
+	}
+
+	public void HandleConcentrationBroken(MechanicEntity reason)
+	{
+		ScheduleChannelingAbilityRefresh();
 	}
 
 	public void HandleTurnBasedModeResumed()
@@ -935,50 +980,204 @@ public class CombatHUDRenderer : MonoBehaviour, ITurnBasedModeHandler, ISubscrib
 		return Game.Instance.Controllers.TurnController.IsPreparationTurn;
 	}
 
+	private void ScheduleChannelingAbilityRefresh()
+	{
+		m_ChannelingAreasRefresh?.Dispose();
+		m_ChannelingAreasRefresh = DelayedInvoker.InvokeInFrames(delegate
+		{
+			m_ChannelingAreasRefresh = null;
+			RefreshChannelingAbilityAreas();
+		}, 1);
+	}
+
+	private void RefreshChannelingAbilityAreas()
+	{
+		PopulateChannelingAbilityAreas();
+		UpdateSurfaceRenderer();
+	}
+
+	private void PopulateChannelingAbilityAreas()
+	{
+		m_ChannelingAbilityArea.Clear();
+		m_ChannelingAbilityAreaValid = false;
+		if (TurnController.IsInTurnBasedCombat())
+		{
+			PopulateChannelingAbilityAreas(Game.Instance.Controllers.TurnController.CurrentRoundUnitsOrder);
+			PopulateChannelingAbilityAreas(Game.Instance.Controllers.TurnController.NextRoundUnitsOrder);
+		}
+	}
+
+	private void PopulateChannelingAbilityAreas(IEnumerable<MechanicEntity> units)
+	{
+		foreach (MechanicEntity unit in units)
+		{
+			PartChanneling optional = unit.GetOptional<PartChanneling>();
+			if (optional == null || !optional.IsActive)
+			{
+				continue;
+			}
+			AbilityData ability = optional.Ability;
+			if (ability == null || !ability.IsAoe)
+			{
+				continue;
+			}
+			TargetWrapper targetWrapper = optional.Target ?? ((TargetWrapper)ability.Caster);
+			if (targetWrapper == null || ability.Caster == null)
+			{
+				continue;
+			}
+			NodeList nodes = ability.GetPattern(targetWrapper, ability.Caster.Position).Nodes;
+			if (nodes.IsEmpty)
+			{
+				continue;
+			}
+			foreach (GridNodeBase item in nodes)
+			{
+				m_ChannelingAbilityArea.Add(item);
+			}
+			m_ChannelingAbilityAreaValid = true;
+		}
+	}
+
+	private void ScheduleAdditionalInfoRefresh()
+	{
+		if (m_IsAdditionalInfoMode)
+		{
+			m_AdditionalInfoRefresh?.Dispose();
+			m_AdditionalInfoRefresh = DelayedInvoker.InvokeInFrames(delegate
+			{
+				m_AdditionalInfoRefresh = null;
+				RefreshAdditionalInfoAreas();
+			}, 1);
+		}
+	}
+
+	private void RefreshAdditionalInfoAreas()
+	{
+		PopulateAdditionalInfoAreas();
+		UpdateSurfaceRenderer();
+	}
+
+	private void PopulateAdditionalInfoAreas()
+	{
+		m_HarmfulArea.Clear();
+		m_HarmfulAreaValid = false;
+		if (!m_IsAdditionalInfoMode || !TurnController.IsInTurnBasedCombat())
+		{
+			return;
+		}
+		foreach (AreaEffectEntity areaEffect in Game.Instance.EntityPools.AreaEffects)
+		{
+			if (!areaEffect.IsHarmful())
+			{
+				continue;
+			}
+			NodeList nodeList = areaEffect.GetPatternCoveredNodes();
+			if (nodeList.IsEmpty)
+			{
+				nodeList = areaEffect.CoveredNodes;
+			}
+			if (nodeList.IsEmpty)
+			{
+				continue;
+			}
+			foreach (GridNodeBase item in nodeList)
+			{
+				m_HarmfulArea.Add(item);
+			}
+			m_HarmfulAreaValid = true;
+		}
+	}
+
+	public void HandleHoverChange(AbstractUnitEntityView unitEntityView, bool isHover, bool isDirect)
+	{
+		BaseUnitEntity baseUnitEntity = unitEntityView?.EntityData as BaseUnitEntity;
+		if (isHover)
+		{
+			if (baseUnitEntity == m_HoveredUnit)
+			{
+				return;
+			}
+			m_HoveredUnit = baseUnitEntity;
+		}
+		else
+		{
+			if (m_HoveredUnit == null || baseUnitEntity != m_HoveredUnit)
+			{
+				return;
+			}
+			m_HoveredUnit = null;
+		}
+		RefreshHoveredUnitArea();
+	}
+
+	void IEntityGainFactHandler.HandleEntityGainFact(EntityFact fact)
+	{
+		if (fact?.Owner == m_HoveredUnit)
+		{
+			RefreshHoveredUnitArea();
+		}
+	}
+
+	void IEntityLostFactHandler.HandleEntityLostFact(EntityFact fact)
+	{
+		if (fact?.Owner == m_HoveredUnit)
+		{
+			RefreshHoveredUnitArea();
+		}
+	}
+
 	void IUnitCombatHandler.HandleUnitJoinCombat()
 	{
-		CollectCohesion(EventInvokerExtensions.BaseUnitEntity);
+		if (EventInvokerExtensions.BaseUnitEntity == m_HoveredUnit)
+		{
+			RefreshHoveredUnitArea();
+		}
 	}
 
 	void IUnitCombatHandler.HandleUnitLeaveCombat()
 	{
-		PartCohesion optional = EventInvokerExtensions.BaseUnitEntity.Parts.GetOptional<PartCohesion>();
-		if (cohesionInCombat.Contains(optional))
+		if (EventInvokerExtensions.BaseUnitEntity == m_HoveredUnit)
 		{
-			cohesionInCombat.Remove(optional);
+			RefreshHoveredUnitArea();
 		}
-	}
-
-	void IUnitFactionHandler.HandleFactionChanged()
-	{
-		CollectCohesion(EventInvokerExtensions.BaseUnitEntity);
 	}
 
 	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (Game.Instance.Controllers.TurnController.CurrentUnit is BaseUnitEntity unitEntity)
+		if (m_HoveredUnit != null)
 		{
-			CollectCohesion(unitEntity);
+			RefreshHoveredUnitArea();
 		}
 	}
 
-	public void HandleEntityGainFact(EntityFact fact)
+	private void RefreshHoveredUnitArea()
 	{
-		if (fact.Owner is BaseUnitEntity unitEntity)
-		{
-			CollectCohesion(unitEntity);
-		}
+		PopulateHoveredUnitCohesionArea();
+		UpdateSurfaceRenderer();
 	}
 
-	private void CollectCohesion(BaseUnitEntity unitEntity)
+	private void PopulateHoveredUnitCohesionArea()
 	{
-		IEnumerable<CohesionRangeTrigger> components = unitEntity.Facts.GetComponents<CohesionRangeTrigger>();
-		if (components != null && components.ToList().Count > 0)
+		m_HoveredUnitCohesionArea.Clear();
+		m_HoveredUnitCohesionAreaValid = false;
+		if (m_HoveredUnit == null || !TurnController.IsInTurnBasedCombat() || (!m_HoveredUnit.Facts.GetComponents<CohesionRangeTrigger>().Any() && !m_HoveredUnit.Facts.GetComponents<CohesionRangeBuff>().Any()))
 		{
-			PartCohesion optional = unitEntity.Parts.GetOptional<PartCohesion>();
-			if (optional != null && !cohesionInCombat.Contains(optional))
+			return;
+		}
+		PartCohesion optional = m_HoveredUnit.Parts.GetOptional<PartCohesion>();
+		if (optional == null)
+		{
+			return;
+		}
+		NodeList? patternNodes = optional.PatternNodes;
+		if (patternNodes.HasValue)
+		{
+			NodeList valueOrDefault = patternNodes.GetValueOrDefault();
+			if (!valueOrDefault.IsEmpty)
 			{
-				cohesionInCombat.Add(optional);
+				m_HoveredUnitCohesionArea.AddRange(valueOrDefault);
+				m_HoveredUnitCohesionAreaValid = true;
 			}
 		}
 	}

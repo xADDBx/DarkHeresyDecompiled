@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Controllers;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
@@ -19,7 +20,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class InteractionBarkPart : InteractionPart<InteractionBarkSettings>, IHashable, IOwlPackable<InteractionBarkPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionBarkPart",
 		OldNames = null,
@@ -40,6 +41,14 @@ public class InteractionBarkPart : InteractionPart<InteractionBarkSettings>, IHa
 
 	public override bool CanInteract()
 	{
+		if (base.Settings.UseGlobalCooldown)
+		{
+			InteractionGlobalCooldownController controller = Game.Instance.GetController<InteractionGlobalCooldownController>();
+			if (controller != null && !controller.CheckGlobalCooldown())
+			{
+				return false;
+			}
+		}
 		ConditionsHolder conditionsHolder = base.Settings.Condition?.Get();
 		if (conditionsHolder != null)
 		{
@@ -60,7 +69,7 @@ public class InteractionBarkPart : InteractionPart<InteractionBarkSettings>, IHa
 
 	protected override void OnInteract(BaseUnitEntity user)
 	{
-		SharedStringAsset bark = base.Settings.GetBark();
+		LocalizedString bark = base.Settings.GetBark();
 		if (bark == null)
 		{
 			return;
@@ -69,31 +78,40 @@ public class InteractionBarkPart : InteractionPart<InteractionBarkSettings>, IHa
 		float duration = UtilityBark.DefaultBarkTime;
 		if (base.Settings.BarkDurationByText)
 		{
-			duration = UtilityBark.GetBarkDuration(bark.String);
+			duration = UtilityBark.GetBarkDuration(bark);
 		}
 		if (base.Settings.OverrideBarkDuration)
 		{
 			duration = base.Settings.BarkDuration;
 		}
-		string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(base.Settings, entity);
-		BarkPlayer.Bark(entity, bark.String, VoiceOverType.Bark, voGuidBySourceAndTarget, duration, user);
-		ActionsHolder actionsHolder = base.Settings.BarkActions?.Get();
-		if (actionsHolder == null)
+		using (ContextData<ActionExecutionContextData>.Request().Setup(ActionExecutionContextData.Type.Interaction))
 		{
-			return;
-		}
-		ActionList actions = actionsHolder.Actions;
-		if (actions == null || !actions.HasActions || (base.Settings.RunActionsOnce && base.Settings.ActionsRan))
-		{
-			return;
-		}
-		using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
-		{
-			using (ContextData<InteractingUnitData>.Request().Setup(user))
+			string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(base.Settings, entity);
+			BarkPlayer.Bark(entity, bark, VoiceOverType.Bark, voGuidBySourceAndTarget, duration, user);
+			ActionsHolder actionsHolder = base.Settings.BarkActions?.Get();
+			if (actionsHolder != null)
 			{
-				actionsHolder.Actions.Run();
-				base.Settings.ActionsRan = true;
+				ActionList actions = actionsHolder.Actions;
+				if (actions != null && actions.HasActions)
+				{
+					if (base.Settings.RunActionsOnce && base.Settings.ActionsRan)
+					{
+						return;
+					}
+					using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
+					{
+						using (ContextData<InteractingUnitData>.Request().Setup(user))
+						{
+							actionsHolder.Actions.Run();
+							base.Settings.ActionsRan = true;
+						}
+					}
+				}
 			}
+		}
+		if (base.Settings.UseGlobalCooldown)
+		{
+			Game.Instance.GetController<InteractionGlobalCooldownController>()?.UpdateGlobalCooldown(base.Owner);
 		}
 	}
 
@@ -105,7 +123,7 @@ public class InteractionBarkPart : InteractionPart<InteractionBarkSettings>, IHa
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionBarkPart source = new InteractionBarkPart();
 		result = Unsafe.As<InteractionBarkPart, TPossiblyBase>(ref source);

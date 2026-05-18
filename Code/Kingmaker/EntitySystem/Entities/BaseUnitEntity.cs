@@ -5,19 +5,17 @@ using JetBrains.Annotations;
 using Kingmaker.AreaLogic.Cutscenes;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Designers.Mechanics.Facts;
 using Kingmaker.Code.Gameplay.Blueprints;
+using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Controllers.Optimization;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.EntitySystem.Persistence.Versioning;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Framework;
@@ -58,7 +56,6 @@ using Kingmaker.View;
 using Kingmaker.View.Covers;
 using Kingmaker.Visual.HitSystem;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using Pathfinding;
 using R3;
@@ -68,10 +65,32 @@ using UnityEngine;
 namespace Kingmaker.EntitySystem.Entities;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.IOwner, IEntityPartOwner<PartUnitCombatState>, IEntityPartOwner, PartFaction.IOwner, IEntityPartOwner<PartFaction>, PartCombatGroup.IOwner, IEntityPartOwner<PartCombatGroup>, PartVision.IOwner, IEntityPartOwner<PartVision>, PartUnitStealth.IOwner, IEntityPartOwner<PartUnitStealth>, PartUnitProgression.IOwner, IEntityPartOwner<PartUnitProgression>, PartStatsAttributes.IOwner, IEntityPartOwner<PartStatsAttributes>, PartStatsSkills.IOwner, IEntityPartOwner<PartStatsSkills>, PartUnitProficiency.IOwner, IEntityPartOwner<PartUnitProficiency>, PartAbilityResourceCollection.IOwner, IEntityPartOwner<PartAbilityResourceCollection>, PartInventory.IOwner, IEntityPartOwner<PartInventory>, PartUnitBody.IOwner, IEntityPartOwner<PartUnitBody>, PartUnitDescription.IOwner, IEntityPartOwner<PartUnitDescription>, PartAbilityCooldowns.IOwner, IEntityPartOwner<PartAbilityCooldowns>, PartActionBar.IOwner, PartUnitAlignment.IOwner, IEntityPartOwner<PartUnitAlignment>, ILootable, IBaseUnitEntity, IAbstractUnitEntity, IMechanicEntity, IEntity, IDisposable, ICombatParticipant, IHashable, IOwlPackable<BaseUnitEntity>
+public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.IOwner, IEntityPartOwner<PartUnitCombatState>, IEntityPartOwner, PartFaction.IOwner, IEntityPartOwner<PartFaction>, PartCombatGroup.IOwner, IEntityPartOwner<PartCombatGroup>, PartVision.IOwner, IEntityPartOwner<PartVision>, PartUnitStealth.IOwner, IEntityPartOwner<PartUnitStealth>, PartUnitProgression.IOwner, IEntityPartOwner<PartUnitProgression>, PartUnitProficiency.IOwner, IEntityPartOwner<PartUnitProficiency>, PartAbilityResourceCollection.IOwner, IEntityPartOwner<PartAbilityResourceCollection>, PartInventory.IOwner, IEntityPartOwner<PartInventory>, PartUnitBody.IOwner, IEntityPartOwner<PartUnitBody>, PartUnitDescription.IOwner, IEntityPartOwner<PartUnitDescription>, PartAbilityCooldowns.IOwner, IEntityPartOwner<PartAbilityCooldowns>, PartActionBar.IOwner, PartUnitAlignment.IOwner, IEntityPartOwner<PartUnitAlignment>, ILootable, IBaseUnitEntity, IAbstractUnitEntity, IMechanicEntity, IEntity, IDisposable, ICombatParticipant, IAreaCRChangedHandler, ISubscriber, IHashable, IOwlPackable<BaseUnitEntity>
 {
-	public sealed class OverrideUnitCR : SimpleContextData<int, OverrideUnitCR>
+	public sealed class EncounterData : ContextData<EncounterData>
 	{
+		public BlueprintEncounter Blueprint { get; private set; }
+
+		public string SpawnerId { get; private set; }
+
+		public EncounterData Setup(BlueprintEncounter encounter, string spawnerId)
+		{
+			Blueprint = encounter;
+			SpawnerId = spawnerId;
+			return this;
+		}
+
+		public EncounterData Setup(BlueprintEncounter encounter)
+		{
+			Blueprint = encounter;
+			return this;
+		}
+
+		protected override void Reset()
+		{
+			Blueprint = null;
+			SpawnerId = null;
+		}
 	}
 
 	public new interface IUnitAsleepHandler<TTag> : IUnitAsleepHandler, ISubscriber<IEntity>, ISubscriber, IEventTag<IUnitAsleepHandler, TTag>
@@ -87,6 +106,10 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 	[GameStateIgnore]
 	[OwlPackInclude]
 	protected bool m_IsExtra;
+
+	[OwlPackInclude]
+	[OwlPackOldName("m_OverrideCR")]
+	protected int? m_EncounterCROverride;
 
 	private MechanicsContext m_CachedContext;
 
@@ -120,8 +143,6 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 	[OwlPackInclude]
 	public TimeSpan? LastRestTime { get; set; }
 
-	public override bool IsExtra => m_IsExtra;
-
 	[JsonProperty]
 	[GameStateIgnore]
 	[OwlPackInclude]
@@ -140,13 +161,17 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	public AkStateReference MusicBossFightType { get; set; }
 
+	public override bool IsExtra => m_IsExtra;
+
 	public PortraitData Portrait => UISettings.Portrait;
 
 	public override bool IsInLockControlCutscene => CutsceneControlledUnit.GetControllingPlayer(this)?.HasActiveLockControl ?? false;
 
 	public override bool AddToGrid => true;
 
-	public new UnitEntityView View => (UnitEntityView)base.View;
+	public new IUnitEntityView View => (IUnitEntityView)base.View;
+
+	public new IUnitEntityConfig Config => (IUnitEntityConfig)base.Config;
 
 	public bool AiMovementForbidden
 	{
@@ -238,7 +263,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 	{
 		get
 		{
-			CountingGuard countingGuard = ObjectExtensions.Or(View, null)?.HandsEquipment?.AreHandsBusyWithAnimation;
+			CountingGuard countingGuard = View?.HandsEquipment?.AreHandsBusyWithAnimation;
 			if (countingGuard == null)
 			{
 				return false;
@@ -267,17 +292,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 		}
 	}
 
-	public override float Corpulence
-	{
-		get
-		{
-			if (!View)
-			{
-				return base.Corpulence;
-			}
-			return View.Corpulence;
-		}
-	}
+	public override float Corpulence => Config?.Corpulence ?? base.Corpulence;
 
 	public bool SilentCaster => GetOptional<PartPolymorphed>()?.Component?.SilentCaster ?? base.Blueprint.VisualSettings.SilentCaster;
 
@@ -322,7 +337,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 		}
 	}
 
-	public bool HasUMDSkill => Skills.SkillLoreXenos.BaseValue > 0;
+	public bool HasUMDSkill => base.Actor.GetStatBase(StatType.SkillLoreXenos) > 0;
 
 	public bool IsEssentialForGame
 	{
@@ -351,8 +366,6 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 			return true;
 		}
 	}
-
-	public override UnitMovementAgentBase MaybeMovementAgent => ObjectExtensions.Or(View, null)?.MovementAgent;
 
 	public override bool CanBeAttackedDirectly => true;
 
@@ -409,22 +422,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 		}
 	}
 
-	public int CR
-	{
-		get
-		{
-			int? overrideCR = base.Blueprint.OverrideCR;
-			if (!overrideCR.HasValue)
-			{
-				if (SimpleContextData<int, OverrideUnitCR>.Current == 0)
-				{
-					return Game.Instance.CurrentlyLoadedArea?.GetCR() ?? 0;
-				}
-				return SimpleContextData<int, OverrideUnitCR>.Current;
-			}
-			return overrideCR.GetValueOrDefault();
-		}
-	}
+	public int CR => base.Blueprint.OverrideCR ?? m_EncounterCROverride ?? Game.Instance.CurrentlyLoadedArea?.GetCR() ?? 0;
 
 	public abstract PartUnitCombatState CombatState { get; }
 
@@ -439,10 +437,6 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	public abstract PartUnitProgression Progression { get; }
 
-	public abstract PartStatsAttributes Attributes { get; }
-
-	public abstract PartStatsSkills Skills { get; }
-
 	public abstract PartUnitProficiency Proficiencies { get; }
 
 	public abstract PartAbilityResourceCollection AbilityResources { get; }
@@ -453,7 +447,9 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	public abstract PartUnitBody Body { get; }
 
-	public PartUnitAlignment Alignment => GetOrCreate<PartUnitAlignment>();
+	public abstract PartArmor Armor { get; }
+
+	public PartUnitAlignment Alignment => GetRequired<PartUnitAlignment>();
 
 	public PartAbilityCooldowns AbilityCooldowns => GetRequired<PartAbilityCooldowns>();
 
@@ -479,11 +475,6 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	public Func<ItemEntity, bool> CanInsertItem => null;
 
-	public bool MeetsPrerequisite(PrerequisiteStat stat)
-	{
-		return GetStatOptional(stat.Stat)?.PermanentValue >= stat.MinValue;
-	}
-
 	public void MarkLootViewed()
 	{
 		m_LootViewed = true;
@@ -494,17 +485,23 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 		return LosCalculations.GetCoverType((GridNode)base.CurrentNode.node);
 	}
 
+	protected BaseUnitEntity(IUnitEntityConfig config)
+		: base(config)
+	{
+	}
+
 	protected BaseUnitEntity(string uniqueId, bool isInGame, BlueprintUnit blueprint)
 		: base(uniqueId, isInGame, blueprint)
 	{
+		EncounterData current = ContextData<EncounterData>.Current;
+		if (current != null)
+		{
+			m_EncounterCROverride = current.Blueprint.CROverride;
+		}
 	}
 
-	protected BaseUnitEntity(JsonConstructorMark _)
+	protected BaseUnitEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected BaseUnitEntity()
 	{
 	}
 
@@ -525,7 +522,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	public override StatBaseValue GetStatBaseValue(StatType type)
 	{
-		return UnitBaseStats.Get(base.OriginalBlueprint, SettingsRoot.Difficulty.NPCDifficulty, CR)[type];
+		return UnitBaseStats.Get(base.OriginalBlueprint, SettingsRoot.Difficulty.EnemyDurability, CR)[type];
 	}
 
 	protected override void OnPrepareOrPrePostLoad()
@@ -550,10 +547,10 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 	protected override void OnCreateParts()
 	{
 		base.OnCreateParts();
-		GetOrCreate<PartStatsContainer>();
 		GetOrCreate<PartAbilityCooldowns>();
 		GetOrCreate<EntityBoundsPart>();
 		GetOrCreate<PartProvidesCover>();
+		GetOrCreate<PartUnitAlignment>();
 		if ((bool)ContextData<UnitHelper.PreviewUnit>.Current)
 		{
 			GetOrCreate<PartPreviewUnit>();
@@ -609,29 +606,11 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 		{
 			using (ProfileScope.New("Starting Inventory"))
 			{
-				AddStartingInventory();
+				Inventory.AddStartingInventory(base.OriginalBlueprint);
 			}
 		}
 		Remove<LevelUpPlanUnitHolder>();
 		UnitUpgraderHelper.SetAllUpgradersApplied(base.OriginalBlueprint, fromPlaceholder: false, ref m_AppliedUpgraders);
-	}
-
-	public void AddStartingInventory()
-	{
-		if ((bool)ContextData<UnitHelper.DoNotCreateItems>.Current)
-		{
-			return;
-		}
-		using (ProfileScope.New("Add Item"))
-		{
-			using (ContextData<ItemsCollection.SuppressEvents>.Request())
-			{
-				foreach (BlueprintItem item in base.OriginalBlueprint.StartingInventory.NotNull())
-				{
-					Inventory.Add(item);
-				}
-			}
-		}
 	}
 
 	protected override void OnIsInGameChanged()
@@ -674,7 +653,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 		return unitEntityView;
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		try
 		{
@@ -791,8 +770,7 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	public void OnGainPathRank(BlueprintPath path)
 	{
-		Health.HitPoints.UpdateValue();
-		EventBus.RaiseEvent((IBaseUnitEntity)this, (Action<IUnitGainPathRankHandler>)delegate(IUnitGainPathRankHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)this, (Action<IUnitGainPathRankHandler>)delegate(IUnitGainPathRankHandler h)
 		{
 			h.HandleUnitGainPathRank(path);
 		}, isCheckRuntime: true);
@@ -800,10 +778,12 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 
 	protected override void OnDifficultyChanged()
 	{
-		foreach (ModifiableValue allStat in base.Stats.AllStats)
-		{
-			allStat.RecalculateBaseValue();
-		}
+		base.Actor.InvalidateAllStatCaches("OnDifficultyChanged");
+	}
+
+	void IAreaCRChangedHandler.HandleAreaCRChanged()
+	{
+		base.Actor.InvalidateAllStatCaches("HandleAreaCRChanged");
 	}
 
 	protected override void DisposeImplementation()
@@ -846,6 +826,11 @@ public abstract class BaseUnitEntity : AbstractUnitEntity, PartUnitCombatState.I
 			}
 			Remove<UnitPartDeploymentPhaseInitialPosition>();
 		}
+	}
+
+	public bool MeetsPrerequisite(PrerequisiteStat stat)
+	{
+		return base.Actor.GetStatPermanent(stat.Stat) >= stat.MinValue;
 	}
 
 	public override Hash128 GetHash128()

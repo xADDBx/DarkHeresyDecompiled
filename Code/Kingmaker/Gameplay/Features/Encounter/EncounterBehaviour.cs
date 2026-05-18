@@ -1,7 +1,11 @@
 using System;
+using System.Linq;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.View.Spawners;
+using Owlcat.AI;
+using Owlcat.BehaviourTrees;
 using Owlcat.Fmw.Blueprints;
 using UnityEngine;
 
@@ -27,6 +31,28 @@ public sealed class EncounterBehaviour : MonoBehaviour
 		public UnitSpawner SquadLeader = new UnitSpawner();
 
 		public UnitSpawner[] Spawners = new UnitSpawner[0];
+
+		public bool TryValidateSquadBrains(out BlueprintUnit problematicUnit)
+		{
+			if (IsSquad)
+			{
+				UnitSpawner[] spawners = Spawners;
+				foreach (UnitSpawner unitSpawner in spawners)
+				{
+					if (!(unitSpawner == null))
+					{
+						BlueprintUnit blueprint = unitSpawner.Blueprint;
+						if (blueprint != null && blueprint.GetComponent<AIAgentComponent>()?.BehaviourTree.Nodes.All((BehaviourTreeNodeElement node) => node is SquadControlNodeElement) == false)
+						{
+							problematicUnit = unitSpawner.Blueprint;
+							return false;
+						}
+					}
+				}
+			}
+			problematicUnit = null;
+			return true;
+		}
 	}
 
 	[CanBeNull]

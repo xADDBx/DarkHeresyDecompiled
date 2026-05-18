@@ -18,8 +18,6 @@ public class UnitAnimationActionClip : UnitAnimationAction
 
 	public override bool SupportCaching => Type != UnitAnimationType.None;
 
-	public override bool ForceFinishOnJoinCombat => true;
-
 	public bool Looping
 	{
 		get
@@ -31,6 +29,8 @@ public class UnitAnimationActionClip : UnitAnimationAction
 			return false;
 		}
 	}
+
+	public ClipDurationType DurationType { get; set; }
 
 	public override IEnumerable<AnimationClipWrapper> ClipWrappers
 	{
@@ -48,7 +48,7 @@ public class UnitAnimationActionClip : UnitAnimationAction
 		}
 		else
 		{
-			handle.StartClip(m_Clip);
+			handle.StartClip(m_Clip, DurationType);
 		}
 	}
 

@@ -5,12 +5,11 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Newtonsoft.Json;
+using Kingmaker.Utility.DotNetExtensions;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -18,7 +17,7 @@ using UnityEngine;
 namespace Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class DetectiveTraceRootEntity : MapObjectEntity, IAreaActivationHandler, ISubscriber, IHashable, IOwlPackable<DetectiveTraceRootEntity>
+public class DetectiveTraceRootEntity : MapObjectEntity, IAreaActivationHandler, ISubscriber, IEtudesUpdateHandler, IHashable, IOwlPackable<DetectiveTraceRootEntity>
 {
 	private List<EntityRef<DetectiveTraceEntity>> m_RootTraces = new List<EntityRef<DetectiveTraceEntity>>();
 
@@ -50,35 +49,40 @@ public class DetectiveTraceRootEntity : MapObjectEntity, IAreaActivationHandler,
 
 	public InteractionPartDetectiveTrace Interaction => GetRequired<InteractionPartDetectiveTrace>();
 
-	public new DetectiveTraceRootView View => (DetectiveTraceRootView)base.View;
+	public new IDetectiveTraceRootConfig Config => (IDetectiveTraceRootConfig)base.Config;
 
-	public DetectiveTraceRootEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
+	public DetectiveTraceRootEntity(IDetectiveTraceRootConfig config)
+		: base(config)
 	{
 	}
 
-	[JsonConstructor]
-	public DetectiveTraceRootEntity(JsonConstructorMark _)
+	public DetectiveTraceRootEntity(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	protected DetectiveTraceRootEntity()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
 
 	void IAreaActivationHandler.OnAreaActivated()
 	{
+		UpdateRootTraces();
+	}
+
+	public void OnEtudesUpdate()
+	{
+		UpdateRootTraces();
+	}
+
+	private void UpdateRootTraces()
+	{
 		m_RootTraces.Clear();
-		foreach (DetectiveTraceView rootTrace in View.RootTraces)
+		foreach (DetectiveTraceEntity item in Config.Traces.Dereference().NotNull())
 		{
-			m_RootTraces.Add(rootTrace.Data);
-			rootTrace.Data.SetRoot(this);
+			m_RootTraces.Add(item);
+			item.SetRoot(this);
 		}
 	}
 
@@ -113,7 +117,7 @@ public class DetectiveTraceRootEntity : MapObjectEntity, IAreaActivationHandler,
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		DetectiveTraceRootEntity source = new DetectiveTraceRootEntity();
+		DetectiveTraceRootEntity source = new DetectiveTraceRootEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<DetectiveTraceRootEntity, TPossiblyBase>(ref source);
 	}
 

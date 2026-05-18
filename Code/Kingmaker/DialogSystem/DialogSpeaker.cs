@@ -5,7 +5,6 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Framework.VO;
 using Kingmaker.Controllers;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.Controllers.Units;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ElementsSystem;
@@ -52,13 +51,9 @@ public class DialogSpeaker
 	{
 		get
 		{
-			if (!NoSpeaker)
+			if (!NoSpeaker && (SpeakerPortrait != null || Blueprint != null))
 			{
-				if (SpeakerPortrait == null)
-				{
-					return Blueprint != null;
-				}
-				return true;
+				return SpeakerEvaluator == null;
 			}
 			return false;
 		}
@@ -89,13 +84,13 @@ public class DialogSpeaker
 	}
 
 	[CanBeNull]
-	public BaseUnitEntity GetSpeaker(BlueprintCueBase cue)
+	public BaseUnitEntity GetSpeaker(BlueprintCueBase cue = null)
 	{
 		if (NoSpeaker)
 		{
 			return null;
 		}
-		if (NeedsEntity && TryGetSpeakerEntity(cue, out var speaker))
+		if (Application.isPlaying && NeedsEntity && TryGetSpeakerEntity(cue, out var speaker))
 		{
 			return speaker;
 		}
@@ -103,7 +98,7 @@ public class DialogSpeaker
 	}
 
 	[CanBeNull]
-	public bool TryGetSpeakerEntity([CanBeNull] BlueprintCueBase cue, out BaseUnitEntity speaker)
+	public bool TryGetSpeakerEntity([CanBeNull] BlueprintCueBase cue, out BaseUnitEntity speaker, bool isFromSequence = false)
 	{
 		speaker = null;
 		if (NoSpeaker)
@@ -116,35 +111,40 @@ public class DialogSpeaker
 		}
 		if (SpeakerEvaluator != null)
 		{
-			speaker = SpeakerEvaluator.GetValue() as BaseUnitEntity;
+			try
+			{
+				speaker = SpeakerEvaluator.GetValue() as BaseUnitEntity;
+			}
+			catch (Exception)
+			{
+				DialogDebug.Add(cue, "Failed to evaluate speaker.", Color.red);
+			}
 		}
 		else if (Blueprint != null)
 		{
 			Vector3 dialogPosition = Game.Instance.Controllers.DialogController.DialogPosition;
 			IEnumerable<BaseUnitEntity> second = Game.Instance.Controllers.EntitySpawner.CreationQueue.Select((EntitySpawnController.SpawnEntry ce) => ce.Entity).OfType<BaseUnitEntity>();
 			MakeEssentialCharactersConscious();
-			ReplacedSpeakerWithErrorSpeaker = false;
 			speaker = (from u in Game.Instance.EntityPools.AllBaseUnits.Concat(Game.Instance.Player.Party)
 				where u.IsInGame && !u.Suppressed
 				select u).Concat(second).Select(SelectMatchingUnit).NotNull()
 				.Distinct()
 				.Nearest(dialogPosition);
 		}
+		ReplacedSpeakerWithErrorSpeaker = false;
 		if (speaker != null)
 		{
 			return true;
 		}
-		string message = "speaker[" + Blueprint.name + "] doesnt exist. Skipping Cue";
-		if (SpeakerPortrait != null || Blueprint.IsCompanion || DoNotReplaceSpeakerWithErrorSpeaker)
+		if (SpeakerPortrait != null || DoNotReplaceSpeakerWithErrorSpeaker || isFromSequence)
 		{
-			DialogDebug.Add(cue, message);
+			DialogDebug.Add(cue, "Speaker doesnt exist. Skipping Cue");
 			return false;
 		}
 		speaker = ErrorSpeaker;
 		ReplacedSpeakerWithErrorSpeaker = true;
-		message = "speaker[" + Blueprint.name + "] doesnt exist, replaced with defaultUnit";
-		DialogDebug.Add(cue, message, Color.red);
-		return false;
+		DialogDebug.Add(cue, "Speaker doesnt exist, replaced with defaultUnit", Color.red);
+		return true;
 	}
 
 	[CanBeNull]
@@ -179,9 +179,22 @@ public class DialogSpeaker
 
 	public string GetVoGuidRuntime()
 	{
-		if (SpeakerEvaluator != null && SpeakerEvaluator.GetValue().TryGetVoGuid(out var voGuid))
+		if (SpeakerEvaluator != null)
 		{
-			return voGuid;
+			MechanicEntity mechanicEntity = null;
+			try
+			{
+				mechanicEntity = SpeakerEvaluator.GetValue();
+			}
+			catch (Exception)
+			{
+				DialogDebug.Add(null, "Failed to evaluate speaker for VO ID.", Color.red);
+				return null;
+			}
+			if (mechanicEntity.TryGetVoGuid(out var voGuid))
+			{
+				return voGuid;
+			}
 		}
 		return GetVoGuidFromBlueprints();
 	}
@@ -209,14 +222,21 @@ public class DialogSpeaker
 		{
 			return SpeakerPortrait;
 		}
-		if (Application.isPlaying && SpeakerEvaluator?.GetValue() is UnitEntity unitEntity)
+		if (Application.isPlaying && SpeakerEvaluator != null)
 		{
-			return unitEntity.Blueprint;
+			try
+			{
+				if (SpeakerEvaluator.GetValue() is UnitEntity { Blueprint: var blueprint })
+				{
+					return blueprint;
+				}
+			}
+			catch (Exception)
+			{
+				DialogDebug.Add(null, "Failed to evaluate speaker for unit blueprint.", Color.red);
+				return null;
+			}
 		}
-		if (Blueprint != null)
-		{
-			return Blueprint;
-		}
-		return null;
+		return Blueprint;
 	}
 }

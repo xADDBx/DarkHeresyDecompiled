@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using UnityEngine;
 
@@ -19,7 +20,7 @@ public class ContextDiceValue
 
 	public bool IsVariable => DiceType > DiceType.One;
 
-	public int Calculate(MechanicsContext context)
+	public int Calculate(IEvalContext context)
 	{
 		return ContextValueHelper.CalculateDiceValue(DiceType, DiceCountValue, BonusValue, context);
 	}

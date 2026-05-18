@@ -20,11 +20,11 @@ public class AddInitiatorSkillRollTrigger : UnitFactComponentDelegate, IInitiato
 
 	public ActionList Action;
 
-	public void OnEventAboutToTrigger(RulePerformSkillCheck evt)
+	void IRulebookHandler<RulePerformSkillCheck>.OnEventAboutToTrigger(RulePerformSkillCheck evt)
 	{
 	}
 
-	public void OnEventDidTrigger(RulePerformSkillCheck evt)
+	void IRulebookHandler<RulePerformSkillCheck>.OnEventDidTrigger(RulePerformSkillCheck evt)
 	{
 		if (CheckConditions(evt) && base.Fact.MaybeContext != null)
 		{

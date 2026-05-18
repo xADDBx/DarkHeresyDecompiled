@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 
 namespace Kingmaker.Networking.Settings;
 
-[MemoryPackable(GenerateType.NoGenerate)]
 [MemoryPackableOptIn]
 public abstract class TypedBaseSettingNetData<T> : BaseSettingNetData
 {

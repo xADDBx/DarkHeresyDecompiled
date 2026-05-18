@@ -737,9 +737,9 @@ public static class LinqExtensions
 		return false;
 	}
 
-	public static bool AddUnique<T>([NotNull] this List<T> list, T value)
+	public static bool AddUnique<T>([NotNull] this List<T> list, T value, IEqualityComparer<T> comparer = null)
 	{
-		if (list.Contains(value))
+		if (list.Contains(value, comparer))
 		{
 			return false;
 		}
@@ -905,5 +905,10 @@ public static class LinqExtensions
 			}
 		}
 		list.Insert(num, value);
+	}
+
+	public static IReadOnlyList<T> AsReadOnly<T>(this IList<T> source)
+	{
+		return source as IReadOnlyList<T>;
 	}
 }

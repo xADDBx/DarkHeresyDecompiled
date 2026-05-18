@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
+using Kingmaker.Controllers;
 using Kingmaker.Controllers.Optimization;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
@@ -10,7 +11,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -21,13 +21,13 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.SriptZones;
 using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace Kingmaker.Mechanics.Entities;
 
@@ -96,20 +96,16 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 		}
 	};
 
-	public new ScriptZone View => (ScriptZone)base.View;
+	public new IScriptZoneConfig Config => (IScriptZoneConfig)base.Config;
+
+	public ScriptZoneEntity(IScriptZoneConfig config)
+		: base(config)
+	{
+	}
 
 	[UsedImplicitly]
-	protected ScriptZoneEntity(JsonConstructorMark _)
+	protected ScriptZoneEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	public ScriptZoneEntity(MapObjectView view)
-		: base(view)
-	{
-	}
-
-	protected ScriptZoneEntity()
 	{
 	}
 
@@ -146,9 +142,9 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 		{
 			insideUnit.InsideThisTick = false;
 		}
-		foreach (IScriptZoneShape shape in View.Shapes)
+		foreach (IScriptZoneShape shape in Config.Shapes)
 		{
-			List<BaseUnitEntity> list = (View.PlayersOnly ? Game.Instance.Player.PartyAndPets : (EntityBoundsHelper.FindUnitsInShape(shape) ?? Game.Instance.EntityPools.AllBaseAwakeUnits));
+			List<BaseUnitEntity> list = (Config.PlayersOnly ? Game.Instance.Player.PartyAndPets : (EntityBoundsHelper.FindUnitsInShape(shape) ?? Game.Instance.EntityPools.AllBaseAwakeUnits));
 			using (ProfileScope.New("Tick one shape"))
 			{
 				foreach (BaseUnitEntity item in list)
@@ -161,14 +157,22 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 				}
 			}
 		}
-		foreach (UnitInfo insideUnit2 in InsideUnits)
+		List<BaseUnitEntity> value;
+		using (CollectionPool<List<BaseUnitEntity>, BaseUnitEntity>.Get(out value))
 		{
-			if (!insideUnit2.InsideThisTick)
+			foreach (UnitInfo insideUnit2 in InsideUnits)
 			{
-				OnUnitRemoved(insideUnit2.Reference.ToBaseUnitEntity());
+				if (!insideUnit2.InsideThisTick)
+				{
+					value.Add(insideUnit2.Reference.ToBaseUnitEntity());
+				}
+			}
+			InsideUnits.RemoveAll((UnitInfo i) => !i.IsValid || !i.InsideThisTick);
+			foreach (BaseUnitEntity item2 in value)
+			{
+				OnUnitRemoved(item2);
 			}
 		}
-		InsideUnits.RemoveAll((UnitInfo i) => !i.IsValid || !i.InsideThisTick);
 	}
 
 	private void TickUnit(BaseUnitEntity unit, IScriptZoneShape shape)
@@ -201,9 +205,9 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 
 	public bool ContainsPosition(Vector3 point)
 	{
-		for (int i = 0; i < View.Shapes.Count; i++)
+		for (int i = 0; i < Config.Shapes.Count; i++)
 		{
-			if (View.Shapes[i].Contains(point))
+			if (Config.Shapes[i].Contains(point))
 			{
 				return true;
 			}
@@ -229,11 +233,11 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 
 	private bool IsInterestedInUnit(BaseUnitEntity unit)
 	{
-		if (!View.UseDeads && unit.LifeState.IsDead)
+		if (!Config.UseDeads && unit.LifeState.IsDead)
 		{
 			return false;
 		}
-		if (View.PlayersOnly)
+		if (Config.PlayersOnly)
 		{
 			if (unit.Faction.IsPlayer)
 			{
@@ -258,7 +262,7 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 	{
 		using (ContextData<ScriptZoneTriggerData>.Request().Setup(unit, HoldingState))
 		{
-			if (View.Blueprint != null && !View.Blueprint.TriggerConditions.Check())
+			if (Config.Blueprint != null && !Config.Blueprint.TriggerConditions.Check())
 			{
 				return;
 			}
@@ -267,7 +271,7 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 				Reference = unit.FromBaseUnitEntity(),
 				InsideThisTick = true
 			});
-			if (View.DisableSameMultipleTriggers)
+			if (Config.DisableSameMultipleTriggers)
 			{
 				if (WasEntered)
 				{
@@ -275,14 +279,26 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 				}
 				WasEntered = true;
 			}
-			OnUnitEnter(unit);
-			View.OnUnitEntered.Invoke(unit, View);
-			EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IScriptZoneHandler>)delegate(IScriptZoneHandler h)
+			if (Config.UseGlobalCooldown)
 			{
-				h.OnUnitEnteredScriptZone(View);
+				InteractionGlobalCooldownController controller = Game.Instance.GetController<InteractionGlobalCooldownController>();
+				if (controller != null && !controller.CheckGlobalCooldown())
+				{
+					return;
+				}
+			}
+			OnUnitEnter(unit);
+			Config.OnUnitEntered.Invoke(unit, this);
+			base.EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IScriptZoneHandler>)delegate(IScriptZoneHandler h)
+			{
+				h.OnUnitEnteredScriptZone(this);
 			}, isCheckRuntime: true);
+			if (Config.UseGlobalCooldown)
+			{
+				Game.Instance.GetController<InteractionGlobalCooldownController>()?.UpdateGlobalCooldown(this);
+			}
 		}
-		if (View.OnceOnly)
+		if (Config.OnceOnly)
 		{
 			IsActive = false;
 		}
@@ -296,9 +312,9 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 
 	private void OnUnitRemoved(BaseUnitEntity unit)
 	{
-		if (View.DisableSameMultipleTriggers && WasEntered)
+		if (Config.DisableSameMultipleTriggers && WasEntered)
 		{
-			if (View.Count > 0)
+			if (InsideUnits.Count > 0)
 			{
 				return;
 			}
@@ -307,10 +323,10 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 		using (ContextData<ScriptZoneTriggerData>.Request().Setup(unit, HoldingState))
 		{
 			OnUnitExit(unit);
-			View.OnUnitExited.Invoke(unit, View);
-			EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IScriptZoneHandler>)delegate(IScriptZoneHandler h)
+			Config.OnUnitExited.Invoke(unit, this);
+			base.EventBus.RaiseEvent((IBaseUnitEntity)unit, (Action<IScriptZoneHandler>)delegate(IScriptZoneHandler h)
 			{
-				h.OnUnitExitedScriptZone(View);
+				h.OnUnitExitedScriptZone(this);
 			}, isCheckRuntime: true);
 		}
 	}
@@ -319,13 +335,13 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 	{
 		if (base.Blueprint != null)
 		{
-			if (View.Blueprint == null)
+			if (Config.Blueprint == null)
 			{
-				PFLog.Default.Warning("ScriptZone " + View.name + " blueprint not set");
+				PFLog.Default.Warning("ScriptZone " + Config.name + " blueprint not set");
 			}
 			else
 			{
-				View.Blueprint.ExitActions.Run();
+				Config.Blueprint.ExitActions.Run();
 			}
 		}
 	}
@@ -334,13 +350,13 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 	{
 		if (base.Blueprint != null)
 		{
-			if (View.Blueprint == null)
+			if (Config.Blueprint == null)
 			{
-				PFLog.Default.Warning("ScriptZone " + View.name + " blueprint not set");
+				PFLog.Default.Warning("ScriptZone " + Config.name + " blueprint not set");
 			}
 			else
 			{
-				View.Blueprint.EnterActions.Run();
+				Config.Blueprint.EnterActions.Run();
 			}
 		}
 	}
@@ -471,7 +487,7 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ScriptZoneEntity source = new ScriptZoneEntity();
+		ScriptZoneEntity source = new ScriptZoneEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ScriptZoneEntity, TPossiblyBase>(ref source);
 	}
 

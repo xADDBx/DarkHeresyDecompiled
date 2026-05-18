@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Items.Armors;
-using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.Items;
 using Kingmaker.UI.Common;
 
@@ -39,9 +38,9 @@ public static class CharacteristicSorter
 			num = value;
 			num2 = 1;
 		}
-		else if (item.Blueprint is BlueprintItemWeapon blueprintItemWeapon)
+		else if (item is ItemEntityWeapon itemEntityWeapon)
 		{
-			num = 100 * (blueprintItemWeapon.DamageMin + blueprintItemWeapon.DamageMax) + blueprintItemWeapon.WarhammerPenetration;
+			num = 100 * (itemEntityWeapon.DamageMin + itemEntityWeapon.DamageMax);
 			num2 = 0;
 		}
 		return num2 * 100000 + num;

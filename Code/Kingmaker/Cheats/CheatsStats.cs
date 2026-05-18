@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -33,6 +31,7 @@ internal class CheatsStats : IGlobalRulebookHandler<RulePerformSkillCheck>, IRul
 			SmartConsole.RegisterCommand("set_stat", "Setting stat on selected users; If zero characters selected setting stat on main character; To see all paramater call command without any", SetStat);
 			SmartConsole.RegisterCommand("unset_stat", "Clear cheat value of stat on selected users; If zero characters selected clear cheat value of stat on main character; To see all paramater call command without any", UnsetStat);
 			SmartConsole.RegisterCommand("dump_skillchecks_info", DumpSkillchecksInfo);
+			SmartConsole.RegisterCommand("dump_area_cr", "Dumps current area CR, respecting overrides", DumpCurrentAreaCR);
 		}
 	}
 
@@ -48,16 +47,7 @@ internal class CheatsStats : IGlobalRulebookHandler<RulePerformSkillCheck>, IRul
 		int? paramInt = Utilities.GetParamInt(parameters, 2, "Can't parse quantity from given parameters");
 		if (paramInt.HasValue)
 		{
-			BaseUnitEntity unitForCheat = Utilities.GetUnitForCheat();
-			ModifiableValue stat = unitForCheat.Stats.GetStat(statType);
-			if (stat == null)
-			{
-				PFLog.SmartConsole.Log($"Unit {unitForCheat} has no stat {statType}");
-			}
-			else
-			{
-				stat.SetCheatValue(paramInt);
-			}
+			Utilities.GetUnitForCheat().Actor.SetStatCheat(statType, paramInt);
 		}
 	}
 
@@ -68,17 +58,10 @@ internal class CheatsStats : IGlobalRulebookHandler<RulePerformSkillCheck>, IRul
 		if (statType == StatType.Unknown)
 		{
 			PFLog.SmartConsole.Log("Can't find stat type: " + statTypeStr);
-			return;
-		}
-		BaseUnitEntity unitForCheat = Utilities.GetUnitForCheat();
-		ModifiableValue stat = unitForCheat.Stats.GetStat(statType);
-		if (stat == null)
-		{
-			PFLog.SmartConsole.Log($"Unit {unitForCheat} has no stat {statType}");
 		}
 		else
 		{
-			stat.SetCheatValue(null);
+			Utilities.GetUnitForCheat().Actor.SetStatCheat(statType, null);
 		}
 	}
 
@@ -100,6 +83,11 @@ internal class CheatsStats : IGlobalRulebookHandler<RulePerformSkillCheck>, IRul
 			s_Instance.SkillChecks.Clear();
 			PFLog.Default.Log("Stats was purged");
 		}
+	}
+
+	private static void DumpCurrentAreaCR(string parameters)
+	{
+		PFLog.SmartConsole.Log($"Current area CR: {Game.Instance.CurrentlyLoadedArea?.GetCR() ?? 0}");
 	}
 
 	public void OnEventAboutToTrigger(RulePerformSkillCheck evt)

@@ -1,10 +1,7 @@
 using System.Linq;
-using Assets.Code.View.UI.MVVM;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.DollRoom;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
-using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -17,28 +14,37 @@ using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscriber, IInitializable
+public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscriber
 {
-	public static readonly string InputLayerContextName = "Chargen";
+	private const string InputLayerContextName = "Chargen";
 
 	[SerializeField]
 	protected CanvasGroup m_CanvasGroup;
 
+	[FormerlySerializedAs("RoadmapMenuView")]
 	[SerializeField]
-	protected CharGenRoadmapMenuView RoadmapMenuView;
+	protected CharGenRoadmapMenuView m_RoadmapMenuView;
 
+	[FormerlySerializedAs("DetailedViewsFactory")]
 	[SerializeField]
-	protected CharGenPhaseDetailedViewsFactory DetailedViewsFactory;
+	protected CharGenPhaseDetailedViewsFactory m_DetailedViewsFactory;
 
 	[Header("Portrait")]
+	[SerializeField]
+	private CharGenPortraitView m_PortraitHalfView;
+
 	[SerializeField]
 	private CharGenPortraitView m_PortraitFullView;
 
 	[SerializeField]
-	private RectTransform m_PantographPosition;
+	private CharGenPortraitView m_LevelUpPortraitFullView;
+
+	[SerializeField]
+	private CharInfoExperiencePCView m_ExperiencePCView;
 
 	[Header("Doll")]
 	[SerializeField]
@@ -48,39 +54,38 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 	private FadeAnimator m_CharacterDollTexture;
 
 	[SerializeField]
-	protected DollRoomTargetController m_ShipController;
-
-	[SerializeField]
-	private FadeAnimator m_ShipDollTexture;
-
-	[SerializeField]
 	private RectTransform m_DollTransform;
 
 	[SerializeField]
 	private DollPosition[] m_DollPositions;
 
+	[Header("Ruler")]
+	[SerializeField]
+	private InventoryRuler m_Ruler;
+
+	[SerializeField]
+	private OwlcatButton m_ResetRulerTargetButton;
+
 	[SerializeField]
 	private PaperHints m_PaperHints;
 
 	[SerializeField]
-	private InfoSectionView m_InfoView;
+	private InfoSectionView m_LevelUpInfoView;
+
+	[SerializeField]
+	private InfoSectionView m_ChargenInfoView;
 
 	[SerializeField]
 	private ChargenProgressionView m_ProgressionView;
 
-	protected InputLayer InputLayer;
+	[SerializeField]
+	private OwlcatMultiSelectable m_LevelupSelectable;
 
-	protected GridConsoleNavigationBehaviour Navigation;
+	protected ICharGenPhaseDetailedView m_SelectedDetailView;
 
-	private DollRoomBase m_ActiveRoom;
+	protected readonly ReactiveProperty<bool> m_CanGoBack = new ReactiveProperty<bool>();
 
-	protected ICharGenPhaseDetailedView SelectedDetailView;
-
-	protected readonly ReactiveProperty<bool> CanGoBack = new ReactiveProperty<bool>();
-
-	protected readonly ReactiveProperty<bool> CanGoNext = new ReactiveProperty<bool>();
-
-	private bool m_DeviceBackWasOpenedBefore;
+	protected readonly ReactiveProperty<bool> m_CanGoNext = new ReactiveProperty<bool>();
 
 	private CharGenDollRoom CharacterRoom => UIDollRooms.Instance.Or(null)?.CharGenDollRoom;
 
@@ -88,33 +93,69 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 
 	protected bool CurrentPhaseIsLast => base.ViewModel?.CurrentPhaseVM?.CurrentValue == base.ViewModel?.PhasesCollection?.Last();
 
+	public void Awake()
+	{
+		Initialize();
+	}
+
 	public virtual void Initialize()
 	{
 		base.gameObject.SetActive(value: false);
-		RoadmapMenuView.Initialize();
+		m_DetailedViewsFactory.Initialize();
+		m_DetailedViewsFactory.SetPaperHints(m_PaperHints);
+		m_PortraitHalfView.Initialize(HandleSmallPortraitHover);
 		m_CharacterDollTexture.Initialize();
-		m_ShipDollTexture.Initialize();
+		m_ExperiencePCView.Initialize();
 	}
 
 	protected override void OnBind()
 	{
+		PFLog.UI.Log($"[{Time.frameCount}] | {Time.realtimeSinceStartup} Start creating CharGenView");
 		base.OnBind();
 		base.gameObject.SetActive(value: true);
-		RoadmapMenuView.Bind(base.ViewModel.PhasesSelectionGroupRadioVM);
+		CharacterRoom.Initialize(m_CharacterController);
+		bool num = base.ViewModel.CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp;
+		m_RoadmapMenuView.Bind(base.ViewModel.PhasesSelectionGroupRadioVM);
 		base.ViewModel.CurrentPhaseVM.Subscribe(CurrentPhaseChanged).AddTo(this);
-		base.ViewModel.PortraitVM.Subscribe(m_PortraitFullView.Bind).AddTo(this);
-		m_InfoView.Bind(base.ViewModel.InfoSectionVM);
-		m_InfoView.SetActive(state: true);
+		base.ViewModel.PortraitVM.Subscribe(delegate(PortraitVM vm)
+		{
+			m_PortraitFullView.Bind(vm);
+			m_LevelUpPortraitFullView.Bind(vm);
+			m_PortraitHalfView.Bind(vm);
+		}).AddTo(this);
+		m_PortraitFullView.SetVisibility(base.ViewModel.CurrentPhaseVM.CurrentValue.ShowPortrait);
+		m_LevelUpPortraitFullView.SetVisibility(visible: true);
+		if (num)
+		{
+			m_ExperiencePCView.Bind(base.ViewModel.Experience);
+		}
+		m_LevelUpInfoView.Bind(base.ViewModel.LevelUpInfoSectionVM);
+		m_LevelUpInfoView.SetActive(state: true);
+		m_ChargenInfoView.Bind(base.ViewModel.ChargenInfoSectionVM);
+		m_ChargenInfoView.SetActive(state: true);
 		m_ProgressionView.Bind(base.ViewModel.ProgressionVM);
 		base.ViewModel.CharGenContext.CurrentUnit.Subscribe(delegate
 		{
-			SetDoll();
+			CharGenPhaseBaseVM currentValue = base.ViewModel.CurrentPhaseVM.CurrentValue;
+			if (currentValue != null && currentValue.ShowDoll)
+			{
+				SetDoll();
+			}
+		}).AddTo(this);
+		m_Ruler.SetHint(UIStrings.Instance.InventoryScreen.RulerHint);
+		m_CharacterController.CurrentZoomNormalized.Subscribe(m_Ruler.SetZoom).AddTo(this);
+		m_CharacterController.CurrentRotationAngle.Subscribe(m_Ruler.SetRotation).AddTo(this);
+		m_CharacterController.IsHoveredOver.Subscribe(m_Ruler.SetHighlight).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_ResetRulerTargetButton.OnLeftClickAsObservable(), delegate
+		{
+			m_CharacterController.ResetTargetView();
+			ServiceWindowsSounds.Instance.Inventory.ResetDollPosition.Play();
 		}).AddTo(this);
 		base.ViewModel.CurrentPhaseIsCompleted.Subscribe(delegate(bool isCompleted)
 		{
-			CanGoNext.Value = isCompleted || base.ViewModel.CurrentPhaseCanInterrupt;
+			m_CanGoNext.Value = isCompleted || base.ViewModel.CurrentPhaseCanInterrupt;
 		}).AddTo(this);
-		base.ViewModel.CharGenContext.IsCustomCharacter.Subscribe(RoadmapMenuView.SetBackgroundFrameState).AddTo(this);
+		base.ViewModel.CharGenContext.IsCustomCharacter.Subscribe(m_RoadmapMenuView.SetBackgroundFrameState).AddTo(this);
 		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
 		{
 			h.HandleFullScreenUiChanged(state: true, FullScreenUIType.Chargen);
@@ -124,22 +165,21 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 		CreateNavigation();
 		base.ViewModel.CheckCoopControls.Subscribe(delegate
 		{
-			DetailedViewsFactory.SetPaperHints(m_PaperHints);
+			m_DetailedViewsFactory.SetPaperHints(m_PaperHints);
 		}).AddTo(this);
 		base.ViewModel.IsInCharscreen.Subscribe(HandleCharscreenChanged).AddTo(this);
+		PFLog.UI.Log($"[{Time.frameCount}] | {Time.realtimeSinceStartup} Finished creating CharGenView");
 	}
 
 	protected override void OnUnbind()
 	{
-		RoadmapMenuView.KillSelectorTween();
-		RoadmapMenuView.ShutUpSelector();
-		m_InfoView.Unbind();
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Selector.SelectorLoopStop, isButton: false, playAnyway: true);
-		m_DeviceBackWasOpenedBefore = false;
-		base.gameObject.SetActive(value: false);
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Selector.SelectorLoopStop, isButton: false, playAnyway: true);
+		m_RoadmapMenuView.KillSelectorTween();
+		m_RoadmapMenuView.ShutUpSelector();
+		m_LevelUpInfoView.Unbind();
+		m_ChargenInfoView.Unbind();
+		UISounds.Instance.Play(SystemSounds.Instance.Selector.LoopStop, isButton: false, playAnyway: true);
 		HideRooms();
-		DestroyInputLayer();
+		base.gameObject.SetActive(value: false);
 		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.Chargen);
@@ -150,7 +190,7 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 
 	private void HandleSmallPortraitHover(bool hovered)
 	{
-		SetFullPortraitVisible(hovered);
+		SetFullPortraitVisible(hovered || base.ViewModel.CurrentPhaseVM.CurrentValue.ShowPortrait);
 	}
 
 	protected void SetFullPortraitVisible(bool visible)
@@ -187,111 +227,48 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 	{
 		if (viewModel != null)
 		{
-			if (!m_DeviceBackWasOpenedBefore)
-			{
-				UISounds.Instance.Sounds.Inventory.PlayOpen();
-				m_DeviceBackWasOpenedBefore = true;
-			}
-			else
-			{
-				UISounds.Instance.Sounds.Inventory.PlayClose();
-				m_DeviceBackWasOpenedBefore = false;
-			}
+			FullScreenSounds.Instance.Chargen.ChargenTabSwitch.Play();
 			base.ViewModel.LastPhase?.EndDetailedView();
-			SelectedDetailView?.Unbind();
+			m_SelectedDetailView?.Unbind();
 			base.ViewModel.SetLastPhase(viewModel);
+			m_PortraitFullView.SetVisibility(viewModel.ShowPortrait);
+			m_CharacterDollTexture.PlayAnimation(viewModel.ShowDoll);
+			UpdateDollRooms(viewModel);
 			viewModel.BeginDetailedView();
-			SelectedDetailView = DetailedViewsFactory.GetDetailedPhaseView(viewModel);
-			CanGoBack.Value = !CurrentPhaseIsFirst;
-			DelayedUpdate();
+			m_SelectedDetailView = m_DetailedViewsFactory.GetDetailedPhaseView(viewModel);
+			m_CanGoBack.Value = true;
+			string activeLayer = (viewModel.HasSmallPortrait ? "Default" : "Levelup");
+			m_LevelupSelectable.SetActiveLayer(activeLayer);
 			TooltipHelper.HideInfo();
 			base.ViewModel.HideVisualSettings();
+			m_ChargenInfoView?.ResetPosition();
+			m_LevelUpInfoView?.ResetPosition();
 		}
-	}
-
-	private void DelayedUpdate()
-	{
-		DelayedInvoker.InvokeInFrames(RefreshInput, 3);
 	}
 
 	private void CreateNavigation()
 	{
 	}
 
-	private InputLayer GetInputLayer()
-	{
-		InputLayer inputLayer = Navigation.GetInputLayer(new InputLayer
-		{
-			ContextName = InputLayerContextName
-		});
-		if (base.ViewModel != null)
-		{
-			base.ViewModel.SetInputLayer(inputLayer, CreateInputImpl);
-		}
-		else
-		{
-			CreateInputImpl(inputLayer, new ReactiveProperty<bool>(UtilityNet.IsControlMainCharacter()));
-		}
-		return inputLayer;
-	}
-
-	protected virtual void CreateInputImpl(InputLayer inputLayer, ReactiveProperty<bool> isMainCharacter)
-	{
-	}
-
-	private void CreateInputLayer()
-	{
-		InputLayer = GetInputLayer();
-		GamePad.Instance.PushLayer(InputLayer).AddTo(this);
-	}
-
-	private void DestroyInputLayer()
-	{
-		if (InputLayer != null)
-		{
-			GamePad.Instance.PopLayer(InputLayer);
-			InputLayer = null;
-		}
-	}
-
-	protected virtual void RefreshInput()
-	{
-	}
-
 	private void HideRooms()
 	{
-		m_ActiveRoom.Or(null)?.Hide();
+		CharacterRoom.Or(null)?.Hide();
 	}
 
 	private void UpdateDollRooms(CharGenPhaseBaseVM viewModel)
 	{
 		if (viewModel != null)
 		{
-			bool flag = viewModel.DollRoomType == CharGenDollRoomType.Character;
-			if (flag)
+			bool showDoll = viewModel.ShowDoll;
+			if (showDoll)
 			{
 				SetDoll();
 			}
-			if (GetActiveDollRoomType() != viewModel.DollRoomType)
-			{
-				m_ActiveRoom.Or(null)?.Hide();
-				CharacterRoom.SetVisibility(flag);
-				m_ActiveRoom = CharacterRoom;
-			}
-			m_CharacterDollTexture.PlayAnimation(flag);
-			m_ShipDollTexture.PlayAnimation(!flag);
+			CharacterRoom.SetVisibility(showDoll);
+			m_CharacterDollTexture.PlayAnimation(showDoll);
 			DollPosition dollPosition = m_DollPositions.First((DollPosition i) => i.Position == viewModel.DollPosition);
 			m_DollTransform.transform.position = dollPosition.Transform.position;
 		}
-	}
-
-	protected CharGenDollRoomType? GetActiveDollRoomType()
-	{
-		if (CharacterRoom.IsVisible)
-		{
-			return CharGenDollRoomType.Character;
-		}
-		return null;
 	}
 
 	private void SetDoll()
@@ -312,7 +289,7 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 
 	protected virtual void NextPressed()
 	{
-		if (CanGoNext.Value)
+		if (m_CanGoNext.Value)
 		{
 			if (base.ViewModel.CurrentPhaseCanInterrupt && !base.ViewModel.CurrentPhaseIsCompleted.CurrentValue)
 			{
@@ -334,6 +311,11 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 
 	protected virtual void BackPressed()
 	{
+		if (CurrentPhaseIsFirst)
+		{
+			CloseCharGen();
+			return;
+		}
 		DelayedInvoker.InvokeInFrames(delegate
 		{
 			GoToPrevPhaseOrClose(first: false);
@@ -358,7 +340,7 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 
 	protected void GoTeNextPhaseAfterDelay()
 	{
-		_ = CanGoNext.Value;
+		_ = m_CanGoNext.Value;
 		DelayedInvoker.InvokeInFrames(delegate
 		{
 			GoToNextPhaseOrComplete(lastValid: false);
@@ -369,16 +351,16 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 	{
 		if (CurrentPhaseIsLast)
 		{
-			RoadmapMenuView.ShutUpSelector();
+			m_RoadmapMenuView.ShutUpSelector();
 			base.ViewModel.Complete();
 		}
 		else if (lastValid)
 		{
-			RoadmapMenuView.SelectLastValidPhase();
+			m_RoadmapMenuView.SelectLastValidPhase();
 		}
 		else
 		{
-			RoadmapMenuView.SelectNextPhase();
+			m_RoadmapMenuView.SelectNextPhase();
 		}
 	}
 
@@ -386,11 +368,11 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 	{
 		if (first)
 		{
-			RoadmapMenuView.SelectFirstValidPhase();
+			m_RoadmapMenuView.SelectFirstValidPhase();
 		}
 		else
 		{
-			RoadmapMenuView.SelectPrevPhase();
+			m_RoadmapMenuView.SelectPrevPhase();
 		}
 	}
 

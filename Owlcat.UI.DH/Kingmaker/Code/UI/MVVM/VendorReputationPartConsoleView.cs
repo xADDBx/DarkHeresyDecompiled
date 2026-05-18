@@ -10,16 +10,14 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class VendorReputationPartConsoleView : VendorReputationPartView<VendorReputationForItemWindowConsoleView>
 {
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
+	[SerializeField]
+	private HintView m_SellHint;
 
 	[SerializeField]
-	private ConsoleHint m_SellHint;
+	private HintView m_ShowUnrelevantHint;
 
 	[SerializeField]
-	private ConsoleHint m_ShowUnrelevantHint;
-
-	[SerializeField]
-	private ConsoleHint m_SelectMenuHint;
+	private HintView m_SelectMenuHint;
 
 	[SerializeField]
 	private TextMeshProUGUI m_SelectMenuText;
@@ -44,8 +42,6 @@ public class VendorReputationPartConsoleView : VendorReputationPartView<VendorRe
 
 	public Observable<Unit> OnNeedRefocus => m_OnNeedRefocus;
 
-	public GridConsoleNavigationBehaviour NavigationBehaviour => m_NavigationBehaviour;
-
 	protected override void OnBind()
 	{
 		base.OnBind();
@@ -63,24 +59,6 @@ public class VendorReputationPartConsoleView : VendorReputationPartView<VendorRe
 	private void ChangeView()
 	{
 		m_SelectorView.SetNextTab();
-		m_ReputationForItemWindowPCView.ForceScrollToTop();
-	}
-
-	public ConsoleNavigationBehaviour GetNavigation()
-	{
-		if (m_NavigationBehaviour == null)
-		{
-			m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		}
-		else
-		{
-			m_NavigationBehaviour.Clear();
-		}
-		m_NavigationBehaviour.AddEntityHorizontal(m_ReputationForItemWindowPCView.GetNavigation());
-		m_NavigationBehaviour.FocusOnFirstValidEntity();
-		m_CurrentFocus = m_NavigationBehaviour.DeepestNestedFocus;
-		m_ReputationForItemWindowPCView.ForceScrollToTop();
-		return m_NavigationBehaviour;
 	}
 
 	public void SetupContextMenu()
@@ -101,17 +79,17 @@ public class VendorReputationPartConsoleView : VendorReputationPartView<VendorRe
 		base.ViewModel.SellCargo();
 	}
 
-	public ConsoleHint GetSellHint()
+	public HintView GetSellHint()
 	{
 		return m_SellHint;
 	}
 
-	public ConsoleHint GetSelectContextMenuHint()
+	public HintView GetSelectContextMenuHint()
 	{
 		return m_SelectMenuHint;
 	}
 
-	public ConsoleHint GetUnrelevantHint()
+	public HintView GetUnrelevantHint()
 	{
 		return m_ShowUnrelevantHint;
 	}

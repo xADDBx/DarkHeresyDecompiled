@@ -66,13 +66,12 @@ public class AnimationClipEventExternal : AnimationClipEvent
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
 		if (animationManager is AnimationManager animationManager2)
 		{
-			BlueprintAnimationActionExternalHandler?.Handle(animationManager2, m_ClipEventType, m_Id);
+			BlueprintAnimationActionExternalHandler?.Handle(animationManager2, m_ClipEventType, m_Id, base.UserData);
 		}
-		return null;
 	}
 
 	public override object Clone()

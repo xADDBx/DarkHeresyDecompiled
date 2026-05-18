@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Code.Framework.Utility.UnityExtensions;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
@@ -23,10 +23,10 @@ public class UnitMarkManager : MonoBehaviour, IUnitLifeStateChanged, ISubscriber
 	{
 		foreach (AbstractUnitEntity allUnit in Game.Instance.EntityPools.AllUnits)
 		{
-			AbstractUnitEntityView view = allUnit.View;
-			if ((bool)view && UnitNeedsMark(allUnit))
+			AbstractUnitEntityView abstractUnitEntityView = allUnit.View.AsAbstractUnitEntityView();
+			if ((bool)abstractUnitEntityView && UnitNeedsMark(allUnit))
 			{
-				AddMark(allUnit, view);
+				AddMark(allUnit, abstractUnitEntityView);
 			}
 		}
 		EventBus.Subscribe(this);
@@ -35,13 +35,12 @@ public class UnitMarkManager : MonoBehaviour, IUnitLifeStateChanged, ISubscriber
 	public void OnDisable()
 	{
 		EventBus.Unsubscribe(this);
-		foreach (var (abstractUnitEntity2, baseUnitMark2) in m_Marks)
+		foreach (var (_, baseUnitMark2) in m_Marks)
 		{
 			if ((bool)baseUnitMark2)
 			{
 				baseUnitMark2.Dispose();
 				Utils.EditorSafeDestroy(baseUnitMark2.gameObject);
-				abstractUnitEntity2.View.MarkRenderersAndCollidersAreUpdated();
 			}
 		}
 		m_Marks.Clear();
@@ -61,7 +60,6 @@ public class UnitMarkManager : MonoBehaviour, IUnitLifeStateChanged, ISubscriber
 			baseUnitMark.transform.localRotation = Quaternion.identity;
 			baseUnitMark.Initialize(unit);
 			m_Marks.Add(unit, baseUnitMark);
-			view.MarkRenderersAndCollidersAreUpdated();
 		}
 	}
 
@@ -71,7 +69,6 @@ public class UnitMarkManager : MonoBehaviour, IUnitLifeStateChanged, ISubscriber
 		{
 			value.Dispose();
 			Utils.EditorSafeDestroy(value.gameObject);
-			unit.View.MarkRenderersAndCollidersAreUpdated();
 			m_Marks.Remove(unit);
 		}
 	}
@@ -102,17 +99,19 @@ public class UnitMarkManager : MonoBehaviour, IUnitLifeStateChanged, ISubscriber
 
 	private void UpdateProperties(AbstractUnitEntity unit)
 	{
-		if (UnitNeedsMark(unit) && (bool)unit.View)
+		if (UnitNeedsMark(unit))
 		{
-			AddMark(unit, unit.View);
+			AbstractUnitEntityView abstractUnitEntityView = unit.View.AsAbstractUnitEntityView();
+			if ((object)abstractUnitEntityView != null)
+			{
+				AddMark(unit, abstractUnitEntityView);
+				return;
+			}
 		}
-		else
-		{
-			RemoveMark(unit);
-		}
+		RemoveMark(unit);
 	}
 
-	public void OnViewDetached(IEntityViewBase view)
+	public void OnViewDetached(IEntityView view)
 	{
 		if (EventInvokerExtensions.Entity is BaseUnitEntity unit)
 		{
@@ -120,7 +119,7 @@ public class UnitMarkManager : MonoBehaviour, IUnitLifeStateChanged, ISubscriber
 		}
 	}
 
-	public void OnViewAttached(IEntityViewBase viewBase)
+	public void OnViewAttached(IEntityView viewBase)
 	{
 		if (EventInvokerExtensions.Entity is AbstractUnitEntity unit && viewBase is AbstractUnitEntityView view && UnitNeedsMark(unit))
 		{

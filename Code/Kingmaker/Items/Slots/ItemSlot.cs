@@ -9,6 +9,7 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
@@ -173,7 +174,7 @@ public class ItemSlot : IHashable, IOwlPackable, IOwlPackable<ItemSlot>
 		{
 			return true;
 		}
-		if (Game.Instance.Controllers.TurnController.TurnBasedModeActive && Owner.IsPlayerFaction)
+		if (Game.Instance.Controllers.TurnController.IsCombatLockActive && Owner.IsPlayerFaction)
 		{
 			return false;
 		}
@@ -213,7 +214,7 @@ public class ItemSlot : IHashable, IOwlPackable, IOwlPackable<ItemSlot>
 
 	public bool IsPossibleRemoveItems()
 	{
-		if (Game.Instance.Controllers.TurnController.TurnBasedModeActive)
+		if (Game.Instance.Controllers.TurnController.IsCombatLockActive)
 		{
 			return !Owner.IsPlayerFaction;
 		}
@@ -284,7 +285,7 @@ public class ItemSlot : IHashable, IOwlPackable, IOwlPackable<ItemSlot>
 				h.HandleEquipmentSlotUpdated(slot, pi);
 			}, isCheckRuntime: true);
 		}
-		else if (Active)
+		else if (Active || (bool)ContextData<GameCommandHelper.PreviewItem>.Current)
 		{
 			item.OnDidEquipped(Owner);
 		}

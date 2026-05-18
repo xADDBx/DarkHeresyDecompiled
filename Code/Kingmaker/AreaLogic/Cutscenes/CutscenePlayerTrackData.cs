@@ -76,7 +76,7 @@ public class CutscenePlayerTrackData : IOwlPackable, IOwlPackable<CutscenePlayer
 
 	public bool Canceled => m_Canceled;
 
-	public List<CutscenePlayerCommandData> CommandsDebugInfo => m_Commands;
+	public List<CutscenePlayerCommandData> CommandsPlayer => m_Commands;
 
 	public CutscenePlayerTrackData(CutsceneTrack track, int trackIndex, CutscenePlayerData player)
 	{
@@ -101,6 +101,10 @@ public class CutscenePlayerTrackData : IOwlPackable, IOwlPackable<CutscenePlayer
 
 	public void Start()
 	{
+		if (IsCompleted)
+		{
+			return;
+		}
 		m_RunningCommandIndex = 0;
 		m_PlayTime = 0.0;
 		m_IsActivated = false;
@@ -128,12 +132,17 @@ public class CutscenePlayerTrackData : IOwlPackable, IOwlPackable<CutscenePlayer
 		}
 		if (m_RunningCommandIndex >= m_Commands.Count && IsRepeat(skipping))
 		{
+			m_IsCompleted = false;
 			Start();
 		}
 		int runningCommandIndex = m_RunningCommandIndex;
 		for (; m_RunningCommandIndex < m_Commands.Count; m_RunningCommandIndex++)
 		{
 			CutscenePlayerCommandData cutscenePlayerCommandData = m_Commands[m_RunningCommandIndex];
+			if (cutscenePlayerCommandData.IsDisabledDueToError)
+			{
+				continue;
+			}
 			if (m_RunningCommandIndex != runningCommandIndex || !m_IsActivated)
 			{
 				m_IsActivated = true;
@@ -222,6 +231,18 @@ public class CutscenePlayerTrackData : IOwlPackable, IOwlPackable<CutscenePlayer
 				JumpToEnd(shouldSignal);
 			}
 		}
+	}
+
+	public void Reset()
+	{
+		if (!IsCompleted)
+		{
+			ForceStop(shouldSignal: false, releaseControlledUnit: true);
+		}
+		m_RunningCommandIndex = 0;
+		m_PlayTime = 0.0;
+		m_IsActivated = false;
+		m_IsCompleted = false;
 	}
 
 	public void Pause()

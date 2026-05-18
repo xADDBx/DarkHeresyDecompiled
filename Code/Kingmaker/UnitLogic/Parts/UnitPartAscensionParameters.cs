@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -12,7 +13,7 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Parts;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class UnitPartAscensionParameters : BaseUnitPart, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, IInterruptTurnStartHandler, IHashable, IOwlPackable<UnitPartAscensionParameters>
+public class UnitPartAscensionParameters : BaseUnitPart, ITurnStartHandler<EntitySubscriber>, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEntitySubscriber, IEventTag<ITurnStartHandler, EntitySubscriber>, IInterruptTurnStartHandler<EntitySubscriber>, IInterruptTurnStartHandler, IEventTag<IInterruptTurnStartHandler, EntitySubscriber>, IHashable, IOwlPackable<UnitPartAscensionParameters>
 {
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -25,7 +26,10 @@ public class UnitPartAscensionParameters : BaseUnitPart, ITurnStartHandler, ISub
 
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		StartTurnPosition = base.Owner.Position;
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current)
+		{
+			StartTurnPosition = base.Owner.Position;
+		}
 	}
 
 	public void HandleUnitStartInterruptTurn(InterruptionData interruptionData)

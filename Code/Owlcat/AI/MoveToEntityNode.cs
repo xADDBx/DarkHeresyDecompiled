@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Kingmaker;
+using Kingmaker.Code.Framework.Networking.Sync;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.RuleSystem;
@@ -10,15 +11,15 @@ using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Squads;
+using Kingmaker.UnitLogic.Squads.Goals;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.BehaviourTrees;
-using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 
 namespace Owlcat.AI;
 
-public class MoveToEntityNode : TaskNode
+public class MoveToEntityNode : TaskNode, IPathClaimer
 {
 	private struct PathData
 	{
@@ -39,15 +40,18 @@ public class MoveToEntityNode : TaskNode
 
 	private readonly PreferredPositionNearEntity m_PreferredPositionNearEntity;
 
+	private readonly SquadGoalKind m_SquadGoalKind;
+
 	private Task<bool> m_ProcessMovementTask;
 
-	public MoveToEntityNode(EntityVariable agent, EntityVariable target, AiAgentRuntimeInternalDataVariable runtimeInternalData, AiThreatsHandlingStrategy threatsHandlingStrategy, PreferredPositionNearEntity preferredPositionNearEntity)
+	public MoveToEntityNode(EntityVariable agent, EntityVariable target, AiAgentRuntimeInternalDataVariable runtimeInternalData, AiThreatsHandlingStrategy threatsHandlingStrategy, PreferredPositionNearEntity preferredPositionNearEntity, SquadGoalKind squadGoalKind = SquadGoalKind.None)
 	{
 		m_Agent = agent;
 		m_Target = target;
 		m_RuntimeInternalData = runtimeInternalData;
 		m_ThreatsHandlingStrategy = threatsHandlingStrategy;
 		m_PreferredPositionNearEntity = preferredPositionNearEntity;
+		m_SquadGoalKind = squadGoalKind;
 	}
 
 	protected override NodeResult OnRunningTick()
@@ -85,11 +89,15 @@ public class MoveToEntityNode : TaskNode
 			PFLog.AI.Error("Target is null");
 			return false;
 		}
-		if (threatsHandlingStrategy != 0)
+		UnitMoveToProperParams commandParams;
+		await using (AsyncSimulationScope.Get())
 		{
-			await runtimeData.UpdateMoveVariants(agent, threatsHandlingStrategy);
+			if (threatsHandlingStrategy == AiThreatsHandlingStrategy.Ignore)
+			{
+				await runtimeData.UpdateMoveVariants(agent, threatsHandlingStrategy);
+			}
+			commandParams = await TryCreateMoveCommandAsync(agent, target, runtimeData.AgentMoveVariants, threatsHandlingStrategy, preferredPositionNearEntity);
 		}
-		UnitMoveToProperParams commandParams = await TryCreateMoveCommandAsync(agent, target, runtimeData.AgentMoveVariants, threatsHandlingStrategy, preferredPositionNearEntity);
 		if (commandParams == null)
 		{
 			PFLog.AI.Log("Move command was not set up -> already moved");
@@ -101,18 +109,21 @@ public class MoveToEntityNode : TaskNode
 		}
 		while (!agent.Commands.Empty)
 		{
-			await Task.Delay(100);
+			await NextTickAwaiter.New();
 		}
-		PFLog.AI.Log($"Try move to {commandParams.ForcedPath.path.Last()}");
+		PFLog.AI.Log("Try move to " + commandParams.ForcedPath.path.Last().AsString());
 		UnitCommandHandle commandHandle = agent.Commands.RunImmediate(commandParams);
 		if (commandHandle == null)
 		{
 			return false;
 		}
-		while (!commandHandle.IsFinished)
+		await using (AsyncSimulationScope.Get())
 		{
-			runtimeData.ResetIdleTime();
-			await Task.Delay(100);
+			while (!commandHandle.IsFinished)
+			{
+				runtimeData.ResetIdleTime();
+				await NextTickAwaiter.New();
+			}
 		}
 		runtimeData.Invalidate();
 		return true;
@@ -120,6 +131,11 @@ public class MoveToEntityNode : TaskNode
 
 	private async Task<UnitMoveToProperParams> TryCreateMoveCommandAsync(BaseUnitEntity agent, MechanicEntity target, AiAreaScanner.PathData moveVariants, AiThreatsHandlingStrategy threatsHandlingStrategy, PreferredPositionNearEntity preferredPositionNearEntity)
 	{
+		UnitMoveToProperParams unitMoveToProperParams = await TryCreateCommandFromSquadPlanAsync(agent, target, preferredPositionNearEntity, threatsHandlingStrategy);
+		if (unitMoveToProperParams != null)
+		{
+			return unitMoveToProperParams;
+		}
 		ForcedPath forcedPath = await CreatePathToTargetAsync(agent, target, moveVariants, threatsHandlingStrategy, preferredPositionNearEntity);
 		if (forcedPath == null)
 		{
@@ -129,13 +145,13 @@ public class MoveToEntityNode : TaskNode
 		int num = ruleCalculateMovementCost.ResultPointCount;
 		while (num > 0)
 		{
-			GraphNode graphNode = forcedPath.path[num - 1];
-			if (CanStopAtNode(agent, graphNode, moveVariants))
+			GraphNode node = forcedPath.path[num - 1];
+			if (CanStopAtNode(agent, node, moveVariants))
 			{
 				break;
 			}
 			num--;
-			PFLog.AI.Log($"{graphNode} is unreachable, trim path");
+			PFLog.AI.Log(node.AsString() + " is unreachable, trim path");
 		}
 		if (num < 2)
 		{
@@ -146,6 +162,23 @@ public class MoveToEntityNode : TaskNode
 		ForcedPath path = ForcedPath.Construct(forcedPath.vectorPath.Take(num), forcedPath.path.Take(num));
 		forcedPath.Release(this);
 		return new UnitMoveToProperParams(path, agent.Blueprint.WarhammerMovementApPerCell, resultAPCostPerPoint);
+	}
+
+	private async Task<UnitMoveToProperParams> TryCreateCommandFromSquadPlanAsync(BaseUnitEntity agent, MechanicEntity target, PreferredPositionNearEntity preferredPositionNearEntity, AiThreatsHandlingStrategy threatsHandlingStrategy)
+	{
+		if (m_SquadGoalKind == SquadGoalKind.None)
+		{
+			return null;
+		}
+		return await SquadPlanConsumer.TryConsumeAsync(this, agent, GoalFactory, threatsHandlingStrategy);
+		IMovementGoal GoalFactory()
+		{
+			if (m_SquadGoalKind == SquadGoalKind.MeleeAttack)
+			{
+				return new MeleeAttackGoal(target, preferredPositionNearEntity);
+			}
+			return null;
+		}
 	}
 
 	private async Task<ForcedPath> CreatePathToTargetAsync(BaseUnitEntity agent, MechanicEntity target, AiAreaScanner.PathData moveVariants, AiThreatsHandlingStrategy threatsHandlingStrategy, PreferredPositionNearEntity preferredPositionNearEntity)
@@ -231,61 +264,7 @@ public class MoveToEntityNode : TaskNode
 
 	private HashSet<GridNodeBase> GetNodesNearTargetEntity(BaseUnitEntity agent, MechanicEntity targetEntity, PreferredPositionNearEntity preferredPositionNearEntity)
 	{
-		HashSet<GridNodeBase> hashSet = EnumerateNodesNearEntity(targetEntity, preferredPositionNearEntity).ToHashSet();
-		IntRect sizeRect = agent.SizeRect;
-		if (sizeRect.Width == 1 && sizeRect.Height == 1)
-		{
-			return hashSet;
-		}
-		if (hashSet.Count == 0)
-		{
-			return hashSet;
-		}
-		GridGraph gridGraph = hashSet.First().Graph as GridGraph;
-		foreach (GridNodeBase item in hashSet.ToTempList())
-		{
-			for (int i = 0; i < sizeRect.Width; i++)
-			{
-				for (int j = 0; j < sizeRect.Height; j++)
-				{
-					hashSet.Add(gridGraph.GetNode(item.XCoordinateInGrid - i, item.ZCoordinateInGrid - j));
-				}
-			}
-		}
-		return hashSet;
-	}
-
-	private IEnumerable<GridNodeBase> EnumerateNodesNearEntity(MechanicEntity entity, PreferredPositionNearEntity preferredPositionNearEntity)
-	{
-		return EnumerateNodesNearEntity(entity.GetNearestNodeXZ(), entity.SizeRect, preferredPositionNearEntity);
-	}
-
-	private IEnumerable<GridNodeBase> EnumerateNodesNearEntity(GridNodeBase node, IntRect sizeRect, PreferredPositionNearEntity preferredPositionNearEntity)
-	{
-		List<GridNodeBase> entityNodes = GridAreaHelper.GetOccupiedNodes(node, sizeRect).ToList();
-		int xFrom = entityNodes.Min((GridNodeBase n) => n.XCoordinateInGrid) - 1;
-		int xTo = entityNodes.Max((GridNodeBase n) => n.XCoordinateInGrid) + 1;
-		int zFrom = entityNodes.Min((GridNodeBase n) => n.ZCoordinateInGrid) - 1;
-		int zTo = entityNodes.Max((GridNodeBase n) => n.ZCoordinateInGrid) + 1;
-		GridGraph graph = entityNodes[0].Graph as GridGraph;
-		foreach (GridNodeBase entityNode in entityNodes)
-		{
-			for (int x = xFrom; x <= xTo; x++)
-			{
-				for (int z = zFrom; z <= zTo; z++)
-				{
-					bool flag = (x == xFrom || x == xTo) && (z == zFrom || z == zTo);
-					if (!(preferredPositionNearEntity == PreferredPositionNearEntity.AdjacentGraphNodes && flag) && (preferredPositionNearEntity != PreferredPositionNearEntity.DiagonalGraphNodes || flag))
-					{
-						GridNodeBase node2 = graph.GetNode(x, z);
-						if (node2 != null && !entityNodes.Contains(node2) && entityNode.ContainsConnection(node2))
-						{
-							yield return node2;
-						}
-					}
-				}
-			}
-		}
+		return MeleeCandidateHelper.GetNodesNearTargetEntity(agent, targetEntity, preferredPositionNearEntity);
 	}
 
 	private bool CanStopAtNode(BaseUnitEntity agent, GraphNode node, AiAreaScanner.PathData moveVariants)

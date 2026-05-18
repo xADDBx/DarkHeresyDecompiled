@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Owlcat.Runtime.Visual.Waaagh.FrameData;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -13,8 +12,6 @@ public class WaaaghCameraStack : IDisposable
 	private List<Camera> m_Cameras = new List<Camera>();
 
 	private List<WaaaghAdditionalCameraData> m_AdditionaCameraDataList = new List<WaaaghAdditionalCameraData>();
-
-	private Dictionary<Camera, WaaaghCameraStackBuffer> m_Buffers = new Dictionary<Camera, WaaaghCameraStackBuffer>();
 
 	private List<Camera> m_UnusedBuffers = new List<Camera>();
 
@@ -40,49 +37,22 @@ public class WaaaghCameraStack : IDisposable
 
 	public bool AnyPostProcessingEnabled { get; private set; }
 
-	public WaaaghCameraStackBuffer Buffer { get; private set; }
+	public CameraStackTargetHandles TargetHandles { get; } = new CameraStackTargetHandles();
+
 
 	public bool Build(Camera baseCamera)
 	{
-		using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.BuildCameraStack)))
+		using (new ProfilingScope(WaaaghProfileId.BuildCameraStack.Sampler()))
 		{
 			m_BaseCamera = baseCamera;
 			m_BaseCamera.TryGetComponent<WaaaghAdditionalCameraData>(out m_BaseAdditionalCameraData);
 			AnyPostProcessingEnabled = false;
-			CleanUnusedBuffers();
 			m_Cameras.Clear();
 			m_AdditionaCameraDataList.Clear();
 			m_LastCameraIndex = 0;
 			m_LastScaledCameraIndex = -1;
 			return Build();
 		}
-	}
-
-	private void CleanUnusedBuffers()
-	{
-		foreach (KeyValuePair<Camera, WaaaghCameraStackBuffer> buffer in m_Buffers)
-		{
-			Camera key = buffer.Key;
-			WaaaghCameraStackBuffer value = buffer.Value;
-			if (key == null)
-			{
-				value.UnusedFramesCount++;
-			}
-			else if (key.cameraType == CameraType.Game && !key.isActiveAndEnabled)
-			{
-				value.UnusedFramesCount++;
-			}
-			if (value.UnusedFramesCount >= 4)
-			{
-				m_UnusedBuffers.Add(key);
-			}
-		}
-		foreach (Camera unusedBuffer in m_UnusedBuffers)
-		{
-			m_Buffers[unusedBuffer].Dispose();
-			m_Buffers.Remove(unusedBuffer);
-		}
-		m_UnusedBuffers.Clear();
 	}
 
 	private bool Build()
@@ -139,25 +109,8 @@ public class WaaaghCameraStack : IDisposable
 		return true;
 	}
 
-	public void EnsureStackBuffer(WaaaghCameraData cameraData)
-	{
-		if (!m_Buffers.TryGetValue(cameraData.camera, out var value))
-		{
-			value = new WaaaghCameraStackBuffer(cameraData);
-			m_Buffers.Add(cameraData.camera, value);
-		}
-		else
-		{
-			value.Update(cameraData);
-		}
-		Buffer = value;
-	}
-
 	public void Dispose()
 	{
-		foreach (KeyValuePair<Camera, WaaaghCameraStackBuffer> buffer in m_Buffers)
-		{
-			buffer.Value?.Dispose();
-		}
+		TargetHandles?.Dispose();
 	}
 }

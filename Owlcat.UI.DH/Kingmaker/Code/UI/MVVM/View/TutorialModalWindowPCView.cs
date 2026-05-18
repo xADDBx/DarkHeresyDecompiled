@@ -27,9 +27,6 @@ public class TutorialModalWindowPCView : TutorialWindowPCView<TutorialModalWindo
 	[SerializeField]
 	private TextMeshProUGUI m_PageNavigationText;
 
-	[SerializeField]
-	private float m_EncyclopediaButtonDefaultSize = 18f;
-
 	protected override bool IsShowDefaultSprite => true;
 
 	protected override void OnBind()
@@ -61,7 +58,7 @@ public class TutorialModalWindowPCView : TutorialWindowPCView<TutorialModalWindo
 		if (base.ViewModel.CurrentPageIndex.CurrentValue + 1 < base.ViewModel.PageCount)
 		{
 			base.ViewModel.SetCurrentPage(base.ViewModel.CurrentPageIndex.CurrentValue + 1);
-			UISounds.Instance.Sounds.Tutorial.ChangeTutorialPage.Play();
+			ModalWindowsSounds.Instance.Tutorial.ChangeTutorialPage.Play();
 		}
 		else
 		{
@@ -72,19 +69,14 @@ public class TutorialModalWindowPCView : TutorialWindowPCView<TutorialModalWindo
 	protected override void OnShow()
 	{
 		base.OnShow();
-		UISounds.Instance.Sounds.Tutorial.ShowBigTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.ShowBigTutorial.Play();
 		Game.Instance.RequestPauseUi(isPaused: true);
 	}
 
 	protected override void OnHide()
 	{
 		base.OnHide();
-		UISounds.Instance.Sounds.Tutorial.HideBigTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.HideBigTutorial.Play();
 		Game.Instance.RequestPauseUi(isPaused: false);
-	}
-
-	protected override void SetTextsSize(float multiplier)
-	{
-		base.SetTextsSize(multiplier);
 	}
 }

@@ -7,10 +7,8 @@ using Kingmaker.Blueprints.Quests.Logic;
 using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.Settings;
 using Owlcat.UI;
 using R3;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -33,8 +31,6 @@ public class JournalQuestVM : ViewModel
 	public readonly string CompletionText;
 
 	public readonly string Place;
-
-	public readonly Sprite DestinationImage;
 
 	public bool IsNew;
 
@@ -61,8 +57,6 @@ public class JournalQuestVM : ViewModel
 	public readonly JournalOrderProfitFactorVM JournalOrderProfitFactorVM;
 
 	private readonly ReactiveCommand<Unit> m_RefreshData = new ReactiveCommand<Unit>();
-
-	public readonly float FontMultiplier = FontSizeMultiplier;
 
 	public ReadOnlyReactiveProperty<bool> IsSelected => m_IsSelected;
 
@@ -94,7 +88,7 @@ public class JournalQuestVM : ViewModel
 		{
 			if (Quest.IsViewed)
 			{
-				return ActiveObjectives.All((QuestObjective x) => x.IsViewed);
+				return VisibleObjectives.All((QuestObjective x) => x.IsViewed);
 			}
 			return false;
 		}
@@ -104,9 +98,9 @@ public class JournalQuestVM : ViewModel
 
 	public Observable<Unit> RefreshData => m_RefreshData;
 
-	private static float FontSizeMultiplier => SettingsRoot.Accessiability.FontSizeMultiplier;
+	private IEnumerable<QuestObjective> VisibleObjectives => Quest.Objectives.Where((QuestObjective o) => o.IsVisible);
 
-	private IEnumerable<QuestObjective> ActiveObjectives => Quest.Objectives.Where((QuestObjective x) => !x.Blueprint.IsHidden && x.IsActive);
+	private IEnumerable<QuestObjective> ActiveObjectives => VisibleObjectives.Where((QuestObjective o) => o.IsVisible && o.IsActive);
 
 	public JournalQuestVM(Quest quest, ReactiveProperty<Quest> selectedQuest = null, Action<Quest> selectQuestCallback = null)
 	{
@@ -137,16 +131,6 @@ public class JournalQuestVM : ViewModel
 		{
 			Objectives?.Add(new JournalQuestObjectiveVM(item).AddTo(this));
 		}
-		UpdateData();
-	}
-
-	private void Clear()
-	{
-	}
-
-	private void UpdateData()
-	{
-		Clear();
 	}
 
 	private void UpdateStatus(Quest quest, bool forceComplete = false)
@@ -162,10 +146,9 @@ public class JournalQuestVM : ViewModel
 		}
 		IsNew = quest.State == QuestState.Started;
 		IsCompleted = quest.State == QuestState.Completed;
-		IsPostponed = quest.State == QuestState.Postponed;
 		IsFailed = quest.State == QuestState.Failed;
 		IsUpdated = quest.IsViewed && ActiveObjectives.Any((QuestObjective o) => !o.IsViewed) && quest.State != QuestState.Completed && quest.State != QuestState.Failed;
-		m_UpdateStatusCommand.Execute();
+		m_UpdateStatusCommand.Execute(Unit.Default);
 		Objectives?.ForEach(delegate(JournalQuestObjectiveVM o)
 		{
 			o.UpdateState();
@@ -187,16 +170,14 @@ public class JournalQuestVM : ViewModel
 		{
 			m_SelectQuestCallback?.Invoke(Quest);
 		}
-		UpdateData();
 		UpdateStatus(Quest);
 	}
 
 	private void OnSelectedQuestChanged(Quest quest)
 	{
+		m_IsSelected.Value = Quest == quest;
 		if (quest != null)
 		{
-			m_IsSelected.Value = Quest == quest;
-			UpdateData();
 			UpdateStatus(Quest);
 		}
 	}
@@ -204,7 +185,6 @@ public class JournalQuestVM : ViewModel
 	public void CompleteOrder()
 	{
 		UpdateStatus(Quest, forceComplete: true);
-		UpdateData();
 		m_IsOrderCompleted.Value = true;
 		EventBus.RaiseEvent(delegate(IUpdateCanCompleteOrderNotificationHandler h)
 		{

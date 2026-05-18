@@ -2,15 +2,22 @@ using System.Collections.Generic;
 using Kingmaker.GameModes;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 
 namespace Kingmaker.Code.Framework.GameLog;
 
-public class CombatLogBarkLogThread : LogThreadBase, IGameLogEventHandler<GameLogEventBark>
+public class CombatLogBarkLogThread : LogThreadBase, IGameLogEventHandler<GameLogEventBark>, IAreaLoadingStagesHandler, ISubscriber
 {
 	private const int Capacity = 5;
 
 	private readonly Queue<string> m_PreviousMessages = new Queue<string>(6);
+
+	public override void StartThread()
+	{
+		base.StartThread();
+		EventBus.Subscribe(this);
+	}
 
 	public void HandleEvent(GameLogEventBark evt)
 	{
@@ -26,5 +33,14 @@ public class CombatLogBarkLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 			GameLogContext.Text = evt.Text;
 			AddMessage((GameLogContext.SourceEntity.Value != null) ? new CombatLogMessage(LogThreadBase.Strings.UnitBark.CreateCombatLogMessage(), null, hasTooltip: false) : new CombatLogMessage(LogThreadBase.Strings.ObjectBark.CreateCombatLogMessage(), null, hasTooltip: false));
 		}
+	}
+
+	public void OnAreaScenesLoaded()
+	{
+	}
+
+	public void OnAreaLoadingComplete()
+	{
+		m_PreviousMessages.Clear();
 	}
 }

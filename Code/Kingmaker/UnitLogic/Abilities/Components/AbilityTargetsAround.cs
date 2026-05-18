@@ -4,7 +4,7 @@ using System.Linq;
 using Kingmaker.Designers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
@@ -63,7 +63,7 @@ public class AbilityTargetsAround : AbilitySelectTarget, IAbilityAoERadiusProvid
 		{
 			source = source.Where(delegate(BaseUnitEntity u)
 			{
-				using (context.SetScope(u.ToITargetWrapper()))
+				using (EvalContext.PushContext(context, u))
 				{
 					return m_Condition.Check();
 				}

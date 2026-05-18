@@ -1,11 +1,7 @@
-using System.Collections.Generic;
-using System.Linq;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.View;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -30,17 +26,6 @@ public class InventoryDollConsoleView : InventoryDollView<InventoryEquipSlotCons
 	[SerializeField]
 	private CharacterVisualSettingsConsoleView m_VisualSettingsConsoleView;
 
-	[SerializeField]
-	protected ConsoleHintsWidget m_ConsoleHintsWidget;
-
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
-	private InputLayer m_ChooseSlotInputLayer;
-
-	private List<IConsoleEntity> m_RightSlots = new List<IConsoleEntity>();
-
-	private List<IConsoleEntity> m_LeftSlots = new List<IConsoleEntity>();
-
 	private IConsoleEntity m_PrevFocused;
 
 	private ReactiveProperty<bool> m_BlockInteractions = new ReactiveProperty<bool>();
@@ -58,131 +43,22 @@ public class InventoryDollConsoleView : InventoryDollView<InventoryEquipSlotCons
 	protected override void OnBind()
 	{
 		base.OnBind();
-		m_RightSlots.Add(m_BodyArmor);
-		m_RightSlots = new List<IConsoleEntity> { m_Neck, m_Ring2, m_Gloves, m_Back, m_Boots };
-		m_RightSlots.AddRange(m_QuickSlots);
-		m_LeftSlots = new List<IConsoleEntity> { m_HeadArmor, m_BodyArmor, m_Ring1 };
-		m_LeftSlots.AddRange(WeaponSetConsoleView.GetNavigationEntities());
 		if ((bool)m_SelectorWindowView)
 		{
 			base.ViewModel.InventorySelectorWindowVM.Subscribe(m_SelectorWindowView.Bind).AddTo(this);
 		}
-		CreateNavigationIfNeeded();
-		CreateChooseSlotNavigation();
 		base.ViewModel.VisualSettingsVM.Subscribe(m_VisualSettingsConsoleView.Bind).AddTo(this);
 	}
 
 	private void CreateChooseSlotNavigation()
 	{
-		base.ViewModel.ChooseSlotMode.Skip(1).Subscribe(SetChooseSlotMode).AddTo(this);
-		if ((bool)m_ConsoleHintsWidget)
-		{
-			m_ConsoleHintsWidget.BindHint(m_ChooseSlotInputLayer.AddButton(delegate
-			{
-				base.ViewModel.SetIsChooseSlotMode(value: false);
-			}, 9, base.ViewModel.ChooseSlotMode), UIStrings.Instance.CommonTexts.Cancel).AddTo(this);
-			m_ConsoleHintsWidget.BindHint(m_ChooseSlotInputLayer.AddButton(delegate
-			{
-			}, 8, base.ViewModel.ChooseSlotMode), UIStrings.Instance.CommonTexts.Select).AddTo(this);
-		}
 	}
 
-	private void SetChooseSlotMode(bool choosing)
+	public void AddInput()
 	{
-		if (choosing)
-		{
-			m_PrevFocused = m_NavigationBehaviour.CurrentEntity;
-			GamePad.Instance.PushLayer(m_ChooseSlotInputLayer).AddTo(this);
-			foreach (IConsoleEntity entity in m_NavigationBehaviour.Entities)
-			{
-				if (entity is InventoryEquipSlotConsoleView inventoryEquipSlotConsoleView)
-				{
-					bool available = (inventoryEquipSlotConsoleView.SlotVM as EquipSlotVM)?.ItemSlot.CanInsertItem(base.ViewModel.ItemToSlotView.Item) ?? false;
-					inventoryEquipSlotConsoleView.SetAvailable(available);
-				}
-			}
-			m_NavigationBehaviour.FocusOnFirstValidEntity();
-			return;
-		}
-		GamePad.Instance.PopLayer(m_ChooseSlotInputLayer);
-		foreach (IConsoleEntity entity2 in m_NavigationBehaviour.Entities)
-		{
-			if (entity2 is InventoryEquipSlotConsoleView inventoryEquipSlotConsoleView2)
-			{
-				inventoryEquipSlotConsoleView2.SetAvailable(value: true);
-			}
-		}
-		m_NavigationBehaviour.FocusOnEntityManual(m_PrevFocused);
-		m_NavigationBehaviour.UnFocusCurrentEntity();
-		base.ViewModel.ItemToSlotView.ReleaseSlot();
 	}
 
-	private void CreateNavigationIfNeeded()
-	{
-		if (m_NavigationBehaviour == null)
-		{
-			m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-			List<IConsoleEntity> navigationEntities = WeaponSetConsoleView.GetNavigationEntities();
-			GridConsoleNavigationBehaviour navigationBehaviour = m_NavigationBehaviour;
-			IConsoleEntity[][] array = new IConsoleEntity[7][];
-			IConsoleEntity[] array2 = new InventoryEquipSlotConsoleView[2] { m_HeadArmor, m_Neck };
-			array[0] = array2;
-			array2 = new InventoryEquipSlotConsoleView[2] { m_BodyArmor, m_Ring2 };
-			array[1] = array2;
-			array2 = new InventoryEquipSlotConsoleView[2] { m_Ring1, m_Gloves };
-			array[2] = array2;
-			array[3] = new IConsoleEntity[2]
-			{
-				navigationEntities?.ElementAtOrDefault(0),
-				m_Back
-			};
-			array[4] = new IConsoleEntity[2]
-			{
-				navigationEntities?.ElementAtOrDefault(1),
-				m_Boots
-			};
-			array[5] = new IConsoleEntity[3]
-			{
-				navigationEntities?.ElementAtOrDefault(2),
-				m_QuickSlots[0],
-				m_QuickSlots[1]
-			};
-			array[6] = new IConsoleEntity[3]
-			{
-				navigationEntities?.ElementAtOrDefault(3),
-				m_QuickSlots[2],
-				m_QuickSlots[3]
-			};
-			navigationBehaviour.SetEntities(array);
-			m_NavigationBehaviour.FocusOnEntityManual(m_Neck);
-			m_ChooseSlotInputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-			{
-				ContextName = "ChooseSlot"
-			});
-		}
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigation()
-	{
-		CreateNavigationIfNeeded();
-		return m_NavigationBehaviour;
-	}
-
-	public void AddInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, ReadOnlyReactiveProperty<bool> enabledHints = null, ReactiveProperty<bool> blockInteractions = null)
-	{
-		if (blockInteractions != null)
-		{
-			m_BlockInteractions = blockInteractions;
-		}
-		inputLayer.AddAxis(RotateDoll, 2).AddTo(this);
-		inputLayer.AddAxis(ZoomDoll, 3).AddTo(this);
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.ShowVisualSettings();
-		}, 18), UIStrings.Instance.CharGen.ShowVisualSettings).AddTo(this);
-	}
-
-	private void RotateDoll(InputActionEventData obj, float x)
+	private void RotateDoll(float x)
 	{
 		if (!m_BlockInteractions.Value && !(Mathf.Abs(x) < m_ZoomThresholdValue))
 		{
@@ -190,25 +66,11 @@ public class InventoryDollConsoleView : InventoryDollView<InventoryEquipSlotCons
 		}
 	}
 
-	private void ZoomDoll(InputActionEventData obj, float x)
+	private void ZoomDoll(float x)
 	{
 		if (!m_BlockInteractions.Value && !(Mathf.Abs(x) < m_ZoomThresholdValue))
 		{
 			m_CharacterController.Zoom(x * m_ZoomFactor);
 		}
-	}
-
-	public bool IsFocusOnRightSlots(IConsoleEntity entity)
-	{
-		return m_RightSlots.Contains(entity);
-	}
-
-	public bool IsSlot(IConsoleEntity entity)
-	{
-		if (!m_LeftSlots.Contains(entity))
-		{
-			return m_RightSlots.Contains(entity);
-		}
-		return true;
 	}
 }

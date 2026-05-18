@@ -44,6 +44,8 @@ public abstract class MessageBoxBaseView : View<MessageBoxVM>
 
 	private Tweener m_ProgressTweener;
 
+	public static readonly string InputLayerName = "MessageBoxInputContext";
+
 	public virtual void Awake()
 	{
 		ResetCanvasesAnimation();
@@ -53,7 +55,7 @@ public abstract class MessageBoxBaseView : View<MessageBoxVM>
 	{
 		base.OnBind();
 		base.gameObject.SetActive(value: true);
-		UISounds.Instance.Sounds.MessageBox.MessageBoxShow.Play();
+		ModalWindowsSounds.Instance.MessageBox.Show.Play();
 		m_MessageText.text = base.ViewModel.MessageText;
 		ScrollToTop();
 		base.ViewModel.WaitTime.Subscribe(delegate(int value)
@@ -96,7 +98,7 @@ public abstract class MessageBoxBaseView : View<MessageBoxVM>
 		DestroyTextField();
 		m_ProgressTweener?.Kill();
 		m_ProgressTweener = null;
-		UISounds.Instance.Sounds.MessageBox.MessageBoxHide.Play();
+		ModalWindowsSounds.Instance.MessageBox.Hide.Play();
 		ResetCanvasesAnimation();
 		base.gameObject.SetActive(value: false);
 	}

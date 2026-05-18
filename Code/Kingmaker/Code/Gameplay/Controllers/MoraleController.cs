@@ -166,6 +166,16 @@ public class MoraleController : IControllerTick, IController, IControllerEnable,
 		return false;
 	}
 
+	public float GetPlayerPowerBalanceRatio()
+	{
+		MoraleGroup moraleGroup = MoraleGroups.FirstOrDefault((MoraleGroup g) => g.IsPlayerGroup);
+		if (moraleGroup == null || moraleGroup.MostPowerfulEnemy <= 0f)
+		{
+			return 0f;
+		}
+		return moraleGroup.PowerValue / moraleGroup.MostPowerfulEnemy;
+	}
+
 	private void RequestUpdatePowerBalance()
 	{
 		_powerBalanceRecalculateRequested = true;
@@ -484,27 +494,26 @@ public class MoraleController : IControllerTick, IController, IControllerEnable,
 		{
 			return Data.ForcedMusicCombatState;
 		}
-		PowerBalanceState powerBalanceState = PowerBalanceState.Regular;
-		PowerBalanceState powerBalanceState2 = PowerBalanceState.Shattered;
-		List<MoraleGroup> moraleGroups = Game.Instance.Controllers.MoraleController.MoraleGroups;
-		MoraleGroup moraleGroup = moraleGroups.FirstItem((MoraleGroup i) => i.IsPlayerGroup);
-		if (moraleGroups.Count == 0)
+		if (MoraleGroups.Count == 0)
 		{
 			return UnitVisualSettings.MusicCombatState.Regular;
 		}
-		if (moraleGroups.Count == 1 && moraleGroups[0].IsPlayerGroup)
+		if (MoraleGroups.Count == 1 && MoraleGroups[0].IsPlayerGroup)
 		{
 			return UnitVisualSettings.MusicCombatState.Winning;
 		}
-		foreach (MoraleGroup item in moraleGroups)
+		MoraleGroup moraleGroup = MoraleGroups.FirstItem((MoraleGroup i) => i.IsPlayerGroup);
+		if (moraleGroup == null)
 		{
-			if (item.IsPlayerGroup)
+			return UnitVisualSettings.MusicCombatState.Regular;
+		}
+		PowerBalanceState powerBalanceState = moraleGroup.PowerBalanceState;
+		PowerBalanceState powerBalanceState2 = PowerBalanceState.Shattered;
+		foreach (MoraleGroup moraleGroup2 in MoraleGroups)
+		{
+			if (!moraleGroup2.IsPlayerGroup && moraleGroup.IsEnemy(moraleGroup2) && moraleGroup2.PowerBalanceState < powerBalanceState2)
 			{
-				powerBalanceState = item.PowerBalanceState;
-			}
-			else if (moraleGroup.IsEnemy(item) && item.PowerBalanceState < powerBalanceState2)
-			{
-				powerBalanceState2 = item.PowerBalanceState;
+				powerBalanceState2 = moraleGroup2.PowerBalanceState;
 			}
 		}
 		switch (powerBalanceState)

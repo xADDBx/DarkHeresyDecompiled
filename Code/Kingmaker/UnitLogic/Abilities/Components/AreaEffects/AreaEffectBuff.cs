@@ -3,11 +3,10 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -30,17 +29,17 @@ public class AreaEffectBuff : AreaEffectLogic
 
 	public BlueprintBuff Buff => m_Buff?.Get();
 
-	protected override void OnEntityEnter(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected override void OnEntityEnter(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		TryApplyBuff(context, areaEffect, entity);
 	}
 
-	protected override void OnEntityExit(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected override void OnEntityExit(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
-		TryRemoveBuff(context, areaEffect, entity);
+		TryRemoveBuff(areaEffect, entity);
 	}
 
-	protected override void OnRound(MechanicsContext context, AreaEffectEntity areaEffect)
+	protected override void OnRound(IEvalContext context, AreaEffectEntity areaEffect)
 	{
 		if (!CheckConditionEveryRound)
 		{
@@ -54,20 +53,20 @@ public class AreaEffectBuff : AreaEffectLogic
 			}
 			else
 			{
-				TryRemoveBuff(context, areaEffect, item);
+				TryRemoveBuff(areaEffect, item);
 			}
 		}
 	}
 
-	private void TryApplyBuff(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	private void TryApplyBuff(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		if ((FindAppliedBuff(areaEffect, entity) == null || ReduceAndAddRanks) && IsConditionPassed(context, entity))
 		{
-			entity.Buffs.Add(Buff, context)?.AddSource(areaEffect);
+			entity.Buffs.Add(Buff, areaEffect.Context)?.AddSource(areaEffect);
 		}
 	}
 
-	private void TryRemoveBuff(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	private void TryRemoveBuff(AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
 		Buff buff = FindAppliedBuff(areaEffect, entity);
 		if (buff != null)
@@ -83,9 +82,9 @@ public class AreaEffectBuff : AreaEffectLogic
 		}
 	}
 
-	private bool IsConditionPassed(MechanicsContext context, MechanicEntity entity)
+	private bool IsConditionPassed(IEvalContext context, MechanicEntity entity)
 	{
-		using (context.SetScope(entity.ToITargetWrapper()))
+		using (EvalContext.PushContext(context, entity))
 		{
 			return Condition.Check();
 		}

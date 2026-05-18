@@ -9,9 +9,9 @@ public static class StringUtility
 		return string.IsNullOrWhiteSpace(str);
 	}
 
-	public static bool IsNullOrEmpty(this string _this)
+	public static bool IsNullOrEmpty(this string @this)
 	{
-		return string.IsNullOrEmpty(_this);
+		return string.IsNullOrEmpty(@this);
 	}
 
 	public static string EmptyToNull(this string @this)
@@ -57,6 +57,21 @@ public static class StringUtility
 			{
 				num++;
 			}
+		}
+		return num;
+	}
+
+	public static int GetStableHashCode(this string str)
+	{
+		if (str == null)
+		{
+			return 0;
+		}
+		int num = -2128831035;
+		foreach (char c in str)
+		{
+			num ^= c;
+			num *= 16777619;
 		}
 		return num;
 	}

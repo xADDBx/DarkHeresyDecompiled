@@ -1,7 +1,7 @@
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Items;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Mechanics.Actions;
-using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Mechanics.Actions;
@@ -18,7 +18,7 @@ public class RestFullParty : ContextAction
 	{
 		foreach (BaseUnitEntity item in Game.Instance.Player.Party)
 		{
-			PartHealth.RestUnit(item);
+			item.Restore();
 		}
 		foreach (ItemEntity item2 in Game.Instance.PartySharedInventory.Collection)
 		{

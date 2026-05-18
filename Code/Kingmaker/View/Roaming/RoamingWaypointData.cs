@@ -5,7 +5,6 @@ using Kingmaker.Code.Framework.CutsceneSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.StatefulRandom;
 using OwlPack.Runtime;
@@ -16,7 +15,7 @@ namespace Kingmaker.View.Roaming;
 
 [HashRoot]
 [OwlPackable(OwlPackableMode.Generate)]
-public class RoamingWaypointData : SimpleEntity, IRoamingPoint, IOwlPackable, IOwlPackable<IRoamingPoint>, IHashable, IOwlPackable<RoamingWaypointData>
+public sealed class RoamingWaypointData : SimpleEntity, IRoamingPoint, IOwlPackable, IOwlPackable<IRoamingPoint>, IHashable, IOwlPackable<RoamingWaypointData>
 {
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -41,26 +40,17 @@ public class RoamingWaypointData : SimpleEntity, IRoamingPoint, IOwlPackable, IO
 
 	public new float? Orientation => WaypointView.GetOrientation();
 
-	protected RoamingWaypointData(JsonConstructorMark _)
+	public RoamingWaypointData(IEntityConfig config)
+		: base(config)
+	{
+	}
+
+	private RoamingWaypointData(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	public RoamingWaypointData(EntityViewBase view)
-		: base(view)
-	{
-	}
-
-	public RoamingWaypointData(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	protected RoamingWaypointData()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -95,7 +85,7 @@ public class RoamingWaypointData : SimpleEntity, IRoamingPoint, IOwlPackable, IO
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		RoamingWaypointData source = new RoamingWaypointData();
+		RoamingWaypointData source = new RoamingWaypointData(default(OwlPackConstructorParameter));
 		result = Unsafe.As<RoamingWaypointData, TPossiblyBase>(ref source);
 	}
 

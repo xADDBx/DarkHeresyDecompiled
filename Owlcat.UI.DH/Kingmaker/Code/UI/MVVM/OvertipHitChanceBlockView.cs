@@ -19,7 +19,7 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 	private GameObject m_AbilityBlock;
 
 	[SerializeField]
-	private GameObject m_HitAlwaysMarker;
+	private BuffsGroupWidget m_CriticalEffectMarker;
 
 	[SerializeField]
 	private Image m_Ability;
@@ -55,8 +55,6 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 	private Color m_HighChanceColor;
 
 	private bool m_IsVisible;
-
-	private bool IsPreciseAttackHasTarget => Game.Instance.Controllers.PreciseAttackController.HasTarget;
 
 	public void HideInstant()
 	{
@@ -107,17 +105,12 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 	{
 		float currentValue = base.ViewModel.HitChance.CurrentValue;
 		bool flag = currentValue >= 0f && currentValue <= 100f;
-		bool currentValue2 = base.ViewModel.MechanicEntityUIState.HoverSelfTargetAbility.CurrentValue;
+		bool currentValue2 = base.ViewModel.EntityUIState.HoverSelfTargetAbility.CurrentValue;
 		bool currentValue3 = base.ViewModel.IsCaster.CurrentValue;
-		bool flag2 = ability.IsPrecise && !IsPreciseAttackHasTarget;
 		bool isThrow = ability.IsThrow;
-		if (!base.ViewModel.IsAttack || !flag || currentValue2 || currentValue3 || flag2 || isThrow)
+		if (!base.ViewModel.IsAttack || !flag || currentValue2 || currentValue3 || ability.IsPrecise || isThrow || base.ViewModel.HitAlways.CurrentValue)
 		{
 			SetAbilityState(ability.Icon);
-		}
-		else if (base.ViewModel.HitAlways.CurrentValue)
-		{
-			SetHitAlwaysState();
 		}
 		else
 		{
@@ -140,17 +133,9 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 		}
 	}
 
-	private void SetHitAlwaysState()
-	{
-		m_HitChanceBlock.SetActive(value: false);
-		m_AbilityBlock.SetActive(value: false);
-		m_HitAlwaysMarker.SetActive(value: true);
-	}
-
 	private void SetAbilityState(Sprite abilityIcon)
 	{
 		m_HitChanceBlock.SetActive(value: false);
-		m_HitAlwaysMarker.SetActive(value: false);
 		m_Ability.sprite = abilityIcon;
 		m_AbilityBlock.SetActive(value: true);
 	}
@@ -158,7 +143,6 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 	private void SetHitChanceState()
 	{
 		m_AbilityBlock.SetActive(value: false);
-		m_HitAlwaysMarker.SetActive(value: false);
 		m_HitChanceBlock.SetActive(value: true);
 	}
 
@@ -169,6 +153,7 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 			int value2 = Mathf.RoundToInt(value);
 			m_HitChance.SetText(value2.ToString());
 			m_HitChance.color = GetHitChanceTextColor(value2);
+			UpdateCriticalEffect(base.ViewModel.AffectedByCriticalEffect);
 		}
 	}
 
@@ -191,5 +176,23 @@ public class OvertipHitChanceBlockView : View<OvertipHitChanceBlockVM>
 		{
 			m_InitialChance.SetText(value.ToString(CultureInfo.InvariantCulture));
 		}
+	}
+
+	private void UpdateCriticalEffect(bool hasCritical)
+	{
+		if (!hasCritical)
+		{
+			m_CriticalEffectMarker.SetActive(isActive: false);
+			return;
+		}
+		CriticalEffectsUIData casterCriticalEffects = base.ViewModel.GetCasterCriticalEffects();
+		if (casterCriticalEffects.Count < 1)
+		{
+			m_CriticalEffectMarker.SetActive(isActive: false);
+			return;
+		}
+		string activeLayer = ((casterCriticalEffects.Count > 1) ? $"Multiple_{casterCriticalEffects.HighestRank}" : $"Single_{casterCriticalEffects.HighestRank}");
+		m_CriticalEffectMarker.SetActiveLayer(activeLayer);
+		m_CriticalEffectMarker.SetActive(isActive: true);
 	}
 }

@@ -36,11 +36,7 @@ public class MapInteractionObjectOvertipsCollectionVM : BaseMapObjectOvertipsCol
 
 	protected override bool NeedOvertip(Entity entityData)
 	{
-		if (!(entityData is MapObjectEntity mapObjectEntity))
-		{
-			return false;
-		}
-		if (mapObjectEntity.View == null)
+		if (entityData.IsDisposed || entityData.Destroyed || !(entityData is MapObjectEntity { View: not null } mapObjectEntity))
 		{
 			return false;
 		}

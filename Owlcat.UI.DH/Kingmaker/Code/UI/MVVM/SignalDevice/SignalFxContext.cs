@@ -50,7 +50,7 @@ public class SignalFxContext : IDetectiveRadarHandler, ISubscriber, IDisposable
 				m_TimeToNextPulse -= Time.deltaTime;
 				return;
 			}
-			m_DoPulse.Execute();
+			m_DoPulse.Execute(Unit.Default);
 			m_TimeToNextPulse = Root.GetWavesDelay(Controller.SignalPowerClamped01);
 		}
 	}

@@ -1,6 +1,6 @@
 namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.XPBDGizmos;
 
-public enum XPBDGizmosProfileId
+internal enum XPBDGizmosProfileId
 {
 	XPBDGizmosParticles,
 	XPBDGizmosConstraints,

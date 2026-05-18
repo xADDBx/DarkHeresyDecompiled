@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Owlcat.Runtime.Core.Utility;
 
@@ -16,7 +17,7 @@ public sealed class AbilityWeaponSetGetter : IntPropertyGetter, PropertyContextA
 
 	protected override int GetBaseValue()
 	{
-		ItemEntityWeapon abilityWeapon = this.GetAbilityWeapon();
+		ItemEntityWeapon abilityWeapon = EvalContext.Current.AbilityWeapon;
 		PartUnitBody partUnitBody = abilityWeapon?.Wielder?.GetBodyOptional();
 		if (partUnitBody == null)
 		{

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;

@@ -10,11 +10,6 @@ namespace Kingmaker.Globalmap.Blueprints;
 [TypeId("fab4f1e3830ee8842ab3b77782add352")]
 public class BlueprintMultiEntrance : BlueprintScriptableObject
 {
-	public enum BlueprintMultiEntranceMap
-	{
-		Scintilla
-	}
-
 	[Serializable]
 	public class Reference : BlueprintReference<BlueprintMultiEntrance>
 	{

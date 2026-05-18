@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
@@ -10,6 +11,7 @@ using UnityEngine.Serialization;
 
 namespace Kingmaker.UnitLogic.Interaction;
 
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("cd950c783c92fdb489a44fb458d216ad")]
 public class SpawnerInteractionDialog : SpawnerInteraction, IDialogReference
 {

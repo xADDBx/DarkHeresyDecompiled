@@ -189,8 +189,6 @@ public class ReasonStrings : StringsContainer
 	public LocalizedString AreaEffectsCannotOverlap;
 
 	[Header("Precise Attack")]
-	public LocalizedString CasterHasNoFact;
-
 	public LocalizedString TargetCannotBeAttackedByPreciseAttack;
 
 	public LocalizedString CannotTargetBodyPartGeneric;

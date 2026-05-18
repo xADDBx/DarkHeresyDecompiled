@@ -6,6 +6,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
 
@@ -57,7 +58,7 @@ public class CharacterSelection
 			{
 				return manualSelection;
 			}
-			return Game.Instance.Player.Party.MaxBy((BaseUnitEntity c) => c.Stats.GetStat(ComparisonStats[0]));
+			return Game.Instance.Player.Party.MaxBy((BaseUnitEntity c) => c.Actor.GetStat(ComparisonStats[0], null, default(StatContext), "SelectUnit"));
 		case Type.Companion:
 		{
 			BlueprintUnit blueprint = answer.GetComponent<ActingCompanion>()?.Companion;

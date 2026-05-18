@@ -56,13 +56,13 @@ public class UnitMissedTurnLogThread : LogThreadBase, IGameLogEventHandler<GameL
 
 	private IEnumerable<ITooltipBrick> CollectExtraBricks(List<FeatureCountableFlag.FactsList.Element> buffs)
 	{
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> createTooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> textTemplate = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		if (createTooltipBrickIconTextValue == null || textTemplate == null)
+		Func<BrickIconTextValueArgs, ITooltipBrick> createBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> textTemplate = CombatLogTooltipService.CreateBrickTextValue;
+		if (createBrickIconTextValue == null || textTemplate == null)
 		{
 			yield break;
 		}
-		yield return createTooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(LogThreadBase.Strings.TooltipBrickStrings.Reasons.Text, "", 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return createBrickIconTextValue(new BrickIconTextValueArgs(LogThreadBase.Strings.TooltipBrickStrings.Reasons.Text, "", 1));
 		foreach (FeatureCountableFlag.FactsList.Element buff in buffs)
 		{
 			yield return textTemplate(new TooltipBrickTextValueArgs(buff.BuffInformation.Name, "", 1));

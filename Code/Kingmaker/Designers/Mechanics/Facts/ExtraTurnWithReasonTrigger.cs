@@ -6,11 +6,11 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
@@ -66,17 +66,17 @@ public class ExtraTurnWithReasonTrigger : UnitFactComponentDelegate, IInterruptC
 			return;
 		}
 		MechanicEntity caster = base.Context.MaybeCaster;
-		MechanicEntity scope = mechanicEntity;
+		MechanicEntity mechanicEntity2 = mechanicEntity;
 		if (CasterForActions != null)
 		{
 			caster = CasterForActions.GetValue();
 		}
 		if (TargetForActions != null)
 		{
-			scope = TargetForActions.GetValue();
+			mechanicEntity2 = TargetForActions.GetValue();
 		}
-		using MechanicsContext mechanicsContext = MechanicsContext.Claim(base.Context.Blueprint, caster, base.Context.MaybeOwner, base.Context, base.Context.ClickedTarget, base.Fact, base.Context.Ability);
-		using (mechanicsContext?.SetScope(scope))
+		using (EvalContext.Build(base.Context).Caster(caster).Target(mechanicEntity2)
+			.Push())
 		{
 			UnitInterruptTurnStartActions.Run();
 		}

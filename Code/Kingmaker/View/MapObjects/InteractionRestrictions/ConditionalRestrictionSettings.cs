@@ -13,8 +13,8 @@ public class ConditionalRestrictionSettings
 	public bool HideBark;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	public SharedStringAsset RestrictedBark;
+	public LocalizedString RestrictedBark;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	public SharedStringAsset AllowedBark;
+	public LocalizedString AllowedBark;
 }

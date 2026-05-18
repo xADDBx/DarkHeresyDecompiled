@@ -63,7 +63,7 @@ public class UnitAnimationActionWeaponWielding : UnitAnimationAction
 
 	public override void OnStart(UnitAnimationActionHandle handle)
 	{
-		handle.AnimationLayer = AnimationLayerType.WeaponWielding;
+		handle.AnimationLayer = UnitAnimationLayerType.WeaponWielding;
 		handle.ActionData = new ActionData
 		{
 			LastMovementState = MovementState.Idle

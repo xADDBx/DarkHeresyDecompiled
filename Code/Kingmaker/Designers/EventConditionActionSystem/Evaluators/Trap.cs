@@ -24,7 +24,7 @@ public class Trap : MapObjectEvaluator, IOwlPackable<Trap>
 
 	protected override MapObjectEntity GetMapObjectInternal()
 	{
-		return ContextData<BlueprintTrap.ElementsData>.Current?.TrapObject.Data;
+		return ContextData<BlueprintTrap.ElementsData>.Current?.TrapObject;
 	}
 
 	public override string GetCaption()

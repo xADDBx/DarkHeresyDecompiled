@@ -37,8 +37,8 @@ public static class UtilityChargen
 		return category switch
 		{
 			PortraitCategory.None => string.Empty, 
-			PortraitCategory.Warhammer => UIStrings.Instance.CharGen.PortraitCategoryWarhammer, 
-			PortraitCategory.Navigator => UIStrings.Instance.CharGen.PortraitCategoryNavigator, 
+			PortraitCategory.DarkHeresy => UIStrings.Instance.CharGen.PortraitCategoryDarkHeresy, 
+			PortraitCategory.RogueTrader => UIStrings.Instance.CharGen.PortraitCategoryRogueTrader, 
 			_ => string.Empty, 
 		};
 	}
@@ -65,6 +65,10 @@ public static class UtilityChargen
 
 	public static IEnumerable<BlueprintSelectionFeature> GetFeatureSelectionsByGroup(BlueprintPath path, FeatureGroup group, BaseUnitEntity unit = null)
 	{
+		if (path == null)
+		{
+			return Enumerable.Empty<BlueprintSelectionFeature>();
+		}
 		for (int i = 1; i <= path.RankEntries.Length; i++)
 		{
 			BlueprintPath.RankEntry rankEntry = path.GetRankEntry(i);

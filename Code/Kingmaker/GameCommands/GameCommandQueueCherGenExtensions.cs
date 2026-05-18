@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Base;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers;
 using Kingmaker.ElementsSystem.ContextData;

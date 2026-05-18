@@ -27,7 +27,7 @@ public class AlignmentMarkRewardVM : ViewModel, INetLobbyRequest, ISubscriber
 		FeatureName = alignmentInfo.Name;
 		FeatureIcon = alignmentInfo.Icon;
 		BaseUnitEntity mainCharacterEntity = Game.Instance.Player.MainCharacterEntity;
-		Tooltip = new TooltipTemplateSoulMarkFeature(mainCharacterEntity, direction, rankAdded, null);
+		Tooltip = new TooltipTemplateAlignmentFeature(mainCharacterEntity, direction, rankAdded);
 	}
 
 	public void HandleNetLobbyRequest(bool isMainMenu = false)

@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using DG.Tweening;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI;
+using Kingmaker.UI.Pointer;
 using Kingmaker.UI.Sound;
+using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -13,6 +16,78 @@ namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
 public class OpenedCaseTransformControlsBaseView : View<OpenedCaseTransformControlsVM>
 {
+	private enum ZoomType
+	{
+		ScrollBar,
+		ZoomWheel
+	}
+
+	private class ZoomSoundCooldown : IDisposable
+	{
+		private readonly float m_CooldownDuration;
+
+		private readonly CompositeDisposable m_TimerDisposable = new CompositeDisposable();
+
+		private readonly UISound m_PositiveSound;
+
+		private readonly UISound m_NegativeSound;
+
+		private bool m_CanPlaySound = true;
+
+		public ZoomSoundCooldown(ZoomType zoomType)
+		{
+			m_CooldownDuration = zoomType switch
+			{
+				ZoomType.ScrollBar => UIConfig.Instance.DetectiveConfig.ZoomSliderCooldown, 
+				ZoomType.ZoomWheel => UIConfig.Instance.DetectiveConfig.ZoomWheelCooldown, 
+				_ => 0.15f, 
+			};
+			m_PositiveSound = zoomType switch
+			{
+				ZoomType.ScrollBar => SystemSounds.Instance.Controls.ZoomInScroll, 
+				ZoomType.ZoomWheel => SystemSounds.Instance.Controls.ZoomInWheel, 
+				_ => UISounds.Instance.Sounds.DoNothingEvent, 
+			};
+			m_NegativeSound = zoomType switch
+			{
+				ZoomType.ScrollBar => SystemSounds.Instance.Controls.ZoomOutScroll, 
+				ZoomType.ZoomWheel => SystemSounds.Instance.Controls.ZoomOutWheel, 
+				_ => UISounds.Instance.Sounds.DoNothingEvent, 
+			};
+		}
+
+		public bool TryPlaySound(float delta)
+		{
+			if (Math.Abs(delta) < UIConfig.Instance.DetectiveConfig.SoundScrollNormalizedThreshold)
+			{
+				return false;
+			}
+			if (!m_CanPlaySound)
+			{
+				return false;
+			}
+			UISound type = ((delta > 0f) ? m_PositiveSound : m_NegativeSound);
+			UISounds.Instance.Play(type);
+			StartCooldown();
+			return true;
+		}
+
+		private void StartCooldown()
+		{
+			m_TimerDisposable.Clear();
+			m_CanPlaySound = false;
+			ObservableSubscribeExtensions.Subscribe(Observable.Timer(m_CooldownDuration.Seconds(), UnityTimeProvider.UpdateIgnoreTimeScale), delegate
+			{
+				m_CanPlaySound = true;
+			}).AddTo(m_TimerDisposable);
+		}
+
+		public void Dispose()
+		{
+			m_TimerDisposable?.Dispose();
+		}
+	}
+
 	[Header("Elements")]
 	[SerializeField]
 	protected RectTransform m_Transform;
@@ -38,10 +113,14 @@ public class OpenedCaseTransformControlsBaseView : View<OpenedCaseTransformContr
 
 	private bool m_ResettingPosition;
 
-	private const float SoundScrollThreshold = 0.005f;
+	private ZoomSoundCooldown m_WheelSoundCooldown;
+
+	private ZoomSoundCooldown m_SliderSoundCooldown;
 
 	protected override void OnBind()
 	{
+		m_WheelSoundCooldown = new ZoomSoundCooldown(ZoomType.ZoomWheel).AddTo(this);
+		m_SliderSoundCooldown = new ZoomSoundCooldown(ZoomType.ScrollBar).AddTo(this);
 		m_Sliders.ForEach(delegate(SliderInteraction s)
 		{
 			s.Initialize(m_InteractingWithSlider, m_HasPointerOverSlider);
@@ -49,7 +128,7 @@ public class OpenedCaseTransformControlsBaseView : View<OpenedCaseTransformContr
 		m_Transform.OnScrollAsObservable().Subscribe(OnScroll).AddTo(this);
 		base.ViewModel.CurrentZoom.Subscribe(delegate(float value)
 		{
-			ZoomAtScreenPointViaPivot(Input.mousePosition);
+			ZoomAtScreenPointViaPivot(CursorController.CursorPosition);
 			m_Transform.localScale = Vector3.one * value;
 			float slider01Value = base.ViewModel.CurrentZoom01;
 			m_Sliders.ForEach(delegate(SliderInteraction s)
@@ -59,7 +138,8 @@ public class OpenedCaseTransformControlsBaseView : View<OpenedCaseTransformContr
 		}).AddTo(this);
 		m_Sliders.ForEach(delegate(SliderInteraction s)
 		{
-			s.OnValueChangedAsObservable().Subscribe(MoveSlider).AddTo(this);
+			s.OnValueChangedAsObservable().Skip(1).Subscribe(MoveSlider)
+				.AddTo(this);
 		});
 		EventBus.Subscribe(this).AddTo(this);
 		m_Transform.pivot = Vector2.one * 0.5f;
@@ -69,29 +149,26 @@ public class OpenedCaseTransformControlsBaseView : View<OpenedCaseTransformContr
 	{
 		float currentZoom = base.ViewModel.CurrentZoom01;
 		base.ViewModel.ChangeZoomBy((float)Math.Sign(eventData.scrollDelta.y) * m_ZoomSpeed);
-		PlayScrollSound(Mathf.Clamp01(base.ViewModel.ZoomTo01(base.ViewModel.CurrentZoom.CurrentValue + (float)Math.Sign(eventData.scrollDelta.y) * m_ZoomSpeed)) - currentZoom);
+		float value = base.ViewModel.ZoomTo01(base.ViewModel.CurrentZoom.CurrentValue + (float)Math.Sign(eventData.scrollDelta.y) * m_ZoomSpeed);
+		value = Mathf.Clamp01(value);
+		TryPlayScrollSound(value - currentZoom, ZoomType.ZoomWheel);
 	}
 
 	private void MoveSlider(float newSliderValue)
 	{
 		float delta = base.ViewModel.ZoomTo01(newSliderValue) - base.ViewModel.CurrentZoom01;
-		base.ViewModel.SetValueFromSlider(newSliderValue);
-		PlayScrollSound(delta);
+		base.ViewModel.SetZoomValue(newSliderValue);
+		TryPlayScrollSound(delta, ZoomType.ScrollBar);
 	}
 
-	private static void PlayScrollSound(float delta)
+	private bool TryPlayScrollSound(float delta, ZoomType type)
 	{
-		if (!(delta > 0.005f))
+		return ((ZoomSoundCooldown)(type switch
 		{
-			if (delta < -0.005f)
-			{
-				UISounds.Instance.Play(UISounds.Instance.Sounds.Common.ZoomOutScroll);
-			}
-		}
-		else
-		{
-			UISounds.Instance.Play(UISounds.Instance.Sounds.Common.ZoomInScroll);
-		}
+			ZoomType.ScrollBar => m_SliderSoundCooldown, 
+			ZoomType.ZoomWheel => m_WheelSoundCooldown, 
+			_ => null, 
+		}))?.TryPlaySound(delta) ?? false;
 	}
 
 	private void ZoomAtScreenPointViaPivot(Vector2 screenPoint)
@@ -145,8 +222,8 @@ public class OpenedCaseTransformControlsBaseView : View<OpenedCaseTransformContr
 		Vector2 endValue = initPivot + ScreenPosToPivot(vector);
 		DOTween.To(() => 0f, delegate(float x)
 		{
-			float valueFromSlider = Mathf.Lerp(initSliderValue, 0.5f, x);
-			base.ViewModel.SetValueFromSlider(valueFromSlider);
+			float zoomValue = Mathf.Lerp(initSliderValue, 0.5f, x);
+			base.ViewModel.SetZoomValue(zoomValue);
 			m_Transform.pivot = Vector2.Lerp(initPivot, endValue, x);
 		}, 1f, m_MoveToClueTime).SetUpdate(isIndependentUpdate: true).OnComplete(delegate
 		{

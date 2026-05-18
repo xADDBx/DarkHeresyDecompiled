@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Abilities;
@@ -44,31 +45,41 @@ public class MoveAsksController : BaseAsksController, IClickActionHandler, ISubs
 	{
 		bool flag = GetMoveBark(m_LastMoveSpeaker)?.IsOnCooldown ?? false;
 		BaseUnitEntity baseUnitEntity = null;
-		foreach (BaseUnitEntity selectedUnit in Game.Instance.Controllers.SelectionCharacter.SelectedUnits)
+		if (Game.Instance.Controllers.TurnController.InCombat)
 		{
-			if (flag && selectedUnit == m_LastMoveSpeaker)
+			if (Game.Instance.Controllers.TurnController.CurrentUnit is BaseUnitEntity baseUnitEntity2)
 			{
-				m_SelectedUnits.Clear();
-				return;
-			}
-			if (!selectedUnit.LifeState.IsConscious)
-			{
-				continue;
-			}
-			AskWrapper moveBark = GetMoveBark(selectedUnit);
-			if (moveBark != null && moveBark.HasBarks)
-			{
-				if (selectedUnit == Game.Instance.Player.MainCharacterEntity)
-				{
-					baseUnitEntity = selectedUnit;
-					break;
-				}
-				m_SelectedUnits.Add(selectedUnit);
+				baseUnitEntity = baseUnitEntity2;
 			}
 		}
-		if (baseUnitEntity == null)
+		else
 		{
-			baseUnitEntity = m_SelectedUnits.Random(PFStatefulRandom.Visuals.UnitAsks);
+			foreach (BaseUnitEntity selectedUnit in Game.Instance.Controllers.SelectionCharacter.SelectedUnits)
+			{
+				if (flag && selectedUnit == m_LastMoveSpeaker)
+				{
+					m_SelectedUnits.Clear();
+					return;
+				}
+				if (!selectedUnit.LifeState.IsConscious)
+				{
+					continue;
+				}
+				AskWrapper moveBark = GetMoveBark(selectedUnit);
+				if (moveBark != null && moveBark.HasBarks)
+				{
+					if (selectedUnit == Game.Instance.Player.MainCharacterEntity)
+					{
+						baseUnitEntity = selectedUnit;
+						break;
+					}
+					m_SelectedUnits.Add(selectedUnit);
+				}
+			}
+			if (baseUnitEntity == null)
+			{
+				baseUnitEntity = m_SelectedUnits.Random(PFStatefulRandom.Visuals.UnitAsks);
+			}
 		}
 		if (baseUnitEntity != null)
 		{
@@ -89,17 +100,20 @@ public class MoveAsksController : BaseAsksController, IClickActionHandler, ISubs
 		}
 		if (!unit.IsInCombat)
 		{
-			return unit.View.Asks?.OrderMoveExploration;
+			return unit.View.Asks?.MoveInExploration;
 		}
-		return unit.View.Asks?.OrderMove;
+		return unit.View.Asks?.MoveInCombat;
 	}
 
 	private void ScheduleMove(BaseUnitEntity unit)
 	{
 		AskWrapper moveBark = GetMoveBark(unit);
-		if (moveBark != null && moveBark.Schedule())
+		using (EvalContext.PushAsksContext(unit, unit))
 		{
-			m_LastMoveSpeaker = unit;
+			if (moveBark != null && moveBark.Schedule())
+			{
+				m_LastMoveSpeaker = unit;
+			}
 		}
 	}
 

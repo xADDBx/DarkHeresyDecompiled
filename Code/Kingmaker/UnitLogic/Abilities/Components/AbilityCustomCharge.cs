@@ -56,8 +56,7 @@ public class AbilityCustomCharge : AbilityCustomLogic, IAbilityTargetRestriction
 		{
 			PFLog.Default.Error("No animation handle found");
 		}
-		caster.View.StopMoving();
-		caster.View.MovementAgent.IsCharging = true;
+		caster.StopMoving();
 		using PathDisposable<WarhammerPathPlayer> pd = PathfindingService.Instance.FindPathTB_Delayed(caster.View.MovementAgent, target.Position, limitRangeByActionPoints: false, 1, this);
 		WarhammerPathPlayer path = pd.Path;
 		while (!path.IsDoneAndPostProcessed())
@@ -68,7 +67,7 @@ public class AbilityCustomCharge : AbilityCustomLogic, IAbilityTargetRestriction
 		IEnumerable<Vector3> source = path.vectorPath.Take(num + 1);
 		caster.View.MovementAgent.ForcePath(ForcedPath.Construct(source.ToList()), disableApproachRadius: true);
 		caster.Features.IsCharging.Retain(context.Ability.Fact);
-		while (caster.View.MovementAgent.IsReallyMoving)
+		while (caster.IsReallyMoving)
 		{
 			yield return null;
 		}
@@ -84,7 +83,6 @@ public class AbilityCustomCharge : AbilityCustomLogic, IAbilityTargetRestriction
 	{
 		if (context.Caster is UnitEntity unitEntity)
 		{
-			unitEntity.View.MovementAgent.IsCharging = false;
 			unitEntity.View.MovementAgent.MaxSpeedOverride = null;
 			unitEntity.Features.IsCharging.Release(context.Ability.Fact);
 		}
@@ -127,7 +125,7 @@ public class AbilityCustomCharge : AbilityCustomLogic, IAbilityTargetRestriction
 			Vector2 vector = entity.Position.To2D() - normalized * valueOrDefault;
 			foreach (BaseUnitEntity allBaseAwakeUnit in Game.Instance.EntityPools.AllBaseAwakeUnits)
 			{
-				if (allBaseAwakeUnit != caster && allBaseAwakeUnit != entity && (bool)allBaseAwakeUnit.View && !allBaseAwakeUnit.View.MovementAgent.AvoidanceDisabled && (float)(int)(vector - allBaseAwakeUnit.Position.To2D()).magnitude < (caster.Corpulence + allBaseAwakeUnit.Corpulence) * 0.8f)
+				if (allBaseAwakeUnit != caster && allBaseAwakeUnit != entity && allBaseAwakeUnit.View != null && !allBaseAwakeUnit.View.MovementAgent.AvoidanceDisabled && (float)(int)(vector - allBaseAwakeUnit.Position.To2D()).magnitude < (caster.Corpulence + allBaseAwakeUnit.Corpulence) * 0.8f)
 				{
 					failReason = ConfigRoot.Instance.LocalizedTexts.Reasons.ObstacleBetweenCasterAndTarget;
 					return false;

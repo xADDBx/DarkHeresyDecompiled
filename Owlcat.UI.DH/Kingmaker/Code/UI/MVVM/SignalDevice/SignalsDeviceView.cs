@@ -161,7 +161,7 @@ public class SignalsDeviceView : View<SignalsDeviceVM>
 	{
 		m_HideDisposable?.Dispose();
 		m_PanelAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.DetectiveSystem.SignalDeviceShow.Play();
+		ServiceWindowsSounds.Instance.DetectiveJournal.SignalDeviceShow.Play();
 		DOTween.Kill(m_Canvas);
 		m_Canvas.DOFade(1f, 0.1f).SetUpdate(isIndependentUpdate: true);
 		m_SignalPulseSubscription?.Dispose();
@@ -181,7 +181,7 @@ public class SignalsDeviceView : View<SignalsDeviceVM>
 			m_SignalPulseSubscription = null;
 			m_JammedStateTween?.Pause();
 		});
-		UISounds.Instance.Sounds.DetectiveSystem.SignalDeviceHide.Play();
+		ServiceWindowsSounds.Instance.DetectiveJournal.SignalDeviceHide.Play();
 	}
 
 	private void UpdateDetectiveRadarState(DetectiveRadarState state)
@@ -244,7 +244,7 @@ public class SignalsDeviceView : View<SignalsDeviceVM>
 			m_LampSignal.color = color;
 			float duration = Settings.GetWavesTime(1f - base.ViewModel.SignalPowerClamped.CurrentValue) * 0.2f;
 			AkUnitySoundEngine.SetRTPCValue("SignalsDevice", base.ViewModel.SignalPowerClamped.CurrentValue);
-			UISounds.Instance.Sounds.DetectiveSystem.SignalDevice.Play();
+			ServiceWindowsSounds.Instance.DetectiveJournal.SignalDevice.Play();
 			m_LampSignalGroup.DOFade(1f, duration).SetUpdate(isIndependentUpdate: true).SetLoops(2, LoopType.Yoyo)
 				.OnComplete(delegate
 				{

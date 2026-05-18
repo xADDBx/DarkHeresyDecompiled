@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Gameplay.Getters.Checkers;
@@ -15,6 +16,6 @@ public sealed class CheckAbilityIsRhymedGetter : BoolPropertyGetter, PropertyCon
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetAbility()?.IsRhymed ?? false;
+		return EvalContext.Current.Ability?.IsRhymed ?? false;
 	}
 }

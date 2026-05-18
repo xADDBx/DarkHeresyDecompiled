@@ -57,7 +57,7 @@ public class SetGraphNodeListWithFilterNode : BehaviourTreeNode
 				{
 					foreach (MechanicEntity item2 in list2)
 					{
-						if (filter.GetBoolValue(new PropertyContext(agent, null, item2)))
+						if (filter.GetBoolValue(agent, null, item2))
 						{
 							list.Add(item);
 						}

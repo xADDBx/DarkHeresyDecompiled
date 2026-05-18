@@ -33,9 +33,8 @@ public class AnimationClipEventLinkTraversal : AnimationClipEvent
 		m_Type = type;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
-		return null;
 	}
 
 	public override object Clone()

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Code.View.UI.UIUtils;
@@ -11,7 +12,6 @@ using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Owlcat.UI;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -23,19 +23,16 @@ public class TooltipTemplateChargenUnitInformation : TooltipBaseTemplate
 
 	private readonly IList<CareerPathVM> m_Careers;
 
-	private readonly bool m_ExpandedView;
-
-	public TooltipTemplateChargenUnitInformation(BaseUnitEntity unit, LevelUpManager levelUpManager, IList<CareerPathVM> careers, bool expandedView = false)
+	public TooltipTemplateChargenUnitInformation(BaseUnitEntity unit, LevelUpManager levelUpManager, IList<CareerPathVM> careers)
 	{
 		m_Unit = unit;
 		m_LevelUpManager = levelUpManager;
 		m_Careers = careers;
-		m_ExpandedView = expandedView;
 	}
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_Unit.CharacterName);
+		yield return new BrickTitleVM(m_Unit.CharacterName);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -51,28 +48,43 @@ public class TooltipTemplateChargenUnitInformation : TooltipBaseTemplate
 	{
 		if (m_Careers.Count != 0)
 		{
-			bricks.Add(new TooltipBrickTitle(UIStrings.Instance.CharacterSheet.LevelProgression, TooltipTitleType.H3));
-			bricks.Add(new TooltipBricksGroupStart(hasBackground: false, new TooltipBricksGroupLayoutParams
-			{
-				LayoutType = TooltipBricksGroupLayoutType.Vertical
-			}));
-			bricks.AddRange(m_Careers.Select((CareerPathVM career) => new TooltipBrickTitleWithIcon(career)));
-			bricks.Add(new TooltipBricksGroupEnd());
-			bricks.Add(new TooltipBrickSpace(14f));
+			bricks.Add(new BrickTitleVM(UIStrings.Instance.CharacterSheet.LevelProgression, TooltipTitleType.H3));
+			bricks.Add(new BricksGroupOneColumnVM(((IEnumerable<CareerPathVM>)m_Careers).Select((Func<CareerPathVM, TooltipBrickVM>)((CareerPathVM career) => new BrickTitleWithIconVM(career))).ToList()));
+			bricks.Add(new BrickSpaceVM(14f));
 		}
 	}
 
 	private void AddBackgroundItems(List<ITooltipBrick> bricks)
 	{
-		bricks.Add(new TooltipBrickTitle(UIStrings.Instance.CharGen.Background, TooltipTitleType.H3));
-		bricks.Add(new TooltipBricksGroupStart(hasBackground: false, GetLayoutParams()));
-		bricks.Add(GetBackgroundBrick(FeatureGroup.ChargenHomeworld));
-		bricks.Add(GetBackgroundBrick(FeatureGroup.ChargenImperialWorld));
-		bricks.Add(GetBackgroundBrick(FeatureGroup.ChargenOccupation));
-		bricks.Add(GetBackgroundBrick(FeatureGroup.ChargenMomentOfTriumph));
-		bricks.Add(GetBackgroundBrick(FeatureGroup.ChargenDarkestHour));
-		bricks.Add(new TooltipBricksGroupEnd());
-		bricks.Add(new TooltipBrickSpace(14f));
+		bricks.Add(new BrickTitleVM(UIStrings.Instance.CharGen.Background, TooltipTitleType.H3));
+		List<TooltipBrickVM> list = new List<TooltipBrickVM>();
+		ITooltipBrick backgroundBrick = GetBackgroundBrick(FeatureGroup.ChargenHomeworld);
+		if (backgroundBrick != null)
+		{
+			list.Add((TooltipBrickVM)backgroundBrick);
+		}
+		ITooltipBrick backgroundBrick2 = GetBackgroundBrick(FeatureGroup.ChargenImperialWorld);
+		if (backgroundBrick2 != null)
+		{
+			list.Add((TooltipBrickVM)backgroundBrick2);
+		}
+		ITooltipBrick backgroundBrick3 = GetBackgroundBrick(FeatureGroup.ChargenOccupation);
+		if (backgroundBrick3 != null)
+		{
+			list.Add((TooltipBrickVM)backgroundBrick3);
+		}
+		ITooltipBrick backgroundBrick4 = GetBackgroundBrick(FeatureGroup.ChargenMomentOfTriumph);
+		if (backgroundBrick4 != null)
+		{
+			list.Add((TooltipBrickVM)backgroundBrick4);
+		}
+		ITooltipBrick backgroundBrick5 = GetBackgroundBrick(FeatureGroup.ChargenDarkestHour);
+		if (backgroundBrick5 != null)
+		{
+			list.Add((TooltipBrickVM)backgroundBrick5);
+		}
+		bricks.Add(new BricksGroupOneColumnVM(list));
+		bricks.Add(new BrickSpaceVM(14f));
 	}
 
 	private ITooltipBrick GetBackgroundBrick(FeatureGroup group)
@@ -90,7 +102,7 @@ public class TooltipTemplateChargenUnitInformation : TooltipBaseTemplate
 		(BlueprintFeature, int)? selectedFeature = m_Unit.Progression.GetSelectedFeature(path, 0, blueprintSelectionFeature);
 		if (selectedFeature.HasValue)
 		{
-			return new TooltipBrickBackgroundFeature(selectedFeature.Value.Item1, m_Unit);
+			return new BrickFeatureVM(selectedFeature.Value.Item1, isHeader: false, available: true, showIcon: true, new TooltipTemplateChargenBackground(selectedFeature.Value.Item1, _: false), m_Unit);
 		}
 		return null;
 	}
@@ -100,20 +112,7 @@ public class TooltipTemplateChargenUnitInformation : TooltipBaseTemplate
 		List<IUIDataProvider> list = new List<IUIDataProvider>();
 		list.AddRange(UIUtilityUnit.CollectAbilities(m_Unit));
 		list.AddRange(UIUtilityUnit.CollectToggleAbilities(m_Unit));
-		bricks.Add(new TooltipBrickTitle(UIStrings.Instance.CharacterSheet.Abilities, TooltipTitleType.H3));
-		bricks.Add(new TooltipBricksGroupStart(hasBackground: false, GetLayoutParams()));
-		bricks.AddRange(list.Select((IUIDataProvider ability) => new TooltipBrickFeature(ability)));
-		bricks.Add(new TooltipBricksGroupEnd());
-	}
-
-	private TooltipBricksGroupLayoutParams GetLayoutParams()
-	{
-		return new TooltipBricksGroupLayoutParams
-		{
-			LayoutType = TooltipBricksGroupLayoutType.Grid,
-			Padding = new RectOffset(8, 8, 0, 0),
-			PreferredElementHeight = (m_ExpandedView ? 72f : 62f),
-			CellSize = (m_ExpandedView ? new Vector2(300f, 72f) : new Vector2(256f, 62f))
-		};
+		bricks.Add(new BrickTitleVM(UIStrings.Instance.CharacterSheet.Abilities, TooltipTitleType.H3));
+		bricks.Add(new BricksGroupOneColumnVM(((IEnumerable<IUIDataProvider>)list).Select((Func<IUIDataProvider, TooltipBrickVM>)((IUIDataProvider ability) => new BrickFeatureVM(ability))).ToList()));
 	}
 }

@@ -37,7 +37,7 @@ public struct PlaneBox
 	public Matrix4x4 GetLocalToWorldMatrix()
 	{
 		Vector3 pos = (Vector3)PlaneX * (0f - PlaneX.w) + (Vector3)PlaneY * (0f - PlaneY.w) + (Vector3)PlaneZ * (0f - PlaneZ.w);
-		Quaternion q = Quaternion.LookRotation(PlaneZ, PlaneY);
+		Quaternion q = Quaternion.LookRotation((Vector3)PlaneZ, (Vector3)PlaneY);
 		Vector3 s = Extents * 2f;
 		return Matrix4x4.TRS(pos, q, s);
 	}

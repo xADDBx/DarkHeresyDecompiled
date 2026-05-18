@@ -14,20 +14,20 @@ public class WarhammerPathAiMetricCostProvider : ITraversalCostProvider<Warhamme
 	private enum CellType
 	{
 		Normal,
-		ThreateningArea
+		AooThreateningArea
 	}
 
 	private readonly AbstractUnitEntity m_Unit;
 
 	private readonly IReadOnlyDictionary<GraphNode, AiBrainHelper.IThreatsInfo> m_ThreateningAreaCells;
 
-	private GraphNode m_TargetNode;
+	private readonly AiThreatsHandlingStrategy m_ThreatsHandlingStrategy;
 
-	public WarhammerPathAiMetricCostProvider(AbstractUnitEntity unit, IReadOnlyDictionary<GraphNode, AiBrainHelper.IThreatsInfo> threateningAreaCells, GraphNode targetNode)
+	public WarhammerPathAiMetricCostProvider(AbstractUnitEntity unit, IReadOnlyDictionary<GraphNode, AiBrainHelper.IThreatsInfo> threateningAreaCells, GraphNode targetNode, AiThreatsHandlingStrategy threatsHandlingStrategy = AiThreatsHandlingStrategy.AvoidIfPossible)
 	{
 		m_Unit = unit;
 		m_ThreateningAreaCells = threateningAreaCells;
-		m_TargetNode = targetNode;
+		m_ThreatsHandlingStrategy = threatsHandlingStrategy;
 	}
 
 	public WarhammerPathAiMetric Calc(in WarhammerPathAiMetric distanceFrom, in GraphNode from, in GraphNode to)
@@ -60,19 +60,33 @@ public class WarhammerPathAiMetricCostProvider : ITraversalCostProvider<Warhamme
 		num += 300f * (float)num3 + 33f * (float)num4;
 		int num5 = prevTd.AooUnits.Count((BaseUnitEntity un) => !nextTd.AooUnits.Contains(un)) + nextTd.OverwatchUnits.Count();
 		num += (float)num5 * 1000f;
-		bool flag = PathExtras.IsDiagonal((GridNodeBase)to, (GridNodeBase)from);
-		float num6 = ((!(distanceFrom.DiagonalsCount % 2 == 1 && flag)) ? 1 : 2);
-		float num7 = Calc(from, to);
-		num6 *= num7;
-		float num8 = distanceFrom.Length + num6;
-		float num9 = num8 - distanceFrom.Length;
+		if (m_ThreatsHandlingStrategy == AiThreatsHandlingStrategy.AvoidAlways)
+		{
+			bool num6 = nextTd.AreaEffects.Count > 0 || num5 > 0;
+			bool flag = num3 > 0 || num2 > 0;
+			if (num6 || flag)
+			{
+				num += 1E+09f;
+			}
+		}
+		bool flag2 = PathExtras.IsDiagonal((GridNodeBase)to, (GridNodeBase)from);
+		float num7 = ((!(distanceFrom.DiagonalsCount % 2 == 1 && flag2)) ? 1 : 2);
+		float num8 = Calc(from, to);
+		num7 *= num8;
+		float num9 = distanceFrom.Length + num7;
+		float num10 = num9 - distanceFrom.Length;
+		int num11 = num2;
+		if (m_ThreatsHandlingStrategy == AiThreatsHandlingStrategy.AvoidAlways)
+		{
+			num11 = Math.Max(num11, nextTd.AreaEffects.Count);
+		}
 		int enteredAoE = distanceFrom.EnteredAoE + Math.Max(0, num3);
 		int leavedAoE = distanceFrom.LeavedAoE + Math.Max(0, num4);
-		int stepsInsideDamagingAoE = distanceFrom.StepsInsideDamagingAoE + num2;
+		int stepsInsideDamagingAoE = distanceFrom.StepsInsideDamagingAoE + num11;
 		int provokedAttacks = distanceFrom.ProvokedAttacks + num5;
-		float length = num8;
-		float delay = distanceFrom.Delay + num9 + (flag ? (0.1f * num7) : 0f) + num;
-		return new WarhammerPathAiMetric(distanceFrom.DiagonalsCount + (flag ? 1 : 0), length, delay, enteredAoE, leavedAoE, stepsInsideDamagingAoE, provokedAttacks);
+		float length = num9;
+		float delay = distanceFrom.Delay + num10 + (flag2 ? (0.1f * num8) : 0f) + num;
+		return new WarhammerPathAiMetric(distanceFrom.DiagonalsCount + (flag2 ? 1 : 0), length, delay, enteredAoE, leavedAoE, stepsInsideDamagingAoE, provokedAttacks);
 	}
 
 	private float Calc(GraphNode from, GraphNode to)
@@ -87,11 +101,15 @@ public class WarhammerPathAiMetricCostProvider : ITraversalCostProvider<Warhamme
 
 	private CellType GetCellType(GraphNode cell)
 	{
-		if ((bool)m_Unit.Features.IgnoreThreateningAreaForMovementCostCalculation || !m_ThreateningAreaCells.ContainsKey(cell))
+		if ((bool)m_Unit.Features.IgnoreThreateningAreaForMovementCostCalculation)
 		{
 			return CellType.Normal;
 		}
-		return CellType.ThreateningArea;
+		if (!m_ThreateningAreaCells.TryGetValue(cell, out var value) || value.AooUnits.Count <= 0)
+		{
+			return CellType.Normal;
+		}
+		return CellType.AooThreateningArea;
 	}
 
 	private float GetCellCost(CellType cellType)
@@ -99,7 +117,7 @@ public class WarhammerPathAiMetricCostProvider : ITraversalCostProvider<Warhamme
 		return cellType switch
 		{
 			CellType.Normal => m_Unit.Blueprint.WarhammerMovementApPerCell, 
-			CellType.ThreateningArea => m_Unit.GetWarhammerMovementApPerCellThreateningArea(), 
+			CellType.AooThreateningArea => m_Unit.GetWarhammerMovementApPerCellThreateningArea(), 
 			_ => throw new ArgumentOutOfRangeException("cellType", cellType, null), 
 		};
 	}

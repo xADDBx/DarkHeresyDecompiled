@@ -74,27 +74,29 @@ public class UnitJumpToCell : UnitCommand<UnitJumpToCellParams>
 
 	private void StartAnimation()
 	{
-		AnimationClipWrapper jumpAnimation = base.Params.JumpAnimation;
-		if (jumpAnimation != null)
+		AnimationClipWrapper animationClipWrapper = base.Params.JumpAnimationLink?.Load();
+		if (!(animationClipWrapper != null))
 		{
-			UnitAnimationManager maybeAnimationManager = base.Executor.MaybeAnimationManager;
-			if ((object)maybeAnimationManager != null)
+			return;
+		}
+		AnimationManager maybeAnimationManager = base.Executor.MaybeAnimationManager;
+		if ((object)maybeAnimationManager != null)
+		{
+			UnitAnimationActionClip animationAction = UnitAnimationActionClip.Create(animationClipWrapper, "StartAnimation");
+			maybeAnimationManager.TryExecute(animationAction, delegate(AnimationActionHandle h)
 			{
-				UnitAnimationActionClip animationAction = UnitAnimationActionClip.Create(jumpAnimation, "StartAnimation");
-				m_Handle = maybeAnimationManager.CreateHandle(animationAction);
-				m_Handle.AnimationLayer = AnimationLayerType.Actions;
-				maybeAnimationManager.Execute(m_Handle);
-			}
+				h.AnimationLayer = UnitAnimationLayerType.Actions;
+			}, out m_Handle);
 		}
 	}
 
 	protected override void OnEnded()
 	{
-		base.OnEnded();
 		base.Executor.Position = base.ForcedPath.vectorPath.Last();
 		if (!base.Params.ProvokeAttackOfOpportunity)
 		{
 			base.Executor.Features.DoNotProvokeAttacksOfOpportunity.Release();
 		}
+		base.OnEnded();
 	}
 }

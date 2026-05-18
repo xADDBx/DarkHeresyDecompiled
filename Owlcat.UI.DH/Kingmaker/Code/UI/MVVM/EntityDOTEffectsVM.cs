@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using Code.Enums;
-using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Buffs.Components;
 using Owlcat.UI;
 using R3;
 
@@ -40,7 +38,7 @@ public class EntityDOTEffectsVM : ViewModel
 
 	public void HandleBuffAdded(Buff buff)
 	{
-		if (buff.Owner == m_TargetEntity && IsDoT(buff, out var dotType))
+		if (buff.Owner == m_TargetEntity && buff.IsDoT(out var dotType))
 		{
 			AddDoT(dotType, buff.Rank);
 		}
@@ -48,7 +46,7 @@ public class EntityDOTEffectsVM : ViewModel
 
 	public void HandleBuffRemoved(Buff buff)
 	{
-		if (buff.Owner == m_TargetEntity && IsDoT(buff, out var dotType))
+		if (buff.Owner == m_TargetEntity && buff.IsDoT(out var dotType))
 		{
 			RemoveDoT(dotType);
 		}
@@ -56,7 +54,7 @@ public class EntityDOTEffectsVM : ViewModel
 
 	public void HandleBuffRankIncreased(Buff buff)
 	{
-		if (buff.Owner == m_TargetEntity && IsDoT(buff, out var dotType))
+		if (buff.Owner == m_TargetEntity && buff.IsDoT(out var dotType))
 		{
 			AddDoT(dotType, buff.Rank);
 		}
@@ -64,7 +62,7 @@ public class EntityDOTEffectsVM : ViewModel
 
 	public void HandleBuffRankDecreased(Buff buff)
 	{
-		if (buff.Owner == m_TargetEntity && IsDoT(buff, out var dotType))
+		if (buff.Owner == m_TargetEntity && buff.IsDoT(out var dotType))
 		{
 			AddDoT(dotType, buff.Rank);
 		}
@@ -75,7 +73,7 @@ public class EntityDOTEffectsVM : ViewModel
 		m_DotEffectsList.Clear();
 		foreach (Buff buff in target.Buffs)
 		{
-			if (IsDoT(buff, out var dotType))
+			if (buff.IsDoT(out var dotType))
 			{
 				AddDoT(dotType, buff.Rank, notify: false);
 			}
@@ -108,12 +106,5 @@ public class EntityDOTEffectsVM : ViewModel
 			m_DotEffectsList.RemoveAt(num);
 			m_DotEffects.ForceNotify();
 		}
-	}
-
-	private static bool IsDoT(Buff buff, out DOT dotType)
-	{
-		DOTLogic dOTLogic = buff.Blueprint?.GetComponent<DOTLogic>();
-		dotType = dOTLogic?.Type ?? DOT.Bleeding;
-		return dOTLogic != null;
 	}
 }

@@ -41,16 +41,31 @@ public enum StatType
 	SkillIntimidation = 25,
 	SkillDiplomacy = 26,
 	SkillMedicae = 27,
-	HitPoints = 28,
+	[FormerlySerializedAs("HitPoints")]
+	MaxHitPoints = 28,
 	Defence = 29,
 	ArmorDamageReduction = 30,
-	ArmorDurability = 31,
+	[FormerlySerializedAs("ArmorDurability")]
+	MaxArmorDurability = 31,
+	[NonModifiableStat]
+	CurrentHitPoints = 32,
 	Initiative = 33,
+	[NonModifiableStat]
+	CurrentArmorDurability = 34,
 	[FormerlySerializedAs("WarhammerInitialAPBlue")]
 	MovementPoints = 35,
 	[FormerlySerializedAs("WarhammerInitialAPYellow")]
 	ActionPoints = 36,
 	Resolve = 37,
 	MachineTrait = 38,
-	CohesionRange = 39
+	CohesionRange = 39,
+	ItemWeaponDamage = 40,
+	ItemWeaponRange = 41,
+	ItemWeaponAccuracy = 42,
+	ItemWeaponVitalDamage = 43,
+	ItemWeaponDefenceIgnore = 44,
+	ItemWeaponDamageReductionIgnore = 45,
+	ItemArmorAmount = 50,
+	ItemArmorDamageReduction = 51,
+	ItemArmorDefence = 52
 }

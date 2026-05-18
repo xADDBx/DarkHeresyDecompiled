@@ -28,7 +28,7 @@ public class GlossaryTemplate : TextTemplate
 		string empty = string.Empty;
 		string text2 = "ui:" + text;
 		TutorialColors tutorialColors = ConfigRoot.Instance.UIConfig.TutorialColors;
-		string text3 = "#" + ColorUtility.ToHtmlStringRGB(tutorialColors.UILinkColor);
+		string text3 = "#" + ColorUtility.ToHtmlStringRGB((Color)tutorialColors.UILinkColor);
 		return "<b><color=" + text3 + "><link=\"" + text2 + "\">" + empty + "</link></color></b>";
 	}
 }

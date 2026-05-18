@@ -1,12 +1,14 @@
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
+using Owlcat.UI.Navigation;
 using R3;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [ViewFactoryPolicy(ViewFactoryPolicyFlag.DontPool, null)]
+[RequireComponent(typeof(FocusLayer))]
 public class MainMenuPCView : View<MainMenuVM>
 {
 	[Header("ShowMenu")]
@@ -40,5 +42,6 @@ public class MainMenuPCView : View<MainMenuVM>
 		{
 			m_BlackOverlayFadeAnimator.DisappearAnimation();
 		}).AddTo(this);
+		this.AddNavigation().AddTo(this);
 	}
 }

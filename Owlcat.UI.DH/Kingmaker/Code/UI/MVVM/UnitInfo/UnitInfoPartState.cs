@@ -19,4 +19,6 @@ public struct UnitInfoPartState
 	public bool IsDeadOrUnconscious;
 
 	public bool HasConcentration;
+
+	public bool HasMorale;
 }

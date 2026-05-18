@@ -145,7 +145,7 @@ public class ClickSurfaceDeploymentHandler : IClickEventHandler
 		}
 		UnitTeleportParams cmdParams = new UnitTeleportParams(node.Vector3Position(), isSynchronized: true);
 		value.Commands.Run(cmdParams);
-		UISounds.Instance.Sounds.Combat.PreparationTurnDeployUnit.Play();
+		CombatSounds.Instance.Combat.PreparationTurnDeployUnit.Play();
 		return true;
 	}
 

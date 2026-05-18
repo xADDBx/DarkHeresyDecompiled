@@ -63,18 +63,19 @@ public static class GPUDrivenNativeDataUpdate
 	public struct UpdateMovingRendererIDsJob : IJob
 	{
 		[ReadOnly]
-		public NativeArray<int> CurrentMovingRendererIDs;
+		public NativeArray<EntityId> CurrentMovingRendererIDs;
 
-		public NativeHashSet<int> MovingRendererIDs;
+		public NativeHashSet<EntityId> MovingRendererIDs;
 
-		public NativeHashSet<int> LastFrameMovingRendererIDs;
+		public NativeHashSet<EntityId> LastFrameMovingRendererIDs;
 
 		public void Execute()
 		{
-			foreach (int currentMovingRendererID in CurrentMovingRendererIDs)
+			foreach (EntityId currentMovingRendererID in CurrentMovingRendererIDs)
 			{
-				MovingRendererIDs.Add(currentMovingRendererID);
-				LastFrameMovingRendererIDs.Remove(currentMovingRendererID);
+				int num = currentMovingRendererID;
+				MovingRendererIDs.Add(num);
+				LastFrameMovingRendererIDs.Remove(num);
 			}
 		}
 	}
@@ -132,7 +133,7 @@ public static class GPUDrivenNativeDataUpdate
 		[ReadOnly]
 		[NativeDisableParallelForRestriction]
 		[NativeDisableContainerSafetyRestriction]
-		public NativeArray<int> LODGroupIDs;
+		public NativeArray<EntityId> LODGroupIDs;
 
 		[ReadOnly]
 		[NativeDisableParallelForRestriction]
@@ -148,7 +149,7 @@ public static class GPUDrivenNativeDataUpdate
 		[ReadOnly]
 		public NativeHashMap<int, GPUDrivenLODGroupRepository.LODGroupMetadata>.ReadOnly LODGroupMetadata;
 
-		public NativeList<int>.ParallelWriter MovingRendererIDs;
+		public NativeList<EntityId>.ParallelWriter MovingRendererIDs;
 
 		public unsafe void Execute(int index)
 		{

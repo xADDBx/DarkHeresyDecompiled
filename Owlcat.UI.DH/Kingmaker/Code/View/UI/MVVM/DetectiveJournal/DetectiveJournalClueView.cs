@@ -20,6 +20,20 @@ namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
 public class DetectiveJournalClueView : View<DetectiveJournalClueVM>, IHasBlueprintInfo, ILineTarget, INewIconTarget
 {
+	[Header("Dots/Lines")]
+	[SerializeField]
+	private LineView m_LinePrefab;
+
+	[Header("Debug Values")]
+	[SerializeField]
+	private bool m_UpdateDotsOnEndDrag;
+
+	private readonly Dictionary<DetectiveJournalClueView, LineView> m_ClueToLine = new Dictionary<DetectiveJournalClueView, LineView>();
+
+	private LineView m_LineToCard;
+
+	private LineView m_AnimateLine;
+
 	[Header("Elements")]
 	[SerializeField]
 	private CanvasGroup m_CanvasGroup;
@@ -73,24 +87,10 @@ public class DetectiveJournalClueView : View<DetectiveJournalClueVM>, IHasBluepr
 
 	private readonly ReactiveProperty<RectTransform> m_NewIcon = new ReactiveProperty<RectTransform>();
 
-	[Header("Dots/Lines")]
-	[SerializeField]
-	private LineView m_LinePrefab;
-
-	[Header("Debug Values")]
-	[SerializeField]
-	private bool m_UpdateDotsOnEndDrag;
-
-	[SerializeField]
-	private float m_ShowClueTime = 0.25f;
-
-	private readonly Dictionary<DetectiveJournalClueView, LineView> m_ClueToLine = new Dictionary<DetectiveJournalClueView, LineView>();
-
-	private LineView m_LineToCard;
-
-	private LineView m_AnimateLine;
-
 	public BlueprintScriptableObject Blueprint => base.ViewModel.Clue;
+
+	[field: SerializeField]
+	public RectTransform ConnectionCenter { get; private set; }
 
 	[field: SerializeField]
 	public RectTransform RectTransform { get; private set; }
@@ -109,8 +109,81 @@ public class DetectiveJournalClueView : View<DetectiveJournalClueVM>, IHasBluepr
 
 	public bool IsUnknownCase => base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown();
 
-	[field: SerializeField]
-	public RectTransform ConnectionCenter { get; private set; }
+	private void DrawLines()
+	{
+		DestroyLines();
+		foreach (BlueprintClue connectedClue in base.ViewModel.ConnectedClues)
+		{
+			DetectiveJournalClueView detectiveJournalClueView = m_CaseContext.Clues.FirstOrDefault((DetectiveJournalClueView v) => v.ViewModel.Clue == connectedClue);
+			if (!(detectiveJournalClueView == null))
+			{
+				CreateLineTo(detectiveJournalClueView);
+			}
+		}
+		bool flag = UIUtilityDetective.DebugFlags.HasFlag(AnswerDebugValues.ShowAnswersLines) && base.ViewModel.IsAnswerClue.CurrentValue;
+		BlueprintCaseAnswer blueprintCaseAnswer = Game.Instance.DetectiveSystem.GetCaseAnswer(base.ViewModel.Clue.ParentCase)?.Answer;
+		bool flag2 = !base.ViewModel.Clue.ParentCase.Blueprint.IsClosed() || blueprintCaseAnswer?.RelatedItem == base.ViewModel.Clue;
+		flag = flag && flag2;
+		if (base.ViewModel.Clue.IsDirectlyConnectedToCase && !flag)
+		{
+			CreateLineTo(m_CaseContext.CaseCardScreenBaseView);
+		}
+		if (flag)
+		{
+			CreateAnswerLine();
+		}
+	}
+
+	private void CreateLineTo(DetectiveJournalClueView viewTo)
+	{
+		if (!base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown() && !m_ClueToLine.ContainsKey(viewTo))
+		{
+			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, viewTo.ConnectionCenter);
+			LineView lineView = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
+			lineView.Initialize(new ClueLineData(fromToDots));
+			m_ClueToLine.Add(viewTo, lineView);
+		}
+	}
+
+	private void CreateLineTo(CaseCardScreenBaseView caseCard)
+	{
+		if (!base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown())
+		{
+			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, caseCard.ConnectionCenter);
+			m_LineToCard = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
+			m_LineToCard.Initialize(new ClueLineData(fromToDots));
+		}
+	}
+
+	private void CreateAnswerLine()
+	{
+		if (!base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown())
+		{
+			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, m_CaseContext.CaseCardScreenBaseView.ConnectionCenter);
+			m_LineToCard = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
+			LineType lineType = ((!base.ViewModel.Clue.ParentCase.Blueprint.IsClosed()) ? LineType.Answer : LineType.AnswerSelected);
+			m_LineToCard.Initialize(new ClueLineData(fromToDots), lineType);
+		}
+	}
+
+	private void AnimateLineToCard()
+	{
+		if (base.ViewModel.IsAnswerClue.CurrentValue && base.ViewModel.Clue.ParentCase.Blueprint.IsOpen() && UIUtilityDetective.DebugFlags.HasFlag(AnswerDebugValues.AnimateAnswersLines))
+		{
+			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, m_CaseContext.CaseCardScreenBaseView.ConnectionCenter);
+			m_AnimateLine = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
+			m_AnimateLine.Initialize(new ClueLineData(fromToDots), LineType.Answer);
+			m_AnimateLine.Animate();
+		}
+	}
+
+	private void ClearAnimation()
+	{
+		if (base.ViewModel.IsAnswerClue.CurrentValue && base.ViewModel.Clue.ParentCase.Blueprint.IsOpen())
+		{
+			m_AnimateLine?.Destroy();
+		}
+	}
 
 	public void Initialize(CaseViewsContext viewsContext)
 	{
@@ -237,81 +310,5 @@ public class DetectiveJournalClueView : View<DetectiveJournalClueVM>, IHasBluepr
 			rectTransform = m_ConclusionsList.Entries.Select((IBindable e) => e as ConstructConclusionView).FirstOrDefault((ConstructConclusionView c) => c?.HasNewConclusion ?? false)?.RectTransform;
 		}
 		m_NewIcon.Value = rectTransform;
-	}
-
-	private void DrawLines()
-	{
-		DestroyLines();
-		foreach (BlueprintClue connectedClue in base.ViewModel.ConnectedClues)
-		{
-			DetectiveJournalClueView detectiveJournalClueView = m_CaseContext.Clues.FirstOrDefault((DetectiveJournalClueView v) => v.ViewModel.Clue == connectedClue);
-			if (!(detectiveJournalClueView == null))
-			{
-				CreateLineTo(detectiveJournalClueView);
-			}
-		}
-		bool flag = UIUtilityDetective.DebugFlags.HasFlag(AnswerDebugValues.ShowAnswersLines) && base.ViewModel.IsAnswerClue.CurrentValue;
-		BlueprintCaseAnswer blueprintCaseAnswer = Game.Instance.DetectiveSystem.GetCaseAnswer(base.ViewModel.Clue.ParentCase)?.Answer;
-		bool flag2 = !base.ViewModel.Clue.ParentCase.Blueprint.IsClosed() || blueprintCaseAnswer?.RelatedItem == base.ViewModel.Clue;
-		flag = flag && flag2;
-		if (base.ViewModel.Clue.IsDirectlyConnectedToCase && !flag)
-		{
-			CreateLineTo(m_CaseContext.CaseCardScreenBaseView);
-		}
-		if (flag)
-		{
-			CreateAnswerLine();
-		}
-	}
-
-	private void CreateLineTo(DetectiveJournalClueView viewTo)
-	{
-		if (!base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown() && !m_ClueToLine.ContainsKey(viewTo))
-		{
-			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, viewTo.ConnectionCenter);
-			LineView lineView = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
-			lineView.Initialize(new ClueLineData(fromToDots));
-			m_ClueToLine.Add(viewTo, lineView);
-		}
-	}
-
-	private void CreateLineTo(CaseCardScreenBaseView caseCard)
-	{
-		if (!base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown())
-		{
-			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, caseCard.ConnectionCenter);
-			m_LineToCard = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
-			m_LineToCard.Initialize(new ClueLineData(fromToDots));
-		}
-	}
-
-	private void CreateAnswerLine()
-	{
-		if (!base.ViewModel.Clue.ParentCase.Blueprint.IsUnknown())
-		{
-			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, m_CaseContext.CaseCardScreenBaseView.ConnectionCenter);
-			m_LineToCard = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
-			LineType lineType = ((!base.ViewModel.Clue.ParentCase.Blueprint.IsClosed()) ? LineType.Answer : LineType.AnswerSelected);
-			m_LineToCard.Initialize(new ClueLineData(fromToDots), lineType);
-		}
-	}
-
-	private void AnimateLineToCard()
-	{
-		if (base.ViewModel.IsAnswerClue.CurrentValue && base.ViewModel.Clue.ParentCase.Blueprint.IsOpen() && UIUtilityDetective.DebugFlags.HasFlag(AnswerDebugValues.AnimateAnswersLines))
-		{
-			(RectTransform, RectTransform) fromToDots = (ConnectionCenter, m_CaseContext.CaseCardScreenBaseView.ConnectionCenter);
-			m_AnimateLine = Object.Instantiate(m_LinePrefab, m_CaseContext.LinesContainer, worldPositionStays: false);
-			m_AnimateLine.Initialize(new ClueLineData(fromToDots), LineType.Answer);
-			m_AnimateLine.Animate();
-		}
-	}
-
-	private void ClearAnimation()
-	{
-		if (base.ViewModel.IsAnswerClue.CurrentValue && base.ViewModel.Clue.ParentCase.Blueprint.IsOpen())
-		{
-			m_AnimateLine?.Destroy();
-		}
 	}
 }

@@ -22,6 +22,10 @@ public class InteractionDetectiveTrace : NewInteractionComponent<InteractionPart
 
 	public bool Spammable => Settings.Spammable;
 
+	public bool IsVariative => Settings.IsVariative;
+
+	public bool ShowNotFollowedOnMap => Settings.ShowNotFollowedOnMap;
+
 	public override DialogReferenceType GetUsagesFor(BlueprintDialog dialog)
 	{
 		if (Settings.Dialog.MaybeBlueprint != dialog)

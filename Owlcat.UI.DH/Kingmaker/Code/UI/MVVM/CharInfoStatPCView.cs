@@ -1,4 +1,6 @@
+using Code.View.UI.Helpers;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -10,26 +12,26 @@ public class CharInfoStatPCView : View<CharInfoStatVM>
 {
 	[Header("Labels")]
 	[SerializeField]
-	private TextMeshProUGUI m_LongName;
+	private TMP_Text m_LongName;
 
 	[SerializeField]
-	private TextMeshProUGUI m_ShortName;
+	private TMP_Text m_ShortName;
 
 	[Header("Values")]
 	[SerializeField]
-	private TextMeshProUGUI m_Value;
+	private TMP_Text m_Value;
 
 	[SerializeField]
 	private bool m_AlwaysShowSign;
 
-	[SerializeField]
-	private float m_DefaultFontSize = 16f;
-
-	[SerializeField]
-	private float m_DefaultConsoleFontSize = 16f;
+	private AccessibilityTextHelper m_TextHelper;
 
 	protected override void OnBind()
 	{
+		if (m_TextHelper == null)
+		{
+			m_TextHelper = new AccessibilityTextHelper(m_LongName, m_ShortName, m_Value).AddTo(this);
+		}
 		SetLabels();
 		base.ViewModel.IsValueEnabled.Subscribe(delegate
 		{
@@ -44,21 +46,13 @@ public class CharInfoStatPCView : View<CharInfoStatVM>
 			SetValue();
 		}).AddTo(this);
 		SetTooltip();
+		m_TextHelper.UpdateTextSize();
 	}
 
 	private void SetLabels()
 	{
-		bool isControllerMouse = Game.Instance.IsControllerMouse;
-		if (m_LongName != null)
-		{
-			m_LongName.text = base.ViewModel.Name.CurrentValue;
-			m_LongName.fontSize = (isControllerMouse ? m_DefaultFontSize : m_DefaultConsoleFontSize) * base.ViewModel.FontMultiplier;
-		}
-		if (m_ShortName != null)
-		{
-			m_ShortName.text = base.ViewModel.ShortName;
-			m_ShortName.fontSize = (isControllerMouse ? m_DefaultFontSize : m_DefaultConsoleFontSize) * base.ViewModel.FontMultiplier;
-		}
+		m_LongName.Or(null)?.SetText(base.ViewModel.Name.CurrentValue);
+		m_ShortName.Or(null)?.SetText(base.ViewModel.ShortName);
 	}
 
 	private void SetValue()

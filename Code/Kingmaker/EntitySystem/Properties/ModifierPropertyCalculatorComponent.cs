@@ -4,7 +4,7 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Framework;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 
@@ -55,13 +55,8 @@ public class ModifierPropertyCalculatorComponent : BlueprintComponent, IProperty
 
 	SaveToContextType IPropertyCalculatorComponent.SaveToContext => SaveToContext;
 
-	public int GetValue(MechanicsContext context, MechanicEntity currentEntity)
+	public int GetValue(IEvalContext context, MechanicEntity currentEntity)
 	{
 		return Value.GetValue(currentEntity, context);
-	}
-
-	public int GetValue(PropertyContext context)
-	{
-		return Value.GetValue(context);
 	}
 }

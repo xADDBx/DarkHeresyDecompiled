@@ -42,7 +42,7 @@ public class CommandPartyPositionSpan : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Entries.Clear();
@@ -59,10 +59,17 @@ public class CommandPartyPositionSpan : CommandBase
 				commandData.Entries.Add(item);
 			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -70,13 +77,13 @@ public class CommandPartyPositionSpan : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		foreach (PartyMemberEntry entry in player.GetCommandData<Data>(this).Entries)
 		{
 			BaseUnitEntity baseUnitEntity = Game.Instance.Player.PartyCharacters.FirstOrDefault((UnitReference c) => c.Entity?.ToBaseUnitEntity().Blueprint == entry.Blueprint).Entity.ToBaseUnitEntity();
@@ -86,6 +93,7 @@ public class CommandPartyPositionSpan : CommandBase
 				baseUnitEntity.SetOrientation(entry.Orientation);
 			}
 		}
+		return CommandResult.Success;
 	}
 
 	private bool ShouldReturn(BaseUnitEntity character)

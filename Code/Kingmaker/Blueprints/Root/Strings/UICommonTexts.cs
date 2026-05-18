@@ -42,8 +42,6 @@ public class UICommonTexts
 
 	public LocalizedString Information;
 
-	public LocalizedString Warning;
-
 	public LocalizedString CloseWindow;
 
 	public LocalizedString Collapse;
@@ -60,11 +58,7 @@ public class UICommonTexts
 
 	public LocalizedString WaitingOtherPlayer;
 
-	public LocalizedString Menu;
-
 	public LocalizedString Search;
-
-	public LocalizedString Cursor;
 
 	public LocalizedString Increase;
 
@@ -73,8 +67,6 @@ public class UICommonTexts
 	public LocalizedString HoldGamepadButton;
 
 	public LocalizedString ThisActionCantBeCanceled;
-
-	public LocalizedString AreYouSure;
 
 	public LocalizedString UIVisibility;
 }

@@ -1,30 +1,37 @@
 using System;
-using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.Blueprints.Root;
+using Kingmaker.Gameplay.Parts;
 using Kingmaker.UnitLogic;
+using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
 
 namespace Kingmaker.Gameplay.Components;
 
 [Serializable]
-[ClassInfoBox("ArmorDurability механизма равен HitPoints. Урон HP и лечение HP игнорируется, урон HP всегда равен урону по броне. Механизмы имунны к некоторым абилкам и эффектам. Все механизмы получают CommonMechanismFact который задается в SystemMechanicsRoot")]
+[Obsolete("Use ForbidDirectHpDamageComponent, CountHpAsArmorComponent, CountAsDestructibleComponent instead.")]
+[ClassInfoBox("OBSOLETE. Use ForbidDirectHpDamageComponent + CountHpAsArmorComponent + CountAsDestructibleComponent. This component is kept for backward compatibility with existing blueprints.")]
 [ComponentName("Custom/MechanismComponent")]
-[AllowedOn(typeof(BlueprintUnit))]
+[AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("d9e7e15f00354f1aa3722407061d696d")]
 public sealed class MechanismComponent : UnitFactComponentDelegate
 {
 	protected override void OnFactAttached()
 	{
-		BlueprintUnitFact commonMechanismFact = ConfigRoot.Instance.SystemMechanics.CommonMechanismFact;
-		base.Owner.Facts.Add(new UnitFact(commonMechanismFact, base.Context));
+		base.Owner.GetOrCreate<PartMechanism>().Retain();
+		PartHealth required = base.Owner.GetRequired<PartHealth>();
+		required.RetainForbidDirectHpDamage();
+		required.RetainCountHpAsArmor();
+		required.RetainCountAsDestructible();
 	}
 
 	protected override void OnFactDetached()
 	{
-		BlueprintUnitFact commonMechanismFact = ConfigRoot.Instance.SystemMechanics.CommonMechanismFact;
-		base.Owner.Facts.Remove(commonMechanismFact);
+		base.Owner.GetOptional<PartMechanism>()?.Release();
+		PartHealth required = base.Owner.GetRequired<PartHealth>();
+		required.ReleaseForbidDirectHpDamage();
+		required.ReleaseCountHpAsArmor();
+		required.ReleaseCountAsDestructible();
 	}
 }

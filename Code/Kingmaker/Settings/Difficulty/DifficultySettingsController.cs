@@ -1,5 +1,4 @@
 using Code.GameCore.Editor.Blueprints.BlueprintUnitEditorChecker;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
@@ -24,13 +23,13 @@ public class DifficultySettingsController
 		{
 			OnSettingChanged();
 		};
-		m_Settings.NPCDifficulty.OnValueChanged += delegate
+		m_Settings.EnemyDurability.OnValueChanged += delegate
 		{
 			OnSettingChanged();
 		};
-		m_Settings.GameDifficulty.OnValueChanged += delegate(GameDifficultyOption difficultyOption)
+		m_Settings.EnemyDamage.OnValueChanged += delegate
 		{
-			Metrics.Settings.SettingType(SettingsMetricsEvent.SettingTypes.GameDifficulty).Value(PlayerMetricsEvent.GameDifficultyToString(difficultyOption)).Send();
+			OnSettingChanged();
 		};
 		SettingsController.Instance.OnConfirmedAllSettings += ApplyUpdatedSettings;
 	}

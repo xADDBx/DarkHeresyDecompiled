@@ -19,13 +19,13 @@ public class LocalizedUIText : MonoBehaviour
 		private BlueprintScriptableObjectReference m_Dlc;
 
 		[StringCreateWindow(StringCreateWindowAttribute.StringType.UIText)]
-		public SharedStringAsset Text;
+		public LocalizedString Text;
 
 		public IBlueprintDlc Dlc => m_Dlc?.Get() as IBlueprintDlc;
 	}
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.UIText)]
-	public SharedStringAsset Text;
+	public LocalizedString Text;
 
 	public bool IsSaber;
 
@@ -59,15 +59,15 @@ public class LocalizedUIText : MonoBehaviour
 		{
 			return;
 		}
-		LocalizedString @string = Text.String;
+		LocalizedString text = Text;
 		foreach (DlcText dlcText in DlcTexts)
 		{
 			if ((dlcText?.Dlc?.IsAvailable).GetValueOrDefault())
 			{
-				@string = dlcText.Text.String;
+				text = dlcText.Text;
 				break;
 			}
 		}
-		component.text = @string;
+		component.text = text;
 	}
 }

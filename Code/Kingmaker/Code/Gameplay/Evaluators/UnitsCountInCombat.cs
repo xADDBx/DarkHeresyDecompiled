@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Code.Gameplay.Evaluators;
@@ -17,7 +18,7 @@ public class UnitsCountInCombat : IntEvaluator
 		List<BaseUnitEntity> list2 = new List<BaseUnitEntity>();
 		foreach (BaseUnitEntity item in list)
 		{
-			using (item.Context.SetScope(item))
+			using (EvalContext.PushContext(item.Context, item))
 			{
 				if (Conditions.Check())
 				{

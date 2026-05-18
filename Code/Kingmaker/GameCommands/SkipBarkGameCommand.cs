@@ -1,25 +1,162 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Controllers;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class SkipBarkGameCommand : GameCommand, IOwlPackable<SkipBarkGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public class SkipBarkGameCommand : GameCommand, IMemoryPackable<SkipBarkGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<SkipBarkGameCommand>
 {
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	[Preserve]
+	private sealed class SkipBarkGameCommandFormatter : MemoryPackFormatter<SkipBarkGameCommand>
 	{
-		Name = "SkipBarkGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[0]
-	};
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref SkipBarkGameCommand value)
+		{
+			SkipBarkGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref SkipBarkGameCommand value)
+		{
+			SkipBarkGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref SkipBarkGameCommand value)
+		{
+			SkipBarkGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref SkipBarkGameCommand value)
+		{
+			SkipBarkGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	protected override void ExecuteInternal()
 	{
 		CutsceneController.SkipBarkBanter();
+	}
+
+	static SkipBarkGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "SkipBarkGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[0]
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<SkipBarkGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new SkipBarkGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<SkipBarkGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<SkipBarkGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref SkipBarkGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteObjectHeader(0);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref SkipBarkGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		if (memberCount == 0)
+		{
+			if (value != null)
+			{
+				return;
+			}
+		}
+		else
+		{
+			if (memberCount > 0)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(SkipBarkGameCommand), 0, memberCount);
+				return;
+			}
+			_ = value;
+			if (value != null)
+			{
+				return;
+			}
+		}
+		value = new SkipBarkGameCommand();
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref SkipBarkGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+		}
+		else
+		{
+			writer.WriteEmptyObject();
+		}
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref SkipBarkGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		_ = value;
+		_ = new bool[0];
+		while (reader.ReadPropertyName() != null)
+		{
+			_ = value;
+		}
+		if (value == null)
+		{
+			value = new SkipBarkGameCommand();
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

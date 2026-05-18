@@ -7,6 +7,7 @@ using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -72,11 +73,12 @@ public class EnemyUnitMark : BaseSurfaceUnitMark, IUnitCommandStartHandler<Entit
 		base.Initialize(unit);
 		SetUnitSize(unit.SizeRect.Width > 1);
 		m_PingTarget?.SetActive(state: false);
+		m_CombatIsInAoeDecal?.SetActive(state: false);
 	}
 
 	protected override List<UnitMarkDecal> GetAllDecals()
 	{
-		return new List<UnitMarkDecal> { m_ExplorationSelectedDecal, m_CombatDecal, m_CombatIsInAoeDecal, m_CombatSelectedDecal, m_CombatHeroicDecal, m_CombatSelectedHeroicDecal, m_CombatBrokenDecal, m_CombatSelectedBrokenDecal };
+		return new List<UnitMarkDecal> { m_ExplorationSelectedDecal, m_CombatDecal, m_CombatSelectedDecal, m_CombatHeroicDecal, m_CombatSelectedHeroicDecal, m_CombatBrokenDecal, m_CombatSelectedBrokenDecal };
 	}
 
 	protected override UnitMarkDecal GetAbilityTargetDecal()
@@ -94,15 +96,15 @@ public class EnemyUnitMark : BaseSurfaceUnitMark, IUnitCommandStartHandler<Entit
 			bool flag4 = base.State.HasFlag(UnitMarkState.Heroic);
 			bool flag5 = base.State.HasFlag(UnitMarkState.Broken);
 			bool flag6 = flag4 || flag5;
+			bool flag7 = BaseUnitMark.IsHideAllUI || IsHiddenBySettings();
 			m_ExplorationSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && base.State.HasFlag(UnitMarkState.CastingSpell));
-			m_CombatDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && !flag3 && !flag6 && !flag2);
-			m_CombatSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag3 && !flag6 && !flag2);
-			m_CombatIsInAoeDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && base.State.HasFlag(UnitMarkState.IsInAoEPattern));
-			m_CombatAttackOfOpportunityDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag2);
-			m_CombatHeroicDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && !flag3 && flag4 && !flag2);
-			m_CombatSelectedHeroicDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag3 && flag4 && !flag2);
-			m_CombatBrokenDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && !flag3 && flag5 && !flag2);
-			m_CombatSelectedBrokenDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag3 && flag5 && !flag2);
+			m_CombatDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag && !flag3 && !flag6 && !flag2);
+			m_CombatSelectedDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag3 && !flag6 && !flag2);
+			m_CombatAttackOfOpportunityDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag2);
+			m_CombatHeroicDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag && !flag3 && flag4 && !flag2);
+			m_CombatSelectedHeroicDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag3 && flag4 && !flag2);
+			m_CombatBrokenDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag && !flag3 && flag5 && !flag2);
+			m_CombatSelectedBrokenDecal.SetActive(!flag7 && !BaseUnitMark.IsCutscene && flag3 && flag5 && !flag2);
 		}
 	}
 
@@ -179,7 +181,7 @@ public class EnemyUnitMark : BaseSurfaceUnitMark, IUnitCommandStartHandler<Entit
 			});
 	}
 
-	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO)
+	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO, bool hasThreats)
 	{
 		bool flag = enemiesAoO.Contains(base.Unit);
 		SetState(UnitMarkState.HasAttackOfOpportunity, flag);

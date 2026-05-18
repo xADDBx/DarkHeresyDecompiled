@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Features.VariableInteractions;
@@ -128,7 +129,7 @@ public class InteractionVariantVM : SelectionGroupEntityVM
 		List<BaseUnitEntity> units = Game.Instance.Controllers.SelectionCharacter.SelectedUnits.ToList();
 		m_InteractionChance.Value = (HideChance() ? string.Empty : UtilitySkillcheck.GetInteractionChance(InteractionActor.VariantActor, units));
 		m_InteractionChance.ForceNotify();
-		m_UpdateHint.Execute();
+		m_UpdateHint.Execute(Unit.Default);
 	}
 
 	private bool HideChance()
@@ -163,9 +164,10 @@ public class InteractionVariantVM : SelectionGroupEntityVM
 		goto IL_0061;
 		IL_0061:
 		haveNotEnoughAPinTBM.Value = (byte)value != 0;
-		m_CanInteract.Value = (turnBasedModeActive ? InteractionActor.VariantActor.CheckRestriction(controllers.SelectionCharacter.SelectedUnit.Value) : controllers.SelectionCharacter.SelectedUnits.Any((BaseUnitEntity c) => InteractionActor.VariantActor.CheckRestriction(c)));
-		m_CanInteract.Value &= InteractionActor.SelectConditions == null || InteractionActor.SelectConditions.Check();
-		m_UpdateHint.Execute();
+		bool flag = (turnBasedModeActive ? InteractionActor.VariantActor.CheckRestriction(controllers.SelectionCharacter.SelectedUnit.Value) : controllers.SelectionCharacter.SelectedUnits.Any((BaseUnitEntity c) => InteractionActor.VariantActor.CheckRestriction(c)));
+		flag &= InteractionActor.SelectConditions == null || InteractionActor.SelectConditions.Check();
+		m_CanInteract.Value = flag;
+		m_UpdateHint.Execute(Unit.Default);
 	}
 
 	private static string GetSuitableUnitName(IInteractionVariantActor interactionActor)
@@ -188,7 +190,7 @@ public class InteractionVariantVM : SelectionGroupEntityVM
 	{
 		if (InteractionActor.SelectConditions != null && !InteractionActor.SelectConditions.Check())
 		{
-			return HandleNarratorText(InteractionActor.CannotSelectReason.String.Text);
+			return HandleNarratorText(InteractionActor.CannotSelectReason?.Text);
 		}
 		if (!string.IsNullOrEmpty(ShowReason))
 		{
@@ -198,7 +200,7 @@ public class InteractionVariantVM : SelectionGroupEntityVM
 		StringBuilder stringBuilder = new StringBuilder();
 		if (OnlyOnceCheck && InteractionActor.VariantActor.AlreadyUsed)
 		{
-			return stringBuilder.ToString();
+			return UIStrings.Instance.Overtips.AlreadyUsedInteract.Text;
 		}
 		int? requiredResourceCount = RequiredResourceCount;
 		if (requiredResourceCount.HasValue && requiredResourceCount.GetValueOrDefault() > 0)
@@ -207,6 +209,14 @@ public class InteractionVariantVM : SelectionGroupEntityVM
 			stringBuilder.Append($"{overtips.HasResourceCount.Text}: {ResourceCount}\n");
 			stringBuilder.Append($"{overtips.RequiredResourceCount.Text}: {RequiredResourceCount}\n");
 			return stringBuilder.ToString();
+		}
+		if (UIUtilityTooltip.IsSkillRestriction(InteractionActor.VariantActor))
+		{
+			if (InteractionActor.VariantActor.AlreadyUsed)
+			{
+				return UIStrings.Instance.Overtips.AlreadyUsedInteract.Text;
+			}
+			stringBuilder.Append(UIStrings.Instance.Overtips.SkillUseRestriction.Text + "\n\n");
 		}
 		if (!string.IsNullOrEmpty(InteractionChance.CurrentValue) && !string.IsNullOrEmpty(SuitableUnitName.CurrentValue))
 		{

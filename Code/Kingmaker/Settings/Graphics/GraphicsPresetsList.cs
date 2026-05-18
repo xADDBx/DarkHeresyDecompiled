@@ -64,6 +64,9 @@ public class GraphicsPresetsList : ScriptableObject
 	private GraphicsPresetAsset m_SteamDeckGraphicsPreset;
 
 	[SerializeField]
+	private GraphicsPresetAsset m_Switch2GraphicsPreset;
+
+	[SerializeField]
 	[InfoBox("If you change the 'Console User Controlled Values' value, then change the 'Settings Platform' value in the corresponding UISetting in 'Assets/Mechanics/Blueprints/Root/Settings/Settings/GraphicsSettings'")]
 	private UserControlledValues m_ConsoleUserControlledValues;
 
@@ -72,6 +75,8 @@ public class GraphicsPresetsList : ScriptableObject
 	public GraphicsPresetAsset ConsoleGraphicsPreset => m_ConsoleGraphicsPreset;
 
 	public GraphicsPresetAsset SteamDeckGraphicsPreset => m_SteamDeckGraphicsPreset;
+
+	public GraphicsPresetAsset Switch2GraphicsPreset => m_Switch2GraphicsPreset;
 
 	public UserControlledValues ConsoleUserControlledValues => m_ConsoleUserControlledValues;
 }

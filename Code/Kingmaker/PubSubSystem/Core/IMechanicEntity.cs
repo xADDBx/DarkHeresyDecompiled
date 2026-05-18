@@ -2,7 +2,6 @@ using System;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
 using Pathfinding;
-using UnityEngine;
 
 namespace Kingmaker.PubSubSystem.Core;
 
@@ -12,15 +11,11 @@ public interface IMechanicEntity : IEntity, IDisposable
 
 	bool IsNeutral { get; }
 
-	new Vector3 Position { get; set; }
-
 	IntRect SizeRect { get; }
 
 	Size Size { get; }
 
 	bool IsDirectlyControllable { get; }
-
-	Vector3 Forward { get; }
 
 	bool IsDead { get; }
 

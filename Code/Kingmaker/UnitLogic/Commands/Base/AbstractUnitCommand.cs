@@ -9,6 +9,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
@@ -17,9 +18,7 @@ using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.View;
 using Kingmaker.View.Covers;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Animation.Kingmaker;
-using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
 
@@ -43,7 +42,7 @@ public abstract class AbstractUnitCommand
 	[CanBeNull]
 	private AbstractUnitEntity m_Executor;
 
-	private bool m_IsAnimationActHandled;
+	protected bool m_IsAnimationActHandled;
 
 	public TimeSpan StartTime;
 
@@ -173,7 +172,7 @@ public abstract class AbstractUnitCommand
 	{
 		get
 		{
-			if (!IsMoveUnit || !AwaitMovementFinish || !Executor.View.IsMoving())
+			if (!IsMoveUnit || !AwaitMovementFinish || !Executor.IsReallyMoving)
 			{
 				return !IsUnitEnoughClose;
 			}
@@ -256,24 +255,21 @@ public abstract class AbstractUnitCommand
 
 	protected void StartAnimation(UnitAnimationType animationType, [CanBeNull] Action<UnitAnimationActionHandle> initializer = null)
 	{
-		AbstractUnitEntityView abstractUnitEntityView = ObjectExtensions.Or(Executor.View, null);
-		Animation = (((object)abstractUnitEntityView == null) ? null : ObjectExtensions.Or(abstractUnitEntityView.AnimationManager, null)?.CreateHandle(animationType));
+		UnitAnimationManager unitAnimationManager = Executor.View?.AnimationManager;
+		if (unitAnimationManager != null)
+		{
+			unitAnimationManager.TryExecute(animationType, initializer, out var handle);
+			if (handle != null)
+			{
+				Animation = handle;
+			}
+		}
 		HasAnimation = true;
+		m_IsAnimationActHandled = false;
 		if (Animation == null)
 		{
 			ScheduleAct((this is UnitAttackOfOpportunity) ? SlowMoController.SlowMoFactor : 1f);
-			return;
 		}
-		initializer?.Invoke(Animation);
-		StartAnimation(Animation);
-	}
-
-	protected virtual void StartAnimation([NotNull] UnitAnimationActionHandle handle)
-	{
-		Animation = handle;
-		HasAnimation = true;
-		Executor.View.AnimationManager.Execute(Animation);
-		m_IsAnimationActHandled = false;
 	}
 
 	private void ClearAnimation()
@@ -287,19 +283,19 @@ public abstract class AbstractUnitCommand
 	{
 		if (IsStarted)
 		{
-			PFLog.Default.Error("Command {0} is already started", this);
+			PFLog.UnitCommands.Error("Command {0} is already started", this);
 			Interrupt();
 			return;
 		}
 		if (Target?.Entity != null && !Target.Entity.IsInState)
 		{
-			PFLog.Default.Error("Target {0} is not in state", Target.Entity);
+			PFLog.UnitCommands.Error("Target {0} is not in state", Target.Entity);
 			Interrupt();
 			return;
 		}
 		if (!IsUnitEnoughClose)
 		{
-			PFLog.Default.Error("Unit is not enough close for start action");
+			PFLog.UnitCommands.Error("Unit is not enough close for start action");
 			Interrupt();
 			return;
 		}
@@ -312,17 +308,18 @@ public abstract class AbstractUnitCommand
 		}, isCheckRuntime: true);
 	}
 
+	[ValidCommitPoint]
 	public virtual void Tick()
 	{
 		if (!IsRunning)
 		{
-			PFLog.Default.Error("Command {0} is not running", this);
+			PFLog.UnitCommands.Error("Command {0} is not running", this);
 			Interrupt();
 			return;
 		}
 		if (Target?.Entity != null && !Target.Entity.IsInState)
 		{
-			PFLog.Default.Error("Target {0} is not in state", Target.Entity);
+			PFLog.UnitCommands.Error("Target {0} is not in state", Target.Entity);
 			Interrupt();
 			return;
 		}
@@ -347,7 +344,7 @@ public abstract class AbstractUnitCommand
 				UnitAnimationActionHandle animation = Animation;
 				if (animation != null && !animation.IsSkipped)
 				{
-					PFLog.Default.Error(Animation.Action, $"{Animation.Action.NameSafe()} send not enough Act events: expected {ExpectedActEventsCount}, received {m_ActEventsCounter}");
+					PFLog.UnitCommands.Error(Animation.Action, $"{Animation.Action.NameSafe()} send not enough Act events: expected {ExpectedActEventsCount}, received {m_ActEventsCounter}");
 				}
 				flag3 = true;
 			}
@@ -357,7 +354,7 @@ public abstract class AbstractUnitCommand
 				UnitAnimationActionHandle animation = Animation;
 				if (animation != null && !animation.IsSkipped)
 				{
-					PFLog.Default.Error(Animation.Action, $"{Animation.Action.NameSafe()}: {num2} Act events sent, {num} missing");
+					PFLog.UnitCommands.Error(Animation.Action, $"{Animation.Action.NameSafe()}: {num2} Act events sent, {num} missing");
 				}
 			}
 			if (flag3 | ((IsPretendAct && TimeSinceStart >= PretendActTime) || !HasAnimation || num > 0))
@@ -388,7 +385,7 @@ public abstract class AbstractUnitCommand
 					UnitAnimationActionHandle animation = Animation;
 					if (animation != null && !animation.IsSkipped && Result == ResultType.None)
 					{
-						PFLog.Default.ErrorWithReport("UnitCommand's animation is finished but Result is None");
+						PFLog.UnitCommands.ErrorWithReport("UnitCommand's animation is finished but Result is None");
 						Result = ResultType.Fail;
 					}
 				}
@@ -413,14 +410,15 @@ public abstract class AbstractUnitCommand
 	{
 		if (IsFinished)
 		{
-			PFLog.Default.Error($"{this} is already finished, return");
+			PFLog.UnitCommands.Error($"{this} is already finished, return");
 			return;
 		}
 		if (result == ResultType.None)
 		{
-			PFLog.Default.Error("Invalid result type");
+			PFLog.UnitCommands.Error("Invalid result type");
 			return;
 		}
+		PFLog.UnitCommands.Log($"Command finished by force: {this}");
 		Result = result;
 		m_ActEventsCounter = 1;
 		OnEnded();
@@ -441,15 +439,18 @@ public abstract class AbstractUnitCommand
 	{
 		if (Result != ResultType.Interrupt && !IsFinished)
 		{
+			PFLog.UnitCommands.Log($"Command interrupted: {this}");
 			Result = ResultType.Interrupt;
 			OnEnded();
 		}
 	}
 
+	[ValidCommitPoint]
 	protected virtual void OnTick()
 	{
 	}
 
+	[ValidCommitPoint]
 	protected virtual void OnStart()
 	{
 		if (IsOneFrameCommand)
@@ -462,17 +463,19 @@ public abstract class AbstractUnitCommand
 		}
 		catch (Exception ex)
 		{
-			PFLog.Ability.Exception(ex);
+			PFLog.UnitCommands.Exception(ex);
 			ClearAnimation();
 		}
 	}
 
+	[ValidCommitPoint]
 	protected virtual void TriggerAnimation()
 	{
 	}
 
 	protected abstract ResultType OnAction();
 
+	[ValidCommitPoint]
 	protected virtual void OnEnded()
 	{
 		IsFinished = true;
@@ -498,6 +501,7 @@ public abstract class AbstractUnitCommand
 		Params.ForcedPath = null;
 	}
 
+	[ValidCommitPoint]
 	public virtual void OnRun()
 	{
 		if (Game.Instance.IsPaused && Target != null && Target.Entity != Executor && ShouldTurnToTarget)
@@ -511,6 +515,7 @@ public abstract class AbstractUnitCommand
 		}
 	}
 
+	[ValidCommitPoint]
 	public virtual void TurnToTarget()
 	{
 		Executor.TurnTo(ApproachPoint);
@@ -544,10 +549,11 @@ public abstract class AbstractUnitCommand
 		}
 		catch (Exception ex)
 		{
-			PFLog.Default.Exception(ex);
+			PFLog.UnitCommands.Exception(ex);
 		}
 	}
 
+	[ValidCommitPoint]
 	protected virtual void OnPostLoad()
 	{
 		ForcedPath?.Repair();

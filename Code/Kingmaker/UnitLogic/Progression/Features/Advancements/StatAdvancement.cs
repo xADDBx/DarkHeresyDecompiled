@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.UnitLogic.Progression.Features.Advancements;
@@ -8,17 +12,20 @@ namespace Kingmaker.UnitLogic.Progression.Features.Advancements;
 [ComponentName("Stats/StatAdvancement")]
 [AllowedOn(typeof(BlueprintStatAdvancement))]
 [TypeId("1193f055d9ae4f5aa45e27400d7411cd")]
-public class StatAdvancement : UnitFactComponentDelegate
+public class StatAdvancement : UnitFactComponentDelegate, IStatModifier
 {
 	private BlueprintStatAdvancement Settings => (BlueprintStatAdvancement)base.Fact.Blueprint;
 
-	protected override void OnActivateOrPostLoad()
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		base.Owner.Stats.GetStat(Settings.Stat).AddModifier(Settings.ValuePerRank * base.Fact.GetRank(), base.Runtime, Settings.ModifierDescriptor);
+		if (stat == Settings.Stat)
+		{
+			collector.Modifiers.Add(ModifierType.ValAdd, Settings.ValuePerRank * base.Fact.GetRank(), base.Fact, null, BonusType.None, StatType.Unknown, Settings.ModifierDescriptor);
+		}
 	}
 
-	protected override void OnDeactivate()
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
 	{
-		base.Owner.Stats.GetStat(Settings.Stat).RemoveModifiersFrom(base.Runtime);
+		entries.Add(new AffectedStatEntry(Settings.Stat));
 	}
 }

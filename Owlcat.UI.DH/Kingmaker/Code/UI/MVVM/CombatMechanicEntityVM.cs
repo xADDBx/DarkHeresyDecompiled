@@ -8,26 +8,20 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Features.Channeling;
 using Kingmaker.Mechanics.Entities;
-using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Squads;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscriber, ITurnBasedModeResumeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, IInterruptTurnStartHandler, IRoundStartHandler, IAbilityTargetSelectionUIHandler
+public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscriber, ITurnBasedModeResumeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, IInterruptTurnStartHandler, IRoundStartHandler
 {
 	private readonly PartSquad m_SquadOptional;
 
-	private readonly ReactiveProperty<bool> m_IsEnemy = new ReactiveProperty<bool>(value: false);
-
-	private readonly ReactiveProperty<bool> m_IsNeutral = new ReactiveProperty<bool>(value: false);
+	private readonly MechanicEntityUIWrapper m_UnitUIWrapper;
 
 	private readonly ReactiveProperty<bool> m_IsPlayer = new ReactiveProperty<bool>(value: false);
 
@@ -37,9 +31,7 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 
 	private readonly ReactiveProperty<bool> m_HasControlLossEffects = new ReactiveProperty<bool>(value: false);
 
-	private readonly ReactiveProperty<bool> m_IsTargetSelection = new ReactiveProperty<bool>(value: false);
-
-	private readonly ReactiveProperty<int> m_Intiative = new ReactiveProperty<int>(0);
+	private readonly ReactiveProperty<int> m_Initiative = new ReactiveProperty<int>(0);
 
 	private readonly ReactiveProperty<UnitHealthPartVM> m_UnitHealthPartVM = new ReactiveProperty<UnitHealthPartVM>();
 
@@ -53,10 +45,6 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 
 	private readonly ReactiveProperty<bool> m_IsSquadLeader = new ReactiveProperty<bool>();
 
-	private readonly ReactiveProperty<bool> m_HasAliveUnitsInSquad = new ReactiveProperty<bool>();
-
-	private readonly ReactiveProperty<int> m_SquadGroupIndex = new ReactiveProperty<int>(-1);
-
 	private readonly ReactiveProperty<UnitMoraleVM> m_OvertipMoraleVM = new ReactiveProperty<UnitMoraleVM>();
 
 	private readonly ReactiveProperty<SurfaceCombatActionVM> m_ConcentrationVM = new ReactiveProperty<SurfaceCombatActionVM>();
@@ -69,8 +57,6 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 
 	public readonly MechanicEntityUIState MechanicEntityUIState;
 
-	public readonly MechanicEntityUIWrapper UnitUIWrapper;
-
 	public readonly UnitBuffBlockVM UnitBuffs;
 
 	public readonly CombatTextBlockVM CombatTextBlockVM;
@@ -79,17 +65,13 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 
 	public readonly bool UsedSubtypeIcon;
 
-	private string InitiativeHolderName => UnitUIWrapper.Name + ": " + m_InitiativeHolder.Name;
+	public readonly ReadOnlyReactiveProperty<bool> ForceHidePortrait;
 
-	public ReadOnlyReactiveProperty<bool> IsEnemy => m_IsEnemy;
-
-	public ReadOnlyReactiveProperty<bool> IsNeutral => m_IsNeutral;
+	private string InitiativeHolderName => m_UnitUIWrapper.Name + ": " + m_InitiativeHolder.Name;
 
 	public ReadOnlyReactiveProperty<bool> IsPlayer => m_IsPlayer;
 
 	public ReadOnlyReactiveProperty<bool> IsCurrent => m_IsCurrent;
-
-	public ReadOnlyReactiveProperty<bool> IsTargetSelection => m_IsTargetSelection;
 
 	public ReadOnlyReactiveProperty<UnitHealthPartVM> UnitHealthPartVM => m_UnitHealthPartVM;
 
@@ -99,37 +81,21 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 
 	public ReadOnlyReactiveProperty<bool> IsSquadLeader => m_IsSquadLeader;
 
-	public ReadOnlyReactiveProperty<bool> HasAliveUnitsInSquad => m_HasAliveUnitsInSquad;
-
 	public ReadOnlyReactiveProperty<bool> NeedToShow => m_NeedToShow;
-
-	public ReadOnlyReactiveProperty<int> SquadGroupIndex => m_SquadGroupIndex;
 
 	public ReadOnlyReactiveProperty<UnitMoraleVM> OvertipMoraleVM => m_OvertipMoraleVM;
 
 	public ReadOnlyReactiveProperty<SurfaceCombatActionVM> ConcentrationVM => m_ConcentrationVM;
 
+	public ReadOnlyReactiveProperty<(bool isEnemy, bool isPlayerFaction)> FactionInfo { get; }
+
 	public UnitSquad Squad { get; }
 
-	public bool IsNewActor { get; private set; }
-
-	public MechanicEntity MechanicEntity => UnitUIWrapper.MechanicEntity;
+	public MechanicEntity MechanicEntity => m_UnitUIWrapper.MechanicEntity;
 
 	public BaseUnitEntity UnitAsBaseUnitEntity => MechanicEntity as BaseUnitEntity;
 
 	public bool HasUnit => MechanicEntity != null;
-
-	public bool IsPlayerFaction
-	{
-		get
-		{
-			if (HasUnit)
-			{
-				return MechanicEntity.IsPlayerFaction;
-			}
-			return false;
-		}
-	}
 
 	public string DisplayName
 	{
@@ -137,24 +103,22 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 		{
 			if (!IsInitiativeHolder)
 			{
-				return UnitUIWrapper.Name;
+				return m_UnitUIWrapper.Name;
 			}
 			return InitiativeHolderName;
 		}
 	}
-
-	public Sprite SmallPortrait => UnitUIWrapper.SmallPortrait;
 
 	protected CombatMechanicEntityVM()
 	{
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
-	public CombatMechanicEntityVM(MechanicEntity mechanicEntity, bool isCurrent = false)
+	public CombatMechanicEntityVM(MechanicEntity mechanicEntity, ReadOnlyReactiveProperty<bool> forceHidePortrait, bool isCurrent = false)
 		: this()
 	{
+		ForceHidePortrait = forceHidePortrait ?? new ReactiveProperty<bool>(value: false).AddTo(this);
 		m_IsCurrent.Value = isCurrent;
-		IsNewActor = true;
 		MechanicEntity mechanicEntity2 = mechanicEntity;
 		if (mechanicEntity is UnitSquad unitSquad)
 		{
@@ -171,29 +135,26 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 		{
 			mechanicEntity2 = @delegate;
 		}
-		UnitUIWrapper = new MechanicEntityUIWrapper(mechanicEntity2);
+		m_UnitUIWrapper = new MechanicEntityUIWrapper(mechanicEntity2);
 		UsedSubtypeIcon = UIUtilityUnit.UsedSubtypeIcon(mechanicEntity2);
-		m_SquadOptional = UnitUIWrapper.MechanicEntity?.GetSquadOptional();
-		m_IsInSquad.Value = UnitUIWrapper.IsInSquad;
-		m_IsSquadLeader.Value = UnitUIWrapper.IsSquadLeader || (m_SquadOptional?.Squad != null && mechanicEntity2 is BaseUnitEntity baseUnitEntity && m_SquadOptional.Squad.Units.FirstItem() == baseUnitEntity);
+		m_SquadOptional = m_UnitUIWrapper.MechanicEntity?.GetSquadOptional();
+		m_IsInSquad.Value = m_UnitUIWrapper.IsInSquad;
+		m_IsSquadLeader.Value = CheckIsSquadLeader();
 		if (Squad == null)
 		{
 			Squad = m_SquadOptional?.Squad;
 		}
-		if (UnitUIWrapper.IsInSquad && m_SquadOptional != null)
-		{
-			m_SquadGroupIndex.Value = Game.Instance.Controllers.TurnController.UnitSquads.IndexOf(m_SquadOptional.Squad);
-		}
-		MechanicEntityUIState = UnitUIStateHolder.Instance.GetOrCreateUnitState(UnitUIWrapper.MechanicEntity);
+		MechanicEntityUIState = UnitUIStateHolder.Instance.GetOrCreateUnitState(m_UnitUIWrapper.MechanicEntity);
 		if (MechanicEntityUIState == null)
 		{
 			return;
 		}
+		FactionInfo = MechanicEntityUIState.IsEnemy.CombineLatest(MechanicEntityUIState.IsPlayerFaction, (bool isEnemy, bool isPlayerFaction) => (isEnemy: isEnemy, isPlayerFaction: isPlayerFaction)).ToReadOnlyReactiveProperty().AddTo(this);
 		UpdateData();
 		UnitBuffs = new UnitBuffBlockVM(UnitAsBaseUnitEntity).AddTo(this);
 		m_UnitHealthPartVM.Value = new UnitHealthPartVM(UnitAsBaseUnitEntity).AddTo(this);
 		m_OvertipMoraleVM.Value = new UnitMoraleVM(MechanicEntityUIState).AddTo(this);
-		UnitBuffs.SetUnitData(UnitUIWrapper.MechanicEntity);
+		UnitBuffs.SetUnitData(m_UnitUIWrapper.MechanicEntity);
 		CombatTextBlockVM = new CombatTextBlockVM(MechanicEntityUIState).AddTo(this);
 		MechanicEntityUIState.ConcentrationBuff.CombineLatest(MechanicEntityUIState.Channeling, (Buff buff, IUIChanneling channeling) => new { buff, channeling }).Subscribe(value =>
 		{
@@ -204,7 +165,7 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 		{
 			if (current)
 			{
-				m_ActionPointVM.Value = new ActionPointsVM(UnitUIWrapper.MechanicEntity).AddTo(this);
+				m_ActionPointVM.Value = new ActionPointsVM(m_UnitUIWrapper.MechanicEntity).AddTo(this);
 				if (UnitAsBaseUnitEntity != null && MechanicEntity.IsPlayerFaction && MechanicEntity.IsViewActive && Game.Instance.CurrentModeType != GameModeType.Cutscene)
 				{
 					Game.Instance.Controllers.SelectionCharacter.SetSelected(UnitAsBaseUnitEntity);
@@ -223,25 +184,9 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 		UpdateCanBeShown();
 	}
 
-	protected override void OnDispose()
+	public void HandleUnitClick()
 	{
-	}
-
-	private void UpdateHandler()
-	{
-		if (Game.Instance.CurrentlyLoadedArea != null)
-		{
-			UpdateCanBeShown();
-		}
-	}
-
-	public void HandleUnitClick(bool isDoubleClick = false)
-	{
-		ClickUnitHandler.HandleClickControllableUnit(UnitUIWrapper.MechanicEntity, isDoubleClick);
-	}
-
-	public void HandleBuffRankIncreased(Buff buff)
-	{
+		ClickUnitHandler.HandleUnitClickWithSelectedAbility(m_UnitUIWrapper.MechanicEntity);
 	}
 
 	public void HandleTurnBasedModeSwitched(bool isTurnBased)
@@ -264,55 +209,21 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 		UpdateIsCurrentUnit();
 	}
 
-	private void UpdateIsCurrentUnit()
-	{
-		if (!Game.Instance.Controllers.TurnController.IsPreparationTurn)
-		{
-			m_IsCurrent.Value = Game.Instance.Controllers.TurnController.CurrentUnit == MechanicEntity;
-		}
-	}
-
-	public void HandleShow()
-	{
-		m_NeedToShow.Value = !NeedToShow.CurrentValue;
-	}
-
-	public void HandleAbilityTargetSelectionStart(AbilityData ability)
-	{
-		if (MechanicEntityUIState != null)
-		{
-			m_IsTargetSelection.Value = true;
-		}
-	}
-
-	public void HandleAbilityTargetSelectionEnd(AbilityData ability)
-	{
-		if (MechanicEntityUIState != null)
-		{
-			m_IsTargetSelection.Value = false;
-		}
-	}
-
 	public void UpdateData()
 	{
-		if (UnitUIWrapper.MechanicEntity == null)
+		if (m_UnitUIWrapper.MechanicEntity != null)
 		{
-			return;
+			m_IsPlayer.Value = m_UnitUIWrapper.IsPlayerFaction;
+			m_Initiative.Value = (int)m_UnitUIWrapper.Initiative.Roll;
+			if ((bool)m_SquadOptional && m_SquadOptional.Squad != null)
+			{
+				m_IsSquadLeader.Value = CheckIsSquadLeader();
+				m_SquadCount.Value = m_SquadOptional.Squad.AliveUnitsCount;
+			}
+			UnitBuffs?.UpdateData();
+			UpdateCanActStates();
+			UpdateIsCurrentUnit();
 		}
-		m_IsEnemy.Value = UnitUIWrapper.IsPlayerEnemy;
-		m_IsNeutral.Value = UnitUIWrapper.IsNeutral;
-		m_IsPlayer.Value = UnitUIWrapper.IsPlayerFaction;
-		m_Intiative.Value = (int)UnitUIWrapper.Initiative.Roll;
-		if ((bool)m_SquadOptional && m_SquadOptional.Squad != null)
-		{
-			m_IsSquadLeader.Value = UnitUIWrapper.IsSquadLeader || m_SquadOptional.Squad.Units.FirstOrDefault((UnitReference x) => !x.Entity.IsDead).Entity == UnitUIWrapper.MechanicEntity;
-			m_HasAliveUnitsInSquad.Value = m_SquadOptional.Squad.Units.Count((UnitReference x) => !x.Entity.IsDead) > 1;
-			m_SquadCount.Value = m_SquadOptional.Squad.Units.Count((UnitReference x) => !x.Entity.IsDead);
-		}
-		UnitBuffs?.UpdateData();
-		UpdateCanActStates();
-		UpdateIsCurrentUnit();
-		IsNewActor = false;
 	}
 
 	public void SetMouseHighlighted(bool value)
@@ -322,14 +233,67 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 			UnitAsBaseUnitEntity.View.MouseHoverHighlighting = value;
 			return;
 		}
-		if (Squad == null)
+		if (Squad != null)
 		{
-			UnitAsBaseUnitEntity.View.MouseHoverHighlighting = value;
-			return;
+			foreach (UnitReference unit in Squad.Units)
+			{
+				BaseUnitEntity baseUnitEntity = unit.ToBaseUnitEntity();
+				if (MechanicEntity != baseUnitEntity)
+				{
+					baseUnitEntity.View.SecondaryHighlighting = value;
+				}
+			}
 		}
-		foreach (UnitReference unit in Squad.Units)
+		UnitAsBaseUnitEntity.View.MouseHoverHighlighting = value;
+	}
+
+	public void HandleTurnBasedModeResumed()
+	{
+		UpdateIsCurrentUnit();
+	}
+
+	public bool IsCreatedFrom(MechanicEntity mechanicEntity)
+	{
+		if (IsInitiativeHolder)
 		{
-			unit.ToBaseUnitEntity().View.MouseHoverHighlighting = value;
+			if (mechanicEntity is ChannelingLogic.InitiativeHolder initiativeHolder)
+			{
+				return initiativeHolder.Unit == MechanicEntity;
+			}
+			return false;
+		}
+		return mechanicEntity == MechanicEntity;
+	}
+
+	protected override void OnDispose()
+	{
+	}
+
+	private void UpdateHandler()
+	{
+		if (Game.Instance.CurrentlyLoadedArea != null)
+		{
+			UpdateCanBeShown();
+		}
+	}
+
+	private void UpdateIsCurrentUnit()
+	{
+		if (!Game.Instance.Controllers.TurnController.IsPreparationTurn)
+		{
+			m_IsCurrent.Value = Game.Instance.Controllers.TurnController.CurrentUnit == MechanicEntity;
+		}
+	}
+
+	private void UpdateCanBeShown()
+	{
+		if (RootUIContext.Instance.FullScreenUIType != 0)
+		{
+			m_CanBeShowed.Value = false;
+		}
+		else
+		{
+			m_CanBeShowed.Value = Game.Instance.CurrentModeType == GameModeType.Default || Game.Instance.CurrentModeType == GameModeType.None || Game.Instance.CurrentModeType == GameModeType.Pause || Game.Instance.CurrentModeType == GameModeType.BugReport || Game.Instance.CurrentModeType == GameModeType.GlobalMap;
 		}
 	}
 
@@ -341,6 +305,31 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 			m_WillNotTakeTurn.Value = !WillTakeTurn(baseUnitEntity);
 			m_HasControlLossEffects.Value = baseUnitEntity.HasControlLossEffects();
 		}
+	}
+
+	private bool CheckIsSquadLeader()
+	{
+		PartSquad squadOptional = m_SquadOptional;
+		if (squadOptional == null || !squadOptional.IsInSquad)
+		{
+			return false;
+		}
+		MechanicEntityUIWrapper unitUIWrapper = m_UnitUIWrapper;
+		if (unitUIWrapper.IsSquadLeader && !unitUIWrapper.IsDeadOrUnconscious)
+		{
+			return true;
+		}
+		BaseUnitEntity leader = m_SquadOptional.Leader;
+		if (leader != null && !leader.IsDeadOrUnconscious)
+		{
+			return false;
+		}
+		UnitReference unitReference = m_SquadOptional.Squad.Units.FirstOrDefault((UnitReference x) => !x.Entity.IsDeadOrUnconscious);
+		if (unitReference.Entity != null)
+		{
+			return unitReference.Entity == m_UnitUIWrapper.MechanicEntity;
+		}
+		return false;
 	}
 
 	private static bool WillTakeTurn(BaseUnitEntity unit)
@@ -358,43 +347,5 @@ public class CombatMechanicEntityVM : ViewModel, ITurnBasedModeHandler, ISubscri
 			return false;
 		}
 		return true;
-	}
-
-	public void InvokeUnitViewHighlight(bool state)
-	{
-		if (UnitUIWrapper.MechanicEntity is BaseUnitEntity baseUnitEntity)
-		{
-			baseUnitEntity.View.HandleHoverChange(state);
-		}
-	}
-
-	public void HandleTurnBasedModeResumed()
-	{
-		UpdateIsCurrentUnit();
-	}
-
-	private void UpdateCanBeShown()
-	{
-		if (RootUIContext.Instance.FullScreenUIType != 0)
-		{
-			m_CanBeShowed.Value = false;
-		}
-		else
-		{
-			m_CanBeShowed.Value = Game.Instance.CurrentModeType == GameModeType.Default || Game.Instance.CurrentModeType == GameModeType.None || Game.Instance.CurrentModeType == GameModeType.Pause || Game.Instance.CurrentModeType == GameModeType.BugReport || Game.Instance.CurrentModeType == GameModeType.GlobalMap || Game.Instance.CurrentModeType == GameModeType.StarSystem || Game.Instance.CurrentModeType == GameModeType.SpaceCombat;
-		}
-	}
-
-	public bool IsCreatedFrom(MechanicEntity mechanicEntity)
-	{
-		if (IsInitiativeHolder)
-		{
-			if (mechanicEntity is ChannelingLogic.InitiativeHolder initiativeHolder)
-			{
-				return initiativeHolder.Unit == MechanicEntity;
-			}
-			return false;
-		}
-		return mechanicEntity == MechanicEntity;
 	}
 }

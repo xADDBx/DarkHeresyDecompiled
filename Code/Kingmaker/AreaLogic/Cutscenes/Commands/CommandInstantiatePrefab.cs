@@ -31,18 +31,25 @@ public class CommandInstantiatePrefab : CommandBase
 
 	public override bool IsContinuous => m_Continuous;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		m_Finished = false;
 		if (!m_PrefabInstance)
 		{
 			m_PrefabInstance = FxHelper.SpawnFxOnGameObject(m_Prefab, m_Placeholder.GetValue().gameObject);
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		m_Finished = true;
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -50,18 +57,20 @@ public class CommandInstantiatePrefab : CommandBase
 		return m_Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		m_Finished = !m_Continuous && time >= (double)m_Lifetime;
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		if ((bool)m_PrefabInstance)
 		{
 			FxHelper.Destroy(m_PrefabInstance);
 			m_PrefabInstance = null;
 		}
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

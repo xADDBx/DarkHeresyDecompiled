@@ -35,7 +35,6 @@ public class AbilityTargetsInSameSquad : AbilitySelectTarget
 
 	private bool IsSuitable(AbilityExecutionContext context, MechanicEntity target)
 	{
-		PropertyContext context2 = new PropertyContext(context.Caster, context, target);
-		return TargetCondition.GetValue(context2) != 0;
+		return TargetCondition.GetBoolValue(context.Caster, context, target);
 	}
 }

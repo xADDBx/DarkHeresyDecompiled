@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Newtonsoft.Json;
@@ -101,7 +102,7 @@ public class AreaDidLoadTrigger : EntityFactComponentDelegate, IAreaActivationHa
 		{
 			return;
 		}
-		using (base.Fact.MaybeContext?.SetScope())
+		using (EvalContext.PushContextMaybe(base.Fact?.MaybeContext))
 		{
 			if (Conditions.Check())
 			{

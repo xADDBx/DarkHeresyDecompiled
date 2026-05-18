@@ -34,7 +34,6 @@ public class HashCalculator
 		SplitState(ref state);
 		if (Kingmaker.Replay.Replay.IsActive)
 		{
-			state.synchronizedData = null;
 			state.signalService = null;
 		}
 		return StructHasher<HashableState>.GetHash128(ref state).GetHashCode();
@@ -53,7 +52,6 @@ public class HashCalculator
 			sceneEntitiesState = ((currentNetworkTick % 5 == 1) ? state.sceneEntitiesState : null),
 			areaPersistentState = ((currentNetworkTick % 5 == 2) ? state.areaPersistentState : null),
 			randomState = ((currentNetworkTick % 5 == 3) ? state.randomState : null),
-			synchronizedData = ((currentNetworkTick % 5 == 4) ? state.synchronizedData : null),
 			signalService = ((currentNetworkTick % 5 == 4) ? state.signalService : null)
 		};
 	}

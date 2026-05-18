@@ -1,16 +1,18 @@
 using System;
 using System.Collections;
-using Code.View.UI.UIUtils;
+using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
-using Kingmaker.EntitySystem.Persistence;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence.Scenes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
+using Kingmaker.UI.Sound;
 using Kingmaker.Utility.UnityExtensions;
+using Kingmaker.Visual.Sound;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -20,8 +22,6 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class MainMenuContext : ViewModel
 {
-	public static MainMenuContext Instance;
-
 	private readonly ReactiveProperty<MainMenuVM> m_MainMenuVM;
 
 	private readonly ReactiveProperty<NewGameVM> m_NewGame;
@@ -30,28 +30,24 @@ public class MainMenuContext : ViewModel
 
 	private readonly ReactiveProperty<FeedbackPopupVM> m_FeedbackPopupVM = new ReactiveProperty<FeedbackPopupVM>();
 
+	private readonly Action m_LoadingHandler;
+
 	private bool m_IsChargenMusicTheme;
 
 	private ChargenUnit m_ChargenUnit;
 
-	public readonly CharGenContextVM CharGenContextVM;
-
-	private readonly ReactiveCommand<Unit> m_OpenCreditsCommand = new ReactiveCommand<Unit>();
-
-	private readonly ReactiveCommand<Unit> m_PlayFirstLaunchFXCommand = new ReactiveCommand<Unit>();
+	public static MainMenuContext Instance;
 
 	private bool m_EnterGameStarted;
 
-	public Observable<Unit> OpenCreditsCommand => m_OpenCreditsCommand;
-
-	public Observable<Unit> PlayFirstLaunchFXCommand => m_PlayFirstLaunchFXCommand;
-
-	public MainMenuContext(ReactiveProperty<MainMenuVM> mainMenuVM, ReactiveProperty<NewGameVM> newGameVM, ReactiveProperty<TermsOfUseVM> termsOfUseVM)
+	public MainMenuContext(ReactiveProperty<MainMenuVM> mainMenuVM, ReactiveProperty<NewGameVM> newGameVM, ReactiveProperty<TermsOfUseVM> termsOfUseVM, Action loadingHandler)
 	{
 		m_MainMenuVM = mainMenuVM;
 		m_NewGame = newGameVM;
 		m_TermsOfUseVM = termsOfUseVM;
+		m_LoadingHandler = loadingHandler;
 		GameUIState.Instance.IsInMainMenuObservable.Subscribe(OnMainMenuStateChanged).AddTo(this);
+		WarmupChargenUnit();
 		Instance = this;
 	}
 
@@ -180,7 +176,7 @@ public class MainMenuContext : ViewModel
 		}
 	}
 
-	private void TryShowFeedbacke(Action nextAction)
+	private void TryShowFeedback(Action nextAction)
 	{
 		if (!TermsOfUse.TermsOfUseAccepted)
 		{
@@ -214,21 +210,71 @@ public class MainMenuContext : ViewModel
 	public void ShowNewGameSetup()
 	{
 		m_NewGame.Value = new NewGameVM(CloseAction, FinishAction);
+		Game.Instance.StartNewGameProcess();
 		void CloseAction()
 		{
+			Game.Instance.CancelNewGameProcess();
 			DisposeNewGame();
 		}
 		void FinishAction()
 		{
-			DisposeNewGame();
-			StartNewGame();
+			if (m_ChargenUnit == null)
+			{
+				BlueprintUnit defaultPlayerCharacter = ConfigRoot.Instance.NewGameSettings.DefaultPlayerCharacter;
+				m_ChargenUnit = new ChargenUnit(defaultPlayerCharacter);
+			}
+			else if (m_ChargenUnit.Used)
+			{
+				m_ChargenUnit.RecreateUnit();
+			}
+			m_ChargenUnit.Used = true;
+			CharGenConfig.Create(m_ChargenUnit.Unit, CharGenMode.NewGame).SetOnComplete(delegate(BaseUnitEntity newUnit)
+			{
+				Game.NewGameUnit = newUnit;
+				Game.Instance.Player.SetMainCharacter(newUnit);
+				DisposeNewGame();
+			}).SetEnterNewGameAction(delegate
+			{
+				EnterGame(Game.Instance.LoadNewGame);
+			})
+				.SetSoundActions(new CharGenSoundActions
+				{
+					OnOpen = delegate
+					{
+						UpdateSoundState(MusicStateHandler.MusicState.Chargen);
+					},
+					OnClose = delegate
+					{
+						UpdateSoundState(MusicStateHandler.MusicState.MainMenu);
+					},
+					OnComplete = delegate
+					{
+						FullScreenSounds.Instance.Chargen.ChargenCompleteClick.Play();
+						UpdateSoundState(MusicStateHandler.MusicState.Setting);
+					}
+				})
+				.OpenUI();
 		}
+	}
+
+	private void UpdateSoundState(MusicStateHandler.MusicState state)
+	{
+		SoundState.Instance.OnMusicStateChange(state);
 	}
 
 	private void DisposeNewGame()
 	{
 		m_NewGame.Value?.Dispose();
 		m_NewGame.Value = null;
+	}
+
+	private void WarmupChargenUnit()
+	{
+		if (m_ChargenUnit == null)
+		{
+			BlueprintUnit defaultPlayerCharacter = ConfigRoot.Instance.NewGameSettings.DefaultPlayerCharacter;
+			m_ChargenUnit = new ChargenUnit(defaultPlayerCharacter);
+		}
 	}
 
 	public void EnterGame(Action action)
@@ -246,8 +292,7 @@ public class MainMenuContext : ViewModel
 	private IEnumerator EnterGameCoroutine(Action action)
 	{
 		m_EnterGameStarted = true;
-		RootUIContext.Instance.CommonVM.CloseTutorialOnLoad();
-		RootUIContext.Instance.LoadingScreenRootVM.ShowLoadingScreen();
+		m_LoadingHandler();
 		yield return null;
 		Runner.ShouldStartManually = true;
 		yield return SceneLoader.LoadObligatoryScenesAsync();
@@ -256,32 +301,5 @@ public class MainMenuContext : ViewModel
 		Runner.StartManually();
 		m_EnterGameStarted = false;
 		Runner.ShouldStartManually = false;
-	}
-
-	public void StartNewGame()
-	{
-		EnterGame(Game.Instance.LoadNewGame);
-	}
-
-	public void LoadLastGame()
-	{
-		EnterGame(LoadLastSave);
-	}
-
-	private void LoadLastSave()
-	{
-		Game.Instance.SaveManager.UpdateSaveListIfNeeded();
-		MainThreadDispatcher.StartCoroutine(UIUtilitySaves.WaitForSaveUpdated(delegate
-		{
-			SaveInfo latestSave = Game.Instance.SaveManager.GetLatestSave();
-			if (latestSave != null)
-			{
-				Game.Instance.LoadGameFromMainMenu(latestSave);
-			}
-			else
-			{
-				Game.Instance.LoadNewGame();
-			}
-		}));
 	}
 }

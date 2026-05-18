@@ -22,6 +22,8 @@ public class TooltipTemplateMoraleUnit : TooltipBaseTemplate
 
 	private string m_CurrentPhase;
 
+	private string m_CurrentPhaseTitle;
+
 	private string m_CurrentPhaseDescription;
 
 	private string m_MoraleDescription;
@@ -47,13 +49,18 @@ public class TooltipTemplateMoraleUnit : TooltipBaseTemplate
 		}
 		try
 		{
-			m_CurrentValue = m_UnitUIState.Morale.CurrentValue?.Morale ?? 0;
-			m_CurrentPhase = LocalizedTexts.Instance.MoralePhases.GetText(m_UnitUIState.Morale.CurrentValue.MoralePhase);
-			m_CurrentPhaseDescription = GetGlossaryEntry(m_UnitUIState.Morale.CurrentValue.MoralePhase).GetDescription();
-			m_MoraleDescription = UIUtilityEncyclopedy.GetGlossaryEntry("Morale").GetDescription();
-			m_WillBecomeHeroic = UIUtilityUnit.MoraleWillBecomeHeroic(m_UnitUIState.Morale.CurrentValue, m_UnitUIState.MoralePrediction.CurrentValue);
-			m_WillBecomeBroken = UIUtilityUnit.MoraleWillBecomeBroken(m_UnitUIState.Morale.CurrentValue, m_UnitUIState.MoralePrediction.CurrentValue);
-			m_IsMoraleLeader = m_UnitUIState.IsMoraleLeader.CurrentValue;
+			IUIUnitMoraleData currentValue = m_UnitUIState.Morale.CurrentValue;
+			m_CurrentValue = currentValue?.Morale ?? 0;
+			if (currentValue != null)
+			{
+				m_CurrentPhase = LocalizedTexts.Instance.MoralePhases.GetText(currentValue.MoralePhase);
+				m_CurrentPhaseTitle = LocalizedTexts.Instance.MoralePhaseTitles.GetText(currentValue.MoralePhase);
+				m_CurrentPhaseDescription = GetGlossaryEntry(currentValue.MoralePhase).GetDescription();
+				m_MoraleDescription = UIUtilityEncyclopedy.GetGlossaryEntry("Morale").GetDescription();
+				m_WillBecomeHeroic = UIUtilityUnit.MoraleWillBecomeHeroic(currentValue, m_UnitUIState.MoralePrediction.CurrentValue);
+				m_WillBecomeBroken = UIUtilityUnit.MoraleWillBecomeBroken(currentValue, m_UnitUIState.MoralePrediction.CurrentValue);
+				m_IsMoraleLeader = m_UnitUIState.IsMoraleLeader.CurrentValue;
+			}
 		}
 		catch (Exception ex)
 		{
@@ -63,42 +70,42 @@ public class TooltipTemplateMoraleUnit : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(UIStrings.Instance.HUDTexts.MoraleTitle);
-		yield return new TooltipBrickTitle(m_UnitUIState.Name.CurrentValue, TooltipTitleType.H3);
+		yield return new BrickTitleVM(UIStrings.Instance.HUDTexts.MoraleTitle);
+		yield return new BrickTitleVM(m_UnitUIState.Name.CurrentValue, TooltipTitleType.H3);
 		if (m_IsMoraleLeader)
 		{
-			yield return new TooltipBrickTitle(UIStrings.Instance.HUDTexts.MoraleLeader, TooltipTitleType.H4);
+			yield return new BrickTitleVM(UIStrings.Instance.HUDTexts.MoraleLeader, TooltipTitleType.H4);
 		}
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTextValue(UIStrings.Instance.HUDTexts.MoraleCurrentValueTitle, m_CurrentValue.ToString());
-		yield return new TooltipBrickTextValue(UIStrings.Instance.HUDTexts.MoraleCurrentPhaseTitle, m_CurrentPhase);
-		yield return new TooltipBrickSlider(m_MinValue, m_MaxValue, m_CurrentValue, new List<BrickSliderValueVM>
+		yield return new BrickTextValueVM(UIStrings.Instance.HUDTexts.MoraleCurrentValueTitle, m_CurrentValue.ToString());
+		yield return new BrickTextValueVM(UIStrings.Instance.HUDTexts.MoraleCurrentPhaseTitle, m_CurrentPhase);
+		yield return new BrickSliderVM(m_MinValue, m_MaxValue, m_CurrentValue, new List<SliderValuesVM>
 		{
-			new BrickSliderValueVM(m_MinValue, m_MaxValue, 0, null, needColor: true, UIConfig.Instance.TooltipColors.MoraleBroken, null, isValueOnBottom: false)
-		}, showValue: true, 50, UIConfig.Instance.TooltipColors.MoraleHeroic);
+			new SliderValuesVM(m_MinValue, m_MaxValue, 0, null, needColor: true, UIConfig.Instance.TooltipColors.MoraleBroken, null, isValueOnBottom: false)
+		}, showValue: true, UIConfig.Instance.TooltipColors.MoraleHeroic);
 		if (m_WillBecomeHeroic)
 		{
-			yield return new TooltipBrickHint(UIStrings.Instance.HUDTexts.MoraleBecomeHeroicSoonHint);
+			yield return new BrickHintVM(UIStrings.Instance.HUDTexts.MoraleBecomeHeroicSoonHint);
 		}
 		if (m_WillBecomeBroken)
 		{
-			yield return new TooltipBrickHint(UIStrings.Instance.HUDTexts.MoraleBecomeBrokenSoonHint);
+			yield return new BrickHintVM(UIStrings.Instance.HUDTexts.MoraleBecomeBrokenSoonHint);
 		}
 		if (m_IsMoraleLeader)
 		{
-			yield return new TooltipBrickSeparator(TooltipBrickElementType.Medium);
-			yield return new TooltipBrickTitle(UIStrings.Instance.HUDTexts.MoraleLeader, TooltipTitleType.H4);
-			yield return new TooltipBrickText(UIStrings.Instance.HUDTexts.MoraleLeaderDescription);
+			yield return new BrickSeparatorVM(TooltipBrickElementType.Medium);
+			yield return new BrickTitleVM(UIStrings.Instance.HUDTexts.MoraleLeader, TooltipTitleType.H4);
+			yield return new BrickTextVM(UIStrings.Instance.HUDTexts.MoraleLeaderDescription);
 		}
-		yield return new TooltipBrickSeparator(TooltipBrickElementType.Medium);
-		yield return new TooltipBrickTitle(m_CurrentPhase, TooltipTitleType.H4);
-		yield return new TooltipBrickText(m_CurrentPhaseDescription);
-		yield return new TooltipBrickSeparator(TooltipBrickElementType.Medium);
-		yield return new TooltipBrickTitle(UIStrings.Instance.HUDTexts.MoraleTitle, TooltipTitleType.H4);
-		yield return new TooltipBrickText(m_MoraleDescription);
+		yield return new BrickSeparatorVM(TooltipBrickElementType.Medium);
+		yield return new BrickTitleVM(m_CurrentPhaseTitle, TooltipTitleType.H4);
+		yield return new BrickTextVM(m_CurrentPhaseDescription);
+		yield return new BrickSeparatorVM(TooltipBrickElementType.Medium);
+		yield return new BrickTitleVM(UIStrings.Instance.HUDTexts.MoraleTitle, TooltipTitleType.H4);
+		yield return new BrickTextVM(m_MoraleDescription);
 	}
 
 	private BlueprintEncyclopediaGlossaryEntry GetGlossaryEntry(MoralePhaseType moralePhase)

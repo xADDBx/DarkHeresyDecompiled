@@ -24,15 +24,7 @@ public class UILoot
 
 	public LocalizedString CollectAll;
 
-	public LocalizedString LeaveZone;
-
-	public LocalizedString CollectAllAndLeaveZone;
-
-	public LocalizedString LootManager;
-
 	public LocalizedString SendToInventory;
-
-	public LocalizedString SendAllToInventory;
 
 	public LocalizedString ItemsLootObject;
 
@@ -40,17 +32,11 @@ public class UILoot
 
 	public LocalizedString CollectAllBeforeLeave;
 
-	public LocalizedString Collect;
-
-	public LocalizedString Inspect;
-
 	public LocalizedString TrashMode;
 
 	public LocalizedString SuitableItems;
 
 	public LocalizedString NoSuitableItems;
-
-	public LocalizedString NotificationMessageForGainLootItem;
 
 	public LocalizedString SkillCheckTitle;
 
@@ -59,10 +45,6 @@ public class UILoot
 	public LocalizedString SkillCheckValueAgainst;
 
 	public LocalizedString SkillCheckSkillValue;
-
-	public LocalizedString DropZoneUnsupportedItem;
-
-	public LocalizedString LootLockedState;
 
 	public LocalizedString ExitDescription;
 

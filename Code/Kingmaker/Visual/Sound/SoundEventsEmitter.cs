@@ -96,12 +96,16 @@ public class SoundEventsEmitter : MonoBehaviour, IRegistrationCallback
 
 		private async void PostEvents()
 		{
-			if (!m_IsPlaying && m_IsEmitterEnabled && AkAudioService.IsInitialized)
+			if (m_IsPlaying || !m_IsEmitterEnabled || !AkAudioService.IsInitialized)
 			{
-				m_IsPlaying = true;
-				m_PostEventsCancellation = new CancellationTokenSource();
-				CancellationToken ct = m_PostEventsCancellation.Token;
-				SoundBanksManager.BankHandle soundBank = RequestBank();
+				return;
+			}
+			m_IsPlaying = true;
+			m_PostEventsCancellation = new CancellationTokenSource();
+			CancellationToken ct = m_PostEventsCancellation.Token;
+			SoundBanksManager.BankHandle soundBank = RequestBank();
+			if (soundBank != null)
+			{
 				while (soundBank.Loading)
 				{
 					await Task.Delay(TimeSpan.FromMilliseconds(100.0), ct);
@@ -134,6 +138,12 @@ public class SoundEventsEmitter : MonoBehaviour, IRegistrationCallback
 			try
 			{
 				await Task.Delay(TimeSpan.FromMilliseconds(slot.Delay), ct);
+				SoundBanksManager.BankHandle bankHandle = m_BankHandle;
+				if (bankHandle == null || !bankHandle.Loaded)
+				{
+					PFLog.Audio.Error("Sound emitter " + m_AudioObject.name + " trying post event without loaded bank " + Bank);
+					return;
+				}
 				uint num = SoundEventsManager.PostEvent(slot.Event, m_EventsEmitter.gameObject);
 				if (num != 0)
 				{

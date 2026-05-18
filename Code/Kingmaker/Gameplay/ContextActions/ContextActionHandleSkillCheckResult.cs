@@ -1,9 +1,6 @@
 using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Owlcat.Runtime.Core.Utility;
 
@@ -24,7 +21,7 @@ public sealed class ContextActionHandleSkillCheckResult : ContextAction
 
 	protected override void RunAction()
 	{
-		if (((SimpleContextData<IRulebookEvent, MechanicsContext.Scope.Rule>.Current as RulePerformSkillCheck) ?? throw new InvalidOperationException("RulePerformSkillCheck not found")).ResultIsSuccess)
+		if (((base.Context.Rule as RulePerformSkillCheck) ?? throw new InvalidOperationException("RulePerformSkillCheck not found")).ResultIsSuccess)
 		{
 			Success.Run();
 		}

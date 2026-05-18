@@ -1,5 +1,5 @@
+using JetBrains.Annotations;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.GameModes;
 using Kingmaker.Networking;
 using Kingmaker.Networking.NetGameFsm;
 using Kingmaker.PubSubSystem;
@@ -29,7 +29,8 @@ public class IngameMenuSettingsButtonVM : IngameMenuBaseVM, INetRoleSetHandler, 
 
 	public ReadOnlyReactiveProperty<bool> IsPause => m_IsPause;
 
-	public IngameMenuSettingsButtonVM()
+	public IngameMenuSettingsButtonVM([CanBeNull] ReadOnlyReactiveProperty<bool> isForceHidden)
+		: base(isForceHidden)
 	{
 		UpdateShowPauseState();
 		UpdateIsPauseState();
@@ -66,7 +67,7 @@ public class IngameMenuSettingsButtonVM : IngameMenuBaseVM, INetRoleSetHandler, 
 	{
 		if (Game.Instance.CurrentlyLoadedArea != null)
 		{
-			m_ShouldShow.Value = base.IsAppropriateGameMode && IsNotServiceWindow && (base.ShouldShow.CurrentValue || Game.Instance.CurrentModeType != GameModeType.SpaceCombat);
+			m_ShouldShow.Value = base.IsAppropriateGameMode && IsNotServiceWindow && base.ShouldShow.CurrentValue;
 		}
 	}
 

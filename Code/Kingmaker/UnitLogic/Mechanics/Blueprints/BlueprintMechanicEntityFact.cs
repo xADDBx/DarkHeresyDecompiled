@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Code.Gameplay.Components;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UIDataProvider;
@@ -77,7 +78,7 @@ public class BlueprintMechanicEntityFact : BlueprintFact, IUIDataProvider
 		}
 	}
 
-	public virtual MechanicEntityFact CreateFact([CanBeNull] MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public virtual MechanicEntityFact CreateFact([CanBeNull] IEvalContext parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new MechanicEntityFactBlueprinted(this, parentContext);
 	}

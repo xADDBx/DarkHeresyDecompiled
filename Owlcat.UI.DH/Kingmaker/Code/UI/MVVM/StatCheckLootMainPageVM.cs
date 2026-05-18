@@ -4,6 +4,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem.Core;
 using Owlcat.UI;
 using R3;
@@ -82,7 +83,7 @@ public class StatCheckLootMainPageVM : StatCheckLootPageVM
 
 	private void ClearUnitSlotVMs()
 	{
-		m_ClearUnitSlots.Execute();
+		m_ClearUnitSlots.Execute(Unit.Default);
 		UnitSlotVMByStatType.Clear();
 	}
 
@@ -91,9 +92,9 @@ public class StatCheckLootMainPageVM : StatCheckLootPageVM
 	{
 		int bestStatValue = int.MinValue;
 		BaseUnitEntity result = null;
-		foreach (BaseUnitEntity item in units.Where((BaseUnitEntity u) => (int)u.Stats.GetStat(stat) > bestStatValue))
+		foreach (BaseUnitEntity item in units.Where((BaseUnitEntity u) => (int)u.Actor.GetStat(stat, null, default(StatContext), "SelectBestUnit") > bestStatValue))
 		{
-			bestStatValue = item.Stats.GetStat(stat);
+			bestStatValue = item.Actor.GetStat(stat, null, default(StatContext), "SelectBestUnit");
 			result = item;
 		}
 		return result;
@@ -107,6 +108,6 @@ public class StatCheckLootMainPageVM : StatCheckLootPageVM
 			value = new StatCheckLootUnitCardVM(unitEntity, statType, m_CheckStatAction, m_SwitchUnitAction);
 			UnitSlotVMByStatType[statType] = value;
 		}
-		m_UpdateUnitSlots.Execute();
+		m_UpdateUnitSlots.Execute(Unit.Default);
 	}
 }

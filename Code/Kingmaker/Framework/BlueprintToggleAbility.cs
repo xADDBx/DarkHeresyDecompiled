@@ -8,7 +8,6 @@ using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
@@ -56,7 +55,7 @@ public class BlueprintToggleAbility : BlueprintUnitFact, IBlueprintScanner
 		}
 	}
 
-	public override MechanicEntityFact CreateFact(MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public override MechanicEntityFact CreateFact(IEvalContext? parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new ToggleAbility(this);
 	}

@@ -32,6 +32,16 @@ public class DetectiveOpenedCaseBaseView : View<DetectiveOpenedCaseVM>, IInitial
 	[SerializeField]
 	private float m_AreaWeight = 3f;
 
+	[Header("ConclusionPlacement")]
+	[SerializeField]
+	private Vector2Int m_ConclusionGridSize = new Vector2Int(5, 3);
+
+	[SerializeField]
+	private float m_ConclusionRectMargin = 240f;
+
+	[SerializeField]
+	private float m_ConclusionAnchorWeight = 0.5f;
+
 	private readonly Vector2 m_MockClueSize = new Vector2(320f, 320f);
 
 	[Header("Views")]
@@ -117,6 +127,95 @@ public class DetectiveOpenedCaseBaseView : View<DetectiveOpenedCaseVM>, IInitial
 		return placementPoints.OrderBy((Vector2 p) => CluePlacementHeuristic(p, connectedPositions)).FirstOrDefault();
 	}
 
+	internal Vector2 GetSuitablePositionForConclusion(DeductionOnScreenView view, Vector2 fromPos, Vector2 toPos)
+	{
+		Vector2 anchor = (fromPos + toPos) * 0.5f;
+		Vector2 vector = Vector2.Min(fromPos, toPos);
+		Vector2 vector2 = Vector2.Max(fromPos, toPos);
+		Vector2 vector3 = new Vector2(m_ConclusionRectMargin, m_ConclusionRectMargin);
+		List<Vector2> source = SampleRectangle(Rect.MinMaxRect(vector.x - vector3.x, vector.y - vector3.y, vector2.x + vector3.x, vector2.y + vector3.y), m_ConclusionGridSize);
+		Vector2 jitter = new Vector2(50f, 25f);
+		List<Vector2> source2 = source.Select((Vector2 p) => p + new Vector2(Random.Range(0f - jitter.x, jitter.x), Random.Range(0f - jitter.y, jitter.y))).ToList();
+		Vector2 conclusionSize = view.RectTransform.rect.size;
+		if (conclusionSize.x <= 1f || conclusionSize.y <= 1f)
+		{
+			conclusionSize = m_MockClueSize;
+		}
+		Rect cardRect = GetCaseCardRectInCluesContainerSpace();
+		return source2.OrderBy((Vector2 p) => ConclusionPlacementHeuristic(p, conclusionSize, view, anchor, cardRect)).FirstOrDefault();
+	}
+
+	private float ConclusionPlacementHeuristic(Vector2 position, Vector2 conclusionSize, DeductionOnScreenView self, Vector2 anchorPoint, Rect cardRect)
+	{
+		Rect rect = new Rect(position - conclusionSize * 0.5f, conclusionSize);
+		float num = SumOverlapWithViews(rect, self);
+		if (cardRect.width > 0f && cardRect.height > 0f && UIUtilityRect.Intersects(rect, cardRect, out var area))
+		{
+			num += area.width * area.height;
+		}
+		return (position - anchorPoint).magnitude * m_ConclusionAnchorWeight + num * m_AreaWeight;
+	}
+
+	private float SumOverlapWithViews(Rect candidate, DeductionOnScreenView self)
+	{
+		float num = 0f;
+		foreach (DetectiveJournalClueView view in m_Views)
+		{
+			RectTransform rectTransform = view.RectTransform;
+			Rect r = new Rect(rectTransform.anchoredPosition - rectTransform.rect.size * 0.5f, rectTransform.rect.size);
+			if (UIUtilityRect.Intersects(candidate, r, out var area))
+			{
+				num += area.width * area.height;
+			}
+		}
+		foreach (DeductionOnScreenView conclusion in m_Conclusions)
+		{
+			if (!(conclusion == self))
+			{
+				RectTransform rectTransform2 = conclusion.RectTransform;
+				Rect r2 = new Rect(rectTransform2.anchoredPosition - rectTransform2.rect.size * 0.5f, rectTransform2.rect.size);
+				if (UIUtilityRect.Intersects(candidate, r2, out var area2))
+				{
+					num += area2.width * area2.height;
+				}
+			}
+		}
+		return num;
+	}
+
+	private Rect GetCaseCardRectInCluesContainerSpace()
+	{
+		RectTransform rectTransform = ((m_CaseCardScreenBaseView != null) ? m_CaseCardScreenBaseView.RectTransform : null);
+		if (rectTransform == null || m_CluesContainer == null)
+		{
+			return new Rect(0f, 0f, 0f, 0f);
+		}
+		Vector3[] array = new Vector3[4];
+		rectTransform.GetWorldCorners(array);
+		Vector2 vector = m_CluesContainer.InverseTransformPoint(array[0]);
+		Vector2 vector2 = m_CluesContainer.InverseTransformPoint(array[2]);
+		return Rect.MinMaxRect(Mathf.Min(vector.x, vector2.x), Mathf.Min(vector.y, vector2.y), Mathf.Max(vector.x, vector2.x), Mathf.Max(vector.y, vector2.y));
+	}
+
+	private static List<Vector2> SampleRectangle(Rect bounds, Vector2Int gridSize)
+	{
+		List<Vector2> list = new List<Vector2>();
+		int num = Mathf.Max(1, gridSize.x);
+		int num2 = Mathf.Max(1, gridSize.y);
+		float num3 = ((num > 1) ? (bounds.width / (float)(num - 1)) : 0f);
+		float num4 = ((num2 > 1) ? (bounds.height / (float)(num2 - 1)) : 0f);
+		for (int i = 0; i < num; i++)
+		{
+			for (int j = 0; j < num2; j++)
+			{
+				float x = ((num > 1) ? (bounds.xMin + (float)i * num3) : bounds.center.x);
+				float y = ((num2 > 1) ? (bounds.yMin + (float)j * num4) : bounds.center.y);
+				list.Add(new Vector2(x, y));
+			}
+		}
+		return list;
+	}
+
 	private float CluePlacementHeuristic(Vector2 position, params Vector2[] connectedClues)
 	{
 		float num = 0f;
@@ -155,7 +254,7 @@ public class DetectiveOpenedCaseBaseView : View<DetectiveOpenedCaseVM>, IInitial
 
 	protected override void OnBind()
 	{
-		m_CaseViewsContext = new CaseViewsContext(m_CaseCardScreenBaseView, m_Views, m_Conclusions, m_LinesContainer, m_CluesContainer);
+		m_CaseViewsContext = new CaseViewsContext(this, m_CaseCardScreenBaseView, m_Views, m_Conclusions, m_LinesContainer, m_CluesContainer);
 		m_CaseCardScreenBaseView.Initialize(m_CaseViewsContext);
 		m_CaseCardScreenBaseView.Bind(base.ViewModel.CaseCardVM);
 		m_AnswerTierChangeView.Bind(base.ViewModel.AnswerTierChangeVM);
@@ -310,6 +409,7 @@ public class DetectiveOpenedCaseBaseView : View<DetectiveOpenedCaseVM>, IInitial
 		{
 			DeductionOnScreenView widget = WidgetFactory.GetWidget(m_DeductionPrefab, activate: true, strictMatching: true);
 			widget.transform.SetParent(m_CluesContainer, worldPositionStays: false);
+			widget.transform.SetAsLastSibling();
 			widget.Initialize(m_CaseViewsContext);
 			widget.Bind(item);
 			m_Conclusions.Add(widget);

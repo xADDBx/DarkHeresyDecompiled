@@ -1,11 +1,12 @@
 using System;
+using Kingmaker.View.Mechanics;
 using Kingmaker.Visual.Sound;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Events;
 
 [Serializable]
-public class AnimationClipEventSoundUnit : AnimationClipEvent
+public class AnimationClipEventSoundUnit : AnimationClipEventSound
 {
 	public enum SoundTargetType
 	{
@@ -83,26 +84,26 @@ public class AnimationClipEventSoundUnit : AnimationClipEvent
 		m_Type = type;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override Action PostSoundEvent(MechanicEntityView view)
 	{
 		if (TargetType == SoundTargetType.Weapon)
 		{
 			switch (Type)
 			{
 			case SoundType.MainWeaponEquip:
-				animationManager.CallbackReceiver.PostMainWeaponEquipEvent();
+				view.PostMainWeaponEquipEvent();
 				break;
 			case SoundType.OffWeaponEquip:
-				animationManager.CallbackReceiver.PostOffWeaponEquipEvent();
+				view.PostOffWeaponEquipEvent();
 				break;
 			case SoundType.MainWeaponUnequip:
-				animationManager.CallbackReceiver.PostMainWeaponUnequipEvent();
+				view.PostMainWeaponUnequipEvent();
 				break;
 			case SoundType.OffWeaponUnequip:
-				animationManager.CallbackReceiver.PostOffWeaponUnequipEvent();
+				view.PostOffWeaponUnequipEvent();
 				break;
 			case SoundType.ArmorFoley:
-				animationManager.CallbackReceiver.PostArmorFoleyEvent();
+				view.PostArmorFoleyEvent();
 				break;
 			default:
 				PFLog.Default.Error(string.Format("{0} does not support {1} of {2}.", "AnimationClipEventSoundUnit", "SoundType", Type));
@@ -111,7 +112,7 @@ public class AnimationClipEventSoundUnit : AnimationClipEvent
 		}
 		else
 		{
-			animationManager.CallbackReceiver.AbilityAnimationEvent(TypeForAbility);
+			view.AbilityAnimationEvent(TypeForAbility);
 		}
 		return null;
 	}

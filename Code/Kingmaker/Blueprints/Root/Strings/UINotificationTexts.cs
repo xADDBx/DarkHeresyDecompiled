@@ -15,23 +15,11 @@ public class UINotificationTexts
 
 	public LocalizedString DamageDealtFormat;
 
-	public LocalizedString NavigatorResourceAddedFormat;
-
-	public LocalizedString NavigatorResourceLostFormat;
-
-	public LocalizedString SoulMarksShiftFormat;
-
-	public LocalizedString GainedProfitFactor;
-
-	public LocalizedString LostProfitFactor;
+	public LocalizedString AlignmentShiftFormat;
 
 	public LocalizedString FactionReputationLostFormat;
 
 	public LocalizedString FactionReputationReceivedFormat;
-
-	public LocalizedString FactionVendorDiscountLostFormat;
-
-	public LocalizedString FactionVendorDiscountReceivedFormat;
 
 	public LocalizedString AbilityAddedFormat;
 
@@ -44,8 +32,6 @@ public class UINotificationTexts
 	public LocalizedString CluesAddedFormat;
 
 	public LocalizedString AddendumsAddedFormat;
-
-	public LocalizedString ConclusionConstructedFormat;
 
 	public LocalizedString AttackOfOpportunityTrigger;
 

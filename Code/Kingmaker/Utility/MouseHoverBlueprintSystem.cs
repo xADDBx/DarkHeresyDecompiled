@@ -6,6 +6,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Owlcat.Runtime.Core.Utility.Locator;
 using Owlcat.UI;
+using UnityEngine;
 
 namespace Kingmaker.Utility;
 
@@ -37,9 +38,14 @@ public class MouseHoverBlueprintSystem : IService, ITooltipBaseHandler, ISubscri
 		}
 	}
 
-	public void HandleComparativeTooltipRequest(IEnumerable<TooltipData> data, bool showScrollbar)
+	public void HandleComparativeTooltipRequest(Transform source, IEnumerable<TooltipData> data, bool showScrollbar = false)
 	{
 		HandleTooltipRequest(data?.LastOrDefault(), shouldNotHideLittleTooltip: false, showScrollbar);
+	}
+
+	public void HandleComparativeTooltipRequest(Transform source, IEnumerable<TooltipData> mainData, IEnumerable<TooltipData> compareData, bool showScrollbar = false)
+	{
+		HandleComparativeTooltipRequest(source, mainData);
 	}
 
 	private void HandleTooltipCreated(TooltipData tooltipData)

@@ -315,7 +315,21 @@ public class BlueprintAbilityWrapper : IHashable
 
 	public AbilityTag AbilityTag => m_Blueprint.AbilityTag;
 
-	public IAbilityAoEPatternProvider PatternSettings => m_Blueprint.PatternSettings;
+	public IAbilityAoEPatternProvider PatternSettings
+	{
+		get
+		{
+			for (int num = m_AllModifiers.Length - 1; num >= 0; num--)
+			{
+				IAbilityAoEPatternProvider component = m_AllModifiers[num].GetComponent<IAbilityAoEPatternProvider>();
+				if (component != null)
+				{
+					return component;
+				}
+			}
+			return m_Blueprint.PatternSettings;
+		}
+	}
 
 	public string AssetGuid => m_Blueprint.AssetGuid;
 
@@ -329,7 +343,17 @@ public class BlueprintAbilityWrapper : IHashable
 
 	public AbilityType Type => m_Blueprint.Type;
 
-	public bool IsAoE => m_Blueprint.IsAoE;
+	public bool IsAoE
+	{
+		get
+		{
+			if (!m_Blueprint.IsAoE)
+			{
+				return GetComponent<AbilityTargetsInPattern>() != null;
+			}
+			return true;
+		}
+	}
 
 	public bool IsRangedAoE => m_Blueprint.IsRangedAoe;
 
@@ -345,7 +369,9 @@ public class BlueprintAbilityWrapper : IHashable
 
 	public bool UseOnMechadendrite => m_Blueprint.UseOnMechadendrite;
 
-	public AbilityAnimationStyle Animation => m_Blueprint.Animation;
+	public bool HasAnimation => m_Blueprint.HasAnimation;
+
+	public AbilityAnimationStyle SpellAnimation => m_Blueprint.SpellAnimation;
 
 	public bool NeedEquipWeapons => m_Blueprint.NeedEquipWeapons;
 
@@ -353,7 +379,7 @@ public class BlueprintAbilityWrapper : IHashable
 
 	public BlueprintAbility Parent => m_Blueprint.Parent;
 
-	public TargetType AoETargets => m_Blueprint.AoETargets;
+	public TargetType AoETargets => PatternSettings?.Targets ?? TargetType.Any;
 
 	public IEnumerable<BlueprintComponent> ComponentsArray => Components();
 

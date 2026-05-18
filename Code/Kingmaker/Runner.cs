@@ -10,6 +10,7 @@ using Kingmaker.BundlesLoading;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.EntitySystem.Persistence.Scenes;
 using Kingmaker.Networking;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.QA.Arbiter.Profiling;
@@ -104,6 +105,7 @@ public class Runner : MonoBehaviour
 		}
 	}
 
+	[SkipAnalysis]
 	private void StartImpl()
 	{
 		if (m_IsStarted)
@@ -209,14 +211,6 @@ public class Runner : MonoBehaviour
 		if (ex is LoadGameException)
 		{
 			ex = ex.InnerException ?? ex;
-		}
-		if (ex is LoadGameException)
-		{
-			string text = "Cannot load game. Are you trying to load an older save?\n";
-		}
-		else
-		{
-			string text = "Error: ";
 		}
 		if (Game.HasInstance)
 		{

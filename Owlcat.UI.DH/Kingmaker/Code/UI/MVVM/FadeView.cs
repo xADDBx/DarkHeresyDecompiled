@@ -1,7 +1,10 @@
+using System;
+using System.Diagnostics;
 using DG.Tweening;
 using JetBrains.Annotations;
 using Owlcat.UI;
 using R3;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -27,8 +30,27 @@ public class FadeView : View<FadeVM>
 	[Range(0f, 1f)]
 	private float m_CutSceneTimer = 0.3f;
 
+	[Header("Timer Block")]
+	[SerializeField]
+	[UsedImplicitly]
+	private int m_minRndTimerSeconds;
+
+	[SerializeField]
+	[UsedImplicitly]
+	private int m_maxRndTimerSeconds;
+
+	[SerializeField]
+	[UsedImplicitly]
+	private TextMeshProUGUI m_Timer;
+
 	[CanBeNull]
 	private Tween m_Tween;
+
+	private bool m_IsCutSceneShow;
+
+	private TimeSpan m_StartTime;
+
+	private readonly Stopwatch m_Stopwatch = new Stopwatch();
 
 	protected override void OnBind()
 	{
@@ -39,6 +61,17 @@ public class FadeView : View<FadeVM>
 	public void DoCutScene(bool state)
 	{
 		m_Vignette.gameObject.SetActive(state);
+		m_IsCutSceneShow = state;
+		if (m_IsCutSceneShow)
+		{
+			m_Stopwatch.Reset();
+			m_Stopwatch.Start();
+			m_StartTime = TimeSpan.FromSeconds(UnityEngine.Random.Range(m_minRndTimerSeconds, m_maxRndTimerSeconds));
+		}
+		else
+		{
+			m_Stopwatch.Stop();
+		}
 	}
 
 	public void ShowLoadingScreen(FadeVM.Params fadeParams)
@@ -70,5 +103,14 @@ public class FadeView : View<FadeVM>
 	{
 		m_Tween?.Kill();
 		m_Tween = null;
+	}
+
+	private void Update()
+	{
+		if (m_IsCutSceneShow)
+		{
+			TimeSpan timeSpan = m_StartTime.Add(TimeSpan.FromMilliseconds(m_Stopwatch.ElapsedMilliseconds));
+			m_Timer.text = $"{timeSpan.Days:D2} :: {timeSpan.Hours:D2} :: {timeSpan.Minutes:D2} :: {timeSpan.Seconds:D2}";
+		}
 	}
 }

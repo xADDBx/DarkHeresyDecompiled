@@ -18,7 +18,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class UnlockRestrictionPart : InteractionRestrictionPart<UnlockRestrictionSettings>, IUnlockableFlagReference, IInteractionVariantActor, IInteractionRestriction, IHashable, IOwlPackable<UnlockRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "UnlockRestrictionPart",
 		OldNames = null,
@@ -99,7 +99,7 @@ public class UnlockRestrictionPart : InteractionRestrictionPart<UnlockRestrictio
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		UnlockRestrictionPart source = new UnlockRestrictionPart();
 		result = Unsafe.As<UnlockRestrictionPart, TPossiblyBase>(ref source);

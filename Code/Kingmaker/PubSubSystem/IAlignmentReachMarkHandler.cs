@@ -7,5 +7,5 @@ namespace Kingmaker.PubSubSystem;
 
 public interface IAlignmentReachMarkHandler : ISubscriber<IBaseUnitEntity>, ISubscriber
 {
-	void HandleAlignmentMarkShift(AlignmentAxis axis, int reachedMark);
+	void HandleAlignmentMarkShift(AlignmentAxis axis, int previousMark, int reachedMark);
 }

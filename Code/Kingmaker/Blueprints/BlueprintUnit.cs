@@ -196,7 +196,7 @@ public class BlueprintUnit : BlueprintUnitFact, IBlueprintCreateMechanicEntity<B
 	[SerializeField]
 	private BlueprintArmyTypeReference m_Army;
 
-	public new SharedStringAsset LocalizedName;
+	public new LocalizedString LocalizedName;
 
 	public VoIdField VoId = new VoIdField();
 
@@ -208,6 +208,8 @@ public class BlueprintUnit : BlueprintUnitFact, IBlueprintCreateMechanicEntity<B
 	public Gender Gender;
 
 	public Size Size = Size.Medium;
+
+	public bool OverrideColorInDialog;
 
 	public Color Color = new Color(0.15f, 0.15f, 0.15f, 1f);
 
@@ -321,9 +323,9 @@ public class BlueprintUnit : BlueprintUnitFact, IBlueprintCreateMechanicEntity<B
 	{
 		get
 		{
-			if ((bool)LocalizedName)
+			if (!LocalizedName.Empty)
 			{
-				return LocalizedName.String;
+				return LocalizedName;
 			}
 			return "-unit name not set-";
 		}
@@ -334,6 +336,8 @@ public class BlueprintUnit : BlueprintUnitFact, IBlueprintCreateMechanicEntity<B
 	private bool IsNewStat => Army != null;
 
 	private bool IsOldStat => !IsNewStat;
+
+	public bool HasCustomPortrait => !m_Portrait.IsEmpty();
 
 	[NotNull]
 	public BlueprintPortrait PortraitSafe

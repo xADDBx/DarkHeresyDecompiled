@@ -30,7 +30,7 @@ public class CommandCustomLoadingScreen : CommandBase
 
 	private ICanvasAnimation m_CanvasAnimation;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		m_Finished = skipping;
 		if (!skipping)
@@ -44,12 +44,19 @@ public class CommandCustomLoadingScreen : CommandBase
 		{
 			Actions.Run();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		m_Finished = true;
 		Actions.Run();
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -57,23 +64,20 @@ public class CommandCustomLoadingScreen : CommandBase
 		return m_CanvasAnimation == null;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		m_Finished = true;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		if (m_CanvasAnimation == null)
 		{
-			return;
+			return CommandResult.Success;
 		}
 		switch (m_CanvasAnimation.GetLoadingScreenState())
 		{
-		case LoadingScreenState.ShowAnimation:
-		case LoadingScreenState.HideAnimation:
-			break;
 		case LoadingScreenState.Shown:
 			m_TimeLeft -= Time.unscaledDeltaTime;
 			if (!m_Finished && m_TimeLeft <= 0f)
@@ -88,5 +92,6 @@ public class CommandCustomLoadingScreen : CommandBase
 			m_CanvasAnimation = null;
 			break;
 		}
+		return CommandResult.Success;
 	}
 }

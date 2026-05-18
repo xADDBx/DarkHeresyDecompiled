@@ -24,7 +24,13 @@ public class BuffUISettings : BlueprintComponent
 	public bool ShowInSpecial;
 
 	[ShowIf("ShowInSpecial")]
+	[Tooltip("Для каких целей бафф считается важным")]
+	public BuffTargetType ImportantForTargets = BuffTargetType.All;
+
+	[ShowIf("ShowInSpecial")]
 	public List<BuffSpecialSettings> SpecialSettings = new List<BuffSpecialSettings>();
+
+	public bool BuffCategoryOverriden => UIFlags != BuffUIFlags.None;
 
 	public BuffGroupType GetGroup(BuffTargetType targetType)
 	{
@@ -44,20 +50,20 @@ public class BuffUISettings : BlueprintComponent
 		return result;
 	}
 
-	public bool ShouldShowInSpecial(BuffTargetType targetType)
+	public bool CheckImportantBuffConditions(BuffTargetType targetType)
 	{
-		if (!ShowInSpecial)
+		if (!ShowInSpecial || !ImportantForTargets.HasFlag(targetType))
 		{
 			return false;
 		}
 		foreach (BuffSpecialSettings specialSetting in SpecialSettings)
 		{
-			if (specialSetting.Targets.HasFlag(targetType))
+			if (specialSetting.Targets.HasFlag(targetType) && !specialSetting.Conditions.Check())
 			{
-				return specialSetting.Conditions.Check();
+				return false;
 			}
 		}
-		return false;
+		return true;
 	}
 
 	public bool HasFlag(BuffUIFlags flag)

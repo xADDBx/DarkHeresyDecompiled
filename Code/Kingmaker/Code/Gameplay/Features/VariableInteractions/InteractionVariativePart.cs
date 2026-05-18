@@ -11,6 +11,7 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.StateHasher.Hashers;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Kingmaker.Visual.Animation.Kingmaker;
@@ -26,7 +27,7 @@ namespace Kingmaker.Code.Gameplay.Features.VariableInteractions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class InteractionVariativePart : NewInteractionPart<InteractionVariativeSettings>, IHasInteractionVariantActors, IInteractionObjectUIHandler, ISubscriber<IMapObjectEntity>, ISubscriber, IHashable, IOwlPackable<InteractionVariativePart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionVariativePart",
 		OldNames = null,
@@ -90,7 +91,7 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 
 	public IEnumerable<IInteractionVariantActor> GetInteractionVariantActors()
 	{
-		return from v in base.Settings.InteractionsWithConditions
+		return from v in base.Settings.Interactions
 			select v.GetVariantActor() into a
 			where a != null
 			select a;
@@ -108,10 +109,10 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 	{
 		if (conditions == null)
 		{
-			foreach (InteractionWithConditions item in base.Settings.InteractionsWithConditions.Where(delegate(InteractionWithConditions iwc)
+			foreach (InteractionWithConditions item in base.Settings.Interactions.Where(delegate(InteractionWithConditions iwc)
 			{
-				List<InteractionWithConditions.ShowReason> showReasons = iwc.ShowReasons;
-				return showReasons != null && showReasons.Count == 0;
+				List<InteractionWithConditions.ShowReason> showConditions = iwc.ShowConditions;
+				return showConditions != null && showConditions.Count == 0;
 			}))
 			{
 				MapObjectEntity mapObject = item.GetMapObject();
@@ -122,7 +123,7 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 			}
 			return;
 		}
-		InteractionWithConditions interactionWithConditions = base.Settings.InteractionsWithConditions.FirstOrDefault((InteractionWithConditions iwc) => iwc.ShowReasons.Any((InteractionWithConditions.ShowReason r) => r.Conditions.Get() == conditions));
+		InteractionWithConditions interactionWithConditions = base.Settings.Interactions.FirstOrDefault((InteractionWithConditions iwc) => iwc.ShowConditions.Any((InteractionWithConditions.ShowReason r) => r.Conditions.Get() == conditions));
 		if (interactionWithConditions == null)
 		{
 			PFLog.UI.Error("Trying to add unavailable conditions");
@@ -131,7 +132,7 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 		MapObjectEntity mapObject2 = interactionWithConditions.GetMapObject();
 		if (PassedConditions.TryGetValue(mapObject2, out var value2))
 		{
-			if (interactionWithConditions.ShowReasons.Select((InteractionWithConditions.ShowReason r) => r.Conditions.Get()).Contains(value2))
+			if (interactionWithConditions.ShowConditions.Select((InteractionWithConditions.ShowReason r) => r.Conditions.Get()).Contains(value2))
 			{
 				return;
 			}
@@ -142,7 +143,7 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 
 	public IInteractionVariantActor GetSelectedVariantActor()
 	{
-		return base.Settings.InteractionsWithConditions.FirstOrDefault((InteractionWithConditions v) => v.GetMapObject() == SelectedVariantMapObject)?.GetVariantActor();
+		return base.Settings.Interactions.FirstOrDefault((InteractionWithConditions i) => i.GetMapObject() == SelectedVariantMapObject)?.GetVariantActor();
 	}
 
 	public void HandleObjectHighlightChange()
@@ -151,9 +152,9 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 
 	public void HandleObjectInteractChanged()
 	{
-		if (base.Settings.InteractionsWithConditions.Select((InteractionWithConditions v) => v.GetMapObject()).Any((MapObjectEntity i) => i.View.Data == EventInvokerExtensions.MapObjectEntity))
+		if (Enumerable.Any(base.Settings.Interactions, (InteractionWithConditions i) => i.GetMapObject() == EventInvokerExtensions.MapObjectEntity))
 		{
-			EventBus.RaiseEvent((IMapObjectEntity)base.View.Data, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+			base.EventBus.RaiseEvent((IMapObjectEntity)base.View.Data, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
 			{
 				h.HandleObjectInteractChanged();
 			}, isCheckRuntime: true);
@@ -166,14 +167,18 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 
 	public IEnumerable<InteractionWithConditions> GetAvailableInteractions()
 	{
-		return base.Settings.InteractionsWithConditions.Where((InteractionWithConditions iwc) => iwc.GetVariantActor().CanUse && (iwc.ShowReasons == null || iwc.ShowReasons.Count == 0 || iwc.ShowReasons.Any((InteractionWithConditions.ShowReason r) => r.Conditions.IsEmpty() || r.Conditions.Get().Check())));
+		return base.Settings.Interactions.Where(delegate(InteractionWithConditions iwc)
+		{
+			IInteractionVariantActor variantActor = iwc.GetVariantActor();
+			return variantActor != null && variantActor.CanUse && (iwc.ShowConditions == null || iwc.ShowConditions.Count == 0 || iwc.ShowConditions.Any((InteractionWithConditions.ShowReason r) => r.Conditions.IsEmpty() || r.Conditions.Get().Check()));
+		});
 	}
 
 	public override void SetVisited()
 	{
 		foreach (InteractionWithConditions availableInteraction in GetAvailableInteractions())
 		{
-			ConditionsReference conditionsReference = availableInteraction.ShowReasons.FirstOrDefault((InteractionWithConditions.ShowReason r) => r.Conditions.IsEmpty() || r.Conditions.Get().Check())?.Conditions;
+			ConditionsReference conditionsReference = availableInteraction.ShowConditions.FirstOrDefault((InteractionWithConditions.ShowReason r) => r.Conditions.IsEmpty() || r.Conditions.Get().Check())?.Conditions;
 			TrySetPassedConditions(conditionsReference);
 		}
 		base.SetVisited();
@@ -204,7 +209,7 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionVariativePart source = new InteractionVariativePart();
 		result = Unsafe.As<InteractionVariativePart, TPossiblyBase>(ref source);

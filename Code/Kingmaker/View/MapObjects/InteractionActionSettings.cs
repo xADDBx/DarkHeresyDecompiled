@@ -11,11 +11,13 @@ namespace Kingmaker.View.MapObjects;
 public class InteractionActionSettings : InteractionSettings
 {
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset DisplayName;
+	public LocalizedString DisplayName;
 
 	[ShowCreator]
 	public ConditionsReference Condition;
 
 	[ShowCreator]
 	public ActionsReference Actions;
+
+	public bool UseGlobalCooldown;
 }

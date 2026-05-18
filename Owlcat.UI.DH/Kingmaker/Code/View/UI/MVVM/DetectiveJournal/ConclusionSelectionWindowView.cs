@@ -60,6 +60,7 @@ public class ConclusionSelectionWindowView : View<ConclusionSelectionWindowVM>
 		{
 			base.ViewModel.Close(applySelection: true);
 		}).AddTo(this);
+		m_AcceptButton.SetInteractable(base.ViewModel.IsInteractable);
 		base.gameObject.SetActive(value: true);
 		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
 		{

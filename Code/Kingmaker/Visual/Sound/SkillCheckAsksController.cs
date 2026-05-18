@@ -13,11 +13,11 @@ public class SkillCheckAsksController : BaseAsksController, IGlobalRulebookHandl
 		{
 			if ((evt.Voice & RulePerformSkillCheck.VoicingType.Success) != 0 && evt.ResultIsSuccess)
 			{
-				unitEntity.View.Asks?.CheckSuccess.Schedule();
+				unitEntity.View.Asks?.CheckSuccessful.Schedule();
 			}
 			else if ((evt.Voice & RulePerformSkillCheck.VoicingType.Failure) != 0 && !evt.ResultIsSuccess)
 			{
-				unitEntity.View.Asks?.CheckFail.Schedule();
+				unitEntity.View.Asks?.CheckFailed.Schedule();
 			}
 		}
 	}

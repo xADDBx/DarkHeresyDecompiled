@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Weapons;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Items;
@@ -47,10 +46,6 @@ public class ContextActionAttackNearestTarget : ContextAction
 
 	protected override void RunAction()
 	{
-		if (SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current == null)
-		{
-			return;
-		}
 		MechanicEntity target = base.Target.Entity;
 		if (target == null || target is BaseUnitEntity { CanAct: false })
 		{

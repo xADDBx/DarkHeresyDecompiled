@@ -7,17 +7,16 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Quests;
 using Kingmaker.Blueprints.Quests.Logic;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Networking.Serialization;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Logging;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using StateHasher.Core.Hashers;
@@ -83,7 +82,7 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 			if (m_IsViewed != value)
 			{
 				m_IsViewed = value;
-				EventBus.RaiseEvent(delegate(ISetQuestViewedHandler l)
+				base.EventBus.RaiseEvent(delegate(ISetQuestViewedHandler l)
 				{
 					l.HandleSetQuestViewed(this);
 				});
@@ -108,7 +107,11 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 			{
 				if (item.Blueprint == null)
 				{
-					PFLog.Default.Warning("Failed to load objective blueprint. Quest: " + item.Blueprint);
+					PFLog.Quests.Warning("Failed to load objective blueprint. Quest: " + item.Blueprint);
+				}
+				else if (m_Objectives.ContainsKey(item.Blueprint))
+				{
+					PFLog.Quests.Error($"Duplicate quest objective {item.Blueprint} in quest {Blueprint?.name}, skipping. Possible save data corruption.");
 				}
 				else
 				{
@@ -118,24 +121,14 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 		}
 	}
 
-	public QuestState State
-	{
-		get
-		{
-			if (m_State != QuestState.Updated)
-			{
-				return m_State;
-			}
-			return QuestState.Started;
-		}
-	}
+	public QuestState State => m_State;
 
 	public TimeSpan? TimeToFail
 	{
 		get
 		{
 			QuestState state = State;
-			if (state == QuestState.Completed || state == QuestState.Failed)
+			if ((uint)(state - 2) <= 1u)
 			{
 				return null;
 			}
@@ -262,7 +255,7 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 	{
 		if (blueprintObjective == null)
 		{
-			UberDebug.LogError("Error: Quest " + Blueprint.name + " has a null addendum");
+			PFLog.Quests.Error("Quest " + Blueprint.name + " has a null addendum");
 			return null;
 		}
 		m_Objectives.TryGetValue(blueprintObjective, out var value);
@@ -278,7 +271,7 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 	{
 		if (m_State == QuestState.Started)
 		{
-			EventBus.RaiseEvent(delegate(IQuestHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestHandler l)
 			{
 				l.HandleQuestUpdated(this);
 			});
@@ -290,15 +283,16 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 			{
 				logic.OnStarted();
 			});
-			EventBus.RaiseEvent(delegate(IQuestHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestHandler l)
 			{
 				l.HandleQuestStarted(this);
 			});
+			Metrics.Quest.Id(Blueprint.AssetGuid).State(QuestState.Started).Send();
 		}
 		switch (objective.State)
 		{
 		case QuestObjectiveState.None:
-			PFLog.Default.Error("Objective can't change state to None");
+			PFLog.Quests.Error("Objective can't change state to None");
 			break;
 		case QuestObjectiveState.Started:
 			objective.Order = m_NextObjectiveOrder++;
@@ -398,10 +392,11 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 			{
 				logic.OnCompleted();
 			});
-			EventBus.RaiseEvent(delegate(IQuestHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestHandler l)
 			{
 				l.HandleQuestCompleted(this);
 			});
+			Metrics.Quest.Id(Blueprint.AssetGuid).State(QuestState.Completed).Send();
 		}
 		else
 		{
@@ -409,10 +404,11 @@ public class Quest : EntityFact<QuestBook>, IHashable, IOwlPackable<Quest>
 			{
 				logic.OnFailed();
 			});
-			EventBus.RaiseEvent(delegate(IQuestHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestHandler l)
 			{
 				l.HandleQuestFailed(this);
 			});
+			Metrics.Quest.Id(Blueprint.AssetGuid).State(QuestState.Failed).Send();
 		}
 		m_Objectives.ForEach(delegate(KeyValuePair<BlueprintQuestObjective, QuestObjective> pair)
 		{

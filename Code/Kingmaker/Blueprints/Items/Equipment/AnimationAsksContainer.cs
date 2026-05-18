@@ -144,7 +144,7 @@ public class AnimationAsksContainer : IReadOnlyList<AnimationAsk>, IEnumerable<A
 	[ProvideNameWithProperty("AnimationEvent")]
 	public AnimationAsk AskEntry42 = new AnimationAsk(MappedAnimationEventType.Act);
 
-	public int FirstEmptyIndex => All.IndexOf(All.ToList().FirstOrDefault((AnimationAsk x) => x.Entries.All((AskEntry y) => y.IsEmpty)));
+	public int FirstEmptyIndex => All.IndexOf(All.ToList().FirstOrDefault((AnimationAsk x) => x.Entries.All((AskEntry y) => !y.IsExist)));
 
 	public int Count => Length;
 

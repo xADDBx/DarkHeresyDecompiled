@@ -28,6 +28,8 @@ public class ControlsSettings
 
 	public readonly SettingsEntityBool CameraFollowsUnit;
 
+	public readonly SettingsEntityEnum<HighlightObjectsMode> HighlightObjectsMode;
+
 	public readonly ControlsKeybindingsSettings Keybindings;
 
 	public ControlsSettings(ISettingsController settingsController, ControlsSettingsDefaultValues defaultValues)
@@ -43,6 +45,7 @@ public class ControlsSettings
 		MouseRightButtonFunction = new SettingsEntityEnum<MouseRightButtonFunction>(settingsController, "mouse-right-button-function", defaultValues.MouseRightButtonFunction);
 		ConvertSnapLogic = new SettingsEntityBool(settingsController, "convert-snap-logic", defaultValues.ConvertSnapLogic);
 		CameraFollowsUnit = new SettingsEntityBool(settingsController, "camera-follow-unit", defaultValues.CameraFollowsUnit);
+		HighlightObjectsMode = new SettingsEntityEnum<HighlightObjectsMode>(settingsController, "highlight-objects-mode", defaultValues.HighlightObjectsMode);
 		using (new SettingsKeyPrefix("keybindings"))
 		{
 			Keybindings = new ControlsKeybindingsSettings(settingsController, defaultValues.Keybindings);

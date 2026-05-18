@@ -18,26 +18,34 @@ public class CommandAddFogOfWarRevealer : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		m_EvaluatedRevealer = m_Revealer.GetValue();
-		if ((bool)m_EvaluatedRevealer)
+		if (m_Revealer.TryGetValue(out m_EvaluatedRevealer))
 		{
 			FogOfWarControllerData.AddRevealer(m_EvaluatedRevealer);
+			return CommandResult.Success;
 		}
+		return CommandResult.Fail("Failed to find revealer transform");
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		if (m_EvaluatedRevealer != null)
 		{
 			FogOfWarControllerData.RemoveRevealer(m_EvaluatedRevealer);
 			m_EvaluatedRevealer = null;
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -45,8 +53,9 @@ public class CommandAddFogOfWarRevealer : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

@@ -1,18 +1,8 @@
-using Rewired;
+using UnityEngine.InputSystem;
 
 namespace Kingmaker.Code.View.Bridge.Utils;
 
 public static class UtilsConsole
 {
-	public static bool GamepadIsConnected
-	{
-		get
-		{
-			if (ReInput.isReady && ReInput.controllers != null)
-			{
-				return ReInput.controllers.joystickCount > 0;
-			}
-			return false;
-		}
-	}
+	public static bool HasAnyGamepad => Gamepad.all.Count > 0;
 }

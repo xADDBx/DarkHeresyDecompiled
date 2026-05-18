@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Utility;
 using Kingmaker.View;
 using UnityEngine;
@@ -81,7 +82,7 @@ public class AggroRangePrototype : MonoBehaviour
 					{
 						line = lineRenderer,
 						decalLine = lineRenderer2,
-						character = activeCompanion.View,
+						character = activeCompanion.View.AsUnitEntityView(),
 						decal = gameObject.GetComponent<Renderer>()
 					};
 					aggroLines.Add(item);

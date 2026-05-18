@@ -10,7 +10,7 @@ using UnityEngine;
 namespace Kingmaker.Code.Gameplay.Controllers.DetectiveRadar;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class AskPart : ViewBasedPart<AskSettings>, IHashable, IOwlPackable<AskPart>
+public class AskPart : EntityPartWithConfig<AskSettings>, IHashable, IOwlPackable<AskPart>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -20,7 +20,7 @@ public class AskPart : ViewBasedPart<AskSettings>, IHashable, IOwlPackable<AskPa
 	[OwlPackInclude]
 	private TimeSpan m_TriggeredTime;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "AskPart",
 		OldNames = null,
@@ -99,7 +99,7 @@ public class AskPart : ViewBasedPart<AskSettings>, IHashable, IOwlPackable<AskPa
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		AskPart source = new AskPart();
 		result = Unsafe.As<AskPart, TPossiblyBase>(ref source);

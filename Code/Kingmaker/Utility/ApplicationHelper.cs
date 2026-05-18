@@ -18,6 +18,8 @@ public static class ApplicationHelper
 		}
 	}
 
+	public static bool IsRunningOnSwitch2 => false;
+
 	public static string RunningPlatform
 	{
 		get

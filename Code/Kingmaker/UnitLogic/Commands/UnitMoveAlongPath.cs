@@ -24,11 +24,11 @@ public sealed class UnitMoveAlongPath : AbstractUnitCommand<UnitMoveAlongPathPar
 
 	protected override ResultType OnAction()
 	{
-		if (base.Executor.View.MovementAgent.IsReallyMoving)
+		if (base.Executor.IsReallyMoving)
 		{
 			return ResultType.None;
 		}
-		base.Executor.View.StopMoving();
+		base.Executor.StopMoving();
 		base.Executor.View.MovementAgent.AvoidanceDisabled = true;
 		base.Executor.View.MovementAgent.ForcePath(base.ForcedPath, disableApproachRadius: true);
 		return ResultType.Success;

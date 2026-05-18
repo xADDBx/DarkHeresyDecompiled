@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Kingmaker.Gameplay.Features.Scaling.Utility;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -24,7 +23,6 @@ public sealed class FactScalingGetter : IntPropertyGetter, PropertyContextAccess
 		{
 			return 0;
 		}
-		PropertyContext context = new PropertyContext(fact.Owner, fact.Context);
-		return scalingInfo.Value.Calculator.GetValue(context);
+		return scalingInfo.Value.Calculator.GetValue(fact.Owner, fact.Context);
 	}
 }

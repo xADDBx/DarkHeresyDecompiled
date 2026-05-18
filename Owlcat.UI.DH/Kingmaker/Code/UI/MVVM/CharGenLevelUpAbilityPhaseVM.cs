@@ -1,46 +1,46 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.DotNetExtensions;
 using R3;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenLevelUpAbilityPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<CharGenLevelUpSelectorBaseItemVM>
 {
-	public CharGenLevelUpAbilityPhaseVM(CharGenContext charGenContext, SelectionStateFeature selectionFeature, InfoSectionVM infoSectionVM, int rank = 0)
-		: base(charGenContext, CharGenPhaseType.LevelUpAbility, selectionFeature, infoSectionVM, rank)
+	public CharGenLevelUpAbilityPhaseVM(CharGenContext charGenContext, SelectionStateFeature selectionFeature, InfoSectionVM infoSectionVM, int rank = 0, CharGenPhaseType phaseType = CharGenPhaseType.LevelUpAbility, bool isAllowSwitchOff = true)
+		: base(charGenContext, phaseType, selectionFeature, infoSectionVM, rank)
 	{
 	}
 
 	protected override void CreateItemList()
 	{
-		if (CareerPath == null || base.Unit == null)
+		using (GameLogContext.Scope)
 		{
-			Debug.LogError("CareerPath or Unit is null");
-			return;
-		}
-		List<CharGenLevelUpSelectorAbilityItemVM> list = (from x in SelectionFeature.Items
-			group x by x.Feature into g
-			select g.First() into f
-			select new CharGenLevelUpSelectorAbilityItemVM(f, OnItemHovered, CharGenContext.LevelUpManager.CurrentValue)).ToList();
-		list.ForEach(delegate(CharGenLevelUpSelectorAbilityItemVM i)
-		{
-			UpdateItem(i);
-		});
-		(from i in list
-			orderby i.State.CurrentValue, i.Label.CurrentValue
-			select i).ForEach(delegate(CharGenLevelUpSelectorAbilityItemVM i)
-		{
-			AddItem(i);
-		});
-		if (base.SelectedItem.CurrentValue != null)
-		{
-			SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)base.Unit;
+			List<CharGenLevelUpSelectorAbilityItemVM> list = (from x in SelectionFeature.Items
+				group x by x.Feature into g
+				select g.First() into f
+				select new CharGenLevelUpSelectorAbilityItemVM(f, OnItemHovered, m_CharGenContext.LevelUpManager.CurrentValue)).ToList();
+			list.ForEach(delegate(CharGenLevelUpSelectorAbilityItemVM i)
+			{
+				UpdateItem(i);
+			});
+			(from i in list
+				orderby i.State.CurrentValue, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.Label.CurrentValue
+				select i).ForEach(delegate(CharGenLevelUpSelectorAbilityItemVM i)
+			{
+				AddItem(i);
+			});
+			if (base.SelectedItem.CurrentValue != null)
+			{
+				SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
+			}
 		}
 	}
 
@@ -79,6 +79,7 @@ public class CharGenLevelUpAbilityPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<C
 		itemVM.RefreshView.Execute(default(Unit));
 		if (itemVM is CharGenLevelUpSelectorAbilityItemVM charGenLevelUpSelectorAbilityItemVM)
 		{
+			charGenLevelUpSelectorAbilityItemVM.SetFavorite(m_CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp, UnitSaveData.FavoriteFeatures.Contains(charGenLevelUpSelectorAbilityItemVM.Blueprint.AssetGuidThreadSafe));
 			if (SelectionFeature.CanSelect(charGenLevelUpSelectorAbilityItemVM.FeatureSelectionItem))
 			{
 				charGenLevelUpSelectorAbilityItemVM.UpdateAccessibility(LEVEL_UP_ITEM_STATE.Available);

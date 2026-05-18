@@ -1,7 +1,6 @@
 using DG.Tweening;
 using Kingmaker.Code.View.UI.Components.Text.ScrambledTextMeshPro;
 using Kingmaker.UI.Common;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -41,9 +40,6 @@ public class JournalQuestConsoleView : BaseJournalItemConsoleView
 	private GameObject m_NomosTag;
 
 	[SerializeField]
-	private float m_DefaultConsoleFontSize = 21f;
-
-	[SerializeField]
 	private RectTransform m_LocationGroup;
 
 	[SerializeField]
@@ -51,12 +47,6 @@ public class JournalQuestConsoleView : BaseJournalItemConsoleView
 
 	[SerializeField]
 	private RectTransform m_EagleImage;
-
-	protected override void OnBind()
-	{
-		base.OnBind();
-		m_DescriptionLabel.fontSize = m_DefaultConsoleFontSize * base.ViewModel.FontMultiplier;
-	}
 
 	protected override void UpdateView()
 	{
@@ -98,12 +88,7 @@ public class JournalQuestConsoleView : BaseJournalItemConsoleView
 		m_ScrollRect.ScrollToTop();
 	}
 
-	public void Scroll(InputActionEventData arg1, float x)
-	{
-		Scroll(x);
-	}
-
-	private void Scroll(float x)
+	public void Scroll(float x)
 	{
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * m_ScrollRect.scrollSensitivity);

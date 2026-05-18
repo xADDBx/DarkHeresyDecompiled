@@ -15,5 +15,5 @@ public struct TextStyle
 
 	public TMP_StyleSheet StyleSheet => m_StyleSheet ?? TMP_Settings.defaultStyleSheet;
 
-	public TMP_Style Style => StyleSheet.GetStyle(m_StyleName) ?? StyleSheet.GetStyle("Normal");
+	public TMP_Style Style => StyleSheet.GetStyle(m_StyleName ?? "Normal");
 }

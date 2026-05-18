@@ -1,7 +1,6 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats;
 using Kingmaker.RuleSystem.Rules;
@@ -44,36 +43,6 @@ public class ContextActionSavingThrow : ContextAction
 
 	protected override void RunAction()
 	{
-		if (base.Target.Entity == null)
-		{
-			Element.LogError(this, "Can't use ContextActionSavingThrow because target is not an unit");
-		}
-		else
-		{
-			if (base.Context == null)
-			{
-				return;
-			}
-			int num = 0;
-			if (m_ConditionalDCIncrease != null)
-			{
-				ConditionalDCIncrease[] conditionalDCIncrease = m_ConditionalDCIncrease;
-				for (int i = 0; i < conditionalDCIncrease.Length; i++)
-				{
-					ConditionalDCIncrease conditionalDCIncrease2 = conditionalDCIncrease[i];
-					if (conditionalDCIncrease2.Condition.Check())
-					{
-						num += conditionalDCIncrease2.Value.Calculate(base.Context);
-					}
-				}
-			}
-			int dc = (HasCustomDC ? CustomDC.Calculate(base.Context) : num);
-			RulePerformSavingThrow rule = base.Context.TriggerRule(CreateSavingThrow(base.Target.Entity, dc, persistentSpell: false));
-			using (ContextData<SavingThrowData>.Request().Setup(rule))
-			{
-				Actions.Run();
-			}
-		}
 	}
 
 	[CanBeNull]

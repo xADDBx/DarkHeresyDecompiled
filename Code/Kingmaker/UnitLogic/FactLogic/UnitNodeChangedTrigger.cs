@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -17,6 +18,9 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowedOn(typeof(BlueprintBuff))]
 [ComponentName("Movement/UnitNodeChangedTrigger")]
 [TypeId("225169bcb6b94a8686a6bc4293d85d24")]
+[ContextRole(ContextField.Owner, "the unit that moved")]
+[ContextRoleForField("m_OldNodesActions", ContextField.Target, "vacated graph node position (point — Target.Entity is null)")]
+[ContextRoleForField("m_NewNodesActions", ContextField.Target, "newly occupied graph node position (point — Target.Entity is null)")]
 public class UnitNodeChangedTrigger : UnitBuffComponentDelegate, IUnitNodeChangedHandler<EntitySubscriber>, IUnitNodeChangedHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEventTag<IUnitNodeChangedHandler, EntitySubscriber>
 {
 	[SerializeField]
@@ -67,9 +71,6 @@ public class UnitNodeChangedTrigger : UnitBuffComponentDelegate, IUnitNodeChange
 	private void Run(GraphNode node, ActionList actionList)
 	{
 		TargetWrapper target = node.Vector3Position();
-		using (base.Fact.MaybeContext?.SetScope(target))
-		{
-			base.Fact.RunActionInContext(actionList, target);
-		}
+		base.Fact.RunActionInContext(actionList, target);
 	}
 }

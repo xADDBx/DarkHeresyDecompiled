@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Facts;
+using Kingmaker.Code.Gameplay.Enums.Stats;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.ElementsSystem.Interfaces;
 using Kingmaker.Enums;
@@ -12,6 +13,7 @@ using Kingmaker.Localization;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using OwlPack.Runtime;
 using UnityEngine;
 
@@ -107,6 +109,9 @@ public class BlueprintQuestObjective : BlueprintFact, IQuestReference, IQuestObj
 	[SerializeField]
 	private EditorCommentHolder m_EditorComment;
 
+	[SerializeField]
+	private int m_CompletionExperience;
+
 	private ReferenceListProxy<BlueprintQuestObjective, BlueprintQuestObjectiveReference> m_NextObjectivesProxy;
 
 	private ReferenceListProxy<BlueprintQuestObjective, BlueprintQuestObjectiveReference> m_AddendumsProxy;
@@ -124,7 +129,14 @@ public class BlueprintQuestObjective : BlueprintFact, IQuestReference, IQuestObj
 
 	private LocalizedString m_RejectionDescription;
 
+	[InfoBox("Этот блок настроек - meta информация для статистики")]
+	public Chapter Chapter;
+
+	public Cluster Cluster;
+
 	private ReferenceListProxy<BlueprintArea, BlueprintAreaReference> m_AreasProxy;
+
+	public int CompletionExperience => m_CompletionExperience;
 
 	public EditorCommentHolder EditorComment
 	{

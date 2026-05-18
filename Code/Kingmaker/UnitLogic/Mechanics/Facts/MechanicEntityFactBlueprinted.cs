@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -32,7 +33,7 @@ public class MechanicEntityFactBlueprinted : MechanicEntityFact, IHashable, IOwl
 		}
 	};
 
-	public MechanicEntityFactBlueprinted(BlueprintMechanicEntityFact fact, [CanBeNull] MechanicsContext parentContext)
+	public MechanicEntityFactBlueprinted(BlueprintMechanicEntityFact fact, [CanBeNull] IEvalContext parentContext)
 		: base(fact, parentContext)
 	{
 	}

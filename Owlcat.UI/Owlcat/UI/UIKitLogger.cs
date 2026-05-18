@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Owlcat.UI;
@@ -31,5 +32,11 @@ public static class UIKitLogger
 	public static void Exception(object message)
 	{
 		Logger.Log(LogType.Exception, message);
+	}
+
+	public static void Exception(string message, Exception exception)
+	{
+		Logger.Log(LogType.Exception, message);
+		Logger.LogException(exception);
 	}
 }

@@ -14,7 +14,7 @@ public class LocalMapMarkerSettings
 	public LocalMapMarkType Type = LocalMapMarkType.VeryImportantPerson;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.MapMarker)]
-	public SharedStringAsset Description;
+	public LocalizedString Description;
 
 	[SerializeField]
 	[FormerlySerializedAs("DescriptionUnit")]

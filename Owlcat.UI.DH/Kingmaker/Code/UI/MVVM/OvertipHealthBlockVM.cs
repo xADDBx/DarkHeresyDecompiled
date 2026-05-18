@@ -1,16 +1,16 @@
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using Owlcat.UI;
@@ -18,9 +18,9 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHealingHandler, ITurnBasedModeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, ITurnEndHandler, IModifiableValueChangedHandler
+public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHealingHandler, ITurnBasedModeHandler, IActorStatChangedHandler, ISubscriber<IMechanicEntity>
 {
-	private bool m_CanTarget;
+	private readonly OvertipDamageVisibilityVM m_VisibilityVM;
 
 	private readonly ReactiveProperty<(int health, int armor)> m_MaxDamage = new ReactiveProperty<(int, int)>((0, 0));
 
@@ -44,11 +44,15 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 
 	private readonly ReactiveProperty<int> m_HitPointTotalMax = new ReactiveProperty<int>(0);
 
-	public readonly MechanicEntityUIState MechanicEntityUIState;
+	private readonly bool m_VisibleInExploration;
 
-	private MechanicEntity Unit => MechanicEntityUIState.MechanicEntity.MechanicEntity;
+	private bool m_CanTarget;
 
-	private MechanicEntityUIWrapper MechanicEntityUIWrapper => MechanicEntityUIState.MechanicEntity;
+	public readonly MechanicEntityUIState EntityUIState;
+
+	private MechanicEntity Unit => EntityUIState.MechanicEntity.MechanicEntity;
+
+	private MechanicEntityUIWrapper MechanicEntityUIWrapper => EntityUIState.MechanicEntity;
 
 	public ReadOnlyReactiveProperty<(int health, int armor)> MaxDamage => m_MaxDamage;
 
@@ -68,8 +72,6 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 
 	public ReadOnlyReactiveProperty<bool> HitChanceBlockVisible { get; }
 
-	public bool VisibleInExploration => (Unit as DestructibleEntity)?.View.VisibleInExploration ?? false;
-
 	public bool HideRealHealthInUI
 	{
 		get
@@ -84,10 +86,12 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 
 	public OvertipHealthBlockVM(MechanicEntityUIState mechanicEntityUIState, ReadOnlyReactiveProperty<bool> hitChanceBlockVisible)
 	{
-		MechanicEntityUIState = mechanicEntityUIState;
+		m_VisibilityVM = new OvertipDamageVisibilityVM(mechanicEntityUIState).AddTo(this);
+		EntityUIState = mechanicEntityUIState;
 		HitChanceBlockVisible = hitChanceBlockVisible;
+		m_VisibleInExploration = Unit is DestructibleEntity destructibleEntity && destructibleEntity.View.VisibleInExploration;
 		UpdateProperties(initial: true);
-		MechanicEntityUIState.IsInCombat.CombineLatest(MechanicEntityUIState.IsDeadOrUnconsciousIsDead, MechanicEntityUIState.IsVisibleForPlayer, MechanicEntityUIState.Ability, MechanicEntityUIState.IsMouseOverUnit, MechanicEntityUIState.IsTarget, MechanicEntityUIState.AbilityTargetUIData, (bool _, bool _, bool _, AbilityData _, bool _, bool _, AbilityTargetUIData _) => true).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate
+		EntityUIState.IsInCombat.CombineLatest(EntityUIState.IsDeadOrUnconsciousIsDead, EntityUIState.IsVisibleForPlayer, EntityUIState.Ability, EntityUIState.IsMouseOverUnit, EntityUIState.IsTarget, EntityUIState.AbilityTargetUIData, (bool _, bool _, bool _, AbilityData _, bool _, bool _, AbilityTargetUIData _) => true).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate
 		{
 			UpdateVisibility();
 		})
@@ -95,11 +99,31 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
+	public bool ShowBlock()
+	{
+		bool currentValue = EntityUIState.IsDeadOrUnconsciousIsDead.CurrentValue;
+		bool currentValue2 = EntityUIState.IsInCombat.CurrentValue;
+		bool currentValue3 = EntityUIState.HideOvertip.CurrentValue;
+		if (currentValue || (!currentValue2 && !m_VisibleInExploration) || currentValue3 || EntityUIState.IsOvertipPartHiddenBySettings(UnitOvertipUIPart.HealthBar))
+		{
+			return false;
+		}
+		if (EntityUIState.IsDestructible.CurrentValue)
+		{
+			if (!EntityUIState.IsDestructibleNotCover.CurrentValue && (!(EntityUIState.Ability.CurrentValue != null) || !EntityUIState.IsTarget.CurrentValue))
+			{
+				return EntityUIState.IsMouseOverUnit.CurrentValue;
+			}
+			return true;
+		}
+		bool currentValue4 = EntityUIState.IsPreparationTurn.CurrentValue;
+		bool currentValue5 = EntityUIState.IsEnemy.CurrentValue;
+		return !currentValue4 || currentValue5;
+	}
+
 	private void UpdateVisibility()
 	{
-		bool num = (MechanicEntityUIState.IsInCombat.CurrentValue || MechanicEntityUIState.IsDestructible.CurrentValue) && MechanicEntityUIState.IsVisibleForPlayer.CurrentValue && !MechanicEntityUIState.IsDeadOrUnconsciousIsDead.CurrentValue && MechanicEntityUIState.Ability.CurrentValue != null;
-		bool flag = MechanicEntityUIState.IsMouseOverUnit.CurrentValue || MechanicEntityUIState.IsTarget.CurrentValue;
-		bool show = num && flag;
+		bool show = m_VisibilityVM.IsVisible();
 		CollectAbilityProperty(show);
 		CheckCanDie(show);
 	}
@@ -110,8 +134,7 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 		{
 			int num = MechanicEntityUIWrapper.Health?.MaxHitPoints ?? 0;
 			int num2 = MechanicEntityUIWrapper.Health?.HitPointsLeft ?? 0;
-			ModifiableValue modifiableValue = MechanicEntityUIWrapper.Armor?.Durability;
-			int num3 = ((modifiableValue != null) ? ((int)modifiableValue) : 0);
+			int num3 = MechanicEntityUIWrapper.Armor?.DurabilityValue ?? 0;
 			int num4 = MechanicEntityUIWrapper.Armor?.DurabilityLeft ?? 0;
 			m_HitPointMax.Value = num;
 			m_HitPointTotalMax.Value = num + num3;
@@ -137,33 +160,9 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 		UpdateProperties();
 	}
 
-	void IModifiableValueChangedHandler.HandleModifiableValueChanged(ModifiableValue modifiableValue)
+	void IActorStatChangedHandler.HandleActorStatChanged(StatChangeSet stats)
 	{
-		if (modifiableValue.Owner == Unit && modifiableValue is ModifiableValueHitPoints)
-		{
-			UpdateProperties();
-		}
-	}
-
-	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
-	{
-		if (isTurnBased)
-		{
-			HandleEntityEvent(EventInvokerExtensions.Entity);
-		}
-	}
-
-	void ITurnEndHandler.HandleUnitEndTurn(bool isTurnBased)
-	{
-		if (isTurnBased)
-		{
-			HandleEntityEvent(EventInvokerExtensions.Entity);
-		}
-	}
-
-	private void HandleEntityEvent(Entity entity)
-	{
-		if (entity != null && entity == Unit)
+		if (EventInvokerExtensions.MechanicEntity == Unit && (stats.Contains(StatType.MaxHitPoints) || stats.Contains(StatType.MaxArmorDurability)))
 		{
 			UpdateProperties();
 		}
@@ -176,33 +175,20 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 			ResetValues();
 			return;
 		}
-		AbilityData currentValue = MechanicEntityUIState.Ability.CurrentValue;
-		if (currentValue.IsPrecise && !Game.Instance.Controllers.PreciseAttackController.HasTarget)
-		{
-			return;
-		}
-		m_CanTarget = ((Unit == null || currentValue.TargetAnchor != AbilityTargetAnchor.Point || currentValue.HasCustomDirectMovement()) ? currentValue.CanTargetFromDesiredPosition(Unit) : (MechanicEntityUIState.IsAoETarget.CurrentValue && CanAoETarget(MechanicEntityUIState, currentValue.Blueprint.AoETargets)));
+		m_CanTarget = m_VisibilityVM.CanTargetByCurrentAbility();
 		if (!m_CanTarget)
 		{
 			ResetValues();
 			return;
 		}
-		AbilityTargetUIData currentValue2 = MechanicEntityUIState.AbilityTargetUIData.CurrentValue;
-		UIDamagePredictionData damage = currentValue2.Damage;
-		UIHealPredictionData heal = currentValue2.Heal;
-		if (!damage.Equals(default(UIDamagePredictionData)))
-		{
-			int healthMaxDamage = damage.HealthMaxDamage;
-			int armorMaxDamage = damage.ArmorMaxDamage;
-			m_MaxDamage.Value = (healthMaxDamage, armorMaxDamage);
-		}
-		else if (!heal.Equals(default(UIHealPredictionData)))
-		{
-			m_MinHeal.Value = heal.MinHeal;
-			m_MaxHeal.Value = heal.MaxHeal;
-			m_HealStrategy.Value = heal.HealStrategy;
-		}
-		else
+		AbilityTargetUIData currentValue = EntityUIState.AbilityTargetUIData.CurrentValue;
+		UIDamagePredictionData damage = currentValue.Damage;
+		UIHealPredictionData heal = currentValue.Heal;
+		m_MaxDamage.Value = (damage.HealthMaxDamage, damage.ArmorMaxDamage);
+		m_MinHeal.Value = heal.MinHeal;
+		m_MaxHeal.Value = heal.MaxHeal;
+		m_HealStrategy.Value = heal.HealStrategy;
+		if (damage.Equals(default(UIDamagePredictionData)) && heal.Equals(default(UIHealPredictionData)))
 		{
 			ResetValues();
 		}
@@ -223,32 +209,20 @@ public class OvertipHealthBlockVM : ViewModel, IDamageHandler, ISubscriber, IHea
 			m_CanDie.Value = false;
 			return;
 		}
-		if (MechanicEntityUIState.Ability.CurrentValue.IsPrecise && !Game.Instance.Controllers.PreciseAttackController.HasTarget)
+		if (EntityUIState.Ability.CurrentValue.IsPrecise && !Game.Instance.Controllers.PreciseAttackController.HasTarget)
 		{
 			m_CanDie.Value = false;
 			return;
 		}
-		bool currentValue = MechanicEntityUIState.IsTarget.CurrentValue;
-		UIDamagePredictionData damage = MechanicEntityUIState.AbilityTargetUIData.CurrentValue.Damage;
+		bool currentValue = EntityUIState.IsTarget.CurrentValue;
+		UIDamagePredictionData damage = EntityUIState.AbilityTargetUIData.CurrentValue.Damage;
 		if (!currentValue || damage.Equals(default(UIDamagePredictionData)))
 		{
 			m_CanDie.Value = false;
 		}
 		else
 		{
-			m_CanDie.Value = damage.HealthMaxDamage >= m_HitPointLeft.CurrentValue;
+			m_CanDie.Value = (EntityUIState.IsCountHpAsArmor ? (damage.ArmorMaxDamage >= m_ArmorLeft.CurrentValue) : (damage.HealthMaxDamage >= m_HitPointLeft.CurrentValue));
 		}
-	}
-
-	private bool CanAoETarget(MechanicEntityUIState mechanicEntityUIState, TargetType targetType)
-	{
-		MechanicEntityUIWrapper mechanicEntity = mechanicEntityUIState.MechanicEntity;
-		return targetType switch
-		{
-			TargetType.Enemy => mechanicEntity.IsPlayerEnemy, 
-			TargetType.Ally => mechanicEntity.IsPlayer || mechanicEntity.IsPlayerFaction, 
-			TargetType.Any => true, 
-			_ => false, 
-		};
 	}
 }

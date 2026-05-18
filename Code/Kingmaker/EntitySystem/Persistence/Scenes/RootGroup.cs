@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.View;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -42,6 +44,11 @@ public class RootGroup
 	public RootGroup(string name)
 	{
 		m_Name = name;
+	}
+
+	public void Add(IEntityView entityView)
+	{
+		Add(((EntityViewBase)entityView).transform);
 	}
 
 	public void Add(Transform t)

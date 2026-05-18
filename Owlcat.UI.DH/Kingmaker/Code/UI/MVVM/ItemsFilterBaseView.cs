@@ -13,7 +13,6 @@ using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using R3.Triggers;
-using Rewired;
 using TMPro;
 using UnityEngine;
 
@@ -98,6 +97,15 @@ public class ItemsFilterBaseView : View<ItemsFilterVM>
 
 	[SerializeField]
 	private TextMeshProUGUI m_ToggleLabel;
+
+	[SerializeField]
+	private GameObject m_NotificationParent;
+
+	[SerializeField]
+	private TextMeshProUGUI m_NotificationLabel;
+
+	[SerializeField]
+	private OwlcatMultiButton m_NotificationButton;
 
 	[Header("Values")]
 	[SerializeField]
@@ -189,22 +197,16 @@ public class ItemsFilterBaseView : View<ItemsFilterVM>
 		base.ViewModel.CurrentFilter.Subscribe(OnCurrentFilterChanged).AddTo(this);
 		base.ViewModel.CurrentSorter.Subscribe(OnCurrentSorterChanged).AddTo(this);
 		UIKeybindGeneralSettings uIKeybindGeneralSettings = UISettingsRoot.Instance.UIKeybindGeneralSettings;
-		Game.Instance.Keyboard.Bind(uIKeybindGeneralSettings.PrevTab.name, delegate
-		{
-			OnPrevious(default(InputActionEventData));
-		}).AddTo(this);
-		Game.Instance.Keyboard.Bind(uIKeybindGeneralSettings.NextTab.name, delegate
-		{
-			OnNext(default(InputActionEventData));
-		}).AddTo(this);
+		Game.Instance.Keyboard.Bind(uIKeybindGeneralSettings.PrevTab.name, OnPrevious).AddTo(this);
+		Game.Instance.Keyboard.Bind(uIKeybindGeneralSettings.NextTab.name, OnNext).AddTo(this);
 		SetupToggleGroup();
 		m_TextHelper.UpdateTextSize();
 	}
 
 	protected override void OnUnbind()
 	{
-		UISounds.Instance.Sounds.Selector.SelectorStop.Play();
-		UISounds.Instance.Sounds.Selector.SelectorLoopStop.Play();
+		SystemSounds.Instance.Selector.Stop.Play();
+		SystemSounds.Instance.Selector.LoopStop.Play();
 		Hide();
 		m_TextHelper.Dispose();
 		m_ShowUneqippableDisposable?.Dispose();
@@ -233,9 +235,28 @@ public class ItemsFilterBaseView : View<ItemsFilterVM>
 	private void SetupToggleGroup()
 	{
 		m_ToggleParent.Or(null)?.SetActive(m_ShowToggle);
-		if (m_ShowToggle && (bool)m_ToggleLabel)
+		if (!m_ShowToggle)
+		{
+			return;
+		}
+		if ((bool)m_ToggleLabel)
 		{
 			m_ToggleLabel.text = UIStrings.Instance.InventoryScreen.ShowUnavailableItems;
+		}
+		if ((bool)m_NotificationLabel)
+		{
+			m_NotificationLabel.text = UIStrings.Instance.InventoryScreen.ShowUnavailableItems;
+		}
+		if ((bool)m_NotificationParent && (bool)m_NotificationButton)
+		{
+			base.ViewModel.ShowUnavailable.Subscribe(delegate(bool show)
+			{
+				m_NotificationParent.SetActive(!show);
+			}).AddTo(this);
+			ObservableSubscribeExtensions.Subscribe(m_NotificationButton.OnLeftClickAsObservable(), delegate
+			{
+				base.ViewModel.SetShowUnavailable(show: true);
+			}).AddTo(this);
 		}
 	}
 
@@ -274,7 +295,7 @@ public class ItemsFilterBaseView : View<ItemsFilterVM>
 		}
 	}
 
-	public void OnPrevious(InputActionEventData data)
+	public void OnPrevious()
 	{
 		if (BuildModeUtility.Data.CloudSwitchSettings && base.ViewModel.CurrentFilter.CurrentValue == m_FirstFilter)
 		{
@@ -286,7 +307,7 @@ public class ItemsFilterBaseView : View<ItemsFilterVM>
 		base.ViewModel.SetCurrentFilter(m_SortedFiltersList.ElementAt(value));
 	}
 
-	public void OnNext(InputActionEventData data)
+	public void OnNext()
 	{
 		if (BuildModeUtility.Data.CloudSwitchSettings && base.ViewModel.CurrentFilter.CurrentValue == m_LastFilter)
 		{

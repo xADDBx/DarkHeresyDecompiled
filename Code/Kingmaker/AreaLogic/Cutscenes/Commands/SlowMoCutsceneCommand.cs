@@ -23,7 +23,7 @@ public class SlowMoCutsceneCommand : CommandBase
 	[HideIf("DisableSlowMo")]
 	public AbstractUnitEvaluator[] Targets;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		if (!DisableSlowMo)
 		{
@@ -34,16 +34,18 @@ public class SlowMoCutsceneCommand : CommandBase
 					h.AddUnitToNormalTimeline(null);
 				});
 				SlowMoController.SlowMoFactor = SlowMoFactor;
-				return;
 			}
-			AbstractUnitEvaluator[] targets = Targets;
-			foreach (AbstractUnitEvaluator target in targets)
+			else
 			{
-				EventBus.RaiseEvent(delegate(ISlowMoCutsceneHandler h)
+				AbstractUnitEvaluator[] targets = Targets;
+				foreach (AbstractUnitEvaluator target in targets)
 				{
-					h.AddUnitToNormalTimeline(target.GetValue());
-				});
-				SlowMoController.SlowMoFactor = SlowMoFactor;
+					EventBus.RaiseEvent(delegate(ISlowMoCutsceneHandler h)
+					{
+						h.AddUnitToNormalTimeline(target.GetValue());
+					});
+					SlowMoController.SlowMoFactor = SlowMoFactor;
+				}
 			}
 		}
 		else
@@ -53,31 +55,35 @@ public class SlowMoCutsceneCommand : CommandBase
 				h.OffSlowMo();
 			});
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		EventBus.RaiseEvent(delegate(ISlowMoCutsceneHandler h)
 		{
 			h.OffSlowMo();
 		});
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		EventBus.RaiseEvent(delegate(ISlowMoCutsceneHandler h)
 		{
 			h.OffSlowMo();
 		});
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)

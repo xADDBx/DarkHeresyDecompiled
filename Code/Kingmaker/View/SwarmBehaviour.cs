@@ -3,7 +3,7 @@ using System.Collections;
 using System.Reflection;
 using JetBrains.Annotations;
 using Kingmaker.ElementsSystem;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Framework;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
 using Kingmaker.Visual.CharactersRigidbody;
@@ -88,7 +88,7 @@ public class SwarmBehaviour : MonoBehaviour
 	{
 		if (!(m_Unit == null))
 		{
-			if (OrientWhenMoving && m_Unit.MovementAgent.IsReallyMoving && m_Unit.EntityData.Movable.PreviousSimulationTick.HasMotion)
+			if (OrientWhenMoving && m_Unit.EntityData.IsReallyMoving && m_Unit.EntityData.Movable.PreviousSimulationTick.HasMotion)
 			{
 				Quaternion rot = Quaternion.Euler(0f, m_Unit.EntityData.Orientation, 0f);
 				ApplyRotation(rot, local: false);
@@ -149,7 +149,7 @@ public class SwarmBehaviour : MonoBehaviour
 		{
 			if (m_Unit != null)
 			{
-				m_Unit.MarkRenderersAndCollidersAreUpdated();
+				m_Unit.RefreshHighlighters();
 			}
 			if (m_Animator != null && s_RebindMethod != null)
 			{
@@ -286,16 +286,16 @@ public class SwarmBehaviour : MonoBehaviour
 		return false;
 	}
 
-	public void PlayAttack([NotNull] MechanicsContext context, [NotNull] ActionList attackActions)
+	public void PlayAttack([NotNull] IEvalContext context, [NotNull] ActionList attackActions)
 	{
 		StartCoroutine(PlayAttackCoroutine(context, attackActions));
 	}
 
-	private IEnumerator PlayAttackCoroutine([NotNull] MechanicsContext context, [NotNull] ActionList attackActions)
+	private IEnumerator PlayAttackCoroutine([NotNull] IEvalContext context, [NotNull] ActionList attackActions)
 	{
 		PlayAttackAnimation();
 		yield return new WaitForSeconds(AttackAnimationTime);
-		using (context.SetScope())
+		using (EvalContext.PushContext(context))
 		{
 			attackActions.Run();
 		}

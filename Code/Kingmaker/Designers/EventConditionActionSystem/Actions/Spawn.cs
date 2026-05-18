@@ -32,13 +32,13 @@ public class Spawn : GameAction
 			EntityReference[] spawners = Spawners;
 			for (int i = 0; i < spawners.Length; i++)
 			{
-				UnitSpawnerBase unitSpawner = GameHelper.GetUnitSpawner(spawners[i]);
-				if (!(unitSpawner == null))
+				AbstractUnitSpawnerEntity unitSpawner = GameHelper.GetUnitSpawner(spawners[i]);
+				if (unitSpawner != null)
 				{
 					AbstractUnitEntity abstractUnitEntity = unitSpawner.Spawn();
 					if (abstractUnitEntity != null)
 					{
-						value.Add((abstractUnitEntity, unitSpawner.Data.HoldingState));
+						value.Add((abstractUnitEntity, unitSpawner.HoldingState));
 					}
 				}
 			}

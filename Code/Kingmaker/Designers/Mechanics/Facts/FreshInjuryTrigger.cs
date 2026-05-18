@@ -2,7 +2,7 @@ using System;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -31,7 +31,7 @@ public class FreshInjuryTrigger : UnitFactComponentDelegate, IUnitWoundHandler, 
 		{
 			return;
 		}
-		using (base.Context.SetScope(base.Owner.ToITargetWrapper()))
+		using (EvalContext.PushFact(base.Fact, base.Owner))
 		{
 			m_ActionOnFreshInjuryReceived.Run();
 		}
@@ -43,7 +43,7 @@ public class FreshInjuryTrigger : UnitFactComponentDelegate, IUnitWoundHandler, 
 		{
 			return;
 		}
-		using (base.Context.SetScope(base.Owner.ToITargetWrapper()))
+		using (EvalContext.PushFact(base.Fact, base.Owner))
 		{
 			m_ActionOnFreshInjuryAvoided.Run();
 		}

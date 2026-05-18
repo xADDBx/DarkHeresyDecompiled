@@ -61,8 +61,8 @@ public class DurabilityGetter : IntPropertyGetter
 		return Type switch
 		{
 			DurabilityHpValueType.Current => armorOptional.DurabilityLeft, 
-			DurabilityHpValueType.CurrentPercent => (int)Math.Floor((float)armorOptional.DurabilityLeft * 100f / (float)(int)armorOptional.Durability), 
-			DurabilityHpValueType.Max => armorOptional.Durability, 
+			DurabilityHpValueType.CurrentPercent => (int)Math.Floor((float)armorOptional.DurabilityLeft * 100f / (float)armorOptional.DurabilityValue), 
+			DurabilityHpValueType.Max => armorOptional.DurabilityValue, 
 			DurabilityHpValueType.FromItems => GetDurabilityFromItems(base.CurrentEntity), 
 			_ => throw new ArgumentOutOfRangeException(), 
 		};
@@ -78,10 +78,10 @@ public class DurabilityGetter : IntPropertyGetter
 		int num = 0;
 		if (itemEntity is ItemEntityArmor itemEntityArmor)
 		{
-			num += itemEntityArmor.Blueprint.ArmorDurability;
+			num += itemEntityArmor.ArmorDurability;
 		}
 		return num + itemEntity.Blueprint.GetComponents<AddFactToEquipmentWielder>().Sum((AddFactToEquipmentWielder addFact) => (from addStat in addFact.Fact.GetComponents<AddStatBonus>()
-			where addStat.Stat == StatType.ArmorDurability
+			where addStat.Stat == StatType.MaxArmorDurability
 			select addStat).Sum((AddStatBonus addStat) => addStat.Value));
 	}
 }

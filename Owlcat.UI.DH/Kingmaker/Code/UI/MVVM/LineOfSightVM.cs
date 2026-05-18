@@ -4,6 +4,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.Items;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -209,7 +210,7 @@ public class LineOfSightVM : ViewModel, IAbilityTargetSelectionUIHandler, ISubsc
 		}
 		else
 		{
-			abilityTargetUIData = AbilityTargetUIDataCache.Instance.GetOrCreate(abilityData, bestShootingPositionForDesiredPosition.Vector3Position(), Owner, null, null, null);
+			abilityTargetUIData = AbilityTargetUIDataCache.Instance.GetOrCreate(abilityData, bestShootingPositionForDesiredPosition.Vector3Position(), Owner, null, Owner, null);
 		}
 		return abilityTargetUIData.HitChance.HitWithAvoidanceChance;
 	}

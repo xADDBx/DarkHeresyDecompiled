@@ -3,24 +3,24 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Controllers.Projectiles;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Framework.Mechanics;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Damage;
-using Kingmaker.Utility;
 using Kingmaker.View.Covers;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "attacker", Target = "defender")]
 public class RulePerformAttack : RulebookTargetEvent
 {
 	private readonly bool m_DisableWeaponAttackDamage;
@@ -143,7 +143,7 @@ public class RulePerformAttack : RulebookTargetEvent
 		ContextActionsList maybeBlueprint = ResultHitLocation.ActionsOnPreciseAttackHit.MaybeBlueprint;
 		if (maybeBlueprint != null)
 		{
-			using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(Target))
+			using (EvalContext.Current.PushTarget(Target))
 			{
 				maybeBlueprint.Run();
 			}

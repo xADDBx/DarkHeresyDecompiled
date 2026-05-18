@@ -66,8 +66,8 @@ public class SummonUnitCopy : GameAction
 			return;
 		}
 		BaseUnitEntity baseUnitEntity = CreateCopy(source, CopyBlueprint, value.HoldingState, DoNotCreateItems);
-		baseUnitEntity.Position = value.View.ViewTransform.position;
-		baseUnitEntity.SetOrientation(value.View.ViewTransform.rotation.eulerAngles.y);
+		baseUnitEntity.Position = value.ViewPosition;
+		baseUnitEntity.SetOrientation(value.ViewOrientation);
 		if (SummonPool != null)
 		{
 			Game.Instance.SummonPools.Register(SummonPool, baseUnitEntity);

@@ -1,9 +1,15 @@
+using System;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
 using Kingmaker.Gameplay.Parts;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Sound.Base;
@@ -16,7 +22,7 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects.Traps;
 
 [KnowledgeDatabaseID("0dfa673c30fe07e4f98b465b99e2b915")]
-public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, ISubscriber
+public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, ISubscriber, ITrapEntityView, IEntityView, ITrapEntityConfig, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig, IInGameHandler<EntitySubscriber>, IInGameHandler, ISubscriber<IEntity>, IEventTag<IInGameHandler, EntitySubscriber>
 {
 	public TrapObjectView LinkedTrap;
 
@@ -31,9 +37,23 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 	[CanBeNull]
 	public TrapObjectView Device { get; set; }
 
-	public AbstractInteractionPart TrappedObject { get; set; }
+	public MapObjectView TrappedObject { get; set; }
 
 	public bool IsNotScriptZoneTrigger => !Settings.ScriptZoneTrigger;
+
+	public virtual string NameInLog => string.Empty;
+
+	public EntityRef<ScriptZoneEntity> ScriptZone => new EntityRef<ScriptZoneEntity>(Settings.ScriptZoneTrigger.Or(null)?.UniqueId);
+
+	public Vector3? ActorPosition => Settings.ActorPosition.Or(null)?.position;
+
+	public Vector3 TargetPosition => (Settings.TargetPoint.Or(null) ?? throw new Exception("TargetPoint is not set")).position;
+
+	EntityRef<TrapObjectData> ITrapEntityConfig.Device => new EntityRef<TrapObjectData>(Device.Or(null)?.UniqueId);
+
+	EntityRef<TrapObjectData> ITrapEntityConfig.LinkedTrap => new EntityRef<TrapObjectData>(LinkedTrap.Or(null)?.UniqueId);
+
+	EntityRef<MapObjectEntity> ITrapEntityConfig.TrappedObject => new EntityRef<MapObjectEntity>(TrappedObject.Or(null)?.UniqueId);
 
 	public new TrapObjectData Data => (TrapObjectData)base.Data;
 
@@ -55,8 +75,8 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 
 	private static void FillMeshColliderSettings(GameObject go, [NotNull] ScriptZone scriptZone)
 	{
-		go.transform.position = scriptZone.ViewTransform.position;
-		go.transform.rotation = scriptZone.ViewTransform.rotation;
+		go.transform.position = scriptZone.transform.position;
+		go.transform.rotation = scriptZone.transform.rotation;
 		MeshCollider componentInChildren = scriptZone.GetComponentInChildren<MeshCollider>(includeInactive: true);
 		if ((bool)componentInChildren)
 		{
@@ -76,13 +96,18 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 		};
 	}
 
-	protected override void OnDidAttachToData()
+	protected override void Awake()
 	{
-		base.OnDidAttachToData();
+		base.Awake();
 		if (LinkedTrap != null)
 		{
 			LinkedTrap.Device = this;
 		}
+	}
+
+	void IInGameHandler.HandleObjectInGameChanged()
+	{
+		Collider.Or(null)?.gameObject.SetActive(base.IsInGame);
 	}
 
 	public override void OnAreaDidLoad()
@@ -90,7 +115,7 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 		base.OnAreaDidLoad();
 		if ((bool)Settings.ScriptZoneTrigger)
 		{
-			Settings.ScriptZoneTrigger.OnUnitEntered.AddListener(delegate(BaseUnitEntity u, ScriptZone z)
+			Settings.ScriptZoneTrigger.OnUnitEntered.AddListener(delegate(BaseUnitEntity u, ScriptZoneEntity z)
 			{
 				Data.TryTriggerTrap(u);
 			});
@@ -99,11 +124,11 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 			Collider = componentInChildren.Or(null)?.EnsureComponent<MeshCollider>();
 			if (Collider != null)
 			{
-				Collider.transform.SetParent(base.ViewTransform, worldPositionStays: true);
+				Collider.transform.SetParent(base.transform, worldPositionStays: true);
 				Collider.enabled = true;
 			}
-			m_ScriptZoneOriginalParent = Settings.ScriptZoneTrigger.ViewTransform.parent;
-			Settings.ScriptZoneTrigger.ViewTransform.SetParent(base.ViewTransform, worldPositionStays: true);
+			m_ScriptZoneOriginalParent = Settings.ScriptZoneTrigger.transform.parent;
+			Settings.ScriptZoneTrigger.transform.SetParent(base.transform, worldPositionStays: true);
 		}
 		UpdateLinkLine();
 	}
@@ -113,10 +138,10 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 		base.OnAreaBeginUnloading();
 		if ((bool)m_ScriptZoneOriginalParent)
 		{
-			Settings.ScriptZoneTrigger.Or(null)?.ViewTransform.SetParent(m_ScriptZoneOriginalParent, worldPositionStays: true);
+			Settings.ScriptZoneTrigger.Or(null)?.transform.SetParent(m_ScriptZoneOriginalParent, worldPositionStays: true);
 			if ((bool)Collider)
 			{
-				Collider.transform.SetParent(Settings.ScriptZoneTrigger.ViewTransform, worldPositionStays: true);
+				Collider.transform.SetParent(Settings.ScriptZoneTrigger.transform, worldPositionStays: true);
 				Collider.enabled = false;
 			}
 		}
@@ -176,13 +201,31 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 	{
 		if (Data.IsHiddenWhenInactive)
 		{
-			Settings.ScriptZoneTrigger.Or(null)?.ViewTransform.SetParent(m_ScriptZoneOriginalParent, worldPositionStays: true);
-			Collider.Or(null)?.transform.SetParent(Settings.ScriptZoneTrigger.ViewTransform, worldPositionStays: true);
+			Settings.ScriptZoneTrigger.Or(null)?.transform.SetParent(m_ScriptZoneOriginalParent, worldPositionStays: true);
+			Collider.Or(null)?.transform.SetParent(Settings.ScriptZoneTrigger.transform, worldPositionStays: true);
 		}
 		UpdateLinkLine();
 		if ((bool)Settings.FxDecal)
 		{
 			Settings.FxDecal.enabled = false;
+		}
+	}
+
+	public void OnTriggered()
+	{
+		PostSoundEvent(Settings.TriggerSound);
+	}
+
+	public void OnDisarmFailed()
+	{
+		PostSoundEvent(Settings.DisableFailSound);
+	}
+
+	public void OnDisarmed()
+	{
+		if (Settings.DisabledSound != "")
+		{
+			PostSoundEvent(Settings.DisabledSound);
 		}
 	}
 
@@ -199,7 +242,7 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 	{
 		if ((bool)Settings.ScriptZoneTrigger && m_ScriptZoneOriginalParent == null)
 		{
-			Settings.ScriptZoneTrigger.OnUnitEntered.AddListener(delegate(BaseUnitEntity u, ScriptZone z)
+			Settings.ScriptZoneTrigger.OnUnitEntered.AddListener(delegate(BaseUnitEntity u, ScriptZoneEntity z)
 			{
 				Data.TryTriggerTrap(u);
 			});
@@ -208,11 +251,11 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 			Collider = componentInChildren.Or(null)?.EnsureComponent<MeshCollider>();
 			if (Collider != null)
 			{
-				Collider.transform.SetParent(base.ViewTransform, worldPositionStays: true);
+				Collider.transform.SetParent(base.transform, worldPositionStays: true);
 				Collider.enabled = true;
 			}
-			m_ScriptZoneOriginalParent = Settings.ScriptZoneTrigger.ViewTransform.parent;
-			Settings.ScriptZoneTrigger.ViewTransform.SetParent(base.ViewTransform, worldPositionStays: true);
+			m_ScriptZoneOriginalParent = Settings.ScriptZoneTrigger.transform.parent;
+			Settings.ScriptZoneTrigger.transform.SetParent(base.transform, worldPositionStays: true);
 		}
 	}
 
@@ -236,5 +279,10 @@ public abstract class TrapObjectView : MapObjectView, IReloadMechanicsHandler, I
 				setPathToTrapMechanics.gameObject.SetActive(flag);
 			}
 		}
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

@@ -3,20 +3,20 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Blueprints.Root.Strings.GameLog;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Framework.Mechanics.Utility.Damage;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.RuleSystem.Rules.Interfaces;
 using Kingmaker.RuleSystem.Rules.Modifiers;
-using Kingmaker.Settings;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -30,7 +30,7 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 	public void HandleEvent(GameLogEventAttack evt)
 	{
 		RulePerformAttack rule = evt.Rule;
-		if (rule.Ability != null && rule.Ability.Blueprint.AbilityTag == AbilityTag.ThrowingGrenade)
+		if (rule.Ability.Blueprint.AbilityTag == AbilityTag.ThrowingGrenade)
 		{
 			return;
 		}
@@ -60,7 +60,8 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 		GameLogContext.BodyPartD100 = (GameLogContext.Property<IRuleRollD100>)(IRuleRollD100)rule.RollPerformBodyPartHitRule.ResultD100;
 		GameLogContext.DefenceD100 = (GameLogContext.Property<IRuleRollD100>)(IRuleRollD100)rule.RollPerformDefenceRule.ResultD100;
 		GameLogContext.HitChance = rule.RollPerformAttackRule.HitChanceRule.ResultHitChance;
-		GameLogContext.DefenceChance = rule.RollPerformAttackRule.RollPerformDefenceRule.DefenceRule.ResultDefence;
+		GameLogContext.DefenceChance = rule.RollPerformAttackRule.RollPerformDefenceRule.ResultDefence;
+		GameLogContext.CoverHitChance = AbilityDataHelper.CalculateCoverHitChance(rule.RollPerformAttackRule.HitChanceRule.ResultLos, rule.ConcreteTarget);
 		GameLogContext.DamageReduction = ruleDealDamage?.ResultDamage.DamageReduction.Value ?? 0;
 		GameLogContext.ResultDamage = ruleDealDamage?.ResultValue ?? rule.ResultDamageValue;
 		if (ruleDealDamage != null)
@@ -68,9 +69,24 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 			GameLogContext.DamageType = UtilityText.GetDamageTypeText(ruleDealDamage.ResultDamage.Type);
 		}
 		GameLogContext.AttackNumber = rule.BurstIndex + 1;
-		GameLogContext.TotalHitChance = AbilityTargetUIData.CalculateHitChanceWithAvoidance((int)GameLogContext.HitChance, (int)GameLogContext.DefenceChance, AbilityTargetUIData.CalculateCoverHitChance(rule.RollPerformAttackRule.HitChanceRule.ResultLos, rule.ConcreteTarget), 0f);
+		GameLogContext.TotalHitChance = AbilityDataHelper.CalculateHitChanceWithAvoidance((int)GameLogContext.HitChance, (int)GameLogContext.DefenceChance, (int)GameLogContext.CoverHitChance, 0f);
 		GameLogContext.Text = null;
-		GameLogContext.Description = (evt.Rule.FromOverpenetration ? LogThreadBase.Strings.TooltipBrickStrings.TriggersOverpenetration.Text : null);
+		if (evt.Rule.FromOverpenetration)
+		{
+			GameLogContext.Description = LogThreadBase.Strings.TooltipBrickStrings.FromOverpenetration.Text;
+			if (evt.RollPerformAttackRule.IsOverpenetration)
+			{
+				GameLogContext.Description = LogThreadBase.Strings.TooltipBrickStrings.FromOverpenetrationAndTriggersOverpenetration.Text;
+			}
+		}
+		else if (evt.RollPerformAttackRule.IsOverpenetration)
+		{
+			GameLogContext.Description = LogThreadBase.Strings.TooltipBrickStrings.TriggersOverpenetration.Text;
+		}
+		else
+		{
+			GameLogContext.Description = null;
+		}
 		CombatLogMessage combatLogMessage = GetMessage(evt, overrideDealDamage).CreateCombatLogMessage(null, null, isPerformAttackMessage: true, rule.ConcreteTarget);
 		TooltipBaseTemplate tooltipBaseTemplate = combatLogMessage?.Tooltip;
 		if (tooltipBaseTemplate != null)
@@ -89,13 +105,13 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 
 	private static IEnumerable<ITooltipBrick> CollectExtraBricks(GameLogEventAttack evt, RuleDealDamage overrideDealDamage = null, bool isInfotip = false)
 	{
-		Func<string, ITooltipBrick> textTemplate = CombatLogTooltipService.CreateTooltipBrickText;
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> textValueTemplate = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		Func<TooltipBrickChanceArgs, ITooltipBrick> chanceTemplate = CombatLogTooltipService.CreateTooltipBrickChance;
-		Func<TooltipBrickTriggeredAutoArgs, ITooltipBrick> triggeredAutoTemplate = CombatLogTooltipService.CreateTooltipBrickTriggeredAuto;
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> iconTextTemplate = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
-		Func<TooltipBrickDamageRangeArgs, ITooltipBrick> damageRangeTemplate = CombatLogTooltipService.CreateTooltipBrickDamageRange;
-		Func<TooltipBrickElementType, ITooltipBrick> separatorTemplate = CombatLogTooltipService.CreateTooltipBrickSeparator;
+		Func<string, ITooltipBrick> textTemplate = CombatLogTooltipService.CreateBrickText;
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> textValueTemplate = CombatLogTooltipService.CreateBrickTextValue;
+		Func<BrickChanceArgs, ITooltipBrick> chanceTemplate = CombatLogTooltipService.CreateBrickChance;
+		Func<TooltipBrickTriggeredAutoArgs, ITooltipBrick> triggeredAutoTemplate = CombatLogTooltipService.CreateBrickTriggeredAuto;
+		Func<BrickIconTextValueArgs, ITooltipBrick> iconTextTemplate = CombatLogTooltipService.CreateBrickIconTextValue;
+		Func<BrickDamageRangeArgs, ITooltipBrick> damageRangeTemplate = CombatLogTooltipService.CreateBrickDamageRange;
+		Func<TooltipBrickElementType, ITooltipBrick> separatorTemplate = CombatLogTooltipService.CreateBrickSeparator;
 		if (textValueTemplate == null || chanceTemplate == null || triggeredAutoTemplate == null || iconTextTemplate == null || damageRangeTemplate == null || separatorTemplate == null)
 		{
 			yield break;
@@ -119,7 +135,7 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 				sufficientValue = 100;
 			}
 			int value = ((rule.RollPerformAttackRule.ResultChanceRule.RollHistory.Count > 1) ? rule.RollPerformAttackRule.ResultChanceRule.RollHistory.LastOrDefault() : GameLogContext.HitD100.Value.Result);
-			yield return chanceTemplate(new TooltipBrickChanceArgs(s.HitRoll.Text, sufficientValue, value, 2, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: true, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return chanceTemplate(new BrickChanceArgs(s.HitRoll.Text, sufficientValue, value, 2, isResultValue: false, null, CombatLogIcon.TargetHit));
 			if (isInfotip)
 			{
 				if (rule.RollPerformAttackRule.HitChanceRule.IsAutoHit && rule.InitiatorUnit != null)
@@ -127,7 +143,7 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 					if (rule.Target is DestructibleEntity)
 					{
 						yield return triggeredAutoTemplate(new TooltipBrickTriggeredAutoArgs(s.AutoHit.Text, null, isSuccess: true));
-						yield return textValueTemplate(new TooltipBrickTextValueArgs(s.AutoHitDestructible.Text, null, 2));
+						yield return textValueTemplate(new TooltipBrickTextValueArgs(s.AutoHitDestructible.Text, null, 3));
 					}
 					else
 					{
@@ -141,12 +157,12 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 				else if (isGrenade)
 				{
 					yield return triggeredAutoTemplate(new TooltipBrickTriggeredAutoArgs(s.AutoHit.Text, null, isSuccess: true));
-					yield return textValueTemplate(new TooltipBrickTextValueArgs(s.AutoHitGrenade.Text, null, 2));
+					yield return textValueTemplate(new TooltipBrickTextValueArgs(s.AutoHitGrenade.Text, null, 3));
 				}
 				else if (isAutoHit)
 				{
 					yield return triggeredAutoTemplate(new TooltipBrickTriggeredAutoArgs(s.AutoHit.Text, null, isSuccess: true));
-					yield return textValueTemplate(new TooltipBrickTextValueArgs("AoE Ranged Attack", null, 2));
+					yield return textValueTemplate(new TooltipBrickTextValueArgs(s.AoeRangedAttack.Text, null, 3));
 				}
 				else
 				{
@@ -176,7 +192,7 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 				string value2 = rule.RollPerformAttackRule.TargetUnit?.Name;
 				if (!string.IsNullOrEmpty(value2))
 				{
-					yield return textValueTemplate(new TooltipBrickTextValueArgs("Unit in cover", value2));
+					yield return textValueTemplate(new TooltipBrickTextValueArgs(s.UnitInCover.Text, value2));
 				}
 				if (rule.ResultForceCoverHit)
 				{
@@ -192,49 +208,60 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 						obj = "Unknown reason";
 					}
 					string value3 = (string)obj;
-					yield return textValueTemplate(new TooltipBrickTextValueArgs("Cover force hit", value3));
+					yield return textValueTemplate(new TooltipBrickTextValueArgs(s.CoverForceHit.Text, value3));
 				}
 			}
 			else
 			{
 				string text = rule.ResultCoverEntity?.Name;
-				string text2 = ((text == null || text.Length <= 0) ? "Environment" : text);
+				string text2 = ((text == null || text.Length <= 0) ? s.Environment.Text : text);
 				string value4 = text2;
-				yield return textValueTemplate(new TooltipBrickTextValueArgs("Cover", value4));
+				yield return textValueTemplate(new TooltipBrickTextValueArgs(s.Cover, value4));
 			}
 		}
 		if (rule.ResultHitLocation != null)
 		{
-			yield return textValueTemplate(new TooltipBrickTextValueArgs("Body Part", rule.ResultHitLocation.Name));
+			yield return textValueTemplate(new TooltipBrickTextValueArgs(s.BodyPart.Text, rule.ResultHitLocation.Name));
 		}
 		if (GameLogContext.DefenceD100.Value != null)
 		{
-			yield return textValueTemplate(new TooltipBrickTextValueArgs("Defence", rule.RollPerformDefenceRule.IsDefended ? "Success" : "Fail"));
-			yield return chanceTemplate(new TooltipBrickChanceArgs(s.DefenceRoll.Text, GameLogContext.DefenceChance.Value, GameLogContext.DefenceD100.Value.Result, 2, isResultValue: false, null, isProtectionIcon: true, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
-			yield return textValueTemplate(new TooltipBrickTextValueArgs(s.BaseModifier.Text, evt.Rule.RollPerformDefenceRule.DefenceRule.BaseDefence.ToString(), 2));
-			IEnumerable<ITooltipBrick> enumerable3 = LogThreadBase.CreateBrickModifiers(rule.RollPerformDefenceRule.DefenceRule.DefenceValueModifiers.List, valueIsPercent: false, null, 2);
+			yield return textValueTemplate(new TooltipBrickTextValueArgs(s.Defence.Text, rule.RollPerformDefenceRule.IsDefended ? s.Success.Text : s.Failure.Text));
+			yield return chanceTemplate(new BrickChanceArgs(s.DefenceRoll.Text, GameLogContext.DefenceChance.Value, GameLogContext.DefenceD100.Value.Result, 2, isResultValue: false, null, CombatLogIcon.Protection));
+			StatQueryOutput defenceOutput = rule.RollPerformAttackRule.ResultTargetDefenceOutput;
+			int num2 = ((defenceOutput != null) ? rule.RollPerformAttackRule.ResultTargetDefenceBase : 0);
+			yield return textValueTemplate(new TooltipBrickTextValueArgs(s.BaseModifier.Text, num2.ToString(), 2));
+			List<Modifier> list = new List<Modifier>();
+			if (defenceOutput != null)
+			{
+				list.AddRange(defenceOutput.Modifiers);
+			}
+			IEnumerable<ITooltipBrick> enumerable3 = LogThreadBase.CreateBrickModifiers(list, valueIsPercent: false, null, 2);
 			foreach (ITooltipBrick item3 in enumerable3)
 			{
 				yield return item3;
 			}
+			if (rule.RollPerformDefenceRule.MaxDefenceCapApplied)
+			{
+				yield return textValueTemplate(new TooltipBrickTextValueArgs(s.MaxDefence.Text, rule.RollPerformDefenceRule.MaxDefenceCap.ToString(), 2));
+			}
 		}
 		else if (rule.ResultIsHit)
 		{
-			yield return textTemplate(rule.Target.Features.DefenceDisabled ? "Defence Disabled" : "No Defence Roll");
+			yield return textTemplate(rule.Target.Features.DefenceDisabled ? s.DefenceDisabled.Text : s.NoDefenceRoll.Text);
 		}
 		if (GameLogContext.CoverHitD100.Value != null && GameLogContext.CoverHitChance.Value > 0)
 		{
-			yield return chanceTemplate(new TooltipBrickChanceArgs(s.CoverHit.Text, GameLogContext.CoverHitChance.Value, GameLogContext.CoverHitD100.Value.Result, 2, isResultValue: false, null, isProtectionIcon: true, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return chanceTemplate(new BrickChanceArgs(s.CoverHit.Text, GameLogContext.CoverHitChance.Value, GameLogContext.CoverHitD100.Value.Result, 2, isResultValue: false, null, CombatLogIcon.Protection));
 		}
 		yield return separatorTemplate(TooltipBrickElementType.Small);
 		string attackResultText = LogThreadBase.Strings.AttackResultStrings.GetAttackResultText(rule.Result);
-		yield return iconTextTemplate(new TooltipBrickIconTextValueArgs(s.Result.Text, attackResultText, 0, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return iconTextTemplate(new BrickIconTextValueArgs(s.Result.Text, attackResultText));
 		if (resultDamage == null)
 		{
 			yield break;
 		}
 		RolledDamage damage = resultDamage.ResultDamage;
-		yield return damageRangeTemplate(new TooltipBrickDamageRangeArgs(s.BaseDamage.Text, damage.BaseDamageValue, damage.BaseDamageMinValue, damage.BaseDamageMaxValue, 0, isResultValue: true, $"={damage.BaseDamageValue}", isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return damageRangeTemplate(new BrickDamageRangeArgs(s.BaseDamage.Text, damage.BaseDamageValue, damage.BaseDamageMinValue, damage.BaseDamageMaxValue, 0, isResultValue: true, $"={damage.BaseDamageValue}"));
 		ITooltipBrick[] array = LogThreadBase.GetMinMaxDamageModifiers(damage.BaseDamageMin, damage.BaseDamageMax, 2).ToArray();
 		if (isInfotip && array.Length > 1)
 		{
@@ -245,7 +272,7 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 			}
 		}
 		int value5 = damage.DamageReduction.Value;
-		yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("<b>Damage Reduction</b>", $"<b>×{(1f - (float)value5 / 100f).ToString(CultureInfo.InvariantCulture)} ({value5}%)</b>", 0, isResultValue: true));
+		yield return iconTextTemplate(new BrickIconTextValueArgs("<b>" + s.DamageReduction.Text + "</b>", $"<b>×{(1f - (float)value5 / 100f).ToString(CultureInfo.InvariantCulture)} ({value5}%)</b>", 0, isResultValue: true));
 		if (isInfotip)
 		{
 			foreach (ITooltipBrick item4 in LogThreadBase.GetModifiersSummary(damage.DamageReduction, 2))
@@ -253,7 +280,7 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 				yield return item4;
 			}
 		}
-		yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("<b>Plain Damage</b>", $"<b>{damage.ResultPlainDamage}</b>", 0, isResultValue: true));
+		yield return iconTextTemplate(new BrickIconTextValueArgs("<b>" + s.PlainDamage.Text + "</b>", $"<b>{damage.ResultPlainDamage}</b>", 0, isResultValue: true));
 		if (isInfotip && damage.PlainDamage.List.Count > 1)
 		{
 			foreach (ITooltipBrick item5 in LogThreadBase.GetModifiersSummary(damage.PlainDamage, 2))
@@ -263,20 +290,20 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 		}
 		if (damage.ResultDamageToArmorValue > 0)
 		{
-			yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("<b>Damage to Armor</b>", $"<b>{damage.ResultDamageToArmorValue}</b>", 0, isResultValue: true, "", isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return iconTextTemplate(new BrickIconTextValueArgs("<b>" + s.DamageToArmor.Text + "</b>", $"<b>{damage.ResultDamageToArmorValue}</b>", 0, isResultValue: true, ""));
 			if (damage.ResultPlainDamageToArmor > 0)
 			{
-				yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("Plain Damage", $"{damage.ResultPlainDamageToArmor}", 1, isResultValue: true));
+				yield return iconTextTemplate(new BrickIconTextValueArgs(s.PlainDamage.Text, $"{damage.ResultPlainDamageToArmor}", 1, isResultValue: true));
 			}
 			if (damage.ResultBonusDamageToArmor > 0)
 			{
-				yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("Bonus Damage", $"{damage.ResultBonusDamageToArmor}", 1, isResultValue: true));
+				yield return iconTextTemplate(new BrickIconTextValueArgs(s.BonusDamage.Text, $"{damage.ResultBonusDamageToArmor}", 1, isResultValue: true));
 				if (isInfotip)
 				{
 					int value6 = damage.BonusArmorDamage.Value;
 					if (value6 > damage.ResultTargetArmorBeforeDamageValue)
 					{
-						yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("Target Armor", $"{s.MaxValue.Text} {damage.ResultTargetArmorBeforeDamageValue} ({value6})", 2, isResultValue: true));
+						yield return iconTextTemplate(new BrickIconTextValueArgs("Target Armor", $"{s.MaxValue.Text} {damage.ResultTargetArmorBeforeDamageValue} ({value6})", 2, isResultValue: true));
 					}
 					IEnumerable<ITooltipBrick> modifiersSummary = LogThreadBase.GetModifiersSummary(damage.BonusArmorDamage, 2, damage.BonusArmorBaseDamage);
 					foreach (ITooltipBrick item6 in modifiersSummary)
@@ -290,16 +317,17 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 		{
 			yield break;
 		}
-		yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("<b>Damage to Health</b>", $"<b>{damage.ResultDamageToHealthValue}</b>", 0, isResultValue: true, "", isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return iconTextTemplate(new BrickIconTextValueArgs("<b>" + s.DamageToHealth.Text + "</b>", $"<b>{damage.ResultDamageToHealthValue}</b>", 0, isResultValue: true, ""));
 		if (damage.ResultPlainDamageToHealth > 0)
 		{
-			yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("Plain Damage", $"{damage.ResultPlainDamageToHealth}", 1, isResultValue: true));
+			yield return iconTextTemplate(new BrickIconTextValueArgs(s.PlainDamage.Text, $"{damage.ResultPlainDamageToHealth}", 1, isResultValue: true));
 		}
 		if (damage.ResultBonusDamageToHealth <= 0)
 		{
 			yield break;
 		}
-		yield return iconTextTemplate(new TooltipBrickIconTextValueArgs("Bonus Damage", $"{damage.ResultBonusDamageToHealth}", 1, isResultValue: true));
+		CombatLogIcon iconType = (damage.IsVitalDamage ? CombatLogIcon.VitalDamage : CombatLogIcon.None);
+		yield return iconTextTemplate(new BrickIconTextValueArgs(s.BonusDamage.Text, $"{damage.ResultBonusDamageToHealth}", 1, isResultValue: true, null, iconType));
 		if (!isInfotip)
 		{
 			yield break;
@@ -365,10 +393,6 @@ public class PerformAttackLogThread : LogThreadBase, IGameLogEventHandler<GameLo
 		bool printWeaponModifiers = false;
 		foreach (Modifier modifier in list)
 		{
-			if (modifier.Descriptor == ModifierDescriptor.Difficulty && SettingsHelper.CalculateCRModifier() < 1f)
-			{
-				additionText = additionText + " (" + UIStrings.Instance.Tooltips.DifficultyReduceDescription.Text + ")";
-			}
 			ITooltipBrick tooltipBrick = LogThreadBase.CreateBrickModifier(modifier, valueIsPercent, additionText, nestedLevel, isResultValue, isFirstWithoutPlus);
 			if (tooltipBrick == null)
 			{

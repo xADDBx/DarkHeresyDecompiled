@@ -7,6 +7,7 @@ using Owlcat.Runtime.Core.Utility;
 namespace Kingmaker.UnitLogic.UI;
 
 [Serializable]
+[Obsolete]
 [ComponentName("Items/UIPropertiesComponent")]
 [AllowedOn(typeof(BlueprintMechanicEntityFact))]
 [AllowMultipleComponents]
@@ -14,14 +15,4 @@ namespace Kingmaker.UnitLogic.UI;
 public class UIPropertiesComponent : BlueprintComponent
 {
 	public UIPropertySettings[] Properties = new UIPropertySettings[0];
-
-	public bool Editor_IsKeyExist(string key)
-	{
-		return false;
-	}
-
-	public UIPropertySettings Editor_AddNew()
-	{
-		return null;
-	}
 }

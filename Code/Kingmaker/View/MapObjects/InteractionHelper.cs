@@ -8,6 +8,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Cheats;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Interaction;
 using Kingmaker.Settings;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
@@ -83,7 +84,7 @@ public static class InteractionHelper
 		num += (int)SettingsRoot.Difficulty.SkillCheckModifier;
 		if (unit != null && skill != 0)
 		{
-			num += unit.Stats.GetStat(skill)?.ModifiedValue ?? 0;
+			num += (int)unit.Actor.GetStat(skill, null, default(StatContext), "GetInteractionSkillCheckChance");
 		}
 		return Mathf.Clamp(num, 0, 100);
 	}

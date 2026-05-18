@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
 using Unity.Burst;
 using Unity.Mathematics;
-using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.Shadows;
 
@@ -29,19 +28,17 @@ internal readonly struct ShadowDistanceUpdateQualifier
 
 	private readonly int m_CurrentFrameId;
 
-	public ShadowDistanceUpdateQualifier(ContextContainer frameData, int currentFrameId)
+	public ShadowDistanceUpdateQualifier(WaaaghCameraData cameraData, WaaaghShadowData shadowData, int currentFrameId)
 	{
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
-		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
-		m_Distance0UpdateMode = waaaghShadowData.ShadowUpdateDistances.Distance0UpdateMode;
-		m_Distance1UpdateMode = waaaghShadowData.ShadowUpdateDistances.Distance1UpdateMode;
-		m_Distance2UpdateMode = waaaghShadowData.ShadowUpdateDistances.Distance2UpdateMode;
-		m_Distance3UpdateMode = waaaghShadowData.ShadowUpdateDistances.Distance3UpdateMode;
-		m_Cascade2Splits = waaaghShadowData.ShadowUpdateDistances.Cascade2Splits;
-		m_Cascade3Splits = waaaghShadowData.ShadowUpdateDistances.Cascade3Splits;
-		m_Cascade4Splits = waaaghShadowData.ShadowUpdateDistances.Cascade4Splits;
-		m_DistancesCount = waaaghShadowData.ShadowUpdateDistances.Count;
-		m_MaxShadowDistance = waaaghCameraData.maxShadowDistance;
+		m_Distance0UpdateMode = shadowData.ShadowUpdateDistances.Distance0UpdateMode;
+		m_Distance1UpdateMode = shadowData.ShadowUpdateDistances.Distance1UpdateMode;
+		m_Distance2UpdateMode = shadowData.ShadowUpdateDistances.Distance2UpdateMode;
+		m_Distance3UpdateMode = shadowData.ShadowUpdateDistances.Distance3UpdateMode;
+		m_Cascade2Splits = shadowData.ShadowUpdateDistances.Cascade2Splits;
+		m_Cascade3Splits = shadowData.ShadowUpdateDistances.Cascade3Splits;
+		m_Cascade4Splits = shadowData.ShadowUpdateDistances.Cascade4Splits;
+		m_DistancesCount = shadowData.ShadowUpdateDistances.Count;
+		m_MaxShadowDistance = cameraData.maxShadowDistance;
 		m_CurrentFrameId = currentFrameId;
 	}
 

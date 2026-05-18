@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Items;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
+[UsedImplicitly]
 public class UsableItemPart : BaseItemPart
 {
 	public UsableItemPart(ItemEntity item, ItemTooltipData itemTooltipData, ItemTooltipData compareItemTooltipData = null, bool isScreenWindowTooltip = false)

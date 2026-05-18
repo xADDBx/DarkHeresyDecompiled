@@ -7,12 +7,21 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.Gameplay.Features.Encounter;
+using Kingmaker.View.MapObjects;
 using UnityEngine;
 
 namespace Kingmaker.Gameplay.Features.Experience;
 
 public static class Experience
 {
+	private static readonly SkillCheckDifficulty[] StandardSkillCheckDifficulties = new SkillCheckDifficulty[4]
+	{
+		SkillCheckDifficulty.Easy,
+		SkillCheckDifficulty.Normal,
+		SkillCheckDifficulty.Hard,
+		SkillCheckDifficulty.Impossible
+	};
+
 	private static ProgressionRoot Settings => ConfigRoot.Instance.Progression;
 
 	private static int CurrentAreaCR => Game.Instance.CurrentlyLoadedArea?.GetCR() ?? 0;
@@ -23,11 +32,6 @@ public static class Experience
 	}
 
 	public static void TryGain(BlueprintClue blueprint, MechanicEntity actor = null)
-	{
-		TryGainInternal(blueprint, actor);
-	}
-
-	public static void TryGain(BlueprintQuestObjective blueprint, MechanicEntity actor = null)
 	{
 		TryGainInternal(blueprint, actor);
 	}
@@ -59,10 +63,34 @@ public static class Experience
 		Gain(blueprint.CompletionExperience);
 	}
 
-	public static void GainForSkillCheck(int difficulty, MechanicEntity actor = null)
+	public static void TryGain(BlueprintQuestObjective blueprint, MechanicEntity actor = null)
 	{
-		int? skillCheckDifficulty = difficulty;
-		Gain(Calculate(ExperienceType.SkillCheck, null, skillCheckDifficulty), actor);
+		Gain(blueprint.CompletionExperience);
+	}
+
+	public static void GainForSkillCheck(SkillCheckDifficulty difficulty, MechanicEntity actor = null)
+	{
+		Gain(CalculateSkillCheckExperience(difficulty, Game.Instance.Player.Chapter), actor);
+	}
+
+	public static void GainForSkillCheck(SkillCheckDifficulty difficulty, int dc, MechanicEntity actor = null, int? overrideCR = null)
+	{
+		Gain((difficulty == SkillCheckDifficulty.Custom) ? CalculateCustomSkillCheckExperience(dc, overrideCR) : CalculateSkillCheckExperience(difficulty, Game.Instance.Player.Chapter), actor);
+	}
+
+	public static int CalculateSkillCheckExperience(SkillCheckDifficulty difficulty, int chapter)
+	{
+		return Settings.GetSkillCheckExperience(difficulty, chapter);
+	}
+
+	public static int CalculateCustomSkillCheckExperience(int dc, int? overrideCR = null)
+	{
+		return CalculateCustomSkillCheckExperience(dc, Game.Instance.Player.Chapter, overrideCR);
+	}
+
+	public static int CalculateCustomSkillCheckExperience(int dc, int chapter, int? overrideCR = null)
+	{
+		return CalculateSkillCheckExperience(ConvertDCToSkillCheckDifficulty(dc, overrideCR), chapter);
 	}
 
 	public static int Calculate([NotNull] IExperienceSettings experience, BaseUnitEntity mob = null)
@@ -91,6 +119,24 @@ public static class Experience
 		{
 			Gain(component, actor);
 		}
+	}
+
+	private static SkillCheckDifficulty ConvertDCToSkillCheckDifficulty(int dc, int? overrideCR = null)
+	{
+		int cr = overrideCR ?? CurrentAreaCR;
+		SkillCheckDifficulty result = StandardSkillCheckDifficulties[0];
+		int num = int.MaxValue;
+		SkillCheckDifficulty[] standardSkillCheckDifficulties = StandardSkillCheckDifficulties;
+		foreach (SkillCheckDifficulty skillCheckDifficulty in standardSkillCheckDifficulties)
+		{
+			int num2 = Math.Abs(ConfigRoot.Instance.SkillCheckRoot.GetSkillCheckDC(skillCheckDifficulty, cr) - dc);
+			if (num2 < num)
+			{
+				num = num2;
+				result = skillCheckDifficulty;
+			}
+		}
+		return result;
 	}
 
 	private static void Gain(int experience, MechanicEntity actor = null, bool isForEncounter = false)

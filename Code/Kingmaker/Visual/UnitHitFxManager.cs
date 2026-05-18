@@ -63,18 +63,9 @@ public class UnitHitFxManager : MonoBehaviour
 			}
 			break;
 		}
-		if (attackResult != AttackResult.Defended)
+		if (attackResult == AttackResult.Defended)
 		{
-			return;
-		}
-		UnitAnimationManager animationManager = m_View.AnimationManager;
-		if ((object)animationManager != null)
-		{
-			UnitAnimationActionHandle unitAnimationActionHandle = animationManager.CreateHandle(UnitAnimationType.Defence);
-			if (unitAnimationActionHandle != null)
-			{
-				animationManager.Execute(unitAnimationActionHandle);
-			}
+			m_View.AnimationManager?.TryExecute(UnitAnimationType.Defence);
 		}
 	}
 

@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
-using Kingmaker.View;
+using Kingmaker.EntitySystem.Interfaces;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -32,22 +31,13 @@ public class CutsceneArtControllerEntity : SimpleEntity, IHashable, IOwlPackable
 		}
 	};
 
-	public CutsceneArtControllerEntity(EntityViewBase view)
-		: base(view)
+	public CutsceneArtControllerEntity(IEntityConfig config)
+		: base(config)
 	{
 	}
 
-	public CutsceneArtControllerEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	protected CutsceneArtControllerEntity(JsonConstructorMark _)
+	protected CutsceneArtControllerEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected CutsceneArtControllerEntity()
 	{
 	}
 
@@ -61,7 +51,7 @@ public class CutsceneArtControllerEntity : SimpleEntity, IHashable, IOwlPackable
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		CutsceneArtControllerEntity source = new CutsceneArtControllerEntity();
+		CutsceneArtControllerEntity source = new CutsceneArtControllerEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<CutsceneArtControllerEntity, TPossiblyBase>(ref source);
 	}
 

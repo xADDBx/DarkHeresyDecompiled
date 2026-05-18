@@ -8,11 +8,13 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
+using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -70,15 +72,15 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 		}
 		if (isTurnBased)
 		{
-			using (base.Fact.MaybeContext?.SetScope(base.OwnerTargetWrapper))
+			using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 			{
-				base.Fact.RunActionInContext(CombatStartActions, base.OwnerTargetWrapper);
+				base.Fact.RunActionInContext(CombatStartActions, base.Owner);
 				return;
 			}
 		}
-		using (base.Fact.MaybeContext?.SetScope(base.OwnerTargetWrapper))
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 		{
-			base.Fact.RunActionInContext(CombatEndActions, base.OwnerTargetWrapper);
+			base.Fact.RunActionInContext(CombatEndActions, base.Owner);
 		}
 	}
 
@@ -88,9 +90,9 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 		{
 			return;
 		}
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 		{
-			base.Fact.RunActionInContext(CombatStartActions, base.Owner.ToITargetWrapper());
+			base.Fact.RunActionInContext(CombatStartActions, base.Owner);
 		}
 	}
 
@@ -105,9 +107,9 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 		}
 		if ((!OnlyFirstRound || Game.Instance.Controllers.TurnController.CombatRound == 1) && isTurnBased)
 		{
-			using (base.Fact.MaybeContext?.SetScope(base.OwnerTargetWrapper))
+			using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 			{
-				base.Fact.RunActionInContext(RoundStartActions, base.OwnerTargetWrapper);
+				base.Fact.RunActionInContext(RoundStartActions, base.Owner);
 			}
 		}
 	}
@@ -123,9 +125,9 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 		}
 		if ((!OnlyFirstRound || Game.Instance.Controllers.TurnController.CombatRound == 1) && isTurnBased)
 		{
-			using (base.Fact.MaybeContext?.SetScope(base.OwnerTargetWrapper))
+			using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 			{
-				base.Fact.RunActionInContext(RoundEndActions, base.OwnerTargetWrapper);
+				base.Fact.RunActionInContext(RoundEndActions, base.Owner);
 			}
 		}
 	}
@@ -144,20 +146,10 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 				return;
 			}
 		}
-		ITargetWrapper targetWrapper;
-		if (!ActionsOnTheTurnOwner || !(mechanicEntity is UnitEntity entity))
+		TargetWrapper target = ((ActionsOnTheTurnOwner && mechanicEntity is UnitEntity entity) ? entity.ToTargetWrapper() : ((TargetWrapper)base.Owner));
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, target))
 		{
-			targetWrapper = base.OwnerTargetWrapper;
-		}
-		else
-		{
-			ITargetWrapper targetWrapper2 = entity.ToTargetWrapper();
-			targetWrapper = targetWrapper2;
-		}
-		ITargetWrapper targetWrapper3 = targetWrapper;
-		using (base.Fact.MaybeContext?.SetScope(targetWrapper3))
-		{
-			base.Fact.RunActionInContext(UnitTurnStartActions, targetWrapper3);
+			base.Fact.RunActionInContext(UnitTurnStartActions, target);
 		}
 	}
 
@@ -175,20 +167,10 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 				return;
 			}
 		}
-		ITargetWrapper targetWrapper;
-		if (!ActionsOnTheTurnOwner || !(mechanicEntity is UnitEntity entity))
+		TargetWrapper target = ((ActionsOnTheTurnOwner && mechanicEntity is UnitEntity entity) ? entity.ToTargetWrapper() : ((TargetWrapper)base.Owner));
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, target))
 		{
-			targetWrapper = base.OwnerTargetWrapper;
-		}
-		else
-		{
-			ITargetWrapper targetWrapper2 = entity.ToTargetWrapper();
-			targetWrapper = targetWrapper2;
-		}
-		ITargetWrapper targetWrapper3 = targetWrapper;
-		using (base.Fact.MaybeContext?.SetScope(targetWrapper3))
-		{
-			base.Fact.RunActionInContext(UnitTurnEndActions, targetWrapper3);
+			base.Fact.RunActionInContext(UnitTurnEndActions, target);
 		}
 	}
 
@@ -210,20 +192,10 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 				return;
 			}
 		}
-		ITargetWrapper targetWrapper;
-		if (!ActionsOnTheTurnOwner || !(mechanicEntity is UnitEntity entity))
+		TargetWrapper target = ((ActionsOnTheTurnOwner && mechanicEntity is UnitEntity entity) ? entity.ToTargetWrapper() : ((TargetWrapper)base.Owner));
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, target))
 		{
-			targetWrapper = base.OwnerTargetWrapper;
-		}
-		else
-		{
-			ITargetWrapper targetWrapper2 = entity.ToTargetWrapper();
-			targetWrapper = targetWrapper2;
-		}
-		ITargetWrapper targetWrapper3 = targetWrapper;
-		using (base.Fact.MaybeContext?.SetScope(targetWrapper3))
-		{
-			base.Fact.RunActionInContext(UnitInterruptTurnStartActions, targetWrapper3);
+			base.Fact.RunActionInContext(UnitInterruptTurnStartActions, target);
 		}
 	}
 
@@ -241,20 +213,10 @@ public class TurnBasedModeEventsTrigger : UnitFactComponentDelegate, ITurnBasedM
 				return;
 			}
 		}
-		ITargetWrapper targetWrapper;
-		if (!ActionsOnTheTurnOwner || !(mechanicEntity is UnitEntity entity))
+		TargetWrapper target = ((ActionsOnTheTurnOwner && mechanicEntity is UnitEntity entity) ? entity.ToTargetWrapper() : ((TargetWrapper)base.Owner));
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, target))
 		{
-			targetWrapper = base.OwnerTargetWrapper;
-		}
-		else
-		{
-			ITargetWrapper targetWrapper2 = entity.ToTargetWrapper();
-			targetWrapper = targetWrapper2;
-		}
-		ITargetWrapper targetWrapper3 = targetWrapper;
-		using (base.Fact.MaybeContext?.SetScope(targetWrapper3))
-		{
-			base.Fact.RunActionInContext(UnitInterruptTurnEndActions, targetWrapper3);
+			base.Fact.RunActionInContext(UnitInterruptTurnEndActions, target);
 		}
 	}
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
@@ -11,13 +10,11 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -120,31 +117,7 @@ public class ChangeVeilDamage : UnitFactComponentDelegate, ITurnEndHandler, ISub
 
 	public int GetChange(AbilityData ability, bool isPrediction = false)
 	{
-		if (ability.Fact == null || (!Groups.Empty() && !Groups.Any((BlueprintAbilityGroup p) => ability.AbilityGroups.Contains(p))))
-		{
-			return 0;
-		}
-		Data data = base.Fact.RequestSavableData<Data>(this);
-		if (OnlyFirstPowerEachTurn && data.UsedThisRound > 0)
-		{
-			return 0;
-		}
-		if (HasRandomChance)
-		{
-			if (isPrediction)
-			{
-				return 0;
-			}
-			if (Rulebook.Trigger(new RuleRollD100(base.Owner)).Result > RandomChance.Calculate(base.Context))
-			{
-				return 0;
-			}
-		}
-		if (ReduceToZero)
-		{
-			return -ability.Blueprint.VeilDamage;
-		}
-		return VeilDamageIncrease.Calculate(base.Context);
+		return 0;
 	}
 
 	public void HandleUnitEndTurn(bool isTurnBased)

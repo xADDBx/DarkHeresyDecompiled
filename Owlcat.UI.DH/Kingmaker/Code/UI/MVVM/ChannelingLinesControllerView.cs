@@ -20,11 +20,23 @@ public class ChannelingLinesControllerView : View<ChannelingLinesControllerVM>
 		{
 			DrawLine(linesVM);
 		}
+		foreach (ChannelingLineVM hologramLinesVM in base.ViewModel.HologramLinesVMs)
+		{
+			DrawLine(hologramLinesVM);
+		}
 		base.ViewModel.ObserveLineAdded().Subscribe(delegate(CollectionAddEvent<ChannelingLineVM> value)
 		{
 			DrawLine(value.Value);
 		}).AddTo(this);
 		base.ViewModel.ObserveLineRemoved().Subscribe(delegate(CollectionRemoveEvent<ChannelingLineVM> value)
+		{
+			RemoveLine(value.Value);
+		}).AddTo(this);
+		base.ViewModel.ObserveHologramLineAdded().Subscribe(delegate(CollectionAddEvent<ChannelingLineVM> value)
+		{
+			DrawLine(value.Value);
+		}).AddTo(this);
+		base.ViewModel.ObserveHologramLineRemoved().Subscribe(delegate(CollectionRemoveEvent<ChannelingLineVM> value)
 		{
 			RemoveLine(value.Value);
 		}).AddTo(this);

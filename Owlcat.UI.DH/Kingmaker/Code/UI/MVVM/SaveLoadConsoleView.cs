@@ -1,72 +1,45 @@
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.View;
+using Kingmaker.UI.Common;
 using Owlcat.UI;
+using Owlcat.UI.Commands;
+using Owlcat.UI.Navigation;
 using R3;
-using Rewired;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace Kingmaker.Code.UI.MVVM;
 
+[ViewFactoryPolicy(ViewFactoryPolicyFlag.DontReparent, null)]
 public class SaveLoadConsoleView : SaveLoadBaseView
 {
-	[Header("Console")]
+	[Header("TEMP")]
 	[SerializeField]
-	private ConsoleHintsWidget m_CommonHintsWidget;
+	private OwlcatMultiButton m_CloseButton;
+
+	[Header("Hints")]
+	[SerializeField]
+	private HintView m_PrevHint;
 
 	[SerializeField]
-	private ConsoleHint m_PrevHint;
+	private HintView m_NextHint;
 
 	[SerializeField]
-	private ConsoleHint m_NextHint;
+	private WidgetList m_Hints;
 
-	private SaveSlotCollectionVirtualConsoleView SlotCollectionView => m_SlotCollectionView as SaveSlotCollectionVirtualConsoleView;
+	[SerializeField]
+	private Kingmaker.UI.Common.HintView m_HintPrefab;
 
 	protected override void OnBind()
 	{
 		base.OnBind();
-		GamePad.Instance.BaseLayer?.Unbind();
-		GamePad.Instance.OnLayerPushed.Subscribe(OnCurrentInputLayerChanged).AddTo(this);
-	}
-
-	protected override void OnUnbind()
-	{
-		GamePad.Instance.BaseLayer?.Bind();
-		base.OnUnbind();
-	}
-
-	protected override void CreateInputImpl(InputLayer inputLayer)
-	{
-		m_CommonHintsWidget.BindHint(inputLayer.AddButton(delegate
+		this.AddNavigation().AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_CloseButton.OnLeftClickAsObservable(), delegate
 		{
 			base.ViewModel.OnClose();
-		}, 9, base.ViewModel.SaveListUpdating.Not().ToReadOnlyReactiveProperty(initialValue: false)), UIStrings.Instance.CommonTexts.CloseWindow).AddTo(this);
-		m_PrevHint.Bind(inputLayer.AddButton(delegate
-		{
-			SelectPrev();
-		}, 14, base.ViewModel.SaveLoadMenuVM.HasFewEntities)).AddTo(this);
-		m_NextHint.Bind(inputLayer.AddButton(delegate
-		{
-			SelectNext();
-		}, 15, base.ViewModel.SaveLoadMenuVM.HasFewEntities)).AddTo(this);
-		inputLayer.AddAxis(Scroll, 3, repeat: true).AddTo(this);
-		SlotCollectionView.AddInput(inputLayer, m_CommonHintsWidget, base.ViewModel.SaveListUpdating, base.ViewModel.IsCurrentIronManSave);
+		}).AddTo(this);
 	}
 
-	private void Scroll(InputActionEventData obj, float value)
+	private bool IsBottomHint(Command command)
 	{
-		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
-		pointerEventData.scrollDelta = new Vector2(0f, value * m_ScrollRect.scrollSensitivity);
-		m_ScrollRect.OnSmoothlyScroll(pointerEventData);
-	}
-
-	private void OnCurrentInputLayerChanged()
-	{
-		GamePad instance = GamePad.Instance;
-		if (instance.CurrentInputLayer != m_InputLayer && !(instance.CurrentInputLayer.ContextName == MessageBoxConsoleView.InputLayerName) && !(instance.CurrentInputLayer.ContextName == "SaveFullScreenshotConsoleView") && !(instance.CurrentInputLayer.ContextName == CrossPlatformConsoleVirtualKeyboard.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == BugReportBaseView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == NetLobbyConsoleView.InputLayerName))
-		{
-			instance.PopLayer(m_InputLayer);
-			instance.PushLayer(m_InputLayer);
-		}
+		return true;
 	}
 }

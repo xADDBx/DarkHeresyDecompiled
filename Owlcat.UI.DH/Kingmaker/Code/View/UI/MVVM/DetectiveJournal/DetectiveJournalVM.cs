@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.MVVM.DetectiveJournal.MainPage;
 using Kingmaker.Code.View.UI.MVVM.ServiceWindows;
@@ -37,7 +36,6 @@ public class DetectiveJournalVM : ViewModel, IServiceWindow
 			OpenCase(caseToOpen);
 		}
 		SoundState.Instance.OnDetectiveJournalChange(MusicStateHandler.DetectiveBoardMusicState.Default);
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Detective).Send();
 	}
 
 	protected override void OnDispose()
@@ -45,7 +43,6 @@ public class DetectiveJournalVM : ViewModel, IServiceWindow
 		base.OnDispose();
 		SoundState.Instance.OnMusicStateChange(MusicStateHandler.MusicState.Setting);
 		SoundState.Instance.OnDetectiveJournalChange(MusicStateHandler.DetectiveBoardMusicState.Default);
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Detective).Send();
 	}
 
 	public void SetOpenedCase(BlueprintCase caseToOpen, BlueprintClue focusClue, bool canCloseCase = true)

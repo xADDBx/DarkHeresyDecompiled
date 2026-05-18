@@ -25,21 +25,23 @@ public class CharacterVisualSettingsEntityVM : ViewModel
 
 	public void Switch()
 	{
-		UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+		ButtonsSounds.Instance.Default.Hover.Play();
 		m_ChangeValue?.Invoke();
 		m_IsOn.Value = !IsOn.CurrentValue;
 	}
 
-	public void SetValue(bool value)
+	public CharacterVisualSettingsEntityVM SetValue(bool value)
 	{
 		if (value != IsOn.CurrentValue)
 		{
 			Switch();
 		}
+		return this;
 	}
 
-	public void SetLock(bool @lock = true)
+	public CharacterVisualSettingsEntityVM SetLock(bool @lock = true)
 	{
 		m_Locked.Value = @lock;
+		return this;
 	}
 }

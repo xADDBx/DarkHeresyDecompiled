@@ -421,6 +421,21 @@ public class PrimitiveSerializer
 		}
 	}
 
+	public void Rect(ref Rect v)
+	{
+		if (WriteMode)
+		{
+			m_Writer.Write(v.x);
+			m_Writer.Write(v.y);
+			m_Writer.Write(v.width);
+			m_Writer.Write(v.height);
+		}
+		else
+		{
+			v = new Rect(m_Reader.ReadSingle(), m_Reader.ReadSingle(), m_Reader.ReadSingle(), m_Reader.ReadSingle());
+		}
+	}
+
 	public void VectorInt(ref Vector2Int v)
 	{
 		if (WriteMode)

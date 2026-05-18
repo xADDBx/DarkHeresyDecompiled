@@ -1,5 +1,4 @@
 using Kingmaker.Blueprints.JsonSystem.Helpers;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 
@@ -10,6 +9,6 @@ public class MechanicLightRootView : MechanicEntityView
 {
 	public override Entity CreateEntityData(bool load)
 	{
-		return Entity.Initialize(new MechanicLightRoot(UniqueId, base.IsInGameBySettings, ConfigRoot.Instance.SystemMechanics.DefaultMapObjectBlueprint));
+		return Entity.Initialize(new MechanicLightRoot(this));
 	}
 }

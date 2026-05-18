@@ -17,6 +17,9 @@ public class ShowNewTutorial : GameAction
 	[ValidateNotNull]
 	private BlueprintTutorial.Reference m_Tutorial;
 
+	[SerializeField]
+	private float m_ShowDelaySeconds;
+
 	public TutorialContextDataEvaluator[] Evaluators = new TutorialContextDataEvaluator[0];
 
 	public BlueprintTutorial Tutorial => m_Tutorial?.Get()?.GetTutorial();
@@ -41,7 +44,7 @@ public class ShowNewTutorial : GameAction
 				tutorialContext[tutorialContextDataEvaluator.Key] = "<b>" + ex.Message + "</b>";
 			}
 		}
-		Game.Instance.TutorialSystem.Trigger(Tutorial, null);
+		Game.Instance.TutorialSystem.Trigger(Tutorial, null, m_ShowDelaySeconds);
 	}
 
 	private static TutorialContextItem CreateContextItem(object obj)

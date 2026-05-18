@@ -2,9 +2,9 @@ using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints.Encyclopedia;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.MVVM.ServiceWindows;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -14,18 +14,18 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM.DetectiveJournal;
 
-public class ServiceWindowsContext : ViewModel, IServiceWindowUIHandler, IJournalUIHandler, ISubscriber, IDetectiveJournalUIHandler, IEncyclopediaHandler
+public class ServiceWindowsContext : ViewModel, IServiceWindowUIHandler, IInventoryUIHandler, ISubscriber, IJournalUIHandler, IDetectiveJournalUIHandler, IEncyclopediaHandler
 {
 	private readonly ReactiveProperty<ServiceWindowsPanelVM> m_WindowsPanelVM;
 
-	public FullScreenUIType FullScreenUIType => m_WindowsPanelVM.Value?.CurrentUIType.CurrentValue ?? FullScreenUIType.Unknown;
+	public bool HasPrevWindow => (m_WindowsPanelVM?.Value?.HasPrevWindow).GetValueOrDefault();
 
 	public ServiceWindowsContext(ReactiveProperty<ServiceWindowsPanelVM> windowPanelVM)
 	{
 		m_WindowsPanelVM = windowPanelVM;
 		BindKeys();
 		EventBus.Subscribe(this).AddTo(this);
-		GameUIState.Instance.ActiveDialogController.Where((DialogController dialogController) => dialogController?.Dialog != null).Subscribe(delegate
+		GameUIState.Instance.GameMode.Where((GameModeType modeValue) => modeValue != GameModeType.Default && GameUIState.Instance.GameMode.Value != GameModeType.Pause).Subscribe(delegate
 		{
 			HandleCloseAll();
 		}).AddTo(this);

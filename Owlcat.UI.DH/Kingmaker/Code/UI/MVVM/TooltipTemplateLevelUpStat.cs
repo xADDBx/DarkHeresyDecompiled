@@ -10,6 +10,10 @@ using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Localization;
+using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using UnityEngine;
 
@@ -17,56 +21,52 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipTemplateLevelUpStat : TooltipBaseTemplate
 {
-	protected readonly StatTooltipData StatData;
+	protected readonly StatTooltipData m_StatData;
 
-	protected readonly string Name;
+	protected readonly string m_Name;
 
-	protected readonly string Desc;
+	protected readonly string m_Desc;
 
-	protected readonly string Acronym;
+	protected readonly string m_Acronym;
 
 	private readonly BaseUnitEntity m_Unit;
 
 	private readonly int m_UpgradeProgression;
 
-	public TooltipTemplateLevelUpStat(StatType statType, BaseUnitEntity unit, int upgradeProgression)
+	private readonly int m_PointsTotal;
+
+	public TooltipTemplateLevelUpStat(StatType statType, BaseUnitEntity unit, int upgradeProgression, int pointsTotal)
 	{
 		try
 		{
 			m_Unit = unit;
 			m_UpgradeProgression = upgradeProgression;
-			if (statType.IsAttribute())
-			{
-				StatData = new StatTooltipData(m_Unit.Stats.GetAttribute(statType));
-				Acronym = LocalizedTexts.Instance.Stats.GetShortText(statType);
-			}
-			else
-			{
-				StatData = new StatTooltipData(m_Unit.Stats.GetSkill(statType));
-				Acronym = LocalizedTexts.Instance.Stats.GetShortText(m_Unit.Stats.GetSkill(statType).BaseStat.Type);
-			}
-			string key = StatData?.KeyWord;
+			m_PointsTotal = pointsTotal;
+			m_StatData = StatTooltipData.FromActor(m_Unit, statType);
+			StatType stat = (statType.IsAttribute() ? statType : MechanicActor.GetStatBaseStat(statType).GetValueOrDefault());
+			m_Acronym = LocalizedTexts.Instance.Stats.GetShortText(stat);
+			string key = m_StatData?.KeyWord;
 			BlueprintEncyclopediaGlossaryEntry glossaryEntry = UIUtilityEncyclopedy.GetGlossaryEntry(key);
 			BlueprintEncyclopediaEntry encyclopediaEntry = UIUtilityEncyclopedy.GetEncyclopediaEntry(key);
-			Name = string.Empty;
-			Desc = string.Empty;
+			m_Name = string.Empty;
+			m_Desc = string.Empty;
 			if (encyclopediaEntry != null)
 			{
-				string text = (from b in encyclopediaEntry?.GetTooltipInfo()?.Where((EncyclopediaEntryBlock b) => b.blockType == EncyclopediaEntryBlock.BlockType.Text && b.IsVisibleInTooltip)
+				string text = (from b in encyclopediaEntry.GetTooltipInfo()?.Where((EncyclopediaEntryBlock b) => b.blockType == EncyclopediaEntryBlock.BlockType.Text && b.IsVisibleInTooltip)
 					select b.GetDescription()?.Text).FirstOrDefault();
 				if (!string.IsNullOrWhiteSpace(text))
 				{
-					Desc = text;
+					m_Desc = text;
 				}
-				Name = encyclopediaEntry.Title;
+				m_Name = encyclopediaEntry.Title;
 			}
 			if (glossaryEntry != null)
 			{
 				if (glossaryEntry.GetDescription().IsSet())
 				{
-					Desc = glossaryEntry.GetDescription();
+					m_Desc = glossaryEntry.GetDescription();
 				}
-				Name = glossaryEntry.Title;
+				m_Name = glossaryEntry.Title;
 			}
 		}
 		catch (Exception arg)
@@ -77,66 +77,98 @@ public class TooltipTemplateLevelUpStat : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		string text = LocalizedTexts.Instance.Stats.GetText(StatData.Type.Value);
-		string attribute = ((StatData.Type.HasValue && StatData.Type.Value.IsAttribute()) ? LocalizedTexts.Instance.Stats.GetShortText(StatData.Type.Value) : LocalizedTexts.Instance.Stats.GetShortText(m_Unit.Stats.GetSkill(StatData.Type.Value).BaseStat.Type));
-		yield return new TooltipBrickLevelUpHeader(new TooltipBrickLevelUpFeatureData(text, StatData.ModifiedValue.ToString(), null, null, null, attribute));
+		string text = LocalizedTexts.Instance.Stats.GetText(m_StatData.Type.Value);
+		string acronym = ((m_StatData.Type.HasValue && m_StatData.Type.Value.IsAttribute()) ? LocalizedTexts.Instance.Stats.GetShortText(m_StatData.Type.Value) : LocalizedTexts.Instance.Stats.GetShortText(MechanicActor.GetStatBaseStat(m_StatData.Type.Value).GetValueOrDefault()));
+		LocalizedString localizedString = (m_StatData.Type.Value.IsAttribute() ? UIStrings.Instance.CharGen.Attributes : UIStrings.Instance.CharGen.Skills);
+		yield return new BrickChargenStatTitleVM(text, localizedString, acronym, m_StatData.ModifiedValue.ToString());
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
 		AddStatBonusesGroup(list);
-		list.Add(new TooltipBrickText(Desc, TooltipTextType.LevelUpLineSpacing));
+		list.Add(new BrickSpaceVM(5f));
+		AddSkillCheckBonus(list);
+		list.Add(new BrickTextVM(m_Desc, TooltipTextType.LevelUpLineSpacing));
+		list.Add(new BrickChargenDividerTextLineVM(DividerType.Default));
 		AddBonusValue(list);
+		list.Add(new BrickSpaceVM(10f));
 		AddUpgradeProgression(list);
 		return list;
 	}
 
+	private void AddSkillCheckBonus(List<ITooltipBrick> result)
+	{
+		if (m_StatData.BonusValue.HasValue)
+		{
+			result.Add(new BrickLevelUpSkillcheckBonusVM(UIUtilityText.AddSign(m_StatData.BonusValue.Value)));
+		}
+	}
+
 	private void AddBonusValue(List<ITooltipBrick> result)
 	{
-		if (StatData.BonusValue.HasValue)
+		if (!m_StatData.BonusValue.HasValue)
 		{
-			List<string> relatedSkills = (from s in StatTypeHelper.BaseStats
-				where s.Value == StatData.Type.Value && s.Key.IsSkill()
-				select s into st
-				select LocalizedTexts.Instance.Stats.GetText(st.Key)).ToList();
-			result.Add(new TooltipBrickLevelUpSkillcheckBonus(UIUtilityText.AddSign(StatData.BonusValue.Value), Acronym, relatedSkills));
+			return;
 		}
+		List<StatType> list = (from s in StatTypeHelper.BaseStats
+			where s.Value == m_StatData.Type.Value && s.Key.IsSkill()
+			select s into st
+			select st.Key).ToList();
+		if (list.Empty())
+		{
+			return;
+		}
+		List<TooltipBrickVM> list2 = new List<TooltipBrickVM>();
+		foreach (StatType item in list)
+		{
+			BrickIconStatValueVM iconStatValue = UIUtilityFeaturesTooltip.GetIconStatValue(item, 10);
+			list2.Add(iconStatValue);
+		}
+		result.Add(new BricksGroupTwoColumnsVM(list2));
 	}
 
 	private void AddStatBonusesGroup(List<ITooltipBrick> bricks)
 	{
 		List<(string, string)> list = new List<(string, string)>();
-		if (StatData.Group != StatGroup.Skill && StatData.BaseValue != 0)
+		if (m_StatData.Group != StatGroup.Skill && m_StatData.BaseValue != 0)
 		{
-			list.Add((UIStrings.Instance.Tooltips.BaseValue, StatData.BaseValue.ToString()));
+			list.Add((UIStrings.Instance.Tooltips.BaseValue, m_StatData.BaseValue.ToString()));
 		}
-		if (!StatData.Breakdown.HasBonuses)
+		list.AddRange(GetStatBonusesGroup(m_StatData.Breakdown.SortedBonuses.Where((StatBonusEntry s) => s.Descriptor.IsPermanentModifier()).ToList()));
+		bricks.Add(new BrickLevelUpTitledValueStatGroupVM(UIStrings.Instance.Tooltips.PermanentSources.Text, list));
+		List<(string, string)> statBonusesGroup = GetStatBonusesGroup(m_StatData.Breakdown.SortedBonuses.Where((StatBonusEntry s) => !s.Descriptor.IsPermanentModifier()).ToList());
+		if (statBonusesGroup.Count != 0)
 		{
-			return;
+			bricks.Add(new BrickLevelUpTitledValueStatGroupVM(UIStrings.Instance.Tooltips.TemporarySources.Text, statBonusesGroup));
 		}
-		foreach (StatBonusEntry sortedBonuse in StatData.Breakdown.SortedBonuses)
+	}
+
+	private List<(string Name, string Value)> GetStatBonusesGroup(List<StatBonusEntry> bonusEntries)
+	{
+		List<(string, string)> list = new List<(string, string)>();
+		foreach (StatBonusEntry bonusEntry in bonusEntries)
 		{
-			string item = UIUtilityText.AddSign(sortedBonuse.Bonus);
-			string empty = string.Empty;
+			string item = UIUtilityText.AddSign(bonusEntry.Bonus);
 			string text = string.Empty;
 			string text2 = string.Empty;
-			if (sortedBonuse.Descriptor != 0)
+			if (bonusEntry.Descriptor != 0)
 			{
-				text = ConfigRoot.Instance.LocalizedTexts.Descriptors.GetText(sortedBonuse.Descriptor);
+				text = ConfigRoot.Instance.LocalizedTexts.Descriptors.GetText(bonusEntry.Descriptor);
 			}
-			if (!string.IsNullOrWhiteSpace(sortedBonuse.Source))
+			if (!string.IsNullOrWhiteSpace(bonusEntry.Source))
 			{
-				text2 = sortedBonuse.Source;
+				text2 = bonusEntry.Source;
 			}
-			empty = ((!string.IsNullOrWhiteSpace(text) && !string.IsNullOrWhiteSpace(text2)) ? (text + " [" + text2 + "]") : (string.IsNullOrWhiteSpace(text) ? text2 : text));
-			list.Add((empty, item));
+			string item2 = ((!string.IsNullOrWhiteSpace(text) && !string.IsNullOrWhiteSpace(text2)) ? (text + " [" + text2 + "]") : (string.IsNullOrWhiteSpace(text) ? text2 : text));
+			list.Add((item2, item));
 		}
-		bricks.Add(new TooltipBrickLevelUpTitledValueStatGroup(UIStrings.Instance.Tooltips.Sources.Text, list));
+		return list;
 	}
 
 	private void AddUpgradeProgression(List<ITooltipBrick> result)
 	{
-		result.Add(new TooltipBrickLevelUpStatProgression(m_UpgradeProgression));
+		int statPerPoint = ((m_StatData.Group == StatGroup.Skill) ? 10 : 5);
+		result.Add(new BrickLevelUpStatProgressionVM(m_UpgradeProgression, statPerPoint, m_PointsTotal));
 	}
 }

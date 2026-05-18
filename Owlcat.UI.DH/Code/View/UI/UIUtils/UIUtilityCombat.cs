@@ -1,11 +1,16 @@
+using Kingmaker;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.UI.MVVM;
-using Kingmaker.Gameplay.Parts;
 
 namespace Code.View.UI.UIUtils;
 
 public static class UIUtilityCombat
 {
+	public static bool IsCombatLockActive()
+	{
+		return Game.Instance.Controllers.TurnController.IsCombatLockActive;
+	}
+
 	public static bool NeedShowMiniInspect(MechanicEntityUIWrapper? wrapper)
 	{
 		if (UIConfig.Instance.CombatConfig.DebugFlags.HasFlag(CombatDebugFlags.ShowInspectAlwaysOnHover))
@@ -15,17 +20,12 @@ public static class UIUtilityCombat
 		return IsNewAdditionalCombatObj(wrapper);
 	}
 
-	public static bool IsNewAdditionalCombatObj(MechanicEntityUIWrapper? wrapper)
+	private static bool IsNewAdditionalCombatObj(MechanicEntityUIWrapper? wrapper)
 	{
-		if (wrapper?.AdditionalCombatObjective != null)
+		if (wrapper?.AdditionalCombatObjective == null || wrapper.Value.AdditionalCombatObjective.ObjectIsViewed)
 		{
-			PartAdditionalCombatObjectiveUnit additionalCombatObjective = wrapper.Value.AdditionalCombatObjective;
-			if (additionalCombatObjective == null)
-			{
-				return false;
-			}
-			return !additionalCombatObjective.ObjectIsViewed;
+			return false;
 		}
-		return false;
+		return !string.IsNullOrWhiteSpace(wrapper.Value.AdditionalCombatObjective.GetDescription()?.Text);
 	}
 }

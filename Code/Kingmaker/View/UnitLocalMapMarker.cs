@@ -64,7 +64,7 @@ public class UnitLocalMapMarker : ILocalMapMarker
 		{
 			return Vector3.zero;
 		}
-		return m_Unit.ViewTransform.position;
+		return m_Unit.transform.position;
 	}
 
 	public bool IsVisible()

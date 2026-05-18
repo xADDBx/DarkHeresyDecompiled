@@ -9,6 +9,7 @@ using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.UI.Sound;
 using UnityEngine;
 
 namespace Kingmaker.Code.Gameplay.Features.Items.Utility;
@@ -97,6 +98,7 @@ public class QuickSlotsReplenishLogic : IDisposable, ITurnBasedModeHandler, ISub
 		{
 			h.HandleQuickSlotsReplenished(result);
 		});
+		PlayReplenishResultSound(dictionary.Count, dictionary2.Count);
 		static List<BlueprintItem> GetItemsList(MechanicEntity entity, Dictionary<MechanicEntity, List<BlueprintItem>> dict)
 		{
 			if (!dict.TryGetValue(entity, out var value))
@@ -120,6 +122,20 @@ public class QuickSlotsReplenishLogic : IDisposable, ITurnBasedModeHandler, ISub
 				ItemEntityUsable item = quickSlots[i].Item;
 				m_CachedItems[usableSlot] = item.Blueprint;
 			}
+		}
+	}
+
+	private void PlayReplenishResultSound(int successCount, int failCount)
+	{
+		bool num = successCount > 0 && failCount < 1;
+		bool flag = failCount > 0;
+		if (num)
+		{
+			CombatSounds.Instance.QuickSlotsReplenishSounds.Success.Play();
+		}
+		else if (flag)
+		{
+			CombatSounds.Instance.QuickSlotsReplenishSounds.Failure.Play();
 		}
 	}
 }

@@ -1,6 +1,6 @@
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Utils;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -39,8 +39,9 @@ public class GameLogEventDialogHistory : GameLogEvent<GameLogEventDialogHistory>
 
 	public string GetText(DialogCueColors dialogCueColors)
 	{
-		m_SpeakerNameFormatedText = ((!m_ShowData.SpeakerName.IsNullOrEmpty()) ? ("<smallcaps><b><color=#" + ColorUtility.ToHtmlStringRGB(m_ShowData.SpeakerColor) + ">" + m_ShowData.SpeakerName + "</color></b></smallcaps>: ") : string.Empty);
-		m_CueFormatedText = (m_ShowData.SpeakerName.IsNullOrEmpty() ? ("<i><color=#" + ColorUtility.ToHtmlStringRGB(dialogCueColors.Narrator) + ">" + m_ShowData.Text + "</color><i>") : m_ShowData.Text);
+		Color color = dialogCueColors.GetSpeakerColor(m_ShowData.SpeakerName, m_ShowData.IsOverrideSpeakerColor, m_ShowData.SpeakerColor);
+		m_SpeakerNameFormatedText = ((!m_ShowData.SpeakerName.IsNullOrEmpty()) ? ("<smallcaps><b><color=#" + ColorUtility.ToHtmlStringRGB(color * dialogCueColors.NameColorMultiplayer) + ">" + m_ShowData.SpeakerName + "</color></b></smallcaps>: ") : string.Empty);
+		m_CueFormatedText = (m_ShowData.SpeakerName.IsNullOrEmpty() ? ("<i><color=#" + ColorUtility.ToHtmlStringRGB((Color)dialogCueColors.Narrator) + ">" + m_ShowData.Text + "</color><i>") : m_ShowData.Text);
 		m_CueFormatedText = UtilityText.StringIDToColor(m_CueFormatedText, DialogCueColors.NarratorColorStringID, dialogCueColors.Narrator);
 		return m_SpeakerNameFormatedText + m_SkillcheckFormatedText + m_SoulmarkFormatedText + m_CueFormatedText;
 	}

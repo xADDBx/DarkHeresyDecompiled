@@ -1,43 +1,40 @@
-using Owlcat.Runtime.Visual.Waaagh.FrameData;
-using Owlcat.Runtime.Visual.Waaagh.Passes;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 
 namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.VolumetricLighting.Passes;
 
-public class DebugLocalVolumetricFogPass : ScriptableRenderPass<DebugLocalVolumetricFogPassData>
+internal static class DebugLocalVolumetricFogPass
 {
-	private Material m_DebugMaterial;
-
-	private VolumetricLightingFeature m_Feature;
-
-	public override string Name => "DebugLocalVolumetricFogPass";
-
-	public DebugLocalVolumetricFogPass(RenderPassEvent evt, VolumetricLightingFeature feature, Material debugMaterial)
-		: base(evt)
+	private sealed class PassData
 	{
-		m_DebugMaterial = debugMaterial;
-		m_Feature = feature;
+		public Material DebugMaterial;
+
+		public Vector4 LocalFogClusteringParams;
+
+		public BufferHandle FogTilesBuffer;
+
+		public BufferHandle FogZBinsBuffer;
 	}
 
-	protected override void Setup(RenderGraphBuilder builder, DebugLocalVolumetricFogPassData data, ContextContainer frameData)
+	public static void Record(in RecordContext context, VolumetricLightingRendererFeature feature, Material debugMaterial, VolumetricLightingData volumetricLightingData)
 	{
-		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
-		data.Material = m_DebugMaterial;
-		TextureHandle input = waaaghResourceData.CameraColorBuffer;
-		data.CameraColorBuffer = builder.UseColorBuffer(in input, 0);
-		data.DepthCopyTexture = builder.ReadTexture(in waaaghResourceData.CameraDepthCopyRT);
-		data.LocalFogClusteringParams = m_Feature.FogClusteringParams;
-		data.FogTilesBuffer = builder.ReadBuffer(in m_Feature.FogTilesBufferHandle);
-		data.FogZBinsBuffer = builder.ReadBuffer(in m_Feature.ZBinsBufferHandle);
-	}
-
-	protected override void Render(DebugLocalVolumetricFogPassData data, RenderGraphContext context)
-	{
-		context.cmd.SetGlobalVector(ShaderPropertyId._LocalVolumetricFogClusteringParams, data.LocalFogClusteringParams);
-		context.cmd.SetGlobalBuffer(ShaderPropertyId._FogTilesBuffer, data.FogTilesBuffer);
-		context.cmd.SetGlobalBuffer(ShaderPropertyId._LocalFogZBinsBuffer, data.FogZBinsBuffer);
-		context.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 0, MeshTopology.Triangles, 3);
+		PassData passData;
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Local Volumetric Fog Debug", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\DebugLocalVolumetricFogPass.cs", 22);
+		passData.DebugMaterial = debugMaterial;
+		passData.LocalFogClusteringParams = feature.FogClusteringParams;
+		passData.FogTilesBuffer = volumetricLightingData.FogTilesBuffer;
+		passData.FogZBinsBuffer = volumetricLightingData.ZBinsBuffer;
+		unsafeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthRT);
+		unsafeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthTexture);
+		unsafeRenderGraphBuilder.UseBuffer(in volumetricLightingData.FogTilesBuffer);
+		unsafeRenderGraphBuilder.UseBuffer(in volumetricLightingData.ZBinsBuffer);
+		unsafeRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);
+		unsafeRenderGraphBuilder.SetRenderFunc(delegate(PassData data, UnsafeGraphContext context)
+		{
+			context.cmd.SetGlobalVector(ShaderPropertyId._LocalVolumetricFogClusteringParams, data.LocalFogClusteringParams);
+			context.cmd.SetGlobalBuffer(ShaderPropertyId._FogTilesBuffer, data.FogTilesBuffer);
+			context.cmd.SetGlobalBuffer(ShaderPropertyId._LocalFogZBinsBuffer, data.FogZBinsBuffer);
+			context.cmd.DrawProcedural(Matrix4x4.identity, data.DebugMaterial, 0, MeshTopology.Triangles, 3);
+		});
 	}
 }

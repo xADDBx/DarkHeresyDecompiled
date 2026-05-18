@@ -125,7 +125,7 @@ public class UnitAnimationActionTurnAround : UnitAnimationAction
 
 	public override void OnStart(UnitAnimationActionHandle handle)
 	{
-		handle.AnimationLayer = AnimationLayerType.TurnAround;
+		handle.AnimationLayer = UnitAnimationLayerType.TurnAround;
 		handle.ActionData = new ActionData();
 	}
 
@@ -151,7 +151,7 @@ public class UnitAnimationActionTurnAround : UnitAnimationAction
 		if (!Mathf.Approximately(data.TargetOrientation, unit.DesiredOrientation))
 		{
 			float deltaAngle = Mathf.DeltaAngle(unit.Orientation, unit.DesiredOrientation);
-			data.AngularSpeed = ((!unit.IsInCombat) ? (unit.MaybeMovementAgent.Or(null)?.AngularSpeedWhenStand ?? 180f) : (unit.MaybeMovementAgent.Or(null)?.AngularSpeedWhenStand ?? 360f));
+			data.AngularSpeed = unit.MaybeMovementAgent?.CurrentAngularSpeed ?? (unit.IsInCombat ? 360f : 180f);
 			UpdateActionData(data, unit.IsInCombat, unit.DesiredOrientation, deltaAngle, time);
 		}
 	}
@@ -171,27 +171,33 @@ public class UnitAnimationActionTurnAround : UnitAnimationAction
 		if (animationClipWrapper == null)
 		{
 			PFLog.Animations.Error(this, string.Format("No clip for turning {0} by {1} degrees", (deltaAngle > 0f) ? "right" : "left", num));
-			return;
-		}
-		data.Clip = animationClipWrapper;
-		float num2 = num / data.AngularSpeed;
-		float length = data.Clip.Length;
-		if (settings.PlaybackType == PlaybackType.Loop)
-		{
-			float num3 = num2 / length;
-			float num4 = Mathf.Ceil(num3);
-			if (num3 < 1f || (num4 > num3 && (double)(num4 - num3) < 0.5))
-			{
-				num3 += 1f;
-			}
-			data.RemainedPlaybackTimes = Mathf.FloorToInt(num3);
 		}
 		else
 		{
-			data.RemainedPlaybackTimes = 1;
+			if (num < 1f)
+			{
+				return;
+			}
+			data.Clip = animationClipWrapper;
+			float num2 = num / data.AngularSpeed;
+			float length = data.Clip.Length;
+			if (settings.PlaybackType == PlaybackType.Loop)
+			{
+				float num3 = num2 / length;
+				float num4 = Mathf.Ceil(num3);
+				if (num3 < 1f || (num4 > num3 && (double)(num4 - num3) < 0.5))
+				{
+					num3 += 1f;
+				}
+				data.RemainedPlaybackTimes = Mathf.FloorToInt(num3);
+			}
+			else
+			{
+				data.RemainedPlaybackTimes = 1;
+			}
+			data.OnePlaybackDuration = num2 / (float)data.RemainedPlaybackTimes;
+			data.SpeedScale = length / data.OnePlaybackDuration;
+			data.StartAnimationTimestamp = startTime;
 		}
-		data.OnePlaybackDuration = num2 / (float)data.RemainedPlaybackTimes;
-		data.SpeedScale = length / data.OnePlaybackDuration;
-		data.StartAnimationTimestamp = startTime;
 	}
 }

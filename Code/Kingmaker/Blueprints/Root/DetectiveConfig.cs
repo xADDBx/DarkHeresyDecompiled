@@ -51,6 +51,19 @@ public class DetectiveConfig
 	[field: SerializeField]
 	public bool MoveToNewClue { get; private set; }
 
+	[field: Header("DebugValues")]
+	[field: SerializeField]
+	public float ZoomWheelCooldown { get; private set; } = 0.15f;
+
+
+	[field: SerializeField]
+	public float ZoomSliderCooldown { get; private set; } = 0.15f;
+
+
+	[field: SerializeField]
+	public float SoundScrollNormalizedThreshold { get; private set; } = 0.005f;
+
+
 	public Sprite GetIssuingTypeIcon(DetectiveCaseIssueType type)
 	{
 		if (IssuingTypeIcons.FirstOrDefault((EnumIconEntry<DetectiveCaseIssueType> i) => i.Type == type) != null)

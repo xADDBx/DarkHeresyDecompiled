@@ -38,6 +38,30 @@ public class EtudesTree : EntityFactsProcessor<Etude>
 		LinkEtudeToTree(fact);
 	}
 
+	public void TryShutDownExclusionGroupsOf(BlueprintEtude bpEtude)
+	{
+		if (!bpEtude.HasExclusionGroups)
+		{
+			return;
+		}
+		Etude etude = Game.Instance.EtudesSystem.Etudes.Get(bpEtude);
+		if (etude == null || etude.IsPaused)
+		{
+			return;
+		}
+		foreach (BlueprintEtudeExclusionGroup item in bpEtude.ExclusionGroups.Dereference().NotNull())
+		{
+			Game.Instance.EtudesSystem.SetExclusionGroupBlockingEtude(item, bpEtude);
+			foreach (Etude rawFact in base.RawFacts)
+			{
+				if (rawFact != etude && rawFact.Blueprint.HaveExclusionGroup(item))
+				{
+					rawFact.SetPaused(isPaused: true);
+				}
+			}
+		}
+	}
+
 	private void LinkEtudeToTree(Etude fact)
 	{
 		(fact.Parent?.Children ?? m_Roots).Add(fact);
@@ -112,7 +136,7 @@ public class EtudesTree : EntityFactsProcessor<Etude>
 		}
 		if (stringBuilder.Length > 0)
 		{
-			PFLog.Default.ErrorWithReport(stringBuilder.ToString());
+			PFLog.Etudes.ErrorWithReport(stringBuilder.ToString());
 		}
 	}
 
@@ -334,7 +358,7 @@ public class EtudesTree : EntityFactsProcessor<Etude>
 				continue;
 			}
 			BlueprintEtude task = Game.Instance.EtudesSystem.GetConflictingGroupTask(actorReference.Get());
-			if (!task || task.Priority < etude.Blueprint.Priority || m_StoppingSet.Any((Etude t) => IsSameOrParentOf(t.Blueprint, task)))
+			if (!task || task.Priority < etude.Blueprint.Priority || m_StoppingSet.Any((Etude t) => IsSameOrParentOf(task, t.Blueprint)))
 			{
 				for (int i = 0; i < index; i++)
 				{
@@ -428,7 +452,7 @@ public class EtudesTree : EntityFactsProcessor<Etude>
 
 	private bool EtudeCanPlay(Etude etude)
 	{
-		if (etude.Blueprint.ActivationCondition.Check())
+		if (etude.Blueprint.ActivationCondition.Check() && !etude.IsPaused)
 		{
 			if (etude.Blueprint.HasLinkedAreaPart)
 			{
@@ -441,9 +465,9 @@ public class EtudesTree : EntityFactsProcessor<Etude>
 
 	private void Stop(Etude etude, bool isRoot)
 	{
-		foreach (Etude child in etude.Children)
+		foreach (Etude item in etude.Children.ToTempList())
 		{
-			Stop(child, isRoot: false);
+			Stop(item, isRoot: false);
 		}
 		if (!isRoot)
 		{

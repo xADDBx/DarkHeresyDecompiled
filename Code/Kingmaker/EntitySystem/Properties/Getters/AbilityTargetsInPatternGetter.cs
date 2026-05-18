@@ -1,7 +1,6 @@
 using System;
-using Kingmaker.Controllers;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
 
@@ -14,7 +13,7 @@ public sealed class AbilityTargetsInPatternGetter : IntPropertyGetter
 {
 	protected override int GetBaseValue()
 	{
-		return SimpleContextData<AbilityExecutionProcess, AbilityExecutionProcess.Scope>.Current?.Context.TargetsInPatternCount ?? 0;
+		return EvalContext.Current.AbilityExecution?.TargetsInPatternCount ?? 0;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

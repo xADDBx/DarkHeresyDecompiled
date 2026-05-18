@@ -4,7 +4,7 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Buffs.Components;
@@ -31,14 +31,10 @@ public class PushTrigger : UnitBuffComponentDelegate, IUnitGetAbilityPush, ISubs
 
 	public void HandleUnitResultPush(int distanceInCells, MechanicEntity caster, MechanicEntity target, Vector3 fromPoint)
 	{
-		if (OnlyFromOwner && caster != base.Owner)
+		if (!OnlyFromOwner || caster == base.Owner)
 		{
-			return;
-		}
-		base.Context[ContextPropertyName] = distanceInCells * ValueMultiplier.Calculate(base.Context) + ValueBonus.Calculate(base.Context);
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-		{
-			base.Fact.RunActionInContext(Actions, target.ToITargetWrapper());
+			EvalContext.Current[ContextPropertyName] = distanceInCells * ValueMultiplier.Calculate(base.Context) + ValueBonus.Calculate(base.Context);
+			base.Fact.RunActionInContext(Actions, target);
 		}
 	}
 

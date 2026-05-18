@@ -10,6 +10,7 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -184,7 +185,7 @@ public sealed class ActivatableAbility : UnitFact<BlueprintActivatableAbility>, 
 	}
 
 	public ActivatableAbility(BlueprintActivatableAbility blueprint)
-		: base(blueprint, (MechanicsContext)null)
+		: base(blueprint, (IEvalContext)null)
 	{
 	}
 
@@ -327,7 +328,7 @@ public sealed class ActivatableAbility : UnitFact<BlueprintActivatableAbility>, 
 	{
 		if (IsStarted)
 		{
-			EventBus.RaiseEvent(delegate(IActivatableAbilityWillStopHandler h)
+			base.EventBus.RaiseEvent(delegate(IActivatableAbilityWillStopHandler h)
 			{
 				h.HandleActivatableAbilityWillStop(this);
 			});

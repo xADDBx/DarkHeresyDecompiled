@@ -65,7 +65,7 @@ public sealed class DetectiveServoskullVisualChaser : MonoBehaviour, IAreaLoadin
 		{
 			if (!(m_OverrideAngularSpeed > 0f))
 			{
-				return Unit.View.MovementAgent.AngularSpeedWhenMove;
+				return Unit.View.MovementAgent.CurrentAngularSpeed;
 			}
 			return m_OverrideAngularSpeed;
 		}

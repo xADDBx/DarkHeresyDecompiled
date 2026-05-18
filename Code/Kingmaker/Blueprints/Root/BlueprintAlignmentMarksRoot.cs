@@ -38,7 +38,24 @@ public class BlueprintAlignmentMarksRoot : BlueprintScriptableObject
 		{
 			return new List<BlueprintMechanicEntityFact>();
 		}
-		if (!value.TryGetValue(mark - 1, out var value2))
+		List<BlueprintMechanicEntityFact> list = new List<BlueprintMechanicEntityFact>();
+		for (int i = 0; i < mark; i++)
+		{
+			if (value.TryGetValue(i, out var value2))
+			{
+				list.AddRange(value2);
+			}
+		}
+		return list;
+	}
+
+	public List<BlueprintMechanicEntityFact> GetFactsForMark(AlignmentAxis axis, int markIndex)
+	{
+		if (!m_AxisToMarkFactsMap.TryGetValue(axis, out var value))
+		{
+			return new List<BlueprintMechanicEntityFact>();
+		}
+		if (!value.TryGetValue(markIndex, out var value2))
 		{
 			return new List<BlueprintMechanicEntityFact>();
 		}
@@ -73,11 +90,14 @@ public class BlueprintAlignmentMarksRoot : BlueprintScriptableObject
 			m_AxisToMarkRanksMap.TryAdd(alignmentMarkToFact.Axis, new List<int>());
 			m_AxisToMarkRanksMap[alignmentMarkToFact.Axis].Add(alignmentMarkToFact.RankRequired);
 		}
+		Dictionary<AlignmentAxis, int> dictionary = new Dictionary<AlignmentAxis, int>();
 		for (int i = 0; i < AlignmentMarkToFacts.Count; i++)
 		{
 			FactsOnAlignmentMark factsOnAlignmentMark = AlignmentMarkToFacts[i];
 			m_AxisToMarkFactsMap.TryAdd(factsOnAlignmentMark.Axis, new Dictionary<int, List<BlueprintMechanicEntityFact>>());
-			m_AxisToMarkFactsMap[factsOnAlignmentMark.Axis][i] = factsOnAlignmentMark.Facts.Select((BpRef<BlueprintMechanicEntityFact> f) => f.Blueprint).ToList();
+			dictionary.TryAdd(factsOnAlignmentMark.Axis, 0);
+			int key = dictionary[factsOnAlignmentMark.Axis]++;
+			m_AxisToMarkFactsMap[factsOnAlignmentMark.Axis][key] = factsOnAlignmentMark.Facts.Select((BpRef<BlueprintMechanicEntityFact> f) => f.Blueprint).ToList();
 		}
 		m_AlignmentStaticInfoMap = AlignmentStaticInfo.ToDictionary((AlignmentAxisStaticInfo x) => x.Axis, (AlignmentAxisStaticInfo x) => x);
 	}

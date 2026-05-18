@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.UI;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.Utility.DotNetExtensions;
@@ -11,23 +12,31 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenLevelUpBaseSelectionPhaseVM<TSelectorItem> : CharGenLevelUpBasePhaseVM<TSelectorItem> where TSelectorItem : CharGenLevelUpSelectorBaseItemVM
 {
+	protected readonly ReactiveProperty<bool> m_IsAllCollapsed = new ReactiveProperty<bool>();
+
 	protected readonly SelectionStateFeature SelectionFeature;
+
+	protected readonly CharGenUnitSaveData UnitSaveData;
+
+	public ReadOnlyReactiveProperty<bool> IsAllCollapsed => m_IsAllCollapsed;
 
 	public CharGenLevelUpBaseSelectionPhaseVM(CharGenContext charGenContext, CharGenPhaseType phaseType, SelectionStateFeature selectionFeature, InfoSectionVM infoSectionVM, int rank = 0)
 		: base(charGenContext, phaseType, infoSectionVM, rank)
 	{
 		SelectionFeature = selectionFeature;
-		CreateItemList();
+		base.BlueprintSelectionWithUI = selectionFeature?.Blueprint;
+		m_PhaseName.Value = base.BlueprintSelectionWithUI?.Title;
+		UnitSaveData = Game.Instance.Player.UISettings.ChargenData.GetDataForUnit(base.Unit?.Blueprint.AssetGuidThreadSafe);
 	}
 
 	public void CollapseItemGroups()
 	{
-		bool expand = Items.OfType<CharGenLevelUpNestedListHeaderVM>().All((CharGenLevelUpNestedListHeaderVM h) => !h.IsExpanded.CurrentValue);
+		bool currentValue = m_IsAllCollapsed.CurrentValue;
 		foreach (TSelectorItem item in Items)
 		{
 			if (item is CharGenLevelUpNestedListHeaderVM charGenLevelUpNestedListHeaderVM)
 			{
-				charGenLevelUpNestedListHeaderVM.SetExpand(expand);
+				charGenLevelUpNestedListHeaderVM.SetExpand(currentValue);
 			}
 		}
 	}
@@ -40,6 +49,26 @@ public class CharGenLevelUpBaseSelectionPhaseVM<TSelectorItem> : CharGenLevelUpB
 		{
 			UpdateItem(i);
 		});
+	}
+
+	protected override void OnEndDetailedView()
+	{
+		base.OnEndDetailedView();
+		SaveFavorites();
+	}
+
+	protected override bool CheckIsCompleted()
+	{
+		if (base.CheckIsCompleted())
+		{
+			SelectionStateFeature selectionFeature = SelectionFeature;
+			if (selectionFeature != null && selectionFeature.IsMade)
+			{
+				return selectionFeature.IsValid;
+			}
+			return false;
+		}
+		return false;
 	}
 
 	protected override void CreateItemList()
@@ -60,7 +89,7 @@ public class CharGenLevelUpBaseSelectionPhaseVM<TSelectorItem> : CharGenLevelUpB
 		{
 			AddItem(i);
 		});
-		if (base.SelectedItem.CurrentValue != null)
+		if (base.SelectedItem.CurrentValue != null && list.Contains(base.SelectedItem.CurrentValue))
 		{
 			SelectionGroup.TrySelectEntity(Items.FirstOrDefault((TSelectorItem i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
 		}
@@ -118,5 +147,32 @@ public class CharGenLevelUpBaseSelectionPhaseVM<TSelectorItem> : CharGenLevelUpB
 			i.Dispose();
 		});
 		Items.Clear();
+	}
+
+	protected void SaveFavorites()
+	{
+		foreach (TSelectorItem item in Items.Where((TSelectorItem i) => i.Blueprint != null))
+		{
+			if (item.IsFavorite.CurrentValue)
+			{
+				UnitSaveData.FavoriteFeatures.Add(item.Blueprint.AssetGuidThreadSafe);
+			}
+			else
+			{
+				UnitSaveData.FavoriteFeatures.Remove(item.Blueprint.AssetGuidThreadSafe);
+			}
+		}
+	}
+
+	protected void CheckIsAllCollapsedHeaders()
+	{
+		m_IsAllCollapsed.Value = Items.OfType<CharGenLevelUpNestedListHeaderVM>().All((CharGenLevelUpNestedListHeaderVM h) => !h.IsExpanded.CurrentValue);
+	}
+
+	protected override void DisposeImplementation()
+	{
+		SaveFavorites();
+		base.DisposeImplementation();
+		SelectionFeature?.ClearSelection();
 	}
 }

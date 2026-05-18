@@ -4,6 +4,8 @@ using Kingmaker.Controllers;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Abilities;
@@ -13,6 +15,7 @@ using Kingmaker.Utility;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "ability caster", Target = "ability target")]
 public class RulePerformAbility : RulebookEvent
 {
 	private EntityFactRef<MechanicEntityFact> m_ReplaceTargetSource;
@@ -67,12 +70,12 @@ public class RulePerformAbility : RulebookEvent
 
 	public override MechanicEntity Target => AbilityTarget.Entity;
 
-	public RulePerformAbility([NotNull] Ability spell, [NotNull] TargetWrapper abilityTarget, MechanicsContext parentContext = null)
+	public RulePerformAbility([NotNull] Ability spell, [NotNull] TargetWrapper abilityTarget, IEvalContext parentContext = null)
 		: this(spell.Data, abilityTarget, parentContext)
 	{
 	}
 
-	public RulePerformAbility([NotNull] AbilityData ability, [NotNull] TargetWrapper abilityTarget, MechanicsContext parentContext = null)
+	public RulePerformAbility([NotNull] AbilityData ability, [NotNull] TargetWrapper abilityTarget, IEvalContext parentContext = null)
 		: base(ability.Caster)
 	{
 		Ability = ability;

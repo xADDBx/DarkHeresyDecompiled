@@ -1,7 +1,6 @@
 using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -18,6 +17,6 @@ public class ContextCasterPositionEvaluator : PositionEvaluator
 
 	protected override Vector3 GetValueInternal()
 	{
-		return SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.MaybeCaster?.Position ?? throw new FailToEvaluateException(this);
+		return (EvalContext.Current.Caster ?? throw new FailToEvaluateException(this)).Position;
 	}
 }

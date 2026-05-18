@@ -30,21 +30,17 @@ public class VeilThicknessVM : ViewModel, IVeilDamageHandler, ISubscriber, IAbil
 
 	private readonly ReactiveProperty<int> m_PredictedDeltaValue = new ReactiveProperty<int>(0);
 
-	private readonly ReactiveProperty<int> m_PerilsOfTheWarpChance = new ReactiveProperty<int>(0);
-
 	private readonly ReactiveProperty<bool> m_IsTurnBasedActive = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<bool> m_IsPlayerTurn = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<bool> m_IsAppropriateGameMode = new ReactiveProperty<bool>();
 
-	public readonly ObservableList<IUIDataProviderVM> VeilBuffVMs = new ObservableList<IUIDataProviderVM>();
-
 	private readonly List<IUIDataProviderVM> m_RemoveVMs = new List<IUIDataProviderVM>();
 
-	public TooltipTemplateVail Tooltip = new TooltipTemplateVail();
-
 	private AbilityData m_SelectedAbility;
+
+	public readonly ObservableList<IUIDataProviderVM> VeilBuffVMs = new ObservableList<IUIDataProviderVM>();
 
 	public ReadOnlyReactiveProperty<int> Value => m_Value;
 
@@ -52,13 +48,14 @@ public class VeilThicknessVM : ViewModel, IVeilDamageHandler, ISubscriber, IAbil
 
 	public ReadOnlyReactiveProperty<int> PredictedDeltaValue => m_PredictedDeltaValue;
 
-	public ReadOnlyReactiveProperty<int> PerilsOfTheWarpChance => m_PerilsOfTheWarpChance;
-
 	public ReadOnlyReactiveProperty<bool> IsTurnBasedActive => m_IsTurnBasedActive;
 
 	public ReadOnlyReactiveProperty<bool> IsPlayerTurn => m_IsPlayerTurn;
 
 	public ReadOnlyReactiveProperty<bool> IsAppropriateGameMode => m_IsAppropriateGameMode;
+
+	public TooltipTemplateVail Tooltip { get; } = new TooltipTemplateVail();
+
 
 	public PartVeil Veil => Game.Instance.LoadedArea?.Veil;
 

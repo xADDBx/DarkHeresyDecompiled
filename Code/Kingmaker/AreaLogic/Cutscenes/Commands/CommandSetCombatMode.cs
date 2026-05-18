@@ -36,12 +36,16 @@ public class CommandSetCombatMode : CommandBase
 
 	public override bool IsContinuous => Continuous;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	public override bool ShouldHaveControlledUnit => true;
+
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		if (Target.GetValue().View is UnitEntityView unitEntityView)
+		if (Target.TryGetValue(out var value) && value?.View is UnitEntityView unitEntityView)
 		{
 			unitEntityView.HandsEquipment.SetCombatVisualState(InCombat);
+			return CommandResult.Success;
 		}
+		return CommandResult.Fail("Cant find unit");
 	}
 
 	public override bool TrySkip(CutscenePlayerData player)
@@ -53,9 +57,14 @@ public class CommandSetCombatMode : CommandBase
 		return false;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -68,8 +77,7 @@ public class CommandSetCombatMode : CommandBase
 		{
 			return true;
 		}
-		BaseUnitEntity obj = Target.GetValue() as BaseUnitEntity;
-		UnitViewHandsEquipment unitViewHandsEquipment = ((obj == null) ? null : obj.View.Or(null)?.HandsEquipment);
+		UnitViewHandsEquipment unitViewHandsEquipment = (Target.GetValue() as BaseUnitEntity)?.View?.HandsEquipment;
 		if (unitViewHandsEquipment != null)
 		{
 			if (!unitViewHandsEquipment.AreHandsBusyWithAnimation)
@@ -81,9 +89,21 @@ public class CommandSetCombatMode : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
-		if (Continuous && !string.IsNullOrEmpty(OnSwitched?.GateId) && Target.GetValue().AreHandsBusyWithAnimation)
+		if (string.IsNullOrEmpty(OnSwitched?.GateId))
+		{
+			return CommandResult.Success;
+		}
+		if (!Continuous)
+		{
+			return CommandResult.Success;
+		}
+		if (!Target.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find target");
+		}
+		if (value.AreHandsBusyWithAnimation)
 		{
 			Data commandData = player.GetCommandData<Data>(this);
 			if (!commandData.OnSwitchedCalled)
@@ -92,14 +112,20 @@ public class CommandSetCombatMode : CommandBase
 				player.SignalGateExtra(OnSwitched.GateId);
 			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		if (Continuous && InCombat && Target.GetValue().View is UnitEntityView unitEntityView)
+		if (!Target.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find target");
+		}
+		if (Continuous && InCombat && value.View is UnitEntityView unitEntityView)
 		{
 			unitEntityView.HandsEquipment.SetCombatVisualState(!InCombat);
 		}
+		return CommandResult.Success;
 	}
 
 	public override CommandSignalData[] GetExtraSignals()

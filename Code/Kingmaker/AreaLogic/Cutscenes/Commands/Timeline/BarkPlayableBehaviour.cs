@@ -11,7 +11,7 @@ public class BarkPlayableBehaviour : IPlayableBehaviour
 {
 	public UnitEntityView Owner { get; set; }
 
-	public SharedStringAsset SharedText { get; set; }
+	public LocalizedString SharedText { get; set; }
 
 	public float Duration { get; set; }
 
@@ -35,7 +35,7 @@ public class BarkPlayableBehaviour : IPlayableBehaviour
 	{
 		if (Application.isPlaying && (bool)Owner)
 		{
-			BarkPlayer.Bark(Owner.EntityData, SharedText.String, VoiceOverType.Bark, Owner.EntityData.VoGuid, Duration);
+			BarkPlayer.Bark(Owner.EntityData, SharedText, VoiceOverType.Bark, Owner.EntityData.VoGuid, Duration);
 		}
 	}
 

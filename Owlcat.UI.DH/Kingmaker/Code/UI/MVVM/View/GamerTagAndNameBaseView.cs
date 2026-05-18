@@ -1,8 +1,5 @@
-using System;
-using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 
@@ -48,38 +45,8 @@ public class GamerTagAndNameBaseView : View<GamerTagAndNameVM>, IConsoleNavigati
 		return false;
 	}
 
-	public void AddGamerTagInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, Action closeGamersTagModeAction, ReadOnlyReactiveProperty<bool> canConfirmLaunch = null)
+	public void AddGamerTagInput()
 	{
-		if (canConfirmLaunch != null)
-		{
-			hintsWidget.BindHint(inputLayer.AddButton(delegate
-			{
-				closeGamersTagModeAction();
-			}, 9, m_IsFocused.And(canConfirmLaunch.Not()).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased), UIStrings.Instance.CharGen.Back).AddTo(this);
-			inputLayer.AddButton(delegate
-			{
-				closeGamersTagModeAction();
-			}, 19, m_IsFocused.And(canConfirmLaunch.Not()).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased).AddTo(this);
-			hintsWidget.BindHint(inputLayer.AddButton(delegate
-			{
-				base.ViewModel.ShowGamerCard();
-			}, 8, m_IsFocused.And(canConfirmLaunch.Not()).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased), UIStrings.Instance.NetLobbyTexts.ShowGamerCard).AddTo(this);
-		}
-		else
-		{
-			hintsWidget.BindHint(inputLayer.AddButton(delegate
-			{
-				closeGamersTagModeAction();
-			}, 9, m_IsFocused, InputActionEventType.ButtonJustReleased), UIStrings.Instance.CharGen.Back).AddTo(this);
-			inputLayer.AddButton(delegate
-			{
-				closeGamersTagModeAction();
-			}, 19, m_IsFocused, InputActionEventType.ButtonJustReleased).AddTo(this);
-			hintsWidget.BindHint(inputLayer.AddButton(delegate
-			{
-				base.ViewModel.ShowGamerCard();
-			}, 8, m_IsFocused, InputActionEventType.ButtonJustReleased), UIStrings.Instance.NetLobbyTexts.ShowGamerCard).AddTo(this);
-		}
 	}
 
 	public string GetUserId()

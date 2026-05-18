@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Kingmaker.Blueprints.Items;
 using Kingmaker.Code.Framework;
 using Kingmaker.Code.Framework.GameLog;
 using Kingmaker.EntitySystem.Entities;
@@ -8,6 +7,7 @@ using Kingmaker.Items;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.View.Bridge.Services;
@@ -20,9 +20,11 @@ public static class CombatLogTooltipService
 
 	public static Func<ItemEntity, TooltipBaseTemplate> CreateTooltipTemplateItem;
 
-	public static Func<BlueprintItem, TooltipBaseTemplate> CreateTooltipTemplateItemBlueprint;
+	public static Func<ItemEntity, MechanicEntity, TooltipBaseTemplate> CreateTooltipTemplateItemForLog;
 
 	public static Func<AbilityData, TooltipBaseTemplate> CreateTooltipTemplateAbility;
+
+	public static Func<AbilityData, TooltipBaseTemplate> CreateTooltipTemplateAbilityForActionBar;
 
 	public static Func<ToggleAbility, MechanicEntity, TooltipBaseTemplate> CreateTooltipTemplateToggleAbility;
 
@@ -32,31 +34,31 @@ public static class CombatLogTooltipService
 
 	public static Func<Feature, TooltipBaseTemplate> CreateTooltipTemplateFeature;
 
+	public static Func<BlueprintMechanicEntityFact, TooltipBaseTemplate> CreateTooltipTemplateMechanicEntityFact;
+
 	public static Func<string, TooltipBaseTemplate> CreateTooltipTemplateGlossary;
 
-	public static Func<string, ITooltipBrick> CreateTooltipBrickText;
+	public static Func<string, ITooltipBrick> CreateBrickText;
 
-	public static Func<string, bool, ITooltipBrick> CreateTooltipBrickIconText;
+	public static Func<string, bool, ITooltipBrick> CreateBrickIconText;
 
-	public static Func<TooltipBrickTextValueArgs, ITooltipBrick> CreateTooltipBrickTextValue;
+	public static Func<TooltipBrickTextValueArgs, ITooltipBrick> CreateBrickTextValue;
 
-	public static Func<TooltipBrickIconTextValueArgs, ITooltipBrick> CreateTooltipBrickIconTextValue;
+	public static Func<BrickIconTextValueArgs, ITooltipBrick> CreateBrickIconTextValue;
 
-	public static Func<TooltipBrickChanceArgs, ITooltipBrick> CreateTooltipBrickChance;
+	public static Func<BrickChanceArgs, ITooltipBrick> CreateBrickChance;
 
-	public static Func<TooltipBrickTriggeredAutoArgs, ITooltipBrick> CreateTooltipBrickTriggeredAuto;
+	public static Func<TooltipBrickTriggeredAutoArgs, ITooltipBrick> CreateBrickTriggeredAuto;
 
-	public static Func<TooltipBrickDamageRangeArgs, ITooltipBrick> CreateTooltipBrickDamageRange;
+	public static Func<BrickDamageRangeArgs, ITooltipBrick> CreateBrickDamageRange;
 
-	public static Func<int, string, ITooltipBrick> CreateTooltipBrickMinimalAdmissibleDamage;
+	public static Func<int, string, ITooltipBrick> CreateBrickMinimalAdmissibleDamage;
 
-	public static Func<TooltipBrickDamageNullifierArgs, ITooltipBrick> CreateTooltipBrickDamageNullifier;
+	public static Func<TooltipBrickDamageNullifierArgs, ITooltipBrick> CreateBrickDamageNullifier;
 
-	public static Func<CombatLogMessage, bool, ITooltipBrick> CreateTooltipBrickNestedMessage;
+	public static Func<CombatLogMessage, bool, ITooltipBrick> CreateBrickNestedMessage;
 
-	public static Func<TooltipBrickElementType, ITooltipBrick> CreateTooltipBrickSeparator;
+	public static Func<TooltipBrickElementType, ITooltipBrick> CreateBrickSeparator;
 
-	public static Func<ITooltipBrick> CreateTooltipBricksGroupStart;
-
-	public static Func<ITooltipBrick> CreateTooltipBricksGroupEnd;
+	public static Func<IReadOnlyList<ITooltipBrick>, ITooltipBrick> CreateBricksGroupOneColumn;
 }

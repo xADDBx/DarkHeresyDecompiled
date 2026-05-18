@@ -97,7 +97,7 @@ public sealed class PartAdditionalCombatObjectiveUnit : BaseUnitPart, IHashable,
 
 	public LocalizedString? GetDescription()
 	{
-		return _entries.FirstOrDefault((Entry e) => e.Component?.Description?.String != null).Component?.Description?.String;
+		return _entries.FirstOrDefault((Entry e) => !((e.Component?.Description)?.Empty ?? false)).Component?.Description;
 	}
 
 	public void SetAsViewed()

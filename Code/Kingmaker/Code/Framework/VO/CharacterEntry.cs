@@ -17,6 +17,8 @@ public class CharacterEntry
 
 	public Race Race;
 
+	public bool ReactToPariah;
+
 	public VoiceRaceType VoiceRaceType;
 
 	public string Description;

@@ -94,7 +94,7 @@ public class PartHiddenFacts : MechanicEntityPart, IHashable, IOwlPackable<PartH
 			}
 			value.Add(new Reason(fact, hiddenFacts));
 		}
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IHiddenFactsUpdatedHandler>)delegate(IHiddenFactsUpdatedHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IHiddenFactsUpdatedHandler>)delegate(IHiddenFactsUpdatedHandler h)
 		{
 			h.HandleHiddenFactsUpdated(hiddenFacts.Facts);
 		}, isCheckRuntime: true);
@@ -117,7 +117,7 @@ public class PartHiddenFacts : MechanicEntityPart, IHashable, IOwlPackable<PartH
 		{
 			RemoveSelf();
 		}
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IHiddenFactsUpdatedHandler>)delegate(IHiddenFactsUpdatedHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IHiddenFactsUpdatedHandler>)delegate(IHiddenFactsUpdatedHandler h)
 		{
 			h.HandleHiddenFactsUpdated(hiddenFacts.Facts);
 		}, isCheckRuntime: true);

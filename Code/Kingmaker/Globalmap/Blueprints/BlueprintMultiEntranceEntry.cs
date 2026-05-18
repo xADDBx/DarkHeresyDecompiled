@@ -62,6 +62,8 @@ public class BlueprintMultiEntranceEntry : BlueprintScriptableObject
 		}
 	}
 
+	public bool HasPartySelectionAction => m_Actions.ContainsActionOfType<ShowPartySelection>();
+
 	public void Enter()
 	{
 		m_Actions.Run();
@@ -99,17 +101,14 @@ public class BlueprintMultiEntranceEntry : BlueprintScriptableObject
 	public bool CheckCurrentlyEntryLocation()
 	{
 		BlueprintAreaEnterPoint areaEnterPoint = base.ElementsArray.OfType<TeleportParty>().FirstOrDefault((TeleportParty t) => t?.exitPositon != null)?.exitPositon;
-		if (areaEnterPoint != null)
+		BlueprintArea currentlyLoadedArea = Game.Instance.CurrentlyLoadedArea;
+		if (areaEnterPoint != null && currentlyLoadedArea == areaEnterPoint.Area)
 		{
-			if (Game.Instance.CurrentlyLoadedArea == areaEnterPoint.Area)
+			if (!currentlyLoadedArea.Parts.Any((BlueprintAreaPartReference p) => p.Get() == areaEnterPoint.AreaPart))
 			{
-				if (!Game.Instance.CurrentlyLoadedArea.Parts.Any((BlueprintAreaPartReference p) => p.Get() == areaEnterPoint.AreaPart))
-				{
-					return Game.Instance.CurrentlyLoadedArea == areaEnterPoint.AreaPart;
-				}
-				return true;
+				return currentlyLoadedArea == areaEnterPoint.AreaPart;
 			}
-			return false;
+			return true;
 		}
 		return false;
 	}

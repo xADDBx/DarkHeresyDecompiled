@@ -1,5 +1,3 @@
-using System;
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -8,44 +6,23 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class SubtitleBarkHandle : IBarkHandle, IUpdatable
+public class SubtitleBarkHandle : BarkHandleBase
 {
-	private VoiceOverStatus m_VoiceOverStatus;
-
-	private float m_RemainingTime;
-
-	public VoiceOverStatus VoiceOverStatus => m_VoiceOverStatus;
-
-	private event Action BarkEndCallbackActions;
-
 	public SubtitleBarkHandle(string text, float duration, VoiceOverStatus voiceOverStatus)
 	{
-		m_VoiceOverStatus = voiceOverStatus;
-		m_RemainingTime = ((duration > 0f) ? duration : UtilityBark.DefaultBarkTime);
-		if (m_VoiceOverStatus != null)
+		if (Game.Instance.Controllers.CustomUpdateController.TryFind((IUpdatable x) => x is SubtitleBarkHandle, out var result))
 		{
-			m_VoiceOverStatus.Ended += OnBarkEnded;
+			((IBarkHandle)result).InterruptBark();
 		}
-		Game.Instance.Controllers.CustomUpdateController.Add(this);
+		Init(duration, voiceOverStatus);
+		Game.Instance.Controllers.BarkController.TrackHandle(this);
 		EventBus.RaiseEvent(delegate(ISubtitleBarkHandler h)
 		{
 			h.HandleOnShowBark(text);
 		});
 	}
 
-	void IUpdatable.Tick(float delta)
-	{
-		if (m_RemainingTime > 0f)
-		{
-			m_RemainingTime -= Game.Instance.Controllers.TimeController.DeltaTime;
-		}
-		if (!IsPlayingBark())
-		{
-			InterruptBark();
-		}
-	}
-
-	public bool IsPlayingBark()
+	protected override bool IsPlayingBarkCore()
 	{
 		if (m_VoiceOverStatus == null)
 		{
@@ -54,29 +31,15 @@ public class SubtitleBarkHandle : IBarkHandle, IUpdatable
 		return Mathf.Max(m_VoiceOverStatus.RemainingTime, m_RemainingTime) > 0f;
 	}
 
-	public void InterruptBark()
+	public override void InterruptBark()
 	{
-		m_RemainingTime = 0f;
-		if (m_VoiceOverStatus != null)
+		if (m_IsActive)
 		{
-			m_VoiceOverStatus?.Stop();
-			OnBarkEnded();
+			base.InterruptBark();
+			EventBus.RaiseEvent(delegate(ISubtitleBarkHandler h)
+			{
+				h.HandleOnHideBark();
+			});
 		}
-		m_VoiceOverStatus = null;
-		Game.Instance.Controllers.CustomUpdateController.Remove(this);
-		EventBus.RaiseEvent(delegate(ISubtitleBarkHandler h)
-		{
-			h.HandleOnHideBark();
-		});
-	}
-
-	private void OnBarkEnded()
-	{
-		this.BarkEndCallbackActions?.Invoke();
-	}
-
-	public void AddCallback(Action callback)
-	{
-		BarkEndCallbackActions += callback;
 	}
 }

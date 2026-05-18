@@ -5,7 +5,6 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;

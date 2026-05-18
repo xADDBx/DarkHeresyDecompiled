@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Kingmaker.Controllers;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Parts;
@@ -16,9 +18,9 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Interaction;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class SpawnerInteractionPart : ViewBasedPart, IUnitInitializer, IHashable, IOwlPackable<SpawnerInteractionPart>
+public class SpawnerInteractionPart : EntityPartWithConfig, IUnitInitializer, IHashable, IOwlPackable<SpawnerInteractionPart>
 {
-	public class Wrapper : IUnitInteraction
+	public class Wrapper : IUnitInteraction, IGlobalCooldownUser
 	{
 		public SpawnerInteraction Source;
 
@@ -34,6 +36,8 @@ public class SpawnerInteractionPart : ViewBasedPart, IUnitInitializer, IHashable
 			}
 		}
 
+		public int ActionCost => 0;
+
 		public bool IsApproach => Source.TriggerOnApproach;
 
 		public float ApproachCooldown => Source.Cooldown;
@@ -44,11 +48,37 @@ public class SpawnerInteractionPart : ViewBasedPart, IUnitInitializer, IHashable
 
 		public bool AllowInCombat => Source.AllowInCombat;
 
+		public bool AllowWithHelpless => false;
+
+		public bool UseGlobalCooldown
+		{
+			get
+			{
+				if (Source.TriggerOnApproach)
+				{
+					return Source.GlobalCooldown.UseGlobalCooldown;
+				}
+				return false;
+			}
+		}
+
+		public bool CanCluster => Source.GlobalCooldown.CanCluster;
+
+		public LocalizedString DisplayName => Source.DisplayName;
+
 		public virtual bool IsAvailable(BaseUnitEntity initiator, AbstractUnitEntity target)
 		{
 			if (target.IsHelpless)
 			{
 				return false;
+			}
+			if (Source.TriggerOnApproach && Source.GlobalCooldown.UseGlobalCooldown)
+			{
+				InteractionGlobalCooldownController controller = Game.Instance.GetController<InteractionGlobalCooldownController>();
+				if (controller != null && !controller.CheckGlobalCooldown())
+				{
+					return false;
+				}
 			}
 			if (Source.TriggerOnApproach && Source.TriggerOnParty)
 			{
@@ -80,13 +110,18 @@ public class SpawnerInteractionPart : ViewBasedPart, IUnitInitializer, IHashable
 
 		public AbstractUnitCommand.ResultType Interact(BaseUnitEntity user, AbstractUnitEntity target)
 		{
-			return Source.Interact(user, target);
+			AbstractUnitCommand.ResultType result = Source.Interact(user, target);
+			if (Source.TriggerOnApproach && Source.GlobalCooldown.UseGlobalCooldown)
+			{
+				Source.GlobalCooldown.UpdateGlobalCooldown(target);
+			}
+			return result;
 		}
 	}
 
 	private readonly List<Wrapper> m_Components = new List<Wrapper>();
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "SpawnerInteractionPart",
 		OldNames = null,
@@ -98,9 +133,9 @@ public class SpawnerInteractionPart : ViewBasedPart, IUnitInitializer, IHashable
 
 	public override bool ShouldCheckSourceComponent => false;
 
-	public override void SetSource(IAbstractEntityPartComponent source)
+	public override void SetConfig(IEntityPartConfig source)
 	{
-		base.SetSource(source);
+		base.SetConfig(source);
 		m_Components.Add(new Wrapper
 		{
 			Source = (SpawnerInteraction)source
@@ -137,7 +172,7 @@ public class SpawnerInteractionPart : ViewBasedPart, IUnitInitializer, IHashable
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		SpawnerInteractionPart source = new SpawnerInteractionPart();
 		result = Unsafe.As<SpawnerInteractionPart, TPossiblyBase>(ref source);

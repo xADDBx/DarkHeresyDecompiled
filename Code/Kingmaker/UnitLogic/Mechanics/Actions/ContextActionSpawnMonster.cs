@@ -4,7 +4,6 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Gameplay.Features.Encounter;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
@@ -39,7 +38,7 @@ public class ContextActionSpawnMonster : ContextAction
 
 	public ContextDurationValue DurationValue;
 
-	public ContextDiceValue CountValue;
+	public ContextValue CountValue;
 
 	public ContextValue LevelValue = new ContextValue();
 
@@ -60,13 +59,13 @@ public class ContextActionSpawnMonster : ContextAction
 
 	public override string GetCaption()
 	{
-		return $"Summon {Blueprint.name} x {CountValue} for {DurationValue}";
+		return $"Summon {Blueprint?.NameSafe()} x {CountValue} for {DurationValue}";
 	}
 
 	protected override void RunAction()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		if (maybeCaster == null)
+		MechanicEntity caster = base.Context.Caster;
+		if (caster == null)
 		{
 			Element.LogError(this, "Caster is missing");
 			return;
@@ -77,7 +76,7 @@ public class ContextActionSpawnMonster : ContextAction
 		Vector3 vector = (SpawnOnPoint ? TargetPoint.GetValue() : base.Target.Point);
 		bool flag = false;
 		IntRect rectForSize = SizePathfindingHelper.GetRectForSize(Blueprint.Size);
-		WarhammerSingleNodeBlocker exceptBlocker = ((maybeCaster is BaseUnitEntity baseUnitEntity) ? baseUnitEntity.View.MovementAgent.Blocker : null);
+		WarhammerSingleNodeBlocker exceptBlocker = ((caster is BaseUnitEntity baseUnitEntity) ? baseUnitEntity.View.MovementAgent.Blocker : null);
 		GridNode nearestNodeXZUnwalkable = ObstacleAnalyzer.GetNearestNodeXZUnwalkable(vector);
 		if (nearestNodeXZUnwalkable != null && WarhammerBlockManager.Instance.CanUnitStandOnNode(rectForSize, nearestNodeXZUnwalkable, exceptBlocker))
 		{
@@ -103,23 +102,20 @@ public class ContextActionSpawnMonster : ContextAction
 		UnitEntityView unitEntityView = Blueprint.Prefab.Load();
 		float radius = ((unitEntityView != null) ? unitEntityView.Corpulence : 0.5f);
 		FreePlaceSelector.PlaceSpawnPlaces(num, radius, vector);
-		int value = 0;
-		if (UseCombatCRForUnit && m_Encounter.Blueprint != null)
-		{
-			value = m_Encounter.Blueprint.OverrideCombatCR;
-		}
-		using (SimpleContextData<int, BaseUnitEntity.OverrideUnitCR>.Set(value))
+		BlueprintEncounter blueprintEncounter = (UseCombatCRForUnit ? m_Encounter.Blueprint : null);
+		using ((blueprintEncounter != null) ? ContextData<BaseUnitEntity.EncounterData>.Request().Setup(blueprintEncounter) : null)
 		{
 			for (int i = 0; i < num; i++)
 			{
 				vector = FreePlaceSelector.GetRelaxedPosition(i, projectOnGround: true);
-				RulePerformSummonUnit rule = new RulePerformSummonUnit(maybeCaster, Blueprint, vector, duration, level)
+				RulePerformSummonUnit rule = new RulePerformSummonUnit(caster, Blueprint, vector, duration, level)
 				{
 					Context = base.Context,
 					DoNotLinkToCaster = DoNotLinkToCaster
 				};
 				BaseUnitEntity summonedUnit = base.Context.TriggerRule(rule).SummonedUnit;
-				if (base.Context is AbilityExecutionContext { ExecutionFromPsychicPhenomena: not false })
+				AbilityExecutionContext abilityContext = base.AbilityContext;
+				if (abilityContext != null && abilityContext.ExecutionFromPsychicPhenomena)
 				{
 					summonedUnit.MarkSpawnFromPsychicPhenomena();
 				}
@@ -127,12 +123,12 @@ public class ContextActionSpawnMonster : ContextAction
 				{
 					Game.Instance.SummonPools.Register(SummonPool, summonedUnit);
 				}
-				BlueprintEncounter blueprintEncounter = base.Context.MaybeCaster?.GetOptional<PartEncounter>()?.Blueprint ?? ActiveEncounter.Current?.Blueprint;
-				if (blueprintEncounter != null)
+				BlueprintEncounter blueprintEncounter2 = base.Context.Caster?.GetOptional<PartEncounter>()?.Blueprint ?? ActiveEncounter.Current?.Blueprint;
+				if (blueprintEncounter2 != null)
 				{
-					summonedUnit.GetOrCreate<PartEncounter>().Join(blueprintEncounter);
+					summonedUnit.GetOrCreate<PartEncounter>().Join(blueprintEncounter2);
 				}
-				using (base.Context.SetScope(summonedUnit.ToITargetWrapper()))
+				using (base.Context.PushTarget(summonedUnit))
 				{
 					AfterSpawn.Run();
 				}

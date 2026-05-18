@@ -48,7 +48,7 @@ public class ContextActionMoveToCoverFromCaster : ContextAction
 
 	protected override void RunAction()
 	{
-		if (m_coverTypesInPreferrableOrder.Empty() || m_movementRange <= 0 || !(base.Caster is BaseUnitEntity) || !(base.Target?.Entity is BaseUnitEntity baseUnitEntity) || baseUnitEntity.View == null)
+		if (m_coverTypesInPreferrableOrder.Empty() || m_movementRange <= 0 || !(base.Caster is BaseUnitEntity) || !(base.Target?.Entity is BaseUnitEntity { View: not null } baseUnitEntity))
 		{
 			return;
 		}
@@ -86,7 +86,7 @@ public class ContextActionMoveToCoverFromCaster : ContextAction
 	private LosCalculations.CoverType GetCoverTypeForNode(GraphNode node)
 	{
 		Vector3 origin = base.Caster.Position;
-		BlueprintAbility sourceAbilityBlueprint = base.Context.SourceAbilityBlueprint;
+		BlueprintAbility? sourceAbilityBlueprint = base.Context.SourceAbilityBlueprint;
 		if (sourceAbilityBlueprint != null && sourceAbilityBlueprint.UseBestShootingPosition)
 		{
 			origin = LosCalculations.GetBestShootingNode(base.Caster.CurrentUnwalkableNode, base.Caster.SizeRect, base.Target.NearestNode, base.Target.SizeRect).Vector3Position();

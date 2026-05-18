@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Assets.Code.View.UI.MVVM;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM.Common;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Gameplay.Parts;
+using Kingmaker.PubSubSystem;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Fmw.Blueprints;
@@ -36,6 +36,8 @@ public class CharacterInfoVM : ViewModel
 
 	private readonly ReactiveProperty<CharInfoCharacteristicsTabVM> m_CharacteristicsVM = new ReactiveProperty<CharInfoCharacteristicsTabVM>();
 
+	private readonly BuffGroupsVM m_BuffGroupsVM;
+
 	private ViewModel m_CurrentWindow;
 
 	public readonly MenuVM MenuVM;
@@ -54,10 +56,11 @@ public class CharacterInfoVM : ViewModel
 
 	public ReadOnlyReactiveProperty<CharInfoCharacteristicsTabVM> CharacteristicsVM => m_CharacteristicsVM;
 
-	public CharacterInfoVM(CharInfoPageType type, ReactiveProperty<BaseUnitEntity> unit)
+	public CharacterInfoVM(CharInfoPageType type, ReactiveProperty<BaseUnitEntity> unit, BuffGroupsVM buffGroupsVM)
 	{
 		CharacterInfoVM characterInfoVM = this;
 		m_Unit = unit;
+		m_BuffGroupsVM = buffGroupsVM;
 		List<MenuEntityVM> list = new List<MenuEntityVM>
 		{
 			GetMenuEntity(CharInfoPageType.Convictions),
@@ -78,13 +81,6 @@ public class CharacterInfoVM : ViewModel
 		{
 			characterInfoVM.CheckModifiers();
 		}).AddTo(this);
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.CharScreen).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
-	}
-
-	protected override void OnDispose()
-	{
-		base.OnDispose();
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.CharScreen).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).Send();
 	}
 
 	private MenuEntityVM GetMenuEntity(CharInfoPageType type)
@@ -136,6 +132,10 @@ public class CharacterInfoVM : ViewModel
 			m_CurrentWindow?.Dispose();
 			m_AbilitiesVM.Value = new CharInfoAbilitiesTabVM(m_Unit, this);
 			m_CurrentWindow = m_AbilitiesVM.Value;
+			EventBus.RaiseEvent(delegate(ICharInfoAbilitiesOpenHandler h)
+			{
+				h.HandleCharInfoAbilitiesOpen(m_Unit.Value);
+			});
 		}
 	}
 
@@ -164,7 +164,7 @@ public class CharacterInfoVM : ViewModel
 		if (!CurrentWindowIs(m_CharacteristicsVM.Value))
 		{
 			m_CurrentWindow?.Dispose();
-			m_CharacteristicsVM.Value = new CharInfoCharacteristicsTabVM(m_Unit);
+			m_CharacteristicsVM.Value = new CharInfoCharacteristicsTabVM(m_Unit, m_BuffGroupsVM);
 			m_CurrentWindow = m_CharacteristicsVM.Value;
 		}
 	}
@@ -180,7 +180,12 @@ public class CharacterInfoVM : ViewModel
 
 	public void CheckModifiers()
 	{
-		PartAbilityModifiers partAbilityModifiers = m_Unit.Value.GetOrCreate<PartAbilityModifiers>();
+		PartAbilityModifiers partAbilityModifiers = m_Unit.Value.GetOptional<PartAbilityModifiers>();
+		if (partAbilityModifiers == null)
+		{
+			m_HasModifierUpgrade.Value = false;
+			return;
+		}
 		List<BlueprintAbilityModifier> availableAndFreeModifiers = partAbilityModifiers.KnownModifiers.Where((BlueprintAbilityModifier m) => partAbilityModifiers.AddedModifiers.All((PartAbilityModifiers.AddedEntry a) => a.Modifier != m)).ToList();
 		if (availableAndFreeModifiers.Count == 0)
 		{

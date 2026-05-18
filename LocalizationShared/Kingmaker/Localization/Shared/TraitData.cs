@@ -7,6 +7,8 @@ namespace Kingmaker.Localization.Shared;
 [JsonObject(MemberSerialization.OptIn)]
 public class TraitData
 {
+	public const string NotUsedTrait = "NotUsed";
+
 	[NotNull]
 	[JsonProperty(PropertyName = "trait")]
 	public readonly string Trait;

@@ -1,6 +1,4 @@
-using System.Linq;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -29,8 +27,6 @@ public abstract class SlotsGroupView<TViewModel> : View<SlotsGroupVM<TViewModel>
 
 	private ItemSlotView<TViewModel> m_SlotPrefab;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	public WidgetList WidgetList => m_WidgetList;
 
 	public VirtualListGridVertical VirtualList => m_VirtualList;
@@ -49,7 +45,6 @@ public abstract class SlotsGroupView<TViewModel> : View<SlotsGroupVM<TViewModel>
 		if (m_UseVirtualList)
 		{
 			m_VirtualList.Subscribe(base.ViewModel.VisibleCollection).AddTo(this);
-			m_NavigationBehaviour = m_VirtualList.GetNavigationBehaviour();
 		}
 		if (m_UseWidgetList)
 		{
@@ -57,7 +52,6 @@ public abstract class SlotsGroupView<TViewModel> : View<SlotsGroupVM<TViewModel>
 			{
 				DrawEntities();
 			}).AddTo(this);
-			m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
 			DrawEntities();
 		}
 		ForceScrollToTop();
@@ -66,20 +60,6 @@ public abstract class SlotsGroupView<TViewModel> : View<SlotsGroupVM<TViewModel>
 	private void DrawEntities()
 	{
 		m_WidgetList.DrawEntries(base.ViewModel.VisibleCollection, m_SlotPrefab).AddTo(this);
-		if (!m_WidgetList.Entries.Empty())
-		{
-			int num = m_NavigationBehaviour.Entities.IndexOf(m_NavigationBehaviour.DeepestNestedFocus);
-			m_NavigationBehaviour.SetEntitiesGrid(m_WidgetList.Entries.Select((IBindable e) => e as IConsoleNavigationEntity).ToList(), m_ColumnCount);
-			if (num > -1)
-			{
-				m_NavigationBehaviour.FocusOnEntityManual(m_NavigationBehaviour.Entities.ElementAtOrDefault(num));
-			}
-		}
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigation()
-	{
-		return m_NavigationBehaviour;
 	}
 
 	public void ForceScrollToTop()

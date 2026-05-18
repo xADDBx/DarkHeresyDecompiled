@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
@@ -38,5 +40,10 @@ public class AbilityCasterAbilityGroupOnCooldown : BlueprintComponent, IAbilityC
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		return LocalizedTexts.Instance.Reasons.CombatRequired;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		return Array.Empty<string>();
 	}
 }

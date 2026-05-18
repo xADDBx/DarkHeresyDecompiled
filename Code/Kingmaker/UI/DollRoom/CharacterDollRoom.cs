@@ -3,6 +3,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Weapons;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -17,9 +18,12 @@ using Kingmaker.UI.Sound;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
 using Kingmaker.View.Equipment;
+using Kingmaker.View.Mechadendrites;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Kingmaker.Visual.CharacterSystem;
+using Kingmaker.Visual.MaterialEffects;
+using Kingmaker.Visual.MaterialEffects.Dissolve;
 using Kingmaker.Visual.Particles;
 using Kingmaker.Visual.Particles.GameObjectsPooling;
 using Kingmaker.Visual.Trails;
@@ -32,8 +36,86 @@ using UnityEngine.Rendering;
 
 namespace Kingmaker.UI.DollRoom;
 
-public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubscriber>, IUnitEquipmentHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IUnitEquipmentHandler, EntitySubscriber>, IEntitySubscriber, IUnitActiveEquipmentSetHandler<EntitySubscriber>, IUnitActiveEquipmentSetHandler, ISubscriber<IBaseUnitEntity>, IEventTag<IUnitActiveEquipmentSetHandler, EntitySubscriber>, IUnitVisualChangeHandler
+public class CharacterDollRoom : DollRoomBase
 {
+	private sealed class UnitEquipmentSync : IUnitEquipmentHandler<EntitySubscriber>, IUnitEquipmentHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IUnitEquipmentHandler, EntitySubscriber>, IEntitySubscriber, IUnitActiveEquipmentSetHandler<EntitySubscriber>, IUnitActiveEquipmentSetHandler, ISubscriber<IBaseUnitEntity>, IEventTag<IUnitActiveEquipmentSetHandler, EntitySubscriber>, IUnitVisualChangeHandler
+	{
+		private readonly CharacterDollRoom m_DollRoom;
+
+		public UnitEquipmentSync(CharacterDollRoom dollRoom)
+		{
+			m_DollRoom = dollRoom;
+		}
+
+		public void Subscribe()
+		{
+			EventBus.Subscribe(this);
+		}
+
+		public void Unsubscribe()
+		{
+			EventBus.Unsubscribe(this);
+		}
+
+		public IEntity GetSubscribingEntity()
+		{
+			return m_DollRoom.m_Unit;
+		}
+
+		public void HandleEquipmentSlotUpdated(ItemSlot slot, ItemEntity previousItem)
+		{
+			if (slot.Owner != m_DollRoom.m_Unit)
+			{
+				return;
+			}
+			Character avatar = m_DollRoom.Avatar;
+			Character originalAvatar = m_DollRoom.m_OriginalAvatar;
+			IEnumerable<EquipmentEntity> enumerable = originalAvatar.EquipmentEntities.Concat(originalAvatar.SavedEquipmentEntities.Select((EquipmentEntityLink ee) => ee.Load()));
+			IEnumerable<EquipmentEntity> enumerable2 = avatar.EquipmentEntities.Concat(avatar.SavedEquipmentEntities.Select((EquipmentEntityLink ee) => ee.Load()));
+			EquipmentEntity[] ees = enumerable2.Except(enumerable).ToArray();
+			EquipmentEntity[] ees2 = enumerable.Except(enumerable2).ToArray();
+			IEnumerable<Character.SelectedRampIndices> collection = originalAvatar.RampIndices.Except(avatar.RampIndices);
+			avatar.RampIndices.Clear();
+			avatar.RampIndices.AddRange(collection);
+			avatar.RequestRebuild(Character.CharacterRebuildMode.OnlyAtlases);
+			avatar.RemoveEquipmentEntities(ees);
+			avatar.AddEquipmentEntities(ees2);
+			if (slot is HandSlot slot2)
+			{
+				m_DollRoom.m_AvatarHands?.HandleEquipmentSlotUpdated(slot2, previousItem);
+			}
+			else
+			{
+				PartUnitBody bodyOptional = slot.Owner.GetBodyOptional();
+				if (bodyOptional != null && bodyOptional.QuickSlots.Contains(slot))
+				{
+					m_DollRoom.m_AvatarHands?.UpdateBeltPrefabs();
+				}
+			}
+			if ((bool)originalAvatar && m_DollRoom.m_Unit != null && !originalAvatar.gameObject.activeInHierarchy && m_DollRoom.m_Unit.View != null)
+			{
+				m_DollRoom.m_Unit.View.HandleEquipmentSlotUpdated(slot, previousItem);
+			}
+		}
+
+		public void HandleUnitChangeActiveEquipmentSet()
+		{
+			m_DollRoom.m_AvatarHands?.HandleEquipmentSetChanged();
+		}
+
+		public void HandleUnitChangeEquipmentColor(int rampIndex, bool secondary)
+		{
+			Character originalAvatar = m_DollRoom.m_Unit.View?.CharacterAvatar;
+			if (originalAvatar != null)
+			{
+				OwlcatR3UnitExtensions.Subscribe(Observable.NextFrame(), delegate
+				{
+					m_DollRoom.Avatar.CopyRampIndicesFrom(originalAvatar);
+				}).AddTo(m_DollRoom);
+			}
+		}
+	}
+
 	private BaseUnitEntity m_Unit;
 
 	private UnitViewHandsEquipment m_AvatarHands;
@@ -43,13 +125,11 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 	[SerializeField]
 	protected GameObject m_PlatformPrefab;
 
-	private Character m_OriginalAvatar;
-
-	protected Character m_Avatar;
-
 	private UnitEntityView m_SimpleAvatar;
 
 	private GameObject m_SnowDecal;
+
+	private GameObject m_AppearFxInstance;
 
 	private readonly List<Renderer> m_TempRenderers = new List<Renderer>();
 
@@ -61,24 +141,28 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 
 	protected GameObject m_PlatformInstance;
 
+	private UnitEquipmentSync m_EquipmentSync;
+
+	private DollRoomAvatarManager<BaseUnitEntity> m_AvatarManager;
+
+	protected Character m_OriginalAvatar;
+
 	public BaseUnitEntity Unit => m_Unit;
 
-	public IEntity GetSubscribingEntity()
-	{
-		return m_Unit;
-	}
+	private Character Avatar => m_AvatarManager?.Active;
 
 	public override void Show()
 	{
 		base.Show();
 		SetupDollPostProcessAndAnimation(isCharGen: false);
-		UISounds.Instance.Sounds.Character.CharacterDollAnimationShow.Play();
+		ServiceWindowsSounds.Instance.Character.DollAnimationShow.Play();
 		if ((bool)m_PlatformPrefab && m_PlatformInstance == null)
 		{
 			m_PlatformInstance = Object.Instantiate(m_PlatformPrefab, m_TargetPlaceholder.transform);
 			m_PlatformInstance.transform.localPosition = Vector3.zero;
 			m_PlatformInstance.transform.rotation = Quaternion.identity;
 		}
+		PlayAppearEffect();
 	}
 
 	public override void Hide()
@@ -104,52 +188,75 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 		PFLog.UI.Log("SetupInfo");
 		Cleanup();
 		m_Unit = player;
-		EventBus.Unsubscribe(this);
-		EventBus.Subscribe(this);
-		m_OriginalAvatar = player.View.Or(null)?.CharacterAvatar;
+		if (m_EquipmentSync == null)
+		{
+			m_EquipmentSync = new UnitEquipmentSync(this);
+		}
+		m_EquipmentSync.Unsubscribe();
+		m_EquipmentSync.Subscribe();
+		m_OriginalAvatar = player.View?.CharacterAvatar;
 		if (m_OriginalAvatar == null)
 		{
 			CreateSimpleAvatar(player);
-			SetupAnimationManager(m_SimpleAvatar.GetComponentInChildren<UnitAnimationManager>());
+			UnitAnimationManager componentInChildren = m_SimpleAvatar.GetComponentInChildren<UnitAnimationManager>();
+			if ((bool)componentInChildren)
+			{
+				SetupAnimationManagerStandalone(componentInChildren);
+			}
+			PlayAppearEffect();
 			return;
 		}
-		Character character = CreateAvatar(m_OriginalAvatar, m_Unit.ToString());
-		SetAvatar(character);
-		IKController iKController = m_Avatar.gameObject.AddComponent<IKController>();
-		iKController.IsDollRoom = true;
-		iKController.CharacterSystem = m_Avatar;
-		if ((bool)m_OriginalAvatar.GetComponent<UnitEntityView>())
+		if (m_AvatarManager == null)
 		{
-			iKController.CharacterUnitEntity = m_OriginalAvatar.GetComponent<UnitEntityView>();
+			m_AvatarManager = new DollRoomAvatarManager<BaseUnitEntity>(m_TargetPlaceholder, OnCharacterAvatarUpdated);
 		}
-		SetupAnimationManager(character.AnimationManager);
-		HashSet<UnitAnimationManager> mechsAnimationManagers = character.MechsAnimationManagers;
-		if (mechsAnimationManagers != null && mechsAnimationManagers.Count > 0)
+		bool hasBallisticMechadendrite = m_Unit.HasMechadendriteOfType(MechadendritesType.Ballistic);
+		m_AvatarManager.GetOrCreate(player, m_OriginalAvatar, m_Unit.ToString(), delegate(Character avatar)
 		{
-			foreach (UnitAnimationManager mechsAnimationManager in character.MechsAnimationManagers)
+			IKController iKController = avatar.gameObject.AddComponent<IKController>();
+			iKController.IsDollRoom = true;
+			iKController.CharacterSystem = avatar;
+			if ((bool)m_OriginalAvatar.GetComponent<UnitEntityView>())
 			{
-				if (mechsAnimationManager != null)
+				iKController.CharacterUnitEntity = m_OriginalAvatar.GetComponent<UnitEntityView>();
+			}
+			m_AvatarManager.SetupAnimationManager(avatar.AnimationManager, hasBallisticMechadendrite);
+			HashSet<UnitAnimationManager> mechsAnimationManagers = avatar.MechsAnimationManagers;
+			if (mechsAnimationManagers != null && mechsAnimationManagers.Count > 0)
+			{
+				foreach (UnitAnimationManager mechsAnimationManager in avatar.MechsAnimationManagers)
 				{
-					SetupAnimationManager(mechsAnimationManager);
+					if (mechsAnimationManager != null)
+					{
+						m_AvatarManager.SetupAnimationManager(mechsAnimationManager);
+					}
 				}
 			}
+		});
+		m_AvatarManager.SetActive(player);
+		if ((bool)m_Camera)
+		{
+			Character avatar2 = Avatar;
+			string text = avatar2.Skeleton?.DollRoomZoomPreset.TargetBoneName ?? "Head";
+			Transform targetTransform = avatar2.transform.FindChildRecursive(text);
+			m_Camera.LookAt(targetTransform, avatar2.Skeleton?.DollRoomZoomPreset);
 		}
+		m_AvatarHands?.Dispose();
+		m_AvatarHands = null;
+		m_Mechadendrites = null;
+		UpdateCharacter();
 		m_Camera.SetCameraFovAndYpos(m_Unit);
+		PlayAppearEffect();
 	}
 
 	protected override void Cleanup()
 	{
 		m_TargetPlaceholder.rotation = Quaternion.identity;
 		BaseUnitEntity unit = m_Unit;
-		if ((bool)m_Avatar)
+		if (Avatar != null)
 		{
-			Character[] componentsInChildren = m_TargetPlaceholder.GetComponentsInChildren<Character>(includeInactive: true);
-			foreach (Character obj in componentsInChildren)
-			{
-				obj.OnUpdated -= OnCharacterUpdated;
-				Object.Destroy(obj.gameObject);
-			}
-			m_Avatar = null;
+			m_AvatarManager?.Cleanup();
+			m_AvatarManager = null;
 			m_AvatarHands?.Dispose();
 			m_AvatarHands = null;
 			m_Mechadendrites = null;
@@ -164,12 +271,13 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 			Object.Destroy(m_SimpleAvatar.gameObject);
 			m_SimpleAvatar = null;
 		}
+		m_EquipmentSync?.Unsubscribe();
 		base.Cleanup();
 	}
 
 	private void UpdateAvatarRenderers()
 	{
-		GameObject gameObject = (m_Avatar ? m_Avatar.gameObject : m_SimpleAvatar.gameObject);
+		GameObject gameObject = (Avatar ? Avatar.gameObject : (m_SimpleAvatar ? m_SimpleAvatar.gameObject : null));
 		if (!gameObject)
 		{
 			return;
@@ -180,6 +288,21 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 			tempRenderer.gameObject.layer = 15;
 		}
 		UnscaleFxTimes(gameObject);
+		RefreshAppearEffectForLateRenderers(gameObject);
+	}
+
+	private void RefreshAppearEffectForLateRenderers(GameObject avatarGO)
+	{
+		if (!(m_AppearFxInstance == null))
+		{
+			StandardMaterialController[] componentsInChildren = avatarGO.GetComponentsInChildren<StandardMaterialController>(includeInactive: true);
+			foreach (StandardMaterialController obj in componentsInChildren)
+			{
+				obj.UpdateRenderers();
+				obj.DissolveController.InvalidateCache();
+				obj.DoUpdate();
+			}
+		}
 	}
 
 	private void UnscaleFxTimes(GameObject obj)
@@ -228,7 +351,7 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 
 	private void CreateSimpleAvatar(BaseUnitEntity player)
 	{
-		m_SimpleAvatar = Object.Instantiate(player.View, m_TargetPlaceholder, worldPositionStays: false);
+		m_SimpleAvatar = Object.Instantiate(player.View.AsUnitEntityView(), m_TargetPlaceholder, worldPositionStays: false);
 		Transform viewTransform = m_SimpleAvatar.ViewTransform;
 		viewTransform.localPosition = Vector3.zero;
 		viewTransform.localRotation = Quaternion.identity;
@@ -263,17 +386,6 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 		}
 	}
 
-	protected void SetupAnimationManager(UnitAnimationManager animationManager)
-	{
-		if ((bool)animationManager)
-		{
-			animationManager.UpdateMode = DirectorUpdateMode.UnscaledGameTime;
-			animationManager.IsInCombat = true;
-			animationManager.UpdateActiveWeaponStyle();
-			animationManager.Tick(RealTimeController.SystemStepDurationSeconds);
-		}
-	}
-
 	private static Bounds SumBounds(Bounds b1, Bounds b2)
 	{
 		b1.Encapsulate(b2.min);
@@ -281,60 +393,10 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 		return b1;
 	}
 
-	[NotNull]
-	protected Character CreateAvatar(Character originalAvatar, string dollName)
+	protected virtual void OnCharacterAvatarUpdated(Character character)
 	{
-		Character character = new GameObject("Doll [" + dollName + "]").EnsureComponent<Character>();
-		character.GenderAndRace = originalAvatar.GenderAndRace;
-		character.CopyEquipmentFrom(originalAvatar);
-		character.transform.localScale = originalAvatar.transform.localScale;
-		character.DisplayOptions.IsInDollRoom = true;
-		character.ForbidBeltItemVisualization = originalAvatar.ForbidBeltItemVisualization;
-		character.AnimatorPrefab = originalAvatar.AnimatorPrefab;
-		character.Skeleton = originalAvatar.Skeleton;
-		character.AnimationSet = originalAvatar.AnimationSet;
-		character.OnUpdated += OnCharacterUpdated;
-		character.AtlasData = originalAvatar.AtlasData;
-		character.Initialize();
-		character.Animator.gameObject.AddComponent<UnitAnimationCallbackReceiver>();
-		character.Animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-		character.transform.SetParent(m_TargetPlaceholder, worldPositionStays: false);
-		character.transform.localRotation = Quaternion.Euler(0f, -25f, 0f);
-		return character;
-	}
-
-	protected void SetAvatar(Character avatar, bool activateAvatar = true)
-	{
-		if (!(m_Avatar == avatar) || !avatar.gameObject.activeSelf)
-		{
-			if (m_Avatar != null)
-			{
-				m_Avatar.gameObject.SetActive(value: false);
-			}
-			m_Avatar = avatar;
-			m_Avatar.gameObject.SetActive(activateAvatar);
-			if ((bool)m_Camera)
-			{
-				string text = avatar.Skeleton?.DollRoomZoomPreset.TargetBoneName ?? "Head";
-				Transform targetTransform = avatar.transform.FindChildRecursive(text);
-				m_Camera.LookAt(targetTransform, m_Avatar.Skeleton.DollRoomZoomPreset);
-			}
-			m_AvatarHands?.Dispose();
-			m_AvatarHands = null;
-			m_Mechadendrites = null;
-			UpdateCharacter();
-		}
-	}
-
-	private void OnCharacterUpdated(Character character)
-	{
-		Renderer[] componentsInChildren = character.GetComponentsInChildren<Renderer>();
-		for (int i = 0; i < componentsInChildren.Length; i++)
-		{
-			componentsInChildren[i].gameObject.layer = 15;
-		}
 		character.GetComponentsInChildren(m_TempRenderers);
-		if (character == m_Avatar)
+		if (character == Avatar)
 		{
 			UpdateCharacter();
 		}
@@ -342,10 +404,11 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 
 	private void UpdateCharacter()
 	{
-		m_Avatar.UpdateSkeleton();
+		Character avatar = Avatar;
+		avatar.UpdateSkeleton();
 		if (m_Mechadendrites == null && m_Unit != null)
 		{
-			m_Mechadendrites = new UnitViewMechadendritesEquipment(m_Unit.View, m_Avatar);
+			m_Mechadendrites = new UnitViewMechadendritesEquipment(m_Unit.View.AsUnitEntityView(), avatar);
 			m_Mechadendrites.UpdateAll();
 		}
 		if (m_AvatarHands?.Owner == null)
@@ -354,17 +417,57 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 			m_AvatarHands = null;
 			if (m_Unit != null && m_Unit.View != null)
 			{
-				m_AvatarHands = new UnitViewHandsEquipment(m_Unit.View, m_Avatar);
+				m_AvatarHands = new UnitViewHandsEquipment(m_Unit.View.AsUnitEntityView(), avatar);
 				m_AvatarHands.OnModelSpawned += UpdateAvatarRenderers;
 				m_AvatarHands.UpdateAll();
 			}
 		}
-		Animator[] componentsInChildren = m_Avatar.GetComponentsInChildren<Animator>();
+		Animator[] componentsInChildren = avatar.GetComponentsInChildren<Animator>();
 		for (int i = 0; i < componentsInChildren.Length; i++)
 		{
 			componentsInChildren[i].updateMode = AnimatorUpdateMode.UnscaledTime;
 		}
 		UpdateAvatarRenderers();
+	}
+
+	private void PlayAppearEffect()
+	{
+		GameObject gameObject = BlueprintCharGenRoot.Instance?.CharacterAppearEffectPrefab;
+		if (gameObject == null)
+		{
+			return;
+		}
+		GameObject gameObject2 = ((Avatar != null) ? Avatar.gameObject : ((m_SimpleAvatar != null && m_SimpleAvatar.CharacterAvatar != null) ? m_SimpleAvatar.CharacterAvatar.gameObject : null));
+		if (gameObject2 == null)
+		{
+			return;
+		}
+		StandardMaterialController[] componentsInChildren = gameObject2.GetComponentsInChildren<StandardMaterialController>(includeInactive: true);
+		if (componentsInChildren.Length == 0)
+		{
+			return;
+		}
+		m_AppearFxInstance = Object.Instantiate(gameObject, gameObject2.transform, worldPositionStays: false);
+		DissolveSetup[] componentsInChildren2 = m_AppearFxInstance.GetComponentsInChildren<DissolveSetup>(includeInactive: true);
+		if (componentsInChildren2.Length == 0)
+		{
+			return;
+		}
+		DissolveSetup[] array = componentsInChildren2;
+		for (int i = 0; i < array.Length; i++)
+		{
+			array[i].Settings.UseUnscaledTime = true;
+		}
+		StandardMaterialController[] array2 = componentsInChildren;
+		foreach (StandardMaterialController standardMaterialController in array2)
+		{
+			standardMaterialController.UpdateRenderers();
+			array = componentsInChildren2;
+			foreach (DissolveSetup dissolveSetup in array)
+			{
+				standardMaterialController.DissolveController.Animations.Add(dissolveSetup.Settings);
+			}
+		}
 	}
 
 	[UsedImplicitly]
@@ -382,7 +485,8 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 			TempHashSet.Release();
 		}
 		UpdateInternal();
-		if (!m_OriginalAvatar || !m_Avatar)
+		Character avatar = Avatar;
+		if (!m_OriginalAvatar || avatar == null)
 		{
 			if ((bool)m_SimpleAvatar)
 			{
@@ -396,97 +500,62 @@ public class CharacterDollRoom : DollRoomBase, IUnitEquipmentHandler<EntitySubsc
 		}
 		if ((bool)m_PlatformInstance)
 		{
-			m_PlatformInstance.transform.rotation = m_Avatar.transform.rotation;
+			m_PlatformInstance.transform.rotation = avatar.transform.rotation;
 		}
-		if (m_Avatar.MechsAnimationManagers.Count > 0)
+		if (avatar.AnimationManager.HasBallisticMechadendrite)
 		{
-			BlueprintItem obj = m_AvatarHands.GetSelectedWeaponSet().MainHand.VisibleItem?.Blueprint;
-			BlueprintItem blueprintItem = m_AvatarHands.GetSelectedWeaponSet().OffHand.VisibleItem?.Blueprint;
-			WeaponType activeMainHandWeaponType = ((obj is BlueprintItemWeapon { IsMelee: not false }) ? m_AvatarHands.ActiveMainHandWeaponType : WeaponType.Fist);
-			WeaponType activeOffHandWeaponType = ((blueprintItem is BlueprintItemWeapon { IsMelee: not false }) ? m_AvatarHands.ActiveOffHandWeaponType : WeaponType.Fist);
-			WeaponType activeMainHandWeaponType2 = ((obj is BlueprintItemWeapon { IsMelee: false }) ? m_AvatarHands.ActiveMainHandWeaponType : WeaponType.Fist);
-			WeaponType activeOffHandWeaponType2 = ((blueprintItem is BlueprintItemWeapon { IsMelee: false }) ? m_AvatarHands.ActiveOffHandWeaponType : WeaponType.Fist);
-			m_Avatar.AnimationManager.ActiveMainHandWeaponType = activeMainHandWeaponType;
-			m_Avatar.AnimationManager.ActiveOffHandWeaponType = activeOffHandWeaponType;
-			m_Avatar.AnimationManager.Tick(Time.deltaTime);
-			foreach (UnitAnimationManager mechsAnimationManager in m_Avatar.MechsAnimationManagers)
+			if (m_AvatarHands != null)
 			{
-				mechsAnimationManager.ActiveMainHandWeaponType = activeMainHandWeaponType2;
-				mechsAnimationManager.ActiveOffHandWeaponType = activeOffHandWeaponType2;
-				mechsAnimationManager.Tick(Time.deltaTime);
+				BlueprintItem obj = m_AvatarHands.GetSelectedWeaponSet().MainHand.VisibleItem?.Blueprint;
+				BlueprintItem blueprintItem = m_AvatarHands.GetSelectedWeaponSet().OffHand.VisibleItem?.Blueprint;
+				WeaponType activeMainHandWeaponType = ((obj is BlueprintItemWeapon { IsMelee: not false }) ? m_AvatarHands.ActiveMainHandWeaponType : WeaponType.Fist);
+				WeaponType activeOffHandWeaponType = ((blueprintItem is BlueprintItemWeapon { IsMelee: not false }) ? m_AvatarHands.ActiveOffHandWeaponType : WeaponType.Fist);
+				WeaponType activeMainHandWeaponType2 = ((obj is BlueprintItemWeapon { IsMelee: false }) ? m_AvatarHands.ActiveMainHandWeaponType : ((blueprintItem is BlueprintItemWeapon { IsMelee: false }) ? m_AvatarHands.ActiveOffHandWeaponType : WeaponType.Fist));
+				avatar.AnimationManager.ActiveMainHandWeaponType = activeMainHandWeaponType;
+				avatar.AnimationManager.ActiveOffHandWeaponType = activeOffHandWeaponType;
+				avatar.AnimationManager.Tick(Time.deltaTime);
+				foreach (UnitAnimationManager mechsAnimationManager in avatar.MechsAnimationManagers)
+				{
+					mechsAnimationManager.ActiveMainHandWeaponType = activeMainHandWeaponType2;
+					mechsAnimationManager.ActiveOffHandWeaponType = WeaponType.Fist;
+					mechsAnimationManager.Tick(Time.deltaTime);
+				}
+			}
+			else
+			{
+				avatar.AnimationManager.Tick(Time.deltaTime);
 			}
 		}
 		else
 		{
-			m_Avatar.AnimationManager.ActiveMainHandWeaponType = m_AvatarHands.ActiveMainHandWeaponType;
-			m_Avatar.AnimationManager.ActiveOffHandWeaponType = m_AvatarHands.ActiveOffHandWeaponType;
-			m_Avatar.AnimationManager.Tick(Time.deltaTime);
-			foreach (UnitAnimationManager mechsAnimationManager2 in m_Avatar.MechsAnimationManagers)
+			if (m_AvatarHands != null)
 			{
-				mechsAnimationManager2.ActiveMainHandWeaponType = m_AvatarHands.ActiveMainHandWeaponType;
-				mechsAnimationManager2.ActiveOffHandWeaponType = m_AvatarHands.ActiveOffHandWeaponType;
-				mechsAnimationManager2.Tick(Time.deltaTime);
+				avatar.AnimationManager.ActiveMainHandWeaponType = m_AvatarHands.ActiveMainHandWeaponType;
+				avatar.AnimationManager.ActiveOffHandWeaponType = m_AvatarHands.ActiveOffHandWeaponType;
 			}
+			avatar.AnimationManager.Tick(Time.deltaTime);
 		}
 		if (m_AvatarHands != null && !m_AvatarHands.InCombat)
 		{
 			m_AvatarHands.SetCombatVisualState(inCombat: true);
 			m_AvatarHands.MatchWithCurrentCombatState();
 		}
-		XPBD.TickByScript();
+		if (Time.timeScale == 0f)
+		{
+			XPBD.TickByScript();
+		}
 	}
 
 	protected virtual void UpdateInternal()
 	{
 	}
 
-	public void HandleEquipmentSlotUpdated(ItemSlot slot, ItemEntity previousItem)
+	private static void SetupAnimationManagerStandalone(UnitAnimationManager animationManager, bool hasBallisticMechadendrite = false)
 	{
-		if (slot.Owner != m_Unit)
-		{
-			return;
-		}
-		IEnumerable<EquipmentEntity> enumerable = m_OriginalAvatar.EquipmentEntities.Concat(m_OriginalAvatar.SavedEquipmentEntities.Select((EquipmentEntityLink ee) => ee.Load()));
-		IEnumerable<EquipmentEntity> enumerable2 = m_Avatar.EquipmentEntities.Concat(m_Avatar.SavedEquipmentEntities.Select((EquipmentEntityLink ee) => ee.Load()));
-		EquipmentEntity[] ees = enumerable2.Except(enumerable).ToArray();
-		EquipmentEntity[] ees2 = enumerable.Except(enumerable2).ToArray();
-		IEnumerable<Character.SelectedRampIndices> collection = m_OriginalAvatar.RampIndices.Except(m_Avatar.RampIndices);
-		m_Avatar.RampIndices.Clear();
-		m_Avatar.RampIndices.AddRange(collection);
-		m_Avatar.RequestRebuild(Character.CharacterRebuildMode.OnlyAtlases);
-		m_Avatar.RemoveEquipmentEntities(ees);
-		m_Avatar.AddEquipmentEntities(ees2);
-		if (slot is HandSlot slot2)
-		{
-			m_AvatarHands?.HandleEquipmentSlotUpdated(slot2, previousItem);
-		}
-		else
-		{
-			PartUnitBody bodyOptional = slot.Owner.GetBodyOptional();
-			if (bodyOptional != null && bodyOptional.QuickSlots.Contains(slot))
-			{
-				m_AvatarHands?.UpdateBeltPrefabs();
-			}
-		}
-		if ((bool)m_OriginalAvatar && m_Unit != null && !m_OriginalAvatar.gameObject.activeInHierarchy && (bool)m_Unit.View)
-		{
-			m_Unit.View.HandleEquipmentSlotUpdated(slot, previousItem);
-		}
-	}
-
-	public void HandleUnitChangeActiveEquipmentSet()
-	{
-		m_AvatarHands?.HandleEquipmentSetChanged();
-	}
-
-	public void HandleUnitChangeEquipmentColor(int rampIndex, bool secondary)
-	{
-		if (m_Unit.View.Or(null)?.CharacterAvatar != null)
-		{
-			OwlcatR3UnitExtensions.Subscribe(Observable.NextFrame(), delegate
-			{
-				m_Avatar.CopyRampIndicesFrom(m_Unit.View.CharacterAvatar);
-			}).AddTo(this);
-		}
+		animationManager.UpdateMode = DirectorUpdateMode.UnscaledGameTime;
+		animationManager.IsInCombat = true;
+		animationManager.HasBallisticMechadendrite = hasBallisticMechadendrite;
+		animationManager.UpdateActiveWeaponStyle();
+		animationManager.Tick(RealTimeController.SystemStepDurationSeconds);
 	}
 }

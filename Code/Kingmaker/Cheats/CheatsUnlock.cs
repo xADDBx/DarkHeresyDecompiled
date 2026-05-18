@@ -10,10 +10,14 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Quests;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Controllers.Dialog.Legacy;
 using Kingmaker.Designers;
 using Kingmaker.Designers.EventConditionActionSystem.Actions;
+using Kingmaker.DialogSystem;
+using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.UnitLogic.Parts;
@@ -358,6 +362,7 @@ public class CheatsUnlock
 	}
 
 	[Cheat(Name = "add_feature", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	[CheatTargetsUnit]
 	public static void AddFeature(BlueprintUnitFact blueprint)
 	{
 		if (blueprint != null)
@@ -367,6 +372,7 @@ public class CheatsUnlock
 	}
 
 	[Cheat(Name = "remove_feature", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	[CheatTargetsUnit]
 	public static void RemoveFeature(BlueprintUnitFact blueprint)
 	{
 		if (blueprint != null)
@@ -434,8 +440,8 @@ public class CheatsUnlock
 		unitPartCompanion.SetState(CompanionState.ExCompanion);
 	}
 
-	[Cheat(Name = "unrecruit_companion", ExecutionPolicy = ExecutionPolicy.PlayMode)]
-	public static void UnrecruitCompanion(BlueprintUnit unit)
+	[Cheat(Name = "detach_companion", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void DetachCompanion(BlueprintUnit unit)
 	{
 		BaseUnitEntity baseUnitEntity = Game.Instance.Player.AllCharacters.FirstOrDefault((BaseUnitEntity c) => c.Blueprint == unit);
 		UnitPartCompanion unitPartCompanion = baseUnitEntity?.GetOptional<UnitPartCompanion>();
@@ -447,6 +453,35 @@ public class CheatsUnlock
 		{
 			Game.Instance.Player.DetachPartyMember(baseUnitEntity);
 		}
+	}
+
+	[Cheat(Name = "unrecruit_companion", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void UnrecruitCompanion(BlueprintUnit unit)
+	{
+		BaseUnitEntity baseUnitEntity = Game.Instance.Player.AllCharacters.FirstOrDefault((BaseUnitEntity c) => c.Blueprint == unit);
+		UnitPartCompanion unitPartCompanion = baseUnitEntity?.GetOptional<UnitPartCompanion>();
+		if (baseUnitEntity == null || unitPartCompanion == null)
+		{
+			PFLog.SmartConsole.Log($"Cant get companion with name '{unit}'");
+		}
+		else
+		{
+			Unrecruit.UnrecruitUnit(baseUnitEntity.Blueprint, CompanionExState.InReserve, null);
+		}
+	}
+
+	[Cheat(Name = "change_party", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ChangeParty()
+	{
+		EventBus.RaiseEvent(delegate(IGroupChangerHandler h)
+		{
+			h.HandleCall(delegate
+			{
+				Game.Instance.Player.FixPartyAfterChange();
+			}, delegate
+			{
+			}, Game.Instance.LoadedAreaState.Settings.CapitalPartyMode, sameFinishActions: false, canCancel: true, allowRemoteCompanionsEverywhere: true);
+		});
 	}
 
 	private static void ListAllQuest(string parameters)
@@ -480,6 +515,80 @@ public class CheatsUnlock
 					}
 				}
 			}
+		}
+	}
+
+	[Cheat(Name = "lock_flag", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void LockFlagTyped(BlueprintUnlockableFlag flag)
+	{
+		if (flag != null)
+		{
+			Game.Instance.Player.UnlockableFlags.Lock(flag);
+		}
+	}
+
+	[Cheat(Name = "unlock_flag", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void UnlockFlagTyped(BlueprintUnlockableFlag flag, int value = 0)
+	{
+		if (flag != null)
+		{
+			Game.Instance.Player.UnlockableFlags.Unlock(flag);
+			Game.Instance.Player.UnlockableFlags.SetFlagValue(flag, value);
+		}
+	}
+
+	[Cheat(Name = "objective_give", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ObjectiveGive(BlueprintQuestObjective objective)
+	{
+		if (objective != null)
+		{
+			Game.Instance.QuestBook.GiveObjective(objective);
+		}
+	}
+
+	[Cheat(Name = "objective_fail", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ObjectiveFail(BlueprintQuestObjective objective)
+	{
+		if (objective != null)
+		{
+			Game.Instance.QuestBook.FailObjective(objective);
+		}
+	}
+
+	[Cheat(Name = "etude_start", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void EtudeStart(BlueprintEtude etude)
+	{
+		if (etude != null)
+		{
+			Game.Instance.EtudesSystem.StartEtude(etude, "cheats");
+		}
+	}
+
+	[Cheat(Name = "etude_complete", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void EtudeComplete(BlueprintEtude etude)
+	{
+		if (etude != null)
+		{
+			Game.Instance.EtudesSystem.MarkEtudeCompleted(etude, "cheat");
+		}
+	}
+
+	[Cheat(Name = "etude_uncomplete", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void EtudeUncomplete(BlueprintEtude etude)
+	{
+		if (etude != null)
+		{
+			Game.Instance.EtudesSystem.UnstartEtude(etude);
+		}
+	}
+
+	[Cheat(Name = "dialog_force", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void DialogForce(BlueprintDialog dialog)
+	{
+		if (dialog != null)
+		{
+			DialogData data = DialogController.SetupDialogWithoutTarget(dialog, null, GameHelper.GetPlayerCharacter());
+			Game.Instance.Controllers.DialogController.StartDialog(data);
 		}
 	}
 }

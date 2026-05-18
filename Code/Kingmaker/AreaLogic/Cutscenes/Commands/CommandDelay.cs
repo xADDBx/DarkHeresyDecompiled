@@ -22,14 +22,21 @@ public class CommandDelay : CommandBase
 
 	public bool Random;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		player.GetCommandData<Data>(this).Time = (skipping ? 0.0001f : (Random ? player.Random.Range(Time, MaxTime) : Time));
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		player.GetCommandData<Data>(this).Finished = true;
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -37,16 +44,17 @@ public class CommandDelay : CommandBase
 		return player.GetCommandData<Data>(this).Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Finished = time >= (double)commandData.Time;
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		player.GetCommandData<Data>(this).Finished = true;
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

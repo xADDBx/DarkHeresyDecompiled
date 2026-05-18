@@ -41,10 +41,15 @@ public class OvertipUnitNameView : View<OvertipNameBlockVM>
 
 	private void SetName(string value)
 	{
-		((RectTransform)m_NameText.transform).sizeDelta = new Vector2(1000f, ((RectTransform)m_NameText.transform).sizeDelta.y);
+		RectTransform rectTransform = (RectTransform)m_NameText.transform;
+		rectTransform.sizeDelta = new Vector2(1000f, rectTransform.sizeDelta.y);
 		m_NameText.text = value;
 		m_NameText.ForceMeshUpdate(ignoreActiveState: true, forceTextReparsing: true);
-		((RectTransform)m_NameText.transform).sizeDelta = new Vector2(m_NameText.renderedWidth, ((RectTransform)m_NameText.transform).sizeDelta.y);
+		if (string.IsNullOrEmpty(value))
+		{
+			return;
+		}
+		rectTransform.sizeDelta = new Vector2(m_NameText.renderedWidth, rectTransform.sizeDelta.y);
 		foreach (RectTransform containers in m_ContainersList)
 		{
 			containers.sizeDelta = new Vector2(m_NameText.renderedWidth, containers.sizeDelta.y);

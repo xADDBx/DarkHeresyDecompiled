@@ -17,12 +17,15 @@ public class TextureSelectorItemVM : SelectionGroupEntityVM
 
 	public ReadOnlyReactiveProperty<Texture2D> Texture => m_Texture;
 
-	public TextureSelectorItemVM(Texture2D value, Action onSelect, int number, bool allowSwitchOff = false, Action onUnselect = null)
+	public bool IsEmpty { get; private set; }
+
+	public TextureSelectorItemVM(Texture2D value, Action onSelect, int number, bool allowSwitchOff = false, Action onUnselect = null, bool isEmpty = false)
 		: base(allowSwitchOff)
 	{
 		m_Texture.Value = value;
 		m_OnSelect = onSelect;
 		Number = number;
+		IsEmpty = isEmpty;
 		if (onUnselect == null)
 		{
 			return;
@@ -36,10 +39,11 @@ public class TextureSelectorItemVM : SelectionGroupEntityVM
 		}));
 	}
 
-	public void UpdateTextureAndSetter(Texture2D value, Action setter)
+	public void UpdateTextureAndSetter(Texture2D value, Action setter, bool isEmpty = false)
 	{
 		m_Texture.Value = value;
 		m_OnSelect = setter;
+		IsEmpty = isEmpty;
 	}
 
 	protected override void DoSelectMe()

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class TextureSelectorCommonView : BaseCharGenAppearancePageComponentView<TextureSelectorVM>, IConsoleEntityProxy, IConsoleEntity
+public class TextureSelectorCommonView : BaseCharGenAppearancePageComponentView<TextureSelectorVM>
 {
 	[SerializeField]
 	private TextureSelectorGroupView m_GroupView;
@@ -15,8 +15,6 @@ public class TextureSelectorCommonView : BaseCharGenAppearancePageComponentView<
 
 	public override VirtualListLayoutElementSettings LayoutSettings => m_LayoutSettings;
 
-	public IConsoleEntity ConsoleEntityProxy => m_GroupView;
-
 	public void Initialize()
 	{
 		Hide();
@@ -24,6 +22,11 @@ public class TextureSelectorCommonView : BaseCharGenAppearancePageComponentView<
 
 	protected override void BindViewImplementation()
 	{
+		if (base.ViewModel == null)
+		{
+			OnAvailableStateChange(state: false);
+			return;
+		}
 		m_GroupView.Bind(base.ViewModel.SelectionGroup);
 		AddDisposable(base.ViewModel.Title.Subscribe(m_GroupView.SetTitleText));
 		AddDisposable(base.ViewModel.Description.Subscribe(m_GroupView.SetDescriptionText));
@@ -37,12 +40,6 @@ public class TextureSelectorCommonView : BaseCharGenAppearancePageComponentView<
 		base.DestroyViewImplementation();
 		m_GroupView.Unbind();
 		Hide();
-	}
-
-	public override void SetFocus(bool value)
-	{
-		base.SetFocus(value);
-		m_GroupView.SetFocus(value);
 	}
 
 	protected virtual void OnAvailableStateChange(bool state)

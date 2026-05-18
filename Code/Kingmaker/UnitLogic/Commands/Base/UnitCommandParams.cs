@@ -1,5 +1,6 @@
 using System;
 using Code.Visual.Animation;
+using CodeGenerators.MemoryPackUnionGenerator;
 using JetBrains.Annotations;
 using Kingmaker.Designers.EventConditionActionSystem.NamedParameters;
 using Kingmaker.ElementsSystem.ContextData;
@@ -12,6 +13,7 @@ using Kingmaker.Pathfinding;
 using Kingmaker.UnitLogic.Groups;
 using Kingmaker.Utility;
 using Kingmaker.View.Covers;
+using MemoryPack;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using Pathfinding;
@@ -20,6 +22,8 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Commands.Base;
 
 [OwlPackable(OwlPackableMode.Generate)]
+[MemoryPackable(GenerateType.NoGenerate)]
+[MemoryPackDynamicUnion]
 public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommandParams>
 {
 	public enum CommandType
@@ -40,44 +44,58 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 	[OwlPackInclude]
 	public EntityRef<BaseUnitEntity> OwnerRef;
 
+	[JsonProperty(PropertyName = "pf", DefaultValueHandling = DefaultValueHandling.Ignore)]
+	[OwlPackInclude]
+	public CommandPreprocessingFlags PreprocessingFlags;
+
 	[JsonProperty(PropertyName = "fa", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected bool? m_FreeAction;
 
 	[JsonProperty(PropertyName = "ls", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected bool? m_NeedLoS;
 
 	[JsonProperty(PropertyName = "ar", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected int? m_ApproachRadius;
 
 	[JsonProperty(PropertyName = "fp", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[CanBeNull]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected ForcedPath m_ForcedPath;
 
 	[JsonProperty(PropertyName = "mt", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected WalkSpeedType? m_MovementType;
 
 	[JsonProperty(PropertyName = "of", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected bool? m_IsOneFrameCommand;
 
 	[JsonProperty(PropertyName = "sm", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	protected bool? m_SlowMotionRequired;
 
 	[JsonProperty(PropertyName = "tr", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[CanBeNull]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public TargetWrapper Target { get; protected set; }
 
 	[JsonProperty(PropertyName = "fc", DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public bool FromCutscene { get; protected set; }
 
+	[MemoryPackIgnore]
 	public bool IsSynchronized { get; set; }
 
 	[JsonProperty(PropertyName = "is", DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -92,6 +110,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 	[OwlPackInclude]
 	public bool DoNotInterruptAfterFight { get; set; }
 
+	[MemoryPackIgnore]
 	public bool FreeAction
 	{
 		get
@@ -104,6 +123,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		}
 	}
 
+	[MemoryPackIgnore]
 	public int ApproachRadius
 	{
 		get
@@ -116,6 +136,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		}
 	}
 
+	[MemoryPackIgnore]
 	public bool NeedLoS
 	{
 		get
@@ -129,6 +150,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 	}
 
 	[CanBeNull]
+	[MemoryPackIgnore]
 	public ForcedPath ForcedPath
 	{
 		get
@@ -147,6 +169,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		}
 	}
 
+	[MemoryPackIgnore]
 	public WalkSpeedType MovementType
 	{
 		get
@@ -163,6 +186,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		}
 	}
 
+	[MemoryPackIgnore]
 	public bool IsOneFrameCommand
 	{
 		get
@@ -175,6 +199,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		}
 	}
 
+	[MemoryPackIgnore]
 	public bool SlowMotionRequired
 	{
 		get
@@ -187,18 +212,25 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		}
 	}
 
+	[MemoryPackIgnore]
 	protected virtual bool DefaultFreeAction => false;
 
+	[MemoryPackIgnore]
 	public virtual int DefaultApproachRadius => 1;
 
+	[MemoryPackIgnore]
 	protected virtual bool DefaultNeedLoS => false;
 
+	[MemoryPackIgnore]
 	protected virtual WalkSpeedType DefaultMovementType => WalkSpeedType.Run;
 
+	[MemoryPackIgnore]
 	protected virtual bool DefaultIsOneFrameCommand => false;
 
+	[MemoryPackIgnore]
 	protected virtual bool DefaultSlowMotionRequired => false;
 
+	[MemoryPackIgnore]
 	public virtual bool IsDirectionCorrect => true;
 
 	public void MarkFromCutscene()
@@ -206,6 +238,7 @@ public abstract class UnitCommandParams : IOwlPackable, IOwlPackable<UnitCommand
 		FromCutscene = true;
 	}
 
+	[MemoryPackConstructor]
 	protected UnitCommandParams()
 	{
 	}

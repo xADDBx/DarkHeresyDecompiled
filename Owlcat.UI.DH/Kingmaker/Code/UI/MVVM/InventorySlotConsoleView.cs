@@ -1,16 +1,21 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.UI.MVVM.Interfaces;
 using Kingmaker.PubSubSystem.Core;
 using Owlcat.UI;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class InventorySlotConsoleView : InventorySlotView, IConfirmClickHandler, IConsoleEntity, IConsoleNavigationEntity, IHasTooltipTemplates
+public class InventorySlotConsoleView : InventorySlotView, IConfirmClickHandler, IConsoleEntity, IConsoleNavigationEntity, IHasTooltipTemplates, IHasCompareTooltipTemplates
 {
 	[Header("Console")]
 	[SerializeField]
 	private ItemSlotConsoleView m_ItemSlotConsoleView;
+
+	public IReadOnlyList<TooltipBaseTemplate> MainTemplates => base.ViewModel.MainTooltips.CurrentValue;
+
+	public IReadOnlyList<TooltipBaseTemplate> CompareTemplates => base.ViewModel.CompareTooltips.CurrentValue;
 
 	protected override void BindViewImplementation()
 	{

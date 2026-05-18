@@ -17,7 +17,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class DisableTrapInteractionPart : InteractionPart<InteractionDisableTrapSettings>, IHashable, IOwlPackable<DisableTrapInteractionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "DisableTrapInteractionPart",
 		OldNames = null,
@@ -47,7 +47,7 @@ public class DisableTrapInteractionPart : InteractionPart<InteractionDisableTrap
 	{
 		if (base.CanInteract() && Owner.TrapActive)
 		{
-			if (!Owner.View.IsNotScriptZoneTrigger)
+			if (!Owner.Config.IsNotScriptZoneTrigger)
 			{
 				return Owner.IsAwarenessCheckPassed;
 			}
@@ -66,10 +66,10 @@ public class DisableTrapInteractionPart : InteractionPart<InteractionDisableTrap
 
 	public override bool IsEnoughCloseForInteraction(BaseUnitEntity unit, Vector3? position = null)
 	{
-		if (unit.IsInCombat && Owner.View.Settings.ScriptZoneTrigger != null)
+		if (unit.IsInCombat && Owner.Config.ScriptZone.Entity != null)
 		{
 			IEnumerable<GridNodeBase> nodesSpiralAround = GridAreaHelper.GetNodesSpiralAround((GridNodeBase)unit.CurrentNode.node, unit.SizeRect, 1);
-			foreach (IScriptZoneShape shape in Owner.View.Settings.ScriptZoneTrigger.Shapes)
+			foreach (IScriptZoneShape shape in Owner.Config.ScriptZone.Entity.Config.Shapes)
 			{
 				foreach (GridNodeBase item in nodesSpiralAround)
 				{
@@ -91,7 +91,7 @@ public class DisableTrapInteractionPart : InteractionPart<InteractionDisableTrap
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		DisableTrapInteractionPart source = new DisableTrapInteractionPart();
 		result = Unsafe.As<DisableTrapInteractionPart, TPossiblyBase>(ref source);

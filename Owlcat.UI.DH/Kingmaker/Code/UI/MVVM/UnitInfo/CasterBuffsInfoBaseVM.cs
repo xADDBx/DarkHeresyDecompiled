@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using ObservableCollections;
 using Owlcat.UI;
@@ -58,7 +58,7 @@ public abstract class CasterBuffsInfoBaseVM<TBuffInfo> : ViewModel
 		return m_Buffs.ObserveReset();
 	}
 
-	protected abstract void AddBuffIfRelevant(Buff buff, MechanicsContext context, ICollection<TBuffInfo> buffInfos);
+	protected abstract void AddBuffIfRelevant(Buff buff, IEvalContext context, ICollection<TBuffInfo> buffInfos);
 
 	protected override void OnDispose()
 	{
@@ -75,10 +75,13 @@ public abstract class CasterBuffsInfoBaseVM<TBuffInfo> : ViewModel
 			return;
 		}
 		Vector3 position = abilityData.Caster.Position;
-		AbilityExecutionContext context = abilityData.ClaimExecutionContext(target, position);
-		foreach (Buff item in buffCollection)
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(abilityData, target, null, position).Get(out ctx))
 		{
-			AddBuffIfRelevant(item, context, m_Buffs);
+			foreach (Buff item in buffCollection)
+			{
+				AddBuffIfRelevant(item, ctx, m_Buffs);
+			}
 		}
 	}
 }

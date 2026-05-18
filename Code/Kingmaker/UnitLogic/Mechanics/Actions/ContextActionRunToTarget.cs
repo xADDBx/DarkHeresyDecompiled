@@ -32,7 +32,7 @@ public class ContextActionRunToTarget : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity caster = base.Context.MaybeOwner;
+		MechanicEntity caster = base.Context.Owner;
 		MechanicEntity entity = base.Target.Entity;
 		if (caster == null || entity == null)
 		{
@@ -73,7 +73,7 @@ public class ContextActionRunToTarget : ContextAction
 		}
 		list.Sort((Vector3 a, Vector3 b) => (int)Mathf.Sign((a - caster.Position).sqrMagnitude - (b - caster.Position).sqrMagnitude));
 		caster.Position = list.FirstItem();
-		using (base.Context.SetScope(entity, null))
+		using (base.Context.PushTarget(entity))
 		{
 			ActionsOnSuccess.Run();
 		}
@@ -130,7 +130,7 @@ public class ContextActionRunToTarget : ContextAction
 
 	private OrientedPatternData GetOrientedRayPattern(Vector3 casterPos, Vector3 targetPos, int length)
 	{
-		GridNodeBase actualCastNode = AoEPatternHelper.GetActualCastNode(base.AbilityContext.Caster, casterPos, targetPos, 1, 1);
+		GridNodeBase actualCastNode = AoEPatternHelper.GetActualCastNode(base.Context.Caster, casterPos, targetPos, 1, 1);
 		return AoEPattern.Ray(length).GetOriented(actualCastNode, targetPos - casterPos);
 	}
 }

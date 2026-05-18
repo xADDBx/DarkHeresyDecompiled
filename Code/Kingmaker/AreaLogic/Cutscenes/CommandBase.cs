@@ -27,6 +27,50 @@ public abstract class CommandBase : ElementsScriptableObject, IEvaluationErrorHa
 		public string GateId;
 	}
 
+	public struct CommandResult
+	{
+		public bool IsSuccess;
+
+		public string ErrorMessage;
+
+		public bool LoudReport;
+
+		public static CommandResult Success
+		{
+			get
+			{
+				CommandResult result = default(CommandResult);
+				result.IsSuccess = true;
+				return result;
+			}
+		}
+
+		public static CommandResult Fail(string message)
+		{
+			CommandResult result = default(CommandResult);
+			result.IsSuccess = false;
+			result.ErrorMessage = message;
+			return result;
+		}
+
+		public static CommandResult FailWithReport(string message)
+		{
+			CommandResult result = default(CommandResult);
+			result.IsSuccess = false;
+			result.ErrorMessage = message;
+			result.LoudReport = true;
+			return result;
+		}
+
+		public static CommandResult FromException(Exception e)
+		{
+			CommandResult result = default(CommandResult);
+			result.IsSuccess = false;
+			result.ErrorMessage = e.Message;
+			return result;
+		}
+	}
+
 	protected const int TakingToLongDefaultSeconds = 20;
 
 	public ConditionsChecker EntryCondition;
@@ -58,11 +102,17 @@ public abstract class CommandBase : ElementsScriptableObject, IEvaluationErrorHa
 
 	public virtual bool IsContinuous => false;
 
-	protected abstract void OnRun(CutscenePlayerData player, bool skipping);
+	public virtual bool ShouldHaveControlledUnit => false;
 
-	protected abstract void OnSetTime(double time, CutscenePlayerData player);
+	protected abstract CommandResult OnRun(CutscenePlayerData player, bool skipping);
 
-	protected abstract void OnSkip(CutscenePlayerData player);
+	protected abstract CommandResult OnSetTime(double time, CutscenePlayerData player);
+
+	protected abstract CommandResult OnSkip(CutscenePlayerData player);
+
+	protected abstract CommandResult OnStop(CutscenePlayerData player);
+
+	public abstract CommandResult Interrupt(CutscenePlayerData player);
 
 	public abstract bool IsFinished(CutscenePlayerData player);
 
@@ -81,6 +131,7 @@ public abstract class CommandBase : ElementsScriptableObject, IEvaluationErrorHa
 		return null;
 	}
 
+	[CanBeNull]
 	public virtual string GetWarning()
 	{
 		return null;
@@ -89,10 +140,6 @@ public abstract class CommandBase : ElementsScriptableObject, IEvaluationErrorHa
 	public virtual bool TrySkip(CutscenePlayerData player)
 	{
 		return !IsContinuous;
-	}
-
-	protected virtual void OnStop(CutscenePlayerData player)
-	{
 	}
 
 	protected virtual bool StopPlaySignalIsReady(CutscenePlayerData player)
@@ -106,70 +153,36 @@ public abstract class CommandBase : ElementsScriptableObject, IEvaluationErrorHa
 		return null;
 	}
 
-	public void Run(CutscenePlayerData player, bool skipping = false)
+	public CommandResult Run(CutscenePlayerData player, bool skipping = false)
 	{
 		using (player.GetDataScope())
 		{
-			try
-			{
-				OnRun(player, skipping);
-			}
-			catch (Exception e)
-			{
-				OnRunException();
-				throw new FailedToRunCutsceneCommandException(player, this, e);
-			}
+			return OnRun(player, skipping);
 		}
 	}
 
-	public void Skip(CutscenePlayerData player)
+	public CommandResult Skip(CutscenePlayerData player)
 	{
 		using (player.GetDataScope())
 		{
-			try
-			{
-				OnSkip(player);
-			}
-			catch (Exception e)
-			{
-				OnRunException();
-				throw new FailedToSkipCutsceneCommandException(player, this, e);
-			}
+			return OnSkip(player);
 		}
 	}
 
-	public void SetTime(double time, CutscenePlayerData player)
+	public CommandResult SetTime(double time, CutscenePlayerData player)
 	{
 		using (player.GetDataScope())
 		{
-			try
-			{
-				OnSetTime(time, player);
-			}
-			catch (Exception e)
-			{
-				throw new FailedToTickCutsceneCommandException(player, this, e);
-			}
+			return OnSetTime(time, player);
 		}
 	}
 
-	public void Stop(CutscenePlayerData player)
+	public CommandResult Stop(CutscenePlayerData player)
 	{
 		using (player.GetDataScope())
 		{
-			try
-			{
-				OnStop(player);
-			}
-			catch (Exception e)
-			{
-				throw new FailedToStopCutsceneCommandException(player, this, e);
-			}
+			return OnStop(player);
 		}
-	}
-
-	public virtual void Interrupt(CutscenePlayerData player)
-	{
 	}
 
 	public virtual bool TryPrepareForStop(CutscenePlayerData player)
@@ -179,9 +192,5 @@ public abstract class CommandBase : ElementsScriptableObject, IEvaluationErrorHa
 			return false;
 		}
 		return StopPlaySignalIsReady(player);
-	}
-
-	protected virtual void OnRunException()
-	{
 	}
 }

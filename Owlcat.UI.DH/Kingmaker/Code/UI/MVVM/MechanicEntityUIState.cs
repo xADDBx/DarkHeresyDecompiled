@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using JetBrains.Annotations;
@@ -6,23 +7,21 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.Gameplay.Parts;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.Clicks.Handlers;
 using Kingmaker.Controllers.TurnBased;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.Enums;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Features.Channeling;
 using Kingmaker.Gameplay.Features.Morale;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -46,13 +45,17 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, ISubscriber, IDestructibleHoverUIHandler<EntitySubscriber>, IDestructibleHoverUIHandler, ISubscriber<IMechanicEntity>, IEntitySubscriber, IEventTag<IDestructibleHoverUIHandler, EntitySubscriber>, IUnitNameHandler, ISubscriber<IBaseUnitEntity>, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, ITurnStartHandler, IInterruptTurnStartHandler, IPreparationTurnBeginHandler, IPreparationTurnEndHandler, ICellAbilityHandler<EntitySubscriber>, ICellAbilityHandler, IEventTag<ICellAbilityHandler, EntitySubscriber>, IAbilityTargetSelectionUIHandler, IAbilityTargetHoverUIHandler, IPartyCombatHandler, IInteractionHighlightUIHandler, IUnitInfoVisibilityUIHandler, IInteractionObjectUIHandler, ISubscriber<IMapObjectEntity>, IUnitLifeStateChanged<EntitySubscriber>, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IEventTag<IUnitLifeStateChanged, EntitySubscriber>, IUnitFeaturesHandler<EntitySubscriber>, IUnitFeaturesHandler, IEventTag<IUnitFeaturesHandler, EntitySubscriber>, IGameModeHandler, IUnitFactionHandler, IUnitChangeAttackFactionsHandler, IUnitCommandStartHandler<EntitySubscriber>, IUnitCommandStartHandler, IEventTag<IUnitCommandStartHandler, EntitySubscriber>, IUnitCommandEndHandler, IUnitCommandActHandler<EntitySubscriber>, IUnitCommandActHandler, IEventTag<IUnitCommandActHandler, EntitySubscriber>, INetRoleSetHandler, INetStopPlayingHandler, INetPingEntity, ILootDroppedAsAttachedHandler<EntitySubscriber>, ILootDroppedAsAttachedHandler, IEventTag<ILootDroppedAsAttachedHandler, EntitySubscriber>, IDestructibleEntityHandler, IEntityGainFactHandler<EntitySubscriber>, IEntityGainFactHandler, IEventTag<IEntityGainFactHandler, EntitySubscriber>, IEntityLostFactHandler<EntitySubscriber>, IEntityLostFactHandler, IEventTag<IEntityLostFactHandler, EntitySubscriber>, IMoralePhaseHandler<EntitySubscriber>, IMoralePhaseHandler, IEventTag<IMoralePhaseHandler, EntitySubscriber>, IMoraleValueHandler<EntitySubscriber>, IMoraleValueHandler, IEventTag<IMoraleValueHandler, EntitySubscriber>, IGlobalRulebookHandler<RulePerformMoraleChange>, IRulebookHandler<RulePerformMoraleChange>, IGlobalRulebookSubscriber, IVirtualPositionUIHandler, IUnitCombatHandler
+public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, ISubscriber, IDestructibleHoverUIHandler<EntitySubscriber>, IDestructibleHoverUIHandler, ISubscriber<IMechanicEntity>, IEntitySubscriber, IEventTag<IDestructibleHoverUIHandler, EntitySubscriber>, IUnitNameHandler, ISubscriber<IBaseUnitEntity>, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, ITurnStartHandler<EntitySubscriber>, ITurnStartHandler, IEventTag<ITurnStartHandler, EntitySubscriber>, ITurnEndHandler<EntitySubscriber>, ITurnEndHandler, IEventTag<ITurnEndHandler, EntitySubscriber>, IInterruptTurnStartHandler<EntitySubscriber>, IInterruptTurnStartHandler, IEventTag<IInterruptTurnStartHandler, EntitySubscriber>, IInterruptTurnEndHandler<EntitySubscriber>, IInterruptTurnEndHandler, IEventTag<IInterruptTurnEndHandler, EntitySubscriber>, IPreparationTurnBeginHandler, IPreparationTurnEndHandler, ICellAbilityHandler<EntitySubscriber>, ICellAbilityHandler, IEventTag<ICellAbilityHandler, EntitySubscriber>, IAbilityTargetSelectionUIHandler, IAbilityTargetHoverUIHandler, IPartyCombatHandler, IInteractionHighlightUIHandler, IUnitInfoVisibilityUIHandler, IInteractionObjectUIHandler, ISubscriber<IMapObjectEntity>, IUnitLifeStateChanged<EntitySubscriber>, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IEventTag<IUnitLifeStateChanged, EntitySubscriber>, IUnitFeaturesHandler<EntitySubscriber>, IUnitFeaturesHandler, IEventTag<IUnitFeaturesHandler, EntitySubscriber>, IGameModeHandler, IUnitFactionHandler, IUnitChangeAttackFactionsHandler, IUnitCommandStartHandler<EntitySubscriber>, IUnitCommandStartHandler, IEventTag<IUnitCommandStartHandler, EntitySubscriber>, IUnitCommandEndHandler, IUnitCommandActHandler<EntitySubscriber>, IUnitCommandActHandler, IEventTag<IUnitCommandActHandler, EntitySubscriber>, INetRoleSetHandler, INetStopPlayingHandler, INetPingEntity, ILootDroppedAsAttachedHandler<EntitySubscriber>, ILootDroppedAsAttachedHandler, IEventTag<ILootDroppedAsAttachedHandler, EntitySubscriber>, IDestructibleEntityHandler, IEntityGainFactHandler<EntitySubscriber>, IEntityGainFactHandler, IEventTag<IEntityGainFactHandler, EntitySubscriber>, IEntityLostFactHandler<EntitySubscriber>, IEntityLostFactHandler, IEventTag<IEntityLostFactHandler, EntitySubscriber>, IMoralePhaseHandler<EntitySubscriber>, IMoralePhaseHandler, IEventTag<IMoralePhaseHandler, EntitySubscriber>, IMoraleValueHandler<EntitySubscriber>, IMoraleValueHandler, IEventTag<IMoraleValueHandler, EntitySubscriber>, IGlobalRulebookHandler<RulePerformMoraleChange>, IRulebookHandler<RulePerformMoraleChange>, IGlobalRulebookSubscriber, IVirtualPositionUIHandler, IUnitCombatHandler
 {
 	private Tween m_PingTween;
 
 	private bool m_UnitBoneScanned;
 
 	private Transform m_Bone;
+
+	private Action m_UpdateMoralePredictionAction;
+
+	private Action m_UpdatePropertiesAction;
 
 	private static readonly AbilityPatternCache m_AbilityPatternCache = new AbilityPatternCache();
 
@@ -94,23 +97,17 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	private readonly ReactiveProperty<bool> m_ForceHotKeyPressed = new ReactiveProperty<bool>(value: false);
 
-	private readonly ReactiveProperty<bool> m_UnitInfoVisible = new ReactiveProperty<bool>(value: false);
-
 	private readonly ReactiveProperty<bool> m_NeedConsoleHint = new ReactiveProperty<bool>(value: false);
 
 	private readonly ReactiveProperty<bool> m_IsTarget = new ReactiveProperty<bool>(value: false);
 
-	private readonly ReactiveProperty<bool> m_IsPreciseAttack = new ReactiveProperty<bool>(value: false);
-
 	private readonly ReactiveProperty<AbilityTargetUIData> m_AbilityTargetUIData = new ReactiveProperty<AbilityTargetUIData>(default(AbilityTargetUIData));
-
-	private readonly ReactiveProperty<AbilityTargetUIData> m_AbilityTargetUIInitialData = new ReactiveProperty<AbilityTargetUIData>(default(AbilityTargetUIData));
 
 	private readonly ReactiveProperty<AbilityTargetUIData> m_AbilityTargetUICompareData = new ReactiveProperty<AbilityTargetUIData>(default(AbilityTargetUIData));
 
 	private readonly ReactiveProperty<bool> m_IsAoETarget = new ReactiveProperty<bool>(value: false);
 
-	private readonly ReactiveProperty<bool> m_HasHiddenCondition = new ReactiveProperty<bool>(value: false);
+	private readonly ReactiveProperty<bool> m_HideOvertip = new ReactiveProperty<bool>(value: false);
 
 	private readonly ReactiveProperty<AbilityData> m_Ability = new ReactiveProperty<AbilityData>(null);
 
@@ -172,13 +169,9 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	public ReadOnlyReactiveProperty<bool> ForceHotKeyPressed => m_ForceHotKeyPressed;
 
-	public ReadOnlyReactiveProperty<bool> UnitInfoVisible => m_UnitInfoVisible;
-
 	public ReadOnlyReactiveProperty<bool> NeedConsoleHint => m_NeedConsoleHint;
 
 	public ReadOnlyReactiveProperty<bool> IsTarget => m_IsTarget;
-
-	public ReadOnlyReactiveProperty<bool> IsPreciseAttack => m_IsPreciseAttack;
 
 	public ReadOnlyReactiveProperty<AbilityTargetUIData> AbilityTargetUIData => m_AbilityTargetUIData;
 
@@ -188,7 +181,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	public ReadOnlyReactiveProperty<bool> IsAoETarget => m_IsAoETarget;
 
-	public ReadOnlyReactiveProperty<bool> HasHiddenCondition => m_HasHiddenCondition;
+	public ReadOnlyReactiveProperty<bool> HideOvertip => m_HideOvertip;
 
 	public ReadOnlyReactiveProperty<AbilityData> Ability => m_Ability;
 
@@ -214,8 +207,6 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	public Observable<Unit> MoraleChanged => m_MoraleChanged;
 
-	public bool IsHiddenBySettings { get; private set; }
-
 	public bool CheckCanBeTargeted
 	{
 		get
@@ -228,17 +219,23 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 		}
 	}
 
+	public bool IsCountHpAsArmor => (MechanicEntity.MechanicEntity?.GetOptional<PartHealth>()?.IsCountHpAsArmor).GetValueOrDefault();
+
 	public MechanicEntityUIState([NotNull] MechanicEntity unit)
 	{
 		MechanicEntity = new MechanicEntityUIWrapper(unit);
 		AddDisposable(m_CoverState = new EntityCoverUIState(unit));
+		m_UpdateMoralePredictionAction = delegate
+		{
+			m_MoralePrediction.Value = Game.Instance.Controllers.MoraleController.GetMoralePrediction(MechanicEntity.MechanicEntity as BaseUnitEntity);
+		};
+		m_UpdatePropertiesAction = UpdateProperties;
 		m_IsDeadOrUnconsciousIsDead.Value = MechanicEntity.IsDead;
-		IsHiddenBySettings = MechanicEntity.MechanicEntity.Blueprint.GetComponent<UnitUISettings>()?.OverrideHideName ?? false;
 		m_IsInCombat.Value = MechanicEntity.MechanicEntity.IsInCombat;
 		PreciseAttackController preciseAttackController = Game.Instance.Controllers.PreciseAttackController;
 		AddDisposable(preciseAttackController.Target.Subscribe(UpdatePreciseAttackTarget));
 		UpdateProperties();
-		AddDisposable(ObservableSubscribeExtensions.Subscribe(MainThreadDispatcher.UpdateAsObservable(), delegate
+		AddDisposable(ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.Update), delegate
 		{
 			InternalUpdate();
 		}));
@@ -247,7 +244,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 		{
 			if (!base.IsDisposed)
 			{
-				UpdateHiddenConditions();
+				UpdateOvertipHideConditions();
 			}
 		});
 		ObservableSubscribeExtensions.Subscribe(Observable.TimerFrame(2), delegate
@@ -258,6 +255,15 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 				UpdateTBMEntity(valueOrDefault);
 			}
 		});
+	}
+
+	public T GetBlueprintComponent<T>()
+	{
+		if (MechanicEntity.MechanicEntity?.Blueprint == null)
+		{
+			return default(T);
+		}
+		return MechanicEntity.MechanicEntity.Blueprint.GetComponent<T>();
 	}
 
 	protected override void DisposeImplementation()
@@ -284,9 +290,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 		m_IsDestructibleNotCover.Value = MechanicEntity.IsDestructibleNotCover;
 		m_IsDead.Value = MechanicEntity.IsDead;
 		m_HasLoot.Value = MechanicEntity.IsDeadAndHasAttachedDroppedLoot || MechanicEntity.IsDeadAndHasLoot;
-		ReactiveProperty<bool> hasArmor = m_HasArmor;
-		ModifiableValue modifiableValue = MechanicEntity.Armor?.Durability;
-		hasArmor.Value = ((modifiableValue != null && (int)modifiableValue != 0) ? 1 : 0) > (false ? 1 : 0);
+		m_HasArmor.Value = (MechanicEntity.Armor?.DurabilityValue ?? 0) > 0;
 		m_Morale.Value = MechanicEntity.Morale;
 		UpdateGamepadHint();
 	}
@@ -347,15 +351,24 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		HandleUnitUpdateEvent();
+		UpdateTBMEntity(isTurnBased);
 		m_CoverState.UpdateCoverType(isTurnBased);
-		UpdateIsUnitTurn(isTurnBased);
+	}
+
+	public void HandleUnitEndTurn(bool isTurnBased)
+	{
+		m_IsCurrentUnitTurn.Value = false;
 	}
 
 	public void HandleUnitStartInterruptTurn(InterruptionData interruptionData)
 	{
-		HandleUnitUpdateEvent();
+		UpdateTBMEntity(TurnController?.TurnBasedModeActive ?? false);
 		m_CoverState.UpdateCoverType();
+	}
+
+	public void HandleUnitEndInterruptTurn()
+	{
+		m_IsCurrentUnitTurn.Value = false;
 	}
 
 	public void HandleTurnBasedModeSwitched(bool isTurnBased)
@@ -376,14 +389,6 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	public void HandleTurnBasedModeResumed()
 	{
 		UpdateTBMEntity(isTurnBasedMode: true);
-	}
-
-	private void HandleUnitUpdateEvent()
-	{
-		if (ContextData<EventInvoker>.Current?.InvokerEntity == MechanicEntity.MechanicEntity)
-		{
-			UpdateTBMEntity(TurnController?.TurnBasedModeActive ?? false);
-		}
 	}
 
 	private void UpdateTBMEntity(bool isTurnBasedMode)
@@ -470,7 +475,6 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	private void UpdatePreciseAttackTarget(MechanicEntity mechanicEntity)
 	{
-		m_IsPreciseAttack.Value = mechanicEntity != null;
 		m_IsTarget.Value = MechanicEntity.MechanicEntity == mechanicEntity;
 	}
 
@@ -485,7 +489,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	private AbilityTargetUIData GetPreciseTargetData(AbilityData ability, BlueprintBodyPart bodyPart)
 	{
-		if (!CanBeAbilityTarget() || bodyPart == null)
+		if (ability == null || !CanBeAbilityTarget() || bodyPart == null)
 		{
 			return default(AbilityTargetUIData);
 		}
@@ -496,7 +500,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	private AbilityTargetUIData GetAbilityTargetData(AbilityData ability)
 	{
-		if (!CanBeAbilityTarget())
+		if (ability == null || !CanBeAbilityTarget())
 		{
 			return default(AbilityTargetUIData);
 		}
@@ -522,15 +526,17 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	public void HandleCellAbility(AbilityTargetUIData abilityTarget)
 	{
-		AbilityData currentValue = Ability.CurrentValue;
 		m_AbilityTargetUIData.Value = abilityTarget;
+		m_Ability.Value = abilityTarget.Ability;
 		m_IsTarget.Value = true;
-		m_IsAoETarget.Value = IsTarget.CurrentValue && currentValue != null && (currentValue.IsAoe || currentValue.IsBurst || currentValue.IsBurstAttack || currentValue.IsChainLightning());
+		AbilityData ability = abilityTarget.Ability;
+		m_IsAoETarget.Value = IsTarget.CurrentValue && ability != null && (ability.IsAoe || ability.IsBurst || ability.IsBurstAttack || ability.IsChainLightning());
 	}
 
 	public void HandleCellAbilityClear()
 	{
-		m_AbilityTargetUIData.Value = m_AbilityTargetUIInitialData.CurrentValue;
+		m_AbilityTargetUIData.Value = default(AbilityTargetUIData);
+		m_Ability.Value = null;
 		m_IsTarget.Value = false;
 		m_IsAoETarget.Value = false;
 	}
@@ -539,18 +545,14 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	{
 		m_IsAoETarget.Value = IsTarget.CurrentValue && (ability.IsAoe || ability.IsBurst || ability.IsBurstAttack || ability.IsChainLightning());
 		m_Ability.Value = ability;
-		ReactiveProperty<AbilityTargetUIData> abilityTargetUIData = m_AbilityTargetUIData;
-		AbilityTargetUIData value = (m_AbilityTargetUIInitialData.Value = GetAbilityTargetData(ability));
-		abilityTargetUIData.Value = value;
+		m_AbilityTargetUIData.Value = GetAbilityTargetData(ability);
 		m_IsCaster.Value = ability.Caster == MechanicEntity.MechanicEntity;
 	}
 
 	public void HandleAbilityTargetSelectionEnd(AbilityData ability)
 	{
 		m_IsTarget.Value = false;
-		ReactiveProperty<AbilityTargetUIData> abilityTargetUIData = m_AbilityTargetUIData;
-		AbilityTargetUIData value = (m_AbilityTargetUIInitialData.Value = default(AbilityTargetUIData));
-		abilityTargetUIData.Value = value;
+		m_AbilityTargetUIData.Value = default(AbilityTargetUIData);
 		m_IsAoETarget.Value = false;
 		m_Ability.Value = null;
 		m_IsCaster.Value = false;
@@ -568,13 +570,9 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 
 	public void HandleUnitInfoVisibilityChange(bool isVisible)
 	{
-		if (EventInvokerExtensions.MechanicEntity == MechanicEntity.MechanicEntity)
+		if (EventInvokerExtensions.MechanicEntity == MechanicEntity.MechanicEntity && isVisible)
 		{
-			m_UnitInfoVisible.Value = isVisible;
-			if (isVisible)
-			{
-				MechanicEntity.AdditionalCombatObjective?.SetAsViewed();
-			}
+			MechanicEntity.AdditionalCombatObjective?.SetAsViewed();
 		}
 	}
 
@@ -582,7 +580,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	{
 		if (!base.IsDisposed)
 		{
-			UpdateHiddenConditions();
+			UpdateOvertipHideConditions();
 		}
 	}
 
@@ -590,7 +588,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	{
 		if (!base.IsDisposed)
 		{
-			UpdateHiddenConditions();
+			UpdateOvertipHideConditions();
 		}
 	}
 
@@ -624,15 +622,16 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	{
 		if (feature.Type == MechanicsFeatureType.IsUntargetable)
 		{
-			UpdateHiddenConditions();
+			UpdateOvertipHideConditions();
 		}
 	}
 
-	private void UpdateHiddenConditions()
+	private void UpdateOvertipHideConditions()
 	{
 		bool flag = Game.Instance.CurrentModeType == GameModeType.Cutscene;
 		bool flag2 = MechanicEntity.Features != null && (bool)MechanicEntity.Features.IsUntargetable;
-		m_HasHiddenCondition.Value = flag || flag2;
+		bool flag3 = GetBlueprintComponent<UnitUISettings>()?.OvertipSettings.ShowForUntargetable ?? false;
+		m_HideOvertip.Value = flag || (flag2 && !flag3);
 	}
 
 	public void HandleUnitLifeStateChanged(UnitLifeState prevLifeState)
@@ -654,7 +653,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	{
 		if (EventInvokerExtensions.MechanicEntity == MechanicEntity.MechanicEntity)
 		{
-			DelayedInvoker.InvokeInFrames(UpdateProperties, 1);
+			DelayedInvoker.InvokeInFrames(m_UpdatePropertiesAction, 1);
 		}
 	}
 
@@ -812,7 +811,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	private void UpdateMorale()
 	{
 		UpdateMoraleLeading();
-		m_MoraleChanged.Execute();
+		m_MoraleChanged.Execute(Unit.Default);
 	}
 
 	public void OnEventAboutToTrigger(RulePerformMoraleChange evt)
@@ -828,10 +827,7 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 	{
 		if (target == MechanicEntity.MechanicEntity)
 		{
-			DelayedInvoker.InvokeInFrames(delegate
-			{
-				m_MoralePrediction.Value = Game.Instance.Controllers.MoraleController.GetMoralePrediction(MechanicEntity.MechanicEntity as BaseUnitEntity);
-			}, 1);
+			DelayedInvoker.InvokeInFrames(m_UpdateMoralePredictionAction, 1);
 		}
 	}
 
@@ -853,18 +849,14 @@ public class MechanicEntityUIState : BaseDisposable, IUnitDirectHoverUIHandler, 
 		{
 			if (!isHovered || Ability.CurrentValue == null)
 			{
-				ReactiveProperty<AbilityTargetUIData> abilityTargetUIData = m_AbilityTargetUIData;
-				AbilityTargetUIData value = (m_AbilityTargetUIInitialData.Value = default(AbilityTargetUIData));
-				abilityTargetUIData.Value = value;
+				m_AbilityTargetUIData.Value = default(AbilityTargetUIData);
 				m_IsTarget.Value = false;
+				return;
 			}
-			else
-			{
-				TargetWrapper targetWrapper = GetTargetWrapper();
-				bool value2 = targetWrapper != null && Ability.CurrentValue.CanTargetFromDesiredPosition(targetWrapper);
-				m_IsTarget.Value = value2;
-				HandleAbilityTargetSelectionStart(Ability.CurrentValue);
-			}
+			TargetWrapper targetWrapper = GetTargetWrapper();
+			bool value = targetWrapper != null && Ability.CurrentValue.CanTargetFromDesiredPosition(targetWrapper);
+			m_IsTarget.Value = value;
+			HandleAbilityTargetSelectionStart(Ability.CurrentValue);
 		}
 	}
 }

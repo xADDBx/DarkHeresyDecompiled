@@ -92,49 +92,25 @@ public static class ShaderPropertyId
 
 	public static readonly int _CameraColorRT = Shader.PropertyToID("_CameraColorRT");
 
-	public static readonly int _CameraDepthRT = Shader.PropertyToID("_CameraDepthRT");
-
-	public static readonly int _CameraDepthTexture = Shader.PropertyToID("_CameraDepthTexture");
-
 	public static readonly int _CameraDepthAttachment = Shader.PropertyToID("_CameraDepthAttachment");
-
-	public static readonly int _CameraDepthPyramidRT = Shader.PropertyToID("_CameraDepthPyramidRT");
-
-	public static readonly int _CameraAlbedoRT = Shader.PropertyToID("_CameraAlbedoRT");
-
-	public static readonly int _CameraSpecularRT = Shader.PropertyToID("_CameraSpecularRT");
-
-	public static readonly int _CameraNormalsRT = Shader.PropertyToID("_CameraNormalsRT");
 
 	public static readonly int _CameraNormalsTexture = Shader.PropertyToID("_CameraNormalsTexture");
 
 	public static readonly int _CameraEmissionRT = Shader.PropertyToID("_CameraEmissionRT");
 
-	public static readonly int _CameraBakedGIRT = Shader.PropertyToID("_CameraBakedGIRT");
-
-	public static readonly int _CameraShadowmaskRT = Shader.PropertyToID("_CameraShadowmaskRT");
-
-	public static readonly int _CameraTranslucencyRT = Shader.PropertyToID("_CameraTranslucencyRT");
-
 	public static readonly int _CameraDeferredReflectionsRT = Shader.PropertyToID("_CameraDeferredReflectionsRT");
 
-	public static readonly int _CameraColorPyramidRT = Shader.PropertyToID("_CameraColorPyramidRT");
-
 	public static readonly int _DistortionVectorsRT = Shader.PropertyToID("_DistortionVectorsRT");
-
-	public static readonly int _DecalsNormalsRT = Shader.PropertyToID("_DecalsNormalsRT");
-
-	public static readonly int _DecalsMasksRT = Shader.PropertyToID("_DecalsMasksRT");
 
 	public static readonly int _SsrRT = Shader.PropertyToID("_SsrRT");
 
 	public static readonly int _CustomPostProcessInput = Shader.PropertyToID("_CustomPostProcessInput");
 
+	public static readonly int WaaaghShaderVariablesGlobal = Shader.PropertyToID("WaaaghShaderVariablesGlobal");
+
 	public static readonly int LightDataConstantBuffer = Shader.PropertyToID("LightDataConstantBuffer");
 
 	public static readonly int LightVolumeDataCB = Shader.PropertyToID("LightVolumeDataCB");
-
-	public static readonly int ZBinsCB = Shader.PropertyToID("ZBinsCB");
 
 	public static readonly int _LightDataParams = Shader.PropertyToID("_LightDataParams");
 
@@ -148,17 +124,9 @@ public static class ShaderPropertyId
 
 	public static readonly int _ScreenProjMatrix = Shader.PropertyToID("_ScreenProjMatrix");
 
-	public static readonly int _TilesMinMaxZTexture = Shader.PropertyToID("_TilesMinMaxZTexture");
-
-	public static readonly int _ShadowmapRT = Shader.PropertyToID("_ShadowmapRT");
-
-	public static readonly int _FaceVectors = Shader.PropertyToID("_FaceVectors");
-
 	public static readonly int _ShadowMatricesBuffer = Shader.PropertyToID("_ShadowMatricesBuffer");
 
 	public static readonly int _ShadowDataBuffer = Shader.PropertyToID("_ShadowDataBuffer");
-
-	public static readonly int _ShadowFadeDistanceScaleAndBias = Shader.PropertyToID("_ShadowFadeDistanceScaleAndBias");
 
 	public static readonly int _ShadowEntryIndex = Shader.PropertyToID("_ShadowEntryIndex");
 
@@ -171,14 +139,6 @@ public static class ShaderPropertyId
 	public static readonly int _FaceId = Shader.PropertyToID("_FaceId");
 
 	public static readonly int _ZClip = Shader.PropertyToID("_ZClip");
-
-	public static readonly int _ShadowReceiverNormalBias = Shader.PropertyToID("_ShadowReceiverNormalBias");
-
-	public static readonly int _ShadowAtlasSize = Shader.PropertyToID("_ShadowAtlasSize");
-
-	public static readonly int _GlobalShadowsEnabled = Shader.PropertyToID("_GlobalShadowsEnabled");
-
-	public static readonly int _DirectionalCascadesCount = Shader.PropertyToID("_DirectionalCascadesCount");
 
 	public static readonly int ShadowConstantBuffer = Shader.PropertyToID("ShadowConstantBuffer");
 
@@ -257,6 +217,12 @@ public static class ShaderPropertyId
 	public static int _OccluderObjectOpacity = Shader.PropertyToID("_OccluderObjectOpacity");
 
 	public static int _OccluderObjectFullOpacity = Shader.PropertyToID("_OccluderObjectFullOpacity");
+
+	public static int _OccludedObjectDepthClipTexture = Shader.PropertyToID("_OccludedObjectDepthClipTexture");
+
+	public static int _OccludedObjectShadowClippingEnabled = Shader.PropertyToID("_OccludedObjectShadowClippingEnabled");
+
+	public static int _OccludedObjectSampleDepthTexture = Shader.PropertyToID("_OccludedObjectSampleDepthTexture");
 
 	public static int _VolumeScatter = Shader.PropertyToID("_VolumeScatter");
 

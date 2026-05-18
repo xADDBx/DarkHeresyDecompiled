@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Kingmaker.Pathfinding;
 using Pathfinding;
 
 namespace Owlcat.BehaviourTrees;
@@ -10,6 +11,6 @@ public class GraphNodeVariable : BlackboardVariable<GraphNode>
 
 	public override string ToString()
 	{
-		return base.Key + ": " + (Value?.ToString() ?? "<null>");
+		return base.Key + ": " + (Value?.AsString() ?? "<null>");
 	}
 }

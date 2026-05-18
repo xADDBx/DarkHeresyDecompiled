@@ -5,7 +5,6 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.EntitySystem;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.RuleSystem.Rules.Modifiers;
@@ -33,7 +32,7 @@ public static class StatModifiersBreakdown
 		{
 			if (s_BonusColor == null)
 			{
-				s_BonusColor = ColorUtility.ToHtmlStringRGB(ConfigRoot.Instance.UIConfig.TooltipColors.Bonus);
+				s_BonusColor = ColorUtility.ToHtmlStringRGB((Color)ConfigRoot.Instance.UIConfig.TooltipColors.Bonus);
 			}
 			return s_BonusColor;
 		}
@@ -45,7 +44,7 @@ public static class StatModifiersBreakdown
 		{
 			if (s_PenaltyColor == null)
 			{
-				s_PenaltyColor = ColorUtility.ToHtmlStringRGB(ConfigRoot.Instance.UIConfig.TooltipColors.Penaty);
+				s_PenaltyColor = ColorUtility.ToHtmlStringRGB((Color)ConfigRoot.Instance.UIConfig.TooltipColors.Penaty);
 			}
 			return s_PenaltyColor;
 		}
@@ -94,25 +93,26 @@ public static class StatModifiersBreakdown
 	{
 		if (bonus.Value != 0 || ShouldShowIfZero(bonus))
 		{
-			AddBonus(bonus.Value, GetBonusSourceText(bonus), bonus.Descriptor, ShouldShowIfZero(bonus));
+			AddBonus(bonus.Value, GetBonusSourceText(bonus), bonus.Type, bonus.Descriptor, ShouldShowIfZero(bonus));
 		}
 	}
 
-	private static void AddBonus(int value, [CanBeNull] IUIDataProvider bonusSource, ModifierDescriptor descriptor)
+	private static void AddBonus(int value, [CanBeNull] IUIDataProvider bonusSource, ModifierType type, ModifierDescriptor descriptor)
 	{
 		if (value != 0)
 		{
-			AddBonus(value, GetBonusSourceText(bonusSource), descriptor);
+			AddBonus(value, GetBonusSourceText(bonusSource), type, descriptor);
 		}
 	}
 
-	public static void AddBonus(int bonusValue, [CanBeNull] string bonusSource, ModifierDescriptor descriptor = ModifierDescriptor.None, bool addZero = false)
+	public static void AddBonus(int bonusValue, [CanBeNull] string bonusSource, ModifierType type, ModifierDescriptor descriptor = ModifierDescriptor.None, bool addZero = false)
 	{
 		if (bonusValue != 0 || addZero)
 		{
 			s_Data.Add(new StatBonusEntry
 			{
 				Bonus = bonusValue,
+				Type = type,
 				Source = bonusSource,
 				Descriptor = descriptor
 			});
@@ -144,44 +144,48 @@ public static class StatModifiersBreakdown
 				if (modifier.Stat != 0)
 				{
 					string text = LocalizedTexts.Instance.Stats.GetText(modifier.Stat);
-					AddBonus(modifier.Value, text, descriptor);
+					AddBonus(modifier.Value, text, modifier.Type, descriptor);
 				}
 				else
 				{
 					IUIDataProvider bonusSource = TryGetSourceFromFact(modifier.Fact) ?? modifier.Item;
-					AddBonus(modifier.Value, bonusSource, descriptor);
+					AddBonus(modifier.Value, bonusSource, modifier.Type, descriptor);
 				}
 			}
 		}
 	}
 
-	public static void AddStatModifiers([NotNull] ModifiableValue stat)
+	public static void AddStatModifiers([NotNull] CompositeModifiersManager modifiers)
 	{
-		foreach (Modifier displayModifier in stat.GetDisplayModifiers())
+		foreach (Modifier sortedModifiers in modifiers.SortedModifiersList)
 		{
-			if (displayModifier.Value == 0 || ModifierDisabled(stat, displayModifier))
+			if (sortedModifiers.Value != 0)
 			{
-				continue;
+				AddStatModifierEntry(sortedModifiers);
 			}
-			ModifierDescriptor modifierDescriptor = displayModifier.Descriptor;
-			if (modifierDescriptor == ModifierDescriptor.CareerAdvancement)
-			{
-				AddCareerBonuses(displayModifier);
-				continue;
-			}
-			if (displayModifier.Stat != 0)
-			{
-				string text = LocalizedTexts.Instance.Stats.GetText(displayModifier.Stat);
-				AddBonus(displayModifier.Value, text, modifierDescriptor);
-				continue;
-			}
-			IUIDataProvider iUIDataProvider = TryGetSourceFromFact(displayModifier.Fact) ?? displayModifier.Item;
-			if ((iUIDataProvider == null || string.IsNullOrEmpty(iUIDataProvider.Name)) && modifierDescriptor == ModifierDescriptor.None)
-			{
-				modifierDescriptor = (displayModifier.Stackable ? ModifierDescriptor.UntypedStackable : ModifierDescriptor.UntypedUnstackable);
-			}
-			AddBonus(displayModifier.Value, iUIDataProvider, modifierDescriptor);
 		}
+	}
+
+	private static void AddStatModifierEntry(Modifier mod)
+	{
+		ModifierDescriptor modifierDescriptor = mod.Descriptor;
+		if (modifierDescriptor == ModifierDescriptor.CareerAdvancement)
+		{
+			AddCareerBonuses(mod);
+			return;
+		}
+		if (mod.Stat != 0)
+		{
+			string text = LocalizedTexts.Instance.Stats.GetText(mod.Stat);
+			AddBonus(mod.Value, text, mod.Type, modifierDescriptor);
+			return;
+		}
+		IUIDataProvider iUIDataProvider = TryGetSourceFromFact(mod.Fact) ?? mod.Item;
+		if ((iUIDataProvider == null || string.IsNullOrEmpty(iUIDataProvider.Name)) && modifierDescriptor == ModifierDescriptor.None)
+		{
+			modifierDescriptor = (mod.Stackable ? ModifierDescriptor.UntypedStackable : ModifierDescriptor.UntypedUnstackable);
+		}
+		AddBonus(mod.Value, iUIDataProvider, mod.Type, modifierDescriptor);
 	}
 
 	private static IUIDataProvider TryGetSourceFromFact(EntityFact fact)
@@ -221,20 +225,15 @@ public static class StatModifiersBreakdown
 				item.Deconstruct(out key, out value);
 				BlueprintPath bonusSource = key;
 				int num3 = value;
-				AddBonus(num2 * num3, bonusSource, ModifierDescriptor.CareerAdvancement);
+				AddBonus(num2 * num3, bonusSource, ModifierType.ValAdd, ModifierDescriptor.CareerAdvancement);
 			}
 			num -= num2 * dictionary.Sum((KeyValuePair<BlueprintPath, int> x) => x.Value);
 		}
 		if (num > 0)
 		{
 			string empty = string.Empty;
-			AddBonus(num, empty, ModifierDescriptor.CareerAdvancement);
+			AddBonus(num, empty, ModifierType.ValAdd, ModifierDescriptor.CareerAdvancement);
 		}
-	}
-
-	public static bool ModifierDisabled([NotNull] ModifiableValue stat, Modifier mod)
-	{
-		return false;
 	}
 
 	public static void AddBonusSources([NotNull] AbstractModifiersManager modifiers)

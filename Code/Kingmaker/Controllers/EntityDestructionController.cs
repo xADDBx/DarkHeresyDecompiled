@@ -10,6 +10,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.Utility.UnityExtensions;
 using Owlcat.Runtime.Core.Logging;
 
 namespace Kingmaker.Controllers;
@@ -53,25 +54,33 @@ public class EntityDestructionController : IControllerTick, IController, IContro
 
 	public void Tick()
 	{
-		foreach (Entity item in m_ToDestroy)
+		while (m_ToDestroy.Count > 0)
 		{
-			item.WillBeDestroyed = false;
-			if (item.HoldingState != null)
+			List<Entity> list;
+			using (m_ToDestroy.ToPooledList(out list))
 			{
-				if (item.IsDisposed)
+				m_ToDestroy.Clear();
+				foreach (Entity item in list)
 				{
-					Logger.ErrorWithReport("Disposed entity in the game state!");
-					item.HoldingState.RemoveEntityData(item);
-					return;
-				}
-				try
-				{
-					PerformDestroy(item);
-					CheckCleanUp(item as BaseUnitEntity);
-				}
-				catch (Exception ex)
-				{
-					Logger.Exception(ex);
+					item.WillBeDestroyed = false;
+					if (item.HoldingState != null)
+					{
+						if (item.IsDisposed)
+						{
+							Logger.ErrorWithReport("Disposed entity in the game state!");
+							item.HoldingState.RemoveEntityData(item);
+							return;
+						}
+						try
+						{
+							PerformDestroy(item);
+							CheckCleanUp(item as BaseUnitEntity);
+						}
+						catch (Exception ex)
+						{
+							Logger.Exception(ex);
+						}
+					}
 				}
 			}
 		}
@@ -80,7 +89,6 @@ public class EntityDestructionController : IControllerTick, IController, IContro
 			Game.Instance.GetController<SleepingUnitsController>()?.Tick();
 			m_CleanupAwakeUnits = false;
 		}
-		m_ToDestroy.Clear();
 	}
 
 	private static bool NeedFadeOut(Entity entity)

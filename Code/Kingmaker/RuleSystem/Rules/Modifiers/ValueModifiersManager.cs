@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
@@ -7,7 +9,7 @@ using Kingmaker.UnitLogic.Commands.Base;
 
 namespace Kingmaker.RuleSystem.Rules.Modifiers;
 
-public class ValueModifiersManager : AbstractModifiersManager, IReadonlyModifiersValue, IReadonlyModifiers
+public class ValueModifiersManager : AbstractModifiersManager, IReadonlyModifiersValue, IReadonlyModifiers, IEnumerable<Modifier>, IEnumerable
 {
 	private readonly int m_Min;
 

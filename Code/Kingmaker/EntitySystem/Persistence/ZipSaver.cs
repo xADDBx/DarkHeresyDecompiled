@@ -29,7 +29,10 @@ public class ZipSaver : ISaver, IDisposable
 			{
 				return null;
 			}
-			FileStream fileStream = File.Open(m_FileName, (m_Mode == ISaver.Mode.Read) ? FileMode.Open : FileMode.OpenOrCreate, (m_Mode == ISaver.Mode.Read) ? FileAccess.Read : FileAccess.ReadWrite, (m_Mode == ISaver.Mode.Read) ? FileShare.Read : FileShare.None);
+			FileMode mode = ((m_Mode == ISaver.Mode.Read) ? FileMode.Open : FileMode.OpenOrCreate);
+			FileAccess access = ((m_Mode == ISaver.Mode.Read) ? FileAccess.Read : FileAccess.ReadWrite);
+			FileShare share = ((m_Mode == ISaver.Mode.Read) ? FileShare.Read : FileShare.None);
+			FileStream fileStream = new FileStream(m_FileName, mode, access, share, ISaver.BuffersSize, FileOptions.None);
 			try
 			{
 				m_ZipFile = new ZipArchive(fileStream, (m_Mode != ISaver.Mode.Read) ? ZipArchiveMode.Update : ZipArchiveMode.Read);
@@ -106,7 +109,7 @@ public class ZipSaver : ISaver, IDisposable
 			zipArchiveEntry = ZipFile.CreateEntry(name);
 		}
 		using Stream stream = zipArchiveEntry.Open();
-		using StreamWriter streamWriter = new StreamWriter(stream);
+		using StreamWriter streamWriter = new StreamWriter(stream, ISaver.UTF8NoBom, ISaver.BuffersSize);
 		streamWriter.Write(json);
 		stream.SetLength(stream.Position);
 	}
@@ -139,7 +142,7 @@ public class ZipSaver : ISaver, IDisposable
 	public void CopyToStash(string fileName)
 	{
 		using AreaDataStashFileAccessor areaDataStashFileAccessor = AreaDataStash.AccessFile(fileName);
-		using FileStream destination = new FileStream(areaDataStashFileAccessor.Path, FileMode.Create);
+		using FileStream destination = new FileStream(areaDataStashFileAccessor.Path, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, ISaver.BuffersSize);
 		ZipFile.Entries.SingleOrDefault((ZipArchiveEntry v) => v.FullName == fileName)?.Open().CopyTo(destination);
 	}
 

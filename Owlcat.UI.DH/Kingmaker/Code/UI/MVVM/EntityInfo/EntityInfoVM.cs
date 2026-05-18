@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.GameModes;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -16,9 +16,9 @@ namespace Kingmaker.Code.UI.MVVM.EntityInfo;
 
 public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInteractionHighlightUIHandler, ITurnBasedModeHandler, IAreaHandler
 {
-	private readonly IReadOnlyList<IEntityInfoProvider<GameObject>> m_ObjectInfoProviders;
+	private readonly IReadOnlyList<IEntityInfoProvider<GameObjectInfo>> m_ObjectInfoProviders;
 
-	private readonly IReadOnlyList<IEntityInfoProvider<GridNodeBase>> m_NodeInfoProviders;
+	private readonly IReadOnlyList<IEntityInfoProvider<NodeInfo>> m_NodeInfoProviders;
 
 	private readonly ReactiveProperty<IEntityInfo> m_ObjectInfo;
 
@@ -42,17 +42,17 @@ public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInterac
 
 	public ReadOnlyReactiveProperty<IEntityInfo> EntityInfo { get; }
 
-	public EntityInfoVM(Func<bool> isTurnBasedMode, Func<Vector3> getPointerPosition, UIStrings uiStrings, UIIcons uiIcons)
+	public EntityInfoVM(Func<bool> isTurnBasedMode, Func<Vector3> getPointerPosition, UIStrings uiStrings)
 	{
-		m_ObjectInfoProviders = new List<IEntityInfoProvider<GameObject>>
+		m_ObjectInfoProviders = new List<IEntityInfoProvider<GameObjectInfo>>
 		{
 			new UnitPlaceholderInfoProvider(),
 			new DestructibleCoverInfoProvider(),
 			new CoverInfoProvider(uiStrings)
 		};
-		m_NodeInfoProviders = new List<IEntityInfoProvider<GridNodeBase>>
+		m_NodeInfoProviders = new List<IEntityInfoProvider<NodeInfo>>
 		{
-			new AreaEffectInfoProvider(uiStrings, uiIcons)
+			new AreaEffectInfoProvider(uiStrings)
 		};
 		m_CheckIsTurnBasedMode = isTurnBasedMode;
 		m_IsTurnBasedMode = m_CheckIsTurnBasedMode();
@@ -60,6 +60,7 @@ public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInterac
 		m_ObjectInfo = new ReactiveProperty<IEntityInfo>().AddTo(this);
 		m_NodeInfo = new ReactiveProperty<IEntityInfo>().AddTo(this);
 		EntityInfo = m_ObjectInfo.CombineLatest(m_NodeInfo, (IEntityInfo objectInfo, IEntityInfo nodeInfo) => objectInfo ?? nodeInfo).ToReadOnlyReactiveProperty().AddTo(this);
+		GameUIState.Instance.GameMode.Subscribe(HandleGameModeChanged).AddTo(this);
 		Observable.EveryUpdate(UnityFrameProvider.Update).Subscribe(UpdateNodeInfo).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 	}
@@ -101,17 +102,46 @@ public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInterac
 		m_IsDisposed = true;
 	}
 
+	private void HandleGameModeChanged(GameModeType gameMode)
+	{
+		if (!CanShowInfo(gameMode))
+		{
+			m_LastHover = null;
+			m_ObjectInfo.Value = null;
+			ClearNodeInfo();
+		}
+	}
+
+	private bool CanShowInfo(GameModeType gameMode)
+	{
+		if (gameMode != GameModeType.Cutscene)
+		{
+			return gameMode != GameModeType.Dialog;
+		}
+		return false;
+	}
+
 	private void UpdateObjectInfo(GameObject hoveredObject)
 	{
-		m_LastHover = hoveredObject;
-		if (!hoveredObject || !CanShowInfo())
+		if (!CanShowInfo(GameUIState.Instance.GameMode.CurrentValue))
 		{
+			m_LastHover = null;
 			m_ObjectInfo.Value = null;
 			return;
 		}
-		foreach (IEntityInfoProvider<GameObject> objectInfoProvider in m_ObjectInfoProviders)
+		m_LastHover = hoveredObject;
+		if (!hoveredObject)
 		{
-			if (objectInfoProvider.TryGetEntityInfo(hoveredObject, out var entityInfo))
+			return;
+		}
+		GameObjectInfo gameObjectInfo = default(GameObjectInfo);
+		gameObjectInfo.GameObject = hoveredObject;
+		gameObjectInfo.IsHighlighted = m_IsHighlighted;
+		gameObjectInfo.IsTurnBasedMode = m_IsTurnBasedMode;
+		GameObjectInfo value = gameObjectInfo;
+		foreach (IEntityInfoProvider<GameObjectInfo> objectInfoProvider in m_ObjectInfoProviders)
+		{
+			if (objectInfoProvider.TryGetEntityInfo(value, out var entityInfo))
 			{
 				ClearNodeInfo();
 				m_ObjectInfo.Value = entityInfo;
@@ -119,15 +149,6 @@ public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInterac
 			}
 		}
 		m_ObjectInfo.Value = null;
-	}
-
-	private bool CanShowInfo()
-	{
-		if (m_IsHighlighted)
-		{
-			return m_IsTurnBasedMode;
-		}
-		return false;
 	}
 
 	private void ClearNodeInfo()
@@ -139,7 +160,7 @@ public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInterac
 
 	private void UpdateNodeInfo()
 	{
-		if (!CanShowInfo() || m_IsDisposed || m_ObjectInfo.Value != null)
+		if (m_IsDisposed || m_ObjectInfo.Value != null || !CanShowInfo(GameUIState.Instance.GameMode.CurrentValue))
 		{
 			ClearNodeInfo();
 			return;
@@ -162,9 +183,14 @@ public class EntityInfoVM : ViewModel, IMouseHoverHandler, ISubscriber, IInterac
 				return;
 			}
 			m_PreviousNode = nearestNodeXZ;
-			foreach (IEntityInfoProvider<GridNodeBase> nodeInfoProvider in m_NodeInfoProviders)
+			NodeInfo nodeInfo = default(NodeInfo);
+			nodeInfo.Node = nearestNodeXZ;
+			nodeInfo.IsHighlighted = m_IsHighlighted;
+			nodeInfo.IsTurnBasedMode = m_IsTurnBasedMode;
+			NodeInfo value = nodeInfo;
+			foreach (IEntityInfoProvider<NodeInfo> nodeInfoProvider in m_NodeInfoProviders)
 			{
-				if (nodeInfoProvider.TryGetEntityInfo(nearestNodeXZ, out var entityInfo))
+				if (nodeInfoProvider.TryGetEntityInfo(value, out var entityInfo))
 				{
 					m_NodeInfo.Value = entityInfo;
 					return;

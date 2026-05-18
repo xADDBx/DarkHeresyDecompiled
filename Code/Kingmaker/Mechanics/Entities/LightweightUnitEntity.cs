@@ -7,7 +7,6 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -71,24 +70,19 @@ public sealed class LightweightUnitEntity : AbstractUnitEntity, IHashable, IOwlP
 
 	public override bool IsExtra => true;
 
-	public LightweightUnitEntity(JsonConstructorMark _)
-		: base(_)
-	{
-	}
-
 	public LightweightUnitEntity(string uniqueId, bool isInGame, BlueprintUnit blueprint)
 		: base(uniqueId, isInGame, blueprint)
 	{
 	}
 
-	protected LightweightUnitEntity()
+	public LightweightUnitEntity(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
 	protected override void OnCreateParts()
 	{
 		base.OnCreateParts();
-		GetOrCreate<PartStatsContainer>();
 		GetOrCreate<PartUnitCommands>();
 		GetOrCreate<PartMovable>();
 		GetOrCreate<PartUnitAsks>();
@@ -119,7 +113,7 @@ public sealed class LightweightUnitEntity : AbstractUnitEntity, IHashable, IOwlP
 		lightweightUnitEntityView.MarkCreatedAtRuntime();
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		UnitEntityView unitEntityView = ViewSettings.Instantiate();
 		if (unitEntityView == null)
@@ -192,7 +186,7 @@ public sealed class LightweightUnitEntity : AbstractUnitEntity, IHashable, IOwlP
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		LightweightUnitEntity source = new LightweightUnitEntity();
+		LightweightUnitEntity source = new LightweightUnitEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<LightweightUnitEntity, TPossiblyBase>(ref source);
 	}
 

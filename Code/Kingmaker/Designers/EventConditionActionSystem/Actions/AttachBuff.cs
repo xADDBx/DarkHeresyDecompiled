@@ -3,12 +3,11 @@ using System.Text;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Persistence.Versioning;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -78,11 +77,12 @@ public class AttachBuff : GameAction
 		{
 			return false;
 		}
-		if (!(SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current is AbilityExecutionContext abilityExecutionContext))
+		AbilityExecutionContext abilityExecution = EvalContext.Current.AbilityExecution;
+		if (abilityExecution == null)
 		{
 			return false;
 		}
-		Ability fact = abilityExecutionContext.Ability.Fact;
+		Ability fact = abilityExecution.Ability.Fact;
 		if (fact == null)
 		{
 			return false;

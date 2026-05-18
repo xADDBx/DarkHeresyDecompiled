@@ -29,7 +29,7 @@ public class GPUDrivenLODGroupRepository : IDisposable, IGPUDrivenMemoryProfilin
 
 		[ReadOnly]
 		[NativeDisableContainerSafetyRestriction]
-		public NativeArray<int> InstanceIDs;
+		public NativeArray<EntityId> InstanceIDs;
 
 		[ReadOnly]
 		public NativeHashMap<int, LODGroupMetadata> Metadata;
@@ -248,12 +248,12 @@ public class GPUDrivenLODGroupRepository : IDisposable, IGPUDrivenMemoryProfilin
 			m_Repository = repository;
 		}
 
-		public void ProcessTransformData(NativeArray<int> transformedID, NativeArray<int> parentID, NativeArray<Matrix4x4> localToWorldMatrices, NativeArray<Vector3> positions, NativeArray<Quaternion> rotations, NativeArray<Vector3> scales)
+		public void ProcessTransformData(NativeArray<EntityId> transformedID, NativeArray<EntityId> parentID, NativeArray<Matrix4x4> localToWorldMatrices, NativeArray<Vector3> positions, NativeArray<Quaternion> rotations, NativeArray<Vector3> scales)
 		{
 			m_Repository.OnLODGroupTransformsChanged(transformedID);
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
 			m_Repository.OnLODGroupsDestroyed(destroyedID);
 			m_Repository.OnLODGroupsChanged(changedID);
@@ -338,17 +338,18 @@ public class GPUDrivenLODGroupRepository : IDisposable, IGPUDrivenMemoryProfilin
 		m_ViewCollection.PreRender();
 	}
 
-	private void OnLODGroupsDestroyed(NativeArray<int> instanceIDs)
+	private void OnLODGroupsDestroyed(NativeArray<EntityId> instanceIDs)
 	{
 		if (instanceIDs.Length == 0)
 		{
 			return;
 		}
-		foreach (int item2 in instanceIDs)
+		foreach (EntityId item2 in instanceIDs)
 		{
-			if (m_Metadata.TryGetValue(item2, out var item))
+			int key = item2;
+			if (m_Metadata.TryGetValue(key, out var item))
 			{
-				m_Metadata.Remove(item2);
+				m_Metadata.Remove(key);
 				m_Data[item.IndexAllocation.Index] = default(GPUDrivenLODGroupData);
 				m_ViewCollection.OnDestroyedLODGroup(item.IndexAllocation.Index);
 			}
@@ -373,7 +374,7 @@ public class GPUDrivenLODGroupRepository : IDisposable, IGPUDrivenMemoryProfilin
 		return default(JobHandle);
 	}
 
-	private void OnLODGroupTransformsChanged(NativeArray<int> instanceIDs)
+	private void OnLODGroupTransformsChanged(NativeArray<EntityId> instanceIDs)
 	{
 		if (instanceIDs.Length == 0)
 		{
@@ -412,7 +413,7 @@ public class GPUDrivenLODGroupRepository : IDisposable, IGPUDrivenMemoryProfilin
 		}
 	}
 
-	private void OnLODGroupsChanged(NativeArray<int> instanceIDs)
+	private void OnLODGroupsChanged(NativeArray<EntityId> instanceIDs)
 	{
 		if (instanceIDs.Length == 0)
 		{
@@ -473,7 +474,7 @@ public class GPUDrivenLODGroupRepository : IDisposable, IGPUDrivenMemoryProfilin
 		}
 	}
 
-	private static NativeArray<int> CollectAnimatedCrossFadeMask(NativeArray<int> instanceIDs, Allocator allocator)
+	private static NativeArray<int> CollectAnimatedCrossFadeMask(NativeArray<EntityId> instanceIDs, Allocator allocator)
 	{
 		using (new ProfilingScope(Profiling.CollectAnimatedCrossFadeMaskSampler))
 		{

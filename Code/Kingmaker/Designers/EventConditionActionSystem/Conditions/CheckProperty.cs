@@ -52,10 +52,7 @@ public class CheckProperty : Condition
 		MechanicEntity caster = GetCaster();
 		TargetWrapper target = GetTarget();
 		MechanicsContext context = caster.MainFact.Context;
-		using (context.SetScope())
-		{
-			return Value.GetBoolValue(caster, context, target?.Entity);
-		}
+		return Value.GetBoolValue(caster, context, target?.Entity);
 	}
 
 	[NotNull]

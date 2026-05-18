@@ -18,22 +18,22 @@ public class GameLogEventDisarmTrap : GameLogEvent<GameLogEventDisarmTrap>
 
 	private class EventsHandler : GameLogController.GameEventsHandler, IDisarmTrapHandler, ISubscriber<IBaseUnitEntity>, ISubscriber
 	{
-		public void HandleDisarmTrapSuccess(TrapObjectView trap)
+		public void HandleDisarmTrapSuccess(TrapObjectData trap)
 		{
 			AddEvent(EventInvokerExtensions.BaseUnitEntity, trap, ResultType.Success);
 		}
 
-		public void HandleDisarmTrapFail(TrapObjectView trap)
+		public void HandleDisarmTrapFail(TrapObjectData trap)
 		{
 			AddEvent(EventInvokerExtensions.BaseUnitEntity, trap, ResultType.Fail);
 		}
 
-		public void HandleDisarmTrapCriticalFail(TrapObjectView trap)
+		public void HandleDisarmTrapCriticalFail(TrapObjectData trap)
 		{
 			AddEvent(EventInvokerExtensions.BaseUnitEntity, trap, ResultType.CriticalFail);
 		}
 
-		private void AddEvent(BaseUnitEntity unit, TrapObjectView trap, ResultType result)
+		private void AddEvent(BaseUnitEntity unit, TrapObjectData trap, ResultType result)
 		{
 			AddEvent(new GameLogEventDisarmTrap(unit, trap, result));
 		}
@@ -41,11 +41,11 @@ public class GameLogEventDisarmTrap : GameLogEvent<GameLogEventDisarmTrap>
 
 	public readonly BaseUnitEntity Actor;
 
-	public readonly TrapObjectView Trap;
+	public readonly TrapObjectData Trap;
 
 	public readonly ResultType Result;
 
-	private GameLogEventDisarmTrap(BaseUnitEntity actor, TrapObjectView trap, ResultType result)
+	private GameLogEventDisarmTrap(BaseUnitEntity actor, TrapObjectData trap, ResultType result)
 	{
 		Actor = actor;
 		Trap = trap;

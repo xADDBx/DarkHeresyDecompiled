@@ -6,11 +6,11 @@ namespace Kingmaker.Utility.BuildModeUtils;
 
 public class BuildModeUtility
 {
-	private static readonly string s_JsonName = "startup.json";
+	public const string s_JsonName = "startup.json";
 
 	private static readonly string s_JsonPath = Application.dataPath.Substring(0, Application.dataPath.LastIndexOf('/'));
 
-	private static readonly string s_JsonFile = Path.Combine(s_JsonPath, s_JsonName);
+	private static readonly string s_JsonFile = Path.Combine(s_JsonPath, "startup.json");
 
 	private static StartupJson s_Data;
 
@@ -112,13 +112,6 @@ public class BuildModeUtility
 		}
 	}
 
-	public static void CreateJsonMode(string folderPath, StartupJson json)
-	{
-		using StreamWriter streamWriter = new StreamWriter(Path.Combine(folderPath, s_JsonName));
-		streamWriter.WriteLine(JsonConvert.SerializeObject(json, Formatting.Indented));
-		streamWriter.Close();
-	}
-
 	public static bool CheckAndEnableLowMemoryOptimizations()
 	{
 		if (!IsLowMemoryPlatform || (Data?.Loading?.DisableLowMemoryOverrides).GetValueOrDefault())
@@ -148,7 +141,7 @@ public class BuildModeUtility
 		string[] array = new string[2]
 		{
 			s_JsonFile,
-			Path.Combine(Application.streamingAssetsPath, s_JsonName)
+			Path.Combine(Application.streamingAssetsPath, "startup.json")
 		};
 		foreach (string text in array)
 		{

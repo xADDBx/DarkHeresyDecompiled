@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Parts;
-using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -13,11 +12,12 @@ using UnityEngine;
 namespace Kingmaker.Code.Gameplay.Parts;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class PartArmor : MechanicEntityPart, IDamageablePart, IHashable, IOwlPackable<PartArmor>
+public class PartArmor : MechanicEntityPart, IDamageablePart, IStatModifier, IHashable, IOwlPackable<PartArmor>
 {
-	[JsonProperty]
 	[OwlPackInclude]
 	private float _missingDurabilityFraction;
+
+	private bool _hpAsArmor;
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -29,13 +29,9 @@ public class PartArmor : MechanicEntityPart, IDamageablePart, IHashable, IOwlPac
 		}
 	};
 
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
+	public int DurabilityValue => base.Owner.Actor.GetStat(StatType.MaxArmorDurability, null, default(StatContext), "DurabilityValue");
 
-	public ModifiableValue DamageReduction => StatsContainer.GetStat(StatType.ArmorDamageReduction);
-
-	public ModifiableValue Durability => StatsContainer.GetStat(StatType.ArmorDurability);
-
-	public int DurabilityLeft => (int)Durability - Damage;
+	public int DurabilityLeft => Mathf.FloorToInt((float)DurabilityValue * (1f - _missingDurabilityFraction));
 
 	public float DurabilityLeftFraction => Math.Max(0f, 1f - _missingDurabilityFraction);
 
@@ -43,13 +39,20 @@ public class PartArmor : MechanicEntityPart, IDamageablePart, IHashable, IOwlPac
 	{
 		get
 		{
-			return Mathf.FloorToInt(_missingDurabilityFraction * (float)(int)Durability);
+			return Mathf.FloorToInt(_missingDurabilityFraction * (float)DurabilityValue);
 		}
 		private set
 		{
-			_missingDurabilityFraction = (((int)Durability > 0) ? ((float)value / (float)(int)Durability) : 0f);
+			float num = ((DurabilityValue > 0) ? ((float)value / (float)DurabilityValue) : 0f);
+			if (!Mathf.Approximately(num, _missingDurabilityFraction))
+			{
+				base.Owner.Actor.NotifyStatChanged(StatType.CurrentArmorDurability, "Damage");
+			}
+			_missingDurabilityFraction = num;
 		}
 	}
+
+	public bool HasDamage => _missingDurabilityFraction > 0f;
 
 	public void DealDamage(int damage)
 	{
@@ -68,17 +71,12 @@ public class PartArmor : MechanicEntityPart, IDamageablePart, IHashable, IOwlPac
 
 	public void SetDurabilityLeft(int targetDurability)
 	{
-		SetDamage(Math.Max(0, (int)Durability - targetDurability));
+		SetDamage(Math.Max(0, DurabilityValue - targetDurability));
 	}
 
 	protected override void OnAttachOrPrePostLoad()
 	{
-		StatsContainer.Register(StatType.ArmorDamageReduction);
-		ModifiableValue modifiableValue = StatsContainer.Register(StatType.ArmorDurability);
-		if (base.Owner.IsMechanism)
-		{
-			modifiableValue.AddOverride(StatType.HitPoints, this, onlyIfHigher: false);
-		}
+		RestoreHpAsArmor();
 	}
 
 	public void SetDamage(int damage)
@@ -88,16 +86,46 @@ public class PartArmor : MechanicEntityPart, IDamageablePart, IHashable, IOwlPac
 			PFLog.Default.Error("Damage can't be less than 0");
 			return;
 		}
-		Damage = Math.Min(damage, Durability);
-		if (base.Owner.IsMechanism)
+		Damage = Math.Min(damage, DurabilityValue);
+		PartHealth required = base.Owner.GetRequired<PartHealth>();
+		if (required != null && required.IsCountHpAsArmor)
 		{
-			PartHealth required = base.Owner.GetRequired<PartHealth>();
-			if (required != null)
-			{
-				Damage = required.ClampDamage(Damage);
-				required.SetDamage(Damage);
-			}
+			Damage = required.ClampDamage(Damage);
+			required.SetDamage(Damage);
 		}
+	}
+
+	public void ActivateHpAsArmor()
+	{
+		_hpAsArmor = true;
+		PartHealth required = base.Owner.GetRequired<PartHealth>();
+		Damage = required.Damage;
+		base.Owner.Actor.NotifyStatChanged(StatType.MaxArmorDurability, "ActivateHpAsArmor");
+	}
+
+	public void DeactivateHpAsArmor(int combinedDamage)
+	{
+		_hpAsArmor = false;
+		int num2 = (Damage = Math.Min(combinedDamage, DurabilityLeft));
+		base.Owner.GetRequired<PartHealth>().SetDamage(combinedDamage - num2);
+		base.Owner.Actor.NotifyStatChanged(StatType.MaxArmorDurability, "DeactivateHpAsArmor");
+	}
+
+	public void RestoreHpAsArmor()
+	{
+		_hpAsArmor = base.Owner.GetOptional<PartHealth>()?.IsCountHpAsArmor ?? false;
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		if (_hpAsArmor && stat == StatType.MaxArmorDurability)
+		{
+			collector.OverrideFull(StatType.MaxHitPoints, onlyIfHigher: false, null);
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
 	}
 
 	public override Hash128 GetHash128()
@@ -105,7 +133,6 @@ public class PartArmor : MechanicEntityPart, IDamageablePart, IHashable, IOwlPac
 		Hash128 result = default(Hash128);
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
-		result.Append(ref _missingDurabilityFraction);
 		return result;
 	}
 

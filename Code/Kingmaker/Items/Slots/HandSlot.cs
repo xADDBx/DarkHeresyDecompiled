@@ -49,16 +49,20 @@ public class HandSlot : WeaponSlot, IHashable, IOwlPackable<HandSlot>
 	{
 		get
 		{
-			ItemEntityWeapon itemEntityWeapon = base.MaybeWeapon;
-			if (itemEntityWeapon == null)
+			ItemEntityWeapon maybeWeapon = base.MaybeWeapon;
+			if (maybeWeapon != null)
 			{
-				if (_emptyHandWeapon?.Wielder == null)
-				{
-					return null;
-				}
-				itemEntityWeapon = _emptyHandWeapon;
+				return maybeWeapon;
 			}
-			return itemEntityWeapon;
+			if (_emptyHandWeapon?.Wielder != null)
+			{
+				return _emptyHandWeapon;
+			}
+			if (!IsPrimaryHand && PairSlot.MaybeWeapon != null && PairSlot.MaybeWeapon.Blueprint.IsDoubleHanded)
+			{
+				return PairSlot.MaybeWeapon.Second;
+			}
+			return null;
 		}
 	}
 
@@ -200,6 +204,11 @@ public class HandSlot : WeaponSlot, IHashable, IOwlPackable<HandSlot>
 				RemoveItem();
 				PairSlot.InsertItem(itemEntityWeapon2);
 			}
+		}
+		else if (!IsPrimaryHand && base.MaybeItem is ItemEntityWeapon itemEntityWeapon3 && itemEntityWeapon3.Blueprint.IsDoubleHanded)
+		{
+			RemoveItem();
+			PairSlot.InsertItem(itemEntityWeapon3);
 		}
 		UpdateEmptyHandWeapon(raiseEvent: false);
 		PairSlot.UpdateEmptyHandWeapon(raiseEvent: true);

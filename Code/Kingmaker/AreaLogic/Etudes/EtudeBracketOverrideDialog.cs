@@ -1,5 +1,7 @@
+using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
@@ -12,6 +14,7 @@ using UnityEngine;
 
 namespace Kingmaker.AreaLogic.Etudes;
 
+[Obsolete]
 [TypeId("8b4c3a5898712654596bc06311e73737")]
 public class EtudeBracketOverrideDialog : EtudeBracketOverrideInteraction
 {

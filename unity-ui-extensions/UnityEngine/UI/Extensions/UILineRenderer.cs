@@ -186,7 +186,7 @@ public class UILineRenderer : UIPrimitiveBase
 			{
 				Vector3 vector5 = list[k][1].position - list[k][2].position;
 				Vector3 vector6 = list[k + 1][2].position - list[k + 1][1].position;
-				float num5 = Vector2.Angle(vector5, vector6) * (MathF.PI / 180f);
+				float num5 = Vector2.Angle((Vector2)vector5, (Vector2)vector6) * (MathF.PI / 180f);
 				float num6 = Mathf.Sign(Vector3.Cross(vector5.normalized, vector6.normalized).z);
 				float num7 = LineThickness / (2f * Mathf.Tan(num5 / 2f));
 				Vector3 position = list[k][2].position - vector5.normalized * num7 * num6;

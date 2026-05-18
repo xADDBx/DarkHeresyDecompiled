@@ -15,6 +15,8 @@ public static class VirtualTextureUtils
 
 	public static readonly string VT_ENABLED = "VT_ENABLED";
 
+	public static readonly Matrix4x4 VTStackIndicesSentinel = CreateSentinelMatrix();
+
 	public static void SetMaterialStackLayerTag(Material material, int localStackId, int layerIndex, string guid)
 	{
 		material.SetOverrideTag(string.Format(StackIdLayerIdFormat, localStackId, layerIndex), guid);
@@ -41,11 +43,27 @@ public static class VirtualTextureUtils
 
 	internal static bool DoesMaterialUseVT(Material material)
 	{
-		if (ShaderMetadataRepository.Instance.Get(material.shader).HasVtShaderTag)
+		ShaderMetadataRepository.ShaderMetadata shaderMetadata = ShaderMetadataRepository.Instance.Get(material.shader);
+		if (shaderMetadata.HasVtShaderTag)
 		{
-			return true;
+			return shaderMetadata.TextureStackCount > 0;
 		}
 		return material.IsKeywordEnabled(VT_ENABLED);
+	}
+
+	private static Matrix4x4 CreateSentinelMatrix()
+	{
+		Matrix4x4 result = default(Matrix4x4);
+		for (int i = 0; i < 16; i++)
+		{
+			result[i] = -1f;
+		}
+		return result;
+	}
+
+	internal static void SetVTStackIndicesSentinel(Material material)
+	{
+		material.SetMatrix(ShaderPropertyId._VTStackIndices, VTStackIndicesSentinel);
 	}
 
 	internal static bool ValidateTextureStackId(ref TextureStackId stackId)

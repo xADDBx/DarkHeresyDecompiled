@@ -221,9 +221,9 @@ public class CritterMoveAgent : MonoBehaviour
 					num3 = Mathf.MoveTowards(m_Speed, 0f, m_Acceleration * Time.deltaTime);
 				}
 				m_Speed = num3;
-				vector2 = ((!(num3 > 0f) || firstTick) ? vector4 : ((Vector2)Vector3.RotateTowards(vector2, vector4, m_AngularSpeed * deltaTime * (MathF.PI / 180f), 1f)));
+				vector2 = ((!(num3 > 0f) || firstTick) ? vector4 : ((Vector2)Vector3.RotateTowards((Vector3)vector2, (Vector3)vector4, m_AngularSpeed * deltaTime * (MathF.PI / 180f), 1f)));
 				Vector3 vector5 = vector2.To3D() * m_Speed;
-				base.transform.position = UnitMovementAgentBase.Move(base.transform.position, vector5 * deltaTime, 0.3f, out var _);
+				base.transform.position = UnitMovementAgent.Move(base.transform.position, vector5 * deltaTime, 0.3f, out var _);
 				Vector2 a = base.transform.position.To2D();
 				base.transform.LookAt(base.transform.position + vector2.To3D());
 				Vector2 vector6 = Path.vectorPath[m_NextPointIndex - 1].To2D();

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic;
@@ -100,7 +101,7 @@ public class FeatureUIData
 		}
 		if (param.WeaponCategory.HasValue)
 		{
-			return LocalizedTexts.Instance.Stats.GetText(param.WeaponCategory.Value);
+			return UIStrings.Instance.WeaponCategories.GetWeaponCategoryLabel(param.WeaponCategory.Value);
 		}
 		if ((bool)param.Blueprint)
 		{

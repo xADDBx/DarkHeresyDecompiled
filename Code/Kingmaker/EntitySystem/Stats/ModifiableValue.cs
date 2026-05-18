@@ -17,6 +17,30 @@ namespace Kingmaker.EntitySystem.Stats;
 
 public abstract class ModifiableValue
 {
+	public readonly struct ValueDescription
+	{
+		public readonly StatType Type;
+
+		public readonly int BaseValue;
+
+		public readonly int ModifiedValue;
+
+		public readonly IReadonlyModifiersStat Modifiers;
+
+		public readonly StatOverride? AppliedOverride;
+
+		public ValueDescription(ModifiableValue value)
+		{
+			Type = value.m_Type;
+			BaseValue = value.m_ActualBaseValue;
+			ModifiedValue = value.m_ModifiedValue;
+			Modifiers = value.m_Modifiers;
+			AppliedOverride = value.m_CurrentOverrideDescription;
+		}
+	}
+
+	private static readonly Func<Modifier, bool> FilterIsPermanent = (Modifier m) => m.Permanent;
+
 	private int m_BaseValue;
 
 	private bool m_Forced;
@@ -25,17 +49,17 @@ public abstract class ModifiableValue
 
 	private StatsContainer m_Container;
 
-	private StatsModifiersManager m_Modifiers;
+	private StatModifiersManager m_Modifiers;
 
-	public StatType m_Type;
+	private StatType m_Type;
 
-	public int m_ActualBaseValue;
+	private int m_ActualBaseValue;
 
-	public int m_ModifiedValue;
+	private int m_ModifiedValue;
 
-	public int m_ModifiedValueRaw;
+	private int m_ModifiedValueRaw;
 
-	public int m_PermanentValue;
+	private int m_PermanentValue;
 
 	private List<ModifiableValue> m_Dependents;
 
@@ -46,40 +70,42 @@ public abstract class ModifiableValue
 	private bool m_UpdateDependentFacts;
 
 	[CanBeNull]
-	private List<StatOverride> m_OverridesStack;
+	private List<StatOverride> m_Overrides;
+
+	private StatOverride? m_CurrentOverrideDescription;
 
 	[CanBeNull]
-	private ModifiableValue m_Override;
+	private ModifiableValue m_CurrentOverride;
 
 	private int? m_OverrideModifiedValue;
 
-	public static readonly Func<Modifier, bool> FilterIsPermanent = (Modifier m) => m.Permanent;
-
 	public StatType Type => m_Type;
 
-	public int ModifiedValue => m_Override?.ModifiedValue ?? m_ModifiedValue;
+	public int ModifiedValue => m_CurrentOverride?.ModifiedValue ?? m_ModifiedValue;
 
-	public int ModifiedValueRaw => m_Override?.ModifiedValueRaw ?? m_ModifiedValueRaw;
+	public int PermanentValue => m_CurrentOverride?.PermanentValue ?? m_PermanentValue;
 
-	public int PermanentValue => m_Override?.PermanentValue ?? m_PermanentValue;
-
-	public int BaseValue => m_Override?.BaseValue ?? m_ActualBaseValue;
+	public int BaseValue => m_CurrentOverride?.BaseValue ?? m_ActualBaseValue;
 
 	protected StatsContainer Container => m_Container;
 
 	public MechanicEntity Owner => m_Container?.Owner;
 
-	protected virtual int MinValue => int.MinValue;
+	public virtual int MinValue => int.MinValue;
 
 	protected virtual bool IgnoreModifiers => false;
 
-	public ReadonlyList<Modifier> Modifiers => m_Override?.Modifiers ?? m_Modifiers.List;
+	public IReadonlyModifiersStat Modifiers => m_CurrentOverride?.Modifiers ?? m_Modifiers;
+
+	public ValueDescription Description => new ValueDescription(this);
+
+	public int? CheatValue => m_CheatValue;
 
 	public void Initialize(StatsContainer container, StatType type)
 	{
 		m_Container = container;
 		m_Type = type;
-		m_Modifiers = new StatsModifiersManager(this);
+		m_Modifiers = new StatModifiersManager(this);
 		CalculateBaseValue();
 	}
 
@@ -100,18 +126,13 @@ public abstract class ModifiableValue
 		StatBaseValue statBaseValue = m_Container.Owner.GetStatBaseValue(Type);
 		m_BaseValue = statBaseValue.Value;
 		m_Forced = statBaseValue.Forced;
-		m_ActualBaseValue = Math.Max(MinValue, m_CheatValue ?? m_BaseValue);
-		m_ModifiedValue = (m_ModifiedValueRaw = (m_PermanentValue = m_ActualBaseValue));
+		m_ActualBaseValue = m_CheatValue ?? m_BaseValue;
+		m_ModifiedValue = (m_ModifiedValueRaw = (m_PermanentValue = Math.Max(MinValue, m_ActualBaseValue)));
 	}
 
 	public int CalculateFilteredModifiedValue(Func<Modifier, bool> filter)
 	{
 		return Math.Max(MinValue, m_CheatValue ?? ApplyModifiersFiltered(m_ActualBaseValue, filter));
-	}
-
-	protected int CalculatePermanentValue()
-	{
-		return ApplyModifiersFiltered(m_ActualBaseValue, FilterIsPermanent);
 	}
 
 	public void AddDependentValue(ModifiableValue dependent)
@@ -142,11 +163,6 @@ public abstract class ModifiableValue
 			UpdateValue();
 		}
 		return result;
-	}
-
-	public IEnumerable<Modifier> GetDisplayModifiers()
-	{
-		return (m_Override?.m_Modifiers ?? m_Modifiers).GetDisplayModifiers();
 	}
 
 	public bool RemoveModifier(Modifier? mod)
@@ -225,11 +241,11 @@ public abstract class ModifiableValue
 	{
 		if (!m_UpdateInternalModifiers && !m_UpdateDependentFacts)
 		{
-			m_ActualBaseValue = Math.Max(MinValue, m_CheatValue ?? m_BaseValue);
+			m_ActualBaseValue = m_CheatValue ?? m_BaseValue;
 			int prevValue = m_OverrideModifiedValue ?? m_ModifiedValue;
 			if (m_Forced || m_CheatValue.HasValue)
 			{
-				m_ModifiedValue = (m_ModifiedValueRaw = (m_PermanentValue = m_ActualBaseValue));
+				m_ModifiedValue = (m_ModifiedValueRaw = (m_PermanentValue = Math.Max(MinValue, m_ActualBaseValue)));
 			}
 			else
 			{
@@ -238,38 +254,42 @@ public abstract class ModifiableValue
 				m_UpdateInternalModifiers = false;
 				m_ModifiedValueRaw = ApplyModifiersFiltered(m_ActualBaseValue, null);
 				m_ModifiedValue = Math.Max(MinValue, m_ModifiedValueRaw);
-				m_PermanentValue = CalculatePermanentValue();
-				m_Override = GetBestOverride();
-				m_OverrideModifiedValue = m_Override?.ModifiedValue;
+				m_PermanentValue = Math.Max(MinValue, ApplyModifiersFiltered(m_ActualBaseValue, FilterIsPermanent));
+				(StatOverride?, ModifiableValue) bestOverride = GetBestOverride();
+				m_CurrentOverrideDescription = bestOverride.Item1;
+				m_CurrentOverride = bestOverride.Item2;
+				m_OverrideModifiedValue = m_CurrentOverride?.ModifiedValue;
 			}
 			HandleValueChanged(prevValue, m_OverrideModifiedValue ?? m_ModifiedValue);
 		}
 	}
 
-	[CanBeNull]
-	private ModifiableValue GetBestOverride()
+	private (StatOverride?, ModifiableValue) GetBestOverride()
 	{
-		List<StatOverride> overridesStack = m_OverridesStack;
-		if (overridesStack == null || overridesStack.Count <= 0)
+		List<StatOverride> overrides = m_Overrides;
+		if (overrides == null || overrides.Count <= 0)
 		{
-			return null;
+			return (null, null);
 		}
 		ModifiableValue modifiableValue = null;
-		for (int num = m_OverridesStack.Count - 1; num >= 0; num--)
+		StatOverride? item = null;
+		for (int num = m_Overrides.Count - 1; num >= 0; num--)
 		{
-			StatOverride statOverride = m_OverridesStack[num];
-			ModifiableValue stat = m_Container.GetStat(statOverride.Type);
-			if (!statOverride.OnlyIfHigher)
+			StatOverride value = m_Overrides[num];
+			ModifiableValue stat = m_Container.GetStat(value.Type);
+			if (!value.OnlyIfHigher)
 			{
 				modifiableValue = stat;
+				item = value;
 				break;
 			}
 			if (stat.m_ModifiedValue > m_ModifiedValue && (modifiableValue == null || stat.m_ModifiedValue > modifiableValue.m_ModifiedValue))
 			{
 				modifiableValue = stat;
+				item = value;
 			}
 		}
-		return modifiableValue;
+		return (item, modifiableValue);
 	}
 
 	private void HandleValueChanged(int prevValue, int currentValue)
@@ -369,34 +389,34 @@ public abstract class ModifiableValue
 
 	public void RemoveOverride(EntityFactComponent source)
 	{
-		RemoveOverride((StatOverride i) => i.Fact == source.Fact && i.Component == source.SourceBlueprintComponent);
+		RemoveOverride((StatOverride i) => i.SourceFact == source.Fact && i.SourceComponent == source.SourceBlueprintComponent);
 	}
 
 	public void RemoveOverride(EntityPart source)
 	{
-		RemoveOverride((StatOverride i) => i.Part == source);
+		RemoveOverride((StatOverride i) => i.SourcePart == source);
 	}
 
 	private void AddOverride(StatOverride @override)
 	{
 		ThrowIfOverrideIsCyclic(@override, m_Type);
-		if (m_OverridesStack == null)
+		if (m_Overrides == null)
 		{
-			m_OverridesStack = new List<StatOverride>();
+			m_Overrides = new List<StatOverride>();
 		}
-		m_OverridesStack.Add(@override);
+		m_Overrides.Add(@override);
 		m_Container.GetStat(@override.Type).AddDependentValue(this);
 		UpdateValue();
 	}
 
 	private void RemoveOverride(Predicate<StatOverride> predicate)
 	{
-		List<StatOverride> overridesStack = m_OverridesStack;
-		if (overridesStack == null || overridesStack.Count <= 0)
+		List<StatOverride> overrides = m_Overrides;
+		if (overrides == null || overrides.Count <= 0)
 		{
 			return;
 		}
-		m_OverridesStack.RemoveAll(delegate(StatOverride i)
+		m_Overrides.RemoveAll(delegate(StatOverride i)
 		{
 			bool num = predicate(i);
 			if (num)
@@ -414,12 +434,12 @@ public abstract class ModifiableValue
 		{
 			throw new StackOverflowException("Cycle in stat overrides");
 		}
-		List<StatOverride> overridesStack = m_Container.GetStat(@override.Type).m_OverridesStack;
-		if (overridesStack == null || overridesStack.Count <= 0)
+		List<StatOverride> overrides = m_Container.GetStat(@override.Type).m_Overrides;
+		if (overrides == null || overrides.Count <= 0)
 		{
 			return;
 		}
-		foreach (StatOverride item in overridesStack)
+		foreach (StatOverride item in overrides)
 		{
 			if (item.Type == statToOverride)
 			{

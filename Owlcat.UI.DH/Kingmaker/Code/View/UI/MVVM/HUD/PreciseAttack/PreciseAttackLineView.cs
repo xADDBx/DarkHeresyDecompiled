@@ -119,7 +119,7 @@ public class PreciseAttackLineView : MonoBehaviour
 
 	private void DrawInternal()
 	{
-		float x = Vector3.Distance(m_From, m_To);
+		float x = Vector3.Distance((Vector3)m_From, (Vector3)m_To);
 		Vector2 vector = m_To - m_From;
 		float z = (MathF.PI + Mathf.Atan2(vector.y, vector.x)) * 57.29578f;
 		m_Line.transform.position = new Vector3(m_From.x, m_From.y, 2500f);

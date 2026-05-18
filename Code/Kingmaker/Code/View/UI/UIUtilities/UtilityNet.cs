@@ -33,6 +33,12 @@ public static class UtilityNet
 		}
 	}
 
+	private static bool LocalTest([CanBeNull] this Entity unit, out bool isMine)
+	{
+		isMine = false;
+		return false;
+	}
+
 	public static bool IsControlMainCharacter()
 	{
 		return Game.Instance.Player.MainCharacterEntity.IsMyNetRole();
@@ -237,11 +243,5 @@ public static class UtilityNet
 		{
 			h.HandleNetLobbyClose();
 		});
-	}
-
-	private static bool LocalTest([CanBeNull] this Entity unit, out bool isMine)
-	{
-		isMine = false;
-		return false;
 	}
 }

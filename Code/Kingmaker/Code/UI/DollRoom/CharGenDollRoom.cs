@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Controllers;
@@ -7,9 +8,7 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.ResourceLinks;
 using Kingmaker.UI.DollRoom;
 using Kingmaker.UnitLogic.Levelup.Selections.Doll;
-using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.Visual.Animation;
-using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using Kingmaker.Visual.CharacterSystem;
 using Owlcat.Runtime.Core.Utility;
@@ -18,22 +17,16 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.DollRoom;
 
-public class CharGenDollRoom : CharacterDollRoom, ILevelUpDollHandler, ISubscriber
+public class CharGenDollRoom : DollRoomBase, ILevelUpDollHandler, ISubscriber
 {
 	[SerializeField]
 	private AnimationClipWrapper m_RightHandedAnimationWrapper;
 
-	private Character m_MaleDefaultAvatar;
-
-	private Character m_FemaleDefaultAvatar;
-
-	private bool m_LeftHanded;
+	private DollRoomAvatarManager<Gender> m_AvatarManager;
 
 	private DollState m_DollState;
 
 	private bool m_IsDirty;
-
-	private Coroutine m_AddEquipmentEntitiesCoroutine;
 
 	public override void Show()
 	{
@@ -43,13 +36,11 @@ public class CharGenDollRoom : CharacterDollRoom, ILevelUpDollHandler, ISubscrib
 
 	protected override void Cleanup()
 	{
-		base.Cleanup();
+		m_TargetPlaceholder.rotation = Quaternion.identity;
+		m_AvatarManager?.Cleanup();
+		m_AvatarManager = null;
 		m_DollState = null;
-		if (m_AddEquipmentEntitiesCoroutine != null)
-		{
-			MonoSingleton<CoroutineRunner>.Instance.StopCoroutine(m_AddEquipmentEntitiesCoroutine);
-			m_AddEquipmentEntitiesCoroutine = null;
-		}
+		base.Cleanup();
 	}
 
 	private void LateUpdate()
@@ -62,11 +53,13 @@ public class CharGenDollRoom : CharacterDollRoom, ILevelUpDollHandler, ISubscrib
 		Services.GetInstance<CharacterAtlasService>().Update();
 	}
 
-	protected override void UpdateInternal()
+	[UsedImplicitly]
+	private void Update()
 	{
-		if (!(m_Avatar == null) && !(m_Avatar.AnimationManager == null))
+		Character character = m_AvatarManager?.Active;
+		if (!(character == null) && !(character.AnimationManager == null))
 		{
-			m_Avatar.AnimationManager.CustomUpdate(RealTimeController.SystemStepDurationSeconds);
+			character.AnimationManager.CustomUpdate(RealTimeController.SystemStepDurationSeconds);
 		}
 	}
 
@@ -86,53 +79,62 @@ public class CharGenDollRoom : CharacterDollRoom, ILevelUpDollHandler, ISubscrib
 		}
 	}
 
+	private void OnCharacterAvatarUpdated(Character character)
+	{
+		Renderer[] componentsInChildren = character.GetComponentsInChildren<Renderer>();
+		for (int i = 0; i < componentsInChildren.Length; i++)
+		{
+			componentsInChildren[i].gameObject.layer = 15;
+		}
+	}
+
 	private void UpdateDoll(DollState dollState)
 	{
-		int num = ((dollState.Gender != 0) ? 1 : 0);
+		if (m_AvatarManager == null)
+		{
+			m_AvatarManager = new DollRoomAvatarManager<Gender>(m_TargetPlaceholder, OnCharacterAvatarUpdated);
+		}
 		BlueprintCharGenRoot instance = BlueprintCharGenRoot.Instance;
-		if (num == 0)
+		Gender gender = ((dollState.Gender != 0) ? Gender.Female : Gender.Male);
+		Character doll = instance.GetDollConfig(gender).Doll;
+		string text = ((gender == Gender.Male) ? "CharGen Male" : "CharGen Female");
+		m_AvatarManager.GetOrCreate(gender, doll, text, delegate(Character a)
 		{
-			Object.Destroy(m_MaleDefaultAvatar.Or(null)?.gameObject);
-			m_MaleDefaultAvatar = CreateAvatar(instance.MaleDoll, "CharGen Male");
-			SetupAnimationManager(m_MaleDefaultAvatar.AnimationManager);
-			m_MaleDefaultAvatar.AnimationManager.IsInCombat = false;
-		}
-		else
+			m_AvatarManager.SetupAnimationManager(a.AnimationManager);
+			a.AnimationManager.IsInCombat = false;
+		});
+		m_AvatarManager.SetActive(gender);
+		Character active = m_AvatarManager.Active;
+		if ((bool)m_Camera)
 		{
-			Object.Destroy(m_FemaleDefaultAvatar.Or(null)?.gameObject);
-			m_FemaleDefaultAvatar = CreateAvatar(instance.FemaleDoll, "CharGen Female");
-			SetupAnimationManager(m_FemaleDefaultAvatar.AnimationManager);
-			m_FemaleDefaultAvatar.AnimationManager.IsInCombat = false;
+			Transform targetTransform = ObjectExtensions.FindChildRecursive(name: active.Skeleton?.DollRoomZoomPreset.TargetBoneName ?? "Head", transform: active.transform);
+			m_Camera.LookAt(targetTransform, active.Skeleton?.DollRoomZoomPreset);
 		}
-		Character avatar = ((dollState.Gender == Gender.Male) ? m_MaleDefaultAvatar : m_FemaleDefaultAvatar);
-		SetAvatar(avatar, activateAvatar: false);
 		Skeleton skeleton = dollState.GetSkeleton();
-		if (skeleton != null && avatar.Skeleton != skeleton)
+		if (skeleton != null && active.Skeleton != skeleton)
 		{
-			avatar.Skeleton = skeleton;
+			active.Skeleton = skeleton;
 		}
-		avatar.RemoveAllEquipmentEntities();
+		active.RemoveAllEquipmentEntities();
 		List<EquipmentEntityLink> list = dollState.CollectEntities();
-		EquipmentEntityLink[] collection = ((dollState.Gender == Gender.Female) ? instance.FemaleClothes : instance.MaleClothes);
-		list.AddRange(collection);
-		avatar.AddEquipmentEntities(list);
-		OnEEsAdded();
-		void OnEEsAdded()
+		EquipmentEntityLink[] clothes = instance.GetDollConfig(gender).Clothes;
+		list.AddRange(clothes);
+		active.AddEquipmentEntities(list);
+		dollState.ApplyRamps(active);
+		active.DisplayOptions.ShowHelmet = dollState.ShowHelm;
+		active.DisplayOptions.ShowArmor = dollState.ShowArmor;
+		active.DisplayOptions.ShowBackpack = dollState.ShowBackpack;
+		active.DisplayOptions.ShowCloak = dollState.ShowCloak;
+		active.DisplayOptions.ShowGloves = dollState.ShowGloves;
+		active.DisplayOptions.ShowBoots = dollState.ShowBoots;
+		active.DisplayOptions.ShowCloth = dollState.ShowCloth;
+		AnimationClipWrapper rightHandedAnimationWrapper = m_RightHandedAnimationWrapper;
+		if (rightHandedAnimationWrapper != null)
 		{
-			dollState.ApplyRamps(avatar);
-			avatar.DisplayOptions.ShowHelmet = dollState.ShowHelm;
-			avatar.DisplayOptions.ShowBackpack = dollState.ShowBackpack;
-			avatar.DisplayOptions.ShowCloth = dollState.ShowCloth;
-			AnimationClipWrapper rightHandedAnimationWrapper = m_RightHandedAnimationWrapper;
-			if (rightHandedAnimationWrapper != null)
-			{
-				UnitAnimationActionClip unitAnimationActionClip = UnitAnimationActionClip.Create(rightHandedAnimationWrapper, "UpdateDoll");
-				unitAnimationActionClip.TransitionIn = 0f;
-				unitAnimationActionClip.TransitionOut = 0f;
-				AnimationActionHandle handle = avatar.AnimationManager.CreateHandle(unitAnimationActionClip);
-				avatar.AnimationManager.Execute(handle);
-			}
-			avatar.gameObject.SetActive(value: true);
+			UnitAnimationActionClip unitAnimationActionClip = UnitAnimationActionClip.Create(rightHandedAnimationWrapper, "UpdateDoll");
+			unitAnimationActionClip.TransitionIn = 0f;
+			unitAnimationActionClip.TransitionOut = 0f;
+			active.AnimationManager.TryExecute(unitAnimationActionClip);
 		}
 	}
 }

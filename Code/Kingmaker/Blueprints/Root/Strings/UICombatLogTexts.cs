@@ -37,8 +37,6 @@ public class UICombatLogTexts
 
 	public LocalizedString MoralePhaseHeroic;
 
-	public LocalizedString MoraleAutoregen;
-
 	public LocalizedString MoraleTopLimit;
 
 	public LocalizedString MoraleBottomLimit;

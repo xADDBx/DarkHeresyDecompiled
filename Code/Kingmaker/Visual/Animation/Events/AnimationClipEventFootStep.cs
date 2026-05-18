@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.View.Mechanics;
 
 namespace Kingmaker.Visual.Animation.Events;
 
@@ -18,9 +19,9 @@ public class AnimationClipEventFootStep : AnimationClipEventSound
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override Action PostSoundEvent(MechanicEntityView view)
 	{
-		animationManager.CallbackReceiver.PlayFootstep(base.Name);
+		view.PlayFootstep(base.Name);
 		return null;
 	}
 

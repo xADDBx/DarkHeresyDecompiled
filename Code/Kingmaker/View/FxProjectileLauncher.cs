@@ -64,7 +64,10 @@ public class FxProjectileLauncher : MonoBehaviour
 
 	private void OnDisable()
 	{
-		Game.Instance.Controllers.CoroutinesController.Stop(ref m_Coroutine);
+		if (m_Coroutine.IsRunning)
+		{
+			m_Coroutine.Stop();
+		}
 		Projectile projectile = Projectile;
 		if (projectile != null && !projectile.Destroyed && !projectile.Cleared)
 		{
@@ -74,7 +77,10 @@ public class FxProjectileLauncher : MonoBehaviour
 
 	private void OnDestroy()
 	{
-		Game.Instance.Controllers.CoroutinesController.Stop(ref m_Coroutine);
+		if (m_Coroutine.IsRunning)
+		{
+			m_Coroutine.Stop();
+		}
 		Projectile projectile = Projectile;
 		if (projectile != null && !projectile.Destroyed && !projectile.Cleared)
 		{

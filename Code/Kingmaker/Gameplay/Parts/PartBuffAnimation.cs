@@ -29,16 +29,18 @@ public class PartBuffAnimation : MechanicEntityPart, IHashable, IOwlPackable<Par
 
 	public void PlayAnimation(ICustomLoopActionTypeProvider customLoopActionTypeProvider)
 	{
-		if (customLoopActionTypeProvider.Type != null)
+		if (customLoopActionTypeProvider.Type == null)
 		{
-			UnitAnimationManager unitAnimationManager = (base.Owner.View as UnitEntityView).Or(null)?.AnimationManager;
-			if ((object)unitAnimationManager != null)
+			return;
+		}
+		UnitAnimationManager unitAnimationManager = (base.Owner.View as UnitEntityView).Or(null)?.AnimationManager;
+		if ((object)unitAnimationManager != null)
+		{
+			unitAnimationManager.TryExecute(UnitAnimationType.BuffLoopAction, delegate(UnitAnimationActionHandle h)
 			{
-				UnitAnimationActionHandle unitAnimationActionHandle = unitAnimationManager.CreateHandle(UnitAnimationType.BuffLoopAction);
-				unitAnimationActionHandle.CustomLoopActionType = customLoopActionTypeProvider.Type;
-				unitAnimationManager.Execute(unitAnimationActionHandle);
-				Set(customLoopActionTypeProvider, unitAnimationActionHandle);
-			}
+				h.CustomLoopActionType = customLoopActionTypeProvider.Type;
+			}, out var handle);
+			Set(customLoopActionTypeProvider, handle);
 		}
 	}
 
@@ -50,6 +52,12 @@ public class PartBuffAnimation : MechanicEntityPart, IHashable, IOwlPackable<Par
 			warhammerBuffLoopAction.Or(null)?.SwitchToExit(m_Handle);
 			Clear(warhammerBuffLoopAction == null);
 		}
+	}
+
+	public void RestartAnimations()
+	{
+		(m_Handle?.Action as WarhammerBuffLoopAction).Or(null)?.InterruptAnimation(m_Handle);
+		PlayAnimation(m_CustomLoopActionTypeProvider);
 	}
 
 	private void Set(ICustomLoopActionTypeProvider source, UnitAnimationActionHandle handle)

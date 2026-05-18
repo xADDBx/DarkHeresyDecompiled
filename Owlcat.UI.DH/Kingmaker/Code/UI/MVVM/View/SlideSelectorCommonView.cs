@@ -1,17 +1,15 @@
 using JetBrains.Annotations;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class SlideSelectorCommonView : BaseCharGenAppearancePageComponentView<SlideSequentialSelectorVM>, IScrollHandler, IEventSystemHandler, INavigationDirectionsHandler, INavigationVerticalDirectionsHandler, INavigationUpDirectionHandler, IConsoleEntity, INavigationDownDirectionHandler, INavigationHorizontalDirectionsHandler, INavigationLeftDirectionHandler, INavigationRightDirectionHandler
+public class SlideSelectorCommonView : BaseCharGenAppearancePageComponentView<SlideSequentialSelectorVM>, INavigationDirectionsHandler, INavigationVerticalDirectionsHandler, INavigationUpDirectionHandler, IConsoleEntity, INavigationDownDirectionHandler, INavigationHorizontalDirectionsHandler, INavigationLeftDirectionHandler, INavigationRightDirectionHandler
 {
 	[SerializeField]
 	private Slider m_Slider;
@@ -48,6 +46,10 @@ public class SlideSelectorCommonView : BaseCharGenAppearancePageComponentView<Sl
 	private TextMeshProUGUI m_Label;
 
 	[SerializeField]
+	[CanBeNull]
+	private SliderDotsGraphic m_DotsGraphic;
+
+	[SerializeField]
 	private VirtualListLayoutElementSettings m_LayoutSettings;
 
 	public override VirtualListLayoutElementSettings LayoutSettings => m_LayoutSettings;
@@ -74,20 +76,10 @@ public class SlideSelectorCommonView : BaseCharGenAppearancePageComponentView<Sl
 		return OnNextHandler();
 	}
 
-	public void OnScroll(PointerEventData eventData)
-	{
-	}
-
-	public void Initialize()
-	{
-		base.gameObject.SetActive(value: false);
-		m_Slider.minValue = 1f;
-		m_Slider.wholeNumbers = true;
-		m_Slider.maxValue = 10f;
-	}
-
 	protected override void BindViewImplementation()
 	{
+		m_Slider.minValue = 1f;
+		m_Slider.wholeNumbers = true;
 		m_Slider.maxValue = base.ViewModel.TotalCount;
 		if (m_ButtonNext != null)
 		{
@@ -116,12 +108,13 @@ public class SlideSelectorCommonView : BaseCharGenAppearancePageComponentView<Sl
 		{
 			m_Slider.maxValue = base.ViewModel.TotalCount;
 			SetCurrentIndex(base.ViewModel.CurrentIndex.CurrentValue);
+			DelayedInvoker.InvokeInFrames(LayoutDots, 1);
 		}));
 		AddDisposable(base.ViewModel.CheckCoopControls.Subscribe(delegate(bool value)
 		{
 			CheckCoopButtons(base.ViewModel.IsAvailable.CurrentValue, value);
 		}));
-		DelayedInvoker.InvokeInFrames(CalculateHandleSize, 1);
+		DelayedInvoker.InvokeInFrames(OnLayoutFrame, 1);
 	}
 
 	private void CheckCoopButtons(bool isAvailable, bool isMainCharacter)
@@ -139,6 +132,22 @@ public class SlideSelectorCommonView : BaseCharGenAppearancePageComponentView<Sl
 			m_Slider.handleRect.sizeDelta = new Vector2(m_SliderRect.sizeDelta.x / num, m_Slider.handleRect.sizeDelta.y);
 			m_SliderSlideArea.offsetMin = new Vector2(m_Slider.handleRect.sizeDelta.x / 2f, m_SliderSlideArea.offsetMin.y);
 			m_SliderSlideArea.offsetMax = new Vector2((0f - m_Slider.handleRect.sizeDelta.x) / 2f, m_SliderSlideArea.offsetMin.y);
+		}
+	}
+
+	private void OnLayoutFrame()
+	{
+		CalculateHandleSize();
+		LayoutDots();
+	}
+
+	private void LayoutDots()
+	{
+		if (!(m_DotsGraphic == null))
+		{
+			int count = base.ViewModel?.TotalCount ?? 0;
+			float width = m_SliderSlideArea.rect.width;
+			m_DotsGraphic.SetLayout(count, width);
 		}
 	}
 

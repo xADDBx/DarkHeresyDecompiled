@@ -10,7 +10,7 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class TooltipTemplateRankEntryStat : TooltipTemplateStat
+public sealed class TooltipTemplateRankEntryStat : TooltipTemplateStat
 {
 	private readonly FeatureSelectionItem m_SelectionItem;
 
@@ -29,8 +29,8 @@ public class TooltipTemplateRankEntryStat : TooltipTemplateStat
 		CalculatedPrerequisite calculatedPrerequisite = m_SelectionState.CurrentValue?.GetCalculatedPrerequisite(m_SelectionItem);
 		if (calculatedPrerequisite != null)
 		{
-			list.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.Prerequisites, TooltipTitleType.H2));
-			list.Add(new TooltipBrickPrerequisite(UIUtilityAbilities.GetPrerequisiteEntries(calculatedPrerequisite)));
+			list.Add(new BrickTitleVM(UIStrings.Instance.Tooltips.Prerequisites, TooltipTitleType.H2));
+			list.Add(new BrickPrerequisiteVM(UIUtilityAbilities.GetPrerequisiteEntries(calculatedPrerequisite)));
 		}
 		return list;
 	}

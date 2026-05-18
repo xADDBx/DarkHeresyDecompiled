@@ -2,7 +2,9 @@ using System;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.UI.MVVM;
+using Kingmaker.Localization;
 using Owlcat.UI;
+using R3;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,6 +26,9 @@ public class PreciseAttackBodyPartView : MonoBehaviour
 
 	[SerializeField]
 	private Image m_VitalIcon;
+
+	[SerializeField]
+	private MonoBehaviour m_SpecialEffectIcon;
 
 	[SerializeField]
 	private OwlcatMultiButton m_Button;
@@ -70,6 +75,22 @@ public class PreciseAttackBodyPartView : MonoBehaviour
 		SetVitalHint(isVital);
 		SetCoverIconActive(bodyPartData.IsHiddenByCover);
 		SetCoverHint(bodyPartData.IsHiddenByCover);
+		int num;
+		if (!isVital)
+		{
+			LocalizedString description = bodyPartData.BodyPart.Description;
+			num = ((description != null && !description.Empty) ? 1 : 0);
+		}
+		else
+		{
+			num = 0;
+		}
+		bool flag = (byte)num != 0;
+		m_SpecialEffectIcon.gameObject.SetActive(flag);
+		if (flag)
+		{
+			m_SpecialEffectIcon.SetHint(bodyPartData.BodyPart.Description).AddTo(this);
+		}
 	}
 
 	public void SetState(BodyPartState bodyPartState)

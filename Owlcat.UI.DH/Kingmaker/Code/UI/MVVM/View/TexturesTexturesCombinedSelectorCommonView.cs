@@ -1,4 +1,3 @@
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.UI.Common;
 using Owlcat.UI;
 using R3;
@@ -9,7 +8,7 @@ using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public class TexturesTexturesCombinedSelectorCommonView : BaseCharGenAppearancePageComponentView<TextureTextureCombinedSelectorVM>, INavigationDirectionsHandler, INavigationVerticalDirectionsHandler, INavigationUpDirectionHandler, IConsoleEntity, INavigationDownDirectionHandler, INavigationHorizontalDirectionsHandler, INavigationLeftDirectionHandler, INavigationRightDirectionHandler, IFunc01ClickHandler, IConsoleEntityProxy
+public class TexturesTexturesCombinedSelectorCommonView : BaseCharGenAppearancePageComponentView<TextureTextureCombinedSelectorVM>
 {
 	[SerializeField]
 	private TextMeshProUGUI m_Label;
@@ -32,46 +31,7 @@ public class TexturesTexturesCombinedSelectorCommonView : BaseCharGenAppearanceP
 
 	private bool m_IsInputAdded;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	public override VirtualListLayoutElementSettings LayoutSettings => m_LayoutSettings;
-
-	public IConsoleEntity ConsoleEntityProxy => m_NavigationBehaviour;
-
-	public bool CanFunc01Click()
-	{
-		return true;
-	}
-
-	public void OnFunc01Click()
-	{
-		m_Paginator.NextPage();
-	}
-
-	public string GetFunc01ClickHint()
-	{
-		return UIStrings.Instance.CharGen.SwitchPageSet;
-	}
-
-	public bool HandleUp()
-	{
-		return m_NavigationBehaviour.HandleUp();
-	}
-
-	public bool HandleDown()
-	{
-		return m_NavigationBehaviour.HandleDown();
-	}
-
-	public bool HandleLeft()
-	{
-		return m_NavigationBehaviour.HandleLeft();
-	}
-
-	public bool HandleRight()
-	{
-		return m_NavigationBehaviour.HandleRight();
-	}
 
 	protected override void BindViewImplementation()
 	{
@@ -88,7 +48,6 @@ public class TexturesTexturesCombinedSelectorCommonView : BaseCharGenAppearanceP
 		});
 		LayoutRebuilder.ForceRebuildLayoutImmediate(base.transform as RectTransform);
 		m_LayoutSettings.SetDirty();
-		CreateNavigation();
 	}
 
 	protected override void DestroyViewImplementation()
@@ -97,58 +56,8 @@ public class TexturesTexturesCombinedSelectorCommonView : BaseCharGenAppearanceP
 		m_IsInputAdded = false;
 	}
 
-	public override void AddInput(ref InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
+	public void AddInput()
 	{
-		if (!m_IsInputAdded)
-		{
-			InputBindStruct inputBindStruct = inputLayer.AddButton(delegate
-			{
-				OnFunc01Click();
-			}, 10, IsFocused);
-			AddDisposable(hintsWidget.BindHint(inputBindStruct, UIStrings.Instance.CharGen.SwitchPageSet));
-			AddDisposable(inputBindStruct);
-			m_IsInputAdded = true;
-		}
-	}
-
-	public override void RemoveInput()
-	{
-	}
-
-	private void CreateNavigation()
-	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour();
-		m_NavigationBehaviour.AddRow<TextureSelectorCommonView>(m_FirstTextureSelectorPagedView);
-		m_NavigationBehaviour.AddRow<TextureSelectorPagedView>(m_SecondTextureSelectorPagedView);
-		AddDisposable(ObservableSubscribeExtensions.Subscribe(base.ViewModel.OnSetValues, delegate
-		{
-			UpdateInternalFocus();
-		}));
-		AddDisposable(base.ViewModel.CurrentIndex.Subscribe(delegate
-		{
-			UpdateInternalFocus();
-		}));
-	}
-
-	public override void SetFocus(bool value)
-	{
-		base.SetFocus(value);
-		if (value)
-		{
-			m_NavigationBehaviour.FocusOnCurrentEntity();
-		}
-		else
-		{
-			m_NavigationBehaviour.UnFocusCurrentEntity();
-		}
-	}
-
-	private void UpdateInternalFocus()
-	{
-		if (IsFocused.Value && m_NavigationBehaviour != null)
-		{
-			m_NavigationBehaviour.FocusOnCurrentEntity();
-		}
 	}
 
 	public void SetTitleText(string title)

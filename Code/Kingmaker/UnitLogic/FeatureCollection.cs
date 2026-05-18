@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Levelup.Obsolete.Blueprints.Selection;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
@@ -34,7 +34,7 @@ public class FeatureCollection : MechanicEntityFactsCollection<Feature>
 	}
 
 	[CanBeNull]
-	public Feature Add(BlueprintFeature blueprint, MechanicsContext parentContext = null, int rank = 1)
+	public Feature Add(BlueprintFeature blueprint, IEvalContext parentContext = null, int rank = 1)
 	{
 		return base.Manager.Add(new Feature(blueprint, parentContext, rank));
 	}

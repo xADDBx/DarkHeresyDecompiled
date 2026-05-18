@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cinemachine;
+using Kingmaker.Code.Framework.PubSubSystem;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Controllers.Units.CameraFollow;
@@ -116,13 +117,13 @@ public class CameraFollowController : IControllerTick, IController, IControllerS
 				m_ActiveTasks.RemoveAt(num);
 			}
 		}
-		if (m_Brain.enabled && !m_Brain.IsBlending)
+		if (m_Brain.enabled)
 		{
 			if (m_ActiveTasks.Count == 0)
 			{
 				StopActionCamera();
 			}
-			if (cameraFollowTask != null)
+			if (!m_Brain.IsBlending && cameraFollowTask != null)
 			{
 				SetTimescale(cameraFollowTask.TaskParams.TimeScale);
 			}
@@ -219,6 +220,12 @@ public class CameraFollowController : IControllerTick, IController, IControllerS
 			CinemachineVirtualCamera sourceVirtualCamera = m_SourceVirtualCamera;
 			Transform cameraAttachPoint = CameraRig.Instance.CameraAttachPoint;
 			CameraRig.Instance.ListenerUpdater.SetParent(CameraRig.Instance.Camera.transform);
+			AudioListenerPositionController component = CameraRig.Instance.ListenerUpdater.GetComponent<AudioListenerPositionController>();
+			if (component != null)
+			{
+				component.UseGroundRelativePosition = false;
+				component.ApplySceneOffset = false;
+			}
 			CinemachineCore.CameraUpdatedEvent.AddListener(UpdateListenerPosition);
 			sourceVirtualCamera.ForceCameraPosition(cameraAttachPoint.transform.position, cameraAttachPoint.transform.rotation);
 			sourceVirtualCamera.m_Lens.FieldOfView = CameraRig.Instance.Camera.fieldOfView;
@@ -252,6 +259,12 @@ public class CameraFollowController : IControllerTick, IController, IControllerS
 		transform.localRotation = Quaternion.identity;
 		CinemachineCore.CameraUpdatedEvent.RemoveListener(UpdateListenerPosition);
 		CameraRig.Instance.ListenerUpdater.SetParent(CameraRig.Instance.CameraAttachPoint);
+		AudioListenerPositionController component = CameraRig.Instance.ListenerUpdater.GetComponent<AudioListenerPositionController>();
+		if (component != null)
+		{
+			component.UseGroundRelativePosition = true;
+			component.ApplySceneOffset = true;
+		}
 		PFLog.Camera.Log("Stop Combat Camera");
 		m_Brain.enabled = false;
 		SetTimescale(1f);

@@ -6,5 +6,6 @@ public enum DetectiveTraceVisualType
 	Blood,
 	Beast,
 	Path,
-	Dragging
+	Dragging,
+	DEBUG
 }

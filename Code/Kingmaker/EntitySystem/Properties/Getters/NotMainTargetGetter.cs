@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -8,7 +9,7 @@ public class NotMainTargetGetter : BoolPropertyGetter, PropertyContextAccessor.I
 {
 	protected override bool GetBaseValue()
 	{
-		return this.GetRule()?.Reason.Context?.ClickedTarget != base.CurrentEntity;
+		return EvalContext.Current.Rule?.Reason.Context?.ClickedTarget != base.CurrentEntity;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

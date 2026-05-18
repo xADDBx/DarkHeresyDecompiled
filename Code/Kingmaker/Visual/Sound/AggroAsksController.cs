@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 
@@ -38,10 +39,17 @@ public class AggroAsksController : BaseAsksController, ITickUnitAsksController, 
 				}
 			}
 		}
-		UnitAsksHelper.GetRandomPartyEntity((BaseUnitEntity x) => x.IsInCombat && x.LifeState.IsConscious && x.View != null && x.View.Asks != null && x.View.Asks.Aggro.HasBarks)?.View.Asks.Aggro.Schedule(is2D: false, delegate
+		BaseUnitEntity randomPartyEntity = UnitAsksHelper.GetRandomPartyEntity((BaseUnitEntity x) => x.IsInCombat && x.LifeState.IsConscious && x.View != null && x.View.Asks != null && x.View.Asks.Aggro.HasBarks);
+		if (randomPartyEntity != null)
 		{
-			AggroCallback(isRaceAnswer: false);
-		});
+			using (EvalContext.PushAsksContext(randomPartyEntity, randomPartyEntity))
+			{
+				randomPartyEntity.View.Asks.Aggro.Schedule(is2D: false, delegate
+				{
+					AggroCallback(isRaceAnswer: false);
+				});
+			}
+		}
 		m_CheckAggro = false;
 	}
 

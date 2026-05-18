@@ -1,8 +1,6 @@
 using System;
 using Kingmaker.Blueprints.Root.Strings;
-using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -13,7 +11,7 @@ public class ItemsFilterSearchConsoleView : ItemsFilterSearchBaseView
 	private ConsoleInputField m_ConsoleInputField;
 
 	[SerializeField]
-	private ConsoleHint m_SearchHint;
+	private HintView m_SearchHint;
 
 	private readonly ReactiveProperty<bool> m_IsActive = new ReactiveProperty<bool>();
 
@@ -26,20 +24,13 @@ public class ItemsFilterSearchConsoleView : ItemsFilterSearchBaseView
 		m_ConsoleInputField.Bind(null, base.OnSearchStringEdit);
 	}
 
-	public void AddInput(InputLayer inputLayer, ReadOnlyReactiveProperty<bool> enabledHints = null)
+	public void AddInput()
 	{
-		m_SearchHint.Bind(inputLayer.AddButton(delegate
-		{
-			m_ConsoleInputField.Select();
-		}, 16, enabledHints)).AddTo(this);
 	}
 
-	public IDisposable AddInputDisposable(InputLayer inputLayer, ReadOnlyReactiveProperty<bool> enabledHints = null)
+	public IDisposable AddInputDisposable()
 	{
-		return m_SearchHint.Bind(inputLayer.AddButton(delegate
-		{
-			m_ConsoleInputField.Select();
-		}, 16, enabledHints));
+		return new CompositeDisposable();
 	}
 
 	public override void SetActive(bool value)
@@ -57,7 +48,7 @@ public class ItemsFilterSearchConsoleView : ItemsFilterSearchBaseView
 		OnSearchStringEdit(null);
 	}
 
-	private void ShowDropdownMenu(InputActionEventData data)
+	private void ShowDropdownMenu()
 	{
 		TooltipHelper.HideTooltip();
 	}

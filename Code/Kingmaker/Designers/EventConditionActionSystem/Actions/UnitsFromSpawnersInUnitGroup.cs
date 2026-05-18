@@ -2,7 +2,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.View.Spawners;
 using Owlcat.Runtime.Core.Utility;
@@ -25,25 +25,23 @@ public class UnitsFromSpawnersInUnitGroup : GameAction
 
 	protected override void RunAction()
 	{
-		IEntityViewBase entityViewBase = m_Group.FindView();
-		if (entityViewBase == null)
+		if (!(m_Group.FindData() is UnitGroupEntity unitGroupEntity))
 		{
 			return;
 		}
-		foreach (Transform item in entityViewBase.ViewTransform)
+		foreach (Entity member in unitGroupEntity.Members)
 		{
 			AbstractUnitEntity abstractUnitEntity = null;
-			UnitSpawnerBase component = item.GetComponent<UnitSpawnerBase>();
-			if (!(component is UnitSpawner unitSpawner))
+			if (!(member is UnitSpawnerEntity unitSpawnerEntity))
 			{
-				if (component is CompanionSpawner { IsControllingCompanion: not false } companionSpawner)
+				if (member is CompanionSpawnerEntity { IsControllingCompanion: not false } companionSpawnerEntity)
 				{
-					abstractUnitEntity = companionSpawner.SpawnedUnit;
+					abstractUnitEntity = companionSpawnerEntity.SpawnedUnit;
 				}
 			}
 			else
 			{
-				abstractUnitEntity = unitSpawner.SpawnedUnit;
+				abstractUnitEntity = unitSpawnerEntity.SpawnedUnit;
 			}
 			if (abstractUnitEntity != null)
 			{

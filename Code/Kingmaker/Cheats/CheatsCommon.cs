@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Core.Cheats;
 using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework.Settings.UISettings;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Localization;
 using Kingmaker.Localization.Enums;
@@ -18,7 +22,6 @@ using Kingmaker.RuleSystem.Rules;
 using Kingmaker.Settings;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.UnitLogic.Alignments;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.Utility.DotNetExtensions;
@@ -26,6 +29,7 @@ using Kingmaker.View.MapObjects;
 using Kingmaker.Visual.Particles;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Visual.Effects.ParticleSumEmitter;
+using TMPro;
 using UnityEngine;
 using UnityHeapEx;
 
@@ -80,6 +84,10 @@ public class CheatsCommon
 
 	private static readonly int[] Grades = new int[3] { -999, 0, 999 };
 
+	private static CROverrideToken s_AreaCROverride;
+
+	private static readonly Regex s_StringDebugNameRegex = new Regex("<size=0>([^<]+)</size>", RegexOptions.Compiled);
+
 	private static readonly System.Random s_Rnd = new System.Random(42);
 
 	[Cheat(Name = "random_enc", Description = "When false, random encounters on global map are disabled")]
@@ -133,6 +141,10 @@ public class CheatsCommon
 			keyboard.Bind("ShowDebugBubble", delegate
 			{
 				CheatsHelper.Run("emperor_open_my_eyes");
+			});
+			keyboard.Bind("ShowStringDebugMode", delegate
+			{
+				CheatsHelper.Run("lectitio_divinitatus");
 			});
 			SmartConsole.RegisterCommand("produce_exception", CheatsDebug.ProduceException);
 			SmartConsole.RegisterCommand("gain_xp", GainExperience);
@@ -193,13 +205,12 @@ public class CheatsCommon
 	{
 		if (target != null)
 		{
-			using (MechanicsContext mechanicsContext = MechanicsContext.Claim(CheatRoot.Instance, Game.Instance.DefaultUnit))
+			using (EvalContext.Build().Blueprint(CheatRoot.Instance).Caster(Game.Instance.DefaultUnit)
+				.Target(target)
+				.Push())
 			{
-				using (mechanicsContext.SetScope(target, null))
-				{
-					ConfigRoot.Instance.Cheats.TestAction.Run();
-					return;
-				}
+				ConfigRoot.Instance.Cheats.TestAction.Run();
+				return;
 			}
 		}
 		ConfigRoot.Instance.Cheats.TestAction.Run();
@@ -212,6 +223,26 @@ public class CheatsCommon
 		string text = "Random encounter is " + (RandomEncounters ? "enabled" : "disabled");
 		PFLog.Default.Log(text);
 		UtilityMessageBox.SendWarning(text);
+	}
+
+	[Cheat(Name = "area_cr_set", Description = "Set area CR override to value")]
+	public static void SetAreaCR(int value)
+	{
+		if (value < 0)
+		{
+			PFLog.Default.Log("Area CR cannot be negative");
+		}
+		else
+		{
+			s_AreaCROverride = Game.Instance.LoadedAreaState.Settings.PushCROverride(value);
+		}
+	}
+
+	[Cheat(Name = "area_cr_clear", Description = "Clear area CR override")]
+	public static void ClearAreaCR()
+	{
+		Game.Instance.LoadedAreaState.Settings.PopCROverride(s_AreaCROverride);
+		s_AreaCROverride = null;
 	}
 
 	[Cheat(Name = "checks_fail", ExecutionPolicy = ExecutionPolicy.PlayMode)]
@@ -396,6 +427,59 @@ public class CheatsCommon
 		}
 	}
 
+	[Cheat(Name = "lectitio_divinitatus", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ShowStringDebugMode()
+	{
+		Game.Instance.RootUIContext.SwitchDebugStringsInformationShow();
+	}
+
+	[Cheat(Name = "copy_string_debug_name", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void CopyStringDebugName()
+	{
+		if (!Game.Instance.RootUIContext.GetDebugStringsInformationShow())
+		{
+			return;
+		}
+		Vector3 mousePosition = Input.mousePosition;
+		TMP_Text tMP_Text = null;
+		int num = -1;
+		TMP_Text[] array = UnityEngine.Object.FindObjectsOfType<TMP_Text>();
+		foreach (TMP_Text tMP_Text2 in array)
+		{
+			if (!tMP_Text2.isActiveAndEnabled || string.IsNullOrEmpty(tMP_Text2.text) || !s_StringDebugNameRegex.IsMatch(tMP_Text2.text))
+			{
+				continue;
+			}
+			Canvas canvas = ((tMP_Text2 is TextMeshProUGUI textMeshProUGUI) ? textMeshProUGUI.canvas : null);
+			Camera cam = ((canvas != null && canvas.renderMode != 0) ? canvas.worldCamera : null);
+			if (RectTransformUtility.RectangleContainsScreenPoint(tMP_Text2.rectTransform, mousePosition, cam))
+			{
+				int hierarchyDepth = GetHierarchyDepth(tMP_Text2.transform);
+				if (hierarchyDepth > num)
+				{
+					num = hierarchyDepth;
+					tMP_Text = tMP_Text2;
+				}
+			}
+		}
+		if (!(tMP_Text == null))
+		{
+			string text = (GUIUtility.systemCopyBuffer = s_StringDebugNameRegex.Match(tMP_Text.text).Groups[1].Value);
+			UtilityMessageBox.SendWarning("Copied: " + text);
+		}
+	}
+
+	private static int GetHierarchyDepth(Transform t)
+	{
+		int num = 0;
+		while (t.parent != null)
+		{
+			num++;
+			t = t.parent;
+		}
+		return num;
+	}
+
 	private static void ShuffleParty(string parameters)
 	{
 		List<BaseUnitEntity> party = Game.Instance.Player.Party;
@@ -446,12 +530,29 @@ public class CheatsCommon
 			{
 				Game.Instance.Controllers.EntityDestroyer.Destroy(baseUnitEntity);
 			}
-			if (entity2 is DroppedLoot.EntityData entity)
+			if (entity2 is DroppedLootEntity entity)
 			{
 				Game.Instance.Controllers.EntityDestroyer.Destroy(entity);
 			}
 		}
 		FxHelper.DestroyAll();
 		MonoSingleton<ParticleSystemCustomSubEmitterDelegate>.Instance.ClearAllParticles();
+	}
+
+	[Cheat(Name = "gender_set_m", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void SetGenderM()
+	{
+		SetGender(male: true);
+	}
+
+	[Cheat(Name = "gender_set_f", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void SetGenderF()
+	{
+		SetGender(male: false);
+	}
+
+	private static void SetGender(bool male)
+	{
+		Utilities.GetUnitUnderMouse()?.Description.SetGender((!male) ? Gender.Female : Gender.Male);
 	}
 }

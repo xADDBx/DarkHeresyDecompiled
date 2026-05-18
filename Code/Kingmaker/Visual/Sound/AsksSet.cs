@@ -3,6 +3,7 @@ using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.Random;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Kingmaker.Visual.Sound;
 
@@ -18,7 +19,19 @@ public class AsksSet
 	[ShowIf("OverrideCooldownOnGamepad")]
 	public float CooldownGamepad;
 
-	public bool InterruptOthers;
+	[Tooltip("Will interrupt currently playing ask")]
+	[FormerlySerializedAs("InterruptOthers")]
+	public bool InterruptCurrent;
+
+	[Tooltip("Will erase queue before scheduling")]
+	[ShowIf("InterruptCurrent")]
+	public bool ClearQueue;
+
+	[Tooltip("While playing, no other ask can be scheduled \n Example: Death ask")]
+	public bool IsForbidQueueing;
+
+	[Tooltip("Won't be played if other ask playing or queue not empty \n Example: Idle asks playing only if no other asks playing")]
+	public bool CannotBePlayedIfQueueNotEmpty;
 
 	public float DelayMin;
 
@@ -31,14 +44,7 @@ public class AsksSet
 
 	public bool DoNotPlayWhileAlone;
 
-	public bool EnablePrioritization;
-
-	[ShowIf("EnablePrioritization")]
-	[Range(0f, 10f)]
-	public int PrioritizationGroup;
-
-	[ShowIf("EnablePrioritization")]
-	[Range(0f, 10f)]
+	[Tooltip("Higher the number - higher the priority")]
 	public int Priority;
 
 	public float GetCooldown()

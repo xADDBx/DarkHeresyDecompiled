@@ -224,7 +224,12 @@ public class KeyboardAccess : IFocusHandler, ISubscriber, IService, IDisposable
 
 	private void OnCallbackByBinding(Binding binding, bool force = false)
 	{
-		if (binding.GameMode != Game.Instance.CurrentModeType || (Game.Instance.Controllers.PauseController.IsPausedByLocalPlayer && !binding.WorksWhenUIPaused) || !m_BindingCallbacks.TryGetValue(binding.Name, out var value) || value.Count == 0 || (!binding.InputMatched() && !force) || (OwlcatModificationsWindow.IsActive && UISettingsRoot.Instance.UIKeybindGeneralSettings.OpenModificationsWindow.name != binding.Name))
+		if (binding.GameMode != Game.Instance.CurrentModeType || (Game.Instance.Controllers.PauseController.IsPausedByLocalPlayer && !binding.WorksWhenUIPaused) || !m_BindingCallbacks.TryGetValue(binding.Name, out var value) || value.Count == 0 || (!binding.InputMatched() && !force))
+		{
+			return;
+		}
+		UberLoggerAppWindow instance = UberLoggerAppWindow.Instance;
+		if (((object)instance != null && instance.IsConsoleFocused) || (OwlcatModificationsWindow.IsActive && UISettingsRoot.Instance.UIKeybindGeneralSettings.OpenModificationsWindow.name != binding.Name))
 		{
 			return;
 		}
@@ -434,9 +439,12 @@ public class KeyboardAccess : IFocusHandler, ISubscriber, IService, IDisposable
 			RegisterBinding("DetachDebuff", KeyCode.X, gameModesArray, ctrl: false, alt: false, shift: true);
 			RegisterBinding("RandomEncounterStatusSwitch", KeyCode.Keypad6, gameModesArray, ctrl: true, alt: false, shift: false);
 			RegisterBinding("LocalTeleport", KeyCode.T, gameModesArray3, ctrl: true, alt: false, shift: false);
+			RegisterBinding("CheatRemoteTeleport", KeyCode.T, gameModesArray3, ctrl: true, alt: false, shift: true);
+			RegisterBinding("CheatRestCurrentUnit", KeyCode.R, gameModesArray3, ctrl: true, alt: false, shift: true);
 			RegisterBinding("ExecuteFromBuffer", KeyCode.V, gameModesArray, ctrl: true, alt: false, shift: false);
 			RegisterBinding("StatCoercion", KeyCode.P, gameModesArray, ctrl: false, alt: false, shift: true);
 			RegisterBinding("Cheat_MakeEnemy", KeyCode.E, gameModesArray, ctrl: true, alt: false, shift: true);
+			RegisterBinding("Cheat_AddToSelectedUnits", KeyCode.V, gameModesArray3, ctrl: false, alt: false, shift: true);
 			RegisterBinding("AoELoot", KeyCode.G, gameModesArray, ctrl: true, alt: false, shift: true);
 			RegisterBinding("Action", KeyCode.O, gameModesArray);
 			RegisterBinding("PersistantQuickSave", KeyCode.F5, gameModesArray, ctrl: false, alt: false, shift: true);
@@ -455,6 +463,7 @@ public class KeyboardAccess : IFocusHandler, ISubscriber, IService, IDisposable
 			RegisterBinding("ChangeUINextPlatform", KeyCode.RightArrow, gameModesArray, ctrl: false, alt: true, shift: true);
 			RegisterBinding("ChangeUIPrevPlatform", KeyCode.LeftArrow, gameModesArray, ctrl: false, alt: true, shift: true);
 			RegisterBinding("ShowDebugBubble", KeyCode.E, gameModesArray, ctrl: true, alt: true, shift: false);
+			RegisterBinding("ShowStringDebugMode", KeyCode.W, gameModesArray, ctrl: true, alt: true, shift: false);
 		}
 		else
 		{

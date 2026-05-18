@@ -2,6 +2,7 @@ using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Code.Gameplay.Getters;
@@ -14,7 +15,7 @@ public class IsCurrentTurnUnitGetter : BoolPropertyGetter, PropertyContextAccess
 
 	protected override bool GetBaseValue()
 	{
-		if (!(this.GetTargetByType(Target) is BaseUnitEntity baseUnitEntity))
+		if (!(EvalContext.Current.GetEntityByType(Target) is BaseUnitEntity baseUnitEntity))
 		{
 			return false;
 		}

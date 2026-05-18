@@ -30,7 +30,8 @@ public enum WeaponType
 	EldarRifleHipLaser,
 	EldarRifleShoulderBase,
 	EldarRifleShoulderLaser,
-	EldarHeavyHip,
+	EldarHeavyHipBase,
+	EldarHeavyHipLaser,
 	EldarHeavyShoulder,
 	Creature
 }

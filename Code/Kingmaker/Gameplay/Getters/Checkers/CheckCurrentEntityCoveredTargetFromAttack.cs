@@ -1,7 +1,8 @@
 using System;
-using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Owlcat.Runtime.Core.Utility;
@@ -21,8 +22,8 @@ public sealed class CheckCurrentEntityCoveredTargetFromAttack : BoolPropertyGett
 
 	protected override bool GetBaseValue()
 	{
-		Entity targetByType = this.GetTargetByType(Target);
-		if (targetByType == null)
+		MechanicEntity entityByType = EvalContext.Current.GetEntityByType(Target);
+		if (entityByType == null)
 		{
 			return false;
 		}
@@ -31,7 +32,7 @@ public sealed class CheckCurrentEntityCoveredTargetFromAttack : BoolPropertyGett
 		{
 			return false;
 		}
-		if (rulePerformAttack.Target == base.CurrentEntity && rulePerformAttack.RollPerformAttackRule.Target == targetByType)
+		if (rulePerformAttack.Target == base.CurrentEntity && rulePerformAttack.RollPerformAttackRule.Target == entityByType)
 		{
 			return rulePerformAttack.RollPerformAttackRule.ResultIsCoverHit;
 		}

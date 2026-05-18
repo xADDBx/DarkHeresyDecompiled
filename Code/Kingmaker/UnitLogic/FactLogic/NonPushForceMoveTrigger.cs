@@ -4,7 +4,7 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Buffs.Components;
@@ -29,16 +29,12 @@ public class NonPushForceMoveTrigger : UnitBuffComponentDelegate, IUnitAbilityNo
 
 	public ActionList Actions;
 
-	public void HandleUnitNonPushForceMove(int distanceInCells, MechanicsContext context, UnitEntity movedTarget)
+	public void HandleUnitNonPushForceMove(int distanceInCells, IEvalContext context, UnitEntity movedTarget)
 	{
-		if (OnlyFromOwner && context.MaybeCaster != base.Owner)
+		if (!OnlyFromOwner || context?.Caster == base.Owner)
 		{
-			return;
-		}
-		base.Context[ContextPropertyName] = distanceInCells * ValueMultiplier.Calculate(base.Context) + ValueBonus.Calculate(base.Context);
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-		{
-			base.Fact.RunActionInContext(Actions, movedTarget.ToITargetWrapper());
+			EvalContext.Current[ContextPropertyName] = distanceInCells * ValueMultiplier.Calculate(context) + ValueBonus.Calculate(context);
+			base.Fact.RunActionInContext(Actions, movedTarget);
 		}
 	}
 }

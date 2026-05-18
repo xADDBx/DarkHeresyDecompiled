@@ -160,7 +160,7 @@ public class FirstLaunchSettingsVM : ViewModel, ILocalizationHandler, ISubscribe
 		{
 			ApplySettings();
 			m_BlockHints.Value = true;
-			m_ShowPhotosensitivityScreen.Execute();
+			m_ShowPhotosensitivityScreen.Execute(Unit.Default);
 		}
 	}
 
@@ -193,6 +193,6 @@ public class FirstLaunchSettingsVM : ViewModel, ILocalizationHandler, ISubscribe
 		{
 			e.UpdateTitle();
 		});
-		m_LanguageChanged.Execute();
+		m_LanguageChanged.Execute(Unit.Default);
 	}
 }

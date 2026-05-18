@@ -35,7 +35,7 @@ public class ArmorSlot : ItemSlot, IHashable, IOwlPackable<ArmorSlot>
 
 	public override bool IsItemSupported(ItemEntity item)
 	{
-		if (base.Owner == null || (base.Owner.IsInCombat && !ContextData<IgnoreLock>.Current))
+		if (base.Owner == null || (base.Owner.IsInCombat && !Game.Instance.Controllers.TurnController.IsPreparationTurn && !ContextData<IgnoreLock>.Current))
 		{
 			return false;
 		}
@@ -48,7 +48,7 @@ public class ArmorSlot : ItemSlot, IHashable, IOwlPackable<ArmorSlot>
 
 	public override bool CanRemoveItem()
 	{
-		if (base.Owner == null || (base.Owner.IsInCombat && !ContextData<IgnoreLock>.Current))
+		if (base.Owner == null || (base.Owner.IsInCombat && !Game.Instance.Controllers.TurnController.IsPreparationTurn && !ContextData<IgnoreLock>.Current))
 		{
 			return false;
 		}

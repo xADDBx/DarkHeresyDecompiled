@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.Enums;
@@ -29,7 +30,10 @@ public class SetGraphNodeToUseAoeAbilityToNode : BehaviourTreeNode
 
 	private readonly bool m_IncludeDeadUnitsInCalculations;
 
-	public SetGraphNodeToUseAoeAbilityToNode(EntityVariable agent, GraphNodeVariable variable, GraphNodeVariable casterNode, GraphNodeListVariable nodes, AbilityVariable ability, int minTotalValueToCastAbility, PropertyCalculator targetValueCalculator, bool includeDeadUnitsInCalculations)
+	[CanBeNull]
+	private readonly PropertyCalculatorBlueprintVariable m_CalculatorBlueprint;
+
+	public SetGraphNodeToUseAoeAbilityToNode(EntityVariable agent, GraphNodeVariable variable, GraphNodeVariable casterNode, GraphNodeListVariable nodes, AbilityVariable ability, int minTotalValueToCastAbility, PropertyCalculator targetValueCalculator, bool includeDeadUnitsInCalculations, [CanBeNull] PropertyCalculatorBlueprintVariable calculatorBlueprint = null)
 	{
 		m_Agent = agent;
 		m_Variable = variable;
@@ -39,11 +43,12 @@ public class SetGraphNodeToUseAoeAbilityToNode : BehaviourTreeNode
 		m_MinTotalValueToCastAbility = minTotalValueToCastAbility;
 		m_TargetValueCalculator = targetValueCalculator;
 		m_IncludeDeadUnitsInCalculations = includeDeadUnitsInCalculations;
+		m_CalculatorBlueprint = calculatorBlueprint;
 	}
 
 	public override NodeVisitResult ForwardVisit()
 	{
-		m_Variable.Value = GetGraphNodeForUseAoeAbilityTo(m_Agent.Value, (GridNodeBase)m_CasterNode.Value, m_NodesList.Value, m_Ability.Value, m_MinTotalValueToCastAbility, m_TargetValueCalculator, m_IncludeDeadUnitsInCalculations);
+		m_Variable.Value = GetGraphNodeForUseAoeAbilityTo(m_Agent.Value, (GridNodeBase)m_CasterNode.Value, m_NodesList.Value, m_Ability.Value, m_MinTotalValueToCastAbility, m_TargetValueCalculator, m_IncludeDeadUnitsInCalculations, out var _, m_CalculatorBlueprint?.Value);
 		if (m_Variable.Value == null)
 		{
 			return NodeVisitResult.Failure;
@@ -51,8 +56,9 @@ public class SetGraphNodeToUseAoeAbilityToNode : BehaviourTreeNode
 		return NodeVisitResult.Success;
 	}
 
-	private static GraphNode GetGraphNodeForUseAoeAbilityTo(MechanicEntity caster, GridNodeBase casterNode, List<GraphNode> nodes, AbilityData ability, int minValueToCastAbility, PropertyCalculator utilityFunction, bool includeDeadUnitsInCalculations)
+	internal static GraphNode GetGraphNodeForUseAoeAbilityTo(MechanicEntity caster, GridNodeBase casterNode, List<GraphNode> nodes, AbilityData ability, int minValueToCastAbility, PropertyCalculator utilityFunction, bool includeDeadUnitsInCalculations, out int maxScore, PropertyCalculatorBlueprint calculatorBlueprint = null)
 	{
+		maxScore = int.MinValue;
 		if (nodes == null || nodes.Count == 0 || ability == null || !ability.CanTargetPoint)
 		{
 			return null;
@@ -62,7 +68,6 @@ public class SetGraphNodeToUseAoeAbilityToNode : BehaviourTreeNode
 			return null;
 		}
 		GraphNode result = null;
-		int num = int.MinValue;
 		HashSet<MechanicEntity> coveredTargets = new HashSet<MechanicEntity>();
 		foreach (GridNodeBase item in nodes.OfType<GridNodeBase>())
 		{
@@ -70,27 +75,27 @@ public class SetGraphNodeToUseAoeAbilityToNode : BehaviourTreeNode
 			{
 				continue;
 			}
-			if (utilityFunction == null || utilityFunction.Empty)
+			if (calculatorBlueprint == null && (utilityFunction == null || utilityFunction.Empty))
 			{
 				return item;
 			}
 			coveredTargets.Clear();
 			GatherAffectedTargets(ability, casterNode, item, in coveredTargets);
-			int num2 = 0;
+			int num = 0;
 			foreach (MechanicEntity item2 in coveredTargets)
 			{
 				if (!item2.IsDeadOrUnconscious || includeDeadUnitsInCalculations)
 				{
-					num2 += utilityFunction.GetValue(caster, null, item2, null, ability);
+					num += ((calculatorBlueprint != null) ? (calculatorBlueprint.Value.GetValue(caster, null, item2, null, ability) + calculatorBlueprint.Add) : utilityFunction.GetValue(caster, null, item2, null, ability));
 				}
 			}
-			if (num2 > num)
+			if (num > maxScore)
 			{
-				num = num2;
+				maxScore = num;
 				result = item;
 			}
 		}
-		if (num < minValueToCastAbility)
+		if (maxScore < minValueToCastAbility)
 		{
 			return null;
 		}

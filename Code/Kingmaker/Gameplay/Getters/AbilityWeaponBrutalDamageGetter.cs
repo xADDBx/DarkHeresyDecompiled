@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Gameplay.Getters;
@@ -17,6 +18,6 @@ public sealed class AbilityWeaponBrutalDamageGetter : IntPropertyGetter, Propert
 
 	protected override int GetBaseValue()
 	{
-		return this.GetAbilityWeapon()?.Blueprint.BrutalDamage ?? 0;
+		return EvalContext.Current.AbilityWeapon?.BrutalDamage ?? 0;
 	}
 }

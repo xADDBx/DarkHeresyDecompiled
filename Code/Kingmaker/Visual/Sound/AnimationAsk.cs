@@ -4,6 +4,7 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Enums.Sound;
 using Kingmaker.Utility;
 using Kingmaker.Utility.Random;
+using UnityEngine;
 
 namespace Kingmaker.Visual.Sound;
 
@@ -11,6 +12,7 @@ namespace Kingmaker.Visual.Sound;
 [IKnowWhatImDoing]
 public class AnimationAsk : AsksSet
 {
+	[HideInInspector]
 	public MappedAnimationEventType AnimationEvent;
 
 	public AnimationAsk()

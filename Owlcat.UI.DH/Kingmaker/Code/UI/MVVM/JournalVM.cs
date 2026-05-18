@@ -34,12 +34,9 @@ public class JournalVM : ViewModel, ISetCurrentQuestHandler, ISubscriber
 
 	private void SelectQuest(Quest quest)
 	{
-		if (quest != null)
-		{
-			m_SelectedQuest.Value = quest;
-			m_UpdateView.Execute(SelectedQuest.CurrentValue);
-			JournalHelper.ChangeCurrentQuest(quest);
-		}
+		m_SelectedQuest.Value = quest;
+		m_UpdateView.Execute(SelectedQuest.CurrentValue);
+		JournalHelper.ChangeCurrentQuest(quest);
 	}
 
 	void ISetCurrentQuestHandler.HandleSetCurrentQuest(Quest quest)

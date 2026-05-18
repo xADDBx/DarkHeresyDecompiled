@@ -12,29 +12,9 @@ public class UITextActionBar
 
 	public LocalizedString MovementPoints;
 
-	public LocalizedString AttackCount;
-
 	public LocalizedString VailHeader;
 
-	public LocalizedString VailFooter;
-
 	public LocalizedString VeilPhenomenaDescription;
-
-	public LocalizedString BrokenVeil;
-
-	public LocalizedString VailCurrentState;
-
-	public LocalizedString StatesOfVail;
-
-	public LocalizedString VailStates;
-
-	public LocalizedString VeilPhenomena;
-
-	public LocalizedString VeilPeril;
-
-	public LocalizedString MomentumHeader;
-
-	public LocalizedString MomentumDescription;
 
 	public LocalizedString AnotherPlayerTurn;
 

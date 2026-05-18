@@ -91,7 +91,7 @@ public class FamiliarUnit : MonoBehaviour, IEntitySubscriber, IAreaLoadingStages
 	{
 		if (command is UnitMoveTo)
 		{
-			Unit.View.Asks?.OrderMoveExploration?.Schedule();
+			Unit.View.Asks?.MoveInExploration?.Schedule();
 		}
 	}
 }

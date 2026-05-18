@@ -1,11 +1,13 @@
 using System;
 using JetBrains.Annotations;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Abilities;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "ability caster", Target = "ability caster (self)")]
 public class RuleSpendAbilityCharge : RulebookEvent
 {
 	public readonly ValueModifiersManager NotSpendChanceModifiers = new ValueModifiersManager();

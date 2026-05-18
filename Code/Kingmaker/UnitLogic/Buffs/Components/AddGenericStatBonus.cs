@@ -3,7 +3,6 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.FactLogic;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.UnitLogic.Buffs.Components;
@@ -23,12 +22,9 @@ public class AddGenericStatBonus : UnitBuffComponentDelegate
 
 	protected override void OnActivateOrPostLoad()
 	{
-		int value = AddStatBonus.TryApplyArcanistPowerfulChange(base.Context, Stat, Value);
-		base.Owner.Stats.GetStat(Stat)?.AddModifier(value, base.Runtime, Descriptor);
 	}
 
 	protected override void OnDeactivate()
 	{
-		base.Owner.Stats.GetStat(Stat)?.RemoveModifiersFrom(base.Runtime);
 	}
 }

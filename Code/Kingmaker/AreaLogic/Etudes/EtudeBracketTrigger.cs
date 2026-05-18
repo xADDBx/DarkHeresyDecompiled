@@ -4,8 +4,8 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.QA;
@@ -314,7 +314,7 @@ public abstract class EtudeBracketTrigger : EntityFactComponentDelegate<EtudesSy
 
 	public virtual bool RequireLinkedArea => false;
 
-	protected static Etude Etude => (SimpleContextData<EntityFactComponent, EntityFactComponent.Scope>.Current?.Fact as Etude) ?? throw new InvalidOperationException();
+	protected static Etude Etude => (EvalContext.Current.FactComponent?.Fact as Etude) ?? throw new InvalidOperationException();
 
 	public new EtudeBracketRuntime Runtime => (EtudeBracketRuntime)base.Runtime;
 

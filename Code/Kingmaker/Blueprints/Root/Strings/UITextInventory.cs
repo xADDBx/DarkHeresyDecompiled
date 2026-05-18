@@ -31,10 +31,6 @@ public class UITextInventory
 
 	public LocalizedString TwoHandWeapon;
 
-	public LocalizedString RangedWeapon;
-
-	public LocalizedString MeleeWeapon;
-
 	public LocalizedString Buy;
 
 	public LocalizedString Sell;
@@ -57,4 +53,6 @@ public class UITextInventory
 	public LocalizedString StackPrice;
 
 	public LocalizedString RulerHint;
+
+	public LocalizedString InventorySharedStash;
 }

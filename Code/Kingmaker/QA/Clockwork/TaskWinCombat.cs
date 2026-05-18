@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Linq;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic;
@@ -32,7 +34,7 @@ public class TaskWinCombat : ClockworkRunnerTask
 					Rulebook.Instance.TriggerEvent(new RuleDealDamage(player, enemy.Unit, new IntermediateDamage(DamageType.Direct, 20)));
 				}
 			}
-			if (Game.Instance.Player.Party.Any((BaseUnitEntity u) => u.Health.Damage > u.Health.HitPoints.ModifiedValue / 2 || u.LifeState.IsDead))
+			if (Game.Instance.Player.Party.Any((BaseUnitEntity u) => u.Health.Damage > (int)u.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "Routine") / 2 || u.LifeState.IsDead))
 			{
 				yield return new TaskHeal(Runner);
 			}

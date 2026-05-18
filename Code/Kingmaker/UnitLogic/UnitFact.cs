@@ -5,6 +5,7 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -44,7 +45,7 @@ public class UnitFact : MechanicEntityFact<BaseUnitEntity>, IHashable, IOwlPacka
 	{
 	}
 
-	public UnitFact(BlueprintUnitFact fact, MechanicsContext parentContext)
+	public UnitFact(BlueprintUnitFact fact, IEvalContext parentContext)
 		: base((BlueprintMechanicEntityFact)fact, parentContext)
 	{
 	}
@@ -149,7 +150,7 @@ public abstract class UnitFact<TBlueprint> : UnitFact, IHashable, IOwlPackable<U
 	{
 	}
 
-	public UnitFact(TBlueprint blueprint, MechanicsContext parentContext)
+	public UnitFact(TBlueprint blueprint, IEvalContext parentContext)
 		: base(blueprint, parentContext)
 	{
 	}

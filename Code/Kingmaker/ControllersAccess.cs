@@ -18,6 +18,7 @@ using Kingmaker.Controllers.Rest;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Controllers.Units;
 using Kingmaker.Controllers.UnityEventsReplacements;
+using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 using Kingmaker.UI.Sound;
 using Owlcat.AI;
 
@@ -138,4 +139,10 @@ public class ControllersAccess
 	public ProximityAsksController ProximityAsksController => Game.Instance.GetController<ProximityAsksController>();
 
 	public GPUSoundController GPUSoundController => Game.Instance.GetController<GPUSoundController>();
+
+	public BarkController BarkController => Game.Instance.GetController<BarkController>();
+
+	public PartyAwarenessController PartyAwarenessController => Game.Instance.GetController<PartyAwarenessController>();
+
+	public DetectiveServoskullFlashlightController ServoskullFlashlightController => Game.Instance.GetController<DetectiveServoskullFlashlightController>();
 }

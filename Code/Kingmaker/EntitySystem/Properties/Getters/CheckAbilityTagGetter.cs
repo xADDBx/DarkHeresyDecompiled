@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Fmw.Blueprints;
@@ -15,7 +16,7 @@ public class CheckAbilityTagGetter : BoolPropertyGetter, PropertyContextAccessor
 
 	protected override bool GetBaseValue()
 	{
-		return (this.GetAbility()?.OriginalBlueprint ?? null)?.Tags.Contains((BpRef<BlueprintAbilityTag> p) => p == tag) ?? false;
+		return (EvalContext.Current.Ability?.OriginalBlueprint ?? null)?.Tags.Contains((BpRef<BlueprintAbilityTag> p) => p == tag) ?? false;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

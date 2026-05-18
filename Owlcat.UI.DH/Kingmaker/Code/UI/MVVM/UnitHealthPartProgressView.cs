@@ -38,7 +38,7 @@ public class UnitHealthPartProgressView : View<UnitHealthPartVM>
 			DamageColorSet damageColorSet = (value.isPlayer ? m_Party : (value.isEnemy ? m_Enemy : m_Ally));
 			if (!value.isDead)
 			{
-				m_Health.color = Color.Lerp(((float)value.hp >= 0.5f) ? damageColorSet.DamageColor : damageColorSet.NearDeathColor, ((float)value.hp >= 0.5f) ? damageColorSet.NormalColor : damageColorSet.DamageColor, value.hp);
+				m_Health.color = Color.Lerp(((float)value.hp >= 0.5f) ? damageColorSet.DamageColor : damageColorSet.NearDeathColor, ((float)value.hp >= 0.5f) ? damageColorSet.NormalColor : damageColorSet.DamageColor, (float)value.hp);
 			}
 			else
 			{

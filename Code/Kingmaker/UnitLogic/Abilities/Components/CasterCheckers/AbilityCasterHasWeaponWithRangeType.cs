@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Enums.Helper;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
 using Kingmaker.Framework;
@@ -62,5 +64,12 @@ public class AbilityCasterHasWeaponWithRangeType : BlueprintComponent, IAbilityC
 		{
 			GameLogContext.Text = text;
 		});
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		bool isCompatible = IsCasterRestrictionPassed(caster);
+		CasterRestrictionsStrings casterRestrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		yield return casterRestrictionsStrings.GetCompatibleWeaponText(isCompatible);
 	}
 }

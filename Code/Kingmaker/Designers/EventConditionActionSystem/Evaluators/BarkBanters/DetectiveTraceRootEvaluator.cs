@@ -29,12 +29,7 @@ public class DetectiveTraceRootEvaluator : MapObjectEvaluator, IOwlPackable<Dete
 
 	protected override MapObjectEntity GetMapObjectInternal()
 	{
-		DetectiveTraceRootView detectiveTraceRootView = DetectiveTraceRoot.FindView() as DetectiveTraceRootView;
-		if (detectiveTraceRootView != null)
-		{
-			return detectiveTraceRootView.Data;
-		}
-		return null;
+		return DetectiveTraceRoot.FindData() as DetectiveTraceEntity;
 	}
 
 	public override string GetCaptionShort()

@@ -4,6 +4,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.TextTools.Base;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
@@ -42,7 +43,7 @@ public class UnitStatStartTemplate : TextTemplate
 			string text2 = (flag ? LocalizedTexts.Instance.Stats.GetBonusText(statType.Value) : LocalizedTexts.Instance.Stats.GetShortText(statType.Value));
 			return "<b><color=" + color + "><link=\"" + EntityLink.Type.Encyclopedia.GetTag() + ":" + text + "\">" + text2 + "</link></color></b>";
 		}
-		string text3 = ((!flag) ? ((unitEntity.Stats.GetStatOptional(statType.Value) != null) ? Math.Abs(unitEntity.Stats.GetStatOptional(statType.Value).ModifiedValue).ToString() : "-") : Math.Abs(unitEntity.Stats.GetAttributeOptional(statType.Value)?.Bonus ?? ((int)unitEntity.Stats.GetStatOptional(statType.Value))).ToString());
+		string text3 = ((!flag) ? Math.Abs(unitEntity.Actor.GetStat(statType.Value, null, default(StatContext), "Generate")).ToString() : Math.Abs(unitEntity.Actor.GetStatBonus(statType.Value)).ToString());
 		return "<b><color=" + color + "><link=\"" + EntityLink.Type.UnitStat.GetTag() + ":" + text + ":" + unitEntity.UniqueId + "\">" + text3 + "</link></color></b>";
 	}
 

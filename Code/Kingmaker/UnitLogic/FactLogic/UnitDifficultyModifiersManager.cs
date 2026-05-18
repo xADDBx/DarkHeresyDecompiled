@@ -1,83 +1,90 @@
 using System.Collections.Generic;
-using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace Kingmaker.UnitLogic.FactLogic;
 
 [TypeId("2e982373853d4e26b7e61354b88923e0")]
-public abstract class UnitDifficultyModifiersManager : UnitFactComponentDelegate, IDifficultyChangedClassHandler, ISubscriber, IUnitChangeAttackFactionsHandler, ISubscriber<IBaseUnitEntity>
+public abstract class UnitDifficultyModifiersManager : UnitFactComponentDelegate, IDifficultyChangedClassHandler, ISubscriber, IUnitChangeAttackFactionsHandler, ISubscriber<IBaseUnitEntity>, IStatModifier
 {
-	private class TransientData : IEntityFactComponentTransientData
-	{
-		public readonly List<StatType> ModifiedStats = new List<StatType>();
-	}
-
 	protected override void OnActivateOrPostLoad()
 	{
-		UpdateModifiers();
-	}
-
-	protected override void OnDeactivate()
-	{
-		RemoveModifiers();
+		OnDifficultyOrFactionChanged();
 	}
 
 	public void HandleDifficultyChanged()
 	{
-		UpdateModifiers();
-	}
-
-	protected virtual void UpdateModifiers()
-	{
-	}
-
-	protected void RemoveModifiers()
-	{
-		TransientData transientData = RequestTransientData<TransientData>();
-		foreach (StatType modifiedStat in transientData.ModifiedStats)
-		{
-			base.Owner.GetStatOptional(modifiedStat)?.RemoveModifiersFrom(base.Runtime);
-		}
-		transientData.ModifiedStats.Clear();
-	}
-
-	protected void AddPercentModifier(StatType statType, int percentModifier)
-	{
-		ModifiableValue statOptional = base.Owner.GetStatOptional(statType);
-		if (statOptional != null)
-		{
-			int value = Mathf.FloorToInt((float)statOptional.BaseValue * ((float)percentModifier / 100f));
-			if (statOptional.AddModifier(value, base.Runtime, ModifierDescriptor.Difficulty).HasValue)
-			{
-				RequestTransientData<TransientData>().ModifiedStats.Add(statType);
-			}
-		}
-	}
-
-	protected void AddModifier(StatType statType, int flatModifier)
-	{
-		ModifiableValue statOptional = base.Owner.GetStatOptional(statType);
-		if (statOptional != null)
-		{
-			statOptional.AddModifier(flatModifier, base.Runtime, ModifierDescriptor.Difficulty);
-			RequestTransientData<TransientData>().ModifiedStats.Add(statType);
-		}
+		OnDifficultyOrFactionChanged();
+		NotifyDifficultyStatsChanged();
 	}
 
 	public void HandleUnitChangeAttackFactions(MechanicEntity unit)
 	{
 		if (unit == base.Owner)
 		{
-			UpdateModifiers();
+			OnDifficultyOrFactionChanged();
+			NotifyDifficultyStatsChanged();
+		}
+	}
+
+	protected virtual void OnDifficultyOrFactionChanged()
+	{
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		TryApplyDifficultyModifier(collector, stat, context);
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		CollectDifficultyAffectedStats(entries);
+	}
+
+	protected virtual void TryApplyDifficultyModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+	}
+
+	protected virtual void CollectDifficultyAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+	}
+
+	protected void CollectPercentModifier(StatModifierCollector collector, StatType stat, int percentModifier)
+	{
+		int value = Mathf.FloorToInt((float)base.Owner.Actor.GetStatBase(stat) * ((float)percentModifier / 100f));
+		collector.Modifiers.Add(ModifierType.ValAdd, value, base.Fact, null, BonusType.None, StatType.Unknown, ModifierDescriptor.Difficulty);
+	}
+
+	protected void CollectFlatModifier(StatModifierCollector collector, int flatModifier)
+	{
+		collector.Modifiers.Add(ModifierType.ValAdd, flatModifier, base.Fact, null, BonusType.None, StatType.Unknown, ModifierDescriptor.Difficulty);
+	}
+
+	private void NotifyDifficultyStatsChanged()
+	{
+		List<AffectedStatEntry> value;
+		using (CollectionPool<List<AffectedStatEntry>, AffectedStatEntry>.Get(out value))
+		{
+			CollectDifficultyAffectedStats(value);
+			ulong num = 0uL;
+			foreach (AffectedStatEntry item in value)
+			{
+				num |= (ulong)(1L << (int)item.Stat);
+			}
+			if (num != 0L)
+			{
+				base.Owner.Actor.NotifyStatsChanged(num, "NotifyDifficultyStatsChanged");
+			}
 		}
 	}
 }

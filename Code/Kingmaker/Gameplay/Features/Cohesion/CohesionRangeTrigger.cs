@@ -8,6 +8,7 @@ using Kingmaker.Framework.Mechanics;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using UnityEngine;
 
 namespace Kingmaker.Gameplay.Features.Cohesion;
@@ -32,14 +33,19 @@ public abstract class CohesionRangeTrigger : UnitFactComponentDelegate
 
 	public TargetType Filter;
 
+	[InfoBox("Юнит вошел в кохижен")]
 	public ActionList OnEnter;
 
+	[InfoBox("Юнит вышел из кохижена")]
 	public ActionList OnExit;
 
+	[InfoBox("Юнит переместился в кохижене")]
 	public ActionList OnMove;
 
+	[InfoBox("Юнит начал ход в кохижене")]
 	public ActionList OnStartTurn;
 
+	[InfoBox("Юнит закончил ход в кохижене")]
 	public ActionList OnEndTurn;
 
 	protected void TryTrigger(EventType eventType, MechanicEntity entity)

@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Area;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using OwlPack.Runtime;
@@ -24,7 +24,7 @@ public class ItemEntityUsable : ItemEntity<BlueprintItemEquipmentUsable>, IHasha
 	{
 		Name = "ItemEntityUsable",
 		OldNames = null,
-		Fields = new FieldInfo[28]
+		Fields = new FieldInfo[29]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -52,6 +52,7 @@ public class ItemEntityUsable : ItemEntity<BlueprintItemEquipmentUsable>, IHasha
 			new FieldInfo("IsIdentified", typeof(bool)),
 			new FieldInfo("SellTime", typeof(TimeSpan?)),
 			new FieldInfo("OriginArea", typeof(BlueprintArea)),
+			new FieldInfo("SourceContainer", typeof(BlueprintItem)),
 			new FieldInfo("VendorBlueprint", typeof(BlueprintMechanicEntityFact)),
 			new FieldInfo("IsNonRemovable", typeof(bool))
 		}
@@ -64,12 +65,8 @@ public class ItemEntityUsable : ItemEntity<BlueprintItemEquipmentUsable>, IHasha
 	{
 	}
 
-	public ItemEntityUsable(JsonConstructorMark _)
+	public ItemEntityUsable(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntityUsable()
 	{
 	}
 
@@ -83,7 +80,7 @@ public class ItemEntityUsable : ItemEntity<BlueprintItemEquipmentUsable>, IHasha
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ItemEntityUsable source = new ItemEntityUsable();
+		ItemEntityUsable source = new ItemEntityUsable(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ItemEntityUsable, TPossiblyBase>(ref source);
 	}
 
@@ -132,10 +129,11 @@ public class ItemEntityUsable : ItemEntity<BlueprintItemEquipmentUsable>, IHasha
 		formatter.NullableField(24, "SellTime", ref value7, state);
 		BlueprintArea value8 = base.OriginArea;
 		formatter.Field(25, "OriginArea", ref value8, state);
+		formatter.Field(26, "SourceContainer", ref SourceContainer, state);
 		BlueprintMechanicEntityFact value9 = base.VendorBlueprint;
-		formatter.Field(26, "VendorBlueprint", ref value9, state);
+		formatter.Field(27, "VendorBlueprint", ref value9, state);
 		bool value10 = base.IsNonRemovable;
-		formatter.UnmanagedField(27, "IsNonRemovable", ref value10, state);
+		formatter.UnmanagedField(28, "IsNonRemovable", ref value10, state);
 		formatter.EndObject();
 	}
 
@@ -232,9 +230,12 @@ public class ItemEntityUsable : ItemEntity<BlueprintItemEquipmentUsable>, IHasha
 				base.OriginArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 26:
-				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				SourceContainer = formatter.ReadPackable<BlueprintItem>(state);
 				break;
 			case 27:
+				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				break;
+			case 28:
 				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
 				break;
 			}

@@ -35,7 +35,7 @@ public abstract class CommandFadeoutBase : CommandBase
 
 	protected abstract void Fadeout(bool fade);
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		m_Finished = skipping && !IsContinuous;
 		if (!m_Finished)
@@ -43,25 +43,28 @@ public abstract class CommandFadeoutBase : CommandBase
 			Fadeout(fade: true);
 			m_IsFadedOut = true;
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		if (m_IsFadedOut)
 		{
 			Fadeout(fade: false);
 		}
 		m_Finished = true;
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		m_Finished = !IsContinuous;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -69,7 +72,7 @@ public abstract class CommandFadeoutBase : CommandBase
 		return m_Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		if (m_Continuous && !string.IsNullOrEmpty(m_OnFaded.GateId))
 		{
@@ -81,6 +84,7 @@ public abstract class CommandFadeoutBase : CommandBase
 			}
 		}
 		m_Finished = !m_Continuous && time >= (double)Lifetime;
+		return CommandResult.Success;
 	}
 
 	public override CommandSignalData[] GetExtraSignals()

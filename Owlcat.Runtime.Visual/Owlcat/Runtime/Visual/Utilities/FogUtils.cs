@@ -22,7 +22,7 @@ internal sealed class FogUtils
 	private static readonly GlobalKeyword s_FogExp2Keyword = new GlobalKeyword("FOG_EXP2");
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void SetupFogMode(CommandBuffer cmd, FogMode fogMode)
+	public static void SetupFogMode(UnsafeCommandBuffer cmd, FogMode fogMode)
 	{
 		cmd.SetKeyword(in s_FogLinearKeyword, fogMode == FogMode.Linear);
 		cmd.SetKeyword(in s_FogExpKeyword, fogMode == FogMode.Exponential);
@@ -30,7 +30,7 @@ internal sealed class FogUtils
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void SetupFogProperties(CommandBuffer cmd, in Color fogColor, in float4 fogParams)
+	public static void SetupFogProperties(UnsafeCommandBuffer cmd, in Color fogColor, in float4 fogParams)
 	{
 		cmd.SetGlobalColor(s_FogColorPropertyId, fogColor);
 		cmd.SetGlobalVector(s_FogParamsPropertyId, fogParams);

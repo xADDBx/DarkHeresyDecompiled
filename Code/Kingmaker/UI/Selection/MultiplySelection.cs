@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Kingmaker.Code.View.Bridge.Facades;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.UI.Pointer;
 using Kingmaker.View;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -22,7 +24,7 @@ public class MultiplySelection : MonoBehaviour
 
 	private const float SizeDelta = 32f;
 
-	private readonly HashSet<UnitEntityView> m_UnitsInFrame = new HashSet<UnitEntityView>();
+	private readonly HashSet<IUnitEntityView> m_UnitsInFrame = new HashSet<IUnitEntityView>();
 
 	public static MultiplySelection Instance { get; private set; }
 
@@ -48,7 +50,7 @@ public class MultiplySelection : MonoBehaviour
 		{
 			return;
 		}
-		m_Outer = Input.mousePosition;
+		m_Outer = CursorController.CursorPosition;
 		if (!m_HasActiveBox)
 		{
 			Vector2 size = m_SelectFrameController.GetSize();
@@ -110,7 +112,7 @@ public class MultiplySelection : MonoBehaviour
 		m_StartDrag = false;
 		m_HasActiveBox = false;
 		m_SelectFrameController.ClearBox();
-		foreach (UnitEntityView item in m_UnitsInFrame)
+		foreach (IUnitEntityView item in m_UnitsInFrame)
 		{
 			_ = item;
 		}

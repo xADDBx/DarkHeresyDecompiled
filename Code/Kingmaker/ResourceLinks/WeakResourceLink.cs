@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.ResourceManagement;
 using Kingmaker.Utility.BuildModeUtils;
+using MemoryPack;
 using StateHasher.Core;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -68,9 +69,11 @@ public abstract class WeakResourceLink : IEquatable<WeakResourceLink>, IHashable
 }
 public class WeakResourceLink<T> : WeakResourceLink, IHashable where T : UnityEngine.Object
 {
+	[MemoryPackIgnore]
 	protected BundledResourceHandle<T> m_Handle { get; set; }
 
 	[CanBeNull]
+	[MemoryPackIgnore]
 	public T Loaded
 	{
 		get

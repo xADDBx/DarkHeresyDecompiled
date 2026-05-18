@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
@@ -19,7 +20,7 @@ public class CheckAbilityWeaponBlueprintGetter : BoolPropertyGetter, PropertyCon
 
 	protected override bool GetBaseValue()
 	{
-		ItemEntityWeapon abilityWeapon = this.GetAbilityWeapon();
+		ItemEntityWeapon abilityWeapon = EvalContext.Current.AbilityWeapon;
 		for (BlueprintItemWeapon blueprintItemWeapon = abilityWeapon?.Blueprint?.PrototypeLink as BlueprintItemWeapon; blueprintItemWeapon != null; blueprintItemWeapon = (BlueprintItemWeapon)blueprintItemWeapon.PrototypeLink)
 		{
 			if (blueprintItemWeapon == Weapon)

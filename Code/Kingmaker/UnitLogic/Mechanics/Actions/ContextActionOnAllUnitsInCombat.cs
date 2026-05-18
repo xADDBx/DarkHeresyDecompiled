@@ -5,7 +5,6 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
@@ -68,7 +67,7 @@ public class ContextActionOnAllUnitsInCombat : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity caster = base.Context.MaybeCaster;
+		MechanicEntity caster = base.Context.Caster;
 		if (caster == null || caster is BaseUnitEntity { IsPreviewUnit: not false })
 		{
 			return;
@@ -76,11 +75,11 @@ public class ContextActionOnAllUnitsInCombat : ContextAction
 		List<BaseUnitEntity> list = ((!OnlyParty) ? Game.Instance.EntityPools.AllBaseUnits.Where((BaseUnitEntity p) => !p.Features.IsUntargetable && (IncludeDead || !p.LifeState.IsDead) && p.IsInCombat).ToList() : Game.Instance.Player.Party.ToList());
 		if (OnlyEnemies)
 		{
-			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsEnemy(base.Context.MaybeCaster));
+			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsEnemy(base.Context.Caster));
 		}
 		if (OnlyAllies)
 		{
-			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsAlly(base.Context.MaybeCaster));
+			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsAlly(base.Context.Caster));
 		}
 		if (OnlyVisible)
 		{
@@ -92,7 +91,7 @@ public class ContextActionOnAllUnitsInCombat : ContextAction
 		}
 		if (NotCaster)
 		{
-			list.RemoveAll((BaseUnitEntity p) => p == base.Context.MaybeCaster);
+			list.RemoveAll((BaseUnitEntity p) => p == base.Context.Caster);
 		}
 		if (list.Empty())
 		{
@@ -112,8 +111,8 @@ public class ContextActionOnAllUnitsInCombat : ContextAction
 		}
 		if (ActionsOnRandomTarget)
 		{
-			BaseUnitEntity entity = list.Random(PFStatefulRandom.Mechanics);
-			using (base.Context.SetScope(entity.ToITargetWrapper()))
+			BaseUnitEntity baseUnitEntity2 = list.Random(PFStatefulRandom.Mechanics);
+			using (base.Context.PushTarget(baseUnitEntity2))
 			{
 				Actions.Run();
 				return;
@@ -121,7 +120,7 @@ public class ContextActionOnAllUnitsInCombat : ContextAction
 		}
 		foreach (BaseUnitEntity item in list)
 		{
-			using (base.Context.SetScope(item.ToITargetWrapper()))
+			using (base.Context.PushTarget(item))
 			{
 				Actions.Run();
 			}

@@ -26,6 +26,6 @@ public class NewAddendumsVM : ViewModel
 	{
 		NewAddendums.Clear();
 		NewAddendums.AddRange(UIUtilityDetective.GetNewAddendums(Clue));
-		m_RefreshAddendumsCommand?.Execute();
+		m_RefreshAddendumsCommand?.Execute(Unit.Default);
 	}
 }

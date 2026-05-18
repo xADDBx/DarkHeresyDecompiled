@@ -6,6 +6,7 @@ using Kingmaker.AreaLogic;
 using Kingmaker.AreaLogic.Etudes;
 using Kingmaker.AreaLogic.TimeOfDay;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
 using Kingmaker.Sound;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.Utility.Attributes;
@@ -144,7 +145,17 @@ public class BlueprintAreaPart : BlueprintMechanicEntityFact
 	[FormerlySerializedAs("StartVailValueForLocation")]
 	public int StartVeilDamage;
 
+	[Header("Psychic Phenomena Override")]
+	public PhenomenaListOverride PhenomenaOverride = new PhenomenaListOverride();
+
+	public PhenomenaListOverride PerilsOverride = new PhenomenaListOverride();
+
 	public LocalMapRotationDegree LocalMapRotationDeg;
+
+	[Header("Local Map Zoom")]
+	public float LocalMapZoomMin = 1f;
+
+	public float LocalMapZoomMax = 2f;
 
 	private bool IsPart => !(this is BlueprintArea);
 

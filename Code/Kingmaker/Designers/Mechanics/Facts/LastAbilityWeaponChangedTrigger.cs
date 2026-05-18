@@ -4,6 +4,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -29,7 +30,7 @@ public class LastAbilityWeaponChangedTrigger : EntityFactComponentDelegate, ILas
 		{
 			return;
 		}
-		using (baseUnitEntity.Context.SetScope())
+		using (EvalContext.PushContext(baseUnitEntity.Context))
 		{
 			m_ActionList?.Run();
 		}

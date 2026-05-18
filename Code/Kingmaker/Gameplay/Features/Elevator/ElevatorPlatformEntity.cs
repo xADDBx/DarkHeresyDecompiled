@@ -11,6 +11,7 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.GameModes;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -49,9 +50,6 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 	private EntityRef<CutscenePlayerData?> _cutscene;
 
 	[OwlPackInclude]
-	private float _initialDelay;
-
-	[OwlPackInclude]
 	public readonly CountableFlag CutsceneHold = new CountableFlag();
 
 	private ElevatorPlatformRoute? _transitionRoute;
@@ -60,7 +58,7 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 	{
 		Name = "ElevatorPlatformEntity",
 		OldNames = null,
-		Fields = new FieldInfo[26]
+		Fields = new FieldInfo[25]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -86,29 +84,31 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 			new FieldInfo("_rotationOnWaypointTime", typeof(float)),
 			new FieldInfo("_passengers", typeof(ElevatorPlatformPassenger[])),
 			new FieldInfo("_cutscene", typeof(EntityRef<CutscenePlayerData>)),
-			new FieldInfo("_initialDelay", typeof(float)),
 			new FieldInfo("CutsceneHold", typeof(CountableFlag))
 		}
 	};
 
 	public override bool SetTransformFromConfigOnLoad => false;
 
-	public IElevatorPlatformConfig Config => (base.View as IElevatorPlatformConfig) ?? throw new InvalidOperationException();
+	public override bool SetViewTransform => false;
+
+	public new IElevatorPlatformConfig Config => (base.View as IElevatorPlatformConfig) ?? throw new InvalidOperationException();
 
 	public ElevatorPlatformStopEntity CurrentStop => _currentStop.Entity ?? throw new InvalidOperationException();
 
 	public bool IsIdle => _state == ElevatorPlatformState.Idle;
 
 	public ElevatorPlatformEntity(IElevatorPlatformConfig config)
-		: base(config.EntityId, config.IsInGame, ConfigRoot.Instance.SystemMechanics.DefaultMapObjectBlueprint)
+		: base(config)
 	{
 	}
 
 	private ElevatorPlatformEntity(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -119,9 +119,69 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 		EnsureCoherence();
 	}
 
+	protected override void OnPositionChanged()
+	{
+		base.OnPositionChanged();
+	}
+
+	protected override void OnOrientationChanged()
+	{
+		base.OnOrientationChanged();
+	}
+
 	public void StartTransition(ElevatorPlatformStopEntity destination, BlueprintCutscene? cutscene = null)
 	{
+		if (cutscene == null)
+		{
+			cutscene = Config.Cutscene ?? ConfigRoot.Instance.CutsceneRoot.DefaultElevatorCutscene;
+		}
+		if (cutscene != null)
+		{
+			if (!cutscene.LockControl)
+			{
+				throw new InvalidOperationException($"Elevator cutscene {cutscene} must have LockControl=true");
+			}
+			ParametrizedContextSetter context = new ParametrizedContextSetter
+			{
+				AdditionalParams = { 
+				{
+					"Elevator",
+					(INamedParameterValue)new NamedParameterValue_MapObject(this)
+				} }
+			};
+			_cutscene = CutscenePlayerView.Play(cutscene, context, queued: false, HoldingState).PlayerData;
+		}
+		StartTransitionWithoutCutscene(destination);
+	}
+
+	public void StartTransitionWithoutCutscene(ElevatorPlatformStopEntity destination)
+	{
 		EnsureCoherence();
+		PrepareTransition(destination);
+	}
+
+	public void ForceComplete()
+	{
+		if (_state == ElevatorPlatformState.Idle)
+		{
+			return;
+		}
+		ElevatorPlatformStopEntity entity = _targetStop.Entity;
+		if (entity != null)
+		{
+			base.Position = entity.Position;
+			base.Orientation = entity.Orientation;
+			_currentStop = entity;
+			if (_passengers != null && _transitionRoute != null)
+			{
+				UpdatePassengers();
+			}
+		}
+		ClearTransition();
+	}
+
+	private void PrepareTransition(ElevatorPlatformStopEntity destination)
+	{
 		if (_state != 0)
 		{
 			throw new InvalidOperationException("Can't start new elevator transition while another transition is in progress");
@@ -135,22 +195,6 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 		_state = ElevatorPlatformState.PrepareToTransition;
 		_transitionRoute = new ElevatorPlatformRoute(elevatorPlatformRouteSettings, CurrentStop == elevatorPlatformRouteSettings.To);
 		_nextWaypointIndex = 1;
-		if (cutscene == null)
-		{
-			cutscene = Config.Cutscene ?? ConfigRoot.Instance.CutsceneRoot.DefaultElevatorCutscene;
-		}
-		if (cutscene != null)
-		{
-			ParametrizedContextSetter context = new ParametrizedContextSetter
-			{
-				AdditionalParams = { 
-				{
-					"Elevator",
-					(INamedParameterValue)new NamedParameterValue_MapObject(this)
-				} }
-			};
-			_cutscene = CutscenePlayerView.Play(cutscene, context, queued: false, HoldingState).PlayerData;
-		}
 	}
 
 	public void Update()
@@ -177,9 +221,10 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 
 	private void UpdateTransition(ElevatorPlatformTransform currentWaypoint, ElevatorPlatformTransform nextWaypoint)
 	{
+		GameMode currentGameMode = Game.Instance.CurrentGameMode;
 		float deltaTime = Game.Instance.Controllers.TimeController.DeltaTime;
-		_initialDelay = Mathf.Max(_initialDelay - deltaTime, 0f);
-		if (_initialDelay > 0f || (bool)CutsceneHold)
+		CutscenePlayerData entity = _cutscene.Entity;
+		if ((entity != null && !entity.IsFinished && currentGameMode?.Type != GameModeType.Cutscene) || (bool)CutsceneHold)
 		{
 			return;
 		}
@@ -195,6 +240,7 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 		do
 		{
 			flag = false;
+			ElevatorPlatformState state = _state;
 			switch (_state)
 			{
 			case ElevatorPlatformState.Idle:
@@ -231,7 +277,7 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 					_state = ((elevatorPlatformTransitionSettings.Rotation == ElevatorPlatformRotationType.AfterMove) ? ElevatorPlatformState.RotateOnWaypoint : ElevatorPlatformState.EndTransitionToWaypoint);
 					flag = true;
 				}
-				UpdatePassengers(currentWaypoint, nextWaypoint);
+				UpdatePassengers();
 				break;
 			case ElevatorPlatformState.RotateOnWaypoint:
 			{
@@ -248,7 +294,7 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 					};
 					flag = true;
 				}
-				UpdatePassengers(currentWaypoint, nextWaypoint);
+				UpdatePassengers();
 				break;
 			}
 			case ElevatorPlatformState.EndTransitionToWaypoint:
@@ -256,19 +302,28 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 				base.Orientation = nextWaypoint.Orientation;
 				_nextWaypointIndex++;
 				_rotationOnWaypointTime = 0f;
-				_state = ((_nextWaypointIndex < _transitionRoute.Waypoints.Length) ? ElevatorPlatformState.StartTransitionToWaypoint : ElevatorPlatformState.Idle);
-				flag = true;
-				UpdatePassengers(currentWaypoint, nextWaypoint);
+				if (_nextWaypointIndex >= _transitionRoute.Waypoints.Length)
+				{
+					_state = ElevatorPlatformState.Idle;
+					flag = true;
+				}
+				else
+				{
+					_state = ElevatorPlatformState.StartTransitionToWaypoint;
+				}
+				UpdatePassengers();
 				break;
 			default:
 				throw new ArgumentOutOfRangeException();
 			}
+			_ = _state;
 		}
 		while (flag);
 	}
 
-	private void UpdatePassengers(ElevatorPlatformTransform currentWaypoint, ElevatorPlatformTransform nextWaypoint)
+	private void UpdatePassengers()
 	{
+		ElevatorPlatformTransform elevatorPlatformTransform = _transitionRoute.Waypoints[0];
 		ElevatorPlatformPassenger[] passengers = _passengers;
 		for (int i = 0; i < passengers.Length; i++)
 		{
@@ -277,7 +332,7 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 			if (entity != null)
 			{
 				MechanicEntity mechanicEntity = entity;
-				(Vector3, float) positionAndOrientationForChild = Entity.GetPositionAndOrientationForChild(currentWaypoint.Position, currentWaypoint.Orientation, base.Position, base.Orientation, elevatorPlatformPassenger.InitialPosition, elevatorPlatformPassenger.InitialOrientation);
+				(Vector3, float) positionAndOrientationForChild = Entity.GetPositionAndOrientationForChild(elevatorPlatformTransform.Position, elevatorPlatformTransform.Orientation, base.Position, base.Orientation, elevatorPlatformPassenger.InitialPosition, elevatorPlatformPassenger.InitialOrientation);
 				(mechanicEntity.Position, entity.Orientation) = positionAndOrientationForChild;
 				if (entity is AbstractUnitEntity abstractUnitEntity)
 				{
@@ -345,7 +400,6 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 		_nextWaypointIndex = 0;
 		_rotationOnWaypointTime = 0f;
 		_targetStop = null;
-		_initialDelay = 0f;
 		_cutscene = null;
 		if (_passengers != null)
 		{
@@ -385,7 +439,7 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 		Bounds bounds = new Bounds(base.Position, (Config.Size + Vector2.one / 2f).To3D(1000f));
 		foreach (MechanicEntity mechanicEntity in Game.Instance.EntityPools.MechanicEntities)
 		{
-			if (mechanicEntity != this && (mechanicEntity is AbstractUnitEntity || mechanicEntity is DroppedLoot.EntityData) && bounds.Contains(mechanicEntity.Position))
+			if (mechanicEntity != this && (mechanicEntity is AbstractUnitEntity || mechanicEntity is DroppedLootEntity) && bounds.Contains(mechanicEntity.Position))
 			{
 				yield return new ElevatorPlatformPassenger(mechanicEntity);
 			}
@@ -446,9 +500,8 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 		formatter.UnmanagedField(21, "_rotationOnWaypointTime", ref _rotationOnWaypointTime, state);
 		formatter.Field(22, "_passengers", ref _passengers, state);
 		formatter.Field(23, "_cutscene", ref _cutscene, state);
-		formatter.UnmanagedField(24, "_initialDelay", ref _initialDelay, state);
 		CountableFlag value6 = CutsceneHold;
-		formatter.Field(25, "CutsceneHold", ref value6, state);
+		formatter.Field(24, "CutsceneHold", ref value6, state);
 		formatter.EndObject();
 	}
 
@@ -539,9 +592,6 @@ public sealed class ElevatorPlatformEntity : MapObjectEntity, IHashable, IOwlPac
 				_cutscene = formatter.ReadPackable<EntityRef<CutscenePlayerData>>(state);
 				break;
 			case 24:
-				_initialDelay = formatter.ReadUnmanaged<float>(state);
-				break;
-			case 25:
 				Unsafe.AsRef(in CutsceneHold) = formatter.ReadPackable<CountableFlag>(state);
 				break;
 			}

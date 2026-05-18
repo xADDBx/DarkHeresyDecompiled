@@ -805,7 +805,7 @@ public class DebugDisplaySettingsVirtualTexture : IDebugDisplaySettingsData, IDe
 		}
 	}
 
-	public int TextureStacksInAtlasCount => m_DebugData.Pipeline.VirtualTextureManager.TextureStacksInAtlasCount;
+	public int TextureStacksInAtlasCount => m_DebugData.Pipeline.VirtualTextureManager?.TextureStacksInAtlasCount ?? 0;
 
 	public TileUploader TileUploader => m_DebugData.Pipeline.VirtualTextureManager?.TileUploader;
 

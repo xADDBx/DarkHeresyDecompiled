@@ -34,6 +34,9 @@ public class HealthBarWidget : MonoBehaviour
 	private GameObject m_HealthBackground;
 
 	[SerializeField]
+	private GameObject m_HealthAndArmorBackground;
+
+	[SerializeField]
 	private Graphic[] m_ColoredGraphics;
 
 	[Space]
@@ -68,11 +71,13 @@ public class HealthBarWidget : MonoBehaviour
 		SetValue(m_Armor, current, max, damage);
 	}
 
-	public void SetHasArmor(bool hasArmor)
+	public void SetElementsVisibility(bool hasArmor, bool hasHp)
 	{
 		m_Armor.Root.SetActive(hasArmor);
-		m_ArmorBackground.SetActive(hasArmor);
-		m_HealthBackground.SetActive(!hasArmor);
+		m_Health.Root.SetActive(hasHp);
+		m_ArmorBackground.SetActive(hasArmor && !hasHp);
+		m_HealthBackground.SetActive(!hasArmor && hasHp);
+		m_HealthAndArmorBackground.SetActive(hasArmor && hasHp);
 	}
 
 	public void SetAsPlayer()

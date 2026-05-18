@@ -7,6 +7,7 @@ using Kingmaker.Code.Framework.VO;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.Localization;
+using Kingmaker.Localization.Shared;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Fmw.Blueprints;
 using UnityEngine.Serialization;
@@ -23,9 +24,10 @@ public class InteractionDetectiveClueSettings : IBarkSource
 	[FormerlySerializedAs("ProximityRadius")]
 	public int DetectionRadius = 2;
 
-	public SharedStringAsset Bark;
+	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
+	public LocalizedString Bark;
 
-	public SharedStringAsset DisplayName;
+	public LocalizedString DisplayName;
 
 	public bool ForceVoId;
 
@@ -40,7 +42,7 @@ public class InteractionDetectiveClueSettings : IBarkSource
 
 	public ActionsReference Actions = new ActionsReference();
 
-	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { Bark.String };
+	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { Bark };
 
 	public bool IsVoIdForced => ForceVoId;
 

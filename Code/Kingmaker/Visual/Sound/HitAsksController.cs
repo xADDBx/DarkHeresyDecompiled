@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules;
@@ -16,9 +17,17 @@ public class HitAsksController : BaseAsksController, IWarhammerAttackHandler, IS
 		}
 		if (withWeaponAttackHit.TargetUnit.IsAlly(withWeaponAttackHit.Initiator))
 		{
-			withWeaponAttackHit.TargetUnit?.View.Asks?.FriendlyFire?.Schedule();
+			using (EvalContext.PushAsksContext(withWeaponAttackHit.Initiator, withWeaponAttackHit.TargetUnit))
+			{
+				withWeaponAttackHit.TargetUnit?.View.Asks?.FriendlyFire?.Schedule();
+				return;
+			}
 		}
-		else if (withWeaponAttackHit.TargetUnit.IsEnemy(withWeaponAttackHit.Initiator) && withWeaponAttackHit.ResultDamageRule.ResultIsCritical && withWeaponAttackHit.ConcreteInitiator.View is UnitEntityView unitEntityView)
+		if (!withWeaponAttackHit.TargetUnit.IsEnemy(withWeaponAttackHit.Initiator) || !withWeaponAttackHit.ResultDamageRule.ResultIsCritical || !(withWeaponAttackHit.ConcreteInitiator.View is UnitEntityView unitEntityView))
+		{
+			return;
+		}
+		using (EvalContext.PushAsksContext(withWeaponAttackHit.Initiator, withWeaponAttackHit.TargetUnit))
 		{
 			unitEntityView.Asks?.CriticalHit?.Schedule(is2D: false, delegate(AsksContext context)
 			{

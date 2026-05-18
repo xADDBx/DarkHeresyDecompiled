@@ -7,7 +7,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using OwlPack.Runtime;
@@ -49,12 +48,8 @@ public class Area : MechanicEntity<BlueprintArea>, IHashable, IOwlPackable<Area>
 	{
 	}
 
-	protected Area(JsonConstructorMark _)
+	protected Area(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected Area()
 	{
 	}
 
@@ -81,7 +76,7 @@ public class Area : MechanicEntity<BlueprintArea>, IHashable, IOwlPackable<Area>
 		};
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -96,7 +91,7 @@ public class Area : MechanicEntity<BlueprintArea>, IHashable, IOwlPackable<Area>
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		Area source = new Area();
+		Area source = new Area(default(OwlPackConstructorParameter));
 		result = Unsafe.As<Area, TPossiblyBase>(ref source);
 	}
 

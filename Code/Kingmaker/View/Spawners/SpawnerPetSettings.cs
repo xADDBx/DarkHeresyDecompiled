@@ -13,13 +13,14 @@ using UnityEngine;
 namespace Kingmaker.View.Spawners;
 
 [RequireComponent(typeof(UnitSpawnerBase))]
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("ba187735840a5ff4dbccadf936eeffed")]
 public class SpawnerPetSettings : EntityPartComponent<SpawnerPetSettings.Part>
 {
 	[OwlPackable(OwlPackableMode.Generate)]
-	public class Part : ViewBasedPart, IUnitInitializer, IHashable, IOwlPackable<Part>
+	public class Part : EntityPartWithConfig, IUnitInitializer, IHashable, IOwlPackable<Part>
 	{
-		public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 		{
 			Name = "Part",
 			OldNames = null,
@@ -51,7 +52,7 @@ public class SpawnerPetSettings : EntityPartComponent<SpawnerPetSettings.Part>
 			return result;
 		}
 
-		public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 		{
 			Part source = new Part();
 			result = Unsafe.As<Part, TPossiblyBase>(ref source);

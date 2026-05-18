@@ -1,11 +1,11 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Core.Cheats;
 using Kingmaker.Blueprints.Area;
-using Kingmaker.Code.View.Bridge.Interfaces;
+using Kingmaker.Controllers.Clicks;
+using Kingmaker.Controllers.Clicks.Handlers;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence;
@@ -76,6 +76,7 @@ internal static class CheatsTransfer
 			{
 				CheatsHelper.Run("local_teleport @cursor @selectedUnits");
 			});
+			keyboard.Bind("CheatRemoteTeleport", StartRemoteTeleport);
 			SmartConsole.RegisterCommand("teleport", Teleport);
 		}
 		if (PlayerPrefs.GetInt("locs_alias", 0) != 1)
@@ -95,6 +96,19 @@ internal static class CheatsTransfer
 	public static void Tp2Loc(BlueprintAreaEnterPoint enterPoint)
 	{
 		Game.Instance.LoadArea(enterPoint, AutoSaveMode.None);
+	}
+
+	[Cheat(Name = "teleport_area", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void TeleportArea(BlueprintArea area)
+	{
+		if (area != null)
+		{
+			BlueprintAreaEnterPoint enterPoint = Utilities.GetEnterPoint(area);
+			if (enterPoint != null)
+			{
+				Game.Instance.LoadArea(enterPoint, AutoSaveMode.BeforeExit);
+			}
+		}
 	}
 
 	[Cheat(Name = "list_locs", ExecutionPolicy = ExecutionPolicy.All)]
@@ -124,6 +138,16 @@ internal static class CheatsTransfer
 			return "locs_alias disabled";
 		}
 		return "Use true/false";
+	}
+
+	private static void StartRemoteTeleport()
+	{
+		PointerController pointerController = Game.Instance.Controllers.PointerController;
+		if (pointerController != null)
+		{
+			pointerController.GetHandler<ClickCheatRemoteTeleportHandler>()?.Begin();
+			pointerController.SetPointerMode(PointerMode.CheatRemoteTeleport);
+		}
 	}
 
 	[Cheat(Name = "local_teleport", ExecutionPolicy = ExecutionPolicy.PlayMode)]
@@ -188,6 +212,19 @@ internal static class CheatsTransfer
 		}
 	}
 
+	[Cheat(Name = "debug_teleport", ExecutionPolicy = ExecutionPolicy.PlayMode, Description = "Teleport party to scene position. Coordinates match Transform Position / Position Overlay (F11).", ExampleArgs = "100 0 50")]
+	public static void DebugTeleport(int x, int y, int z)
+	{
+		Vector3 position = new Vector3(x, y, z);
+		foreach (BaseUnitEntity partyAndPet in Game.Instance.Player.PartyAndPets)
+		{
+			partyAndPet.Commands.InterruptAllInterruptible();
+			partyAndPet.Position = position;
+			partyAndPet.SnapToGrid();
+		}
+		CameraRig.Instance.ScrollToImmediately(position);
+	}
+
 	[Cheat(Name = "get_position", ExecutionPolicy = ExecutionPolicy.PlayMode)]
 	public static string GetPosition()
 	{
@@ -225,25 +262,6 @@ internal static class CheatsTransfer
 	[Cheat(Name = "new_game", ExecutionPolicy = ExecutionPolicy.PlayMode)]
 	public static void StartNewGame(BlueprintAreaPreset preset)
 	{
-		LoadingProcess.Instance.StartCoroutine(NewGameCoroutine(preset));
-	}
-
-	private static IEnumerator NewGameCoroutine(BlueprintAreaPreset preset)
-	{
-		if (Game.Instance.CurrentlyLoadedArea != null)
-		{
-			IRootUIContext context = Game.Instance.RootUIContext;
-			Game.Instance.ResetToMainMenu();
-			while (LoadingProcess.Instance.IsLoadingInProcess)
-			{
-				yield return null;
-			}
-			yield return null;
-			context.Clear();
-		}
-		Game.Instance.RootUIContext.EnterGame(delegate
-		{
-			Game.Instance.LoadNewGame(preset);
-		});
+		LoadingProcess.Instance.StartCoroutine(Utilities.NewGameCoroutine(preset));
 	}
 }

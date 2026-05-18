@@ -25,9 +25,6 @@ public class ChangeUnitName : GameAction
 
 	public bool ReturnTheOldName;
 
-	[HideIf("ReturnTheOldName")]
-	public bool AddToTheName;
-
 	public override string GetDescription()
 	{
 		return $"Меняет имя юниту {Unit} на новое {NewName}";
@@ -50,8 +47,8 @@ public class ChangeUnitName : GameAction
 		}
 		else
 		{
-			string text = (ReturnTheOldName ? null : (AddToTheName ? (baseUnitEntity.Description.Name + NewName) : ((string)NewName)));
-			baseUnitEntity.Description.SetName(text);
+			LocalizedString obj = (ReturnTheOldName ? null : NewName);
+			baseUnitEntity.Description.SetCustomNameLocalizedString(obj?.Key);
 			EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity, (Action<IUnitNameHandler>)delegate(IUnitNameHandler h)
 			{
 				h.OnUnitNameChanged();

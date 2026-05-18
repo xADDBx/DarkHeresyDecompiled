@@ -14,7 +14,7 @@ public class NewInteractionVariantToggleVM : InteractionVariantVM
 	{
 		if (InteractionActor.SelectConditions != null && !InteractionActor.SelectConditions.Check())
 		{
-			return HandleNarratorText(InteractionActor.CannotSelectReason?.String.Text);
+			return HandleNarratorText(InteractionActor.CannotSelectReason?.Text);
 		}
 		return HandleNarratorText(ShowReason);
 	}

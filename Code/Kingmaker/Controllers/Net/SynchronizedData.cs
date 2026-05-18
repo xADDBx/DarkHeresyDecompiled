@@ -1,16 +1,20 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
-using StateHasher.Core;
-using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Controllers.Net;
 
 [JsonObject(IsReference = false)]
 [OwlPackable(OwlPackableMode.Generate)]
-public struct SynchronizedData : IHashable, IOwlPackable, IOwlPackable<SynchronizedData>
+[MemoryPackable(GenerateType.Object)]
+public struct SynchronizedData : IMemoryPackable<SynchronizedData>, IMemoryPackFormatterRegister, IOwlPackable, IOwlPackable<SynchronizedData>
 {
 	public static class CameraDataType
 	{
@@ -25,41 +29,65 @@ public struct SynchronizedData : IHashable, IOwlPackable, IOwlPackable<Synchroni
 		public const byte NonRigCamera = 4;
 	}
 
+	[Preserve]
+	private sealed class SynchronizedDataFormatter : MemoryPackFormatter<SynchronizedData>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref SynchronizedData value)
+		{
+			SynchronizedData.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref SynchronizedData value)
+		{
+			SynchronizedData.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref SynchronizedData value)
+		{
+			SynchronizedData.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref SynchronizedData value)
+		{
+			SynchronizedData.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty(PropertyName = "ct")]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public byte cameraType;
 
 	[JsonProperty(PropertyName = "cm")]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public CameraData camera;
 
 	[JsonProperty(PropertyName = "ls")]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public LeftStickData leftStick;
 
 	[JsonProperty(PropertyName = "sh")]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public int stateHash;
 
 	[JsonProperty(PropertyName = "ml")]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	public byte maxLag;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "SynchronizedData",
-		Fields = new FieldInfo[5]
-		{
-			new FieldInfo("cameraType", typeof(byte)),
-			new FieldInfo("camera", typeof(CameraData)),
-			new FieldInfo("leftStick", typeof(LeftStickData)),
-			new FieldInfo("stateHash", typeof(int)),
-			new FieldInfo("maxLag", typeof(byte))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackIgnore]
 	public Matrix4x4 cameraMatrix => camera?.matrix ?? Matrix4x4.zero;
 
+	[MemoryPackIgnore]
 	public bool IsEmpty
 	{
 		get
@@ -72,6 +100,7 @@ public struct SynchronizedData : IHashable, IOwlPackable, IOwlPackable<Synchroni
 		}
 	}
 
+	[MemoryPackConstructor]
 	private SynchronizedData(byte cameraType, CameraData camera, LeftStickData leftStick, int stateHash, byte maxLag)
 	{
 		this.cameraType = cameraType;
@@ -86,17 +115,168 @@ public struct SynchronizedData : IHashable, IOwlPackable, IOwlPackable<Synchroni
 	{
 	}
 
-	public Hash128 GetHash128()
+	static SynchronizedData()
 	{
-		Hash128 result = default(Hash128);
-		result.Append(ref cameraType);
-		Hash128 val = ClassHasher<CameraData>.GetHash128(camera);
-		result.Append(ref val);
-		Hash128 val2 = ClassHasher<LeftStickData>.GetHash128(leftStick);
-		result.Append(ref val2);
-		result.Append(ref stateHash);
-		result.Append(ref maxLag);
-		return result;
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "SynchronizedData",
+			Fields = new FieldInfo[5]
+			{
+				new FieldInfo("cameraType", typeof(byte)),
+				new FieldInfo("camera", typeof(CameraData)),
+				new FieldInfo("leftStick", typeof(LeftStickData)),
+				new FieldInfo("stateHash", typeof(int)),
+				new FieldInfo("maxLag", typeof(byte))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<SynchronizedData>())
+		{
+			MemoryPackFormatterProvider.Register(new SynchronizedDataFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<SynchronizedData[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<SynchronizedData>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref SynchronizedData value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		writer.WriteUnmanagedWithObjectHeader(5, in value.cameraType);
+		writer.WritePackable(in value.camera);
+		writer.WritePackable(in value.leftStick);
+		writer.WriteUnmanaged(in value.stateHash, in value.maxLag);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref SynchronizedData value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = default(SynchronizedData);
+			return;
+		}
+		byte value2;
+		CameraData value3;
+		LeftStickData value4;
+		int value5;
+		byte value6;
+		if (memberCount == 5)
+		{
+			reader.ReadUnmanaged<byte>(out value2);
+			value3 = reader.ReadPackable<CameraData>();
+			value4 = reader.ReadPackable<LeftStickData>();
+			reader.ReadUnmanaged<int, byte>(out value5, out value6);
+		}
+		else
+		{
+			if (memberCount > 5)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(SynchronizedData), 5, memberCount);
+				return;
+			}
+			value2 = 0;
+			value3 = null;
+			value4 = null;
+			value5 = 0;
+			value6 = 0;
+			if (memberCount != 0)
+			{
+				reader.ReadUnmanaged<byte>(out value2);
+				if (memberCount != 1)
+				{
+					reader.ReadPackable(ref value3);
+					if (memberCount != 2)
+					{
+						reader.ReadPackable(ref value4);
+						if (memberCount != 3)
+						{
+							reader.ReadUnmanaged<int>(out value5);
+							if (memberCount != 4)
+							{
+								reader.ReadUnmanaged<byte>(out value6);
+								_ = 5;
+							}
+						}
+					}
+				}
+			}
+		}
+		value = new SynchronizedData(value2, value3, value4, value5, value6);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref SynchronizedData value)
+	{
+		writer.WriteObjectHeader();
+		writer.WriteProperty("cameraType");
+		writer.WriteUnmanaged(value.cameraType);
+		writer.WriteProperty("camera");
+		writer.WritePackable(value.camera);
+		writer.WriteProperty("leftStick");
+		writer.WritePackable(value.leftStick);
+		writer.WriteProperty("stateHash");
+		writer.WriteUnmanaged(value.stateHash);
+		writer.WriteProperty("maxLag");
+		writer.WriteUnmanaged(value.maxLag);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref SynchronizedData value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = default(SynchronizedData);
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		byte v = 0;
+		CameraData cameraData = null;
+		LeftStickData leftStickData = null;
+		int v2 = 0;
+		byte v3 = 0;
+		bool[] array = new bool[5];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			switch (text)
+			{
+			case "cameraType":
+				reader.ReadUnmanaged<byte>(out v);
+				array[0] = true;
+				break;
+			case "camera":
+				cameraData = reader.ReadPackable<CameraData>();
+				array[1] = true;
+				break;
+			case "leftStick":
+				leftStickData = reader.ReadPackable<LeftStickData>();
+				array[2] = true;
+				break;
+			case "stateHash":
+				reader.ReadUnmanaged<int>(out v2);
+				array[3] = true;
+				break;
+			case "maxLag":
+				reader.ReadUnmanaged<byte>(out v3);
+				array[4] = true;
+				break;
+			}
+		}
+		value = new SynchronizedData(v, cameraData, leftStickData, v2, v3);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

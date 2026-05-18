@@ -44,15 +44,14 @@ public sealed class DetectiveServoskullController : IControllerTick, IController
 		{
 			servoskull.Owner.Position = servoskull.IdlePosition;
 			servoskull.Owner.DesiredOrientation = servoskull.Leader.DesiredOrientation;
+			return;
 		}
-		else
+		UnitFollowParams cmdParams = new UnitFollowParams(servoskull.Leader, servoskull.IdlePosition)
 		{
-			UnitFollowParams cmdParams = new UnitFollowParams(servoskull.Leader, servoskull.IdlePosition)
-			{
-				ForceMove = true
-			};
-			servoskull.Owner.Commands.Run(cmdParams);
-		}
+			ForceMove = true,
+			UseOwnSpeed = true
+		};
+		servoskull.Owner.Commands.Run(cmdParams);
 	}
 
 	private static void UpdateFlyingHeight(PartDetectiveServoSkull servoskull)

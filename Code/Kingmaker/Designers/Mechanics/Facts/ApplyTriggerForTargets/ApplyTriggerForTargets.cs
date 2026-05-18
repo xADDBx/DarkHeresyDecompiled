@@ -5,6 +5,7 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Properties;
@@ -45,7 +46,7 @@ public class ApplyTriggerForTargets : UnitFactComponentDelegate, ITurnStartHandl
 
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (!isTurnBased || (OnlyOwnerTurn && EventInvokerExtensions.MechanicEntity != base.Owner))
+		if (!isTurnBased || (OnlyOwnerTurn && EventInvokerExtensions.MechanicEntity != base.Owner) || (bool)ContextData<TurnController.InterruptTurnEndMark>.Current)
 		{
 			return;
 		}
@@ -55,12 +56,11 @@ public class ApplyTriggerForTargets : UnitFactComponentDelegate, ITurnStartHandl
 		for (int i = 0; i < allBaseAwakeUnits.Count; i++)
 		{
 			BaseUnitEntity baseUnitEntity2 = allBaseAwakeUnits[i];
-			PropertyContext context = new PropertyContext(baseUnitEntity2);
-			if (baseUnitEntity2 == base.Owner || !baseUnitEntity2.IsInCombat || !Restriction.IsPassed(context))
+			if (baseUnitEntity2 == base.Owner || !baseUnitEntity2.IsInCombat || !Restriction.IsPassed(base.Context, baseUnitEntity2))
 			{
 				continue;
 			}
-			int value = TargetProperty.GetValue(context);
+			int value = TargetProperty.GetValue(baseUnitEntity2);
 			if (baseUnitEntity == null)
 			{
 				baseUnitEntity = baseUnitEntity2;

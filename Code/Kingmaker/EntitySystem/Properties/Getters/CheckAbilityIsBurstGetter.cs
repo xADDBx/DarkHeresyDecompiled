@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Owlcat.Runtime.Core.Utility;
@@ -12,7 +13,7 @@ public class CheckAbilityIsBurstGetter : BoolPropertyGetter, PropertyContextAcce
 {
 	protected override bool GetBaseValue()
 	{
-		AbilityData ability = this.GetAbility();
+		AbilityData ability = EvalContext.Current.Ability;
 		if (ability == null)
 		{
 			return false;

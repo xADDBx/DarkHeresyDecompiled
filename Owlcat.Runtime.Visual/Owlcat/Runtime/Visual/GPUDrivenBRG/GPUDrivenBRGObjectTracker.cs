@@ -25,7 +25,7 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			m_BatchRendererGroup = batchRendererGroup;
 		}
 
-		public void ProcessTransformData(NativeArray<int> transformedID, NativeArray<int> parentID, NativeArray<Matrix4x4> localToWorldMatrices, NativeArray<Vector3> positions, NativeArray<Quaternion> rotations, NativeArray<Vector3> scales)
+		public void ProcessTransformData(NativeArray<EntityId> transformedID, NativeArray<EntityId> parentID, NativeArray<Matrix4x4> localToWorldMatrices, NativeArray<Vector3> positions, NativeArray<Quaternion> rotations, NativeArray<Vector3> scales)
 		{
 			using (new ProfilingScope(Profiling.ProcessTransformData))
 			{
@@ -39,20 +39,21 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			}
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
-			foreach (int item in destroyedID)
+			foreach (EntityId item in destroyedID)
 			{
-				m_BatchRendererGroup.RemoveRenderer(GPUDrivenInstanceID.UnityObject(item));
+				int instanceID = item;
+				m_BatchRendererGroup.RemoveRenderer(GPUDrivenInstanceID.UnityObject(instanceID));
 			}
 			if (changedID.Length <= 0)
 			{
 				return;
 			}
 			GPUDrivenBatchRendererGroup.ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
-			NativeList<int> nativeList = new NativeList<int>(changedID.Length, Allocator.Temp);
+			NativeList<EntityId> nativeList = new NativeList<EntityId>(changedID.Length, Allocator.Temp);
 			NativeList<int> nativeList2 = new NativeList<int>(changedID.Length, Allocator.Temp);
-			NativeList<int> nativeList3 = new NativeList<int>(changedID.Length, Allocator.Temp);
+			NativeList<EntityId> nativeList3 = new NativeList<EntityId>(changedID.Length, Allocator.Temp);
 			for (int i = 0; i < changed.Count; i++)
 			{
 				MeshRenderer meshRenderer = (MeshRenderer)changed[i];
@@ -65,40 +66,40 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 				case GPUDrivenBatchRendererGroup.RendererUpdateStatus.Added:
 					if (GPUDrivenRenderingUtils.IsRendererEnabled(meshRenderer))
 					{
-						int value = changedID[i];
+						EntityId value = changedID[i];
 						nativeList.Add(in value);
 					}
 					break;
 				case GPUDrivenBatchRendererGroup.RendererUpdateStatus.Removed:
 				{
-					int value = changedID[i];
+					EntityId value = changedID[i];
 					nativeList3.Add(in value);
 					break;
 				}
 				case GPUDrivenBatchRendererGroup.RendererUpdateStatus.CouldNotRegister:
 				{
-					int value = changedID[i];
-					nativeList2.Add(in value);
+					int value2 = changedID[i];
+					nativeList2.Add(in value2);
 					break;
 				}
 				case GPUDrivenBatchRendererGroup.RendererUpdateStatus.RemovedAsUnsupported:
 				{
-					int value = changedID[i];
+					EntityId value = changedID[i];
 					nativeList3.Add(in value);
-					value = changedID[i];
-					nativeList2.Add(in value);
+					int value2 = changedID[i];
+					nativeList2.Add(in value2);
 					break;
 				}
 				}
 			}
-			NativeList<int> invalidRendererIDs = new NativeList<int>(Allocator.Temp);
+			NativeList<EntityId> invalidRendererIDs = new NativeList<EntityId>(Allocator.Temp);
 			m_BatchRendererGroup.EnableGPUDrivenRenderingAndLoadNativeData(nativeList.AsArray(), in changeContext, invalidRendererIDs);
 			m_BatchRendererGroup.DisableGPURendering(nativeList3.AsArray());
-			foreach (int item2 in invalidRendererIDs)
+			foreach (EntityId item2 in invalidRendererIDs)
 			{
-				int value2 = item2;
-				m_BatchRendererGroup.RemoveRenderer(GPUDrivenInstanceID.UnityObject(value2), GPUDrivenBatchRendererGroup.RendererUpdateStatus.RemovedAsUnsupported);
-				nativeList2.Add(in value2);
+				int value3 = item2;
+				m_BatchRendererGroup.RemoveRenderer(GPUDrivenInstanceID.UnityObject(value3), GPUDrivenBatchRendererGroup.RendererUpdateStatus.RemovedAsUnsupported);
+				nativeList2.Add(in value3);
 			}
 			if (nativeList2.Length > 0)
 			{
@@ -117,11 +118,12 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			m_BatchRendererGroup = batchRendererGroup;
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
-			foreach (int item in destroyedID)
+			foreach (EntityId item in destroyedID)
 			{
-				if (m_BatchRendererGroup.TryMapMeshFilterInstanceIDToMeshRenderer(GPUDrivenInstanceID.UnityObject(item), out var rendererInstanceID))
+				int instanceID = item;
+				if (m_BatchRendererGroup.TryMapMeshFilterInstanceIDToMeshRenderer(GPUDrivenInstanceID.UnityObject(instanceID), out var rendererInstanceID))
 				{
 					m_BatchRendererGroup.RemoveRenderer(rendererInstanceID);
 				}
@@ -131,7 +133,7 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 				return;
 			}
 			GPUDrivenBatchRendererGroup.ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
-			NativeList<int> nativeList = new NativeList<int>(changedID.Length, Allocator.Temp);
+			NativeList<EntityId> nativeList = new NativeList<EntityId>(changedID.Length, Allocator.Temp);
 			for (int i = 0; i < changed.Count; i++)
 			{
 				MeshFilter meshFilter = (MeshFilter)changed[i];
@@ -143,7 +145,7 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 					GPUDrivenBatchRendererGroup.RendererUpdateStatus rendererUpdateStatus = batchRendererGroup.UpdateRendererMesh(in rendererDesc, in changeContext, in rendererParams);
 					if (rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.Removed || rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.RemovedAsUnsupported)
 					{
-						int value = changedID[i];
+						EntityId value = changedID[i];
 						nativeList.Add(in value);
 					}
 				}
@@ -162,22 +164,23 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			m_BatchRendererGroup = batchRendererGroup;
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
 			if (changedID.Length == 0 && destroyedID.Length == 0)
 			{
 				return;
 			}
 			GPUDrivenBatchRendererGroup.ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
-			NativeList<int> nativeList = new NativeList<int>(changedID.Length + destroyedID.Length, Allocator.Temp);
-			foreach (int item in destroyedID)
+			NativeList<EntityId> nativeList = new NativeList<EntityId>(changedID.Length + destroyedID.Length, Allocator.Temp);
+			foreach (EntityId item in destroyedID)
 			{
-				if (!m_BatchRendererGroup.TryMapGPUDrivenRendererInstanceIDToMeshRenderer(GPUDrivenInstanceID.UnityObject(item), out var rendererInstanceID))
+				int instanceID = item;
+				if (!m_BatchRendererGroup.TryMapGPUDrivenRendererInstanceIDToMeshRenderer(GPUDrivenInstanceID.UnityObject(instanceID), out var rendererInstanceID))
 				{
 					continue;
 				}
-				int value = rendererInstanceID.RawInstanceID;
-				MeshRenderer meshRenderer = ObjectDispatcherService.FindByInstanceId<MeshRenderer>(value);
+				int rawInstanceID = rendererInstanceID.RawInstanceID;
+				MeshRenderer meshRenderer = ObjectDispatcherService.FindByInstanceId<MeshRenderer>(rawInstanceID);
 				if (meshRenderer != null)
 				{
 					GPUDrivenBatchRendererGroup.RendererDesc rendererDesc = GPUDrivenBatchRendererGroup.RendererDesc.FromMeshRenderer(meshRenderer);
@@ -186,12 +189,14 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 					GPUDrivenBatchRendererGroup.RendererUpdateStatus rendererUpdateStatus = batchRendererGroup.AddOrUpdateRenderer(in rendererDesc, in changeContext, GPUDrivenRendererGroupPool.RendererUpdateFlags.CustomPerInstanceData, in rendererParams);
 					if (rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.Removed || rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.RemovedAsUnsupported)
 					{
+						EntityId value = rawInstanceID;
 						nativeList.Add(in value);
 					}
 				}
 				else
 				{
-					m_BatchRendererGroup.RemoveRenderer(GPUDrivenInstanceID.UnityObject(value));
+					m_BatchRendererGroup.RemoveRenderer(GPUDrivenInstanceID.UnityObject(rawInstanceID));
+					EntityId value = rawInstanceID;
 					nativeList.Add(in value);
 				}
 			}
@@ -205,8 +210,8 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 					GPUDrivenBatchRendererGroup.RendererUpdateStatus rendererUpdateStatus2 = batchRendererGroup2.AddOrUpdateRenderer(in rendererDesc2, in changeContext, GPUDrivenRendererGroupPool.RendererUpdateFlags.CustomPerInstanceData, in rendererParams);
 					if (rendererUpdateStatus2 == GPUDrivenBatchRendererGroup.RendererUpdateStatus.Removed || rendererUpdateStatus2 == GPUDrivenBatchRendererGroup.RendererUpdateStatus.RemovedAsUnsupported)
 					{
-						int value2 = changedID[i];
-						nativeList.Add(in value2);
+						EntityId value = changedID[i];
+						nativeList.Add(in value);
 					}
 				}
 			}
@@ -226,15 +231,16 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			m_BatchRendererGroup = batchRendererGroup;
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
 			if (changed.Count <= 0)
 			{
 				return;
 			}
 			bool flag = true;
-			foreach (int item in changedID)
+			foreach (EntityId item2 in changedID)
 			{
+				int item = item2;
 				if (!m_ProcessedMaterialIDs.Add(item))
 				{
 					flag = false;
@@ -260,7 +266,7 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			m_BatchRendererGroup = batchRendererGroup;
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
 			GPUDrivenBatchRendererGroup.ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
 			for (int i = 0; i < changed.Count; i++)
@@ -284,7 +290,7 @@ public class GPUDrivenBRGObjectTracker : IDisposable
 			m_BatchRendererGroup = batchRendererGroup;
 		}
 
-		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+		public override void ProcessData(List<UnityEngine.Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 		{
 			GPUDrivenBatchRendererGroup.ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
 			if (destroyedID.Length > 0)

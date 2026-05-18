@@ -4,7 +4,7 @@ public abstract class LocomotionState : UnitAnimationActionState<LocomotionState
 {
 	protected UnitAnimationActionLocomotion.CommonLocomotionData m_RuntimeData => (m_Handle.ActionData as UnitAnimationActionLocomotion.ActionData)?.Data;
 
-	protected float m_MaxSpeed => m_AnimationAction.SprintParameters.Speed;
+	protected float m_MaxSpeed => m_AnimationAction.MaxSpeed;
 
 	protected WeaponAnimationStyle m_ActualWeaponStyle
 	{

@@ -5,8 +5,9 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.Gameplay.Blueprints.Root;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Sound;
@@ -14,10 +15,12 @@ using Kingmaker.UI.AR;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Abilities;
+using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
+using Kingmaker.View.Covers;
 using Pathfinding;
 using R3;
 using UnityEngine;
@@ -97,6 +100,11 @@ public class PreciseAttackController : IControllerTick, IController
 	private IEnumerable<MechanicEntity> Enemies => Game.Instance.Controllers.TurnController.UnitsInCombat.Where((MechanicEntity u) => u.IsPlayerEnemy);
 
 	public bool HasTarget => Target.CurrentValue != null;
+
+	public bool IsTargetCovered()
+	{
+		return LosCalculations.GetWarhammerLos(_context.Caster, Target.CurrentValue).CoverType == LosCalculations.CoverType.Cover;
+	}
 
 	public TickType GetTickType()
 	{
@@ -248,18 +256,21 @@ public class PreciseAttackController : IControllerTick, IController
 
 	public float GetBodyPartHitChance(BlueprintBodyPart bodyPart)
 	{
+		if (_context?.Ability == null)
+		{
+			return 0f;
+		}
 		return AbilityTargetUIDataCache.Instance.GetOrCreate(_context.Ability, Game.Instance.Controllers.VirtualPositionController.GetDesiredPosition(_context.Caster), _context.ClickedTarget.Entity, bodyPart, null, null).HitChance.HitWithAvoidanceChance;
 	}
 
 	public float GetRawCriticalEffectChance(BlueprintBodyPart bodyPart, int index)
 	{
 		MechanicEntity entity = _context.ClickedTarget.Entity;
-		StatsContainer statsContainer = entity.GetStatsContainerOptional()?.Container;
-		if (statsContainer == null)
+		if (entity == null)
 		{
 			return 0f;
 		}
-		float num = (int)statsContainer.GetStat(StatType.SkillResistance);
+		float num = (int)entity.Actor.GetStat(StatType.SkillResistance, null, default(StatContext), "GetRawCriticalEffectChance");
 		int? num2 = entity.GetLifeStateOptional()?.Health.GetCriticalStage(bodyPart) - (index + 1);
 		if (num2.HasValue)
 		{
@@ -305,7 +316,6 @@ public class PreciseAttackController : IControllerTick, IController
 		m_Target.Value = target.Entity;
 		UpdatePoints();
 		MoveCameraToTarget();
-		Game.Instance.CursorController.SetCursor(CursorType.Default, force: true);
 		m_Show.Execute(parameter: true);
 		PlayPrecisionSound(SoundPrecisionType.PrecisionShotOn);
 		return _process;
@@ -343,22 +353,31 @@ public class PreciseAttackController : IControllerTick, IController
 		{
 		case SoundPrecisionType.PrecisionShotOn:
 		{
-			AkSwitchReference akSwitchReference = _ability.SourceWeapon?.Blueprint.VisualParameters.SoundTypeSwitch;
+			BlueprintAbilityFXSettings fXSettings = _ability.FXSettings;
+			AkSwitchReference akSwitchReference = fXSettings?.ProjectileTypeSwitch;
 			if (akSwitchReference.IsValid())
 			{
 				AkUnitySoundEngine.SetSwitch(akSwitchReference.Group, akSwitchReference.Value, UIDollRooms.Instance.gameObject);
 			}
+			if (fXSettings != null && fXSettings.OverrideDamageType)
+			{
+				AkSwitchReference damageSoundSwitch = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(fXSettings.DamageType);
+				if (damageSoundSwitch.IsValid())
+				{
+					AkUnitySoundEngine.SetSwitch(damageSoundSwitch.Group, damageSoundSwitch.Value, UIDollRooms.Instance.gameObject);
+				}
+			}
 			AkUnitySoundEngine.SetState("PrecisionShotOutState", "None");
 			AkUnitySoundEngine.SetState("PreciseShot", "On");
-			UISounds.Instance.Sounds.Combat.PrecisionShotOn.Play();
+			CombatSounds.Instance.Combat.PrecisionShotOn.Play();
 			break;
 		}
 		case SoundPrecisionType.PrecisionShotOff:
 			AkUnitySoundEngine.SetState(isInterrupted ? "PrecisionShotOutState" : "PreciseShot", isInterrupted ? "Interrupted" : "None");
-			UISounds.Instance.Sounds.Combat.PrecisionShotOff.Play();
+			CombatSounds.Instance.Combat.PrecisionShotOff.Play();
 			break;
 		case SoundPrecisionType.PrecisionShotTargetChange:
-			UISounds.Instance.Sounds.Combat.PrecisionShotTargetChange.Play();
+			CombatSounds.Instance.Combat.PrecisionShotTargetChange.Play();
 			break;
 		}
 	}
@@ -403,7 +422,7 @@ public class PreciseAttackController : IControllerTick, IController
 		_points.Clear();
 		_points.AddRange(m_Target.Value.BodyParts.Select(delegate(BlueprintBodyPart p)
 		{
-			bool restrictionPassed = p.Restrictions.IsPassed(_context);
+			bool restrictionPassed = p.Restrictions.IsPassed(EvalContext.Current);
 			bool isHiddenByCover = _context.LosToClickedTarget.CoverType != 0 && p.ReplaceableByCover;
 			return new BodyPartUIData(p, restrictionPassed, isHiddenByCover);
 		}));

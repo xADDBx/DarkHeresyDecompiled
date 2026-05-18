@@ -117,6 +117,11 @@ public sealed class SelectionStateStats : SelectionState
 		}
 	}
 
+	protected override bool ShouldApplyInternal()
+	{
+		return PointsSpentTotal > 0;
+	}
+
 	protected override bool IsMadeInternal()
 	{
 		return PointsSpentTotal == PointsTotal;

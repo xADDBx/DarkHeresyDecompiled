@@ -15,6 +15,8 @@ public interface IRootUIContext : IBugReportContext
 
 	bool IsDebugBlueprintsInformationShow { get; }
 
+	bool IsDebugStringsInformationShow { get; }
+
 	bool IsCharGenShown { get; }
 
 	bool IsInMainMenu { get; }
@@ -44,6 +46,10 @@ public interface IRootUIContext : IBugReportContext
 	void SwitchDebugBlueprintsInformationShow();
 
 	bool GetDebugBlueprintsInformationShow();
+
+	void SwitchDebugStringsInformationShow();
+
+	bool GetDebugStringsInformationShow();
 
 	void ChangeUIPlatform(bool nextPlatform);
 

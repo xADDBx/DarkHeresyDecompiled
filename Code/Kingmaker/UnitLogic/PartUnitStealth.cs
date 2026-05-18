@@ -156,7 +156,7 @@ public class PartUnitStealth : BaseUnitPart, IHashable, IOwlPackable<PartUnitSte
 			WantActivate = false;
 			Clear();
 			Active = false;
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitStealthHandler>)delegate(IUnitStealthHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitStealthHandler>)delegate(IUnitStealthHandler h)
 			{
 				h.HandleUnitSwitchStealthCondition(inStealth: false);
 			}, isCheckRuntime: true);

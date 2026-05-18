@@ -9,7 +9,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class MultikeyRestrictionPart : NeedItemRestrictionPart<MultikeyRestrictionSettings>, IHashable, IOwlPackable<MultikeyRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "MultikeyRestrictionPart",
 		OldNames = null,
@@ -30,7 +30,7 @@ public class MultikeyRestrictionPart : NeedItemRestrictionPart<MultikeyRestricti
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		MultikeyRestrictionPart source = new MultikeyRestrictionPart();
 		result = Unsafe.As<MultikeyRestrictionPart, TPossiblyBase>(ref source);

@@ -23,6 +23,4 @@ public class WarhammerIncomingDamageNullifier : UnitFactComponentDelegate
 
 	[SerializeField]
 	private bool m_OnlyCritical;
-
-	private int NullifyChances => Math.Max(Math.Min(m_NullifyChances.Calculate(base.Context), 100), 0);
 }

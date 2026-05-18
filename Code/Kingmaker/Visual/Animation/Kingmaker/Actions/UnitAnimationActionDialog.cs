@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.DialogSystem;
 using Kingmaker.Utility.UnityExtensions;
 using UnityEngine;
 
@@ -31,7 +31,7 @@ public class UnitAnimationActionDialog : UnitAnimationAction, IAddInspectorGUI
 		}
 		else
 		{
-			handle.AnimationLayer = AnimationLayerType.Dialog;
+			handle.AnimationLayer = UnitAnimationLayerType.Dialog;
 			handle.StartClip(animationClipWrapper);
 		}
 	}

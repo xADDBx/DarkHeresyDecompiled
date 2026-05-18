@@ -13,7 +13,7 @@ public class MaxPartySize : IntEvaluator
 {
 	protected override int GetValueInternal()
 	{
-		return 6;
+		return Game.Instance.Player.MaxPartySize;
 	}
 
 	public override string GetCaption()

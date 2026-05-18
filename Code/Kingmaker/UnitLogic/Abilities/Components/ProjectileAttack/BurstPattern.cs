@@ -7,13 +7,19 @@ namespace Kingmaker.UnitLogic.Abilities.Components.ProjectileAttack;
 
 public class BurstPattern : IAbilityAoEPatternProvider
 {
-	public bool IsIgnoreLos => false;
+	private bool m_IgnoreLos;
+
+	private bool m_IgnoreLevelDifference;
+
+	private int m_PatternAngle;
+
+	public bool IsIgnoreLos => m_IgnoreLos;
 
 	public bool UseMeleeLos => false;
 
-	public bool IsIgnoreLevelDifference => false;
+	public bool IsIgnoreLevelDifference => m_IgnoreLevelDifference;
 
-	public int PatternAngle => 0;
+	public int PatternAngle => m_PatternAngle;
 
 	public bool CalculateAttackFromPatternCentre => false;
 
@@ -23,6 +29,13 @@ public class BurstPattern : IAbilityAoEPatternProvider
 
 	public int? HaloSize { get; private set; }
 
+	public BurstPattern(bool ignoreLos = false, bool ignoreLevelDifference = false, int patternAngle = 30)
+	{
+		m_IgnoreLos = ignoreLos;
+		m_IgnoreLevelDifference = ignoreLevelDifference;
+		m_PatternAngle = patternAngle;
+	}
+
 	public void OverrideHaloSize(int? haloSize)
 	{
 		HaloSize = haloSize;
@@ -30,7 +43,7 @@ public class BurstPattern : IAbilityAoEPatternProvider
 
 	public OrientedPatternData GetOrientedPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, Size targetSize = Size.Medium, bool coveredTargetsOnly = false)
 	{
-		return AbilityProjectileAttackLineHelper.GetOrientedPattern(ability, casterNode, targetNode, coveredTargetsOnly, HaloSize);
+		return AbilityProjectileAttackLineHelper.GetOrientedPattern(ability, casterNode, targetNode, coveredTargetsOnly, HaloSize, IsIgnoreLos, IsIgnoreLevelDifference, PatternAngle);
 	}
 
 	public OrientedPatternData GetOrientedHaloPattern(IAbilityDataProviderForPattern ability, int haloSize, GridNodeBase casterNode, GridNodeBase targetNode, Size targetSize = Size.Medium, bool coveredTargetsOnly = false)

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
+using Kingmaker.Code.Framework.VO;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -26,12 +28,28 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 
 		public readonly bool IsPlayerFaction;
 
+		public readonly BaseUnitEntity Initiator;
+
 		public UnitDamage(RuleDealDamage lastHandledDamage, BaseUnitEntity target)
 		{
 			LastHandledDamage = lastHandledDamage;
 			UnitLifeState = target.LifeState.State;
 			IsEnemyOfInitiator = lastHandledDamage != null && lastHandledDamage.InitiatorUnit != null && lastHandledDamage.Target.IsEnemy(lastHandledDamage.InitiatorUnit);
 			IsPlayerFaction = target.IsPlayerFaction;
+			Initiator = lastHandledDamage?.InitiatorUnit;
+		}
+	}
+
+	private class AskWrapperUnitPair
+	{
+		public AskWrapper AskWrapper { get; private set; }
+
+		public BaseUnitEntity Unit { get; private set; }
+
+		public AskWrapperUnitPair(AskWrapper wrapper, BaseUnitEntity unit)
+		{
+			AskWrapper = wrapper;
+			Unit = unit;
 		}
 	}
 
@@ -39,9 +57,9 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 
 	private readonly Dictionary<BaseUnitEntity, int> m_EnemyKillsCounter = new Dictionary<BaseUnitEntity, int>();
 
-	private readonly List<AskWrapper> m_Barks = new List<AskWrapper>();
+	private readonly List<AskWrapperUnitPair> m_Barks = new List<AskWrapperUnitPair>();
 
-	private readonly List<AskWrapper> m_PersonalizedBarks = new List<AskWrapper>();
+	private readonly List<AskWrapperUnitPair> m_PersonalizedBarks = new List<AskWrapperUnitPair>();
 
 	public override void Dispose()
 	{
@@ -78,7 +96,7 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 
 	void IDamageHandler.HandleDamageDealt(RuleDealDamage dealDamage)
 	{
-		if ((bool)dealDamage.ConcreteTarget.View && dealDamage.ConcreteTarget is UnitEntity unitEntity)
+		if (dealDamage.ConcreteTarget.View != null && dealDamage.ConcreteTarget is UnitEntity unitEntity)
 		{
 			CacheDamage(unitEntity, new UnitDamage(dealDamage, unitEntity));
 		}
@@ -103,13 +121,20 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 			}
 			if (baseUnitEntity.LifeState.IsConscious)
 			{
-				if (unitDamage.LastHandledDamage.ResultArmorCrack)
+				using (EvalContext.PushAsksContext(unitDamage.Initiator, baseUnitEntity))
 				{
-					SpeakArmorBroken(baseUnitEntity);
-				}
-				else
-				{
-					SpeakGetDamage(baseUnitEntity);
+					if (unitDamage.LastHandledDamage != null && unitDamage.LastHandledDamage.Reason.Fact?.Blueprint == VOSettings.Instance.PariahFeature?.Blueprint)
+					{
+						SpeakPainPariah(baseUnitEntity);
+					}
+					if (unitDamage.LastHandledDamage?.ResultArmorCrack ?? false)
+					{
+						SpeakArmorBroken(baseUnitEntity);
+					}
+					else
+					{
+						SpeakGetDamage(baseUnitEntity);
+					}
 				}
 			}
 			else if (baseUnitEntity.LifeState.IsUnconscious)
@@ -127,14 +152,17 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 			item.Deconstruct(out key, out var value2);
 			BaseUnitEntity baseUnitEntity2 = key;
 			int num = value2;
-			if (!(baseUnitEntity2?.View == null) && baseUnitEntity2.View.Asks != null)
+			if (baseUnitEntity2?.View != null && baseUnitEntity2.View.Asks != null)
 			{
 				AskWrapper askWrapper = baseUnitEntity2.View.Asks.EnemyDeath;
 				if (num >= UnitAsksHelper.EnemyMassDeathKillsCount && baseUnitEntity2.View.Asks.EnemyMassDeath.HasBarks)
 				{
 					askWrapper = baseUnitEntity2.View.Asks?.EnemyMassDeath;
 				}
-				askWrapper.Schedule();
+				using (EvalContext.PushAsksContext(baseUnitEntity2, baseUnitEntity2))
+				{
+					askWrapper.Schedule();
+				}
 			}
 		}
 		m_EnemyKillsCounter.Clear();
@@ -142,30 +170,37 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 
 	private static void SpeakBecomeDead(BaseUnitEntity unit)
 	{
-		unit.View.Asks?.Death.Schedule();
+		using (EvalContext.PushAsksContext(unit, unit))
+		{
+			unit.View.Asks?.Death.Schedule();
+		}
 	}
 
 	private void SpeakBecomeUnconscious(BaseUnitEntity unit, UnitDamage damageData)
 	{
-		if (damageData.IsPlayerFaction)
+		using (EvalContext.PushAsksContext(damageData.Initiator, unit))
 		{
-			HandlePartyMemberUnconscious(unit);
-			unit.View.Asks?.Unconscious.Schedule();
-		}
-		else
-		{
+			if (damageData.IsPlayerFaction)
+			{
+				HandlePartyMemberUnconscious(unit);
+			}
 			unit.View.Asks?.Unconscious.Schedule();
 		}
 	}
 
-	private static void SpeakGetDamage(BaseUnitEntity unit)
+	private static void SpeakGetDamage(BaseUnitEntity target)
 	{
-		unit.View.Asks?.Pain.Schedule();
+		target.View.Asks?.Pain.Schedule();
 	}
 
 	private static void SpeakArmorBroken(BaseUnitEntity unit)
 	{
-		unit.View.Asks?.ArmorBroken.Schedule();
+		unit.View.Asks?.BrokenArmour.Schedule();
+	}
+
+	private static void SpeakPainPariah(BaseUnitEntity unit)
+	{
+		unit.View.Asks?.PainPariahKeystone.Schedule();
 	}
 
 	private void CacheEnemyKills(UnitDamage damage)
@@ -189,12 +224,15 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 		AskWrapper[] partyMemberUnconsciousPersonalized = asksComponent.PartyMemberUnconsciousPersonalized;
 		foreach (AskWrapper askWrapper in partyMemberUnconsciousPersonalized)
 		{
-			if (askWrapper.HasBarks && !askWrapper.IsOnCooldown && askWrapper.Bark is PersonalizedAsk personalizedAsk && Enumerable.Any(personalizedAsk.UnitReferences, (BlueprintUnitReference unitReference) => unconsciousUnit.Blueprint is BlueprintUnit blueprintUnit && blueprintUnit.CheckEqualsWithPrototype(unitReference.Get())))
+			if (askWrapper.HasBarks && !askWrapper.IsOnCooldown && askWrapper.AsksSet is PersonalizedAsk personalizedAsk && Enumerable.Any(personalizedAsk.UnitReferences, (BlueprintUnitReference unitReference) => unconsciousUnit.Blueprint is BlueprintUnit blueprintUnit && blueprintUnit.CheckEqualsWithPrototype(unitReference.Get())))
 			{
 				return askWrapper;
 			}
 		}
-		return asksComponent.PartyMemberUnconscious;
+		using (EvalContext.PushAsksContext(unconsciousUnit, asksComponent.Unit))
+		{
+			return asksComponent.PartyMemberUnconsciousGeneral;
+		}
 	}
 
 	private void HandlePartyMemberUnconscious(BaseUnitEntity unit)
@@ -208,17 +246,35 @@ public class LifeStateAsksController : BaseAsksController, ITickUnitAsksControll
 			AskWrapper partyMemberUnconsciousBark = GetPartyMemberUnconsciousBark(partyAndPet.View.Asks, unit);
 			if (partyMemberUnconsciousBark != null)
 			{
-				if (partyMemberUnconsciousBark.Bark is PersonalizedAsk)
+				if (partyMemberUnconsciousBark.AsksSet is PersonalizedAsk)
 				{
-					m_PersonalizedBarks.Add(partyMemberUnconsciousBark);
+					m_PersonalizedBarks.Add(new AskWrapperUnitPair(partyMemberUnconsciousBark, partyAndPet));
 				}
 				else
 				{
-					m_Barks.Add(partyMemberUnconsciousBark);
+					m_Barks.Add(new AskWrapperUnitPair(partyMemberUnconsciousBark, partyAndPet));
 				}
 			}
 		}
-		(m_PersonalizedBarks.Random(PFStatefulRandom.Visuals.UnitAsks) ?? m_Barks.Random(PFStatefulRandom.Visuals.UnitAsks))?.Schedule();
+		AskWrapperUnitPair askWrapperUnitPair = m_PersonalizedBarks.Random(PFStatefulRandom.Visuals.UnitAsks);
+		if (askWrapperUnitPair != null)
+		{
+			using (EvalContext.PushAsksContext(unit, askWrapperUnitPair.Unit))
+			{
+				askWrapperUnitPair.AskWrapper?.Schedule();
+			}
+		}
+		else
+		{
+			AskWrapperUnitPair askWrapperUnitPair2 = m_Barks.Random(PFStatefulRandom.Visuals.UnitAsks);
+			if (askWrapperUnitPair2 != null)
+			{
+				using (EvalContext.PushAsksContext(unit, askWrapperUnitPair2.Unit))
+				{
+					askWrapperUnitPair2.AskWrapper?.Schedule();
+				}
+			}
+		}
 		m_Barks.Clear();
 		m_PersonalizedBarks.Clear();
 	}

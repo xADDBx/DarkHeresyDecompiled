@@ -56,10 +56,10 @@ public class BodyStructure
 	{
 		if (Particles.Count > 0)
 		{
-			Bounds = new Bounds(Particles[0].BasePosition, Vector3.zero);
+			Bounds = new Bounds((Vector3)Particles[0].BasePosition, Vector3.zero);
 			for (int i = 1; i < Particles.Count; i++)
 			{
-				Bounds.Encapsulate(Particles[i].BasePosition);
+				Bounds.Encapsulate((Vector3)Particles[i].BasePosition);
 			}
 		}
 		else

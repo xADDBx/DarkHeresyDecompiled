@@ -6,11 +6,6 @@ public class VendorDealMetricsEvent : MetricsEvent
 {
 	protected override string Name => "vendor_deal";
 
-	public VendorDealMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public VendorDealMetricsEvent Bought(IEnumerable<string> bought)
 	{
 		AddParam("bought", bought);

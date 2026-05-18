@@ -1,5 +1,4 @@
 using System;
-using Owlcat.Runtime.Visual.Waaagh.Passes;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -49,7 +48,6 @@ public class TerrainStampingManagerParameters
 	public float Padding = 1f;
 
 	[Header("Resolution")]
-	[Min(16f)]
 	public TextureResolution Resolution = TextureResolution._256;
 
 	public TextureResolution BakedNormalsResolution = TextureResolution._256;

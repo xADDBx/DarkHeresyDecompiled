@@ -14,7 +14,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class DebugInteractionPlayBanterPart : InteractionPart<DebugInteractionPlayBanterSettings>, IHashable, IOwlPackable<DebugInteractionPlayBanterPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "DebugInteractionPlayBanterPart",
 		OldNames = null,
@@ -57,7 +57,7 @@ public class DebugInteractionPlayBanterPart : InteractionPart<DebugInteractionPl
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		DebugInteractionPlayBanterPart source = new DebugInteractionPlayBanterPart();
 		result = Unsafe.As<DebugInteractionPlayBanterPart, TPossiblyBase>(ref source);

@@ -49,7 +49,7 @@ public class TaskUseAreaTransition : ClockworkRunnerTask
 	protected override IEnumerator Routine()
 	{
 		EntityViewBase unityObject = (EntityViewBase)m_Transition.View;
-		Transform transform = ObjectExtensions.Or(unityObject, null)?.ViewTransform;
+		Transform transform = ObjectExtensions.Or(unityObject, null)?.transform;
 		if (transform == null)
 		{
 			yield break;

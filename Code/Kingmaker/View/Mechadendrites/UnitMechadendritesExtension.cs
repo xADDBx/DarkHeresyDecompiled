@@ -8,4 +8,9 @@ public static class UnitMechadendritesExtension
 	{
 		return unit?.GetOptional<UnitPartMechadendrites>() != null;
 	}
+
+	public static bool HasMechadendriteOfType(this MechanicEntity unit, MechadendritesType type)
+	{
+		return (unit?.GetOptional<UnitPartMechadendrites>())?.Mechadendrites.ContainsKey(type) ?? false;
+	}
 }

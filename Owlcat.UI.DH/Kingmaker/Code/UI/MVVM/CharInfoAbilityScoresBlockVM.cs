@@ -31,7 +31,7 @@ public class CharInfoAbilityScoresBlockVM : CharInfoBaseAbilityScoresBlockVM
 	}
 
 	public CharInfoAbilityScoresBlockVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit)
-		: base(unit, null, null)
+		: base(unit, null)
 	{
 	}
 

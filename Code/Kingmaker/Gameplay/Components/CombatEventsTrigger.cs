@@ -7,13 +7,12 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -124,7 +123,7 @@ public sealed class CombatEventsTrigger : MechanicEntityFactComponentDelegate, I
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(base.Owner))
+		using (EvalContext.Current.PushTarget(base.Owner))
 		{
 			OnDeploymentPhaseEnd.Run();
 			OnCombatStart.Run();
@@ -209,7 +208,7 @@ public sealed class CombatEventsTrigger : MechanicEntityFactComponentDelegate, I
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(currentTarget ?? base.Owner))
+		using (EvalContext.Current.PushTarget(currentTarget ?? base.Owner))
 		{
 			actions.Run();
 		}

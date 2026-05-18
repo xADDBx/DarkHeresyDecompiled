@@ -4,11 +4,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Kingmaker.Code.View.Mechanics.Entities.Covers;
 using Kingmaker.Enums;
 using Kingmaker.Sound.Base;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
+using Kingmaker.View.Scene.Mechanics.Entities;
 using Kingmaker.Visual.Particles;
 using Kingmaker.Visual.Sound;
 using Owlcat.Runtime.Core.Logging;
@@ -32,12 +34,46 @@ public class DestructionStagesViewManager : MonoBehaviour, IDestructionStagesMan
 		public string SFXOnEnter;
 	}
 
+	public enum GridSize
+	{
+		[InspectorName("null")]
+		SizeNull,
+		[InspectorName("0x1")]
+		Size0x1,
+		[InspectorName("0x2")]
+		Size0x2,
+		[InspectorName("0x3")]
+		Size0x3,
+		[InspectorName("1x1")]
+		Size1x1,
+		[InspectorName("1x2")]
+		Size1x2,
+		[InspectorName("1x3")]
+		Size1x3,
+		[InspectorName("2x2")]
+		Size2x2,
+		[InspectorName("2x3")]
+		Size2x3,
+		[InspectorName("3x3")]
+		Size3x3,
+		[InspectorName("0x4")]
+		Size0x4,
+		[InspectorName("1x4")]
+		Size1x4,
+		[InspectorName("2x4")]
+		Size2x4
+	}
+
 	private StageSettings m_CurrentStage;
 
 	public float SwitchPrefabsDelaySeconds;
 
 	[SerializeField]
 	private StageSettings[] m_Stages = new StageSettings[0];
+
+	[SerializeField]
+	[HideInInspector]
+	public GridSize gridSize;
 
 	[CanBeNull]
 	private MapObjectView m_MapObject;
@@ -46,6 +82,80 @@ public class DestructionStagesViewManager : MonoBehaviour, IDestructionStagesMan
 	private CancellationTokenSource m_SwitchStagesCancellation;
 
 	public IEnumerable<DestructionStage> Stages => m_Stages.Select((StageSettings i) => i.Type);
+
+	public bool HasStages
+	{
+		get
+		{
+			if (m_Stages != null)
+			{
+				return m_Stages.Length != 0;
+			}
+			return false;
+		}
+	}
+
+	public bool HasFxOnEnter
+	{
+		get
+		{
+			if (m_Stages != null)
+			{
+				return m_Stages.Any((StageSettings s) => s != null && s.FXOnEnter != null);
+			}
+			return false;
+		}
+	}
+
+	public bool SyncFromCover(bool overwrite)
+	{
+		if (Application.isPlaying)
+		{
+			return false;
+		}
+		if (!overwrite && HasStages)
+		{
+			return false;
+		}
+		StageSettings[] stages = m_Stages;
+		BaseCoverEntityView componentInParent = GetComponentInParent<BaseCoverEntityView>();
+		if (componentInParent == null)
+		{
+			return false;
+		}
+		AbstractDestructibleEntityView.DestructionStageViewSetup[] setup = componentInParent.GetDestructionStageViewSetup();
+		if (setup.Length == 0)
+		{
+			return false;
+		}
+		m_Stages = new StageSettings[setup.Length];
+		int i;
+		for (i = 0; i < setup.Length; i++)
+		{
+			StageSettings stageSettings = null;
+			if (stages != null)
+			{
+				stageSettings = stages.FirstOrDefault((StageSettings s) => s != null && s.Type == setup[i].Type);
+				if (stageSettings == null && i < stages.Length)
+				{
+					stageSettings = stages[i];
+				}
+			}
+			m_Stages[i] = new StageSettings
+			{
+				Type = setup[i].Type,
+				StaticPrefab = setup[i].NavmeshModifier,
+				FXOnEnter = stageSettings?.FXOnEnter,
+				SFXOnEnter = stageSettings?.SFXOnEnter
+			};
+		}
+		return true;
+	}
+
+	private void OnValidate()
+	{
+		SyncFromCover(overwrite: false);
+	}
 
 	private void Awake()
 	{

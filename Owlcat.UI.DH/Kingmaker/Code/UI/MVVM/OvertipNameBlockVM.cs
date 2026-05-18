@@ -1,3 +1,5 @@
+using Kingmaker.Code.Gameplay.Components;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
 using R3;
 
@@ -5,7 +7,7 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class OvertipNameBlockVM : ViewModel
 {
-	private readonly MechanicEntityUIState m_entityState;
+	private readonly MechanicEntityUIState m_EntityState;
 
 	private readonly ReactiveProperty<bool> m_IsVisible;
 
@@ -13,32 +15,32 @@ public class OvertipNameBlockVM : ViewModel
 
 	public ReadOnlyReactiveProperty<bool> IsVisible => m_IsVisible;
 
-	public ReadOnlyReactiveProperty<bool> IsPlayer => m_entityState.IsPlayer;
+	public ReadOnlyReactiveProperty<bool> IsPlayer => m_EntityState.IsPlayer;
 
-	public ReadOnlyReactiveProperty<bool> IsEnemy => m_entityState.IsEnemy;
+	public ReadOnlyReactiveProperty<bool> IsEnemy => m_EntityState.IsEnemy;
 
 	public OvertipNameBlockVM(MechanicEntityUIState mechanicEntityUIState)
 	{
-		m_entityState = mechanicEntityUIState;
+		m_EntityState = mechanicEntityUIState;
 		Name = mechanicEntityUIState.Name;
 		m_IsVisible = new ReactiveProperty<bool>().AddTo(this);
-		m_entityState.IsVisibleForPlayer.Subscribe(delegate
+		m_EntityState.IsVisibleForPlayer.Subscribe(delegate
 		{
 			UpdateVisibility();
 		}).AddTo(this);
-		m_entityState.ForceHotKeyPressed.Subscribe(delegate
+		m_EntityState.ForceHotKeyPressed.Subscribe(delegate
 		{
 			UpdateVisibility();
 		}).AddTo(this);
-		m_entityState.IsMouseOverUnit.Subscribe(delegate
+		m_EntityState.IsMouseOverUnit.Subscribe(delegate
 		{
 			UpdateVisibility();
 		}).AddTo(this);
-		m_entityState.HasHiddenCondition.Subscribe(delegate
+		m_EntityState.HideOvertip.Subscribe(delegate
 		{
 			UpdateVisibility();
 		}).AddTo(this);
-		m_entityState.IsTBM.Subscribe(delegate
+		m_EntityState.IsTBM.Subscribe(delegate
 		{
 			UpdateVisibility();
 		}).AddTo(this);
@@ -51,22 +53,26 @@ public class OvertipNameBlockVM : ViewModel
 
 	private bool IsNameVisible()
 	{
-		if (!m_entityState.MechanicEntity.IsVisibleForPlayer || m_entityState.HasHiddenCondition.CurrentValue || m_entityState.IsTBM.CurrentValue)
+		if (!m_EntityState.MechanicEntity.IsVisibleForPlayer || m_EntityState.HideOvertip.CurrentValue || m_EntityState.IsTBM.CurrentValue)
 		{
 			return false;
 		}
-		bool currentValue = m_entityState.IsMouseOverUnit.CurrentValue;
-		if (m_entityState.IsDestructible.CurrentValue && !m_entityState.IsDestructibleNotCover.CurrentValue && !currentValue)
+		bool currentValue = m_EntityState.IsMouseOverUnit.CurrentValue;
+		if (m_EntityState.IsDestructible.CurrentValue && !m_EntityState.IsDestructibleNotCover.CurrentValue && !currentValue)
 		{
 			return false;
 		}
-		if (m_entityState.IsHiddenBySettings && !currentValue)
+		if (m_EntityState.IsOvertipPartHiddenBySettings(UnitOvertipUIPart.Name))
+		{
+			return false;
+		}
+		if (UtilityUnit.GetUnitInteractionFrom(m_EntityState.MechanicEntity.MechanicEntity) == null)
 		{
 			return false;
 		}
 		if (!currentValue)
 		{
-			return m_entityState.ForceHotKeyPressed.CurrentValue;
+			return m_EntityState.ForceHotKeyPressed.CurrentValue;
 		}
 		return true;
 	}

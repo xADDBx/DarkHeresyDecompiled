@@ -46,9 +46,6 @@ public class NotificationClueBodyView : View<NotificationClueBodyVM>
 
 	[Header("Values")]
 	[SerializeField]
-	private float m_IconSize = 60f;
-
-	[SerializeField]
 	private Sprite m_DefaultIcon;
 
 	private Image m_CurrentIcon;

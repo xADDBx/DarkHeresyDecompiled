@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Events;
@@ -51,10 +50,9 @@ public class AnimationClipEventPlaceFootprint : AnimationClipEvent
 		m_FootIndex = footIndex;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
 		animationManager.CallbackReceiver.PlaceFootprintEvent(Locator, FootIndex);
-		return null;
 	}
 
 	public override object Clone()

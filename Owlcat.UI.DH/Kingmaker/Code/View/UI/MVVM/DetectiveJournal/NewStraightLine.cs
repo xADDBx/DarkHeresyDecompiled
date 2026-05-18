@@ -16,9 +16,6 @@ public class NewStraightLine : MonoBehaviour
 	[SerializeField]
 	private float m_LineExtension = 2f;
 
-	[SerializeField]
-	private float m_DiagonalLength = 50f;
-
 	private readonly List<RectTransform> m_LineObjects = new List<RectTransform>();
 
 	private List<Vector2> m_PathPoints = new List<Vector2>();

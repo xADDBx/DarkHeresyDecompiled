@@ -33,7 +33,7 @@ public class VisualSettings
 		VisualOverride result = null;
 		if (Game.Instance.IsControllerGamepad)
 		{
-			switch (GamePad.Instance.Type)
+			switch (PlatformManager.Instance.Type)
 			{
 			case ConsoleType.Common:
 			case ConsoleType.XBox:

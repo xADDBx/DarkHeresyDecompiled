@@ -27,22 +27,30 @@ public class CommandCameraShake : CommandBase
 
 	public override bool IsContinuous => m_Continuous;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		m_Finished = skipping || m_Speed <= 0f || m_Amplitude < 0f || m_Lifetime <= 0f;
 		if (!m_Finished)
 		{
 			CameraRig.Instance.StartShake(m_Amplitude, m_Speed);
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		CameraRig.Instance.StopShake();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -50,13 +58,14 @@ public class CommandCameraShake : CommandBase
 		return m_Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		m_Finished = m_Finished || (!m_Continuous && time >= (double)m_Lifetime);
 		if (!m_Finished && !CameraRig.Instance.IsShaking())
 		{
 			CameraRig.Instance.StartShake(m_Amplitude, m_Speed);
 		}
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

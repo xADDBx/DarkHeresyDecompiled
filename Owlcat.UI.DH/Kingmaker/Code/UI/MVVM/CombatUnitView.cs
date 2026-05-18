@@ -4,6 +4,7 @@ using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -13,9 +14,10 @@ public abstract class CombatUnitView<TCombatUnitVM> : View<TCombatUnitVM> where 
 	[SerializeField]
 	protected OwlcatMultiButton Button;
 
+	[FormerlySerializedAs("m_CharacetrPortraitZone")]
 	[Header("PortraitZone")]
 	[SerializeField]
-	private SurfaceCombatUnitPortraitZone m_CharacetrPortraitZone;
+	private SurfaceCombatUnitPortraitZone m_CharacterPortraitZone;
 
 	[Header("No Portrait Zone")]
 	[SerializeField]
@@ -44,7 +46,7 @@ public abstract class CombatUnitView<TCombatUnitVM> : View<TCombatUnitVM> where 
 	{
 		if (!m_IsInit)
 		{
-			m_CharacetrPortraitZone.Hide();
+			m_CharacterPortraitZone.Hide();
 			m_NoPortraitZone.Hide();
 			m_IsInit = true;
 		}
@@ -52,68 +54,57 @@ public abstract class CombatUnitView<TCombatUnitVM> : View<TCombatUnitVM> where 
 
 	protected override void OnBind()
 	{
-		InternalBind();
-	}
-
-	protected void InternalBind()
-	{
-		if (!base.ViewModel.HasUnit)
+		if (base.ViewModel.HasUnit)
 		{
-			return;
-		}
-		SetupPortrait();
-		if (HasBuffsView)
-		{
-			m_BuffsBlockView.Bind(base.ViewModel.IsInitiativeHolder ? null : base.ViewModel.UnitBuffs);
-		}
-		base.ViewModel.UnitHealthPartVM.Subscribe(delegate(UnitHealthPartVM h)
-		{
-			UnitHealthPartProgressPCView.SetVisible(!base.ViewModel.IsInitiativeHolder);
-			UnitHealthPartProgressPCView.Bind(h);
-			m_HealthTextView.Bind(h);
-		}).AddTo(this);
-		if (Button != null)
-		{
-			ObservableSubscribeExtensions.Subscribe(Button.OnLeftDoubleClickAsObservable(), delegate
+			base.ViewModel.ForceHidePortrait.Subscribe(SetupPortrait).AddTo(this);
+			if (HasBuffsView)
 			{
-				HandleLeftClick(isDoubleClick: true);
-			}).AddTo(this);
-			ObservableSubscribeExtensions.Subscribe(Button.OnSingleLeftClickAsObservable(), delegate
+				m_BuffsBlockView.Bind(base.ViewModel.IsInitiativeHolder ? null : base.ViewModel.UnitBuffs);
+			}
+			base.ViewModel.UnitHealthPartVM.Subscribe(delegate(UnitHealthPartVM h)
 			{
-				HandleLeftClick();
+				UnitHealthPartProgressPCView.SetVisible(!base.ViewModel.IsInitiativeHolder);
+				UnitHealthPartProgressPCView.Bind(h);
+				m_HealthTextView.Bind(h);
 			}).AddTo(this);
+			if (Button != null)
+			{
+				Button.OnLeftDoubleClickAsObservable().Subscribe(HandleLeftClick).AddTo(this);
+				Button.OnSingleLeftClickAsObservable().Subscribe(HandleLeftClick).AddTo(this);
+			}
 		}
 	}
 
 	protected override void OnUnbind()
 	{
 		m_NoPortraitZone.Hide();
-		m_CharacetrPortraitZone.Hide();
+		m_CharacterPortraitZone.Hide();
 	}
 
-	private void HandleLeftClick(bool isDoubleClick = false)
+	private void HandleLeftClick()
 	{
-		HandleLeftClickImpl(isDoubleClick);
+		base.ViewModel.HandleUnitClick();
 	}
 
-	protected virtual void HandleLeftClickImpl(bool isDoubleClick = false)
+	private void SetupPortrait(bool forceHidePortrait)
 	{
-		base.ViewModel.HandleUnitClick(isDoubleClick);
-	}
-
-	private void SetupPortrait()
-	{
+		if (forceHidePortrait)
+		{
+			m_CharacterPortraitZone.Hide();
+			m_NoPortraitZone.Hide();
+			return;
+		}
 		if (base.ViewModel.UsedSubtypeIcon)
 		{
-			m_CharacetrPortraitZone.Hide();
+			m_CharacterPortraitZone.Hide();
 			m_NoPortraitZone.SetUnit(base.ViewModel.MechanicEntity);
 		}
 		else
 		{
-			m_CharacetrPortraitZone.SetUnit(base.ViewModel.MechanicEntity);
+			m_CharacterPortraitZone.SetUnit(base.ViewModel.MechanicEntity);
 			m_NoPortraitZone.Hide();
 		}
-		if (base.ViewModel.IsEnemy.CurrentValue)
+		if (base.ViewModel.FactionInfo.CurrentValue.isEnemy)
 		{
 			m_FractionViewMode = UnitFractionViewMode.Enemy;
 		}

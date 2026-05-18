@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.View.Mechanics;
 
 namespace Kingmaker.Visual.Animation.Events;
 
@@ -19,9 +20,9 @@ public class AnimationClipEventSoundSurface : AnimationClipEventSound
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override Action PostSoundEvent(MechanicEntityView view)
 	{
-		animationManager.CallbackReceiver.PostEventWithSurface(base.Name);
+		view.PostEventWithSurface(base.Name);
 		return null;
 	}
 

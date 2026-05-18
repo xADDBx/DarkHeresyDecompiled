@@ -1,12 +1,10 @@
 using Kingmaker.Code.UI.MVVM.Common;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.Components.Camera;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.Sound;
 using Kingmaker.UI.Transitions;
-using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -34,7 +32,7 @@ public abstract class SettingsBaseView : View<SettingsVM>, ITransitable
 
 	[Header("Screen")]
 	[SerializeField]
-	private UIPostProcessMember m_UIPostProcessMember;
+	private UIServiceWindowPostProcessView m_PostProcessView;
 
 	private bool m_IsShowed;
 
@@ -43,11 +41,11 @@ public abstract class SettingsBaseView : View<SettingsVM>, ITransitable
 		base.gameObject.SetActive(value: false);
 		m_Animator.Initialize();
 		m_MenuSelector.Initialize();
+		m_PostProcessView.Initialize();
 	}
 
 	protected override void OnBind()
 	{
-		m_UIPostProcessMember.Bind();
 		m_MenuSelector.Bind(base.ViewModel.SelectionGroup);
 		m_SelectorView.Bind(base.ViewModel.Selector);
 		m_VirtualList.Subscribe(base.ViewModel.SettingEntities).AddTo(this);
@@ -84,7 +82,7 @@ public abstract class SettingsBaseView : View<SettingsVM>, ITransitable
 		}
 		m_IsShowed = true;
 		base.gameObject.SetActive(value: true);
-		UISounds.Instance.Sounds.LocalMap.PlayOpen();
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayOpenSound(ServiceWindowsType.LocalMap);
 		return new UIAnimatorShowTransition(m_Animator).Run(CompleteShowTransition);
 	}
 
@@ -94,24 +92,20 @@ public abstract class SettingsBaseView : View<SettingsVM>, ITransitable
 		{
 			return Transition.None;
 		}
-		UISounds.Instance.Sounds.LocalMap.PlayClose();
-		UIPostProcessingAnimator.Instance.Or(null)?.PlayState(UIPostEffectState.Off);
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayCloseSound(ServiceWindowsType.LocalMap);
+		m_PostProcessView.Hide(immediate: false);
 		return new UIAnimatorHideTransition(m_Animator).Run(CompleteHideTransition);
 	}
 
 	private void CompleteShowTransition()
 	{
-		UIPostProcessingAnimator.Instance.Or(null)?.PlayState(UIPostEffectState.Default);
+		m_PostProcessView.ShowFrom(UIPostEffectState.Off);
 	}
 
 	private void CompleteHideTransition()
 	{
 		base.gameObject.SetActive(value: false);
 		m_IsShowed = false;
-		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
-		{
-			m_UIPostProcessMember?.Dispose();
-		}).AddTo(this);
 	}
 
 	protected abstract void OnSelectedMenuEntity(SettingsMenuEntityVM entity);

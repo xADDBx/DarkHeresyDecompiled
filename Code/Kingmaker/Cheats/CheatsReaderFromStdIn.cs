@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Utility.BuildModeUtils;
 using R3;
 using UnityEngine;
@@ -39,7 +38,7 @@ public static class CheatsReaderFromStdIn
 				OnLineReadFromStdIn(System.Console.ReadLine());
 			}
 		}).Start();
-		MainThreadDispatcher.UpdateAsObservable().Subscribe(Update);
+		Observable.EveryUpdate(UnityFrameProvider.Update).Subscribe(Update);
 	}
 
 	private static void OnLineReadFromStdIn(string s)

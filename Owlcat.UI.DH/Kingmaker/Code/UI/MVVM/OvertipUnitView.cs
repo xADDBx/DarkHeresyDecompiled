@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using Kingmaker.Code.UI.MVVM.Parts.AdditionalCombat;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.Sound;
 using Owlcat.Runtime.Core.Utility;
 using R3;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -37,9 +37,6 @@ public abstract class OvertipUnitView : BaseOvertipView<OvertipUnitVM>
 	private OvertipCombatTextBlockView m_CombatTextBlockPCView;
 
 	[SerializeField]
-	private OvertipBuffBlockView m_OvertipBuffBlockView;
-
-	[SerializeField]
 	private OvertipSpecialBuffBlockView m_OvertipSpecialBuffBlockView;
 
 	[SerializeField]
@@ -48,11 +45,15 @@ public abstract class OvertipUnitView : BaseOvertipView<OvertipUnitVM>
 	[SerializeField]
 	private OvertipMoraleView m_OvertipMoraleView;
 
+	[FormerlySerializedAs("m_AdditionalCombatObjectBlockView")]
 	[SerializeField]
-	private OvertipAdditionalCombatObjectBlockView m_AdditionalCombatObjectBlockView;
+	private OvertipCombatUnitInteractionView CombatUnitInteractionView;
 
 	[SerializeField]
 	private EntityOvertipVisibilityView m_VisibilityView;
+
+	[SerializeField]
+	private OvertipBuffsPredictionBlockView m_OvertipBuffsPredictionBlockView;
 
 	[Space]
 	[SerializeField]
@@ -96,13 +97,13 @@ public abstract class OvertipUnitView : BaseOvertipView<OvertipUnitVM>
 		m_CombatTextBlockPCView.Bind(base.ViewModel.CombatTextBlockVM);
 		m_HealthBlockView.HideInstant();
 		m_OvertipMoraleView.HideInstant();
-		m_OvertipBuffBlockView.HideInstant();
 		m_OvertipSpecialBuffBlockView.HideInstant();
+		m_OvertipBuffsPredictionBlockView.HideInstant();
 		m_OvertipConcentrationActionView.HideInstant();
 		m_DamageBlockPCView.HideInstant();
 		m_OvertipCoverBlockView.HideInstant();
 		m_HitChanceBlockPCView.Or(null)?.HideInstant();
-		m_AdditionalCombatObjectBlockView.HideInstant();
+		CombatUnitInteractionView.HideInstant();
 		base.ViewModel.CombatBlocksCreated.Subscribe(delegate(bool created)
 		{
 			if (created)
@@ -133,6 +134,19 @@ public abstract class OvertipUnitView : BaseOvertipView<OvertipUnitVM>
 
 	protected override void OnUnbind()
 	{
+		m_NameBlockPCView.Unbind();
+		m_BarkBlockPCView.Unbind();
+		m_VisibilityView.Unbind();
+		m_CombatTextBlockPCView.Unbind();
+		m_HealthBlockView.Unbind();
+		m_OvertipMoraleView.Unbind();
+		m_OvertipSpecialBuffBlockView.Unbind();
+		m_OvertipBuffsPredictionBlockView.Unbind();
+		m_OvertipConcentrationActionView.Unbind();
+		m_DamageBlockPCView.Unbind();
+		m_OvertipCoverBlockView.Unbind();
+		m_HitChanceBlockPCView.Or(null)?.Unbind();
+		CombatUnitInteractionView.Unbind();
 		m_ScaleUpTween?.Kill();
 		m_ScaleDownTween?.Kill();
 		m_ScaleUpTween = null;
@@ -146,29 +160,33 @@ public abstract class OvertipUnitView : BaseOvertipView<OvertipUnitVM>
 	{
 		m_HealthBlockView.Bind(base.ViewModel.HealthBlockVM);
 		m_OvertipMoraleView.Bind(base.ViewModel.OvertipMoraleVM);
-		m_OvertipBuffBlockView.Bind(base.ViewModel.OvertipBuffBlockVM);
-		m_OvertipSpecialBuffBlockView.Bind(base.ViewModel.BuffBlockVM);
+		m_OvertipSpecialBuffBlockView.Bind(base.ViewModel.OvertipSpecialBuffBlockVM);
+		m_OvertipBuffsPredictionBlockView.Bind(base.ViewModel.OvertipBuffsPredictionBlockVM);
 		m_OvertipConcentrationActionView.Bind(base.ViewModel.SurfaceCombatActionVM);
 		m_DamageBlockPCView.Bind(base.ViewModel.DamageBlockVM);
 		m_OvertipCoverBlockView.Bind(base.ViewModel.OvertipCoverBlockVM);
 		m_HitChanceBlockPCView.Or(null)?.Bind(base.ViewModel.HitChanceBlockVM);
-		m_AdditionalCombatObjectBlockView.Bind(base.ViewModel.AdditionalCombatObjectBlockVM);
+		CombatUnitInteractionView.Bind(base.ViewModel.CombatUnitInteractionVM);
 	}
 
 	private void HandleHovered(bool isHovered)
 	{
 		m_ScaleUpTween?.Pause();
 		m_ScaleDownTween?.Pause();
-		Tween tween = null;
-		tween = ((!isHovered) ? (m_ScaleDownTween ?? (m_ScaleDownTween = m_RectTransform.DOScale(1f, 0.2f).SetUpdate(isIndependentUpdate: false).OnUpdate(m_CombatTextBlockPCView.UpdateVisualForCommon)
+		if (!base.ViewModel.MechanicEntityUIState.IsInCombat.CurrentValue)
+		{
+			m_RectTransform.localScale = Vector3.one;
+			return;
+		}
+		Tween t = ((!isHovered) ? (m_ScaleDownTween ?? (m_ScaleDownTween = m_RectTransform.DOScale(1f, 0.2f).SetUpdate(isIndependentUpdate: false).OnUpdate(m_CombatTextBlockPCView.UpdateVisualForCommon)
 			.SetAutoKill(autoKillOnCompletion: false))) : (m_ScaleUpTween ?? (m_ScaleUpTween = m_RectTransform.DOScale(m_HoveredScale, 0.2f).SetUpdate(isIndependentUpdate: false).OnUpdate(m_CombatTextBlockPCView.UpdateVisualForCommon)
 			.SetAutoKill(autoKillOnCompletion: false))));
-		tween.Restart();
+		t.Restart();
 	}
 
 	private void DoDeath()
 	{
-		UISounds.Instance.Sounds.Combat.UnitDeath.Play();
+		CombatSounds.Instance.Combat.UnitDeath.Play();
 		if (base.ViewModel.IsCutscene || base.ViewModel.IsInDialog)
 		{
 			if (m_DeathAnimator.CanvasGroup != null)

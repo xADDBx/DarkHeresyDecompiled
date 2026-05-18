@@ -18,6 +18,8 @@ public class CharacterAtlasService : IService
 
 		public Action<CharacterAtlas> OnTextureNotCompressed;
 
+		public Action<CharacterAtlas> OnAllCompressed;
+
 		public int CharacterId;
 
 		public string ContextString;
@@ -31,12 +33,13 @@ public class CharacterAtlasService : IService
 
 	public int RequestsCount => m_Requests.Count;
 
-	public void QueueAtlasRebuild(List<CharacterAtlas> atlases, Action<CharacterAtlas, Texture2D> onTextureCompressed, Action<CharacterAtlas> onTextureNotCompressed, int characterId, string contextString)
+	public void QueueAtlasRebuild(List<CharacterAtlas> atlases, Action<CharacterAtlas, Texture2D> onTextureCompressed, Action<CharacterAtlas> onTextureNotCompressed, Action<CharacterAtlas> onAllCompressed, int characterId, string contextString)
 	{
 		AtlasRebuildRequest atlasRebuildRequest = default(AtlasRebuildRequest);
 		atlasRebuildRequest.Atlases = new List<CharacterAtlas>(atlases);
 		atlasRebuildRequest.OnTextureCompressed = onTextureCompressed;
 		atlasRebuildRequest.OnTextureNotCompressed = onTextureNotCompressed;
+		atlasRebuildRequest.OnAllCompressed = onAllCompressed;
 		atlasRebuildRequest.CharacterId = characterId;
 		atlasRebuildRequest.ContextString = contextString;
 		AtlasRebuildRequest atlasRebuildRequest2 = atlasRebuildRequest;
@@ -100,6 +103,7 @@ public class CharacterAtlasService : IService
 		else
 		{
 			request.Atlases.Clear();
+			request.OnAllCompressed(atlas);
 		}
 	}
 
@@ -125,6 +129,7 @@ public class CharacterAtlasService : IService
 		else
 		{
 			request.Atlases.Clear();
+			request.OnAllCompressed(atlas);
 		}
 	}
 

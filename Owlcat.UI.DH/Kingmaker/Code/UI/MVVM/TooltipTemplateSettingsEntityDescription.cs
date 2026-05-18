@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Code.View.UI.MVVM.Tooltip;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Encyclopedia;
 using Kingmaker.Code.Framework.Settings.UISettings;
@@ -34,7 +33,7 @@ public class TooltipTemplateSettingsEntityDescription : TooltipBaseTemplate
 		{
 			text = m_OwnTitle ?? string.Empty;
 		}
-		yield return new TooltipBrickTitle(text, TooltipTitleType.H4, TextAlignmentOptions.BottomLeft, TextAnchor.LowerLeft);
+		yield return new BrickTitleVM(new TextEntity(text, new TextFieldParams(FontStyles.Normal, TextAlignmentOptions.BottomLeft)), TooltipTitleType.H7, TextAnchor.LowerLeft);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -46,7 +45,8 @@ public class TooltipTemplateSettingsEntityDescription : TooltipBaseTemplate
 			LocalizedString localizedString = m_SettingsEntity?.TooltipDescription;
 			text = ((localizedString != null) ? ((string)localizedString) : string.Empty);
 		}
-		list.Add(new TooltipBrickSettingsText(text));
+		list.Add(new BrickSettingsTextVM(text));
+		list.Add(new BrickLinesVM());
 		if (m_SettingsEntity == null)
 		{
 			return list;
@@ -61,8 +61,9 @@ public class TooltipTemplateSettingsEntityDescription : TooltipBaseTemplate
 			where blPage != null
 			select blPage)
 		{
-			list.Add(new TooltipBrickTitle(item.GetTitle()));
-			list.Add(new TooltipBrickSettingsText(UIUtilityCreateEncyclopediaTooltipDescription.CreateSettingsTooltipDescription(item)));
+			list.Add(new BrickSpaceVM(15f));
+			list.Add(new BrickTitleVM(item.GetTitle()));
+			list.Add(new BrickSettingsTextVM(UIUtilityCreateEncyclopediaTooltipDescription.CreateSettingsTooltipDescription(item)));
 		}
 		return list;
 	}

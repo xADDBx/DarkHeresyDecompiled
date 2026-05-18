@@ -29,8 +29,6 @@ public class TooltipVM : InfoBaseVM
 
 	public readonly List<Vector2> PriorityPivots;
 
-	public readonly ConsoleNavigationBehaviour OwnerNavigationBehaviour;
-
 	public readonly bool IsComparative;
 
 	public readonly bool ShouldNotHideLittleTooltip;
@@ -53,7 +51,6 @@ public class TooltipVM : InfoBaseVM
 		IsComparative = isComparative;
 		IsGlossary = data.Config.IsGlossary;
 		ShouldNotHideLittleTooltip = shouldNotHideLittleTooltip;
-		OwnerNavigationBehaviour = data.OwnerNavigationBehaviour;
 		HasScroll = hasScroll;
 		if (Game.Instance.IsControllerMouse && !data.Config.IsEncyclopedia)
 		{
@@ -92,7 +89,7 @@ public class TooltipVM : InfoBaseVM
 
 	private void AddHintBrick(string hintString)
 	{
-		HintBricks.Add(new TooltipBrickHintVM(hintString));
+		HintBricks.Add(new BrickHintVM(hintString));
 	}
 
 	public void OverrideMaxHeight(int height)

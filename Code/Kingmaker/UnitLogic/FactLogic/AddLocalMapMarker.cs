@@ -17,7 +17,7 @@ namespace Kingmaker.UnitLogic.FactLogic;
 
 [AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("f76fb89c2e514ffeb5b5ecf695390890")]
-public class AddLocalMapMarker : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class AddLocalMapMarker : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class Runtime : EntityFactComponent<MechanicEntity, AddLocalMapMarker>, ILocalMapMarker, IHashable, IOwlPackable<Runtime>

@@ -107,16 +107,16 @@ public class CameraController : IControllerEnable, IController, IControllerDisab
 				{
 					return;
 				}
-				UnitMovementAgentContinuous unitMovementAgentContinuous = (m_Entity.View as UnitEntityView)?.AgentOverride as UnitMovementAgentContinuous;
+				UnitMovementAgent unitMovementAgent = (m_Entity.View as UnitEntityView)?.MovementAgent;
 				bool hasPrediction = Game.Instance.Controllers.MovePredictionController.HasPrediction;
-				if (!(unitMovementAgentContinuous == null) || hasPrediction)
+				if (((bool)unitMovementAgent && unitMovementAgent.IsDirectionalMovementActive) || hasPrediction)
 				{
-					Vector3 vector = CameraRig.Instance.Camera.WorldToScreenPoint(m_Entity.View.transform.position);
+					Vector3 vector = CameraRig.Instance.Camera.WorldToScreenPoint(m_Entity.ViewPosition);
 					Vector2 vector2 = new Vector2((vector.x - (float)Screen.width * 0.5f) / (float)Screen.width, (vector.y - (float)Screen.height * 0.5f) / (float)Screen.height);
-					if (!(vector2.x * vector2.x / 0.09f + vector2.y * vector2.y / 0.0225f <= 1f) || ((unitMovementAgentContinuous != null) ? unitMovementAgentContinuous.IsReallyMoving : hasPrediction))
+					if (!(vector2.x * vector2.x / 0.09f + vector2.y * vector2.y / 0.0225f <= 1f) || ((unitMovementAgent != null) ? unitMovementAgent.IsReallyMoving : hasPrediction))
 					{
-						m_LastOffset = ((unitMovementAgentContinuous != null) ? Vector2.Lerp(m_LastOffset, unitMovementAgentContinuous.MoveDirection * 3f, Time.unscaledDeltaTime * 2f) : Vector2.Lerp(m_LastOffset, Vector2.zero, Time.unscaledDeltaTime * 2f));
-						Vector3 position = m_Entity.View.ViewTransform.position + m_LastOffset.To3D();
+						m_LastOffset = ((unitMovementAgent != null) ? Vector2.Lerp(m_LastOffset, unitMovementAgent.MoveDirection * 3f, Time.unscaledDeltaTime * 2f) : Vector2.Lerp(m_LastOffset, Vector2.zero, Time.unscaledDeltaTime * 2f));
+						Vector3 position = m_Entity.ViewPosition + m_LastOffset.To3D();
 						CameraRig.Instance.ScrollTo(position);
 					}
 				}
@@ -194,6 +194,7 @@ public class CameraController : IControllerEnable, IController, IControllerDisab
 			{
 				instance.CameraZoom.TickZoom();
 			}
+			instance.ResetInput();
 			instance.TickShake();
 		}
 	}

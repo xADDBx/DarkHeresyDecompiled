@@ -5,9 +5,8 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Owlcat.UI;
-using TMPro;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -35,12 +34,12 @@ public class TooltipTemplateSkillCheckResult : TooltipBaseTemplate
 		{
 			if (check != null)
 			{
-				yield return new TooltipBrickPortraitAndName(check.ActingUnit.Portrait.SmallPortrait, check.ActingUnit.CharacterName, new TooltipBrickTitle($"{UtilitySkillcheck.GetSkillCheckName(check.StatType)}: {check.StatValue}", TooltipTitleType.H6, TextAlignmentOptions.Left));
-				yield return new TooltipBrickChance(tooltips.SkillCheckChance.Text, check.TotalSkill, check.RollResult, 0, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true);
-				yield return new TooltipBrickTextValue(tooltips.SkillValue.Text, check.StatValue.ToString("+#;-#;0"), 1);
+				yield return new BrickPortraitAndNameVM(check.ActingUnit.Portrait.SmallPortrait, check.ActingUnit.CharacterName, new BrickTitleVM(new TextEntity($"{UtilitySkillcheck.GetSkillCheckName(check.StatType)}: {check.StatValue}", TextFieldParams.Left), TooltipTitleType.H6));
+				yield return new BrickChanceVM(tooltips.SkillCheckChance.Text, check.TotalSkill, check.RollResult);
+				yield return new BrickTextValueVM(tooltips.SkillValue.Text, check.StatValue.ToString("+#;-#;0"), 1);
 				if (check.DC != 0)
 				{
-					yield return new TooltipBrickTextValue(tooltips.DifficultyClass.Text, check.DC.ToString("+#;-#;0"), 1);
+					yield return new BrickTextValueVM(tooltips.DifficultyClass.Text, check.DC.ToString("+#;-#;0"), 1);
 				}
 			}
 		}
@@ -50,8 +49,8 @@ public class TooltipTemplateSkillCheckResult : TooltipBaseTemplate
 			BlueprintEncyclopediaGlossaryEntry glossaryEntry = UIUtilityEncyclopedy.GetGlossaryEntry(key);
 			if (glossaryEntry != null)
 			{
-				yield return new TooltipBrickTitle(glossaryEntry.Title);
-				yield return new TooltipBrickText(glossaryEntry.GetDescription(), TooltipTextType.Paragraph);
+				yield return new BrickTitleVM(glossaryEntry.Title);
+				yield return new BrickTextVM(glossaryEntry.GetDescription(), TooltipTextType.Paragraph);
 				break;
 			}
 		}

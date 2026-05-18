@@ -1,10 +1,8 @@
 using DG.Tweening;
 using Kingmaker.UI.Common;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
-using Rewired;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,9 +12,6 @@ public abstract class TooltipBaseView : InfoBaseView<TooltipVM>
 {
 	[Space]
 	[Header("Tooltip")]
-	[SerializeField]
-	private GameObject m_Separator;
-
 	[SerializeField]
 	private OwlcatMultiSelectable m_BackgroundSelectable;
 
@@ -59,7 +54,6 @@ public abstract class TooltipBaseView : InfoBaseView<TooltipVM>
 		base.OnBind();
 		if (base.ViewModel != null)
 		{
-			m_Separator.SetActive(base.ViewModel.HeaderBricks.Any() && base.ViewModel.BodyBricks.Any());
 			base.gameObject.SetActive(value: true);
 			CanvasGroup.alpha = (base.ViewModel.IsComparative ? 1 : 0);
 			m_BackgroundSelectable.SetActiveLayer(base.ViewModel.Background.ToString());
@@ -148,7 +142,7 @@ public abstract class TooltipBaseView : InfoBaseView<TooltipVM>
 		return num;
 	}
 
-	public void Scroll(InputActionEventData obj, float value)
+	public void Scroll(float value)
 	{
 		if (m_HasScroll && !(m_BodyScroll == null))
 		{

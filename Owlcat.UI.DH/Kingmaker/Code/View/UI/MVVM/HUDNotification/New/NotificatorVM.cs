@@ -165,7 +165,7 @@ public class NotificatorVM : ViewModel, IQuestObjectiveHandler, ISubscriber, IQu
 
 	public void HandleClueAddendumStatusChanged(BlueprintClueAddendum blueprint)
 	{
-		if (RootVM.Instance.DialogContext.HasDialog || blueprint.ParentCase.Blueprint.IsClosed() || !Game.Instance.DetectiveSystem.HasItem((BlueprintClue?)blueprint.ParentClue))
+		if (RootVM.Instance.DialogContext.HasDialog || blueprint.ParentCase.Blueprint.IsClosed() || !Game.Instance.DetectiveSystem.HasItemExcludingHidden((BlueprintClue?)blueprint.ParentClue))
 		{
 			return;
 		}

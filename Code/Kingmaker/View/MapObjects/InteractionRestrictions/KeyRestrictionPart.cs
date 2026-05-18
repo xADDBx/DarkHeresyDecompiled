@@ -19,7 +19,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class KeyRestrictionPart : InteractionRestrictionPart<KeyRestrictionSettings>, IInteractionVariantActor, IInteractionRestriction, IHashable, IOwlPackable<KeyRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "KeyRestrictionPart",
 		OldNames = null,
@@ -108,7 +108,7 @@ public class KeyRestrictionPart : InteractionRestrictionPart<KeyRestrictionSetti
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		KeyRestrictionPart source = new KeyRestrictionPart();
 		result = Unsafe.As<KeyRestrictionPart, TPossiblyBase>(ref source);

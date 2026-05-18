@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.UnitLogic.Alignments;
 using Owlcat.UI;
@@ -13,6 +14,8 @@ public class DialogHistoryEntityVM : ViewModel
 	private readonly string m_Text;
 
 	public readonly string SpeakerName;
+
+	public readonly bool IsOverrideSpeakerColor;
 
 	public readonly Color SpeakerColor;
 
@@ -48,6 +51,7 @@ public class DialogHistoryEntityVM : ViewModel
 	{
 		m_Text = dialogShowData.Text;
 		SpeakerName = dialogShowData.SpeakerName;
+		IsOverrideSpeakerColor = dialogShowData.IsOverrideSpeakerColor;
 		SpeakerColor = dialogShowData.SpeakerColor;
 		SkillChecks = dialogShowData.SkillChecks?.ToList();
 		SoulMarkShifts = dialogShowData.ConvictionShifts?.ToList();

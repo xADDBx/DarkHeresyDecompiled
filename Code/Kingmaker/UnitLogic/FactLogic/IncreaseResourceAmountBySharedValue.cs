@@ -29,16 +29,5 @@ public class IncreaseResourceAmountBySharedValue : UnitFactComponentDelegate, IR
 
 	public void CalculateMaxResourceAmount(BlueprintAbilityResource resource, ref int bonus)
 	{
-		if (base.Fact.Active && resource == Resource)
-		{
-			if (!Decrease)
-			{
-				bonus += Value.Calculate(base.Context);
-			}
-			else
-			{
-				bonus -= Value.Calculate(base.Context);
-			}
-		}
 	}
 }

@@ -15,8 +15,8 @@ public class NodeLinkView : MapObjectView
 	{
 		base.OnAreaDidLoad();
 		_ = (bool)Settings.StairsInteractionView;
-		m_StairsInteractionOriginalParent = Settings.StairsInteractionView.ViewTransform.parent;
-		Settings.StairsInteractionView.ViewTransform.SetParent(base.ViewTransform, worldPositionStays: true);
+		m_StairsInteractionOriginalParent = Settings.StairsInteractionView.transform.parent;
+		Settings.StairsInteractionView.transform.SetParent(base.transform, worldPositionStays: true);
 	}
 
 	public override void OnAreaBeginUnloading()
@@ -24,13 +24,13 @@ public class NodeLinkView : MapObjectView
 		base.OnAreaBeginUnloading();
 		if ((bool)m_StairsInteractionOriginalParent)
 		{
-			Settings.StairsInteractionView.Or(null)?.ViewTransform.SetParent(m_StairsInteractionOriginalParent, worldPositionStays: true);
+			Settings.StairsInteractionView.Or(null)?.transform.SetParent(m_StairsInteractionOriginalParent, worldPositionStays: true);
 		}
 	}
 
 	public void OnDeactivated()
 	{
-		Settings.StairsInteractionView.Or(null)?.ViewTransform.SetParent(m_StairsInteractionOriginalParent, worldPositionStays: true);
+		Settings.StairsInteractionView.Or(null)?.transform.SetParent(m_StairsInteractionOriginalParent, worldPositionStays: true);
 	}
 
 	public void OnBeforeMechanicsReload()
@@ -41,8 +41,8 @@ public class NodeLinkView : MapObjectView
 	{
 		if ((bool)Settings.StairsInteractionView && m_StairsInteractionOriginalParent == null)
 		{
-			m_StairsInteractionOriginalParent = Settings.StairsInteractionView.ViewTransform.parent;
-			Settings.StairsInteractionView.ViewTransform.SetParent(base.ViewTransform, worldPositionStays: true);
+			m_StairsInteractionOriginalParent = Settings.StairsInteractionView.transform.parent;
+			Settings.StairsInteractionView.transform.SetParent(base.transform, worldPositionStays: true);
 		}
 	}
 }

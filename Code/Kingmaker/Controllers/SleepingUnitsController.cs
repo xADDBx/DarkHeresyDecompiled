@@ -59,7 +59,7 @@ public class SleepingUnitsController : IControllerTick, IController, IController
 					allUnit.AwakeTimerTicks--;
 				}
 				allUnit.IsSleeping = ShouldBeSleeping(allUnit);
-				if (allUnit.IsSleeping != isSleeping && (bool)allUnit.View)
+				if (allUnit.IsSleeping != isSleeping && allUnit.View != null)
 				{
 					allUnit.View.UpdateViewActive();
 				}

@@ -16,11 +16,17 @@ internal readonly struct OutlineCellFilter
 
 	private readonly SurfaceBufferMask m_SurfaceBufferMask;
 
-	private readonly int m_StrictTestMask;
+	private readonly uint m_StrictTestMask;
 
-	private readonly int m_OptionalTestMask;
+	private readonly uint m_OptionalTestMask;
 
-	private readonly int m_StrictTestReference;
+	private readonly uint m_StrictTestReference;
+
+	private readonly uint m_ChunkStrictTestMask;
+
+	private readonly uint m_ChunkOptionalTestMask;
+
+	private readonly uint m_ChunkStrictTestReference;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public OutlineCellFilter(CellBuffer cellBuffer, FillBuffer fillBuffer, OutlineCellFilterData data)
@@ -31,6 +37,9 @@ internal readonly struct OutlineCellFilter
 		m_StrictTestMask = data.belongToAllAreaMask | data.notBelongToAnyAreasMask;
 		m_StrictTestReference = data.belongToAllAreaMask;
 		m_OptionalTestMask = data.belongToAnyAreasMask;
+		m_ChunkStrictTestMask = data.belongToAllAreaMask;
+		m_ChunkStrictTestReference = data.belongToAllAreaMask;
+		m_ChunkOptionalTestMask = data.belongToAnyAreasMask;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -46,13 +55,28 @@ internal readonly struct OutlineCellFilter
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	[Pure]
-	public bool TestArea(int areaMask)
+	public bool TestArea(uint areaMask)
 	{
 		if ((areaMask & m_StrictTestMask) != m_StrictTestReference)
 		{
 			return false;
 		}
 		if (m_OptionalTestMask != 0 && (areaMask & m_OptionalTestMask) == 0)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	[Pure]
+	public bool TestChunk(uint areaMask)
+	{
+		if ((areaMask & m_ChunkStrictTestMask) != m_ChunkStrictTestReference)
+		{
+			return false;
+		}
+		if (m_ChunkOptionalTestMask != 0 && (areaMask & m_ChunkOptionalTestMask) == 0)
 		{
 			return false;
 		}

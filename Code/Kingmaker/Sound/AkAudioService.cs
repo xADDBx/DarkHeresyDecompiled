@@ -153,6 +153,10 @@ public class AkAudioService : IService, IDisposable
 
 	private void OnLateUpdate()
 	{
+		if (!m_IsInitialized)
+		{
+			return;
+		}
 		using (Counters.Audio?.Measure())
 		{
 			DefaultListener maybeSingle = ObjectRegistry<DefaultListener>.Instance.MaybeSingle;
@@ -199,8 +203,8 @@ public class AkAudioService : IService, IDisposable
 	{
 		if (AkUnitySoundEngine.IsInitialized())
 		{
-			AkUnitySoundEngineInitialization.Instance.TerminateSoundEngine();
 			m_IsInitialized = false;
+			AkUnitySoundEngineInitialization.Instance.TerminateSoundEngine();
 			AudioFilePackagesSettings.Instance.UnloadPackagesChunk(AudioFilePackagesSettings.AudioChunk.MainGame);
 		}
 		if ((bool)m_Driver)

@@ -41,11 +41,11 @@ public class NetLobbyBaseView : View<NetLobbyVM>, IInitializable
 	{
 		if (state)
 		{
-			UISounds.Instance.Sounds.LocalMap.PlayOpen();
+			UISounds.Instance.Sounds.ServiceWindowsSounds.PlayOpenSound(ServiceWindowsType.LocalMap);
 		}
 		else
 		{
-			UISounds.Instance.Sounds.LocalMap.PlayClose();
+			UISounds.Instance.Sounds.ServiceWindowsSounds.PlayCloseSound(ServiceWindowsType.LocalMap);
 		}
 		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
 		{

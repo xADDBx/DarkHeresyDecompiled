@@ -1,6 +1,7 @@
 using System;
 using Core.Async;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints.JsonSystem.Converters;
 using Kingmaker.Localization.Enums;
 using Kingmaker.Localization.Shared;
 using Kingmaker.TextTools.Core;
@@ -8,29 +9,28 @@ using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
+using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Logging;
 using UnityEngine;
 
 namespace Kingmaker.Localization;
 
 [Serializable]
-public class LocalizedString
+public sealed class LocalizedString
 {
-	private const string JsonExt = ".json";
+	private static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
+	{
+		PreserveReferencesHandling = PreserveReferencesHandling.None,
+		Formatting = Formatting.Indented,
+		Converters = 
+		{
+			(JsonConverter)new StringEnumConverter(),
+			(JsonConverter)new DateTimeConverter()
+		},
+		DateParseHandling = DateParseHandling.None
+	};
 
-	public static readonly LogChannel Logger = LogChannelFactory.GetOrCreate("Localization");
-
-	[SerializeField]
-	private string m_Key = "";
-
-	[SerializeField]
-	private string m_Kind = "";
-
-	private bool? m_ShouldProcess;
-
-	private Locale m_ShouldProcessLocale;
-
-	private bool m_IsReportedAsMissingString;
+	public const string DEFAULT_ASKS_PATH = "Mechanics/Blueprints/Sound/Asks";
 
 	public const string KIND_BARK = "bark";
 
@@ -48,8 +48,18 @@ public class LocalizedString
 
 	public const string KIND_BARKCUTSCENE = "barkcutscene";
 
-	[CanBeNull]
-	public SharedStringAsset Shared;
+	public const string KIND_META = "meta";
+
+	public static readonly LogChannel Logger = LogChannelFactory.GetOrCreate("Localization");
+
+	[SerializeField]
+	private string m_Key = "";
+
+	private bool? m_ShouldProcess;
+
+	private Locale m_ShouldProcessLocale;
+
+	private bool m_IsReportedAsMissingString;
 
 	public string Key
 	{
@@ -66,6 +76,39 @@ public class LocalizedString
 	public string Text => GetText();
 
 	public bool Empty => IsEmpty();
+
+	[NotNull]
+	public static string Serialize(LocalizedStringData data, Formatting? formatting = null)
+	{
+		if (!formatting.HasValue)
+		{
+			return JsonConvert.SerializeObject(data, Settings);
+		}
+		return JsonConvert.SerializeObject(data, formatting.Value, Settings);
+	}
+
+	[NotNull]
+	public static LocalizedStringData Deserialize(string json)
+	{
+		try
+		{
+			return JsonConvert.DeserializeObject<LocalizedStringData>(json, Settings);
+		}
+		catch (Exception innerException)
+		{
+			throw new JsonException("Failed when deserialization " + json, innerException);
+		}
+	}
+
+	public static void Override(LocalizedStringData target, string json)
+	{
+		JsonUtility.FromJsonOverwrite(json, target);
+	}
+
+	public bool IsEmpty()
+	{
+		return m_Key == "";
+	}
 
 	private string GetText()
 	{
@@ -120,39 +163,9 @@ public class LocalizedString
 		return false;
 	}
 
-	public static implicit operator string(LocalizedString localizedString)
-	{
-		if (localizedString != null)
-		{
-			return localizedString.Text;
-		}
-		return "<null>";
-	}
-
-	public static LocalizedString Dereference(LocalizedString ls)
-	{
-		int num = 0;
-		while ((bool)ls.Shared)
-		{
-			if (num++ > 50)
-			{
-				return null;
-			}
-			ls = ls.Shared.String;
-		}
-		return ls;
-	}
-
 	private bool TryGetText([NotNull] LocalizationPack pack, out string text)
 	{
-		LocalizedString localizedString = Dereference(this);
-		if (localizedString == null)
-		{
-			Logger.Error("Cyclic reference in string {0}", this);
-			text = "";
-			return false;
-		}
-		string key = localizedString.m_Key;
+		string key = m_Key;
 		if (key == "")
 		{
 			text = "";
@@ -186,12 +199,35 @@ public class LocalizedString
 		return false;
 	}
 
-	public bool IsEmpty()
+	public bool Equals(LocalizedString other)
 	{
-		if (!Shared)
+		return m_Key == other.m_Key;
+	}
+
+	public override bool Equals(object obj)
+	{
+		if (this != obj)
 		{
-			return m_Key == "";
+			if (obj is LocalizedString other)
+			{
+				return Equals(other);
+			}
+			return false;
 		}
-		return Shared.String.IsEmpty();
+		return true;
+	}
+
+	public override int GetHashCode()
+	{
+		return m_Key?.GetHashCode() ?? 0;
+	}
+
+	public static implicit operator string(LocalizedString localizedString)
+	{
+		if (localizedString != null)
+		{
+			return localizedString.Text;
+		}
+		return "<null>";
 	}
 }

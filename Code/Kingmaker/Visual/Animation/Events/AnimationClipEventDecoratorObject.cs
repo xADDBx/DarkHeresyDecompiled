@@ -1,5 +1,5 @@
-using System;
-using Kingmaker.View.Animation;
+using Animancer;
+using Kingmaker.Visual.Animation.Decorators;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Events;
@@ -58,10 +58,11 @@ public class AnimationClipEventDecoratorObject : AnimationClipEvent
 		m_EndTime = ((endTime > startTime) ? endTime : startTime);
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
-		animationManager.CallbackReceiver.PostDecoratorObject(DecoratorObject, EndTime - base.Time);
-		return null;
+		AnimancerState animancerState = (AnimancerState)base.UserData;
+		float duration = Mathf.Min(m_EndTime - base.Time, animancerState.Length - base.Time);
+		animationManager.CallbackReceiver.PostDecoratorObject(DecoratorObject, animancerState, duration);
 	}
 
 	public override object Clone()

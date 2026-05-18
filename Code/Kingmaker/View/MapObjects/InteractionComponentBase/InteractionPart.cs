@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Controllers;
 using Kingmaker.Controllers.Dialog;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
+using Kingmaker.DialogSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -19,7 +19,6 @@ using Kingmaker.View.MapObjects.InteractionRestrictions;
 using Kingmaker.View.MapObjects.Traps;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -89,7 +88,7 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 
 	public override InteractionSettings.InteractWithToolFXData InteractWithMeltaChargeFXData => Settings.InteractWithMeltaChargeFXData;
 
-	public override TrapObjectData Trap => Settings.Trap?.Data;
+	public override TrapObjectData Trap => Settings.TrapRef;
 
 	protected override bool UnlimitedInteractionsPerRound => Settings.UnlimitedInteractionsPerRound;
 
@@ -121,9 +120,9 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 			{
 				m_Enabled = value;
 				m_Enabled = Enabled;
-				base.View.Or(null)?.UpdateHighlight();
+				base.View?.UpdateHighlight();
 				OnEnabledChanged();
-				EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+				base.EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
 				{
 					h.HandleObjectInteractChanged();
 				}, isCheckRuntime: true);
@@ -168,10 +167,6 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 
 	protected override void OnViewDidAttach()
 	{
-		if (Settings.Trap != null)
-		{
-			Settings.Trap.TrappedObject = this;
-		}
 		m_UnitsCanInteract = GetMaxUnitsToInteract();
 	}
 
@@ -182,10 +177,11 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 	protected sealed override InteractionProcess InteractInternal(BaseUnitEntity user)
 	{
 		SetVisited();
-		if (Settings.Trap != null && Settings.Trap.Data.TrapActive)
+		TrapObjectData entity = Settings.TrapRef.Entity;
+		if (entity != null && entity.TrapActive)
 		{
-			Settings.Trap.Data.Interact(user);
-			base.View.Or(null)?.UpdateHighlight();
+			entity.Interact(user);
+			base.View?.UpdateHighlight();
 			return InteractionProcess.Finished;
 		}
 		using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
@@ -196,7 +192,7 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 			if ((flag2 = CheckRestrictions(restrictions, user, out var passedRestriction, out var failedRestriction)) && flag)
 			{
 				flag2 = ContextData<InteractionVariantData>.Current.VariantActor.TryInteract(user);
-				EventBus.RaiseEvent(delegate(IInteractWithVariantActorHandler h)
+				base.EventBus.RaiseEvent(delegate(IInteractWithVariantActorHandler h)
 				{
 					h.HandleInteractWithVariantActor(this, ContextData<InteractionVariantData>.Current.VariantActor);
 				});
@@ -208,31 +204,20 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 					passedRestriction.ShowSuccessBark(user);
 					UISounds.Instance.PlayInteractionSound(Settings.UIType, base.View.GO, isSuccess: true);
 				}
-				SetUnlocked();
-				if (flag)
-				{
-					Game.Instance.Controllers.CoroutinesController.InvokeInTime(delegate
-					{
-						OnInteract(user);
-					}, 0.2f.Seconds());
-				}
-				else
-				{
-					OnInteract(user);
-				}
+				OnInteract(user);
 				foreach (InteractionRestrictionPart item in restrictions)
 				{
 					item.OnDidInteract(user);
 				}
-				if (flag && !(ContextData<InteractionVariantData>.Current.VariantActor is InteractionRestrictionPart))
+				if (flag && ContextData<InteractionVariantData>.Current.VariantActor != this && !(ContextData<InteractionVariantData>.Current.VariantActor is InteractionRestrictionPart))
 				{
 					ContextData<InteractionVariantData>.Current.VariantActor.OnDidInteract(user);
 				}
 				if (UseAnimationState == UnitAnimationInteractionType.None && !string.IsNullOrEmpty(Settings.InteractionSound))
 				{
-					SoundEventsManager.PostEvent(Settings.InteractionSound, base.View.Or(null)?.gameObject);
+					SoundEventsManager.PostEvent(Settings.InteractionSound, base.View?.gameObject);
 				}
-				EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IInteractionHandler>)delegate(IInteractionHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IInteractionHandler>)delegate(IInteractionHandler h)
 				{
 					h.OnInteract(this);
 				}, isCheckRuntime: true);
@@ -242,7 +227,7 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 			{
 				if (Settings.Dialog != null && base.View != null)
 				{
-					DialogData data = DialogController.SetupDialogWithMapObject(Settings.Dialog, base.View, null, user);
+					DialogData data = DialogController.SetupDialogWithMapObject(Settings.Dialog, base.Owner, null, user);
 					Game.Instance.Controllers.DialogController.StartDialog(data);
 				}
 				failedRestriction?.ShowRestrictionBark(user);
@@ -251,20 +236,20 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 				{
 					item2.OnFailedInteract(user);
 				}
-				if (flag && !(ContextData<InteractionVariantData>.Current.VariantActor is InteractionRestrictionPart))
+				if (flag && ContextData<InteractionVariantData>.Current.VariantActor != this && !(ContextData<InteractionVariantData>.Current.VariantActor is InteractionRestrictionPart))
 				{
 					ContextData<InteractionVariantData>.Current.VariantActor.OnFailedInteract(user);
 				}
 				if (Settings?.InteractionDisabledSound != null && Settings.InteractionDisabledSound != "")
 				{
-					SoundEventsManager.PostEvent(Settings.InteractionDisabledSound, base.View.Or(null)?.gameObject);
+					SoundEventsManager.PostEvent(Settings.InteractionDisabledSound, base.View?.gameObject);
 				}
-				EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IInteractionHandler>)delegate(IInteractionHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IInteractionHandler>)delegate(IInteractionHandler h)
 				{
 					h.OnInteractionRestricted(this);
 				}, isCheckRuntime: true);
 			}
-			EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+			base.EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
 			{
 				h.HandleObjectInteractChanged();
 			}, isCheckRuntime: true);
@@ -311,15 +296,10 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 
 	public override bool HasVisibleTrap()
 	{
-		TrapObjectView trap = Settings.Trap;
-		if (trap != null)
+		TrapObjectData entity = Settings.TrapRef.Entity;
+		if (entity != null && entity.IsAwarenessCheckPassed)
 		{
-			TrapObjectData data = trap.Data;
-			if (data != null && data.IsAwarenessCheckPassed)
-			{
-				return data.TrapActive;
-			}
-			return false;
+			return entity.TrapActive;
 		}
 		return false;
 	}
@@ -351,7 +331,7 @@ public abstract class InteractionPart : AbstractInteractionPart, IHashable, IOwl
 	{
 		if (UseAnimationState != 0)
 		{
-			SoundEventsManager.PostEvent(Settings.InteractionSound, base.View.Or(null)?.gameObject);
+			SoundEventsManager.PostEvent(Settings.InteractionSound, base.View?.gameObject);
 		}
 	}
 
@@ -377,10 +357,10 @@ public abstract class InteractionPart<TSettings> : InteractionPart, IHashable, I
 		return Settings;
 	}
 
-	public override void SetSource(IAbstractEntityPartComponent source)
+	public override void SetConfig(IEntityPartConfig source)
 	{
-		IAbstractEntityPartComponent source2 = base.Source;
-		base.SetSource(source);
+		IEntityPartConfig source2 = base.Source;
+		base.SetConfig(source);
 		Settings = source.GetSettings() as TSettings;
 		OnSettingsDidSet(source2 != source);
 		ConfigureRestrictions();

@@ -133,7 +133,7 @@ internal struct TetrahedronCalculator
 		shadowSplitData.cullingPlaneCount = 4;
 		for (int i = 0; i < 4; i++)
 		{
-			shadowSplitData.SetCullingPlane(i, new Plane(FacePlaneNormals[faceId * 4 + i], lightPos));
+			shadowSplitData.SetCullingPlane(i, new Plane((Vector3)FacePlaneNormals[faceId * 4 + i], (Vector3)lightPos));
 		}
 	}
 }

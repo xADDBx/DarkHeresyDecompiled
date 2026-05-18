@@ -36,7 +36,7 @@ public class AbilityTargetArmorCondition : BlueprintComponent, IAbilityTargetRes
 			{
 				if (CheckingType == ConditionType.IsArmorFull)
 				{
-					if (armorOptional.DurabilityLeft == (int)armorOptional.Durability)
+					if (armorOptional.DurabilityLeft == armorOptional.DurabilityValue)
 					{
 						return !Inverted;
 					}

@@ -3,6 +3,7 @@ using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.GameCommands;
 using Owlcat.Fmw.Blueprints;
 
 namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
@@ -35,7 +36,7 @@ public class StudyGroup
 		List<BlueprintClueAddendum> list = (from a in study.GiveItems.Dereference()
 			where a is BlueprintClueAddendum blueprintClueAddendum && blueprintClueAddendum.ParentClue == study.ParentClue
 			select a as BlueprintClueAddendum).ToList().RemoveLowerTier();
-		list.RemoveAll((BlueprintClueAddendum a) => Game.Instance.DetectiveSystem.HasClueAddendum(a));
+		list.RemoveAll((BlueprintClueAddendum a) => Game.Instance.DetectiveSystem.HasClueAddendumExcludingHidden(a));
 		IEnumerable<AddendumInfoVM> collection = list.Select((BlueprintClueAddendum a) => new AddendumInfoVM(a, null));
 		NewAddendums.AddRange(collection);
 		if (UIUtilityDetective.HasFakeStudies(study))
@@ -46,14 +47,7 @@ public class StudyGroup
 
 	public void MakeStudy()
 	{
-		foreach (BlueprintClueStudy item in m_Study)
-		{
-			Game.Instance.DetectiveSystem.StudyClue(item);
-		}
+		Game.Instance.GameCommandQueue.StudyClues(m_Study);
 		Game.Instance.Controllers.VoiceOverController.PlayStudyVoiceOver(m_Study.FirstOrDefault());
-		NewAddendums.ForEach(delegate(AddendumInfoVM a)
-		{
-			a.Info.RefreshData();
-		});
 	}
 }

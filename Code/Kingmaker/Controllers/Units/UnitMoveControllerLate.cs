@@ -1,9 +1,9 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Controllers.Interfaces;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.View.Mechanics.Entities;
 
 namespace Kingmaker.Controllers.Units;
 
@@ -35,10 +35,6 @@ public class UnitMoveControllerLate : IControllerTick, IController, IControllerD
 
 	private void TickUnit([NotNull] AbstractUnitEntity unit, float progress)
 	{
-		AbstractUnitEntityView view = unit.View;
-		if (!(view == null))
-		{
-			view.InterpolationHelper.Interpolate(progress);
-		}
+		unit.View.AsAbstractUnitEntityView()?.InterpolationHelper.Interpolate(progress);
 	}
 }

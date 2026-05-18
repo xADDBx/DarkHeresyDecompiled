@@ -8,9 +8,9 @@ namespace Owlcat.Runtime.Visual.Waaagh.Shadows;
 
 internal static class PrecalculatedDirectionalShadowDataFactory
 {
-	public static void Populate(ContextContainer frameData, NativeHashMap<int, PrecalculatedDirectionalShadowData> results)
+	public static void Populate(WaaaghRenderingData renderingData, WaaaghShadowData shadowData, NativeHashMap<int, PrecalculatedDirectionalShadowData> results)
 	{
-		NativeArray<VisibleLight> visibleLights = frameData.Get<WaaaghRenderingData>().VisibleLights;
+		NativeArray<VisibleLight> visibleLights = renderingData.VisibleLights;
 		int length = visibleLights.Length;
 		for (int i = 0; i < length; i++)
 		{
@@ -20,7 +20,7 @@ internal static class PrecalculatedDirectionalShadowDataFactory
 				Light light = visibleLight.light;
 				if (!(light == null) && light.shadows != 0)
 				{
-					results.Add(light.GetInstanceID(), CreateDirectionalShadowData(i, in visibleLight, frameData));
+					results.Add(light.GetInstanceID(), CreateDirectionalShadowData(i, in visibleLight, renderingData, shadowData));
 				}
 				continue;
 			}
@@ -28,18 +28,16 @@ internal static class PrecalculatedDirectionalShadowDataFactory
 		}
 	}
 
-	private static PrecalculatedDirectionalShadowData CreateDirectionalShadowData(int visibleLightIndex, in VisibleLight visibleLight, ContextContainer frameData)
+	private static PrecalculatedDirectionalShadowData CreateDirectionalShadowData(int visibleLightIndex, in VisibleLight visibleLight, WaaaghRenderingData renderingData, WaaaghShadowData shadowData)
 	{
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
 		PrecalculatedDirectionalShadowData result = default(PrecalculatedDirectionalShadowData);
-		int count = waaaghShadowData.DirectionalLightCascades.Count;
-		Vector3 ratios = waaaghShadowData.DirectionalLightCascades.GetRatios();
-		int directionalLightCascadeResolution = (int)waaaghShadowData.DirectionalLightCascadeResolution;
+		int count = shadowData.DirectionalLightCascades.Count;
+		Vector3 ratios = shadowData.DirectionalLightCascades.GetRatios();
+		int directionalLightCascadeResolution = (int)shadowData.DirectionalLightCascadeResolution;
 		float4x4 float4x = visibleLight.localToWorldMatrix;
 		for (int i = 0; i < count; i++)
 		{
-			waaaghRenderingData.CullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(visibleLightIndex, i, count, ratios, directionalLightCascadeResolution, waaaghShadowData.ShadowNearPlane, out var viewMatrix, out var projMatrix, out var shadowSplitData);
+			renderingData.CullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(visibleLightIndex, i, count, ratios, directionalLightCascadeResolution, shadowData.ShadowNearPlane, out var viewMatrix, out var projMatrix, out var shadowSplitData);
 			Matrix4x4 matrix4x = GL.GetGPUProjectionMatrix(projMatrix, renderIntoTexture: true) * viewMatrix;
 			float4 faceDirection = -float4x.c2;
 			float value = 2f / projMatrix.m00;

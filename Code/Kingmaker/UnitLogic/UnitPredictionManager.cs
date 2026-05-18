@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Fx;
 using Kingmaker.Code.Enums.Helper;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -14,6 +14,7 @@ using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.ResourceLinks;
 using Kingmaker.UI.AR;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.UI.Sound;
@@ -70,6 +71,8 @@ public class UnitPredictionManager : MonoBehaviour, IUnitCommandEndHandler, ISub
 	private readonly Dictionary<BaseUnitEntity, GameObject> m_AttackOfOpportunityEffects = new Dictionary<BaseUnitEntity, GameObject>();
 
 	private BaseUnitEntity m_PathUnitEntity;
+
+	private bool m_PathHasThreats;
 
 	private Path m_UnitPath;
 
@@ -296,7 +299,7 @@ public class UnitPredictionManager : MonoBehaviour, IUnitCommandEndHandler, ISub
 			}
 			if (vector.HasValue)
 			{
-				UpdateHologram(m_VirtualHologram, vector, vector2);
+				UpdateHologram(m_VirtualHologram, vector, vector2, m_PathHasThreats);
 			}
 			else
 			{
@@ -355,9 +358,24 @@ public class UnitPredictionManager : MonoBehaviour, IUnitCommandEndHandler, ISub
 		}
 	}
 
-	private static void UpdateHologram(UnitHologram hologram, Vector3? position, Vector3? direction)
+	private static void UpdateHologram(UnitHologram hologram, Vector3? position, Vector3? direction, bool threatening)
 	{
-		hologram.SetupShading(FxRoot.Instance.Hologram.MainFx);
+		HologramEntry hologram2 = FxRoot.Instance.Hologram;
+		PrefabLink prefabLink;
+		if (threatening)
+		{
+			PrefabLink threateningMainFx = hologram2.ThreateningMainFx;
+			if ((object)threateningMainFx != null && threateningMainFx.Exists())
+			{
+				prefabLink = hologram2.ThreateningMainFx;
+				goto IL_003d;
+			}
+		}
+		prefabLink = hologram2.MainFx;
+		goto IL_003d;
+		IL_003d:
+		PrefabLink fx = prefabLink;
+		hologram.SetupShading(fx, threatening);
 		if (!position.HasValue)
 		{
 			return;
@@ -398,7 +416,7 @@ public class UnitPredictionManager : MonoBehaviour, IUnitCommandEndHandler, ISub
 		if (m_VirtualHologram != null)
 		{
 			UnityEngine.Object.Destroy(m_VirtualHologram.gameObject);
-			UISounds.Instance.Sounds.Combat.CombatGridClearWaypoint.Play();
+			CombatSounds.Instance.Combat.CombatGridClearWaypoint.Play();
 		}
 		m_VirtualHologram = null;
 		m_VirtualHologramPosition = null;
@@ -495,11 +513,16 @@ public class UnitPredictionManager : MonoBehaviour, IUnitCommandEndHandler, ISub
 		}
 	}
 
-	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO)
+	public void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO, bool hasThreats)
 	{
 		m_PathUnitEntity = EventInvokerExtensions.BaseUnitEntity;
 		UnitPath = path;
 		SetMoveCost(cost);
+		if (m_PathHasThreats != hasThreats)
+		{
+			m_PathHasThreats = hasThreats;
+			UpdateVirtualHologramPosition();
+		}
 		DelayedUpdateAttackOfOpportunityPrediction();
 	}
 
@@ -507,6 +530,11 @@ public class UnitPredictionManager : MonoBehaviour, IUnitCommandEndHandler, ISub
 	{
 		m_PathUnitEntity = null;
 		UnitPath = null;
+		if (m_PathHasThreats)
+		{
+			m_PathHasThreats = false;
+			UpdateVirtualHologramPosition();
+		}
 		DelayedUpdateAttackOfOpportunityPrediction();
 	}
 

@@ -13,7 +13,9 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -27,7 +29,6 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Particles;
 using Kingmaker.Visual.Particles.GameObjectsPooling;
 using Newtonsoft.Json;
@@ -69,7 +70,7 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 	[OwlPackInclude]
 	private EntityRef<MechanicEntity> m_CombatInitiativeHolder;
 
-	private AbstractUnitEntityView m_ParticleEffectOwner;
+	private IAbstractUnitEntityView m_ParticleEffectOwner;
 
 	private List<GameObject> m_ManagedEffects;
 
@@ -232,6 +233,8 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 
 	BlueprintAbilityFXSettings IBuff.FXSettings => FXSettings;
 
+	public string FlavorText => base.Blueprint.FlavorText;
+
 	protected override bool SupportsMultipleSources()
 	{
 		if (base.Blueprint.HasRanks)
@@ -241,7 +244,7 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 		return false;
 	}
 
-	public Buff([NotNull] BlueprintBuff blueprint, MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public Buff([NotNull] BlueprintBuff blueprint, IEvalContext parentContext, BuffDuration duration, int rank = 1)
 		: base(blueprint, parentContext)
 	{
 		if (rank < 1)
@@ -307,11 +310,13 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 
 	protected override void OnComponentsDidActivated()
 	{
+		base.OnComponentsDidActivated();
 		SpawnParticleEffect();
 	}
 
 	protected override void OnDeactivate()
 	{
+		base.OnDeactivate();
 		ClearParticleEffect();
 	}
 
@@ -340,9 +345,9 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 
 	public void SpawnParticleEffect()
 	{
-		if (!(base.Owner?.View == null) && base.Owner.View.Data != null && !IsParticleEffectValid())
+		if (base.Owner?.View != null && base.Owner.View.Data != null && !IsParticleEffectValid())
 		{
-			EventBus.RaiseEvent<IBuffEffectHandler>(BuffEffectsSpawnHandler);
+			base.EventBus.RaiseEvent<IBuffEffectHandler>(BuffEffectsSpawnHandler);
 			SpawnFxFromBuffComponent();
 			m_ParticleEffectOwner = base.Owner.View;
 		}
@@ -350,7 +355,7 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 
 	public void SpawnFxFromBuffComponent()
 	{
-		if (!(base.Context.ClickedTarget.Entity?.View != null) || !(base.Context.MaybeCaster?.View != null))
+		if (base.Context.ClickedTarget.Entity?.View == null || base.Context.MaybeCaster?.View == null)
 		{
 			return;
 		}
@@ -395,7 +400,7 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 
 	public void ClearParticleEffect()
 	{
-		EventBus.RaiseEvent(delegate(IBuffEffectHandler h)
+		base.EventBus.RaiseEvent(delegate(IBuffEffectHandler h)
 		{
 			h.OnBuffEffectRemoved(this);
 		});
@@ -477,7 +482,7 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 		}
 		if (base.Owner != null)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
 			{
 				h.HandleBuffRankIncreased(this, count, caster);
 			}, isCheckRuntime: true);
@@ -525,7 +530,7 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 		}
 		if (base.Owner != null)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
 			{
 				h.HandleBuffRankDecreased(this, count, caster);
 			}, isCheckRuntime: true);
@@ -593,11 +598,11 @@ public sealed class Buff : UnitFact<BlueprintBuff>, IInitiativeHolder, IFactWith
 		bool flag = ((mechanicEntity != null) ? (sourceEntity == mechanicEntity) : (Initiative.Value >= sourceEntity?.Initiative.Value || @event == Initiative.Event.RoundEnd));
 		bool flag2 = ExpireMoment switch
 		{
-			BuffExpireMoment.TurnStart => @event == Initiative.Event.TurnStart || mechanicEntity == null, 
+			BuffExpireMoment.TurnStart => @event == Initiative.Event.TurnPreStart || mechanicEntity == null, 
 			BuffExpireMoment.TurnEnd => @event == Initiative.Event.TurnEnd || mechanicEntity == null, 
 			_ => throw new ArgumentOutOfRangeException(), 
 		};
-		if (ExpirationInRounds <= 0 && flag && flag2)
+		if ((ExpirationInRounds <= 0 || (ExpirationInRounds == 1 && @event == Initiative.Event.TurnPreStart)) && flag && flag2)
 		{
 			MarkExpired();
 		}

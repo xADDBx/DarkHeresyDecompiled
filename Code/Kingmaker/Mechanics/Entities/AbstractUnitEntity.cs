@@ -13,8 +13,9 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
+using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.QA;
@@ -26,8 +27,8 @@ using Kingmaker.Utility.FlagCountable;
 using Kingmaker.Utility.Random;
 using Kingmaker.Utility.StatefulRandom;
 using Kingmaker.View;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.View.Spawners;
+using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.CharacterSystem.Dismemberment;
@@ -44,14 +45,12 @@ using UnityEngine;
 namespace Kingmaker.Mechanics.Entities;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartStatsContainer.IOwner, IEntityPartOwner<PartStatsContainer>, IEntityPartOwner, PartUnitCommands.IOwner, IEntityPartOwner<PartUnitCommands>, PartUnitAsks.IOwner, IEntityPartOwner<PartUnitAsks>, PartMovable.IOwner, IEntityPartOwner<PartMovable>, PartUnitViewSettings.IOwner, IEntityPartOwner<PartUnitViewSettings>, PartHealth.IOwner, IEntityPartOwner<PartHealth>, PartLifeState.IOwner, IEntityPartOwner<PartLifeState>, IAbstractUnitEntity, IMechanicEntity, IEntity, IDisposable, IHashable, IOwlPackable<AbstractUnitEntity>
+public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartUnitCommands.IOwner, IEntityPartOwner<PartUnitCommands>, IEntityPartOwner, PartUnitAsks.IOwner, IEntityPartOwner<PartUnitAsks>, PartMovable.IOwner, IEntityPartOwner<PartMovable>, PartUnitViewSettings.IOwner, IEntityPartOwner<PartUnitViewSettings>, PartHealth.IOwner, IEntityPartOwner<PartHealth>, PartLifeState.IOwner, IEntityPartOwner<PartLifeState>, IAbstractUnitEntity, IMechanicEntity, IEntity, IDisposable, IHashable, IOwlPackable<AbstractUnitEntity>
 {
 	public interface IUnitAsleepHandler : ISubscriber<IEntity>, ISubscriber
 	{
 		void OnIsSleepingChanged(bool sleeping);
 	}
-
-	private PartStatsContainer m_Stats;
 
 	private PartUnitCommands m_Commands;
 
@@ -73,21 +72,9 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 
 	public readonly CountableFlag Sleepless = new CountableFlag();
 
-	private EntityRef<UnitGroupView.UnitGroupData> m_GroupRef;
+	private EntityRef<UnitGroupEntity> m_GroupRef;
 
 	private bool m_IsSleeping;
-
-	public PartStatsContainer Stats
-	{
-		get
-		{
-			if (m_Stats == null)
-			{
-				m_Stats = GetRequired<PartStatsContainer>();
-			}
-			return m_Stats;
-		}
-	}
 
 	public PartUnitCommands Commands
 	{
@@ -186,7 +173,55 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 
 	public int AwakeTimerTicks { get; set; }
 
-	public new AbstractUnitEntityView View => (AbstractUnitEntityView)base.View;
+	public new IAbstractUnitEntityView View => (IAbstractUnitEntityView)base.View;
+
+	public override bool CanRotate
+	{
+		get
+		{
+			if (base.CanRotate)
+			{
+				UnitAnimationManager unitAnimationManager = ObjectExtensions.Or(AnimationManager, null);
+				if ((object)unitAnimationManager == null)
+				{
+					return true;
+				}
+				return !unitAnimationManager.IsPreventingRotation;
+			}
+			return false;
+		}
+	}
+
+	public override bool CanAct
+	{
+		get
+		{
+			if (base.CanAct)
+			{
+				UnitAnimationManager unitAnimationManager = ObjectExtensions.Or(AnimationManager, null);
+				if ((object)unitAnimationManager == null)
+				{
+					return true;
+				}
+				return !unitAnimationManager.IsInExclusiveState;
+			}
+			return false;
+		}
+	}
+
+	public override bool CanActInTurnBased
+	{
+		get
+		{
+			bool flag = AnimationManager != null && AnimationManager.IsInExclusiveState;
+			bool flag2 = AnimationManager != null && (AnimationManager.IsProne || AnimationManager.IsStandUp);
+			if (base.CanActInTurnBased && !flag)
+			{
+				return !flag2;
+			}
+			return false;
+		}
+	}
 
 	public override bool SetTransformFromConfigOnLoad => false;
 
@@ -204,17 +239,17 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 
 	public UnitAnimationManager AnimationManager => View.AnimationManager;
 
-	public override UnitAnimationManager MaybeAnimationManager => ObjectExtensions.Or(View, null)?.AnimationManager;
+	public override AnimationManager MaybeAnimationManager => View?.AnimationManager;
 
-	public UnitMovementAgentBase MovementAgent => ObjectExtensions.Or(MaybeMovementAgent, null) ?? throw new Exception("MovementAgent is missing");
+	public UnitAnimationManager MaybeUnitAnimationManager => View?.AnimationManager;
 
-	public override UnitMovementAgentBase MaybeMovementAgent => ObjectExtensions.Or(View, null)?.MovementAgent;
+	public UnitMovementAgent MovementAgent => MaybeMovementAgent ?? throw new Exception("MovementAgent is missing");
+
+	public override UnitMovementAgent MaybeMovementAgent => View?.MovementAgent;
 
 	public Vector3 OrientationDirection => base.Forward;
 
 	public string CharacterName => this.GetDescriptionOptional()?.Name ?? base.Blueprint.Name;
-
-	public Transform ViewTransform => View.ViewTransform;
 
 	public Gender Gender => this.GetDescriptionOptional()?.Gender ?? base.Blueprint.Gender;
 
@@ -241,10 +276,7 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 				{
 					AwakeTimer = -1f;
 				}
-				if ((bool)View)
-				{
-					View.UpdateViewActive();
-				}
+				View?.UpdateViewActive();
 				NotifyIsSleepingChanged(value);
 			}
 		}
@@ -322,7 +354,9 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 	public override bool IsCompanion => base.Blueprint.IsCompanion;
 
 	[CanBeNull]
-	public UnitGroupView.UnitGroupData Group => m_GroupRef;
+	public UnitGroupEntity Group => m_GroupRef;
+
+	public bool IsReallyMoving => MaybeMovementAgent?.IsReallyMoving ?? false;
 
 	public virtual float GetWarhammerMovementApPerCellThreateningArea()
 	{
@@ -335,7 +369,7 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 
 	private void NotifyIsSleepingChanged(bool value)
 	{
-		EventBus.RaiseEvent((IEntity)this, (Action<IUnitAsleepHandler>)delegate(IUnitAsleepHandler v)
+		base.EventBus.RaiseEvent((IEntity)this, (Action<IUnitAsleepHandler>)delegate(IUnitAsleepHandler v)
 		{
 			v.OnIsSleepingChanged(value);
 		}, isCheckRuntime: true);
@@ -346,8 +380,8 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 		m_SelectedVoGuid = guid;
 	}
 
-	protected AbstractUnitEntity(JsonConstructorMark _)
-		: base(_)
+	protected AbstractUnitEntity(IUnitEntityConfig config)
+		: base((IMechanicEntityConfig)config)
 	{
 	}
 
@@ -356,20 +390,21 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 	{
 	}
 
-	protected AbstractUnitEntity()
+	protected AbstractUnitEntity(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
 	protected override void OnSpawn()
 	{
 		base.OnSpawn();
-		if (ObjectExtensions.Or(View, null)?.MovementAgent != null)
+		if (View?.MovementAgent != null)
 		{
 			View.MovementAgent.Stop();
 		}
 		using (ContextData<SpawnedUnitData>.Request().Setup(this))
 		{
-			EventBus.RaiseEvent((IAbstractUnitEntity)this, (Action<IUnitSpawnHandler>)delegate(IUnitSpawnHandler h)
+			base.EventBus.RaiseEvent((IAbstractUnitEntity)this, (Action<IUnitSpawnHandler>)delegate(IUnitSpawnHandler h)
 			{
 				h.HandleUnitSpawned();
 			}, isCheckRuntime: true);
@@ -391,7 +426,7 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 
 	protected override void OnDestroy()
 	{
-		EventBus.RaiseEvent((IAbstractUnitEntity)this, (Action<IUnitHandler>)delegate(IUnitHandler h)
+		base.EventBus.RaiseEvent((IAbstractUnitEntity)this, (Action<IUnitHandler>)delegate(IUnitHandler h)
 		{
 			h.HandleUnitDestroyed();
 		}, isCheckRuntime: true);
@@ -426,11 +461,18 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 	{
 		GraphNode node = base.CurrentNode.node;
 		base.OnPositionChanged();
+		_ = (bool)base.Features.OnElevator;
 		WakeForPositionUpdate();
 		if (node == null || node != base.CurrentNode.node)
 		{
 			OnNodeChanged(node);
 		}
+	}
+
+	protected override void OnOrientationChanged()
+	{
+		base.OnOrientationChanged();
+		_ = (bool)base.Features.OnElevator;
 	}
 
 	protected override Vector3 ViewPositionToEntityPosition(Vector3 viewPosition)
@@ -462,7 +504,6 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 		}
 		if (View != null)
 		{
-			View.ViewTransform.position = position;
 			View.ForcePlaceAboveGround();
 			if (orientation.HasValue)
 			{
@@ -485,11 +526,12 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 
 	public float GetOrientationTo(Vector3 point)
 	{
-		if (point == base.Position)
+		Vector3 vector = EntityPositionToViewPosition(base.Position);
+		if (point == vector)
 		{
 			return DesiredOrientation;
 		}
-		Vector3 forward = point - base.Position;
+		Vector3 forward = point - vector;
 		forward.y = 0f;
 		return Quaternion.LookRotation(forward).eulerAngles.y;
 	}
@@ -515,12 +557,31 @@ public abstract class AbstractUnitEntity : MechanicEntity<BlueprintUnit>, PartSt
 		AwakeTimer = awakeTimer;
 	}
 
-	public void SetGroup(EntityRef<UnitGroupView.UnitGroupData> groupRef)
+	public void SetGroup(EntityRef<UnitGroupEntity> groupRef)
 	{
 		m_GroupRef = groupRef;
 	}
 
 	public abstract void MarkExtra();
+
+	public void MoveTo(ForcedPath path, Vector3 destination, float approachRadiusMeters)
+	{
+		UnitMovementAgent maybeMovementAgent = MaybeMovementAgent;
+		if ((object)maybeMovementAgent != null)
+		{
+			if (Game.Instance.CurrentlyLoadedArea.IsNavmeshArea && (bool)AstarPath.active && AstarPath.active.graphs.Length != 0)
+			{
+				maybeMovementAgent.FollowPath(path, destination, approachRadiusMeters);
+				return;
+			}
+			maybeMovementAgent.ForcePath(ForcedPath.Construct(new List<Vector3> { base.Position, destination }));
+		}
+	}
+
+	public void StopMoving()
+	{
+		MaybeMovementAgent?.Stop();
+	}
 
 	public override Hash128 GetHash128()
 	{

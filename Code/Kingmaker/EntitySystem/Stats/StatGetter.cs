@@ -1,6 +1,7 @@
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -19,6 +20,6 @@ public class StatGetter : IntPropertyGetter
 
 	protected override int GetBaseValue()
 	{
-		return base.CurrentEntity.GetStatOptional(m_Type)?.ModifiedValue ?? 0;
+		return base.CurrentEntity.Actor.GetStat(m_Type, null, default(StatContext), "GetBaseValue");
 	}
 }

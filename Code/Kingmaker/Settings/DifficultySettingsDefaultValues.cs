@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Enums;
 
 namespace Kingmaker.Settings;
 
@@ -16,45 +15,31 @@ public class DifficultySettingsDefaultValues
 
 	public bool LimitedAI;
 
-	public int EnemyDodgePercentModifier;
+	public GameDifficultyOption GameDifficulty;
 
-	public int CoverHitBonusHalfModifier;
+	public EnemyDifficultyOption EnemyDurability;
 
-	public int CoverHitBonusFullModifier;
-
-	public int MinPartyDamage;
-
-	public int MinPartyDamageFraction;
-
-	public int MinPartyStarshipDamage;
-
-	public int MinPartyStarshipDamageFraction;
-
-	public int PartyMomentumPercentModifier;
-
-	public int NPCAttributesBaseValuePercentModifier;
-
-	public HardCrowdControlDurationLimit HardCrowdControlOnPartyMaxDurationRounds;
+	public EnemyDifficultyOption EnemyDamage;
 
 	public int SkillCheckModifier;
 
-	public int EnemyHitPointsPercentModifier;
+	public int EnemyMovementPoints;
+
+	public int EnemyDamageModifier;
+
+	public int PartyDamageModifier;
+
+	public int EnemyDodgeModifier;
+
+	public int EnemySkillModifier;
+
+	public int PartyPositiveMoraleChangeModifier;
+
+	public int PartyNegativeMoraleChangeModifier;
+
+	public int EnemyPositiveMoraleChangeModifier;
+
+	public int EnemyNegativeMoraleChangeModifier;
 
 	public int AllyResolveModifier;
-
-	public int PartyDamageDealtAfterArmorReductionPercentModifier;
-
-	public int WoundDamagePerTurnThresholdHPFraction;
-
-	public int OldWoundDelayRounds;
-
-	public int WoundStacksForTrauma;
-
-	public int MinCR;
-
-	public int MaxCR;
-
-	public GameDifficultyOption GameDifficulty;
-
-	public NPCDifficultyOption NPCDifficulty;
 }

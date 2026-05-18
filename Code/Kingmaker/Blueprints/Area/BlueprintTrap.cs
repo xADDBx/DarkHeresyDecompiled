@@ -21,9 +21,9 @@ public class BlueprintTrap : BlueprintMapObject
 	{
 		public BaseUnitEntity TriggeringUnit { get; private set; }
 
-		public TrapObjectView TrapObject { get; private set; }
+		public TrapObjectData TrapObject { get; private set; }
 
-		public ElementsData Setup(BaseUnitEntity unit, TrapObjectView obj)
+		public ElementsData Setup(BaseUnitEntity unit, TrapObjectData obj)
 		{
 			TriggeringUnit = unit;
 			TrapObject = obj;

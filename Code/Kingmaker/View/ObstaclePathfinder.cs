@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Code.Framework.Utility.UnityExtensions;
 using JetBrains.Annotations;
 using Kingmaker.UnitLogic.Parts;
@@ -15,21 +16,21 @@ public static class ObstaclePathfinder
 
 	private const float ComfortCollisionDistance = 1f;
 
-	private static UnitMovementAgentBase s_Unit;
+	private static UnitMovementAgent s_Unit;
 
-	private static IList<UnitMovementAgentBase> s_Group;
+	private static IReadOnlyList<UnitMovementAgent> s_Group;
 
 	private static List<Vector3> s_Points;
 
 	private static readonly List<Vector3> s_ProcessedPath = new List<Vector3>();
 
-	private static readonly List<UnitMovementAgentBase> s_IgnoredObstacles = new List<UnitMovementAgentBase>();
+	private static readonly List<UnitMovementAgent> s_IgnoredObstacles = new List<UnitMovementAgent>();
 
 	private static readonly ConvexHullStack s_LeftStack = new ConvexHullStack(1);
 
 	private static readonly ConvexHullStack s_RightStack = new ConvexHullStack(-1);
 
-	public static ObstaclePathingResult PathAroundStandingObstacles([NotNull] Path path, [NotNull] UnitMovementAgentBase unit, [CanBeNull] UnitMovementAgentBase target)
+	public static ObstaclePathingResult PathAroundStandingObstacles([NotNull] Path path, [NotNull] UnitMovementAgent unit, [CanBeNull] UnitMovementAgent target)
 	{
 		if (path.error || path.vectorPath.Count <= 0)
 		{
@@ -52,7 +53,7 @@ public static class ObstaclePathfinder
 				s_IgnoredObstacles.Add(target);
 			}
 			Vector3 s = s_Points[0];
-			List<UnitMovementAgentBase> allAgents = UnitMovementAgentBase.AllAgents;
+			List<UnitMovementAgent> allAgents = UnitMovementAgent.AllAgents;
 			for (int i = 1; i < s_Points.Count; i++)
 			{
 				IntersectionResult intersection = IntersectAllObstacles(allAgents, s_Points[i - 1], s_Points[i]);
@@ -105,7 +106,7 @@ public static class ObstaclePathfinder
 		{
 			return false;
 		}
-		s_Group = intersection.Unit1.ObstaclesGroup;
+		s_Group = intersection.Unit1.GetObstaclesGroup();
 		if (GetGroupSize(s_Group) <= 1)
 		{
 			return false;
@@ -128,7 +129,7 @@ public static class ObstaclePathfinder
 		return true;
 	}
 
-	private static int GetGroupSize([CanBeNull] IList<UnitMovementAgentBase> group)
+	private static int GetGroupSize([CanBeNull] IReadOnlyList<UnitMovementAgent> group)
 	{
 		if (group == null)
 		{
@@ -214,7 +215,7 @@ public static class ObstaclePathfinder
 			Utils.Swap(ref intersection.Unit1, ref intersection.Unit2);
 		}
 		Vector3 vector = intersection.GetSecondPoint();
-		UnitMovementAgentBase unitMovementAgentBase = intersection.Unit1;
+		UnitMovementAgent unitMovementAgent = intersection.Unit1;
 		ConvexHullStack convexHullStack = ((direction > 0) ? s_LeftStack : s_RightStack);
 		convexHullStack.Clear();
 		convexHullStack.Push(s);
@@ -226,25 +227,25 @@ public static class ObstaclePathfinder
 				PFLog.Default.Error("infinite loop");
 				return null;
 			}
-			UnitMovementAgentBase unitMovementAgentBase2 = FindNextUnit(vector, unitMovementAgentBase, direction);
-			if (unitMovementAgentBase2 == null)
+			UnitMovementAgent unitMovementAgent2 = FindNextUnit(vector, unitMovementAgent, direction);
+			if (unitMovementAgent2 == null)
 			{
 				return null;
 			}
-			if (IsSoftMode(s_Unit, unitMovementAgentBase2))
+			if (IsSoftMode(s_Unit, unitMovementAgent2))
 			{
-				convexHullStack.Push((vector + unitMovementAgentBase2.transform.position) / 2f);
+				convexHullStack.Push((vector + unitMovementAgent2.transform.position) / 2f);
 				convexHullStack.Push(t);
 				return convexHullStack.Points;
 			}
-			Vector3 vector2 = CalcOffsetPoint(vector, unitMovementAgentBase, unitMovementAgentBase2, direction);
-			Vector3 vector3 = Vector3.Lerp(unitMovementAgentBase.transform.position, vector2, 0.1f);
-			if (UnitBlocksDirection(convexHullStack.Peek(), vector3, unitMovementAgentBase))
+			Vector3 vector2 = CalcOffsetPoint(vector, unitMovementAgent, unitMovementAgent2, direction);
+			Vector3 vector3 = Vector3.Lerp(unitMovementAgent.transform.position, vector2, 0.1f);
+			if (UnitBlocksDirection(convexHullStack.Peek(), vector3, unitMovementAgent))
 			{
 				return null;
 			}
 			convexHullStack.Push(vector2);
-			if (CanSeePoint(vector3, t, unitMovementAgentBase))
+			if (CanSeePoint(vector3, t, unitMovementAgent))
 			{
 				convexHullStack.Push(t);
 				if (convexHullStack.Points.Count <= 2)
@@ -253,20 +254,20 @@ public static class ObstaclePathfinder
 				}
 				return convexHullStack.Points;
 			}
-			if (unitMovementAgentBase == intersection.Unit2 && unitMovementAgentBase2 == intersection.Unit1)
+			if (unitMovementAgent == intersection.Unit2 && unitMovementAgent2 == intersection.Unit1)
 			{
 				break;
 			}
-			vector = unitMovementAgentBase.transform.position;
-			unitMovementAgentBase = unitMovementAgentBase2;
+			vector = unitMovementAgent.transform.position;
+			unitMovementAgent = unitMovementAgent2;
 		}
 		return null;
 	}
 
-	private static Vector3 CalcOffsetPoint(Vector3 prev, UnitMovementAgentBase curr, UnitMovementAgentBase next, int direction)
+	private static Vector3 CalcOffsetPoint(Vector3 prev, UnitMovementAgent curr, UnitMovementAgent next, int direction)
 	{
 		Vector2 v;
-		if (Vector2.Distance(next.transform.position, prev) < 0.01f)
+		if (Vector2.Distance((Vector2)next.transform.position, (Vector2)prev) < 0.01f)
 		{
 			v = (next.transform.position - curr.transform.position).To2D().normalized;
 		}
@@ -286,7 +287,7 @@ public static class ObstaclePathfinder
 		return vector;
 	}
 
-	private static bool CanSeePoint(Vector3 s, Vector3 t, [CanBeNull] UnitMovementAgentBase preferredCheck = null)
+	private static bool CanSeePoint(Vector3 s, Vector3 t, [CanBeNull] UnitMovementAgent preferredCheck = null)
 	{
 		IntersectionResult result = default(IntersectionResult);
 		if (preferredCheck != null)
@@ -308,7 +309,7 @@ public static class ObstaclePathfinder
 		return true;
 	}
 
-	private static bool UnitBlocksDirection(Vector3 s, Vector3 t, [NotNull] UnitMovementAgentBase unit)
+	private static bool UnitBlocksDirection(Vector3 s, Vector3 t, [NotNull] UnitMovementAgent unit)
 	{
 		IntersectionResult result = default(IntersectionResult);
 		IntersectObstacle(unit, s, t, ref result, findClosestPoint: false);
@@ -316,37 +317,32 @@ public static class ObstaclePathfinder
 	}
 
 	[CanBeNull]
-	private static UnitMovementAgentBase FindNextUnit(Vector3 prev, UnitMovementAgentBase curr, int direction)
+	private static UnitMovementAgent FindNextUnit(Vector3 prev, UnitMovementAgent curr, int direction)
 	{
-		if (curr.UnitContacts == null)
-		{
-			return null;
-		}
 		Vector2 a = (prev - curr.transform.position).To2D();
-		UnitMovementAgentBase unitMovementAgentBase = null;
+		UnitMovementAgent unitMovementAgent = null;
 		float num = 0f;
-		for (int i = 0; i < curr.UnitContacts.Count; i++)
+		foreach (UnitMovementAgent unitContact in curr.GetUnitContacts())
 		{
-			UnitMovementAgentBase unitMovementAgentBase2 = curr.UnitContacts[i];
-			if (!s_IgnoredObstacles.Contains(unitMovementAgentBase2))
+			if (!s_IgnoredObstacles.Contains(unitContact))
 			{
-				Vector2 b = (unitMovementAgentBase2.transform.position - curr.transform.position).To2D();
+				Vector2 b = (unitContact.transform.position - curr.transform.position).To2D();
 				float num2 = GeometryUtils.SignedAngle(a, b) * (float)direction;
 				if (num2 <= 1f)
 				{
 					num2 += 360f;
 				}
-				if (unitMovementAgentBase == null || num2 < num)
+				if (unitMovementAgent == null || num2 < num)
 				{
-					unitMovementAgentBase = unitMovementAgentBase2;
+					unitMovementAgent = unitContact;
 					num = num2;
 				}
 			}
 		}
-		return unitMovementAgentBase;
+		return unitMovementAgent;
 	}
 
-	private static IntersectionResult IntersectAllObstacles(IList<UnitMovementAgentBase> units, Vector3 s, Vector3 t)
+	private static IntersectionResult IntersectAllObstacles(IList<UnitMovementAgent> units, Vector3 s, Vector3 t)
 	{
 		IntersectionResult result = default(IntersectionResult);
 		for (int i = 0; i < units.Count; i++)
@@ -359,9 +355,9 @@ public static class ObstaclePathfinder
 		return result;
 	}
 
-	private static void IntersectObstacle([NotNull] UnitMovementAgentBase unit, Vector3 s, Vector3 t, ref IntersectionResult result, bool findClosestPoint)
+	private static void IntersectObstacle([NotNull] UnitMovementAgent unit, Vector3 s, Vector3 t, ref IntersectionResult result, bool findClosestPoint)
 	{
-		if (unit.AvoidanceDisabled || s_IgnoredObstacles.Contains(unit) || IsSoftMode(s_Unit, unit) || unit.UnitContacts == null)
+		if (unit.AvoidanceDisabled || s_IgnoredObstacles.Contains(unit) || IsSoftMode(s_Unit, unit) || !unit.GetUnitContacts().Any())
 		{
 			return;
 		}
@@ -370,23 +366,22 @@ public static class ObstaclePathfinder
 		{
 			return;
 		}
-		for (int i = 0; i < unit.UnitContacts.Count; i++)
+		foreach (UnitMovementAgent unitContact in unit.GetUnitContacts())
 		{
-			UnitMovementAgentBase unitMovementAgentBase = unit.UnitContacts[i];
-			if (s_IgnoredObstacles.Contains(unitMovementAgentBase))
+			if (s_IgnoredObstacles.Contains(unitContact))
 			{
 				continue;
 			}
 			if (findClosestPoint)
 			{
 				bool intersects;
-				Vector3 vector = VectorMath.SegmentIntersectionPointXZ(s, t, unit.transform.position, unitMovementAgentBase.transform.position, out intersects);
+				Vector3 vector = VectorMath.SegmentIntersectionPointXZ(s, t, unit.transform.position, unitContact.transform.position, out intersects);
 				if (intersects)
 				{
-					result.Update(vector, (s - vector).sqrMagnitude, unit, unitMovementAgentBase);
+					result.Update(vector, (s - vector).sqrMagnitude, unit, unitContact);
 				}
 			}
-			else if (VectorMath.SegmentsIntersectXZ(s, t, unit.transform.position, unitMovementAgentBase.transform.position))
+			else if (VectorMath.SegmentsIntersectXZ(s, t, unit.transform.position, unitContact.transform.position))
 			{
 				result.HasIntersection = true;
 				break;
@@ -394,7 +389,7 @@ public static class ObstaclePathfinder
 		}
 	}
 
-	private static bool IsSoftMode(UnitMovementAgentBase u1, UnitMovementAgentBase u2)
+	private static bool IsSoftMode(UnitMovementAgent u1, UnitMovementAgent u2)
 	{
 		PartFaction partFaction = ((!(u1.Unit != null)) ? null : u1.Unit.EntityData?.GetFactionOptional());
 		PartFaction partFaction2 = ((!(u2.Unit != null)) ? null : u2.Unit.EntityData?.GetFactionOptional());

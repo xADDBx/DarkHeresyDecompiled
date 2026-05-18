@@ -18,11 +18,16 @@ public class WaaaghPipelineAsset : RenderPipelineAsset<WaaaghPipeline>, IProbeVo
 
 	internal const int k_ShadowCascadeMaxCount = 4;
 
+	public const int kUnhandledExceptionLockThreshold = 3;
+
+	[NonSerialized]
+	private int m_UnhandledExceptionCounter;
+
 	private PipelineRuntimeResources m_RuntimeResources;
 
 	private Shader m_DefaultShader;
 
-	private ScriptableRenderer[] m_Renderers = new ScriptableRenderer[1];
+	private IPipelineRenderer[] m_Renderers = new IPipelineRenderer[1];
 
 	[Header("Renderer")]
 	[SerializeField]
@@ -286,7 +291,7 @@ public class WaaaghPipelineAsset : RenderPipelineAsset<WaaaghPipeline>, IProbeVo
 		}
 	}
 
-	public ScriptableRenderer ScriptableRenderer
+	public IPipelineRenderer ScriptableRenderer
 	{
 		get
 		{
@@ -366,7 +371,22 @@ public class WaaaghPipelineAsset : RenderPipelineAsset<WaaaghPipeline>, IProbeVo
 	[Obsolete("This property is no longer necessary.")]
 	public ProbeVolumeSceneData probeVolumeSceneData => null;
 
-	public ScriptableRenderer GetRenderer(int index)
+	public bool UnhandledExceptionLockActive()
+	{
+		return m_UnhandledExceptionCounter >= 3;
+	}
+
+	public void ResetUnhandledExceptionCounter()
+	{
+		m_UnhandledExceptionCounter = 0;
+	}
+
+	public void IncrementUnhandledExceptionCounter()
+	{
+		m_UnhandledExceptionCounter++;
+	}
+
+	public IPipelineRenderer GetRenderer(int index)
 	{
 		if (index == -1)
 		{
@@ -425,7 +445,7 @@ public class WaaaghPipelineAsset : RenderPipelineAsset<WaaaghPipeline>, IProbeVo
 		DestroyRenderers();
 		if (m_Renderers == null || m_Renderers.Length != m_RendererDataList.Length)
 		{
-			m_Renderers = new ScriptableRenderer[m_RendererDataList.Length];
+			m_Renderers = new IPipelineRenderer[m_RendererDataList.Length];
 		}
 		for (int i = 0; i < m_RendererDataList.Length; i++)
 		{
@@ -447,7 +467,7 @@ public class WaaaghPipelineAsset : RenderPipelineAsset<WaaaghPipeline>, IProbeVo
 		}
 	}
 
-	private void DestroyRenderer(ref ScriptableRenderer renderer)
+	private void DestroyRenderer(ref IPipelineRenderer renderer)
 	{
 		if (renderer != null)
 		{

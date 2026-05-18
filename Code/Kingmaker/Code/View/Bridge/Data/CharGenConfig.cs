@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
@@ -15,7 +14,7 @@ public class CharGenConfig
 
 	public readonly CharGenCompanionType CompanionType;
 
-	private bool m_IsCustomCompanionChargen;
+	private readonly bool m_IsCustomCompanionChargen;
 
 	public Action OnClose { get; private set; }
 
@@ -23,7 +22,7 @@ public class CharGenConfig
 
 	public Action EnterNewGameAction { get; private set; }
 
-	public Action OnCloseSoundAction { get; private set; }
+	public CharGenSoundActions SoundActions { get; private set; }
 
 	public Action OnShowNewGameAction { get; private set; }
 
@@ -48,9 +47,9 @@ public class CharGenConfig
 		return this;
 	}
 
-	public CharGenConfig SetOnCloseSoundAction(Action onCloseSoundAction)
+	public CharGenConfig SetSoundActions(CharGenSoundActions soundActions)
 	{
-		OnCloseSoundAction = onCloseSoundAction;
+		SoundActions = soundActions;
 		return this;
 	}
 
@@ -76,16 +75,6 @@ public class CharGenConfig
 	{
 		if (!IsUIForbidden)
 		{
-			switch (Mode)
-			{
-			case CharGenMode.LevelUp:
-				Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.LevelUp).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
-				break;
-			case CharGenMode.NewGame:
-			case CharGenMode.NewCompanion:
-				Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.CharGen).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
-				return;
-			}
 			EventBus.RaiseEvent(delegate(ICharGenInitiateUIHandler h)
 			{
 				h.HandleStartCharGen(this, m_IsCustomCompanionChargen);

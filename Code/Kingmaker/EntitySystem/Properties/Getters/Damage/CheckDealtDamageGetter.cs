@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Mechanics.Damage;
@@ -14,7 +15,7 @@ public class CheckDealtDamageGetter : CheckDamageGetter, PropertyContextAccessor
 {
 	protected override bool Check(out DamageType type, out IntermediateDamage data, out RulebookEvent rule)
 	{
-		rule = this.GetRule();
+		rule = EvalContext.Current.Rule;
 		RuleDealDamage ruleDealDamage = (rule as RuleDealDamage) ?? throw new ElementLogicException(this);
 		data = ruleDealDamage.RollDamageRule.Damage;
 		type = data?.Type ?? DamageType.None;

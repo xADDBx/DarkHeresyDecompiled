@@ -4,6 +4,7 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -22,9 +23,9 @@ public class UnitJoinedCombatTrigger : UnitFactComponentDelegate, IUnitCombatHan
 
 	public void RunActions()
 	{
-		using (base.Fact.MaybeContext?.SetScope(base.OwnerTargetWrapper))
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 		{
-			base.Fact.RunActionInContext(Actions, base.OwnerTargetWrapper);
+			base.Fact.RunActionInContext(Actions, base.Owner);
 		}
 	}
 

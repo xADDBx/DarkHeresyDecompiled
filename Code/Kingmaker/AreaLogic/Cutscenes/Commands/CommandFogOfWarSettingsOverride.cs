@@ -33,43 +33,53 @@ public class CommandFogOfWarSettingsOverride : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		if (!(FogOfWarSettings.Instance == null))
+		if (FogOfWarSettings.Instance == null)
 		{
-			FogOfWarSettingsOverride fogOfWarSettingsOverride = new FogOfWarSettingsOverride(FogOfWarSettings.Instance);
-			if (OverrideColor)
-			{
-				fogOfWarSettingsOverride.Color.r = Color.r;
-				fogOfWarSettingsOverride.Color.g = Color.g;
-				fogOfWarSettingsOverride.Color.b = Color.b;
-			}
-			if (OverrideColorAlpha)
-			{
-				fogOfWarSettingsOverride.Color.a = ColorAlpha;
-			}
-			if (OverrideOuterRadius)
-			{
-				fogOfWarSettingsOverride.RevealerOuterRadius = RevealerOuterRadius;
-			}
-			FogOfWarSettings.Instance.SetOverride(fogOfWarSettingsOverride);
+			return CommandResult.Fail("Fog of war settings not found");
 		}
+		FogOfWarSettingsOverride fogOfWarSettingsOverride = new FogOfWarSettingsOverride(FogOfWarSettings.Instance);
+		if (OverrideColor)
+		{
+			fogOfWarSettingsOverride.Color.r = Color.r;
+			fogOfWarSettingsOverride.Color.g = Color.g;
+			fogOfWarSettingsOverride.Color.b = Color.b;
+		}
+		if (OverrideColorAlpha)
+		{
+			fogOfWarSettingsOverride.Color.a = ColorAlpha;
+		}
+		if (OverrideOuterRadius)
+		{
+			fogOfWarSettingsOverride.RevealerOuterRadius = RevealerOuterRadius;
+		}
+		FogOfWarSettings.Instance.SetOverride(fogOfWarSettingsOverride);
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		if (FogOfWarSettings.Instance != null)
 		{
 			FogOfWarSettings.Instance.ClearOverride();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)

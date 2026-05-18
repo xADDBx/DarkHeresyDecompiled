@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Mechanics.Entities;
+using Kingmaker.PubSubSystem.Core;
 
 namespace Kingmaker.Framework.Interaction;
 
@@ -33,6 +34,8 @@ public abstract class InteractionProcess
 	protected AbstractUnitEntity? User => m_User;
 
 	protected MapObjectEntity? Target => m_Target;
+
+	protected IEntityEventBus EventBus => Target?.EventBus ?? throw new InvalidOperationException();
 
 	protected InteractionProcess(AbstractUnitEntity user, MapObjectEntity target)
 	{

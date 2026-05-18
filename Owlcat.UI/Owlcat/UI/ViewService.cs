@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
+using R3;
+using UnityEngine.Pool;
 
 namespace Owlcat.UI;
 
@@ -110,9 +111,9 @@ public sealed class ViewService : IDisposable
 			catch (OperationCanceledException)
 			{
 			}
-			catch (Exception exception)
+			catch (Exception message)
 			{
-				Debug.LogException(exception);
+				UIKitLogger.Exception(message);
 			}
 			finally
 			{
@@ -161,6 +162,15 @@ public sealed class ViewService : IDisposable
 	public void Add<T>(T source)
 	{
 		m_Items.Add(source, new Item<T>(this, source));
+		if (source is ViewModel viewModel)
+		{
+			Disposable.Create(viewModel, OnViewModelDisposed).AddTo(viewModel);
+		}
+	}
+
+	private void OnViewModelDisposed<T>(T source)
+	{
+		Remove(source, dispose: false);
 	}
 
 	public void Remove<T>(T source, bool dispose)
@@ -173,10 +183,15 @@ public sealed class ViewService : IDisposable
 
 	void IDisposable.Dispose()
 	{
-		foreach (Item value in m_Items.Values)
+		List<Item> value;
+		using (CollectionPool<List<Item>, Item>.Get(out value))
 		{
-			value.Dispose(disposeSourceAfterTransition: false);
+			value.AddRange(m_Items.Values);
+			m_Items.Clear();
+			foreach (Item item in value)
+			{
+				item.Dispose(disposeSourceAfterTransition: false);
+			}
 		}
-		m_Items.Clear();
 	}
 }

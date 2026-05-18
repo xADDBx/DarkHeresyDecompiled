@@ -1,12 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Settings;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class PrerequisiteEntryVM : BaseDisposable, IViewModel, IBaseDisposable, IDisposable
+public class PrerequisiteEntryVM : ViewModel
 {
 	public readonly bool IsGroup;
 
@@ -14,23 +12,16 @@ public class PrerequisiteEntryVM : BaseDisposable, IViewModel, IBaseDisposable, 
 
 	public readonly List<PrerequisiteEntryVM> Prerequisites;
 
-	public readonly string Text;
-
-	public readonly string Value;
+	public readonly TextValueElement Info;
 
 	public readonly bool Done;
 
 	public readonly bool Inverted;
 
-	public readonly float FontMultiplier = FontSizeMultiplier;
-
-	private static float FontSizeMultiplier => SettingsRoot.Accessiability.FontSizeMultiplier;
-
-	public PrerequisiteEntryVM(string text, bool done, bool inverted, string value = null)
+	public PrerequisiteEntryVM(TextValueElement info, bool done, bool inverted)
 	{
 		IsGroup = false;
-		Text = text;
-		Value = value ?? string.Empty;
+		Info = info;
 		Done = done;
 		Inverted = inverted;
 	}
@@ -40,10 +31,6 @@ public class PrerequisiteEntryVM : BaseDisposable, IViewModel, IBaseDisposable, 
 		IsGroup = true;
 		IsOrComposition = isOrComposition;
 		Prerequisites = prerequisites;
-		Text = string.Join("\n", prerequisites.Select((PrerequisiteEntryVM p) => p.Text));
-	}
-
-	protected override void DisposeImplementation()
-	{
+		Info = new TextValueElement(string.Join("\n", prerequisites.Select((PrerequisiteEntryVM p) => p.Info.Text)));
 	}
 }

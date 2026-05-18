@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
 using UnityEngine;
@@ -64,13 +63,5 @@ public class LootSlotConsoleView : LootSlotView, IConsoleNavigationEntity, ICons
 	public List<TooltipBaseTemplate> TooltipTemplates()
 	{
 		return m_ItemSlotConsoleView.SlotVM?.Tooltip?.CurrentValue;
-	}
-
-	protected void HandleToCargoAutomaticallyChanged()
-	{
-		if (base.ViewModel.Item.CurrentValue != null)
-		{
-			m_ToCargoAuto.SetNewIcon(base.ViewModel.Item.CurrentValue.ToCargoAutomatically ? ConfigRoot.Instance.UIConfig.UIIcons.Check : ConfigRoot.Instance.UIConfig.UIIcons.NotCheck);
-		}
 	}
 }

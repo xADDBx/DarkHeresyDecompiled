@@ -1,8 +1,8 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Sound.Base;
-using Kingmaker.View;
 using Kingmaker.View.Spawners;
 using Kingmaker.Visual.Sound;
 using Owlcat.Runtime.Core.Utility;
@@ -57,13 +57,13 @@ public class Play3DSound : GameAction
 		}
 		else
 		{
-			EntityViewBase entityViewBase = (EntityViewBase)(soundSourceObject?.FindView());
-			if (!entityViewBase)
+			IEntity entity = soundSourceObject.FindData();
+			if (entity == null)
 			{
 				Element.LogError(context, "Target object for sound play is NULL");
 				return;
 			}
-			if (entityViewBase is UnitSpawnerBase { SpawnedUnit: var spawnedUnit })
+			if (entity is AbstractUnitSpawnerEntity { SpawnedUnit: var spawnedUnit })
 			{
 				if (spawnedUnit == null)
 				{
@@ -73,7 +73,7 @@ public class Play3DSound : GameAction
 			}
 			else
 			{
-				gameObject = entityViewBase.gameObject;
+				gameObject = entity.View?.AsEntityView()?.gameObject;
 			}
 		}
 		if (setSex)

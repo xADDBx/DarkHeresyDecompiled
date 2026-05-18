@@ -25,13 +25,13 @@ public class ContextActionProjectileFx : ContextAction
 	{
 		if (!base.Context.DisableFx)
 		{
-			if (base.Context.MaybeCaster == null)
+			if (base.Context.Caster == null)
 			{
 				Element.LogError(this, "Caster is missing");
 			}
 			else
 			{
-				new ProjectileLauncher(Projectile, base.Context.MaybeCaster, base.Target).Ability(base.AbilityContext?.Ability).Launch();
+				new ProjectileLauncher(Projectile, base.Context.Caster, base.Target).Ability(base.Context.Ability).Launch();
 			}
 		}
 	}

@@ -44,7 +44,7 @@ public class LevelUpFxController : IController, IUnitCombatHandler, ISubscriber<
 		}
 	}
 
-	private void PlaySoundFx(IEntityViewBase playerView)
+	private void PlaySoundFx(IEntityView playerView)
 	{
 		if (string.IsNullOrEmpty(m_SoundFx))
 		{

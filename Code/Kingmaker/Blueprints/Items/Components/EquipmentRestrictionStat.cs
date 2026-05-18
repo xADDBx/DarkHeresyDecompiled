@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -30,8 +31,8 @@ public class EquipmentRestrictionStat : EquipmentRestriction
 	{
 		if (m_ChangeRestrictionStatIfHasFact && unit.Facts.Contains(m_Fact.Get()))
 		{
-			return unit.GetStatOptional(Stat)?.ModifiedValue >= MinValue - m_SubtractionValue;
+			return (int)unit.Actor.GetStat(Stat, null, default(StatContext), "CanBeEquippedBy") >= MinValue - m_SubtractionValue;
 		}
-		return unit.GetStatOptional(Stat)?.ModifiedValue >= MinValue;
+		return (int)unit.Actor.GetStat(Stat, null, default(StatContext), "CanBeEquippedBy") >= MinValue;
 	}
 }

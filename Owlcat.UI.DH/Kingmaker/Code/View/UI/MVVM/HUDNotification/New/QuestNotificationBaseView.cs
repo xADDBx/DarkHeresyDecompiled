@@ -25,7 +25,7 @@ public class QuestNotificationBaseView<T> : View<T>, IInitializable, INotificati
 	[SerializeField]
 	protected OwlcatMultiButton CloseButton;
 
-	protected IDisposable HideDisposable;
+	protected IDisposable m_HideDisposable;
 
 	public bool IsEmpty => base.ViewModel == null;
 
@@ -51,7 +51,7 @@ public class QuestNotificationBaseView<T> : View<T>, IInitializable, INotificati
 		SetupHideTimer();
 		PointerBlocker.OnPointerEnterAsObservable().Subscribe(delegate
 		{
-			HideDisposable?.Dispose();
+			m_HideDisposable?.Dispose();
 		}).AddTo(this);
 		PointerBlocker.OnPointerExitAsObservable().Subscribe(delegate
 		{
@@ -69,8 +69,8 @@ public class QuestNotificationBaseView<T> : View<T>, IInitializable, INotificati
 
 	protected void SetupHideTimer()
 	{
-		HideDisposable?.Dispose();
-		HideDisposable = NotificationUtils.DoActionAfterDelay(NotificationUtils.Time, Hide).AddTo(this);
+		m_HideDisposable?.Dispose();
+		m_HideDisposable = NotificationUtils.DoActionAfterDelay(NotificationUtils.Time, Hide).AddTo(this);
 	}
 
 	public void Hide()
@@ -79,7 +79,7 @@ public class QuestNotificationBaseView<T> : View<T>, IInitializable, INotificati
 		NotificationUtils.DoActionAfterDelay(FadeAnimator.DisappearTime, base.ViewModel.Dispose).AddTo(this);
 	}
 
-	protected virtual BlueprintUISound.UISound GetSound()
+	protected virtual UISound GetSound()
 	{
 		return UISounds.Instance.Sounds.DoNothingEvent;
 	}

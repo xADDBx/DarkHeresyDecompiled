@@ -8,7 +8,7 @@ using Kingmaker.Code.Framework.VO;
 using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
@@ -84,7 +84,6 @@ public class DetectiveEpilogVM : ViewModel, IBookPageHandler, ISubscriber, IBook
 	{
 		m_IsFirstCueInAllBookEvent = true;
 		EventBus.Subscribe(this).AddTo(this);
-		new DialogNotificationsVM().AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
 			OnUpdate();
@@ -233,7 +232,7 @@ public class DetectiveEpilogVM : ViewModel, IBookPageHandler, ISubscriber, IBook
 		return false;
 	}
 
-	private void SetMirror(BlueprintBookPage page)
+	private void SetMirror(BlueprintBookPage _)
 	{
 		m_Mirror.Value = Game.Instance.Player.MainCharacterEntity.Portrait.FullLengthPortrait;
 	}

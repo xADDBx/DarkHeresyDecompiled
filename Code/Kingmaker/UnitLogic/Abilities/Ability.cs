@@ -97,6 +97,9 @@ public sealed class Ability : MechanicEntityFact, IHashable, IOwlPackable<Abilit
 
 	public IEnumerable<BlueprintAbilityModifier> Modifiers => m_Modifiers.EmptyIfNull();
 
+	[CanBeNull]
+	public BlueprintAbilityModifier PlayerAssignedModifier => base.Owner?.GetOptional<PartAbilityModifiers>()?.GetManuallyAddedModifier(this);
+
 	public Ability(BlueprintAbility blueprint, int indexInItemSettings = 0)
 		: base(blueprint, null)
 	{

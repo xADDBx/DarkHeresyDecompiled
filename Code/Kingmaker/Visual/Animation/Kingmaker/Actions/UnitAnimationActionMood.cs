@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.DialogSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
@@ -42,7 +42,7 @@ public class UnitAnimationActionMood : UnitAnimationAction
 
 	public override void OnStart(UnitAnimationActionHandle handle)
 	{
-		handle.AnimationLayer = AnimationLayerType.Mood;
+		handle.AnimationLayer = UnitAnimationLayerType.Mood;
 		ActionData actionData = new ActionData();
 		if (handle.Unit.Or(null)?.Data is UnitEntity entity)
 		{

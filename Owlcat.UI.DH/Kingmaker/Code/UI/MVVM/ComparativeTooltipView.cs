@@ -1,25 +1,40 @@
+using System;
 using System.Collections.Generic;
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Sound;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 {
+	[Serializable]
+	private struct LayoutsPair
+	{
+		public RectTransform VerticalLayout;
+
+		public RectTransform HorizontalLayout;
+	}
+
+	[SerializeField]
+	private HorizontalOrVerticalLayoutGroup m_Layout;
+
+	[SerializeField]
+	private RectTransform m_TooltipContainer;
+
 	[SerializeField]
 	private TooltipBaseView m_TooltipView;
 
 	[SerializeField]
-	private RectTransform m_MainTooltipContainer;
+	private LayoutsPair m_MainLayouts;
 
 	[SerializeField]
-	private RectTransform m_ComparativeTooltipContainer;
+	private LayoutsPair m_ComparativeLayouts;
 
 	private readonly List<TooltipBaseView> m_Widgets = new List<TooltipBaseView>();
 
@@ -31,7 +46,25 @@ public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 
 	private bool m_IsInit;
 
+	private RectTransform m_MainTooltipContainer;
+
+	private RectTransform m_ComparativeTooltipContainer;
+
 	private CanvasGroup CanvasGroup => m_CanvasGroup ?? (m_CanvasGroup = base.gameObject.EnsureComponent<CanvasGroup>());
+
+	protected bool UseVerticalMainLayout
+	{
+		get
+		{
+			if (base.ViewModel.MainTooltips.Count > 1)
+			{
+				return base.ViewModel.CompareTooltips.Count > 0;
+			}
+			return false;
+		}
+	}
+
+	protected bool UseVerticalComparativeLayout => base.ViewModel.CompareTooltips.Count > 1;
 
 	public void Awake()
 	{
@@ -45,25 +78,28 @@ public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 	protected override void OnBind()
 	{
 		base.OnBind();
-		CreateTooltip(base.ViewModel.MainTooltip, isMain: true);
-		for (int i = 0; i < base.ViewModel.TooltipVms.Count - 1; i++)
+		m_MainTooltipContainer = GetTooltipsContainer(isMain: true);
+		m_ComparativeTooltipContainer = GetTooltipsContainer(isMain: false);
+		foreach (TooltipVM mainTooltip in base.ViewModel.MainTooltips)
 		{
-			TooltipVM tooltipVM = base.ViewModel.TooltipVms[i];
-			CreateTooltip(tooltipVM, isMain: false);
+			CreateTooltip(mainTooltip, m_MainTooltipContainer);
+		}
+		foreach (TooltipVM compareTooltip in base.ViewModel.CompareTooltips)
+		{
+			CreateTooltip(compareTooltip, m_ComparativeTooltipContainer);
 		}
 		base.gameObject.SetActive(value: true);
 		CanvasGroup.alpha = 0f;
 		DelayedInvoker.InvokeInTime(delegate
 		{
-			Show();
+			Show(base.ViewModel.Source);
 		}, 0.2f).AddTo(this);
 	}
 
-	private void CreateTooltip(TooltipVM tooltipVM, bool isMain)
+	private void CreateTooltip(TooltipVM tooltipVM, RectTransform parentContainer)
 	{
-		RectTransform parent = (isMain ? m_MainTooltipContainer : GetComparativeContainer());
 		TooltipBaseView widget = WidgetFactory.GetWidget(m_TooltipView);
-		widget.transform.SetParent(parent, worldPositionStays: false);
+		widget.transform.SetParent(parentContainer, worldPositionStays: false);
 		widget.Bind(tooltipVM);
 		m_Widgets.Add(widget);
 	}
@@ -73,7 +109,7 @@ public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 		base.OnUnbind();
 		if (m_IsShowed)
 		{
-			UISounds.Instance.Sounds.Tooltip.TooltipHide.Play();
+			ModalWindowsSounds.Instance.Tooltip.Hide.Play();
 		}
 		m_IsShowed = false;
 		m_Widgets.ForEach(WidgetFactory.DisposeWidget);
@@ -82,28 +118,41 @@ public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 		base.gameObject.SetActive(value: false);
 		m_ShowTween?.Kill();
 		m_ShowTween = null;
+		m_MainTooltipContainer = null;
+		m_ComparativeTooltipContainer = null;
 	}
 
-	protected void Show(List<Vector2> forcedPivots = null)
+	private void Show(Transform source, List<Vector2> forcedPivots = null)
 	{
-		UIUtilityRect.SetPopupWindowPosition(m_MainTooltipContainer, base.ViewModel.MainOwnerTransform, Vector2.zero, forcedPivots ?? base.ViewModel.MainTooltip.PriorityPivots);
-		if ((bool)m_ComparativeTooltipContainer)
-		{
-			UIUtilityRect.SetPopupWindowPosition(m_ComparativeTooltipContainer, base.ViewModel.ComparativeOwnerTransform, Vector2.zero, base.ViewModel.FirstCompareTooltip?.PriorityPivots);
-		}
+		UIUtilityRect.SetPopupWindowPosition(m_TooltipContainer, source, Vector2.zero, forcedPivots ?? base.ViewModel.FirstMainTooltip.PriorityPivots);
+		UpdateContainersOrder(source);
 		m_ShowTween = CanvasGroup.DOFade(1f, 0.2f).OnComplete(delegate
 		{
-			UISounds.Instance.Sounds.Tooltip.TooltipShow.Play();
+			ModalWindowsSounds.Instance.Tooltip.Show.Play();
 			m_IsShowed = true;
 		}).SetUpdate(isIndependentUpdate: true);
 	}
 
-	private RectTransform GetComparativeContainer()
+	private void UpdateContainersOrder(Transform source)
 	{
-		if (!(base.ViewModel.MainOwnerTransform == base.ViewModel.ComparativeOwnerTransform) && !(m_ComparativeTooltipContainer == null))
+		bool reverseArrangement = m_TooltipContainer.InverseTransformPoint(source.position).x > 0f;
+		m_Layout.reverseArrangement = reverseArrangement;
+	}
+
+	private RectTransform GetTooltipsContainer(bool isMain)
+	{
+		if (isMain)
 		{
-			return m_ComparativeTooltipContainer;
+			if (!UseVerticalMainLayout)
+			{
+				return m_MainLayouts.HorizontalLayout;
+			}
+			return m_MainLayouts.VerticalLayout;
 		}
-		return m_MainTooltipContainer;
+		if (!UseVerticalComparativeLayout)
+		{
+			return m_ComparativeLayouts.HorizontalLayout;
+		}
+		return m_ComparativeLayouts.VerticalLayout;
 	}
 }

@@ -6,6 +6,7 @@ using UnityEngine;
 namespace Kingmaker.Code.Gameplay.Controllers.DetectiveRadar;
 
 [RequireComponent(typeof(EntityViewBase))]
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("625a189bbfe14969982ba674d90712b1")]
 public class DetectiveClueSignalComponent : EntityPartComponent<DetectiveClueSignalPart, DetectiveRadarSignalSettings>
 {

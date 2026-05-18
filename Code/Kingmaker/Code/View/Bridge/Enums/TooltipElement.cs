@@ -77,7 +77,9 @@ public enum TooltipElement
 	DamageReduction,
 	[Obsolete("Defence")]
 	ArmorDodgePenalty,
+	[Obsolete("HitChance")]
 	SingleAdditionalHitChance,
+	[Obsolete("HitChance")]
 	BurstAdditionalHitChance,
 	AoeAdditionalHitChance,
 	WeaponFamily,
@@ -91,5 +93,8 @@ public enum TooltipElement
 	BaseDamage,
 	Replenishing,
 	RateOfFireMelee,
-	Durability
+	Durability,
+	OverpenetrationChance,
+	Recoil,
+	HitChance
 }

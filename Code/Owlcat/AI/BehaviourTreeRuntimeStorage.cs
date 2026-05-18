@@ -24,6 +24,7 @@ public class BehaviourTreeRuntimeStorage
 	private static void UpdateBehaviourTreeConfig()
 	{
 		BehaviourTreeConfig.TimeProvider = new SimulationBehaviourTreeTimeProvider();
+		BehaviourTreeConfig.RandomProvider = new SimulationBehaviourTreeRandomProvider();
 		BehaviourTreeConfig.Logger = new BehaviourTreeLogger();
 		BehaviourTreeConfig.BreakpointHandlingType = BreakpointHandlingType.Immediate;
 		BehaviourTreeConfig.Features.LogicalBranchesEnabled = true;

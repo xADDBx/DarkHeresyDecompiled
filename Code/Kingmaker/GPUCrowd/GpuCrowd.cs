@@ -40,6 +40,10 @@ public class GpuCrowd : MonoBehaviour
 
 	public static int RotationFromMapBoolId = Shader.PropertyToID("RotationFromMap");
 
+	public static int BoundsCenterVector3Id = Shader.PropertyToID("BoundsCenter");
+
+	public static int BoundsSizeVector3Id = Shader.PropertyToID("BoundsSize");
+
 	public const float EMITTER_GRID_CELL_SIZE = 5f;
 
 	public VisualEffect CrowdVfx;

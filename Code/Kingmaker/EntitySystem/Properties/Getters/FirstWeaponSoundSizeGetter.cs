@@ -16,6 +16,6 @@ public class FirstWeaponSoundSizeGetter : IntPropertyGetter
 
 	protected override int GetBaseValue()
 	{
-		return (int)(base.CurrentEntity.GetFirstWeapon()?.Blueprint.VisualParameters.SoundSizeSwitch.ValueHash ?? 0);
+		return 0;
 	}
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Enums.Helper;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.Clicks.Handlers;
@@ -14,6 +14,7 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Pathfinding;
 using Kingmaker.GameCommands;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Features.AreaEffects;
@@ -58,6 +59,10 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	[SerializeField]
 	private CombatHudPathRenderer m_PathRenderer;
 
+	[SerializeField]
+	[Tooltip("Marker for free cels for movement of selected character and selected path")]
+	private GameObject freeCellDecalPrefab;
+
 	[Header("PathDecal")]
 	[SerializeField]
 	private GameObject m_PathEndDecal;
@@ -67,21 +72,17 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 
 	private GameObject m_CreatedPathEndDecal;
 
+	private List<GameObject> m_CreatedFreeCellDecals = new List<GameObject>();
+
 	[Header("PredictDecal")]
 	[SerializeField]
 	private PointerCellDecal m_PointerCellDecal;
-
-	[SerializeField]
-	private PointerCellDecal m_PointerCellDecalSpace;
 
 	private PointerCellDecal m_CreatedPointerCellDecal;
 
 	[Header("PingDecal")]
 	[SerializeField]
 	private GameObject m_PingDecal;
-
-	[SerializeField]
-	private GameObject m_SpacePingDecal;
 
 	private readonly GameObject[] m_CreatedPingDecals = new GameObject[6];
 
@@ -92,14 +93,16 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	[SerializeField]
 	private Color m_SuicideDecalColor;
 
-	[Header("SpacePathDecal")]
-	[SerializeField]
-	private GameObject m_SpacePathEndDecal;
-
-	[SerializeField]
-	private Color m_SpacePathEndDecalColor;
-
 	private GameObject m_CreatedSuicideDecal;
+
+	[Header("ThreateningPathDecal")]
+	[SerializeField]
+	private GameObject m_ThreateningPathEndDecal;
+
+	[SerializeField]
+	private Color m_ThreateningPathEndDecalColor;
+
+	private GameObject m_CreatedThreateningPathEndDecal;
 
 	private CameraRig m_CameraRig;
 
@@ -135,8 +138,6 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 
 	private ForcedPath m_ForcedPathCached;
 
-	private float[] m_ApCostPerEveryCellCached;
-
 	private bool m_AbilityHover;
 
 	private int m_HoverUpdateDelayCounter;
@@ -148,6 +149,12 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	private bool m_PathHidden;
 
 	private readonly Dictionary<NetPlayer, PingData> m_PlayerPingData = new Dictionary<NetPlayer, PingData>();
+
+	private bool m_CurrentPathHasThreats;
+
+	private BaseUnitEntity m_CurrentAimHoverTarget;
+
+	private bool m_CachedCanTargetForActionType;
 
 	public List<Vector3> PointerCellDecalCornersPositions => m_CreatedPointerCellDecal.Or(null)?.CornersPositions ?? new List<Vector3> { PointerWorldCorrectedPosition };
 
@@ -191,6 +198,58 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 
 	public float MemorizedPathCost => m_MemorizedPaths.Values.FirstOrDefault()?.PathCost ?? 0f;
 
+	private void CreateFreeCellDecals(GraphNode node)
+	{
+		foreach (GameObject createdFreeCellDecal in m_CreatedFreeCellDecals)
+		{
+			if (!createdFreeCellDecal.activeSelf)
+			{
+				createdFreeCellDecal.transform.position = node.Vector3Position();
+				createdFreeCellDecal.SetActive(value: true);
+				return;
+			}
+		}
+		GameObject item = UnityEngine.Object.Instantiate(freeCellDecalPrefab, node.Vector3Position(), Quaternion.identity, base.transform);
+		m_CreatedFreeCellDecals.Add(item);
+	}
+
+	private void ClearFreeCellDecals()
+	{
+		foreach (GameObject createdFreeCellDecal in m_CreatedFreeCellDecals)
+		{
+			createdFreeCellDecal.SetActive(value: false);
+		}
+	}
+
+	private void UpdateFreeCellDecals(Path path, bool tooFarForUnit = false)
+	{
+		if (freeCellDecalPrefab == null)
+		{
+			PFLog.UI.Error("Null free movement node decal prefab in " + base.gameObject.name, this);
+			return;
+		}
+		foreach (GameObject createdFreeCellDecal in m_CreatedFreeCellDecals)
+		{
+			createdFreeCellDecal.SetActive(value: false);
+		}
+		if (tooFarForUnit)
+		{
+			return;
+		}
+		List<GraphNode> list = new List<GraphNode>();
+		foreach (GraphNode item in path.path)
+		{
+			if (item is GridNodeBase && WarhammerPathCostModifier.Get((AbstractUnitEntity)Game.Instance.Controllers.TurnController.CurrentUnit).IsFree(item))
+			{
+				list.Add(item);
+			}
+		}
+		foreach (GraphNode item2 in list)
+		{
+			CreateFreeCellDecals(item2);
+		}
+	}
+
 	private void Awake()
 	{
 		Instance = this;
@@ -221,6 +280,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	{
 		UnityEngine.Object.Destroy(m_CreatedPathEndDecal);
 		UnityEngine.Object.Destroy(m_CreatedSuicideDecal);
+		UnityEngine.Object.Destroy(m_CreatedThreateningPathEndDecal);
 		UnityEngine.Object.Destroy(m_CreatedPointerCellDecal.gameObject);
 		m_CreatedPingDecals.ForEach(UnityEngine.Object.Destroy);
 		m_UpdateTaskCancelToken.Cancel();
@@ -231,34 +291,53 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		m_ShouldHide = false;
 		List<Color> coopPlayersPingsColors = ConfigRoot.Instance.UIConfig.CoopPlayersPingsColors;
 		int num = Math.Min(m_CreatedPingDecals.Length, coopPlayersPingsColors.Count);
-		if (Game.Instance.IsSpaceCombat)
+		m_CreatedPathEndDecal = CreateDecal(m_PathEndDecal, m_PathEndDecalColor);
+		for (int i = 0; i < num; i++)
 		{
-			m_CreatedPathEndDecal = CreateDecal(m_SpacePathEndDecal, m_SpacePathEndDecalColor);
-			for (int i = 0; i < num; i++)
-			{
-				m_CreatedPingDecals[i] = CreateDecal(m_SpacePingDecal, coopPlayersPingsColors[i]);
-			}
-		}
-		else
-		{
-			m_CreatedPathEndDecal = CreateDecal(m_PathEndDecal, m_PathEndDecalColor);
-			for (int j = 0; j < num; j++)
-			{
-				m_CreatedPingDecals[j] = CreateDecal(m_PingDecal, coopPlayersPingsColors[j]);
-			}
+			m_CreatedPingDecals[i] = CreateDecal(m_PingDecal, coopPlayersPingsColors[i]);
 		}
 		m_CreatedSuicideDecal = CreateDecal(m_SuicideDecal, m_SuicideDecalColor);
-		m_CreatedPointerCellDecal = UnityEngine.Object.Instantiate((Game.Instance.CurrentModeType == GameModeType.SpaceCombat) ? m_PointerCellDecalSpace : m_PointerCellDecal, base.transform, worldPositionStays: true);
+		m_CreatedThreateningPathEndDecal = CreateDecal(m_ThreateningPathEndDecal, m_ThreateningPathEndDecalColor);
+		m_CreatedPointerCellDecal = UnityEngine.Object.Instantiate(m_PointerCellDecal, base.transform, worldPositionStays: true);
+		Renderer[] componentsInChildren = m_CreatedPointerCellDecal.GetComponentsInChildren<Renderer>(includeInactive: true);
+		for (int j = 0; j < componentsInChildren.Length; j++)
+		{
+			componentsInChildren[j].enabled = false;
+		}
 		m_UpdateTaskCancelToken.Cancel();
 	}
 
 	private void Update()
 	{
+		UpdateAimHoverTarget();
 		OnUpdate();
 		if (m_UpdateTask.IsCompleted)
 		{
 			m_UpdateTaskCancelToken = new CancellationTokenSource();
 			m_UpdateTask = OnUpdateAsync(m_UpdateTaskCancelToken.Token);
+		}
+	}
+
+	private void UpdateAimHoverTarget()
+	{
+		AbilityData selectedAbility = Game.Instance.CursorController.SelectedAbility;
+		if (selectedAbility == null)
+		{
+			m_CachedCanTargetForActionType = false;
+			SetAimHoverTarget(null);
+			return;
+		}
+		PointerController clickEventsController = Game.Instance.Controllers.ClickEventsController;
+		if (clickEventsController == null)
+		{
+			m_CachedCanTargetForActionType = false;
+			SetAimHoverTarget(null);
+		}
+		else
+		{
+			TargetWrapper targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, clickEventsController.WorldPosition);
+			m_CachedCanTargetForActionType = targetForDesiredPosition != null && selectedAbility.CanTargetFromDesiredPosition(targetForDesiredPosition);
+			SetAimHoverTarget(m_CachedCanTargetForActionType ? (targetForDesiredPosition.Entity as BaseUnitEntity) : null);
 		}
 	}
 
@@ -425,7 +504,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		m_CurrentDecalPosition = null;
 		if (Game.Instance.CursorController.SelectedAbility == null)
 		{
-			Game.Instance.CursorController.SetCursor(CursorType.Restricted);
+			Game.Instance.CursorController.SetInvalidCursor();
 		}
 		UpdatePredictState(null);
 	}
@@ -473,7 +552,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		PointerCellDecal.ActionType actionType;
 		if (selectedAbility == null)
 		{
-			actionType = (flag3 ? PointerCellDecal.ActionType.Unable : PointerCellDecal.ActionType.Move);
+			actionType = ((!flag3) ? (m_CurrentPathHasThreats ? PointerCellDecal.ActionType.MoveThreatening : PointerCellDecal.ActionType.Move) : PointerCellDecal.ActionType.Unable);
 			List<Vector3> list = m_MemorizedPaths.Values.FirstOrDefault()?.path?.vectorPath;
 			bool state = false;
 			if (list != null)
@@ -485,9 +564,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		}
 		else
 		{
-			PointerController clickEventsController = Game.Instance.Controllers.ClickEventsController;
-			TargetWrapper targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, clickEventsController.WorldPosition);
-			actionType = ((targetForDesiredPosition != null && selectedAbility.CanTargetFromDesiredPosition(targetForDesiredPosition)) ? PointerCellDecal.ActionType.Attack : PointerCellDecal.ActionType.Unable);
+			actionType = (m_CachedCanTargetForActionType ? PointerCellDecal.ActionType.Attack : PointerCellDecal.ActionType.Unable);
 		}
 		UpdateMoveMarker();
 		m_CreatedPointerCellDecal.SetActionType(actionType);
@@ -535,7 +612,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 					return;
 				}
 				Vector3 unitSizeOffset = m_SizeOffset;
-				UnitMovementAgentBase unitMovementAgent = unit.View.MovementAgent;
+				UnitMovementAgent unitMovementAgent = unit.View.MovementAgent;
 				using PathDisposable<WarhammerPathPlayer> pathDisposable = await PathfindingService.Instance.FindPathTB_Task(unitMovementAgent, position.Value - unitSizeOffset, -1, this);
 				token.ThrowIfCancellationRequested();
 				if (!m_MemorizedPaths.Empty())
@@ -551,8 +628,9 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 					return;
 				}
 				m_TooFarForUnit = cost > unit.CombatState.MovementPoints;
+				UpdateFreeCellDecals(warhammerPathPlayer, m_TooFarForUnit);
 				bool threateningStatus = warhammerPathPlayer.CalculatedPath[^1].IsOneWayPath || HasAttackOfOpportunityOnPath(unit, warhammerPathPlayer) || HasHarmfulEffectsOnPath(warhammerPathPlayer);
-				SetupActivePath(list, m_TooFarForUnit, threateningStatus, unitSizeOffset, unitMovementAgent);
+				SetupActivePath(list, m_TooFarForUnit, threateningStatus, unitSizeOffset, unitMovementAgent, unit.Blueprint.Size);
 				UpdateMoveMarker();
 				EventBus.RaiseEvent((IMechanicEntity)unit, (Action<IUnitPathManagerHandler>)delegate(IUnitPathManagerHandler h)
 				{
@@ -565,8 +643,9 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	public void AddPath(BaseUnitEntity unit, Path path, float apPerCell, float actionPointsBlue, bool oddDiagonal, float[] apCostPerEveryCell = null)
 	{
 		m_UnitCached = unit;
+		m_ForcedPathCached?.Release(this);
 		m_ForcedPathCached = (path as ForcedPath)?.Clone();
-		m_ApCostPerEveryCellCached = apCostPerEveryCell;
+		m_ForcedPathCached.Claim(this);
 		PathData pathData = CreatePathData(unit, path);
 		IntRect sizeRect = unit.SizeRect;
 		sizeRect.ymax = sizeRect.ymin + sizeRect.Width - 1;
@@ -594,13 +673,14 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		Vector3 vector = vectorPath[vectorPath.Count - 1];
 		GridNodeBase node = (GridNodeBase)AstarPath.active.GetNearest(vector).node;
 		BaseUnitEntity firstUnit = node.GetFirstUnit();
-		GameObject decal = ((firstUnit != null && !firstUnit.IsDead && !firstUnit.IsInPlayerParty) ? m_CreatedSuicideDecal : m_CreatedPathEndDecal);
+		GameObject decal = ((firstUnit != null && !firstUnit.IsDead && !firstUnit.IsInPlayerParty) ? m_CreatedSuicideDecal : ((!pathData.HasThreats || !(m_CreatedThreateningPathEndDecal != null)) ? m_CreatedPathEndDecal : m_CreatedThreateningPathEndDecal));
 		DrawDecalAt(decal, node, vector + sizePositionOffset);
+		UpdateFreeCellDecals(path);
 		UpdatePredictState(node);
 		UpdatePathRenderer();
 		EventBus.RaiseEvent((IMechanicEntity)unit, (Action<IUnitPathManagerHandler>)delegate(IUnitPathManagerHandler h)
 		{
-			h.HandlePathAdded(path, pathData.PathCost, enemiesAoO);
+			h.HandlePathAdded(path, pathData.PathCost, enemiesAoO, pathData.HasThreats);
 		}, isCheckRuntime: true);
 	}
 
@@ -627,6 +707,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		{
 			SetDecalVisibility(m_CreatedPathEndDecal, isVisible: false);
 			SetDecalVisibility(m_CreatedSuicideDecal, isVisible: false);
+			SetDecalVisibility(m_CreatedThreateningPathEndDecal, isVisible: false);
 			m_CreatedPointerCellDecal.SetVisible(visible: false);
 			EventBus.RaiseEvent((IMechanicEntity)unit, (Action<IUnitPathManagerHandler>)delegate(IUnitPathManagerHandler h)
 			{
@@ -636,8 +717,8 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 			if (!m_AbilityHover)
 			{
 				m_UnitCached = null;
+				m_ForcedPathCached?.Release(this);
 				m_ForcedPathCached = null;
-				m_ApCostPerEveryCellCached = null;
 			}
 			return true;
 		}
@@ -731,7 +812,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 					List<GraphNode> list = value?.path?.path;
 					if (list != null && list.Count >= 2)
 					{
-						SetupActivePath(list, pathUnableStatus: false, value.HasThreats, m_SizeOffset, key.MovementAgent);
+						SetupActivePath(list, pathUnableStatus: false, value.HasThreats, m_SizeOffset, key.MovementAgent, key.Blueprint.Size);
 						return;
 					}
 				}
@@ -827,6 +908,7 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 
 	public void HandleTurnBasedModeSwitched(bool isTurnBased)
 	{
+		ClearFreeCellDecals();
 		TurnBasedModeHandle(isTurnBased);
 	}
 
@@ -849,12 +931,17 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	{
 		m_IsPlayerTurn = Game.Instance.Controllers.TurnController.IsPlayerTurn;
 		m_UnitCached = null;
+		m_ForcedPathCached?.Release(this);
 		m_ForcedPathCached = null;
-		m_ApCostPerEveryCellCached = null;
 	}
 
 	public void HandleTurnBasedModeResumed()
 	{
+		TurnController turnController = Game.Instance.Controllers.TurnController;
+		if (turnController.IsPreparationTurn)
+		{
+			HandleBeginPreparationTurn(turnController.IsDeploymentAllowed);
+		}
 		TurnBasedModeHandle(isTurnBased: true);
 	}
 
@@ -963,8 +1050,8 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	public void HandleOwnerAbilitySelected(AbilityData ability)
 	{
 		m_UnitCached = null;
+		m_ForcedPathCached?.Release(this);
 		m_ForcedPathCached = null;
-		m_ApCostPerEveryCellCached = null;
 		m_LastShownPosition = null;
 	}
 
@@ -1026,9 +1113,20 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	{
 	}
 
+	private void SetAimHoverTarget(BaseUnitEntity unit)
+	{
+		if (m_CurrentAimHoverTarget != unit)
+		{
+			(m_CurrentAimHoverTarget?.View as UnitEntityView)?.SetAimHoverTarget(value: false);
+			m_CurrentAimHoverTarget = unit;
+			(m_CurrentAimHoverTarget?.View as UnitEntityView)?.SetAimHoverTarget(value: true);
+		}
+	}
+
 	private void ClearActivePath()
 	{
 		m_PathRenderer.Show(null, null, pathUnableStatus: false, threateningStatus: false, default(Vector3));
+		m_CurrentPathHasThreats = false;
 		m_LastShownPosition = null;
 		EventBus.RaiseEvent(delegate(IUnitPathManagerHandler h)
 		{
@@ -1036,9 +1134,10 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 		});
 	}
 
-	private void SetupActivePath(List<GraphNode> nodes, bool pathUnableStatus, bool threateningStatus, Vector3 meshOffset, UnitMovementAgentBase movementAgent)
+	private void SetupActivePath(List<GraphNode> nodes, bool pathUnableStatus, bool threateningStatus, Vector3 meshOffset, UnitMovementAgent movementAgent, Size creatureSize)
 	{
-		m_PathRenderer.Show(nodes, (movementAgent != null) ? movementAgent.transform : null, pathUnableStatus, threateningStatus, meshOffset);
+		m_CurrentPathHasThreats = threateningStatus;
+		m_PathRenderer.Show(nodes, (movementAgent != null) ? movementAgent.transform : null, pathUnableStatus, threateningStatus, meshOffset, creatureSize);
 	}
 
 	public void HandleAbilityTargetSelectionStart(AbilityData ability)
@@ -1048,5 +1147,6 @@ public class UnitPathManager : MonoBehaviour, ITurnBasedModeHandler, ISubscriber
 	public void HandleAbilityTargetSelectionEnd(AbilityData ability)
 	{
 		m_LastShownPosition = null;
+		SetAimHoverTarget(null);
 	}
 }

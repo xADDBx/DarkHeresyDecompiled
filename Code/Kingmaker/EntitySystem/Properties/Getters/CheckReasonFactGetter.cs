@@ -23,6 +23,6 @@ public class CheckReasonFactGetter : BoolPropertyGetter, PropertyContextAccessor
 
 	protected override bool GetBaseValue()
 	{
-		return base.PropertyContext.Rule?.Reason.Fact?.Blueprint == Blueprint;
+		return base.Context.Rule?.Reason.Fact?.Blueprint == Blueprint;
 	}
 }

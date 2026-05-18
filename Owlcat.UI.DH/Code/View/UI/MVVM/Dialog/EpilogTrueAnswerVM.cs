@@ -14,6 +14,6 @@ public class EpilogTrueAnswerVM : ViewModel
 	public EpilogTrueAnswerVM(DetectiveCasePage casePage)
 	{
 		BlueprintCase = casePage.BlueprintCase;
-		TrueAnswer.Value = new TrueAnswerEntityVM(casePage.TrueAnswerFlavorText.Text, casePage.TrueAnswerText.Text);
+		TrueAnswer.Value = new TrueAnswerEntityVM(casePage);
 	}
 }

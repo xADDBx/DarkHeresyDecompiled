@@ -1,5 +1,6 @@
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.View.MapObjects.SriptZones;
 using Owlcat.Runtime.Core.Utility;
 
@@ -18,12 +19,12 @@ public class UnitsCountInScriptZone : IntEvaluator
 
 	protected override int GetValueInternal()
 	{
-		ScriptZone scriptZone = (ScriptZone)ScriptZone.FindView();
-		if (scriptZone == null)
+		ScriptZoneEntity scriptZoneEntity = (ScriptZoneEntity)ScriptZone.FindData();
+		if (scriptZoneEntity == null)
 		{
 			Element.LogError(this, "ScriptZone {0} is missing", ScriptZone);
 			return 0;
 		}
-		return scriptZone.Count;
+		return scriptZoneEntity.InsideUnits.Count;
 	}
 }

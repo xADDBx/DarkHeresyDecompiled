@@ -1,4 +1,3 @@
-using Owlcat.UI;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -28,12 +27,5 @@ public class FirstLaunchAccessibilityPagePCView : FirstLaunchSettingsPageBaseVie
 		m_SettingsEntitySliderTritanopiaPCView.Bind(base.ViewModel.Tritanopia);
 		m_InfoView.Bind(base.ViewModel.InfoVM);
 		base.OnBind();
-	}
-
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		navigationBehaviour.SetEntitiesVertical<SettingsEntitySliderPCView>(m_SettingsEntitySliderFontSizePCView, m_SettingsEntitySliderProtanopiaPCView, m_SettingsEntitySliderDeuteranopiaPCView, m_SettingsEntitySliderTritanopiaPCView);
-		navigationBehaviour.AddRow(AdditionalEntities);
-		navigationBehaviour.FocusOnFirstValidEntity();
 	}
 }

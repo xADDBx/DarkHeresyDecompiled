@@ -6,7 +6,6 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -46,9 +45,6 @@ public class CareerPathRoundProgressionCommonView : View<CareerPathVM>, IUIHighl
 	[SerializeField]
 	private CareerPathRoundProgressionConfig[] Configs;
 
-	[SerializeField]
-	private FloatConsoleNavigationBehaviour.NavigationParameters m_NavigationParameters;
-
 	public bool IsShip;
 
 	[ShowIf("IsShip")]
@@ -60,8 +56,6 @@ public class CareerPathRoundProgressionCommonView : View<CareerPathVM>, IUIHighl
 	private readonly Dictionary<int, float> m_RankToAngle = new Dictionary<int, float>();
 
 	private const float StartAngle = MathF.PI / 2f;
-
-	private FloatConsoleNavigationBehaviour m_NavigationBehaviour;
 
 	private RectTransform m_TooltipPlace;
 
@@ -156,7 +150,6 @@ public class CareerPathRoundProgressionCommonView : View<CareerPathVM>, IUIHighl
 			num2 -= num;
 		}
 		m_ProgressBarContainer.sizeDelta = Vector2.one * config.ProgressBarSize;
-		UpdateNavigation();
 	}
 
 	private void UpdateCurrentProgressBar()
@@ -209,38 +202,6 @@ public class CareerPathRoundProgressionCommonView : View<CareerPathVM>, IUIHighl
 	private CareerPathRoundProgressionConfig GetConfig()
 	{
 		return Configs.First((CareerPathRoundProgressionConfig i) => i.Tier == base.ViewModel.CareerPath.Tier);
-	}
-
-	private void CreateNavigation()
-	{
-		m_NavigationBehaviour = new FloatConsoleNavigationBehaviour(m_NavigationParameters);
-		UpdateNavigation();
-	}
-
-	private void UpdateNavigation()
-	{
-		if (m_NavigationBehaviour == null)
-		{
-			return;
-		}
-		m_NavigationBehaviour.Clear();
-		m_NavigationBehaviour.AddEntity(m_CareerPathListItemCommonView);
-		if (m_RankEntries.Any())
-		{
-			m_NavigationBehaviour.AddEntities(m_RankEntries.SelectMany((RankEntryItemCommonView i) => i.GetConsoleEntities()).ToList());
-		}
-		IRankEntrySelectItem currentRankEntryItem = base.ViewModel.UnitProgressionVM.CurrentRankEntryItem.CurrentValue;
-		IFloatConsoleNavigationEntity floatConsoleNavigationEntity = m_RankEntries.Select((RankEntryItemCommonView i) => i.TryGetItemByViewModel(currentRankEntryItem)).FirstOrDefault((IFloatConsoleNavigationEntity i) => i != null);
-		m_NavigationBehaviour.SetCurrentEntity(floatConsoleNavigationEntity ?? m_CareerPathListItemCommonView);
-	}
-
-	public FloatConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		if (m_NavigationBehaviour == null)
-		{
-			CreateNavigation();
-		}
-		return m_NavigationBehaviour;
 	}
 
 	public void StartHighlight(string key)

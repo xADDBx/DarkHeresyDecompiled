@@ -10,5 +10,7 @@ public enum EtudeReferenceType
 	Complete = 2,
 	Check = 4,
 	Synchronized = 8,
-	EtudeRelated = 0x10
+	EtudeRelated = 0x10,
+	Pause = 0x20,
+	Resume = 0x40
 }

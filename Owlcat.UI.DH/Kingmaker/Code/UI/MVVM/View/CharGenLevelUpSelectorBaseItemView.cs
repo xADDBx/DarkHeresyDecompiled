@@ -21,6 +21,8 @@ public class CharGenLevelUpSelectorBaseItemView<TViewModel> : SelectionGroupEnti
 
 	protected const string BUTTON_LAYER_NOT_AVAILABLE_TAKEN = "NotAvailableTaken";
 
+	protected const string BUTTON_LAYER_FAVORITE = "Favorite";
+
 	[SerializeField]
 	private TextMeshProUGUI m_Label;
 
@@ -41,6 +43,9 @@ public class CharGenLevelUpSelectorBaseItemView<TViewModel> : SelectionGroupEnti
 
 	[SerializeField]
 	private GameObject m_Recommended;
+
+	[SerializeField]
+	private OwlcatMultiButton m_FavoriteButton;
 
 	public BlueprintScriptableObject Blueprint => base.ViewModel.Blueprint;
 
@@ -97,6 +102,21 @@ public class CharGenLevelUpSelectorBaseItemView<TViewModel> : SelectionGroupEnti
 		{
 			m_Layout.padding.left = 20 * base.ViewModel.NestingLevel;
 		}
+		if (m_FavoriteButton != null)
+		{
+			base.ViewModel.CanShowFavorite.Subscribe(delegate(bool c)
+			{
+				m_FavoriteButton.SetInteractable(c);
+			}).AddTo(this);
+			base.ViewModel.IsFavorite.Subscribe(delegate(bool f)
+			{
+				m_FavoriteButton.SetActiveLayer(f ? "Favorite" : "Normal");
+			}).AddTo(this);
+			ObservableSubscribeExtensions.Subscribe(m_FavoriteButton.OnLeftClickAsObservable(), delegate
+			{
+				base.ViewModel.ToggleFavorite();
+			}).AddTo(this);
+		}
 		base.ViewModel.IsShowed.Subscribe(delegate(bool e)
 		{
 			base.gameObject.SetActive(e);
@@ -105,16 +125,21 @@ public class CharGenLevelUpSelectorBaseItemView<TViewModel> : SelectionGroupEnti
 		{
 			UpdateAccessibility();
 		}).AddTo(this);
-		m_Button.OnHoverAsObservable().Subscribe(base.ViewModel.OnHover).AddTo(this);
+		m_Button.OnHoverAsObservable().Subscribe(OnHover).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_Button.OnRightClickAsObservable(), delegate
+		{
+			TooltipHelper.ShowInfo(base.ViewModel.Template);
+		}).AddTo(this);
 	}
 
 	public override void OnChangeSelectedState(bool value)
 	{
 		base.OnChangeSelectedState(value);
 		UpdateAccessibility();
+		m_Button.SetFocused(value);
 	}
 
-	private void UpdateAccessibility()
+	protected virtual void UpdateAccessibility()
 	{
 		OwlcatMultiButton button = m_Button;
 		button.SetActiveLayer(base.ViewModel.State.CurrentValue switch
@@ -124,5 +149,10 @@ public class CharGenLevelUpSelectorBaseItemView<TViewModel> : SelectionGroupEnti
 			LEVEL_UP_ITEM_STATE.AlreadyExist => "NotAvailableTaken", 
 			_ => "Normal", 
 		});
+	}
+
+	protected virtual void OnHover(bool value)
+	{
+		base.ViewModel.OnHover(value);
 	}
 }

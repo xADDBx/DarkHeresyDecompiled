@@ -109,7 +109,7 @@ public class DlcManagerVM : ViewModel, INetLobbyRequest, ISubscriber, INetInvite
 				ModsVM.SetEnabled(value: false);
 				m_IsModsWindow.Value = false;
 			}
-			m_ChangeTab.Execute();
+			m_ChangeTab.Execute(Unit.Default);
 		});
 	}
 
@@ -131,7 +131,7 @@ public class DlcManagerVM : ViewModel, INetLobbyRequest, ISubscriber, INetInvite
 				ModsVM.SetEnabled(value: true);
 				m_IsModsWindow.Value = true;
 			}
-			m_ChangeTab.Execute();
+			m_ChangeTab.Execute(Unit.Default);
 		});
 	}
 
@@ -153,7 +153,7 @@ public class DlcManagerVM : ViewModel, INetLobbyRequest, ISubscriber, INetInvite
 				ModsVM.SetEnabled(value: false);
 				m_IsModsWindow.Value = false;
 			}
-			m_ChangeTab.Execute();
+			m_ChangeTab.Execute(Unit.Default);
 		});
 	}
 

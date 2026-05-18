@@ -38,8 +38,6 @@ public class UICharGen
 
 	public LocalizedString SecondaryClothColor;
 
-	public LocalizedString HitPoints;
-
 	public LocalizedString Beard;
 
 	public LocalizedString BeardColor;
@@ -52,19 +50,25 @@ public class UICharGen
 
 	public LocalizedString Scars;
 
-	public LocalizedString FacePaint;
-
 	public LocalizedString Implant;
 
 	public LocalizedString SoulMark;
 
 	public LocalizedString Homeworld;
 
-	public LocalizedString ImperialHomeworldChildSelection;
+	public LocalizedString NobleHomeworldChild;
 
-	public LocalizedString ForgeHomeworldChildSelection;
+	public LocalizedString NobleHomeworldChildSelection;
 
-	public LocalizedString SanctionedPsykerSelection;
+	public LocalizedString NobleHomeworldDescription;
+
+	public LocalizedString DeathWorld;
+
+	public LocalizedString ChooseDeathWorld;
+
+	public LocalizedString DeathWorldDescription;
+
+	public LocalizedString Mystic;
 
 	public LocalizedString Occupation;
 
@@ -85,8 +89,6 @@ public class UICharGen
 	public LocalizedString Implants;
 
 	public LocalizedString Servoskull;
-
-	public LocalizedString NavigatorMutations;
 
 	public LocalizedString Summary;
 
@@ -146,8 +148,6 @@ public class UICharGen
 
 	public LocalizedString RespecWindowWarning;
 
-	public LocalizedString RespecCostPF;
-
 	public LocalizedString SwitchPageSet;
 
 	public LocalizedString PlayVoicePreview;
@@ -202,6 +202,30 @@ public class UICharGen
 
 	public LocalizedString LevelUpChooseFeature;
 
+	public LocalizedString LevelUpBattleSkillHint;
+
+	public LocalizedString InstantGainLabel;
+
+	public LocalizedString LevelupNeededLabel;
+
+	public LocalizedString InstantGainHint;
+
+	public LocalizedString LevelupNeededHint;
+
+	public LocalizedString HomeworldSelection;
+
+	public LocalizedString Origin;
+
+	public LocalizedString ChooseOrigin;
+
+	public LocalizedString OriginDescription;
+
+	public LocalizedString Career;
+
+	public LocalizedString ChooseCareer;
+
+	public LocalizedString CareerDescription;
+
 	[Header("Portrait")]
 	public LocalizedString Portrait;
 
@@ -209,11 +233,17 @@ public class UICharGen
 
 	public LocalizedString PortraitCategoryDefault;
 
+	[Obsolete]
 	public LocalizedString PortraitCategoryWarhammer;
 
-	public LocalizedString PortraitCategoryCustom;
-
+	[Obsolete]
 	public LocalizedString PortraitCategoryNavigator;
+
+	public LocalizedString PortraitCategoryDarkHeresy;
+
+	public LocalizedString PortraitCategoryRogueTrader;
+
+	public LocalizedString PortraitCategoryCustom;
 
 	public LocalizedString ChangePortrait;
 
@@ -247,14 +277,15 @@ public class UICharGen
 
 	public LocalizedString CreateNewNavigatorDescription;
 
+	[Header("Summary")]
+	public LocalizedString SelectNameTitle;
+
+	public LocalizedString SelectNameDisclaimer;
+
 	[Header("Default LevelUp Tooltips")]
 	public LocalizedString AbilityTitle;
 
 	public LocalizedString AbilityDescription;
-
-	public LocalizedString CharacteristicsTitle;
-
-	public LocalizedString CharacteristicsDescription;
 
 	public LocalizedString ModificationTitle;
 
@@ -263,8 +294,6 @@ public class UICharGen
 	public LocalizedString SpecializationTitle;
 
 	public LocalizedString SpecializationDescription;
-
-	public LocalizedString SkillTitle;
 
 	public LocalizedString SkillDescription;
 
@@ -286,20 +315,33 @@ public class UICharGen
 
 	public LocalizedString CollapseAll;
 
+	public LocalizedString ShowAll;
+
 	public LocalizedString SkillMaxValue;
+
+	public LocalizedString Psykana;
+
+	public LocalizedString Buff;
+
+	public LocalizedString Movement;
+
+	public LocalizedString Melee;
+
+	public LocalizedString Range;
+
+	public LocalizedString Randomize;
+
+	public LocalizedString Undo;
 
 	public string GetPageLabelByType(CharGenAppearancePageType pageType)
 	{
 		return pageType switch
 		{
-			CharGenAppearancePageType.Portrait => Portrait, 
 			CharGenAppearancePageType.General => Appearance, 
 			CharGenAppearancePageType.Hair => Hair, 
 			CharGenAppearancePageType.Tattoo => Tattoo, 
 			CharGenAppearancePageType.Implants => Implants, 
-			CharGenAppearancePageType.Voice => Voice, 
 			CharGenAppearancePageType.Servoskull => Servoskull, 
-			CharGenAppearancePageType.NavigatorMutations => NavigatorMutations, 
 			_ => string.Empty, 
 		};
 	}
@@ -309,6 +351,7 @@ public class UICharGen
 		return type switch
 		{
 			CharGenPhaseType.Pregen => Pregen, 
+			CharGenPhaseType.Portrait => Portrait, 
 			CharGenPhaseType.Appearance => Appearance, 
 			CharGenPhaseType.SoulMark => SoulMark, 
 			CharGenPhaseType.Homeworld => Homeworld, 
@@ -318,9 +361,7 @@ public class UICharGen
 			CharGenPhaseType.Career => Careers, 
 			CharGenPhaseType.Attributes => Attributes, 
 			CharGenPhaseType.Summary => Summary, 
-			CharGenPhaseType.ImperialHomeworldChild => ImperialHomeworldChildSelection, 
-			CharGenPhaseType.ForgeHomeworldChild => ForgeHomeworldChildSelection, 
-			CharGenPhaseType.SanctionedPsyker => SanctionedPsykerSelection, 
+			CharGenPhaseType.NobleHomeworldChild => NobleHomeworldChild, 
 			CharGenPhaseType.Navigator => Navigator, 
 			CharGenPhaseType.LevelUpAbility => LevelUpAbility, 
 			CharGenPhaseType.Characteristics => LevelUpCharacteristics, 
@@ -332,39 +373,9 @@ public class UICharGen
 			CharGenPhaseType.LevelUpTalent => LevelUpTalent, 
 			CharGenPhaseType.LevelUpUpgrade => LevelUpUpgrade, 
 			CharGenPhaseType.LevelUpFeature => LevelUpFeature, 
+			CharGenPhaseType.DeathHomeworldChild => DeathWorld, 
+			CharGenPhaseType.Voice => Voice, 
 			_ => throw new ArgumentOutOfRangeException("type", type, null), 
-		};
-	}
-
-	public string GetChoosePhaseName(CharGenPhaseType type)
-	{
-		return type switch
-		{
-			CharGenPhaseType.LevelUpAbility => LevelUpChooseAbility, 
-			CharGenPhaseType.Characteristics => LevelUpChooseCharacteristics, 
-			CharGenPhaseType.LevelUpModification => LevelUpChooseModification, 
-			CharGenPhaseType.LevelUpSpecialization => LevelUpChooseSpecialization, 
-			CharGenPhaseType.LevelUpSkill => LevelUpChooseSkill, 
-			CharGenPhaseType.LevelUpTalent => LevelUpChooseTalent, 
-			CharGenPhaseType.LevelUpUpgrade => LevelUpChooseUpgrade, 
-			CharGenPhaseType.LevelUpFeature => LevelUpChooseFeature, 
-			_ => throw new ArgumentOutOfRangeException("type", type, null), 
-		};
-	}
-
-	public (string, string) GetDefaultTooltipStrings(CharGenPhaseType type)
-	{
-		return type switch
-		{
-			CharGenPhaseType.LevelUpAbility => (UIStrings.Instance.CharacterSheet.ActiveAbilityFeatureGroupHint, AbilityDescription), 
-			CharGenPhaseType.Characteristics => (UIStrings.Instance.CharacterSheet.AttributeFeatureGroupHint, CharacteristicsDescription), 
-			CharGenPhaseType.LevelUpModification => (ModificationTitle, ModificationDescription), 
-			CharGenPhaseType.LevelUpSpecialization => (SpecializationTitle, SpecializationDescription), 
-			CharGenPhaseType.LevelUpSkill => (UIStrings.Instance.CharacterSheet.SkillFeatureGroupHint, SkillDescription), 
-			CharGenPhaseType.LevelUpTalent => (UIStrings.Instance.CharacterSheet.TalentFeatureGroupHint, TalentDescription), 
-			CharGenPhaseType.LevelUpUpgrade => (UpgradeTitle, UpgradeDescription), 
-			CharGenPhaseType.LevelUpFeature => (FeatureTitle, FeatureDescription), 
-			_ => (string.Empty, string.Empty), 
 		};
 	}
 }

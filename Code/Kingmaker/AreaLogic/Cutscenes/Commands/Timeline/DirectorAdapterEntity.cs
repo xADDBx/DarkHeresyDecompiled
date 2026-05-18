@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
-using Kingmaker.View;
+using Kingmaker.EntitySystem.Interfaces;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -11,7 +10,7 @@ using UnityEngine;
 namespace Kingmaker.AreaLogic.Cutscenes.Commands.Timeline;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class DirectorAdapterEntity : SimpleEntity, IHashable, IOwlPackable<DirectorAdapterEntity>
+public sealed class DirectorAdapterEntity : SimpleEntity, IHashable, IOwlPackable<DirectorAdapterEntity>
 {
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -32,22 +31,13 @@ public class DirectorAdapterEntity : SimpleEntity, IHashable, IOwlPackable<Direc
 		}
 	};
 
-	public DirectorAdapterEntity(EntityViewBase view)
-		: base(view)
+	public DirectorAdapterEntity(IEntityConfig config)
+		: base(config)
 	{
 	}
 
-	public DirectorAdapterEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	protected DirectorAdapterEntity(JsonConstructorMark _)
+	private DirectorAdapterEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected DirectorAdapterEntity()
 	{
 	}
 
@@ -61,7 +51,7 @@ public class DirectorAdapterEntity : SimpleEntity, IHashable, IOwlPackable<Direc
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		DirectorAdapterEntity source = new DirectorAdapterEntity();
+		DirectorAdapterEntity source = new DirectorAdapterEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<DirectorAdapterEntity, TPossiblyBase>(ref source);
 	}
 

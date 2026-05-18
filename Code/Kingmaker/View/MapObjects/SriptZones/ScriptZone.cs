@@ -1,25 +1,22 @@
-using System;
 using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.Mechanics.Entities;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Serialization;
 
 namespace Kingmaker.View.MapObjects.SriptZones;
 
 [KnowledgeDatabaseID("166fbc22bc0f466428491ffb6056bb27")]
-public class ScriptZone : MapObjectView, IBlueprintedMapObjectView
+public class ScriptZone : MapObjectView, IScriptZoneConfig, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig, IBlueprintedMapObjectView
 {
-	[Serializable]
-	public class UnitEvent : UnityEvent<BaseUnitEntity, ScriptZone>
-	{
-	}
-
+	[ShowCreator]
 	[SerializeField]
 	[FormerlySerializedAs("Blueprint")]
 	private BlueprintScriptZoneReference m_Blueprint;
@@ -53,13 +50,19 @@ public class ScriptZone : MapObjectView, IBlueprintedMapObjectView
 	[Tooltip("When set, zone starts inactive. Set IsActive to true to start detecting units.")]
 	private bool m_StartInactive;
 
-	public UnitEvent OnUnitEntered;
+	[SerializeField]
+	[Tooltip("When set, entering this zone respects and updates the area-level interaction global cooldown.")]
+	private bool m_UseGlobalCooldown;
 
-	public UnitEvent OnUnitExited;
+	public ScriptZoneEvent OnUnitEntered;
+
+	public ScriptZoneEvent OnUnitExited;
 
 	public readonly List<IScriptZoneShape> Shapes = new List<IScriptZoneShape>();
 
 	public bool UseDeads => m_UseDeads;
+
+	public bool UseGlobalCooldown => m_UseGlobalCooldown;
 
 	public bool PlayersOnly => m_PlayersOnly;
 
@@ -67,13 +70,19 @@ public class ScriptZone : MapObjectView, IBlueprintedMapObjectView
 
 	public BlueprintScriptZone Blueprint => m_Blueprint?.Get();
 
+	public override BlueprintMechanicEntityFact MechanicFactBlueprint => Blueprint ?? base.MechanicFactBlueprint;
+
 	public new ScriptZoneEntity Data => (ScriptZoneEntity)base.Data;
 
 	public bool OnceOnly => m_OnceOnly;
 
 	public bool DisableSameMultipleTriggers => m_DisableMultipleTriggers;
 
-	public int Count => Data.InsideUnits.Count;
+	ScriptZoneEvent IScriptZoneConfig.OnUnitEntered => OnUnitEntered;
+
+	ScriptZoneEvent IScriptZoneConfig.OnUnitExited => OnUnitExited;
+
+	List<IScriptZoneShape> IScriptZoneConfig.Shapes => Shapes;
 
 	public bool IsActive
 	{
@@ -140,5 +149,10 @@ public class ScriptZone : MapObjectView, IBlueprintedMapObjectView
 
 	public void OnAfterDeserialize()
 	{
+	}
+
+	string IScriptZoneConfig.get_name()
+	{
+		return base.name;
 	}
 }

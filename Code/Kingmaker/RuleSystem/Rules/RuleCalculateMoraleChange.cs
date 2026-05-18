@@ -8,6 +8,7 @@ using Kingmaker.Enums;
 using Kingmaker.Gameplay.Features.Morale;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
+using Kingmaker.Settings;
 
 namespace Kingmaker.RuleSystem.Rules;
 
@@ -82,10 +83,12 @@ public class RuleCalculateMoraleChange : RulebookTargetEvent
 		if (flag)
 		{
 			ValueModifier.CopyFrom(PositiveValueModifier);
+			ApplyDifficultyMoraleModifier(GetDifficultyPositiveMoraleModifier());
 		}
 		else if (flag2)
 		{
 			ValueModifier.CopyFrom(NegativeValueModifier);
+			ApplyDifficultyMoraleModifier(GetDifficultyNegativeMoraleModifier());
 		}
 		ResultInverse = (flag && InversePositiveFlag.Value) || (flag2 && InverseNegativeFlag.Value);
 		int num = (ResultInverse ? (-ValueModifier.Value) : ValueModifier.Value);
@@ -123,6 +126,40 @@ public class RuleCalculateMoraleChange : RulebookTargetEvent
 			ResultDelta = ((num3 + ResultDelta < BottomLimitModifier.Value) ? Math.Min(0, BottomLimitModifier.Value - num3) : ResultDelta);
 		}
 		Result = num3 + ResultDelta;
+	}
+
+	private int GetDifficultyPositiveMoraleModifier()
+	{
+		if (!Target.IsInPlayerParty)
+		{
+			if (!Target.IsPlayerEnemy)
+			{
+				return 0;
+			}
+			return SettingsRoot.Difficulty.EnemyPositiveMoraleChangeModifier;
+		}
+		return SettingsRoot.Difficulty.PartyPositiveMoraleChangeModifier;
+	}
+
+	private int GetDifficultyNegativeMoraleModifier()
+	{
+		if (!Target.IsInPlayerParty)
+		{
+			if (!Target.IsPlayerEnemy)
+			{
+				return 0;
+			}
+			return SettingsRoot.Difficulty.EnemyNegativeMoraleChangeModifier;
+		}
+		return SettingsRoot.Difficulty.PartyNegativeMoraleChangeModifier;
+	}
+
+	private void ApplyDifficultyMoraleModifier(int value)
+	{
+		if (value != 0)
+		{
+			ValueModifier.Add(ModifierType.ValAdd, value, this, ModifierDescriptor.Difficulty);
+		}
 	}
 
 	private void AddDeadLeaderModifier()

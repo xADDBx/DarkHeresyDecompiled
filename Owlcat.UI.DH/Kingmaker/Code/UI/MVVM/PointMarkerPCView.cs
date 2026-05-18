@@ -198,7 +198,7 @@ public class PointMarkerPCView : View<PointMarkerVM>
 			if (IsIntersecting(m_UnitLine, border))
 			{
 				Vector2 intersection = GetIntersection(m_UnitLine, border);
-				Vector2 vector4 = new Vector2(intersection.x / PointMarkersPCView.ScreenScale - m_ParentView.RectTransform.rect.width / 2f, intersection.y / PointMarkersPCView.ScreenScale - m_ParentView.RectTransform.rect.height / 2f);
+				Vector2 vector4 = new Vector2(intersection.x / m_ParentView.ScreenScale - m_ParentView.RectTransform.rect.width / 2f, intersection.y / m_ParentView.ScreenScale - m_ParentView.RectTransform.rect.height / 2f);
 				float num3 = Mathf.Pow(Mathf.Pow(vector4.x, 2f) + Mathf.Pow(vector4.y, 2f), 0.5f);
 				if (!(num3 >= num))
 				{

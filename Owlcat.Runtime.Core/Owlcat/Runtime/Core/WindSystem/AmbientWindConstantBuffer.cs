@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Core.WindSystem;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.core@ac854826f94a\\Runtime\\WindSystem\\AmbientWindConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.core@5e45da56c45d\\Runtime\\WindSystem\\AmbientWindConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
 public struct AmbientWindConstantBuffer
 {
 	public const int kWindStrengthOctaveCount = 2;

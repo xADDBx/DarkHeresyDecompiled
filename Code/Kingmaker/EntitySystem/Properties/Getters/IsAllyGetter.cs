@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -13,7 +14,7 @@ public class IsAllyGetter : BoolPropertyGetter, PropertyContextAccessor.ITargetB
 
 	protected override bool GetBaseValue()
 	{
-		if (!(this.GetTargetByType(Target) is BaseUnitEntity entity))
+		if (!(EvalContext.Current.GetEntityByType(Target) is BaseUnitEntity entity))
 		{
 			return false;
 		}

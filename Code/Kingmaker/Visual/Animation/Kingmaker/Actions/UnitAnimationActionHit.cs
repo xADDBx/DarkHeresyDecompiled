@@ -137,7 +137,7 @@ public class UnitAnimationActionHit : UnitAnimationAction
 			handle.Release();
 			return;
 		}
-		handle.AnimationLayer = AnimationLayerType.Reactions;
+		handle.AnimationLayer = UnitAnimationLayerType.Reactions;
 		handle.StartClip(animationClip, ClipDurationType.Oneshot);
 		if (handle.Manager.HitAnimationIsActive.Value)
 		{

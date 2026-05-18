@@ -4,13 +4,18 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Area;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Blueprints.Items.Weapons;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Gameplay.Features.Items.Utility;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -28,10 +33,16 @@ using UnityEngine;
 namespace Kingmaker.Items;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwlPackable<ItemEntityWeapon>
+public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IStatModifier, IHashable, IOwlPackable<ItemEntityWeapon>
 {
 	[OwlPackInclude]
 	private bool _fake;
+
+	[OwlPackInclude]
+	public ItemPowerLevel PowerLevelOverride;
+
+	[OwlPackInclude]
+	public ItemFaction FactionOverride;
 
 	[JsonIgnore]
 	public RandomShuffleSequence ProjectileLocatorIndexSequence;
@@ -40,7 +51,7 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 	{
 		Name = "ItemEntityWeapon",
 		OldNames = null,
-		Fields = new FieldInfo[33]
+		Fields = new FieldInfo[36]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -68,15 +79,20 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 			new FieldInfo("IsIdentified", typeof(bool)),
 			new FieldInfo("SellTime", typeof(TimeSpan?)),
 			new FieldInfo("OriginArea", typeof(BlueprintArea)),
+			new FieldInfo("SourceContainer", typeof(BlueprintItem)),
 			new FieldInfo("VendorBlueprint", typeof(BlueprintMechanicEntityFact)),
 			new FieldInfo("IsNonRemovable", typeof(bool)),
 			new FieldInfo("_fake", typeof(bool)),
+			new FieldInfo("PowerLevelOverride", typeof(ItemPowerLevel)),
+			new FieldInfo("FactionOverride", typeof(ItemFaction)),
 			new FieldInfo("ForceSecondary", typeof(bool)),
 			new FieldInfo("Second", typeof(ItemEntityWeapon)),
 			new FieldInfo("IsSecondPartOfDoubleWeapon", typeof(bool)),
 			new FieldInfo("CurrentUsedBarrel", typeof(int))
 		}
 	};
+
+	public ItemPowerLevel PowerLevel => base.Blueprint.ResolvePowerLevel(PowerLevelOverride);
 
 	[JsonProperty]
 	[OwlPackInclude]
@@ -85,6 +101,20 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 	[JsonProperty]
 	[OwlPackInclude]
 	public ItemEntityWeapon Second { get; private set; }
+
+	public ItemEntityWeapon MainWeapon { get; private set; }
+
+	public override Sprite Icon
+	{
+		get
+		{
+			if (!base.Icon)
+			{
+				return MainWeapon?.Icon;
+			}
+			return base.Icon;
+		}
+	}
 
 	[JsonProperty]
 	[OwlPackInclude]
@@ -208,9 +238,31 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 			{
 				return false;
 			}
-			return base.Blueprint.IsTwoHanded;
+			if (!base.Blueprint.IsTwoHanded)
+			{
+				return base.Blueprint.IsDoubleHanded;
+			}
+			return true;
 		}
 	}
+
+	public int DamageMin => base.Blueprint.GetDamageMin(PowerLevelOverride);
+
+	public int DamageMax => base.Blueprint.GetDamageMax(PowerLevelOverride);
+
+	public int DamageVital => base.Blueprint.GetDamageVital(PowerLevelOverride);
+
+	public int BrutalDamage => base.Blueprint.GetBrutalDamage(PowerLevelOverride);
+
+	public int DestructiveDamage => base.Blueprint.GetDestructiveDamage(PowerLevelOverride);
+
+	public int AdditionalHitChance => base.Blueprint.GetAdditionalHitChance(PowerLevelOverride);
+
+	public int OverpenetrationChance => base.Blueprint.GetOverpenetrationChance(PowerLevelOverride);
+
+	public int RateOfFire => base.Blueprint.GetRateOfFire(PowerLevelOverride);
+
+	public int Recoil => base.Blueprint.GetRecoil(PowerLevelOverride);
 
 	public ItemEntityWeapon(BlueprintItemWeapon blueprint, string uniqueId, bool fake = false)
 		: base(blueprint, uniqueId)
@@ -222,14 +274,18 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 		: base(bpItem)
 	{
 		Shield = shield;
+		if (bpItem != null && bpItem.IsDoubleHanded && bpItem.SecondWeapon != null && bpItem.SecondWeapon != bpItem)
+		{
+			Second = Entity.Initialize(new ItemEntityWeapon(bpItem.SecondWeapon)
+			{
+				IsSecondPartOfDoubleWeapon = true
+			});
+			Second.MainWeapon = this;
+		}
 	}
 
-	protected ItemEntityWeapon(JsonConstructorMark _)
+	protected ItemEntityWeapon(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntityWeapon()
 	{
 	}
 
@@ -300,6 +356,58 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 		base.OnWillUnequip();
 	}
 
+	public override bool CanBeMerged(ItemEntity other)
+	{
+		if (base.CanBeMerged(other) && other is ItemEntityWeapon itemEntityWeapon && PowerLevelOverride == itemEntityWeapon.PowerLevelOverride)
+		{
+			return FactionOverride == itemEntityWeapon.FactionOverride;
+		}
+		return false;
+	}
+
+	public StatFactionModifierConfig[] GetFractionModifiers()
+	{
+		ItemFaction itemFaction = ((FactionOverride != 0) ? FactionOverride : base.Blueprint.Faction);
+		if (itemFaction != 0)
+		{
+			return ConfigRoot.Instance.ItemFactionRoot.GetWeaponModifiers(itemFaction);
+		}
+		return Array.Empty<StatFactionModifierConfig>();
+	}
+
+	public override StatBaseValue GetStatBaseValue(StatType type)
+	{
+		return type switch
+		{
+			StatType.ItemWeaponDamage => DamageMin, 
+			StatType.ItemWeaponRange => base.Blueprint.WarhammerMaxDistance, 
+			StatType.ItemWeaponAccuracy => AdditionalHitChance, 
+			StatType.ItemWeaponVitalDamage => DamageVital, 
+			_ => base.GetStatBaseValue(type), 
+		};
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		StatFactionModifierConfig[] fractionModifiers = GetFractionModifiers();
+		foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
+		{
+			if (statFactionModifierConfig.Stat == stat)
+			{
+				collector.Modifiers.Add(statFactionModifierConfig.ModifierType, statFactionModifierConfig.Value, null, null, BonusType.None, StatType.Unknown, statFactionModifierConfig.Descriptor);
+			}
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		StatFactionModifierConfig[] fractionModifiers = GetFractionModifiers();
+		foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
+		{
+			entries.Add(new AffectedStatEntry(statFactionModifierConfig.Stat));
+		}
+	}
+
 	protected override void OnPreSave()
 	{
 		base.OnPreSave();
@@ -309,7 +417,11 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 	protected override void OnPostLoad()
 	{
 		base.OnPostLoad();
-		Second?.PostLoad();
+		if (Second != null)
+		{
+			Second.PostLoad();
+			Second.MainWeapon = this;
+		}
 	}
 
 	protected override void OnDidPostLoad()
@@ -360,7 +472,7 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ItemEntityWeapon source = new ItemEntityWeapon();
+		ItemEntityWeapon source = new ItemEntityWeapon(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ItemEntityWeapon, TPossiblyBase>(ref source);
 	}
 
@@ -409,19 +521,22 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 		formatter.NullableField(24, "SellTime", ref value7, state);
 		BlueprintArea value8 = base.OriginArea;
 		formatter.Field(25, "OriginArea", ref value8, state);
+		formatter.Field(26, "SourceContainer", ref SourceContainer, state);
 		BlueprintMechanicEntityFact value9 = base.VendorBlueprint;
-		formatter.Field(26, "VendorBlueprint", ref value9, state);
+		formatter.Field(27, "VendorBlueprint", ref value9, state);
 		bool value10 = base.IsNonRemovable;
-		formatter.UnmanagedField(27, "IsNonRemovable", ref value10, state);
-		formatter.UnmanagedField(28, "_fake", ref _fake, state);
+		formatter.UnmanagedField(28, "IsNonRemovable", ref value10, state);
+		formatter.UnmanagedField(29, "_fake", ref _fake, state);
+		formatter.EnumField(30, "PowerLevelOverride", ref PowerLevelOverride, state);
+		formatter.EnumField(31, "FactionOverride", ref FactionOverride, state);
 		bool value11 = ForceSecondary;
-		formatter.UnmanagedField(29, "ForceSecondary", ref value11, state);
+		formatter.UnmanagedField(32, "ForceSecondary", ref value11, state);
 		ItemEntityWeapon value12 = Second;
-		formatter.Field(30, "Second", ref value12, state);
+		formatter.Field(33, "Second", ref value12, state);
 		bool value13 = IsSecondPartOfDoubleWeapon;
-		formatter.UnmanagedField(31, "IsSecondPartOfDoubleWeapon", ref value13, state);
+		formatter.UnmanagedField(34, "IsSecondPartOfDoubleWeapon", ref value13, state);
 		int value14 = CurrentUsedBarrel;
-		formatter.UnmanagedField(32, "CurrentUsedBarrel", ref value14, state);
+		formatter.UnmanagedField(35, "CurrentUsedBarrel", ref value14, state);
 		formatter.EndObject();
 	}
 
@@ -518,24 +633,33 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IHashable, IOwl
 				base.OriginArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 26:
-				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				SourceContainer = formatter.ReadPackable<BlueprintItem>(state);
 				break;
 			case 27:
-				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
+				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
 				break;
 			case 28:
-				_fake = formatter.ReadUnmanaged<bool>(state);
+				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 29:
-				ForceSecondary = formatter.ReadUnmanaged<bool>(state);
+				_fake = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 30:
-				Second = formatter.ReadPackable<ItemEntityWeapon>(state);
+				PowerLevelOverride = formatter.ReadEnum<ItemPowerLevel>(state);
 				break;
 			case 31:
-				IsSecondPartOfDoubleWeapon = formatter.ReadUnmanaged<bool>(state);
+				FactionOverride = formatter.ReadEnum<ItemFaction>(state);
 				break;
 			case 32:
+				ForceSecondary = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 33:
+				Second = formatter.ReadPackable<ItemEntityWeapon>(state);
+				break;
+			case 34:
+				IsSecondPartOfDoubleWeapon = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 35:
 				CurrentUsedBarrel = formatter.ReadUnmanaged<int>(state);
 				break;
 			}

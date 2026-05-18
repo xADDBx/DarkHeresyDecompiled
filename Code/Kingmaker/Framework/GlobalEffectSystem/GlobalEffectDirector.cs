@@ -137,6 +137,11 @@ public sealed class GlobalEffectDirector
 		return _effects.ContainsKey(effect);
 	}
 
+	public void Reset()
+	{
+		_effects.Clear();
+	}
+
 	public float GetWeight(BlueprintGlobalEffect effect)
 	{
 		if (!_effects.TryGetValue(effect, out List<WeightEntry> value))

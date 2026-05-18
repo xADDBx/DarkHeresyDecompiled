@@ -47,7 +47,7 @@ internal static class LogHelper
 		{
 			return "<b>" + text + "</b>";
 		}
-		string text2 = ColorUtility.ToHtmlStringRGB(abstractUnitEntity.Blueprint.Color * UIConfig.Instance.m_DefaultDialogCueColors.NameColorMultiplyer);
+		string text2 = ColorUtility.ToHtmlStringRGB(abstractUnitEntity.Blueprint.Color * UIConfig.Instance.m_DefaultDialogCueColors.NameColorMultiplayer);
 		return "<b><color=#" + text2 + ">" + text + "</color></b>";
 	}
 

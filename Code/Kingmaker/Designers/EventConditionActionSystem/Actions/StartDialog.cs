@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
@@ -73,7 +74,7 @@ public class StartDialog : GameAction, IDialogReference
 		{
 			if (blueprintDialog != null)
 			{
-				DialogData data2 = DialogController.SetupDialogWithMapObject(blueprintDialog, MapObjectDialogueOwner.GetValue().View, null);
+				DialogData data2 = DialogController.SetupDialogWithMapObject(blueprintDialog, MapObjectDialogueOwner.GetValue(), null);
 				Game.Instance.Controllers.DialogController.StartDialog(data2);
 			}
 		}

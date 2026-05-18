@@ -6,6 +6,7 @@ using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Gameplay.Features.Channeling;
 using Kingmaker.Gameplay.Features.Concentration.Events;
 using Kingmaker.Gameplay.Features.Morale;
 using Kingmaker.PubSubSystem;
@@ -78,10 +79,11 @@ public class PartConcentration : MechanicEntityPart, ITargetRulebookHandler<Rule
 
 	public void Break([CanBeNull] MechanicEntity reason)
 	{
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IConcentrationBrokenHandler>)delegate(IConcentrationBrokenHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IConcentrationBrokenHandler>)delegate(IConcentrationBrokenHandler h)
 		{
 			h.HandleConcentrationBroken(reason);
 		}, isCheckRuntime: true);
+		base.Owner.GetOptional<PartChanneling>()?.Clear(Buff, null);
 		Buff?.MarkExpired();
 		_buff = null;
 		Target = null;

@@ -38,6 +38,9 @@ public class CharInfoSkillPCView : View<CharInfoStatVM>, IConsoleNavigationEntit
 	protected OwlcatMultiSelectable m_Selectable;
 
 	[SerializeField]
+	private Image m_TooltipArea;
+
+	[SerializeField]
 	private GameObject m_BattleSkillIcon;
 
 	private bool m_HasPreviewValue;
@@ -128,7 +131,11 @@ public class CharInfoSkillPCView : View<CharInfoStatVM>, IConsoleNavigationEntit
 
 	private void SetTooltip()
 	{
-		this.SetTooltip(base.ViewModel.Tooltip).AddTo(this);
+		(m_TooltipArea ? ((MonoBehaviour)m_TooltipArea) : ((MonoBehaviour)this)).SetTooltip(base.ViewModel.Tooltip).AddTo(this);
+		if (m_BattleSkillIcon != null)
+		{
+			m_BattleSkillIcon?.GetComponent<MonoBehaviour>()?.SetGlossaryTooltip("CombatSkill").AddTo(this);
+		}
 	}
 
 	public void SetFocus(bool value)

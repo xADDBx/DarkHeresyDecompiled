@@ -60,7 +60,7 @@ public class MainMenuLoadingScreen : AbstractMainMenuLoadingScreen
 	public void Awake()
 	{
 		m_ProgressTransform.sizeDelta = new Vector2(0f, m_ProgressTransform.rect.height);
-		m_PercentText.text = string.Format(PercentTemplate, Mathf.CeilToInt(0f).ToString());
+		m_PercentText.text = string.Empty;
 	}
 
 	public void OnStart()

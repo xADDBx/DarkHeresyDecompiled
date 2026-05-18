@@ -20,6 +20,9 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Gameplay.Features.Scaling.Utility;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
@@ -28,6 +31,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
+using Kingmaker.RuleSystem.Rules.Utility;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UIDataProvider;
@@ -38,7 +42,6 @@ using Kingmaker.UnitLogic.Abilities.Components.Patterns;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Groups;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
@@ -94,7 +97,8 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 		NullTarget,
 		RestrictedByInterruption,
 		TargetEntityDisposed,
-		TargetCannotBeAttackedByPreciseAttack
+		TargetCannotBeAttackedByPreciseAttack,
+		Untargetable
 	}
 
 	public class IgnoreCooldown : ContextFlag<IgnoreCooldown>
@@ -143,6 +147,8 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	private GridNodeBase m_TargetGridNodeCached;
 
 	private GridNodeBase m_CasterGridNodeCached;
+
+	private bool m_TargetHasEntityCached;
 
 	private bool m_CanTargetResultCached;
 
@@ -215,6 +221,8 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	public bool IsAttackOfOpportunity { get; set; }
 
 	public bool IgnoreUsingInThreateningArea { get; set; }
+
+	public ScalingInfo? ScalingOverride { get; set; }
 
 	[JsonProperty]
 	public BlueprintAbilityWrapper Blueprint => m_BlueprintWrapper ?? (m_BlueprintWrapper = new BlueprintAbilityWrapper(OriginalBlueprint, m_Modifiers));
@@ -464,7 +472,7 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	{
 		get
 		{
-			if (GetAvailableForCastCount() != 0 && HasEnoughActionPoint && !IsRestricted)
+			if (GetAvailableForCastCount() != 0 && HasEnoughActionPoint && (!IsRestricted || IsBonusUsage))
 			{
 				if (IsOnCooldown)
 				{
@@ -645,6 +653,18 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 
 	public bool IsBurstAttack => Blueprint.IsBurst;
 
+	public bool AffectsVeil
+	{
+		get
+		{
+			if (Blueprint.IsPsykerAbility)
+			{
+				return Caster.GetPsykerOptional() != null;
+			}
+			return false;
+		}
+	}
+
 	public AbilityTargetAnchor TargetAnchor
 	{
 		get
@@ -682,7 +702,10 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 		AbilityCustomBladeDance component = Blueprint.GetComponent<AbilityCustomBladeDance>();
 		if (component != null)
 		{
-			OverrideRateOfFire = component.RateOfAttack.Calculate(ClaimExecutionContext(caster));
+			using (EvalContext.PushAbility(this, caster))
+			{
+				OverrideRateOfFire = component.RateOfAttack.Calculate(EvalContext.Current);
+			}
 		}
 		Blueprint.GetComponent<AbilityUseCurrentWeaponSetting>()?.Set(this);
 		InitAbilityGroups();
@@ -724,6 +747,23 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 		}
 	}
 
+	public AbilityData Clone([CanBeNull] IEnumerable<BlueprintAbilityModifier> additionalModifier)
+	{
+		if (additionalModifier == null)
+		{
+			additionalModifier = Array.Empty<BlueprintAbilityModifier>();
+		}
+		BlueprintAbilityModifier[] modifiers = ((m_Modifiers != null) ? m_Modifiers.Concat(additionalModifier).Distinct().ToArray() : additionalModifier.ToArray());
+		using (ContextData<DisableStatefulRandomContext>.Request())
+		{
+			return new AbilityData(Blueprint.OriginalBlueprint, Caster, IndexInItemSettings, modifiers)
+			{
+				OverrideWeapon = Weapon,
+				PreciseBodyPart = PreciseBodyPart
+			};
+		}
+	}
+
 	private void InitAbilityGroups()
 	{
 		m_AbilityGroups = new List<BlueprintAbilityGroup>();
@@ -736,14 +776,23 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 		}
 	}
 
+	public int GetPredictedVeilDelta(UpdateVeilEventType type)
+	{
+		if (!AffectsVeil)
+		{
+			return 0;
+		}
+		return Rulebook.Trigger(new RuleCalculateVeilDamage(Caster, type, this)).ResultDamageDelta;
+	}
+
 	public int GetPredictedVeilDeltaBeforeCast()
 	{
-		return Rulebook.Trigger(new RuleCalculateVeilDamage(Caster, UpdateVeilEventType.BeforeAbilityCast, this)).ResultDamageDelta;
+		return GetPredictedVeilDelta(UpdateVeilEventType.BeforeAbilityCast);
 	}
 
 	public int GetPredictedVeilDeltaAfterCast()
 	{
-		return Rulebook.Trigger(new RuleCalculateVeilDamage(Caster, UpdateVeilEventType.AfterAbilityCast, this)).ResultDamageDelta;
+		return GetPredictedVeilDelta(UpdateVeilEventType.AfterAbilityCast);
 	}
 
 	public int GetPredictedVeilDelta()
@@ -792,12 +841,12 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 		return !(a1 == a2);
 	}
 
-	public AbilityExecutionContext ClaimExecutionContext([NotNull] TargetWrapper target, MechanicsContext parentContext = null)
+	public AbilityExecutionContext ClaimExecutionContext([NotNull] TargetWrapper target, IEvalContext parentContext = null)
 	{
 		return ClaimExecutionContext(target, Caster.Position, parentContext);
 	}
 
-	public AbilityExecutionContext ClaimExecutionContext([NotNull] TargetWrapper target, Vector3 casterPosition, MechanicsContext parentContext = null)
+	public AbilityExecutionContext ClaimExecutionContext([NotNull] TargetWrapper target, Vector3 casterPosition, IEvalContext parentContext = null)
 	{
 		return AbilityExecutionContext.Claim(this, target ?? throw new ArgumentNullException("target"), casterPosition, parentContext);
 	}
@@ -904,14 +953,7 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 				unavailabilityReason = UnavailabilityReasonType.CannotTargetEnemy;
 				return false;
 			}
-			bool flag = !Blueprint.CanTargetDestructibleObjects;
-			if (flag)
-			{
-				MechanicEntity entity = target.Entity;
-				bool flag2 = ((entity is DestructibleEntity || (entity != null && entity.IsMechanism)) ? true : false);
-				flag = flag2;
-			}
-			if (flag)
+			if (!Blueprint.CanTargetDestructibleObjects && target.Entity is DestructibleEntity)
 			{
 				unavailabilityReason = UnavailabilityReasonType.CannotTargetDestructibleObject;
 				return false;
@@ -927,11 +969,14 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 			unavailabilityReason = UnavailabilityReasonType.CannotTargetSelf;
 			return false;
 		}
-		PartAbilityRestrictions optional = Caster.GetOptional<PartAbilityRestrictions>();
-		if (optional != null && !optional.IsRestrictionPassed(this, target))
+		if (!IsBonusUsage)
 		{
-			unavailabilityReason = UnavailabilityReasonType.AbilityForbidden;
-			return false;
+			PartAbilityRestrictions optional = Caster.GetOptional<PartAbilityRestrictions>();
+			if (optional != null && !optional.IsRestrictionPassed(this, target))
+			{
+				unavailabilityReason = UnavailabilityReasonType.AbilityForbidden;
+				return false;
+			}
 		}
 		if (Blueprint.IsSummoningUnit && WarhammerBlockManager.Instance.NodeContainsAny(target.NearestNode))
 		{
@@ -1041,13 +1086,14 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	private bool CanTarget(TargetWrapper target, Vector3 casterPosition, out UnavailabilityReasonType? unavailabilityReason, Vector3? casterDirection)
 	{
 		GridNodeBase nearestNodeXZUnwalkable = casterPosition.GetNearestNodeXZUnwalkable();
-		if (target != null && target.NearestNode == m_TargetGridNodeCached && nearestNodeXZUnwalkable == m_CasterGridNodeCached)
+		if (target != null && target.NearestNode == m_TargetGridNodeCached && nearestNodeXZUnwalkable == m_CasterGridNodeCached && target.HasEntity == m_TargetHasEntityCached)
 		{
 			unavailabilityReason = m_UnavailabilityReasonTypeCached;
 			return m_CanTargetResultCached;
 		}
 		m_CasterGridNodeCached = nearestNodeXZUnwalkable;
 		m_TargetGridNodeCached = target?.NearestNode;
+		m_TargetHasEntityCached = target?.HasEntity ?? false;
 		int? casterDirection2 = ((casterDirection.HasValue && casterDirection.GetValueOrDefault().sqrMagnitude > 1E-06f) ? new int?(GraphHelper.GuessDirection(casterDirection.Value)) : null);
 		m_CanTargetResultCached = CanTargetFromNode(nearestNodeXZUnwalkable, null, target, out var _, out var _, out unavailabilityReason, casterDirection2);
 		m_UnavailabilityReasonTypeCached = unavailabilityReason;
@@ -1064,6 +1110,11 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 	{
 		distance = WarhammerGeometryUtils.DistanceToInCells(casterNode.Vector3Position(), Caster.SizeRect, target.Point, target.SizeRect);
 		los = LosCalculations.CoverType.Obstacle;
+		if (target.Entity != null && (bool)target.Entity.Features.IsUntargetable)
+		{
+			unavailabilityReason = UnavailabilityReasonType.Untargetable;
+			return false;
+		}
 		GridNodeBase bestShootingPosition = GetBestShootingPosition(casterNode, target);
 		if (!IsValid(target, casterNode.Vector3Position(), out var unavailabilityReason2))
 		{
@@ -1091,10 +1142,23 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 			unavailabilityReason = UnavailabilityReasonType.None;
 			return true;
 		}
-		if (NeedLoS && !IsIgnoredLoSForTarget(target) && !LosCalculations.HasLos(UseBestShootingPosition ? bestShootingPosition : casterNode, Caster.SizeRect, end, target.SizeRect, out var obstacle) && (obstacle.Entity == null || obstacle.Entity != target.Entity))
+		if (NeedLoS && !IsIgnoredLoSForTarget(target))
 		{
-			unavailabilityReason = UnavailabilityReasonType.HasNoLosToTarget;
-			return false;
+			GridNodeBase origin = (UseBestShootingPosition ? bestShootingPosition : casterNode);
+			ObstacleInfo obstacle;
+			if (IsMelee)
+			{
+				if (!LosCalculations.HasMeleeLos(origin, Caster.SizeRect, end, target.SizeRect))
+				{
+					unavailabilityReason = UnavailabilityReasonType.HasNoLosToTarget;
+					return false;
+				}
+			}
+			else if (!LosCalculations.HasLos(origin, Caster.SizeRect, end, target.SizeRect, out obstacle) && (obstacle.Entity == null || obstacle.Entity != target.Entity))
+			{
+				unavailabilityReason = UnavailabilityReasonType.HasNoLosToTarget;
+				return false;
+			}
 		}
 		if (distance < MinRangeCells)
 		{
@@ -1446,6 +1510,19 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 		return 0;
 	}
 
+	public int GetBaseActionPointCost()
+	{
+		if (Blueprint.IsFreeAction)
+		{
+			return 0;
+		}
+		if (SettingsFromItem != null && Blueprint.SameAbility(SettingsFromItem.Ability))
+		{
+			return SettingsFromItem.AP;
+		}
+		return Blueprint.ActionPointCost;
+	}
+
 	public bool IsRangeUnrestrictedForTarget(TargetWrapper target)
 	{
 		if (!UnrestrictedRanged)
@@ -1462,7 +1539,8 @@ public class AbilityData : IUIDataProvider, IAbilityDataProviderForPattern, IHas
 
 	public float CalculateDefenceChanceCached(UnitEntity unit, LosCalculations.CoverType coverType)
 	{
-		return (float)Rulebook.Trigger(new RuleCalculateDefence(Caster, unit)).ResultDefence / 100f;
+		StatContext ctx = new StatContext(null, Caster.Actor);
+		return Mathf.Max(0f, unit.GetEffectiveDefence(ctx)) / 100f;
 	}
 
 	public bool HasLosCached(GridNodeBase fromNode, GridNodeBase toNode)

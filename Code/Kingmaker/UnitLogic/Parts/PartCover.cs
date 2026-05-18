@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic.Mechanics;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -25,17 +25,9 @@ public class PartCover : MechanicEntityPart, IHashable, IOwlPackable<PartCover>
 		Fields = new FieldInfo[0]
 	};
 
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
+	public MechanicActorStat HitPoints => base.Owner.Actor.Stats.GetStat(StatType.MaxHitPoints);
 
-	public ModifiableValueHitPoints HitPoints => StatsContainer.GetStat<ModifiableValueHitPoints>(StatType.HitPoints);
-
-	public ModifiableValueAttributeStat Toughness => StatsContainer.GetAttribute(StatType.Toughness);
-
-	protected override void OnAttachOrPrePostLoad()
-	{
-		StatsContainer.RegisterAttribute(StatType.Toughness);
-		StatsContainer.Register<ModifiableValueHitPoints>(StatType.HitPoints);
-	}
+	public MechanicActorStat Toughness => base.Owner.Actor.Stats.GetStat(StatType.Toughness);
 
 	public override Hash128 GetHash128()
 	{

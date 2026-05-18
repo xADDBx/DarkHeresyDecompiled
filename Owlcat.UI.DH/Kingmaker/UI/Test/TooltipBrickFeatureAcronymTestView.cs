@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace Kingmaker.UI.Test;
 
-public class TooltipBrickFeatureAcronymTestView : TooltipBrickFeatureView
+public class TooltipBrickFeatureAcronymTestView : BrickFeatureView
 {
 	[SerializeField]
 	private OwlcatMultiButton m_Button;

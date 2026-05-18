@@ -10,7 +10,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class LoreXenosMultikeyItemRestrictionPart : SkillUseRestrictionPart<LoreXenosMultikeyItemRestrictionSettings>, IHashable, IOwlPackable<LoreXenosMultikeyItemRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "LoreXenosMultikeyItemRestrictionPart",
 		OldNames = null,
@@ -36,7 +36,7 @@ public class LoreXenosMultikeyItemRestrictionPart : SkillUseRestrictionPart<Lore
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		LoreXenosMultikeyItemRestrictionPart source = new LoreXenosMultikeyItemRestrictionPart();
 		result = Unsafe.As<LoreXenosMultikeyItemRestrictionPart, TPossiblyBase>(ref source);

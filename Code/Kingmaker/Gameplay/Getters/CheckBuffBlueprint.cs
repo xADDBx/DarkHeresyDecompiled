@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Fmw.Blueprints;
@@ -21,8 +22,8 @@ public sealed class CheckBuffBlueprint : BoolPropertyGetter, PropertyContextAcce
 
 	protected override bool GetBaseValue()
 	{
-		BlueprintScriptableObject blueprintScriptableObject = this.GetMechanicContext()?.Blueprint;
-		BlueprintBuff buff = blueprintScriptableObject as BlueprintBuff;
+		BlueprintScriptableObject blueprint = EvalContext.Current.Blueprint;
+		BlueprintBuff buff = blueprint as BlueprintBuff;
 		if (buff != null)
 		{
 			return Blueprints.HasItem((BpRef<BlueprintBuff> i) => i == buff);

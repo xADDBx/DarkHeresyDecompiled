@@ -24,7 +24,7 @@ public class SurfaceCombatActionVM : ViewModel
 
 	public Buff ActionAbility { get; }
 
-	public TooltipTemplateBuff ActionAbilityTooltip { get; }
+	public TooltipBaseTemplate ActionAbilityTooltip { get; }
 
 	public Sprite Icon
 	{
@@ -42,7 +42,7 @@ public class SurfaceCombatActionVM : ViewModel
 	{
 		ActionAbility = actionAbilityAbility;
 		UpdateFields();
-		ActionAbilityTooltip = new TooltipTemplateBuff(ActionAbility, null, isConcentration: true, Icon, m_Name, m_SecondaryText);
+		ActionAbilityTooltip = new TooltipTemplateConcentrationBuff(ActionAbility, null, Icon, m_Name, m_SecondaryText);
 	}
 
 	private void UpdateFields()

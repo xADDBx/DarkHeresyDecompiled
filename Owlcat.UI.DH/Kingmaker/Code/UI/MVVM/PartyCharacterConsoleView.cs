@@ -132,7 +132,7 @@ public class PartyCharacterConsoleView : View<PartyCharacterVM>, IScrollHandler,
 		m_SelectorMoveAnimator.PlayAnimation(value);
 		if (value)
 		{
-			UISounds.Instance.Sounds.Character.CharacterSelect.Play();
+			ServiceWindowsSounds.Instance.Character.Select.Play();
 		}
 	}
 
@@ -161,7 +161,7 @@ public class PartyCharacterConsoleView : View<PartyCharacterVM>, IScrollHandler,
 		float y = eventData.scrollDelta.y;
 		if (!(Mathf.Abs(y) < Mathf.Epsilon))
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+			ButtonsSounds.Instance.Default.Click.Play();
 			base.ViewModel.NextPrev(y < 0f);
 		}
 	}

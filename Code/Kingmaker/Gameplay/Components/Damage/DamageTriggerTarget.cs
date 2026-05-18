@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -10,6 +11,11 @@ namespace Kingmaker.Gameplay.Components.Damage;
 [Serializable]
 [ComponentName("Damage/DamageTriggerTarget")]
 [TypeId("2a6944e09f50401b98aec4a5c89a9f03")]
+[ReadsContext(new ContextField[]
+{
+	ContextField.Caster,
+	ContextField.Owner
+})]
 public sealed class DamageTriggerTarget : DamageTrigger, ITargetRulebookHandler<RuleDealDamage>, IRulebookHandler<RuleDealDamage>, ISubscriber, ITargetRulebookSubscriber
 {
 	void IRulebookHandler<RuleDealDamage>.OnEventAboutToTrigger(RuleDealDamage evt)

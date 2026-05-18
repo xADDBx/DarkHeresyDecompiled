@@ -45,7 +45,7 @@ public class UnitAnimationActionDefence : UnitAnimationAction
 		AnimationClipWrapper variant = GetVariant(handle);
 		if ((bool)variant)
 		{
-			handle.AnimationLayer = AnimationLayerType.Reactions;
+			handle.AnimationLayer = UnitAnimationLayerType.Reactions;
 			handle.StartClip(variant, ClipDurationType.Oneshot);
 		}
 		else

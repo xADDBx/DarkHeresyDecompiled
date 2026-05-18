@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.View.Covers;
 using Owlcat.Runtime.Core.Utility;
@@ -31,7 +32,7 @@ public class CheckCoverGetter : BoolPropertyGetter, PropertyContextAccessor.ITar
 
 	protected override bool GetBaseValue()
 	{
-		LosCalculations.CoverType coverType = LosCalculations.GetWarhammerLos(base.CurrentEntity, this.GetTargetByType(Target)).CoverType;
+		LosCalculations.CoverType coverType = LosCalculations.GetWarhammerLos(base.CurrentEntity, EvalContext.Current.GetEntityByType(Target)).CoverType;
 		return ((uint)Cover & (uint)(coverType switch
 		{
 			LosCalculations.CoverType.Cover => 2, 

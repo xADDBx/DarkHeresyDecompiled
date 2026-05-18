@@ -6,6 +6,7 @@ using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
+using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -26,6 +27,7 @@ public class ClueInformationBaseView : View<BlueprintClue>
 	[SerializeField]
 	private TMP_Text m_Description;
 
+	[Header("Elements/Answers")]
 	[SerializeField]
 	private TMP_Text m_PotentialHypothesisTitle;
 
@@ -34,6 +36,9 @@ public class ClueInformationBaseView : View<BlueprintClue>
 
 	[SerializeField]
 	private WidgetList m_AnswersContainer;
+
+	[SerializeField]
+	private GameObject m_AnswersTitleParent;
 
 	[Header("Views")]
 	[SerializeField]
@@ -48,21 +53,24 @@ public class ClueInformationBaseView : View<BlueprintClue>
 	[SerializeField]
 	private ClueInfoNotesView m_NotesView;
 
-	[Header("Values")]
+	[SerializeField]
+	private Sprite m_DefaultIcon;
+
+	[field: Header("Values")]
 	[field: SerializeField]
 	public bool IsPaperInfo { get; private set; }
 
 	protected override void OnBind()
 	{
 		ClueUIData uIData = base.ViewModel.GetUIData();
-		m_ClueIcon.sprite = uIData.Icon;
+		m_ClueIcon.sprite = uIData.Icon ?? m_DefaultIcon;
 		m_ClueName.text = uIData.Name;
 		m_Description.text = uIData.Description;
 		BlueprintCase blueprint = base.ViewModel.ParentCase.Blueprint;
 		bool flag = blueprint.IsClosed() && Game.Instance.DetectiveSystem.GetCaseAnswer(blueprint)?.Answer.RelatedItem == base.ViewModel;
 		m_PotentialHypothesisTitle.text = (flag ? UIStrings.Instance.DetectiveJournal.SelectedHypothesisTitle.Text : UIStrings.Instance.DetectiveJournal.PotentialHypothesisTitle.Text);
 		m_DecorView.Bind(base.ViewModel);
-		m_SourceView.Bind(new CaseEntitySourceVM(base.ViewModel, Game.Instance.DetectiveSystem.GetSource(base.ViewModel)));
+		m_SourceView.Bind(new CaseEntitySourceVM(base.ViewModel));
 		m_NotesView.Bind(new ClueInfoNotesVM(base.ViewModel));
 		SetupAnswers();
 		SetupTooltip();
@@ -101,6 +109,7 @@ public class ClueInformationBaseView : View<BlueprintClue>
 			m_AnswerStateSelectable.SetActiveLayer((list.Count > 0) ? 1 : 0);
 		}
 		m_AnswersContainer.DrawEntries(list, m_AnswerPrefab).AddTo(this);
-		m_AnswersContainer.gameObject.SetActive(list.Count > 0);
+		ObjectExtensions.Or(m_AnswersContainer, null)?.gameObject.SetActive(list.Count > 0);
+		ObjectExtensions.Or(m_AnswersTitleParent, null)?.gameObject.SetActive(list.Count > 0);
 	}
 }

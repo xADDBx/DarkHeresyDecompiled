@@ -85,7 +85,7 @@ public class CaseNotificationView : View<CaseNotificationVM>, INotificationView,
 		}).AddTo(this);
 		CaseBodyView.Bind(base.ViewModel.Case);
 		m_CaseNamePrefix.text = UIStrings.Instance.CaseNotificationTexts.CasePrefix.Text;
-		m_CaseName.text = ((base.ViewModel.BlueprintCase == null) ? UIStrings.Instance.DetectiveJournal.UnknownCluesHeader.Text : base.ViewModel.BlueprintCase.Name.Text);
+		m_CaseName.text = ((base.ViewModel.BlueprintCase == null) ? UIStrings.Instance.DetectiveJournal.UnknownCluesHeader.Text : Game.Instance.DetectiveSystem.GetCaseDisplay(base.ViewModel.BlueprintCase).Name);
 		ObservableSubscribeExtensions.Subscribe(m_CloseButton.OnLeftClickAsObservable(), delegate
 		{
 			Hide();
@@ -157,9 +157,9 @@ public class CaseNotificationView : View<CaseNotificationVM>, INotificationView,
 		}).AddTo(this);
 	}
 
-	private BlueprintUISound.UISound GetSound()
+	private UISound GetSound()
 	{
-		BlueprintUISound.UISoundNotifications notifications = UISounds.Instance.Sounds.Notifications;
+		NotificationsSounds.UISoundNotifications notifications = NotificationsSounds.Instance.Notifications;
 		if (!base.ViewModel.IsNewCase.CurrentValue)
 		{
 			return notifications.NewDetectiveInformation;

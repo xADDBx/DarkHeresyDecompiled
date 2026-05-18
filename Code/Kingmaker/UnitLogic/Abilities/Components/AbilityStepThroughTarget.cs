@@ -9,8 +9,8 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -72,7 +72,7 @@ public class AbilityStepThroughTarget : AbilityCustomLogic, IAbilityAoEPatternPr
 	public override IEnumerator<AbilityDeliveryTarget> Deliver(AbilityExecutionContext context, TargetWrapper targetWrapper)
 	{
 		MechanicEntity caster = context.Caster;
-		UnitMovementAgentBase movementAgent = caster.MaybeMovementAgent;
+		UnitMovementAgent movementAgent = caster.MaybeMovementAgent;
 		if (movementAgent == null)
 		{
 			PFLog.Default.Error("Movement agent is missing");
@@ -108,7 +108,6 @@ public class AbilityStepThroughTarget : AbilityCustomLogic, IAbilityAoEPatternPr
 			}
 			UnitCommandHandle moveCmdHandle = commandsOptional.AddToQueueFirst(unitMoveToProperParams);
 			movementAgent.MaxSpeedOverride = 10f;
-			movementAgent.IsCharging = true;
 			while (!moveCmdHandle.IsFinished)
 			{
 				yield return null;
@@ -120,17 +119,16 @@ public class AbilityStepThroughTarget : AbilityCustomLogic, IAbilityAoEPatternPr
 					break;
 				}
 			}
-			movementAgent.IsCharging = false;
 			movementAgent.MaxSpeedOverride = null;
 		}
-		using (context.SetScope(caster.ToITargetWrapper()))
+		using (EvalContext.PushContext(context, caster))
 		{
 			ActionsOnCaster.Run();
 		}
 		BaseUnitEntity[] array = targetUnits;
 		foreach (BaseUnitEntity baseUnitEntity in array)
 		{
-			using (context.SetScope(baseUnitEntity.ToITargetWrapper()))
+			using (EvalContext.PushContext(context, baseUnitEntity))
 			{
 				ActionsOnEncounteredTarget.Run();
 			}

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UnitLogic.Levelup.Selections;
 using ObservableCollections;
 using Owlcat.UI;

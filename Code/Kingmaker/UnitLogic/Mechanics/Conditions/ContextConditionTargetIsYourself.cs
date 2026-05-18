@@ -17,6 +17,6 @@ public class ContextConditionTargetIsYourself : ContextCondition
 			PFLog.Default.Error("Target unit is missing");
 			return false;
 		}
-		return base.Target.Entity == base.Context.MaybeCaster;
+		return base.Target.Entity == base.Eval.Caster;
 	}
 }

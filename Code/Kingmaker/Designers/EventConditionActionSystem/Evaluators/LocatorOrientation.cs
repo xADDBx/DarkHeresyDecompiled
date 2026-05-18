@@ -22,7 +22,7 @@ public class LocatorOrientation : FloatEvaluator
 
 	protected override float GetValueInternal()
 	{
-		return ((!LocatorEval) ? Locator.FindView() : LocatorEval.GetValue()?.View)?.ViewTransform.rotation.eulerAngles.y ?? 0f;
+		return ((!LocatorEval) ? Locator.FindView() : LocatorEval.GetValue()?.View)?.Orientation ?? 0f;
 	}
 
 	public override string GetCaption()

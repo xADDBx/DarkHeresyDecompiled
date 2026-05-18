@@ -2,9 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Animancer;
+using Animancer.TransitionLibraries;
 using JetBrains.Annotations;
-using Kingmaker.Blueprints.Root;
-using Kingmaker.Controllers;
 using Kingmaker.QA.Arbiter.Profiling;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
@@ -15,34 +14,25 @@ using Kingmaker.Utility.StatefulRandom;
 using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.Events;
 using Kingmaker.Visual.Animation.Kingmaker.Actions;
-using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 using UnityEngine.Playables;
 
 namespace Kingmaker.Visual.Animation;
 
-[RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(AnimancerComponent))]
-public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatable
+public class AnimationManager : MonoBehaviour, IAnimationManager
 {
-	[NonSerialized]
-	public bool IsInDollRoom;
-
-	private string m_GameObjectName;
-
 	private bool m_IsInitialized;
 
-	private Animator m_Animator;
-
-	private AnimancerComponent m_Animancer;
-
-	private readonly List<AnimancerLayer> m_AnimancerLayers = new List<AnimancerLayer>();
-
-	private DirectionalMixerState m_LocomotionMixerState;
+	protected AnimancerComponent m_Animancer;
 
 	private float m_DefaultSpeed = 1f;
 
 	private AnimationActionHandle m_CurrentAction;
+
+	private AnimationClip m_CurrentAnimationClip;
+
+	private AnimationClip m_NextAnimationClip;
 
 	private readonly List<AnimationActionHandle> m_ActiveActions = new List<AnimationActionHandle>();
 
@@ -50,35 +40,15 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 
 	private readonly List<AnimationBase> m_ActiveAnimations = new List<AnimationBase>();
 
-	private readonly Dictionary<AnimationActionBase, List<Transition>> m_FromTransitions = new Dictionary<AnimationActionBase, List<Transition>>();
-
-	private readonly Dictionary<AnimationActionBase, List<Transition>> m_ToTransitions = new Dictionary<AnimationActionBase, List<Transition>>();
-
 	private CountableFlag m_RotationForbidden = new CountableFlag();
 
 	private readonly CountingGuard m_Disabled = new CountingGuard();
 
-	private int m_LastUpdateTick;
+	public virtual StatefulRandom StatefulRandom => PFStatefulRandom.Visuals.Animation3;
 
-	[SerializeField]
-	private AnimationSet m_AnimationSet;
+	public TransitionLibrary TransitionLibrary => m_Animancer.Transitions?.Library;
 
-	[SerializeField]
-	private bool m_FireEvents = true;
-
-	public StatefulRandom StatefulRandom
-	{
-		get
-		{
-			if (!IsInDollRoom)
-			{
-				return PFStatefulRandom.Visuals.Animation3;
-			}
-			return PFStatefulRandom.Visuals.DollRoom;
-		}
-	}
-
-	private AnimancerLayer m_LocomotionLayer => m_AnimancerLayers[0];
+	public int HighestActiveLayerIndex { get; private set; }
 
 	public bool IsValid => m_Animancer.Graph.PlayableGraph.IsValid();
 
@@ -102,7 +72,9 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 
 	public UnitAnimationCallbackReceiver CallbackReceiver => GetComponent<UnitAnimationCallbackReceiver>();
 
-	private static int CurrentUpdateTick => Game.Instance.RealTimeController.CurrentSystemStepIndex;
+	public AnimationSoundEventsManager SoundEventsManager { get; private set; }
+
+	public GameObject GameObject => base.gameObject;
 
 	public bool IsRotationForbidden => m_RotationForbidden;
 
@@ -134,12 +106,17 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		}
 		set
 		{
+			bool value2 = m_Disabled.Value;
 			m_Disabled.Value = value;
 			m_Animancer.Graph.Speed = DefaultSpeed;
+			if (!value2 && (bool)m_Disabled)
+			{
+				SoundEventsManager.StopAllLoopedSounds();
+			}
 		}
 	}
 
-	public Animator Animator => m_Animator;
+	public Animator Animator => m_Animancer.Animator;
 
 	public IReadOnlyList<AnimationActionHandle> ActiveActions => m_ActiveActions;
 
@@ -149,114 +126,59 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 
 	public AnimationActionHandle CurrentAction => m_CurrentAction;
 
-	public AnimationSet AnimationSet
-	{
-		get
-		{
-			if (m_AnimationSet == null)
-			{
-				return ConfigRoot.Instance.SystemMechanics.HumanAnimationSet;
-			}
-			return m_AnimationSet;
-		}
-		set
-		{
-			m_AnimationSet = value;
-			if (Application.isPlaying)
-			{
-				RuntimeInitializeAnimationSet();
-				OnAnimationSetChanged();
-			}
-		}
-	}
-
-	public bool FireEvents
-	{
-		get
-		{
-			return m_FireEvents;
-		}
-		set
-		{
-			m_FireEvents = value;
-		}
-	}
-
-	private void Awake()
-	{
-		m_GameObjectName = base.gameObject.name;
-	}
-
-	protected virtual void OnEnable()
+	protected void OnEnable()
 	{
 		Game.Instance.Controllers.AnimationManagerController.Subscribe(this);
-		Game.Instance.Controllers.InterpolationController.Add(this);
+		Initialize();
+		OnAfterEnabled();
+	}
+
+	private void Initialize()
+	{
 		if (!m_IsInitialized)
 		{
-			m_Animator = GetComponent<Animator>();
+			SoundEventsManager = new AnimationSoundEventsManager(this);
 			m_Animancer = GetComponent<AnimancerComponent>();
 			m_Animancer.ActionOnDisable = AnimancerComponent.DisableAction.Pause;
-			CreateLayers();
-			RuntimeInitializeAnimationSet();
+			OnInitialize();
 			m_IsInitialized = true;
 		}
 	}
 
-	private void CreateLayers()
+	protected virtual void OnInitialize()
 	{
-		int num = 11;
-		for (int i = 0; i < num; i++)
-		{
-			AnimancerLayer item = m_Animancer.Layers[i];
-			m_AnimancerLayers.Add(item);
-		}
-		m_LocomotionLayer.SetWeight(1f);
-		m_LocomotionMixerState = new DirectionalMixerState();
-		m_LocomotionLayer.Play(m_LocomotionMixerState);
-		m_AnimancerLayers[4].IsAdditive = true;
-		m_AnimancerLayers[9].IsAdditive = true;
 	}
 
-	protected virtual void OnDisable()
+	protected virtual void OnAfterEnabled()
 	{
+	}
+
+	protected virtual void OnBeforeDisabled()
+	{
+	}
+
+	protected void OnDisable()
+	{
+		OnBeforeDisabled();
 		Game.Instance.Controllers.AnimationManagerController.Unsubscribe(this);
-		Game.Instance.Controllers.InterpolationController.Remove(this);
 	}
 
 	public void CustomUpdate(float dt)
 	{
 		using (Counters.AnimationManager?.Measure())
 		{
-			if (!Disabled)
+			if (Disabled)
 			{
-				using (ProfileScope.New("AnimationManager.UpdateAnimations"))
-				{
-					UpdateAnimations(dt);
-				}
-				using (ProfileScope.New("AnimationManager.UpdateActions"))
-				{
-					UpdateActions(dt);
-				}
-				m_Animator.fireEvents = FireEvents && m_CurrentAction?.ActiveAnimation?.AnimatorController != null;
-				m_LastUpdateTick = CurrentUpdateTick;
+				return;
 			}
-		}
-	}
-
-	void IInterpolatable.Tick(float progress)
-	{
-		if (m_LastUpdateTick != CurrentUpdateTick || Disabled)
-		{
-			return;
-		}
-		Game instance = Game.Instance;
-		if (instance != null && instance.IsPaused)
-		{
-			return;
-		}
-		using (ProfileScope.New("AnimationManager.InterpolateAnimations"))
-		{
-			InterpolateAnimations(progress);
+			using (ProfileScope.New("AnimationManager.UpdateAnimations"))
+			{
+				UpdateAnimations(dt);
+			}
+			using (ProfileScope.New("AnimationManager.UpdateActions"))
+			{
+				UpdateActions(dt);
+			}
 		}
 	}
 
@@ -296,7 +218,8 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 				i--;
 			}
 		}
-		InterpolateAnimations(0f, force: true);
+		UpdateCurrentAnimationClip();
+		SoundEventsManager.Update();
 	}
 
 	private void StartFadeOutAnimation(AnimationBase animation)
@@ -305,7 +228,7 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		{
 			return;
 		}
-		AnimancerLayer animancerLayer = m_AnimancerLayers[(int)animation.Handle.AnimationLayer];
+		AnimancerLayer animancerLayer = m_Animancer.Layers[(int)animation.Handle.AnimationLayer];
 		AnimancerState animancerState = animancerLayer.ActiveStates.FirstOrDefault((AnimancerState s) => s.Clip == animation.GetActiveClip());
 		if (animancerState == null)
 		{
@@ -330,42 +253,59 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		}
 	}
 
-	private void InterpolateAnimations(float progress, bool force = false)
+	private void UpdateCurrentAnimationClip()
 	{
-		float num = 1f;
-		AnimationBase animationBase = m_CurrentAction?.ActiveAnimation;
-		if (animationBase != null)
+		AnimationClip animationClip = null;
+		AnimationClip animationClip2 = null;
+		HighestActiveLayerIndex = 0;
+		int count = m_Animancer.Layers.Count;
+		for (int i = 0; i < count; i++)
 		{
-			animationBase.Interpolate(progress, 1f, force);
-			if (animationBase.State != AnimationState.Finished && !animationBase.DoNotZeroOtherAnimations)
+			AnimancerLayer animancerLayer = m_Animancer.Layers[i];
+			if (!(animancerLayer.Weight < 0.5f) && !animancerLayer.IsAdditive)
 			{
-				using (ProfileScope.New("GetWeight"))
-				{
-					num = 1f - m_CurrentAction.ActiveAnimation.GetWeight();
-				}
+				HighestActiveLayerIndex = i;
+				animationClip = animationClip2;
+				animationClip2 = GetMostWeightedClip(animancerLayer.CurrentState);
 			}
 		}
-		int num2 = 0;
-		foreach (AnimationBase activeAnimation in m_ActiveAnimations)
+		if (!(animationClip2 == m_CurrentAnimationClip) || !(animationClip == m_NextAnimationClip))
 		{
-			if (activeAnimation.Handle.HasCrossfadePriority)
+			m_CurrentAnimationClip = animationClip2;
+			m_NextAnimationClip = animationClip;
+			if (TryGetTransitionBetween(m_CurrentAnimationClip, m_NextAnimationClip, out var transitionTime))
 			{
-				num2++;
-			}
-		}
-		bool flag = num2 >= 2;
-		foreach (AnimationBase activeAnimation2 in m_ActiveAnimations)
-		{
-			if (activeAnimation2 != animationBase)
-			{
-				float weightFromManager = ((activeAnimation2.Handle == m_CurrentAction || activeAnimation2.Handle.IsAdditive || (flag && activeAnimation2.Handle.HasCrossfadePriority)) ? 1f : ((flag && !activeAnimation2.Handle.HasCrossfadePriority) ? 0f : num));
-				activeAnimation2.Interpolate(progress, weightFromManager, force);
+				m_CurrentAction.ActiveAnimation.ChangeTransitionTime(transitionTime);
 			}
 		}
 	}
 
-	protected virtual void OnAnimationSetChanged()
+	private AnimationClip GetMostWeightedClip(AnimancerState state)
 	{
+		if (state.Clip != null)
+		{
+			return state.Clip;
+		}
+		if (!(state is ManualMixerState manualMixerState))
+		{
+			return null;
+		}
+		float num = 0f;
+		AnimationClip result = null;
+		for (int i = 0; i < manualMixerState.ChildCount; i++)
+		{
+			AnimancerState child = manualMixerState.GetChild(i);
+			if (child.Weight > num)
+			{
+				result = GetMostWeightedClip(child);
+				num = child.Weight;
+			}
+		}
+		if (!(num > 0f))
+		{
+			return null;
+		}
+		return result;
 	}
 
 	private void UpdateActions(float dt)
@@ -456,34 +396,8 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 	{
 	}
 
-	private void RuntimeInitializeAnimationSet()
-	{
-		ResetTransitionsAndActions();
-		if (m_AnimationSet == null)
-		{
-			return;
-		}
-		foreach (AnimationActionBase action in m_AnimationSet.Actions.Where((AnimationActionBase a) => a))
-		{
-			List<Transition> value = m_AnimationSet.Transitions.Where((Transition t) => t.FromAction == action).ToList();
-			List<Transition> value2 = m_AnimationSet.Transitions.Where((Transition t) => t.ToAction == action).ToList();
-			m_FromTransitions[action] = value;
-			m_ToTransitions[action] = value2;
-			if (action is UnitAnimationActionLocomotion unitAnimationActionLocomotion)
-			{
-				unitAnimationActionLocomotion.PreloadWeaponStyles();
-			}
-		}
-		if (m_AnimationSet.StartupAction != null)
-		{
-			Execute(m_AnimationSet.StartupAction);
-		}
-	}
-
 	protected void ResetTransitionsAndActions()
 	{
-		m_FromTransitions.Clear();
-		m_ToTransitions.Clear();
 		m_SequencedActions.Clear();
 		foreach (AnimationActionHandle activeAction in m_ActiveActions)
 		{
@@ -504,20 +418,34 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		}
 	}
 
-	public void PrepareForCombat()
+	public bool TryExecute([NotNull] AnimationActionBase animationAction)
 	{
-		foreach (AnimationActionHandle item in m_ActiveActions.Where((AnimationActionHandle h) => h.Action.ForceFinishOnJoinCombat))
-		{
-			item.FinishInternal();
-		}
+		AnimationActionHandle handle;
+		return TryExecute(animationAction, null, out handle);
 	}
 
-	public virtual AnimationActionHandle CreateHandle([NotNull] AnimationActionBase animationAction)
+	public bool TryExecute([NotNull] AnimationActionBase animationAction, out AnimationActionHandle handle)
+	{
+		return TryExecute(animationAction, null, out handle);
+	}
+
+	public virtual bool TryExecute([NotNull] AnimationActionBase animationAction, Action<AnimationActionHandle> initializer, out AnimationActionHandle handle)
+	{
+		handle = CreateHandle(animationAction);
+		if (handle != null)
+		{
+			initializer?.Invoke(handle);
+			Execute(handle);
+		}
+		return handle != null;
+	}
+
+	protected virtual AnimationActionHandle CreateHandle([NotNull] AnimationActionBase animationAction)
 	{
 		return new AnimationActionHandle(animationAction, this);
 	}
 
-	public virtual void Execute(AnimationActionHandle handle)
+	protected virtual void Execute(AnimationActionHandle handle)
 	{
 		if (handle == null)
 		{
@@ -526,7 +454,7 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		}
 		using (ProfileScope.New("Animator.Execute " + handle.Action.name))
 		{
-			if (handle.Manager != this)
+			if (this != (AnimationManager)handle.Manager)
 			{
 				PFLog.Animations.Error("Can't execute handle which created by another manager.");
 			}
@@ -537,35 +465,6 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 			else if (m_ActiveActions.Contains(handle))
 			{
 				PFLog.Animations.Error("Action handle already added to manager");
-			}
-			else if (handle.IsAdditive)
-			{
-				if (!handle.Action.IsAdditiveToItself)
-				{
-					foreach (AnimationActionHandle activeAction in ActiveActions)
-					{
-						if (handle.Action.GetType() == activeAction.Action.GetType() && !activeAction.IsReleased)
-						{
-							return;
-						}
-					}
-				}
-				if (handle.Action.IsAdditiveInterruptsSameType)
-				{
-					if (m_CurrentAction != null && !m_CurrentAction.DontReleaseOnInterrupt && handle.Action.GetType() == m_CurrentAction.Action.GetType())
-					{
-						m_CurrentAction.Release();
-					}
-					foreach (AnimationActionHandle activeAction2 in m_ActiveActions)
-					{
-						if (!activeAction2.DontReleaseOnInterrupt && handle.Action.GetType() == activeAction2.Action.GetType())
-						{
-							activeAction2.Release();
-						}
-					}
-				}
-				AddActionHandle(handle);
-				handle.StartInternal();
 			}
 			else if (handle.Action.ExecutionMode == ExecutionMode.Interrupted)
 			{
@@ -617,15 +516,12 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 
 	public void AddAnimationClip(AnimationActionHandle handle, AnimationClipWrapper clipWrapper, AvatarMask avatarMask, ClipDurationType durType = ClipDurationType.Default)
 	{
-		if (handle != m_CurrentAction && !handle.DontReleaseOnInterrupt && !handle.IsAdditive)
+		if (handle != m_CurrentAction && !handle.DontReleaseOnInterrupt)
 		{
 			PFLog.Default.Error($"Can't start animation on interrupted action {handle.Action}");
 			return;
 		}
-		AnimationBase activeAnimation = PlayAnimationClip(handle, clipWrapper, avatarMask, durType);
-		handle.ActiveAnimation = activeAnimation;
-		handle.ActiveAnimation.TransitionIn = GetTransitionInDuration(handle.ActiveAnimation);
-		handle.ActiveAnimation.TransitionOut = GetTransitionOutDuration(handle);
+		handle.ActiveAnimation = PlayAnimationClip(handle, clipWrapper, avatarMask, durType);
 		float num = 0f;
 		switch (durType)
 		{
@@ -646,6 +542,17 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 
 	private PlayableInfo PlayAnimationClip(AnimationActionHandle handle, AnimationClipWrapper clipWrapper, AvatarMask avatarMask, ClipDurationType duration)
 	{
+		float transitionInDuration = GetTransitionInDuration(handle.Action, clipWrapper.AnimationClip);
+		AnimancerState animancerState = PlayAnimationClip(clipWrapper, (int)handle.AnimationLayer, handle.SpeedScale, transitionInDuration, avatarMask, duration);
+		return new PlayableInfo(handle, animancerState, clipWrapper.MechanicEventsSorted)
+		{
+			TransitionIn = transitionInDuration,
+			TransitionOut = handle.Action.TransitionOut
+		};
+	}
+
+	protected AnimancerState PlayAnimationClip(AnimationClipWrapper clipWrapper, int animancerLayerIndex = 0, float speedScale = 1f, float fadeInTime = 0.2f, AvatarMask avatarMask = null, ClipDurationType duration = ClipDurationType.Default, Action onEnd = null)
+	{
 		if (clipWrapper == null)
 		{
 			throw new Exception("Animation clip wrapper is null.");
@@ -654,30 +561,38 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		{
 			throw new Exception("Animation clip wrapper has a null animation clip.");
 		}
-		AnimancerLayer animancerLayer = m_AnimancerLayers[(int)handle.AnimationLayer];
+		AnimancerLayer animancerLayer = m_Animancer.Layers[animancerLayerIndex];
 		if (animancerLayer.Mask != avatarMask)
 		{
 			animancerLayer.Mask = avatarMask;
 		}
 		AnimancerState orCreateState = animancerLayer.GetOrCreateState(clipWrapper.AnimationClip);
 		orCreateState.Time = 0f;
-		AnimancerState animancerState = animancerLayer.Play(orCreateState, GetTransitionInDuration(handle.Action, clipWrapper.AnimationClip));
-		animancerState.Speed = handle.SpeedScale;
-		PlayableInfo result = new PlayableInfo(handle, animancerState);
-		SetupAnimationEvents(clipWrapper, duration, animancerState);
-		return result;
+		AnimancerState animancerState = animancerLayer.Play(orCreateState, fadeInTime);
+		animancerState.Speed = speedScale;
+		Action onEnd2 = ((!clipWrapper.IsLooping && duration == ClipDurationType.Endless) ? ((Action)delegate
+		{
+			onEnd?.Invoke();
+			animancerState.Time = 0f;
+		}) : onEnd);
+		SetupAnimationEvents(clipWrapper, duration, animancerState, onEnd2);
+		return animancerState;
 	}
 
-	private void SetupAnimationEvents(AnimationClipWrapper clipWrapper, ClipDurationType duration, AnimancerState animancerState)
+	protected void SetupAnimationEvents(AnimationClipWrapper clipWrapper, ClipDurationType duration, AnimancerState animancerState, Action onEnd = null)
 	{
-		if (!animancerState.Events(this, out var events))
+		AnimancerEvent.Sequence events;
+		bool num = animancerState.Events(this, out events);
+		events.OnEnd = onEnd;
+		if (!num)
 		{
 			return;
 		}
 		float length = clipWrapper.Length;
-		AnimationClipEvent[] eventsSorted = clipWrapper.EventsSorted;
-		foreach (AnimationClipEvent @event in eventsSorted)
+		AnimationClipEvent[] animationEventsSorted = clipWrapper.AnimationEventsSorted;
+		foreach (AnimationClipEvent @event in animationEventsSorted)
 		{
+			@event.UserData = animancerState;
 			float normalizedTime = @event.Time / length;
 			events.Add(new AnimancerEvent(normalizedTime, delegate
 			{
@@ -687,53 +602,6 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 				}
 			}));
 		}
-	}
-
-	public void UpdateLocomotionMixerAnimations([NotNull] LocomotionMixerAnimations animations)
-	{
-		m_LocomotionMixerState.DestroyChildren();
-		foreach (var item in animations.Where(((AnimationClipWrapper ClipWrapper, Vector2 Threshold) entry) => entry.ClipWrapper.Or(null)?.AnimationClip != null))
-		{
-			m_LocomotionMixerState.Add(item.ClipWrapper.AnimationClip, item.Threshold);
-		}
-		if (animations.ClipWithFootstepEvents != null)
-		{
-			SetupAnimationEvents(animations.ClipWithFootstepEvents, ClipDurationType.Endless, m_LocomotionMixerState);
-		}
-		m_LocomotionMixerState.DontSynchronize(m_LocomotionMixerState.GetChild(0));
-	}
-
-	public void UpdateLocomotionParameters(Vector2 faceDirection, Vector2 moveDirection, float speed, float maxSpeed)
-	{
-		Vector2 normalized = faceDirection.normalized;
-		Vector2 normalized2 = moveDirection.normalized;
-		float x = Vector2.Dot(normalized, normalized2);
-		float y = Vector2.Dot(Vector2.Perpendicular(normalized), normalized2);
-		float num = ((maxSpeed > 0f) ? (speed / maxSpeed) : 0f);
-		m_LocomotionMixerState.Parameter = new Vector2(x, y) * num;
-	}
-
-	public void PlayLocomotionMixer(float fadeDuration = 0.2f)
-	{
-		m_LocomotionLayer.Play(m_LocomotionMixerState, fadeDuration);
-	}
-
-	private int GetActiveTransformCount(AvatarMask avatarMask)
-	{
-		if (avatarMask == null)
-		{
-			return int.MaxValue;
-		}
-		int transformCount = avatarMask.transformCount;
-		int num = 0;
-		for (int i = 0; i < transformCount; i++)
-		{
-			if (avatarMask.GetTransformActive(i))
-			{
-				num++;
-			}
-		}
-		return num;
 	}
 
 	internal Transition FindTransition(PlayableInfo fromPlayableInfo, PlayableInfo toPlayableInfo, List<Transition> transitions)
@@ -760,73 +628,40 @@ public class AnimationManager : MonoBehaviour, IAnimationManager, IInterpolatabl
 		return result;
 	}
 
-	internal float GetTransitionInDuration(AnimationBase animation)
+	private float GetTransitionOutDuration(AnimationActionHandle handle)
 	{
-		float result = animation.Handle.Action.TransitionIn;
-		if (m_CurrentAction?.ActiveAnimation != null && m_CurrentAction != animation.Handle && m_ToTransitions.TryGetValue(animation.Handle.Action, out var value))
-		{
-			AnimationClip activeClip = m_CurrentAction.ActiveAnimation.GetActiveClip();
-			AnimationClip activeClip2 = animation.GetActiveClip();
-			foreach (Transition item in value)
-			{
-				if (item.FromAction == m_CurrentAction.Action)
-				{
-					if (activeClip != null && item.FromClip == activeClip)
-					{
-						_ = item.ToClip == activeClip2;
-						result = item.Duration;
-					}
-					else
-					{
-						result = item.Duration;
-					}
-					break;
-				}
-			}
-		}
-		return result;
+		return handle.ActiveAnimation.TransitionOut;
 	}
 
-	internal float GetTransitionOutDuration(AnimationActionHandle actionHandle)
+	private float GetTransitionInDuration(AnimationActionBase action, AnimationClip animationClip)
 	{
-		float num = actionHandle.Action.TransitionOut;
-		if (m_FromTransitions.TryGetValue(actionHandle.Action, out var value))
+		if (TryGetTransitionBetween(m_CurrentAnimationClip, animationClip, out var transitionTime))
 		{
-			foreach (Transition item in value)
-			{
-				if (item.Duration > num)
-				{
-					num = item.Duration;
-				}
-			}
+			return transitionTime;
 		}
-		return num;
+		return action.TransitionIn;
 	}
 
-	internal float GetTransitionInDuration(AnimationActionBase action, AnimationClip animationClip)
+	private bool TryGetTransitionBetween(AnimationClip from, AnimationClip to, out float transitionTime)
 	{
-		float result = action.TransitionIn;
-		if (m_ToTransitions.TryGetValue(action, out var value))
+		transitionTime = 0f;
+		if (from == null || to == null || TransitionLibrary == null)
 		{
-			AnimationClip animationClip2 = m_CurrentAction?.ActiveAnimation?.GetActiveClip();
-			foreach (Transition item in value)
-			{
-				if (item.FromAction == m_CurrentAction.Action)
-				{
-					if (animationClip2 != null && item.FromClip == animationClip2)
-					{
-						_ = item.ToClip == animationClip;
-						result = item.Duration;
-					}
-					else
-					{
-						result = item.Duration;
-					}
-					break;
-				}
-			}
+			return false;
 		}
-		return result;
+		if (TransitionLibrary.TryGetTransition(StringReference.Get(from.name), out var transition) && TransitionLibrary.TryGetTransition(StringReference.Get(to.name), out var transition2))
+		{
+			TransitionAsset transitionAsset = transition.Transition as TransitionAsset;
+			transitionTime = transition2.GetFadeDuration(transitionAsset.Transition);
+			return true;
+		}
+		return false;
+	}
+
+	public void Rebind()
+	{
+		Animator.Rebind();
+		m_Animancer.Graph.Evaluate();
 	}
 
 	public string DebugGetHierarchyPath()

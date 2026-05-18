@@ -18,7 +18,7 @@ public static class FogOfWarControllerData
 
 	public static readonly MultiSet<Transform> m_AdditionalRevealers = new MultiSet<Transform>();
 
-	public static FogOfWarFeature GetFogOfWarFeature()
+	public static FogOfWarRendererFeatureAsset GetFogOfWarFeature()
 	{
 		WaaaghPipelineAsset waaaghPipelineAsset = GraphicsSettings.defaultRenderPipeline as WaaaghPipelineAsset;
 		if (waaaghPipelineAsset != null)
@@ -26,12 +26,12 @@ public static class FogOfWarControllerData
 			ScriptableRendererData[] rendererDataList = waaaghPipelineAsset.RendererDataList;
 			for (int i = 0; i < rendererDataList.Length; i++)
 			{
-				foreach (ScriptableRendererFeature rendererFeature in rendererDataList[i].RendererFeatures)
+				foreach (RendererFeatureAsset rendererFeature in rendererDataList[i].RendererFeatures)
 				{
-					FogOfWarFeature fogOfWarFeature = rendererFeature as FogOfWarFeature;
-					if (fogOfWarFeature != null)
+					FogOfWarRendererFeatureAsset fogOfWarRendererFeatureAsset = rendererFeature as FogOfWarRendererFeatureAsset;
+					if (fogOfWarRendererFeatureAsset != null)
 					{
-						return fogOfWarFeature;
+						return fogOfWarRendererFeatureAsset;
 					}
 				}
 			}

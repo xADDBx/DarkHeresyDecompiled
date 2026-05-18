@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -17,6 +18,6 @@ public class CheckPropertyTargetTypeGetter : BoolPropertyGetter, PropertyContext
 
 	protected override bool GetBaseValue()
 	{
-		return base.CurrentEntity == this.GetTargetByType(Target);
+		return base.CurrentEntity == EvalContext.Current.GetEntityByType(Target);
 	}
 }

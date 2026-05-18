@@ -8,6 +8,7 @@ using Kingmaker.Localization;
 using Kingmaker.UIDataProvider;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
+using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using UnityEngine;
@@ -79,6 +80,12 @@ public class BlueprintEtude : BlueprintFact, IEtudeReference, IUIDataProvider
 
 	[HideIf("IsSynchronized")]
 	public int Priority;
+
+	[ShowCreator]
+	[SerializeField]
+	[ValidateNotNull]
+	[Tooltip("All etudes from the same group work as radio-button.\nWhen one starts playing all others are paused.")]
+	private List<BlueprintEtudeExclusionGroupReference> m_ExclusionGroups = new List<BlueprintEtudeExclusionGroupReference>();
 
 	public IEnumerable<BlueprintEtudeReference> StartsWith => m_StartsWith;
 
@@ -167,6 +174,10 @@ public class BlueprintEtude : BlueprintFact, IEtudeReference, IUIDataProvider
 
 	string IUIDataProvider.NameForAcronym => string.Empty;
 
+	public IEnumerable<BlueprintEtudeExclusionGroupReference> ExclusionGroups => m_ExclusionGroups;
+
+	public bool HasExclusionGroups => m_ExclusionGroups.Count > 0;
+
 	protected override Type GetFactType()
 	{
 		return typeof(Etude);
@@ -220,5 +231,10 @@ public class BlueprintEtude : BlueprintFact, IEtudeReference, IUIDataProvider
 			return EtudeReferenceType.Complete;
 		}
 		return EtudeReferenceType.None;
+	}
+
+	public bool HaveExclusionGroup(BlueprintEtudeExclusionGroup exclusionGroup)
+	{
+		return m_ExclusionGroups.HasReference(exclusionGroup);
 	}
 }

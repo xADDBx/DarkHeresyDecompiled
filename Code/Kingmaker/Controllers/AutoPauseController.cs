@@ -38,7 +38,7 @@ public class AutoPauseController : IController, IAwarenessHandler, ISubscriber<I
 		}
 		if (character.Commands.Empty)
 		{
-			character.View.StopMoving();
+			character.StopMoving();
 		}
 	}
 

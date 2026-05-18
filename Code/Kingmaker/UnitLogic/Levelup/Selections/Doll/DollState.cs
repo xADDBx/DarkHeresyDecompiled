@@ -9,6 +9,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.ResourceLinks;
+using Kingmaker.UnitLogic.Customization;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Levelup.CharGen;
 using Kingmaker.UnitLogic.Progression.Features;
@@ -63,13 +64,9 @@ public class DollState : ICanConvertPropertiesToReactive
 	[NotNull]
 	private static readonly List<Texture2D> s_EmptyRamps = new List<Texture2D>();
 
-	public List<DollPrint> Warpaints = new List<DollPrint>(5);
-
 	public List<DollPrint> Tattoos = new List<DollPrint>(5);
 
 	public List<DollPrint> Ports = new List<DollPrint>(2);
-
-	public const int WarpaintsNumber = 5;
 
 	public const int TattoosNumber = 5;
 
@@ -85,13 +82,11 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public int BeardColorRampIndex = -1;
 
-	public int HornsRampIndex = -1;
-
 	public int EquipmentRampIndex = -1;
 
 	public int EquipmentRampIndexSecondary = -1;
 
-	private PregenDollSettings.Entry m_DefaultSettings;
+	private RaceAppearanceOverride.Entry m_DefaultSettings;
 
 	private bool m_TrackPortrait = true;
 
@@ -114,6 +109,18 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	private bool m_ShowBackpack = true;
 
+	private bool m_ShowCloak = true;
+
+	private bool m_ShowGloves = true;
+
+	private bool m_ShowBoots = true;
+
+	private bool m_ShowHood = true;
+
+	private bool m_ShowArmor = true;
+
+	private bool m_ShowBaseHeadwear = true;
+
 	[NotNull]
 	private static BlueprintCharGenRoot Root => ConfigRoot.Instance.CharGenRoot;
 
@@ -135,9 +142,7 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public EEAdapter Beard { get; private set; }
 
-	public EEAdapter Horn { get; private set; }
-
-	public EEAdapter NavigatorMutation { get; private set; }
+	public EEAdapter Eyes { get; private set; }
 
 	public BlueprintPortrait Portrait { get; private set; }
 
@@ -268,6 +273,102 @@ public class DollState : ICanConvertPropertiesToReactive
 		}
 	}
 
+	public bool ShowCloak
+	{
+		get
+		{
+			return m_ShowCloak;
+		}
+		set
+		{
+			if (m_ShowCloak != value)
+			{
+				m_ShowCloak = value;
+				Updated();
+			}
+		}
+	}
+
+	public bool ShowGloves
+	{
+		get
+		{
+			return m_ShowGloves;
+		}
+		set
+		{
+			if (m_ShowGloves != value)
+			{
+				m_ShowGloves = value;
+				Updated();
+			}
+		}
+	}
+
+	public bool ShowBoots
+	{
+		get
+		{
+			return m_ShowBoots;
+		}
+		set
+		{
+			if (m_ShowBoots != value)
+			{
+				m_ShowBoots = value;
+				Updated();
+			}
+		}
+	}
+
+	public bool ShowHood
+	{
+		get
+		{
+			return m_ShowHood;
+		}
+		set
+		{
+			if (m_ShowHood != value)
+			{
+				m_ShowHood = value;
+				Updated();
+			}
+		}
+	}
+
+	public bool ShowArmor
+	{
+		get
+		{
+			return m_ShowArmor;
+		}
+		set
+		{
+			if (m_ShowArmor != value)
+			{
+				m_ShowArmor = value;
+				Updated();
+			}
+		}
+	}
+
+	public bool ShowBaseHeadwear
+	{
+		get
+		{
+			return m_ShowBaseHeadwear;
+		}
+		set
+		{
+			if (m_ShowBaseHeadwear != value)
+			{
+				m_ShowBaseHeadwear = value;
+				Updated();
+			}
+		}
+	}
+
 	public void Refresh()
 	{
 		Updated();
@@ -296,13 +397,9 @@ public class DollState : ICanConvertPropertiesToReactive
 		{
 			list.Add(Beard.GetLink());
 		}
-		if (Horn.Load() != null)
+		if (Eyes.Load() != null)
 		{
-			list.Add(Horn.GetLink());
-		}
-		if (NavigatorMutation.Load() != null)
-		{
-			list.Add(NavigatorMutation.GetLink());
+			list.Add(Eyes.GetLink());
 		}
 		if (Scar.Load() != null)
 		{
@@ -312,7 +409,6 @@ public class DollState : ICanConvertPropertiesToReactive
 		{
 			list.Add(item);
 		}
-		CollectDollPrints(list, Warpaints);
 		CollectDollPrints(list, Tattoos);
 		CollectDollPrints(list, Ports);
 		list.AddRange(m_MechanicsEntities);
@@ -337,14 +433,7 @@ public class DollState : ICanConvertPropertiesToReactive
 		if (SkinRampIndex >= 0)
 		{
 			ApplyRamp(character, SkinRampIndex, GetSkinEntities());
-			ApplyRamp(character, SkinRampIndex, Horn, secondary: true);
-			ApplyRamp(character, SkinRampIndex, NavigatorMutation, secondary: true);
 			ApplyRamp(character, SkinRampIndex, Scar);
-		}
-		ApplyRamp(character, HornsRampIndex, Horn);
-		foreach (DollPrint warpaint in Warpaints)
-		{
-			warpaint.SetPrimaryRampIndex(character);
 		}
 		foreach (DollPrint tattoo in Tattoos)
 		{
@@ -398,35 +487,32 @@ public class DollState : ICanConvertPropertiesToReactive
 		return RacePreset.MaleSkeleton;
 	}
 
-	public void Setup(BaseUnitEntity unit, PregenDollSettings settings)
+	public void Setup(BaseUnitEntity unit, RaceAppearanceOverride settings)
 	{
 		Gender = unit.Gender;
 		Race = unit.Progression.Race;
 		Portrait = unit.Blueprint.PortraitSafe;
 		UpdateMechanicsEntities(unit);
-		PopulatePregenDollSettings(settings);
+		PopulateOverride(settings);
 		SetTrackPortrait(state: false);
 		UpdateMechanicsEntities(unit);
 	}
 
-	private void PopulatePregenDollSettings(PregenDollSettings settings)
+	private void PopulateOverride(RaceAppearanceOverride settings)
 	{
 		m_DefaultSettings = settings.Default;
 		RacePreset = m_DefaultSettings.RacePreset;
 		Head = new EEAdapter(m_DefaultSettings.Head);
-		CreateWarpaints(m_DefaultSettings);
 		CreateTattoos(m_DefaultSettings);
 		CreatePorts(m_DefaultSettings);
 		Scar = new EEAdapter(m_DefaultSettings.Scar);
 		Hair = new EEAdapter(m_DefaultSettings.Hair);
 		Eyebrows = new EEAdapter(m_DefaultSettings.Eyebrows);
 		Beard = new EEAdapter(m_DefaultSettings.Beard);
-		Horn = new EEAdapter(m_DefaultSettings.Horn);
-		NavigatorMutation = new EEAdapter(m_DefaultSettings.NavigatorMutation);
+		Eyes = new EEAdapter(m_DefaultSettings.Eyes);
 		HairRampIndex = m_DefaultSettings.HairRampIndex;
 		SkinRampIndex = m_DefaultSettings.SkinRampIndex;
 		EyesColorRampIndex = m_DefaultSettings.EyesColorRampIndex;
-		HornsRampIndex = m_DefaultSettings.HornsRampIndex;
 		EyebrowsColorRampIndex = m_DefaultSettings.EyebrowsColorRampIndex;
 		BeardColorRampIndex = m_DefaultSettings.BeardColorRampIndex;
 		EquipmentRampIndex = m_DefaultSettings.EquipmentRampIndex;
@@ -437,11 +523,12 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	private static List<EquipmentEntityLink> GetScarsList(BlueprintRace race, Gender gender)
 	{
-		if (race == null)
+		BlueprintRaceAppearance blueprintRaceAppearance = race?.Appearance;
+		if (blueprintRaceAppearance == null)
 		{
 			return null;
 		}
-		return ((gender == Gender.Male) ? race.MaleOptions : race.FemaleOptions).Scars.ToList();
+		return ((gender == Gender.Male) ? blueprintRaceAppearance.MaleOptions : blueprintRaceAppearance.FemaleOptions).Scars.ToList();
 	}
 
 	public void SetTrackPortrait(bool state)
@@ -457,7 +544,7 @@ public class DollState : ICanConvertPropertiesToReactive
 			UpdateCommandOnLateUpdate.Execute();
 			return;
 		}
-		PortraitDollSettings component = portrait.GetComponent<PortraitDollSettings>();
+		RaceAppearanceOverride component = portrait.GetComponent<RaceAppearanceOverride>();
 		if (component == null)
 		{
 			UpdateCommandOnLateUpdate.Execute();
@@ -469,13 +556,11 @@ public class DollState : ICanConvertPropertiesToReactive
 		}
 		Gender = component.Gender;
 		Race = component.Race;
-		PregenDollSettings component2 = portrait.GetComponent<PregenDollSettings>();
-		if (component2 != null)
+		if (component.Default != null)
 		{
-			PopulatePregenDollSettings(component2);
+			PopulateOverride(component);
 			return;
 		}
-		CreateWarpaints(m_DefaultSettings);
 		CreateTattoos(m_DefaultSettings);
 		CreatePorts(m_DefaultSettings);
 		Updated();
@@ -485,17 +570,18 @@ public class DollState : ICanConvertPropertiesToReactive
 	{
 		if (Gender != gender)
 		{
-			Head = default(EEAdapter);
-			Hair = default(EEAdapter);
-			Beard = default(EEAdapter);
-			Eyebrows = default(EEAdapter);
-			Horn = default(EEAdapter);
-			NavigatorMutation = default(EEAdapter);
 			if (m_TrackPortrait && Gender != gender)
 			{
 				SetTrackPortrait(state: false);
 			}
 			Gender = gender;
+			BlueprintRaceAppearance blueprintRaceAppearance = Race?.Appearance;
+			CustomizationOptions customizationOptions = ((gender != 0) ? blueprintRaceAppearance?.FemaleOptions : blueprintRaceAppearance?.MaleOptions);
+			Head = new EEAdapter(customizationOptions?.Head.FirstOrDefault());
+			Hair = new EEAdapter(customizationOptions?.Hair.FirstOrDefault());
+			Eyebrows = new EEAdapter(customizationOptions?.Eyebrows.FirstOrDefault());
+			Beard = new EEAdapter(customizationOptions?.Facial.FirstOrDefault());
+			Eyes = new EEAdapter(customizationOptions?.Eyes.FirstOrDefault());
 			ClearRampIndexes();
 			Updated();
 		}
@@ -505,16 +591,18 @@ public class DollState : ICanConvertPropertiesToReactive
 	{
 		if (Race != race)
 		{
-			Head = default(EEAdapter);
-			Hair = default(EEAdapter);
-			Beard = default(EEAdapter);
-			Eyebrows = default(EEAdapter);
 			if (m_TrackPortrait && Race != race)
 			{
 				SetTrackPortrait(state: false);
 			}
 			Race = race;
-			CreateWarpaints(m_DefaultSettings);
+			BlueprintRaceAppearance appearance = race.Appearance;
+			CustomizationOptions customizationOptions = ((Gender != 0) ? appearance?.FemaleOptions : appearance?.MaleOptions);
+			Head = new EEAdapter(customizationOptions?.Head.FirstOrDefault());
+			Hair = new EEAdapter(customizationOptions?.Hair.FirstOrDefault());
+			Eyebrows = new EEAdapter(customizationOptions?.Eyebrows.FirstOrDefault());
+			Beard = new EEAdapter(customizationOptions?.Facial.FirstOrDefault());
+			Eyes = new EEAdapter(customizationOptions?.Eyes.FirstOrDefault());
 			CreateTattoos(m_DefaultSettings);
 			CreatePorts(m_DefaultSettings);
 			ClearRampIndexes();
@@ -532,9 +620,16 @@ public class DollState : ICanConvertPropertiesToReactive
 		}
 	}
 
+	private static bool LinksEqual(EquipmentEntityLink a, EquipmentEntityLink b)
+	{
+		string obj = a?.AssetId ?? string.Empty;
+		string text = b?.AssetId ?? string.Empty;
+		return obj == text;
+	}
+
 	public void SetHead([NotNull] EquipmentEntityLink head)
 	{
-		if (!(Head.GetLink() == head))
+		if (!LinksEqual(Head.GetLink(), head))
 		{
 			SetTrackPortrait(state: false);
 			Head = new EEAdapter(head);
@@ -544,7 +639,7 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public void SetHair([NotNull] EquipmentEntityLink hair)
 	{
-		if (!(Hair.GetLink() == hair))
+		if (!LinksEqual(Hair.GetLink(), hair))
 		{
 			SetTrackPortrait(state: false);
 			Hair = new EEAdapter(hair);
@@ -554,7 +649,7 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public void SetBeard([NotNull] EquipmentEntityLink beard)
 	{
-		if (!(Beard.GetLink() == beard))
+		if (!LinksEqual(Beard.GetLink(), beard))
 		{
 			SetTrackPortrait(state: false);
 			Beard = new EEAdapter(beard);
@@ -564,7 +659,7 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public void SetEyebrows([NotNull] EquipmentEntityLink eyebrows)
 	{
-		if (!(Eyebrows.GetLink() == eyebrows))
+		if (!LinksEqual(Eyebrows.GetLink(), eyebrows))
 		{
 			SetTrackPortrait(state: false);
 			Eyebrows = new EEAdapter(eyebrows);
@@ -574,7 +669,7 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public void SetScar([NotNull] EquipmentEntityLink scar)
 	{
-		if (!(Scar.GetLink() == scar))
+		if (!LinksEqual(Scar.GetLink(), scar))
 		{
 			SetTrackPortrait(state: false);
 			Scar = new EEAdapter(scar);
@@ -582,19 +677,9 @@ public class DollState : ICanConvertPropertiesToReactive
 		}
 	}
 
-	public void SetWarpaint(EquipmentEntityLink warpaint, int index)
-	{
-		if (index < Warpaints.Count && !(Warpaints[index].PaintEE.GetLink() == warpaint))
-		{
-			SetTrackPortrait(state: false);
-			Warpaints[index].PaintEE = new EEAdapter(warpaint);
-			Updated();
-		}
-	}
-
 	public void SetTattoo(EquipmentEntityLink tattoo, int index)
 	{
-		if (index < Tattoos.Count && !(Tattoos[index].PaintEE.GetLink() == tattoo))
+		if (index < Tattoos.Count && !LinksEqual(Tattoos[index].PaintEE.GetLink(), tattoo))
 		{
 			SetTrackPortrait(state: false);
 			Tattoos[index].PaintEE = new EEAdapter(tattoo);
@@ -604,30 +689,10 @@ public class DollState : ICanConvertPropertiesToReactive
 
 	public void SetPort([NotNull] EquipmentEntityLink port, int index)
 	{
-		if (index < Ports.Count && !(Ports[index].PaintEE.GetLink() == port))
+		if (index < Ports.Count && !LinksEqual(Ports[index].PaintEE.GetLink(), port))
 		{
 			SetTrackPortrait(state: false);
 			Ports[index].PaintEE = new EEAdapter(port);
-			Updated();
-		}
-	}
-
-	public void SetHorn([NotNull] EquipmentEntityLink horn)
-	{
-		if (!(Horn.GetLink() == horn))
-		{
-			SetTrackPortrait(state: false);
-			Horn = new EEAdapter(horn);
-			Updated();
-		}
-	}
-
-	public void SetNavigatorMutation([NotNull] EquipmentEntityLink mutation)
-	{
-		if (!(NavigatorMutation.GetLink() == mutation))
-		{
-			SetTrackPortrait(state: false);
-			NavigatorMutation = new EEAdapter(mutation);
 			Updated();
 		}
 	}
@@ -662,33 +727,9 @@ public class DollState : ICanConvertPropertiesToReactive
 		return ramps;
 	}
 
-	public List<Texture2D> GetHornsRamps()
-	{
-		List<Texture2D> ramps = GetRamps(Horn);
-		if (ramps.Count <= 0)
-		{
-			return s_EmptyRamps;
-		}
-		return ramps;
-	}
-
 	public List<Texture2D> GetSkinRamps()
 	{
 		return GetRamps(Head);
-	}
-
-	public List<Texture2D> GetWarpaintRamps()
-	{
-		if (Warpaints.Count == 0)
-		{
-			return s_EmptyRamps;
-		}
-		List<Texture2D> ramps = GetRamps(Warpaints.First().PaintEE);
-		if (ramps.Count <= 0)
-		{
-			return s_EmptyRamps;
-		}
-		return ramps;
 	}
 
 	public List<Texture2D> GetTattooRamps(int index)
@@ -764,26 +805,6 @@ public class DollState : ICanConvertPropertiesToReactive
 		}
 	}
 
-	public void SetHornsColor(int rampIndex)
-	{
-		if (HornsRampIndex != rampIndex)
-		{
-			SetTrackPortrait(state: false);
-			HornsRampIndex = rampIndex;
-			Updated();
-		}
-	}
-
-	public void SetWarpaintColor(int rampIndex, int index)
-	{
-		if (index < Warpaints.Count && Warpaints[index].PaintRampIndex != rampIndex)
-		{
-			SetTrackPortrait(state: false);
-			Warpaints[index].PaintRampIndex = rampIndex;
-			Updated();
-		}
-	}
-
 	public void SetTattooColor(int rampIndex, int index)
 	{
 		if (index < Tattoos.Count && Tattoos[index].PaintRampIndex != rampIndex)
@@ -828,49 +849,6 @@ public class DollState : ICanConvertPropertiesToReactive
 		}
 		else
 		{
-			if (!Race.Presets.Contains(RacePreset))
-			{
-				RacePreset = Race.Presets.FirstOrDefault();
-			}
-			CustomizationOptions customizationOptions = ((Gender == Gender.Male) ? Race.MaleOptions : Race.FemaleOptions);
-			if (!LinksHasAdapter(customizationOptions.Heads, Head))
-			{
-				Head = new EEAdapter(customizationOptions.Heads.FirstOrDefault());
-			}
-			if (!LinksHasAdapter(customizationOptions.Eyebrows, Eyebrows))
-			{
-				Eyebrows = new EEAdapter(customizationOptions.Eyebrows.FirstOrDefault());
-			}
-			if (!LinksHasAdapter(customizationOptions.Hair, Hair))
-			{
-				Hair = new EEAdapter(customizationOptions.Hair.FirstOrDefault());
-			}
-			if (!LinksHasAdapter(customizationOptions.Beards, Beard))
-			{
-				Beard = new EEAdapter(customizationOptions.Beards.FirstOrDefault());
-			}
-			if (!LinksHasAdapter(customizationOptions.Horns, Horn))
-			{
-				Horn = new EEAdapter(customizationOptions.Horns.FirstOrDefault());
-			}
-			if (!LinksHasAdapter(customizationOptions.NavigatorMutations, NavigatorMutation))
-			{
-				NavigatorMutation = new EEAdapter(customizationOptions.NavigatorMutations.FirstOrDefault());
-			}
-			foreach (DollPrint port in Ports)
-			{
-				if (!LinksHasAdapter(customizationOptions.Ports, port.PaintEE))
-				{
-					port.PaintEE = new EEAdapter(customizationOptions.Ports.FirstOrDefault());
-				}
-			}
-			foreach (DollPrint tattoo in Tattoos)
-			{
-				if (!LinksHasAdapter(customizationOptions.Tattoos, tattoo.PaintEE))
-				{
-					tattoo.PaintEE = new EEAdapter(tattoo.Paints.FirstOrDefault());
-				}
-			}
 			if (ShowCloth && (GetOutfitRampsPrimary()?.Count ?? 0) <= EquipmentRampIndex)
 			{
 				EquipmentRampIndex = -1;
@@ -881,28 +859,6 @@ public class DollState : ICanConvertPropertiesToReactive
 			}
 			Scars = GetScarsList(Race, Gender);
 		}
-		if (!LinksHasAdapter(Scars.ToArray(), Scar))
-		{
-			Scar = new EEAdapter(Scars.FirstOrDefault());
-		}
-		EquipmentEntityLink[] warpaintsForCustomization = ConfigRoot.Instance.CharGenRoot.WarpaintsForCustomization;
-		foreach (DollPrint warpaint in Warpaints)
-		{
-			warpaint.Paints = warpaintsForCustomization.ToList();
-			if (!LinksHasAdapter(warpaintsForCustomization, warpaint.PaintEE))
-			{
-				warpaint.PaintEE = new EEAdapter(warpaint.Paints.FirstOrDefault());
-			}
-		}
-	}
-
-	private bool LinksHasAdapter(EquipmentEntityLink[] links, EEAdapter adapter)
-	{
-		if (adapter.GetLink() != null)
-		{
-			return links.FindIndex((EquipmentEntityLink l) => l.AssetId == adapter.AssetId) >= 0;
-		}
-		return false;
 	}
 
 	private void Updated()
@@ -922,11 +878,7 @@ public class DollState : ICanConvertPropertiesToReactive
 		{
 			return UtilityChargen.GetClothes(m_EquipmentEntities, Gender, race);
 		}
-		if (Gender != 0)
-		{
-			return Root.FemaleClothes;
-		}
-		return Root.MaleClothes;
+		return Root.GetDollConfig(Gender).Clothes;
 	}
 
 	private List<EEAdapter> GetSkinEntities()
@@ -954,81 +906,69 @@ public class DollState : ICanConvertPropertiesToReactive
 		return list;
 	}
 
-	private void CreateTattoos(PregenDollSettings.Entry s)
+	private void CreateTattoos(RaceAppearanceOverride.Entry s)
 	{
 		Tattoos.Clear();
-		if (Race != null)
+		BlueprintRaceAppearance blueprintRaceAppearance = Race?.Appearance;
+		if (blueprintRaceAppearance != null)
 		{
-			CustomizationOptions customizationOptions = ((Gender == Gender.Male) ? Race.MaleOptions : Race.FemaleOptions);
+			CustomizationOptions customizationOptions = ((Gender == Gender.Male) ? blueprintRaceAppearance.MaleOptions : blueprintRaceAppearance.FemaleOptions);
 			Tattoos = new List<DollPrint>
 			{
 				new DollPrint
 				{
 					PaintEE = new EEAdapter(s?.Tattoo),
 					PaintRampIndex = (s?.TattooRampIndex ?? (-1)),
-					Paints = customizationOptions.Tattoos.ToList()
+					Paints = customizationOptions.Tatoo.ToList()
 				},
 				new DollPrint
 				{
 					PaintEE = new EEAdapter(s?.Tattoo2),
 					PaintRampIndex = (s?.TattooRampIndex ?? (-1)),
-					Paints = customizationOptions.Tattoos.ToList()
+					Paints = customizationOptions.Tatoo.ToList()
 				},
 				new DollPrint
 				{
 					PaintEE = new EEAdapter(s?.Tattoo3),
 					PaintRampIndex = (s?.TattooRampIndex ?? (-1)),
-					Paints = customizationOptions.Tattoos.ToList()
+					Paints = customizationOptions.Tatoo.ToList()
 				},
 				new DollPrint
 				{
 					PaintEE = new EEAdapter(s?.Tattoo4),
 					PaintRampIndex = (s?.TattooRampIndex ?? (-1)),
-					Paints = customizationOptions.Tattoos.ToList()
+					Paints = customizationOptions.Tatoo.ToList()
 				},
 				new DollPrint
 				{
 					PaintEE = new EEAdapter(s?.Tattoo5),
 					PaintRampIndex = (s?.TattooRampIndex ?? (-1)),
-					Paints = customizationOptions.Tattoos.ToList()
+					Paints = customizationOptions.Tatoo.ToList()
 				}
 			};
 		}
 	}
 
-	private void CreateWarpaints(PregenDollSettings.Entry s)
-	{
-		Warpaints.Clear();
-		for (int i = 0; i < 5; i++)
-		{
-			Warpaints.Add(new DollPrint
-			{
-				PaintEE = new EEAdapter(s?.Warpaint),
-				PaintRampIndex = (s?.WarpaintRampIndex ?? (-1)),
-				Paints = ConfigRoot.Instance.CharGenRoot.WarpaintsForCustomization.ToList()
-			});
-		}
-	}
-
-	private void CreatePorts(PregenDollSettings.Entry s)
+	private void CreatePorts(RaceAppearanceOverride.Entry s)
 	{
 		Ports.Clear();
-		if (Race != null)
+		BlueprintRaceAppearance blueprintRaceAppearance = Race?.Appearance;
+		if (blueprintRaceAppearance != null)
 		{
-			CustomizationOptions customizationOptions = ((Gender == Gender.Male) ? Race.MaleOptions : Race.FemaleOptions);
+			CustomizationOptions customizationOptions = ((Gender == Gender.Male) ? blueprintRaceAppearance.MaleOptions : blueprintRaceAppearance.FemaleOptions);
 			Ports = new List<DollPrint>
 			{
 				new DollPrint
 				{
-					PaintEE = new EEAdapter(s?.Port),
+					PaintEE = new EEAdapter(s?.Augmentic1),
 					PaintRampIndex = -1,
-					Paints = customizationOptions.Ports.ToList()
+					Paints = customizationOptions.Augmentic.ToList()
 				},
 				new DollPrint
 				{
-					PaintEE = new EEAdapter(s?.Port2),
+					PaintEE = new EEAdapter(s?.Augmentic2),
 					PaintRampIndex = -1,
-					Paints = customizationOptions.Ports.ToList()
+					Paints = customizationOptions.Augmentic.ToList()
 				}
 			};
 		}
@@ -1093,15 +1033,11 @@ public class DollState : ICanConvertPropertiesToReactive
 		{
 			data.EquipmentEntityIds.Add(Beard.AssetId);
 		}
-		if (Horn.Load() != null)
+		if (Eyes.Load() != null)
 		{
-			data.EquipmentEntityIds.Add(Horn.AssetId);
+			data.EquipmentEntityIds.Add(Eyes.AssetId);
 		}
-		if (NavigatorMutation.Load() != null)
-		{
-			data.EquipmentEntityIds.Add(NavigatorMutation.AssetId);
-		}
-		foreach (DollPrint item in Warpaints.Where((DollPrint warpaint) => warpaint.PaintEE.Load() != null))
+		foreach (DollPrint item in Tattoos.Where((DollPrint tattoo) => tattoo.PaintEE.Load() != null))
 		{
 			data.EquipmentEntityIds.Add(item.PaintEE.AssetId);
 			if (item.PaintRampIndex >= 0)
@@ -1109,34 +1045,17 @@ public class DollState : ICanConvertPropertiesToReactive
 				data.EntityRampIdices[item.PaintEE.AssetId] = item.PaintRampIndex;
 			}
 		}
-		foreach (DollPrint item2 in Tattoos.Where((DollPrint tattoo) => tattoo.PaintEE.Load() != null))
+		foreach (DollPrint item2 in Ports.Where((DollPrint port) => port.PaintEE.Load() != null))
 		{
 			data.EquipmentEntityIds.Add(item2.PaintEE.AssetId);
-			if (item2.PaintRampIndex >= 0)
-			{
-				data.EntityRampIdices[item2.PaintEE.AssetId] = item2.PaintRampIndex;
-			}
-		}
-		foreach (DollPrint item3 in Ports.Where((DollPrint port) => port.PaintEE.Load() != null))
-		{
-			data.EquipmentEntityIds.Add(item3.PaintEE.AssetId);
 		}
 		if (Scar.Load() != null)
 		{
 			data.EquipmentEntityIds.Add(Scar.AssetId);
 		}
-		if (Race != null)
-		{
-			EquipmentEntityLink tail = Race.GetTail(Gender, SkinRampIndex);
-			if (tail != null)
-			{
-				data.EquipmentEntityIds.Add(tail.AssetId);
-			}
-		}
 		SetRampIdices(SkinRampIndex, GetSkinEntities(), ref data);
 		SetRampIdices(HairRampIndex, Hair, ref data);
 		SetRampIdices(EyesColorRampIndex, GetHeadEntities(), ref data, secondary: true);
-		SetRampIdices(HornsRampIndex, Horn, ref data);
 		SetRampIdices(BeardColorRampIndex, Beard, ref data);
 		SetRampIdices(EyebrowsColorRampIndex, Eyebrows, ref data);
 		data.ClothesPrimaryIndex = EquipmentRampIndex;
@@ -1174,7 +1093,6 @@ public class DollState : ICanConvertPropertiesToReactive
 		EyesColorRampIndex = -1;
 		EyebrowsColorRampIndex = -1;
 		BeardColorRampIndex = -1;
-		HornsRampIndex = -1;
 		EquipmentRampIndex = -1;
 		EquipmentRampIndexSecondary = -1;
 	}
@@ -1191,20 +1109,17 @@ public class DollState : ICanConvertPropertiesToReactive
 			Eyebrows = Eyebrows,
 			Hair = Hair,
 			Beard = Beard,
-			Horn = Horn,
-			NavigatorMutation = NavigatorMutation,
+			Eyes = Eyes,
 			Portrait = Portrait,
 			Clothes = Clothes.ToList(),
 			Scars = Scars.ToList(),
 			Tattoos = Tattoos,
-			Warpaints = Warpaints,
 			Ports = Ports.ToList(),
 			HairRampIndex = HairRampIndex,
 			SkinRampIndex = SkinRampIndex,
 			EyesColorRampIndex = EyesColorRampIndex,
 			EyebrowsColorRampIndex = EyebrowsColorRampIndex,
 			BeardColorRampIndex = BeardColorRampIndex,
-			HornsRampIndex = HornsRampIndex,
 			EquipmentRampIndex = EquipmentRampIndex,
 			EquipmentRampIndexSecondary = EquipmentRampIndexSecondary,
 			LeftHanded = LeftHanded,

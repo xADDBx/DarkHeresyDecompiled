@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Levelup.Selections;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
@@ -115,7 +115,7 @@ public class BlueprintFeature : BlueprintFeatureBase, IBlueprintFactWithRanks
 
 	public string Acronym => m_Acronym?.Text;
 
-	public override MechanicEntityFact CreateFact(MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public override MechanicEntityFact CreateFact(IEvalContext parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new Feature(this, parentContext);
 	}

@@ -60,7 +60,7 @@ public sealed class PartEncounter : UnitPart, IHashable, IOwlPackable<PartEncoun
 		}
 	}
 
-	public void SetupOnSpawn([NotNull] BlueprintEncounter blueprint, [NotNull] string spawnerId)
+	public void SetupOnSpawn([NotNull] BlueprintEncounter blueprint, [CanBeNull] string spawnerId)
 	{
 		if (Blueprint != null)
 		{
@@ -68,11 +68,14 @@ public sealed class PartEncounter : UnitPart, IHashable, IOwlPackable<PartEncoun
 		}
 		Blueprint = blueprint;
 		SpawnerId = spawnerId;
-		BlueprintEncounter.Group group = FindGroup();
-		if (group != null)
+		if (spawnerId != null)
 		{
-			base.Owner.CombatGroup.Id = $"{Blueprint.AssetGuid}_{group.CombatGroup}";
-			SetupSquad(group);
+			BlueprintEncounter.Group group = FindGroup();
+			if (group != null)
+			{
+				base.Owner.CombatGroup.Id = $"{Blueprint.AssetGuid}_{group.CombatGroup}";
+				SetupSquad(group);
+			}
 		}
 	}
 
@@ -86,7 +89,7 @@ public sealed class PartEncounter : UnitPart, IHashable, IOwlPackable<PartEncoun
 		}
 		Blueprint = blueprint;
 		Joined = true;
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IJoinEncounterHandler>)delegate(IJoinEncounterHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IJoinEncounterHandler>)delegate(IJoinEncounterHandler h)
 		{
 			h.HandleJoinEncounter();
 		}, isCheckRuntime: true);

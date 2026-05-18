@@ -9,7 +9,7 @@ namespace Kingmaker.Code.UI.MVVM;
 public class OvertipCoverBlockView : View<OvertipCoverBlockVM>
 {
 	[SerializeField]
-	private CanvasGroup m_CanvasGroup;
+	private GameObject m_Root;
 
 	[SerializeField]
 	private Image m_Icon;
@@ -26,26 +26,28 @@ public class OvertipCoverBlockView : View<OvertipCoverBlockVM>
 
 	public void HideInstant()
 	{
-		m_CanvasGroup.alpha = 0f;
+		m_Root.SetActive(value: false);
 	}
 
 	protected override void OnBind()
 	{
-		base.ViewModel.IsVisibleTrigger.CombineLatest(base.ViewModel.CoverType, (bool visible, LosCalculations.CoverType coverType) => new { visible, coverType }).Subscribe(value =>
+		base.ViewModel.CoverType.Subscribe(HandleCoverTypeChanged).AddTo(this);
+	}
+
+	private void HandleCoverTypeChanged(LosCalculations.CoverType? coverType)
+	{
+		if (!coverType.HasValue || coverType.GetValueOrDefault() == LosCalculations.CoverType.Obstacle)
 		{
-			bool flag = value.visible && value.coverType != LosCalculations.CoverType.Obstacle;
-			m_CanvasGroup.alpha = (flag ? 1f : 0f);
-		}).AddTo(this);
-		base.ViewModel.CoverType.Subscribe(delegate(LosCalculations.CoverType value)
+			m_Root.SetActive(value: false);
+			return;
+		}
+		Image icon = m_Icon;
+		icon.sprite = coverType.Value switch
 		{
-			Image icon = m_Icon;
-			icon.sprite = value switch
-			{
-				LosCalculations.CoverType.Obstacle => m_None, 
-				LosCalculations.CoverType.Cover => m_Cover, 
-				LosCalculations.CoverType.LosBlocker => m_Invisible, 
-				_ => m_Icon.sprite, 
-			};
-		}).AddTo(this);
+			LosCalculations.CoverType.Cover => m_Cover, 
+			LosCalculations.CoverType.LosBlocker => m_Invisible, 
+			_ => m_None, 
+		};
+		m_Root.SetActive(value: true);
 	}
 }

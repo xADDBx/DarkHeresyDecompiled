@@ -30,6 +30,10 @@ public class CharGenLevelUpTalentPhaseDetailedView : CharGenLevelUpPhaseSelectio
 		{
 			m_GroupButton.SetActiveLayer((!v) ? 1 : 0);
 		}).AddTo(this);
+		base.ViewModel.IsAllCollapsed.Subscribe(delegate(bool v)
+		{
+			m_CollapseAllText.text = (v ? UIStrings.Instance.CharGen.ShowAll : UIStrings.Instance.CharGen.CollapseAll);
+		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_GroupButton.OnLeftClickAsObservable(), delegate
 		{
 			base.ViewModel.ToggleGrouping();
@@ -40,6 +44,5 @@ public class CharGenLevelUpTalentPhaseDetailedView : CharGenLevelUpPhaseSelectio
 		}).AddTo(this);
 		m_SourceText.text = UIStrings.Instance.CharGen.GroupBySource;
 		m_TypeText.text = UIStrings.Instance.CharGen.GroupByType;
-		m_CollapseAllText.text = UIStrings.Instance.CharGen.CollapseAll;
 	}
 }

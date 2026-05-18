@@ -1,9 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
-using Owlcat.Runtime.Core.Utility;
-using Owlcat.UI;
-using R3;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -13,13 +8,6 @@ public abstract class FirstLaunchEntityLanguageBaseView<TFirstLaunchEntityLangua
 	[SerializeField]
 	private List<TFirstLaunchEntityLanguageItemView> m_ItemViews;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
-	public void SetNavigationBehaviour(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		m_NavigationBehaviour = navigationBehaviour;
-	}
-
 	protected override void BindViewImplementation()
 	{
 		base.gameObject.SetActive(value: true);
@@ -27,7 +15,6 @@ public abstract class FirstLaunchEntityLanguageBaseView<TFirstLaunchEntityLangua
 		{
 			m_ItemViews[i].Bind(base.ViewModel.Items[i]);
 		}
-		BuildNavigation();
 	}
 
 	public override void OnModificationChanged(string reason, bool allowed = true)
@@ -47,29 +34,5 @@ public abstract class FirstLaunchEntityLanguageBaseView<TFirstLaunchEntityLangua
 	protected override void DestroyViewImplementation()
 	{
 		base.gameObject.SetActive(value: false);
-		m_NavigationBehaviour.Clear();
-	}
-
-	private void BuildNavigation()
-	{
-		for (int i = 0; i < m_ItemViews.Count; i++)
-		{
-			m_NavigationBehaviour.InsertVertical(i, m_ItemViews[i]);
-		}
-		foreach (IConsoleEntity entity in m_NavigationBehaviour.Entities.Where((IConsoleEntity e) => e is TFirstLaunchEntityLanguageItemView))
-		{
-			FirstLaunchEntityLanguageItemPCView firstLaunchEntityLanguageItemPCView = entity as FirstLaunchEntityLanguageItemPCView;
-			if (!(firstLaunchEntityLanguageItemPCView == null))
-			{
-				AddDisposable(ObservableSubscribeExtensions.Subscribe(firstLaunchEntityLanguageItemPCView.Or(null)?.EntityButton.OnLeftClickAsObservable(), delegate
-				{
-					m_NavigationBehaviour.FocusOnEntityManual(entity);
-				}));
-			}
-		}
-		DelayedInvoker.InvokeInFrames(delegate
-		{
-			m_NavigationBehaviour.FocusOnEntityManual(m_ItemViews.FirstOrDefault((TFirstLaunchEntityLanguageItemView item) => item.IsSelected));
-		}, 1);
 	}
 }

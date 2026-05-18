@@ -33,33 +33,42 @@ public class CommandAddFact : CommandBase
 
 	public BlueprintUnitFact Fact => m_Fact?.Get();
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		Data commandData = player.GetCommandData<Data>(this);
-		commandData.Unit = Unit.GetValue();
-		if (commandData.Unit == null)
+		if (!Unit.TryGetValue(out var value))
 		{
-			return;
+			return CommandResult.Fail("Unit not found");
 		}
+		Data commandData = player.GetCommandData<Data>(this);
+		commandData.Unit = value;
 		using (ContextData<CommandAction.PlayerData>.Request().Setup(player))
 		{
-			commandData.Fact = commandData.Unit.AddFact(Fact);
+			commandData.Fact = value.AddFact(Fact);
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		if (commandData.Unit != null && commandData.Fact != null)
+		if (commandData.Unit == null || commandData.Fact == null)
 		{
-			commandData.Unit.Facts.Remove(commandData.Fact);
-			commandData.Unit = null;
-			commandData.Fact = null;
+			return CommandResult.Fail("Unit or fact not found");
 		}
+		commandData.Unit.Facts.Remove(commandData.Fact);
+		commandData.Unit = null;
+		commandData.Fact = null;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -67,7 +76,8 @@ public class CommandAddFact : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

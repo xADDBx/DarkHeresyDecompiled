@@ -18,13 +18,11 @@ public class SetGraphNodeToUseAbilityFromNodeElement : BehaviourTreeNodeElement<
 
 	public PropertyCalculator FunctionToMaximize;
 
+	[OptionalParameter]
+	public PropertyCalculatorBlueprintVariableReference CalculatorBlueprint;
+
 	protected override SetGraphNodeToUseAbilityFromNode CreateTypedNode(Blackboard blackboard)
 	{
-		EntityVariable agentVariable = blackboard.GetAgentVariable();
-		GraphNodeVariable runtimeVariable = Variable.GetRuntimeVariable(blackboard);
-		GraphNodeListVariable runtimeVariable2 = NodesList.GetRuntimeVariable(blackboard);
-		MechanicEntityListVariable runtimeVariable3 = Targets.GetRuntimeVariable(blackboard);
-		AbilityVariable runtimeVariable4 = Ability.GetRuntimeVariable(blackboard);
-		return new SetGraphNodeToUseAbilityFromNode(agentVariable, runtimeVariable, runtimeVariable2, runtimeVariable3, runtimeVariable4, FunctionToMaximize);
+		return new SetGraphNodeToUseAbilityFromNode(blackboard.GetAgentVariable(), Variable.GetRuntimeVariable(blackboard), NodesList.GetRuntimeVariable(blackboard), Targets.GetRuntimeVariable(blackboard), Ability.GetRuntimeVariable(blackboard), calculatorBlueprint: CalculatorBlueprint.GetOptionalRuntimeVariable<PropertyCalculatorBlueprintVariable>(blackboard), functionToMaximize: FunctionToMaximize);
 	}
 }

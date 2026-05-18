@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -21,7 +22,7 @@ public class MoraleAddingAtTurnStart : UnitFactComponentDelegate, ITurnStartHand
 
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (isTurnBased && Restrictions.IsPassed(base.Context, base.Owner))
+		if (isTurnBased && Restrictions.IsPassed(base.Context, base.Owner) && !ContextData<TurnController.InterruptTurnEndMark>.Current)
 		{
 			Rulebook.Trigger(new RulePerformMoraleChange(base.Owner, base.Owner, MoraleEventType.TurnStart, Amount.Calculate(base.Context)));
 		}

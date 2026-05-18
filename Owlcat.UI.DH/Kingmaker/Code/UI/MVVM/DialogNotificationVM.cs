@@ -5,6 +5,8 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class DialogNotificationVM : ViewModel
 {
+	public static readonly DialogNotificationVM Empty = new DialogNotificationVM(string.Empty);
+
 	public readonly string Label;
 
 	public readonly Sprite Icon;

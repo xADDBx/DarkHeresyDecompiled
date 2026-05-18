@@ -24,11 +24,11 @@ public class TooltipTemplateChargenCustomCharacter : TooltipBaseTemplate
 		if (m_Mode == CharGenMode.NewCompanion)
 		{
 			LocalizedString localizedString = ((m_CompanionType == CharGenCompanionType.Navigator) ? UIStrings.Instance.CharGen.CreateNewNavigator : UIStrings.Instance.CharGen.CreateNewCompanion);
-			list.Add(new TooltipBrickTitle(localizedString));
+			list.Add(new BrickTitleVM(localizedString));
 		}
 		else
 		{
-			list.Add(new TooltipBrickTitle(UIStrings.Instance.NewGameWin.CreateNewCharacter));
+			list.Add(new BrickTitleVM(UIStrings.Instance.NewGameWin.CreateNewCharacter));
 		}
 		return list;
 	}
@@ -39,11 +39,11 @@ public class TooltipTemplateChargenCustomCharacter : TooltipBaseTemplate
 		if (m_Mode == CharGenMode.NewCompanion)
 		{
 			LocalizedString localizedString = ((m_CompanionType == CharGenCompanionType.Navigator) ? UIStrings.Instance.CharGen.CreateNewNavigatorDescription : UIStrings.Instance.CharGen.CreateNewCompanionDescription);
-			list.Add(new TooltipBrickText(localizedString));
+			list.Add(new BrickTextVM(localizedString));
 		}
 		else
 		{
-			list.Add(new TooltipBrickText(UIStrings.Instance.NewGameWin.CreateNewCharacterDescription));
+			list.Add(new BrickTextVM(UIStrings.Instance.NewGameWin.CreateNewCharacterDescription));
 		}
 		return list;
 	}

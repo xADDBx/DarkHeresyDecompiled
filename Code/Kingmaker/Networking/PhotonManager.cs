@@ -1115,7 +1115,12 @@ public class PhotonManager : MonoBehaviour, IMatchmakingCallbacks, IConnectionCa
 			byte[] array = (byte[])value;
 			ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(array, 0, array.Length);
 			obj = NetMessageSerializer.DeserializeFromSpan<T>(span);
-			return true;
+			bool num = obj != null;
+			if (!num)
+			{
+				PFLog.Net.Error("Failed to parse property " + propertyName + " of type " + typeof(T).Name);
+			}
+			return num;
 		}
 		obj = default(T);
 		return false;

@@ -226,13 +226,13 @@ public class PartUnitProgression : BaseUnitPart, IHashable, IOwlPackable<PartUni
 			}
 			bool needNewLevelSound = Experience < ExperienceTable.GetBonus(CharacterLevel + 1);
 			Experience += expResult;
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitGainExperienceHandler>)delegate(IUnitGainExperienceHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitGainExperienceHandler>)delegate(IUnitGainExperienceHandler h)
 			{
 				h.HandleUnitGainExperience(expResult, needNewLevelSound);
 			}, isCheckRuntime: true);
 			if (log)
 			{
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUILogGainExperienceHandler>)delegate(IUILogGainExperienceHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUILogGainExperienceHandler>)delegate(IUILogGainExperienceHandler h)
 				{
 					h.HandleUnitGainExperience(expResult);
 				}, isCheckRuntime: true);

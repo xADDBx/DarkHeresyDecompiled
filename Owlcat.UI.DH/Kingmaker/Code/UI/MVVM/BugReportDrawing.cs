@@ -1,4 +1,5 @@
 using Kingmaker.UI;
+using Kingmaker.UI.Pointer;
 using Owlcat.UI;
 using UnityEngine;
 
@@ -42,10 +43,10 @@ public class BugReportDrawing
 
 	public void Update()
 	{
-		bool flag = (Game.Instance.IsControllerMouse ? Input.GetMouseButton(0) : GamePad.Instance.Player.GetButton(8));
-		if (flag && !m_NoDrawingOnCurrentDrag)
+		bool mouseButton = Input.GetMouseButton(0);
+		if (mouseButton && !m_NoDrawingOnCurrentDrag)
 		{
-			Vector2 vector = (Game.Instance.IsControllerMouse ? Input.mousePosition : UICamera.Instance.WorldToScreenPoint(UIKitRewiredCursorController.Cursor.transform.position));
+			Vector2 vector = (Game.Instance.IsControllerMouse ? CursorController.CursorPosition : ((Vector2)UICamera.Instance.WorldToScreenPoint(UIKitRewiredCursorController.Cursor.transform.position)));
 			if (CheckHitOnImage(vector))
 			{
 				m_CurrentBrush(vector);
@@ -59,12 +60,12 @@ public class BugReportDrawing
 				}
 			}
 		}
-		else if (!flag)
+		else if (!mouseButton)
 		{
 			m_PreviousDragPosition = Vector2.zero;
 			m_NoDrawingOnCurrentDrag = false;
 		}
-		m_MouseWasPreviouslyHeldDown = flag;
+		m_MouseWasPreviouslyHeldDown = mouseButton;
 	}
 
 	private bool CheckHitOnImage(Vector2 mousePos)

@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Controllers.TurnBased;
@@ -23,7 +26,7 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Squads;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPackable<UnitSquad>
+public sealed class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPackable<UnitSquad>
 {
 	public class SquadTurnControlData
 	{
@@ -33,9 +36,30 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 
 		private readonly HashSet<GraphNode> m_ReservedNodes = new HashSet<GraphNode>();
 
+		private CancellationTokenSource m_MovementPlanCts;
+
 		public TargetWrapper CommonTarget { get; set; }
 
+		public Task<SquadMovementPlan> MovementPlanTask { get; private set; }
+
+		public CancellationToken MovementPlanToken => m_MovementPlanCts?.Token ?? CancellationToken.None;
+
 		public bool IsAllReady => m_Squad.Units.Where((UnitReference ur) => ur.ToBaseUnitEntity().CanActInTurnBased).All((UnitReference ur) => m_UnitsReady.Contains(ur.ToBaseUnitEntity()));
+
+		public Task<SquadMovementPlan> TryStakeMovementPlanTask(Func<Task<SquadMovementPlan>> factory)
+		{
+			if (MovementPlanTask != null)
+			{
+				return MovementPlanTask;
+			}
+			if (factory == null)
+			{
+				return null;
+			}
+			m_MovementPlanCts = new CancellationTokenSource();
+			MovementPlanTask = factory();
+			return MovementPlanTask;
+		}
 
 		public SquadTurnControlData(UnitSquad squad)
 		{
@@ -61,6 +85,24 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		{
 			m_UnitsReady.Clear();
 			m_ReservedNodes.Clear();
+			if (m_MovementPlanCts != null)
+			{
+				try
+				{
+					m_MovementPlanCts.Cancel();
+				}
+				catch (ObjectDisposedException)
+				{
+				}
+				m_MovementPlanCts.Dispose();
+				m_MovementPlanCts = null;
+			}
+			Task<SquadMovementPlan> movementPlanTask = MovementPlanTask;
+			if (movementPlanTask != null && movementPlanTask.IsCompletedSuccessfully)
+			{
+				movementPlanTask.Result?.ReleaseAll();
+			}
+			MovementPlanTask = null;
 		}
 	}
 
@@ -122,6 +164,16 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 
 	public int Count => Units.Count;
 
+	public int AliveUnitsCount => m_Units.Count(delegate(UnitReference x)
+	{
+		BaseUnitEntity baseUnitEntity = x.Entity?.ToBaseUnitEntity();
+		if (baseUnitEntity == null)
+		{
+			return false;
+		}
+		return baseUnitEntity.IsInGame && !baseUnitEntity.IsDeadOrUnconscious;
+	});
+
 	public override bool IsInCombat => Units.HasItem((UnitReference i) => i.Entity?.IsInCombat ?? false);
 
 	[NotNull]
@@ -148,7 +200,8 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		Data = new SquadTurnControlData(this);
 	}
 
-	protected UnitSquad()
+	private UnitSquad(OwlPackConstructorParameter _)
+		: base(_)
 	{
 		Data = new SquadTurnControlData(this);
 	}
@@ -183,12 +236,13 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 		}
 		if (m_Units.Empty())
 		{
+			HoldingState?.RemoveEntityData(this);
 			HandleDestroy();
 			Dispose();
 		}
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -217,7 +271,7 @@ public class UnitSquad : MechanicEntity, ICombatParticipant, IHashable, IOwlPack
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		UnitSquad source = new UnitSquad();
+		UnitSquad source = new UnitSquad(default(OwlPackConstructorParameter));
 		result = Unsafe.As<UnitSquad, TPossiblyBase>(ref source);
 	}
 

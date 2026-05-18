@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 

@@ -15,8 +15,8 @@ public class CharGenLevelUpSelectorAbilityItemVM : CharGenLevelUpSelectorBaseIte
 
 	public UIFeature UIFeature { get; private set; }
 
-	public CharGenLevelUpSelectorAbilityItemVM(FeatureSelectionItem featureSelectionItem, Action<CharGenLevelUpSelectorBaseItemVM> onHover, LevelUpManager levelUpManager, CharGenLevelUpNestedListHeaderVM parenNodeVm = null)
-		: base(featureSelectionItem.Feature, onHover, parenNodeVm)
+	public CharGenLevelUpSelectorAbilityItemVM(FeatureSelectionItem featureSelectionItem, Action<CharGenLevelUpSelectorBaseItemVM> onHover, LevelUpManager levelUpManager, CharGenLevelUpNestedListHeaderVM parenNodeVm = null, bool isAllowSwitchOff = true)
+		: base(featureSelectionItem.Feature, onHover, parenNodeVm, isAllowSwitchOff)
 	{
 		FeatureSelectionItem = featureSelectionItem;
 		UIFeature = new UIFeature(featureSelectionItem.Feature);
@@ -25,7 +25,7 @@ public class CharGenLevelUpSelectorAbilityItemVM : CharGenLevelUpSelectorBaseIte
 		{
 			if (addFacts.Facts[0] is BlueprintAbility blueprintAbility)
 			{
-				base.Template = new TooltipTemplateLevelUpAbility(blueprintAbility, null, null, isScreenWindowTooltip: false, levelUpManager);
+				base.Template = new TooltipTemplateLevelUpAbility(blueprintAbility, null, null, _: false, levelUpManager);
 				return;
 			}
 			if (addFacts.Facts[0] is BlueprintToggleAbility ability)

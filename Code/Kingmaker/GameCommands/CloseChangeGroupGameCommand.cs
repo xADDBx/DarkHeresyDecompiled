@@ -1,25 +1,55 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class CloseChangeGroupGameCommand : GameCommand, IOwlPackable<CloseChangeGroupGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class CloseChangeGroupGameCommand : GameCommand, IMemoryPackable<CloseChangeGroupGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<CloseChangeGroupGameCommand>
 {
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	[Preserve]
+	private sealed class CloseChangeGroupGameCommandFormatter : MemoryPackFormatter<CloseChangeGroupGameCommand>
 	{
-		Name = "CloseChangeGroupGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[0]
-	};
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CloseChangeGroupGameCommand value)
+		{
+			CloseChangeGroupGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref CloseChangeGroupGameCommand value)
+		{
+			CloseChangeGroupGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref CloseChangeGroupGameCommand value)
+		{
+			CloseChangeGroupGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref CloseChangeGroupGameCommand value)
+		{
+			CloseChangeGroupGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	public CloseChangeGroupGameCommand()
 	{
 	}
@@ -30,6 +60,114 @@ public sealed class CloseChangeGroupGameCommand : GameCommand, IOwlPackable<Clos
 		{
 			h.HandleCloseChangeGroup();
 		});
+	}
+
+	static CloseChangeGroupGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "CloseChangeGroupGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[0]
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<CloseChangeGroupGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new CloseChangeGroupGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<CloseChangeGroupGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<CloseChangeGroupGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CloseChangeGroupGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteObjectHeader(0);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref CloseChangeGroupGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		if (memberCount == 0)
+		{
+			if (value != null)
+			{
+				return;
+			}
+		}
+		else
+		{
+			if (memberCount > 0)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(CloseChangeGroupGameCommand), 0, memberCount);
+				return;
+			}
+			_ = value;
+			if (value != null)
+			{
+				return;
+			}
+		}
+		value = new CloseChangeGroupGameCommand();
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref CloseChangeGroupGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+		}
+		else
+		{
+			writer.WriteEmptyObject();
+		}
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref CloseChangeGroupGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		_ = value;
+		_ = new bool[0];
+		while (reader.ReadPropertyName() != null)
+		{
+			_ = value;
+		}
+		if (value == null)
+		{
+			value = new CloseChangeGroupGameCommand();
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

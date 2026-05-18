@@ -248,6 +248,6 @@ internal struct ShadowRenderDataFactory
 		float3 @float = new float3(row.x, row.y, row.z);
 		float num = math.length(@float);
 		float3 float2 = @float / num;
-		return new Plane(d: row.w / num, inNormal: float2);
+		return new Plane(d: row.w / num, inNormal: (Vector3)float2);
 	}
 }

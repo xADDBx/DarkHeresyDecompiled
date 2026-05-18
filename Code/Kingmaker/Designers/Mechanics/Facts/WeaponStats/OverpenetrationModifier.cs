@@ -24,9 +24,5 @@ public abstract class OverpenetrationModifier : MechanicEntityFactComponentDeleg
 
 	public void Apply(RuleCalculateStatsWeapon rule)
 	{
-		if (m_Restrictions.IsPassed(base.Fact.Context, null, null, rule, rule.Ability))
-		{
-			m_OverpenetrationFactor.TryApply(rule.OverpenetrationChanceModifiers, base.Fact, m_Descriptor);
-		}
 	}
 }

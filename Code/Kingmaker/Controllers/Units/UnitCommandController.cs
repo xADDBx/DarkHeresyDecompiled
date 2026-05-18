@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Controllers.Interfaces;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -48,12 +49,12 @@ public class UnitCommandController : BaseUnitController
 			}
 			if (flag)
 			{
-				unit.View.StopMoving();
+				unit.StopMoving();
 			}
 		}
 		catch (Exception ex)
 		{
-			PFLog.Default.Exception(unit.View, ex);
+			PFLog.Default.Exception(unit.View.AsEntityView(), ex);
 		}
 	}
 
@@ -131,7 +132,7 @@ public class UnitCommandController : BaseUnitController
 		{
 			return false;
 		}
-		if (command.AwaitMovementFinish && executor.View.MovementAgent.IsReallyMoving)
+		if (command.AwaitMovementFinish && executor.IsReallyMoving)
 		{
 			return false;
 		}

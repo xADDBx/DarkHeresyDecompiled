@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Pathfinding;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
@@ -25,7 +26,7 @@ public class IsTargetReachable : BoolPropertyGetter, PropertyContextAccessor.ITa
 		{
 			return false;
 		}
-		if (!(this.GetTargetByType(Target) is BaseUnitEntity baseUnitEntity2))
+		if (!(EvalContext.Current.GetEntityByType(Target) is BaseUnitEntity baseUnitEntity2))
 		{
 			return false;
 		}

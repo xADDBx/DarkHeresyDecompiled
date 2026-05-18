@@ -31,6 +31,8 @@ public class UnitDismembermentManager : MonoBehaviour
 		public float SliceOffset;
 
 		public Vector3 SliceOrientationEuler;
+
+		public bool IncludeDescendants;
 	}
 
 	[Serializable]

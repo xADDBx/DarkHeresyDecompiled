@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Code.View.Bridge.Facades;
 using Kingmaker.Code.View.Bridge.Interfaces.Canvas;
 using Kingmaker.Code.View.Bridge.Services;
+using Kingmaker.UI.Pointer;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -19,7 +20,7 @@ public class ReportingRaycaster : MonoBehaviour
 
 	public string GetFeatureName()
 	{
-		Vector2 position = ((Input.GetJoystickNames().Length != 0) ? new Vector2((float)Screen.width * 0.5f, (float)Screen.height * 0.5f) : ((Vector2)Input.mousePosition));
+		Vector2 position = ((Input.GetJoystickNames().Length != 0) ? new Vector2((float)Screen.width * 0.5f, (float)Screen.height * 0.5f) : CursorController.CursorPosition);
 		PointerEventData eventData = new PointerEventData(EventSystem.current)
 		{
 			position = position
@@ -67,7 +68,7 @@ public class ReportingRaycaster : MonoBehaviour
 	{
 		PointerEventData eventData = new PointerEventData(EventSystem.current)
 		{
-			position = Input.mousePosition
+			position = CursorController.CursorPosition
 		};
 		List<RaycastResult> list = new List<RaycastResult>();
 		EventSystem.current.RaycastAll(eventData, list);
@@ -110,7 +111,7 @@ public class ReportingRaycaster : MonoBehaviour
 	{
 		PointerEventData eventData = new PointerEventData(EventSystem.current)
 		{
-			position = Input.mousePosition
+			position = CursorController.CursorPosition
 		};
 		List<RaycastResult> list = new List<RaycastResult>();
 		EventSystem.current.RaycastAll(eventData, list);

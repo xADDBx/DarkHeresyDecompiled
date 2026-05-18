@@ -5,6 +5,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.Mechanics.Blueprints;
@@ -33,7 +34,7 @@ public class StackingEquipmentPropertyGetter : IntPropertyGetter, PropertyContex
 
 	protected override int GetBaseValue()
 	{
-		int num = (m_IsWeaponBased ? ((from p in base.PropertyContext.MechanicContext?.SourceAbility?.SourceItem?.Blueprint.GetComponents<StackingUnitProperty>()
+		int num = (m_IsWeaponBased ? ((from p in base.Context.SourceAbility?.SourceItem?.Blueprint.GetComponents<StackingUnitProperty>()
 			where p.Property == Property
 			select p).Sum((StackingUnitProperty i) => GetValue(i, applyRanks: false))).GetValueOrDefault() : 0);
 		EntityFactsManager facts = base.CurrentEntity.Facts;
@@ -98,6 +99,6 @@ public class StackingEquipmentPropertyGetter : IntPropertyGetter, PropertyContex
 	private int GetValue(StackingUnitProperty p, bool applyRanks)
 	{
 		int num = ((!applyRanks) ? 1 : base.CurrentEntity.Buffs.Enumerable.Where((Buff i) => i.Blueprint == p.OwnerBlueprint).Sum((Buff i) => i.Rank));
-		return p.GetValue(this.GetMechanicContext()) * num;
+		return p.GetValue(EvalContext.Current) * num;
 	}
 }

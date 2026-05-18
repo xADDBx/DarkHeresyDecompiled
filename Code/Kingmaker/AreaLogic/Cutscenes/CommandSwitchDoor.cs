@@ -53,35 +53,47 @@ public class CommandSwitchDoor : CommandBase
 	[ShowIf("SyncUnitRotation")]
 	public AbstractUnitEvaluator Unit;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		using (ContextData<PlayerData>.Request().Setup(player))
 		{
-			InteractionDoorPart optional = Door.GetValue().GetOptional<InteractionDoorPart>();
-			if ((bool)optional)
+			if (!Door.TryGetValue(out var value))
 			{
-				if (UnlockIfLocked)
-				{
-					optional.SetUnlocked();
-				}
-				if (optional.GetState())
-				{
-					if (CloseIfAlreadyOpen)
-					{
-						optional.Open();
-					}
-				}
-				else if (OpenIfAlreadyClosed)
+				m_Finished = true;
+				return CommandResult.Fail("Failed to find door map object");
+			}
+			InteractionDoorPart optional = value.GetOptional<InteractionDoorPart>();
+			if (optional == null)
+			{
+				m_Finished = true;
+				return CommandResult.Fail("Door " + value.View.name + " does not have an InteractionDoorPart component");
+			}
+			if (UnlockIfLocked)
+			{
+				optional.SetUnlocked();
+			}
+			if (optional.GetState())
+			{
+				if (CloseIfAlreadyOpen)
 				{
 					optional.Open();
 				}
 			}
-			m_Finished = (skipping && !WaitUntilAnimationEnds) || !WaitUntilAnimationEnds;
-			if (SyncUnitRotation && Unit?.GetValue() != null && Door?.GetValue().View.transform.GetChild(0) != null)
+			else if (OpenIfAlreadyClosed)
 			{
-				m_UnitOffset = Unit.GetValue().Position - Door.GetValue().View.transform.position;
+				optional.Open();
+			}
+			m_Finished = (skipping && !WaitUntilAnimationEnds) || !WaitUntilAnimationEnds;
+			if (SyncUnitRotation)
+			{
+				if (Unit == null || !Unit.TryGetValue(out var value2))
+				{
+					return CommandResult.Fail("Failed to find unit to sync rotation with");
+				}
+				m_UnitOffset = value2.Position - optional.View.transform.position;
 				m_UnitOffset.y = 0f;
 			}
+			return CommandResult.Success;
 		}
 	}
 
@@ -94,9 +106,14 @@ public class CommandSwitchDoor : CommandBase
 		return false;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -105,23 +122,34 @@ public class CommandSwitchDoor : CommandBase
 		{
 			return true;
 		}
-		return Door.GetValue().GetOptional<InteractionDoorPart>().IsAnimationFinished;
+		return Door.GetValue().GetOptional<InteractionDoorPart>()?.IsAnimationFinished ?? false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
-		if (SyncUnitRotation && Unit?.GetValue() != null && Door?.GetValue().View.transform.GetChild(0) != null)
+		if (!SyncUnitRotation)
 		{
-			Transform transform = Door.GetValue().View.transform.GetChild(0).transform;
-			Unit.GetValue().Position = transform.position + transform.rotation * m_UnitOffset;
-			Unit.GetValue().DesiredOrientation = transform.rotation.eulerAngles.y;
+			return CommandResult.Success;
 		}
+		if (Unit == null || !Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find unit to sync rotation with");
+		}
+		if (!Door.TryGetValue(out var value2))
+		{
+			m_Finished = true;
+			return CommandResult.Fail("Failed to find door map object");
+		}
+		Transform transform = value2.View.transform.GetChild(0).transform;
+		value.Position = transform.position + transform.rotation * m_UnitOffset;
+		value.DesiredOrientation = transform.rotation.eulerAngles.y;
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		m_Finished = !WaitUntilAnimationEnds;
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

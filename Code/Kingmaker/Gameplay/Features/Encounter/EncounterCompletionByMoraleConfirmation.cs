@@ -1,3 +1,5 @@
+using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.GameCommands;
 using Kingmaker.Gameplay.Features.Morale;
 using Kingmaker.PubSubSystem.Core;
 
@@ -15,17 +17,24 @@ public sealed class EncounterCompletionByMoraleConfirmation : EncounterCompletio
 
 	protected override void UpdateInternal()
 	{
-		if (!_waitingConfirmationFromPlayer)
+		if (_waitingConfirmationFromPlayer)
 		{
-			_waitingConfirmationFromPlayer = true;
-			EventBus.RaiseEvent(delegate(IMoraleVictoryConfirmationRequest h)
-			{
-				h.HandleMoraleVictoryConfirmationRequest(Callback);
-			});
+			return;
 		}
+		_waitingConfirmationFromPlayer = true;
+		EventBus.RaiseEvent(delegate(IMoraleVictoryConfirmationRequest h)
+		{
+			h.HandleMoraleVictoryConfirmationRequest(delegate(bool confirmed)
+			{
+				if (UtilityNet.IsControlMainCharacter())
+				{
+					Game.Instance.GameCommandQueue.ConfirmCombatVictoryByMorale(confirmed);
+				}
+			});
+		});
 	}
 
-	private void Callback(bool confirmed)
+	public void Callback(bool confirmed)
 	{
 		_waitingConfirmationFromPlayer = false;
 		if (confirmed)

@@ -22,5 +22,5 @@ public static class GPUDrivenBRGLayers
 
 	public const uint kDebugMask = 128u;
 
-	public const uint kAllMask = 140u;
+	public const uint kWeirdMask = 140u;
 }

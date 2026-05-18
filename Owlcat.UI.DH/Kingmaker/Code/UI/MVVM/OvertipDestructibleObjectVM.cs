@@ -1,4 +1,6 @@
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Predictions;
+using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.View;
 using Owlcat.Runtime.Core.Utility;
 using R3;
@@ -10,9 +12,9 @@ public class OvertipDestructibleObjectVM : BaseOvertipMapObjectVM
 {
 	private readonly ReactiveProperty<Vector3> m_CameraDistance = new ReactiveProperty<Vector3>();
 
-	private readonly ReactiveProperty<bool> m_IsVisibleForPlayer = new ReactiveProperty<bool>(value: false);
+	private readonly Transform m_Bone;
 
-	public float? DeathDelay;
+	private bool m_IsVisibleForPlayer;
 
 	public readonly MechanicEntityUIState MechanicEntityUIState;
 
@@ -28,19 +30,15 @@ public class OvertipDestructibleObjectVM : BaseOvertipMapObjectVM
 
 	public readonly OvertipBarkBlockVM BarkBlockVM;
 
-	private readonly Transform m_Bone;
+	public float? DeathDelay;
 
-	public ReadOnlyReactiveProperty<bool> IsVisibleForPlayer => m_IsVisibleForPlayer;
+	private DestructibleEntity DestructibleEntity => MapObjectEntity as DestructibleEntity;
+
+	protected override bool UpdateEnabled => MapObjectEntity.IsVisibleForPlayer;
 
 	public ReadOnlyReactiveProperty<Vector3> CameraDistance => m_CameraDistance;
 
 	public ReadOnlyReactiveProperty<bool> HasActiveCombatMessage => CombatTextBlockVM.HasActiveCombatMessage;
-
-	public bool VisibleInExploration => DestructibleEntity?.View.VisibleInExploration ?? false;
-
-	protected override bool UpdateEnabled => MapObjectEntity.IsVisibleForPlayer;
-
-	private DestructibleEntity DestructibleEntity => MapObjectEntity as DestructibleEntity;
 
 	public OvertipDestructibleObjectVM(DestructibleEntity destructibleEntity)
 		: base(destructibleEntity)
@@ -55,21 +53,22 @@ public class OvertipDestructibleObjectVM : BaseOvertipMapObjectVM
 		BarkBlockVM = new OvertipBarkBlockVM().AddTo(this);
 	}
 
-	protected override Vector3 GetEntityPosition()
+	public bool IsVisible()
 	{
-		return m_Bone?.position ?? DestructibleEntity.View.OvertipPosition;
-	}
-
-	protected override void OnUpdateHandler()
-	{
-		m_IsVisibleForPlayer.Value = MapObjectEntity?.IsVisibleForPlayer ?? false;
-		m_CameraDistance.Value = base.Position - CameraRig.Instance.GetTargetPointPosition();
-		base.OnUpdateHandler();
+		if (DestructibleEntity == null || DestructibleEntity.IsDisposed || DestructibleEntity.View == null)
+		{
+			return false;
+		}
+		if ((MechanicEntityUIState.IsTBM.CurrentValue || DestructibleEntity.View.VisibleInExploration) && m_IsVisibleForPlayer && !MapObjectEntity.Suppressed)
+		{
+			return !base.IsCutscene;
+		}
+		return false;
 	}
 
 	public void HighlightChanged()
 	{
-		m_MapObjectIsHighlighted.Value = MapObjectEntity?.View.Highlighted ?? false;
+		m_MapObjectIsHighlighted.Value = MapObjectEntity != null && MapObjectEntity.View != null && MapObjectEntity.View.Highlighted;
 	}
 
 	public void ShowBark(string text)
@@ -85,5 +84,45 @@ public class OvertipDestructibleObjectVM : BaseOvertipMapObjectVM
 	public void SetDeathDelay(float val)
 	{
 		DeathDelay = val;
+	}
+
+	public bool IsPrimaryTarget()
+	{
+		AbilityTargetUIData currentValue = MechanicEntityUIState.AbilityTargetUIData.CurrentValue;
+		AbilityData ability = currentValue.Ability;
+		if (ability == null)
+		{
+			return false;
+		}
+		if (!currentValue.HitChance.IsAdditionalTarget)
+		{
+			return !ability.IsAoe;
+		}
+		return false;
+	}
+
+	protected override void OnDispose()
+	{
+		MarkForRemoval();
+	}
+
+	protected override Vector3 GetEntityPosition()
+	{
+		if ((bool)m_Bone)
+		{
+			return m_Bone.position;
+		}
+		if (DestructibleEntity != null && DestructibleEntity.View != null)
+		{
+			return DestructibleEntity.View.OvertipPosition;
+		}
+		return Vector3.zero;
+	}
+
+	protected override void OnUpdateHandler()
+	{
+		m_IsVisibleForPlayer = MapObjectEntity?.IsVisibleForPlayer ?? false;
+		m_CameraDistance.Value = base.Position - CameraRig.Instance.GetTargetPointPosition();
+		base.OnUpdateHandler();
 	}
 }

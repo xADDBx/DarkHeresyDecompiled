@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Controllers.DetectiveRadar;
@@ -6,6 +7,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -19,7 +21,7 @@ namespace Kingmaker.Code.Gameplay.Features.DetectiveClues.View;
 [RequireComponent(typeof(DetectiveClueSignalComponent))]
 [RequireComponent(typeof(InteractionDetectiveClue))]
 [KnowledgeDatabaseID("c18ac95031d14830a0956e2cbc0ab70a")]
-public class DetectiveClueView : MapObjectView, IEntityPositionChangedHandler, ISubscriber<IEntity>, ISubscriber, IScanTargetOverride
+public class DetectiveClueView : MapObjectView, IEntityPositionChangedHandler, ISubscriber<IEntity>, ISubscriber, IDetectiveClueConfig, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig, IScanTargetOverride
 {
 	public DetectiveClueSignalComponent m_Signal;
 
@@ -74,9 +76,19 @@ public class DetectiveClueView : MapObjectView, IEntityPositionChangedHandler, I
 
 	public new DetectiveClueEntity Data => (DetectiveClueEntity)base.Data;
 
+	public bool IsJammer => Signal.Settings.IsJammer;
+
+	bool IDetectiveClueConfig.TurnOffAllCluesInGroupAfterInteraction => TurnOffAllCluesInGroupAfterInteraction;
+
+	public IEnumerable<EntityRef<DetectiveClueEntity>> PreviousClues => PreviousClueViews.Select((DetectiveClueView i) => new EntityRef<DetectiveClueEntity>(i.UniqueId));
+
+	public IEnumerable<EntityRef<DetectiveClueEntity>> NextClues => NextClueViews.Select((DetectiveClueView i) => new EntityRef<DetectiveClueEntity>(i.UniqueId));
+
+	public IEnumerable<EntityRef<DetectiveClueEntity>> CluesToTurnOffAfterInteraction => TurnOffClueViewsAfterInteraction.Select((DetectiveClueView i) => new EntityRef<DetectiveClueEntity>(i.UniqueId));
+
 	public override Entity CreateEntityData(bool load)
 	{
-		return Entity.Initialize(new DetectiveClueEntity(UniqueId, base.IsInGameBySettings));
+		return Entity.Initialize(new DetectiveClueEntity(this));
 	}
 
 	protected override void OnEnable()

@@ -1,9 +1,12 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Framework;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Owlcat.Runtime.Core.Utility;
@@ -21,12 +24,18 @@ public class AbilityCasterStatGreaterOrEqual10 : BlueprintComponent, IAbilityCas
 
 	public bool IsCasterRestrictionPassed(MechanicEntity caster)
 	{
-		return (int)caster.GetStatOptional(Stat) >= 10;
+		return (int)caster.Actor.GetStat(Stat, null, default(StatContext), "IsCasterRestrictionPassed") >= 10;
 	}
 
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		string text = LocalizedTexts.Instance.Stats.GetText(Stat);
 		return string.Format(ConfigRoot.Instance.LocalizedTexts.Reasons.NotEnoughStat, text);
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		CasterRestrictionsStrings casterRestrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		yield return casterRestrictionsStrings.GetStatRestrictionText(Stat, 10);
 	}
 }

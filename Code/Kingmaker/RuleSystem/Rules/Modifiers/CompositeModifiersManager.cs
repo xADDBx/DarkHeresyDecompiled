@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -8,7 +9,7 @@ using UnityEngine;
 
 namespace Kingmaker.RuleSystem.Rules.Modifiers;
 
-public class CompositeModifiersManager : AbstractModifiersManager, IReadonlyModifiersComposite, IReadonlyModifiers
+public class CompositeModifiersManager : AbstractModifiersManager, IReadonlyModifiersComposite, IReadonlyModifiers, IEnumerable<Modifier>, IEnumerable
 {
 	private readonly int m_Min;
 

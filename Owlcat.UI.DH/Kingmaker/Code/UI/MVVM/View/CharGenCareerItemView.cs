@@ -8,9 +8,9 @@ namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenCareerItemView : SelectionGroupEntityView<CharGenCareerSelectionItemVM>
 {
-	protected const string BUTTON_LAYER_NORMAL = "Normal";
+	protected const string ButtonLayerNormal = "Normal";
 
-	protected const string BUTTON_LAYER_CHOSEN = "Chosen";
+	protected const string ButtonLayerChosen = "Chosen";
 
 	[SerializeField]
 	private TextMeshProUGUI m_Label;
@@ -18,23 +18,28 @@ public class CharGenCareerItemView : SelectionGroupEntityView<CharGenCareerSelec
 	[SerializeField]
 	private Image m_Icon;
 
-	protected override void BindViewImplementation()
+	protected override void OnBind()
 	{
-		base.BindViewImplementation();
+		base.OnBind();
 		if (m_Label != null)
 		{
-			AddDisposable(base.ViewModel.Label.Subscribe(delegate(string l)
+			base.ViewModel.Label.Subscribe(delegate(string l)
 			{
 				m_Label.text = l;
-			}));
+			}).AddTo(this);
 		}
 		if (m_Icon != null)
 		{
-			AddDisposable(base.ViewModel.Sprite.Subscribe(delegate(Sprite s)
+			base.ViewModel.Sprite.Subscribe(delegate(Sprite s)
 			{
 				m_Icon.sprite = s;
-			}));
+			}).AddTo(this);
 		}
+		m_Button.OnHoverAsObservable().Subscribe(base.ViewModel.OnHover).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_Button.OnRightClickAsObservable(), delegate
+		{
+			TooltipHelper.ShowInfo(base.ViewModel.Template);
+		}).AddTo(this);
 	}
 
 	public override void OnChangeSelectedState(bool value)

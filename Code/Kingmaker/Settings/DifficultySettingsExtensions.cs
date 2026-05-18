@@ -11,18 +11,19 @@ public static class DifficultySettingsExtensions
 			GameDifficulty = settings.GameDifficulty,
 			RespecAllowed = settings.RespecAllowed,
 			CombatEncountersCapacity = settings.CombatEncountersCapacity,
-			EnemyDodgePercentModifier = settings.EnemyDodgePercentModifier,
-			MinPartyDamage = settings.MinPartyDamage,
-			MinPartyDamageFraction = settings.MinPartyDamageFraction,
-			NPCAttributesBaseValuePercentModifier = settings.NPCAttributesBaseValuePercentModifier,
-			HardCrowdControlOnPartyMaxDurationRounds = settings.HardCrowdControlOnPartyMaxDurationRounds,
+			EnemyDurability = settings.EnemyDurability,
+			EnemyDamage = settings.EnemyDamage,
 			SkillCheckModifier = settings.SkillCheckModifier,
-			EnemyHitPointsPercentModifier = settings.EnemyHitPointsPercentModifier,
-			AllyResolveModifier = settings.AllyResolveModifier,
-			PartyDamageDealtAfterArmorReductionPercentModifier = settings.PartyDamageDealtAfterArmorReductionPercentModifier,
-			AvoidableDamagePercentModifier = settings.AvoidableDamagePercentModifier,
 			EnemyMovementPoints = settings.EnemyMovementPoints,
-			NPCDifficulty = settings.NPCDifficulty
+			EnemyDamageModifier = settings.EnemyDamageModifier,
+			PartyDamageModifier = settings.PartyDamageModifier,
+			EnemyDodgeModifier = settings.EnemyDodgeModifier,
+			EnemySkillModifier = settings.EnemySkillModifier,
+			PartyPositiveMoraleChangeModifier = settings.PartyPositiveMoraleChangeModifier,
+			PartyNegativeMoraleChangeModifier = settings.PartyNegativeMoraleChangeModifier,
+			EnemyPositiveMoraleChangeModifier = settings.EnemyPositiveMoraleChangeModifier,
+			EnemyNegativeMoraleChangeModifier = settings.EnemyNegativeMoraleChangeModifier,
+			AllyResolveModifier = settings.AllyResolveModifier
 		};
 	}
 
@@ -33,18 +34,19 @@ public static class DifficultySettingsExtensions
 			GameDifficulty = settings.GameDifficulty.GetTempValue(),
 			RespecAllowed = settings.RespecAllowed.GetTempValue(),
 			CombatEncountersCapacity = settings.CombatEncountersCapacity.GetTempValue(),
-			EnemyDodgePercentModifier = settings.EnemyDodgePercentModifier.GetTempValue(),
-			MinPartyDamage = settings.MinPartyDamage.GetTempValue(),
-			MinPartyDamageFraction = settings.MinPartyDamageFraction.GetTempValue(),
-			NPCAttributesBaseValuePercentModifier = settings.NPCAttributesBaseValuePercentModifier.GetTempValue(),
-			HardCrowdControlOnPartyMaxDurationRounds = settings.HardCrowdControlOnPartyMaxDurationRounds.GetTempValue(),
+			EnemyDurability = settings.EnemyDurability.GetTempValue(),
+			EnemyDamage = settings.EnemyDamage.GetTempValue(),
 			SkillCheckModifier = settings.SkillCheckModifier.GetTempValue(),
-			EnemyHitPointsPercentModifier = settings.EnemyHitPointsPercentModifier.GetTempValue(),
-			AllyResolveModifier = settings.AllyResolveModifier.GetTempValue(),
-			PartyDamageDealtAfterArmorReductionPercentModifier = settings.PartyDamageDealtAfterArmorReductionPercentModifier.GetTempValue(),
-			AvoidableDamagePercentModifier = settings.AvoidableDamagePercentModifier.GetTempValue(),
 			EnemyMovementPoints = settings.EnemyMovementPoints.GetTempValue(),
-			NPCDifficulty = settings.NPCDifficulty.GetTempValue()
+			EnemyDamageModifier = settings.EnemyDamageModifier.GetTempValue(),
+			PartyDamageModifier = settings.PartyDamageModifier.GetTempValue(),
+			EnemyDodgeModifier = settings.EnemyDodgeModifier.GetTempValue(),
+			EnemySkillModifier = settings.EnemySkillModifier.GetTempValue(),
+			PartyPositiveMoraleChangeModifier = settings.PartyPositiveMoraleChangeModifier.GetTempValue(),
+			PartyNegativeMoraleChangeModifier = settings.PartyNegativeMoraleChangeModifier.GetTempValue(),
+			EnemyPositiveMoraleChangeModifier = settings.EnemyPositiveMoraleChangeModifier.GetTempValue(),
+			EnemyNegativeMoraleChangeModifier = settings.EnemyNegativeMoraleChangeModifier.GetTempValue(),
+			AllyResolveModifier = settings.AllyResolveModifier.GetTempValue()
 		};
 	}
 }

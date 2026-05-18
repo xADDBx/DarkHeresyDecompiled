@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Blueprints;
 using Kingmaker.ResourceLinks;
+using Kingmaker.Visual.Sound;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -39,6 +40,15 @@ public sealed class DetectiveServoskullRoot : BlueprintScriptableObject
 	public PrefabLink FxOnScanTracePrefab;
 
 	[Header("Фонарик")]
+	[AkEventReference]
+	[Tooltip("Звук включения фонарика")]
+	public string FlashlightOnSound;
+
+	[AkEventReference]
+	[Tooltip("Звук выключения фонарика")]
+	public string FlashlightOffSound;
+
+	[Space]
 	[Tooltip("Механический радиус сканирования вокруг курсора")]
 	public float FlashlightRadius = 3f;
 

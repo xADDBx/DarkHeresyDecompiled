@@ -3,7 +3,6 @@ using Kingmaker.Code.UI.MVVM;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Sound;
-using Kingmaker.UI.Workarounds;
 using Kingmaker.Utility.UnityExtensions;
 using R3;
 using UnityEngine;
@@ -34,13 +33,9 @@ public class DollRoomTargetController : MonoBehaviour, IBeginDragHandler, IEvent
 
 	private Transform m_TargetDoll;
 
-	private CanvasScalerWorkaround m_CanvasScaler;
-
 	private PointerEventData m_EventData;
 
 	private DollCamera m_DollCamera;
-
-	private Vector3 m_TargetForwardVector;
 
 	private bool m_IsHovering;
 
@@ -53,18 +48,6 @@ public class DollRoomTargetController : MonoBehaviour, IBeginDragHandler, IEvent
 	private float m_LastRotateTime;
 
 	private float m_RotateStopDelay = 0.15f;
-
-	private CanvasScalerWorkaround CanvasScaler
-	{
-		get
-		{
-			if (!m_CanvasScaler)
-			{
-				return m_CanvasScaler = GetComponentInParent<CanvasScalerWorkaround>();
-			}
-			return m_CanvasScaler;
-		}
-	}
 
 	private DollCamera DollCamera
 	{
@@ -91,9 +74,9 @@ public class DollRoomTargetController : MonoBehaviour, IBeginDragHandler, IEvent
 		RectTransform rectTransform = (RectTransform)m_RawImage.transform;
 		if (rectTransform.rect.size.x == 0f)
 		{
-			return CanvasScaler.referenceResolution * CanvasScaler.scaleFactor;
+			return new Vector2(1920f, 1080f);
 		}
-		return rectTransform.rect.size * CanvasScaler.scaleFactor;
+		return rectTransform.rect.size;
 	}
 
 	public void OnBeginDrag(PointerEventData eventData)
@@ -162,8 +145,8 @@ public class DollRoomTargetController : MonoBehaviour, IBeginDragHandler, IEvent
 			if (!m_IsRotating)
 			{
 				m_IsRotating = true;
-				UISounds.Instance.Sounds.Inventory.InventoryRotateDollStart.Play();
-				UISounds.Instance.Sounds.Inventory.InventoryRotateDollLoopStart.Play();
+				ServiceWindowsSounds.Instance.Inventory.RotateDollStart.Play();
+				ServiceWindowsSounds.Instance.Inventory.RotateDollLoopStart.Play();
 			}
 			m_LastRotateTime = Time.unscaledTime;
 		}
@@ -194,7 +177,6 @@ public class DollRoomTargetController : MonoBehaviour, IBeginDragHandler, IEvent
 	{
 		m_TargetDoll = targetPlaceholder;
 		m_TargetDoll.localRotation = Quaternion.identity;
-		m_TargetForwardVector = m_TargetDoll.forward;
 		m_CurrentRotationAngle.Value = 0f;
 	}
 
@@ -253,8 +235,8 @@ public class DollRoomTargetController : MonoBehaviour, IBeginDragHandler, IEvent
 		if (m_IsRotating && Time.unscaledTime - m_LastRotateTime > m_RotateStopDelay)
 		{
 			m_IsRotating = false;
-			UISounds.Instance.Sounds.Inventory.InventoryRotateDollStop.Play();
-			UISounds.Instance.Sounds.Inventory.InventoryRotateDollLoopStop.Play();
+			ServiceWindowsSounds.Instance.Inventory.RotateDollStop.Play();
+			ServiceWindowsSounds.Instance.Inventory.RotateDollLoopStop.Play();
 		}
 	}
 

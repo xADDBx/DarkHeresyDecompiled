@@ -7,7 +7,6 @@ using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Modifiers;
-using Kingmaker.Settings;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics.Damage;
@@ -83,9 +82,9 @@ public sealed class RolledDamage : IDamageTypeHolder
 	{
 		get
 		{
-			if (VitalDamageAllowed)
+			if (VitalDamageAllowed && VitalDamage.Value > 0)
 			{
-				return VitalDamage.Value > 0;
+				return ResultDamageToHealthValue > 0;
 			}
 			return false;
 		}
@@ -233,13 +232,6 @@ public sealed class RolledDamage : IDamageTypeHolder
 			_damage.Add(ModifierType.PctMul_Extra, num, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.DamageReduction);
 			_bonusArmorDamage.Add(ModifierType.PctMul_Extra, num, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.DamageReduction);
 			_bonusHealthDamage.Add(ModifierType.PctMul_Extra, num, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.DamageReduction);
-		}
-		if (Type != DamageType.Direct && source.IsPlayerEnemy && target.IsPlayerFaction && AvoidableValue)
-		{
-			int value3 = SettingsRoot.Difficulty.AvoidableDamagePercentModifier;
-			_damage.Add(ModifierType.PctAdd, value3, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.Difficulty);
-			_bonusArmorDamage.Add(ModifierType.PctAdd, value3, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.Difficulty);
-			_bonusHealthDamage.Add(ModifierType.PctAdd, value3, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.Difficulty);
 		}
 	}
 

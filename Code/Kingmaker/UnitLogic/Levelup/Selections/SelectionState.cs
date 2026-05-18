@@ -29,6 +29,8 @@ public abstract class SelectionState : SelectionState.IInvalidateAccess
 
 	public bool CanSelectAny => CanSelectAnyInternal();
 
+	public bool ShouldApply => ShouldApplyInternal();
+
 	protected SelectionState([NotNull] LevelUpManager manager, [NotNull] BlueprintSelection blueprint, [NotNull] BlueprintPath path, int pathRank)
 	{
 		Manager = manager;
@@ -44,7 +46,7 @@ public abstract class SelectionState : SelectionState.IInvalidateAccess
 		{
 			flag = blueprintSelectionFeature.MeetPrerequisites(unit);
 		}
-		if (IsMade && IsValid && flag)
+		if (ShouldApply && IsValid && flag)
 		{
 			ApplyInternal(unit);
 		}
@@ -58,6 +60,11 @@ public abstract class SelectionState : SelectionState.IInvalidateAccess
 	protected void NotifySelectionChanged()
 	{
 		((LevelUpManager.IOnSelectionChangedAccess)Manager).OnSelectionChanged(this);
+	}
+
+	protected virtual bool ShouldApplyInternal()
+	{
+		return IsMade;
 	}
 
 	protected abstract bool IsMadeInternal();

@@ -1,194 +1,112 @@
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Controllers.Dialog;
-using Kingmaker.Designers;
+using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
-using Kingmaker.EntitySystem;
-using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.Framework.DetectiveSystem;
-using Kingmaker.Gameplay.Features.Reputation;
-using Kingmaker.Items;
+using Kingmaker.Localization;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.RuleSystem.Rules.Damage;
-using Kingmaker.Settings;
-using Kingmaker.UnitLogic;
-using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Alignments;
-using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Progression.Features;
+using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class DialogNotificationsVM : ViewModel, IItemsCollectionHandler, ISubscriber, IDialogNotificationHandler, IDialogCueHandler, IBookPageHandler, IDamageHandler, IConvictionShiftHandler, IGainFactionReputationHandler, IEntityGainFactHandler, ISubscriber<IMechanicEntity>, ICaseStatusChanged, IClueStatusChanged, IClueAddendumStatusChanged, IConclusionStatusChanged
+public class DialogNotificationsVM : ViewModel, IDialogCueHandler, ISubscriber, IBookPageHandler
 {
-	public class FactionReputation
+	public struct NotificationsData
 	{
-		private class FactionData
-		{
-			public FactionType FactionType { get; }
+		public List<DialogNotificationVM> DetectiveNotifications;
 
-			public ReputationType ReputationType { get; }
+		public List<DialogNotificationVM> CommonNotifications;
 
-			public int Count { get; private set; }
+		public DialogNotificationSoundType SoundType;
 
-			public FactionData(FactionType factionType, ReputationType reputationType, int count)
-			{
-				FactionType = factionType;
-				ReputationType = reputationType;
-				Count = count;
-			}
+		public LocalizedString HeaderText;
 
-			public void AddCount(int value)
-			{
-				Count += value;
-			}
-		}
-
-		private List<FactionData> Factions { get; } = new List<FactionData>();
-
-
-		public bool Any => Factions.Any();
-
-		public void Add(FactionType factionType, ReputationType reputationType, int count)
-		{
-			FactionData factionData = Factions.FirstOrDefault((FactionData f) => f.FactionType == factionType && f.ReputationType == reputationType);
-			if (factionData != null)
-			{
-				factionData.AddCount(count);
-			}
-			else
-			{
-				Factions.Add(new FactionData(factionType, reputationType, count));
-			}
-		}
-
-		public List<(FactionType, ReputationType, int)> GetData()
-		{
-			return Factions.Select((FactionData f) => (FactionType: f.FactionType, ReputationType: f.ReputationType, Count: f.Count)).ToList();
-		}
-
-		public List<(FactionType, ReputationType, int)> GetLostData()
-		{
-			return (from f in Factions
-				where f.Count < 0
-				select (FactionType: f.FactionType, ReputationType: f.ReputationType, Count: f.Count)).ToList();
-		}
-
-		public List<(FactionType, ReputationType, int)> GetReceivedData()
-		{
-			return (from f in Factions
-				where f.Count > 0
-				select (FactionType: f.FactionType, ReputationType: f.ReputationType, Count: f.Count)).ToList();
-		}
-
-		public void Clear()
-		{
-			Factions.Clear();
-		}
+		public bool IsNewItem;
 	}
 
-	public readonly List<string> RevealedLocationNames = new List<string>();
+	private readonly List<NotificationListenerBase> m_Listeners = new List<NotificationListenerBase>();
 
-	public readonly Dictionary<ItemEntity, int> ItemsReceived = new Dictionary<ItemEntity, int>();
+	public ReactiveCommand<Unit> PushNotificationsCommand { get; } = new ReactiveCommand<Unit>();
 
-	public readonly Dictionary<ItemEntity, int> ItemsLost = new Dictionary<ItemEntity, int>();
 
-	public readonly List<EntityFact> AbilityAdded = new List<EntityFact>();
-
-	public readonly List<EntityFact> BuffAdded = new List<EntityFact>();
-
-	public readonly Dictionary<string, int> DamageDealt = new Dictionary<string, int>();
-
-	public readonly FactionReputation FactionReputationChanged = new FactionReputation();
-
-	public readonly List<string> CustomNotifications = new List<string>();
-
-	public readonly Dictionary<AlignmentAxis, int> AlignmentShifts = new Dictionary<AlignmentAxis, int>();
-
-	private readonly ReactiveCommand<bool> m_HasNotifications = new ReactiveCommand<bool>();
-
-	public readonly List<BlueprintCase> CasesOpened = new List<BlueprintCase>();
-
-	public readonly List<BlueprintCase> CasesClosed = new List<BlueprintCase>();
-
-	public readonly List<BlueprintClue> CluesReceived = new List<BlueprintClue>();
-
-	public readonly List<BlueprintClueAddendum> AddendumsReceived = new List<BlueprintClueAddendum>();
-
-	public readonly List<BlueprintConclusion> ConclusionsConstructed = new List<BlueprintConclusion>();
-
-	public Observable<bool> HasNotifications => m_HasNotifications;
-
-	public DialogNotificationsVM()
+	public DialogNotificationsVM(DialogUIType dialogUIType)
 	{
+		RegisterListener(new CasesOpenedListener(dialogUIType).AddTo(this));
+		RegisterListener(new CasesClosedListener(dialogUIType).AddTo(this));
+		RegisterListener(new CluesReceivedListener(dialogUIType).AddTo(this));
+		RegisterListener(new AddendumsReceivedListener(dialogUIType).AddTo(this));
+		RegisterListener(new ConclusionsConstructedListener(dialogUIType).AddTo(this));
+		RegisterListener(new ItemReceivedListener(dialogUIType).AddTo(this));
+		RegisterListener(new ItemLostListener(dialogUIType).AddTo(this));
+		RegisterListener(new CustomNotificationListener(dialogUIType).AddTo(this));
+		RegisterListener(new DamageDealtListener(dialogUIType).AddTo(this));
+		RegisterListener(new AlignmentShiftListener(dialogUIType).AddTo(this));
+		RegisterListener(new FactionReputationLostListener(dialogUIType).AddTo(this));
+		RegisterListener(new FactionReputationReceivedListener(dialogUIType).AddTo(this));
+		RegisterListener(new AbilityAddedListener(dialogUIType).AddTo(this));
+		RegisterListener(new BuffAddedListener(dialogUIType).AddTo(this));
+		m_Listeners = m_Listeners.OrderBy((NotificationListenerBase l) => l.Order).ToList();
 		EventBus.Subscribe(this).AddTo(this);
+	}
+
+	protected override void OnDispose()
+	{
+		m_Listeners.ForEach(delegate(NotificationListenerBase l)
+		{
+			l.Dispose();
+		});
+		m_Listeners.Clear();
+	}
+
+	private void RegisterListener(NotificationListenerBase listener)
+	{
+		m_Listeners.Add(listener);
 	}
 
 	private void OnUpdate()
 	{
-		bool parameter = RevealedLocationNames.Count > 0 || ItemsLost.Count > 0 || ItemsReceived.Count > 0 || CustomNotifications.Count > 0 || DamageDealt.Count > 0 || AlignmentShifts.Count > 0 || FactionReputationChanged.Any || AbilityAdded.Count > 0 || BuffAdded.Count > 0 || CasesOpened.Any() || CasesClosed.Any() || CluesReceived.Any() || AddendumsReceived.Any() || ConclusionsConstructed.Any();
-		m_HasNotifications.Execute(parameter);
-		Clear();
+		PushNotificationsCommand.Execute(Unit.Default);
 	}
 
-	private void Clear()
+	public NotificationsData RequestNotifications()
 	{
-		RevealedLocationNames.Clear();
-		ItemsReceived.Clear();
-		ItemsLost.Clear();
-		CustomNotifications.Clear();
-		DamageDealt.Clear();
-		AlignmentShifts.Clear();
-		FactionReputationChanged.Clear();
-		AbilityAdded.Clear();
-		BuffAdded.Clear();
-		CasesOpened.Clear();
-		CasesClosed.Clear();
-		CluesReceived.Clear();
-		AddendumsReceived.Clear();
-		ConclusionsConstructed.Clear();
-	}
-
-	public void HandleItemsAdded(ItemsCollection collection, ItemEntity item, int count)
-	{
-		if (SettingsRoot.Game.Dialogs.ShowItemsReceivedNotification.GetValue() && collection == GameHelper.GetPlayerCharacter().Inventory.Collection && item?.Blueprint != null && !string.IsNullOrWhiteSpace(item.Name) && count != 0)
+		List<DialogNotificationVM> list = new List<DialogNotificationVM>();
+		List<DialogNotificationVM> list2 = new List<DialogNotificationVM>();
+		IEnumerable<NotificationListenerBase> enumerable = m_Listeners.Where((NotificationListenerBase l) => l.HasData);
+		foreach (NotificationListenerBase item in enumerable)
 		{
-			if (ItemsReceived.TryGetValue(item, out var _))
+			List<DialogNotificationVM> list3 = item.CreateNotifications();
+			if (list3.Any())
 			{
-				ItemsReceived[item] += count;
-			}
-			else
-			{
-				ItemsReceived.Add(item, count);
+				NotificationCategory category = item.Category;
+				if (category != 0 && category == NotificationCategory.Detective)
+				{
+					list.AddRange(list3);
+				}
+				else
+				{
+					list2.AddRange(list3);
+				}
 			}
 		}
-	}
-
-	public void HandleItemsRemoved(ItemsCollection collection, ItemEntity item, int count)
-	{
-		if (SettingsRoot.Game.Dialogs.ShowItemsReceivedNotification.GetValue() && collection.IsPlayerInventory && item.IsLootable && item.Blueprint != null && !string.IsNullOrWhiteSpace(item.Name) && count != 0)
+		DialogNotificationSoundType soundType = enumerable.FirstOrDefault()?.SoundType ?? DialogNotificationSoundType.Custom;
+		LocalizedString headerText = enumerable.FirstOrDefault((NotificationListenerBase l) => l.HeaderText != null)?.HeaderText;
+		bool isNewItem = enumerable.Any((NotificationListenerBase l) => l.HasNewItems);
+		m_Listeners.ForEach(delegate(NotificationListenerBase l)
 		{
-			if (ItemsLost.TryGetValue(item, out var _))
-			{
-				ItemsLost[item] += count;
-			}
-			else
-			{
-				ItemsLost.Add(item, count);
-			}
-		}
-	}
-
-	public void AddCustomNotification(string text)
-	{
-		CustomNotifications.Add(text);
+			l.Clear();
+		});
+		NotificationsData result = default(NotificationsData);
+		result.DetectiveNotifications = list;
+		result.CommonNotifications = list2;
+		result.SoundType = soundType;
+		result.HeaderText = headerText;
+		result.IsNewItem = isNewItem;
+		return result;
 	}
 
 	public void HandleOnCueShow(CueShowData cueShowData)
@@ -199,118 +117,5 @@ public class DialogNotificationsVM : ViewModel, IItemsCollectionHandler, ISubscr
 	public void HandleOnBookPageShow(BlueprintBookPage page, List<CueShowData> cues, List<BlueprintAnswer> answers)
 	{
 		OnUpdate();
-	}
-
-	public void HandleDamageDealt(RuleDealDamage dealDamage)
-	{
-		if (DamageDealt.TryGetValue(dealDamage.ConcreteTarget.Name ?? string.Empty, out var _))
-		{
-			DamageDealt[dealDamage.ConcreteTarget.Name ?? string.Empty] += dealDamage.ResultValue;
-		}
-		else
-		{
-			DamageDealt.Add(dealDamage.ConcreteTarget.Name ?? string.Empty, dealDamage.ResultValue);
-		}
-	}
-
-	public void HandleAlignmentShift(IAlignmentShiftProvider provider)
-	{
-		foreach (AlignmentShift alignmentShift in provider.AlignmentShifts)
-		{
-			if (alignmentShift.NoShift)
-			{
-				break;
-			}
-			AlignmentAxis axis = alignmentShift.Axis;
-			int value = alignmentShift.Value;
-			if (AlignmentShifts.TryGetValue(alignmentShift.Axis, out var _))
-			{
-				AlignmentShifts[axis] += value;
-			}
-			else
-			{
-				AlignmentShifts.Add(axis, value);
-			}
-		}
-	}
-
-	public void HandleGainFactionReputation(FactionType factionType, ReputationType reputationType, int count)
-	{
-		OnFactionReputationReceived(factionType, reputationType, count);
-	}
-
-	private void OnFactionReputationReceived(FactionType factionType, ReputationType reputationType, int count)
-	{
-		FactionReputationChanged.Add(factionType, reputationType, count);
-	}
-
-	public void HandleEntityGainFact(EntityFact fact)
-	{
-		if (!(fact.Owner is BaseUnitEntity { IsInPlayerParty: not false }))
-		{
-			return;
-		}
-		string text = ((!(fact.Owner is BaseUnitEntity baseUnitEntity2)) ? string.Empty : baseUnitEntity2.CharacterName);
-		string value = text;
-		if ((fact is Buff && fact.Blueprint is BlueprintBuff blueprintBuff && (blueprintBuff.IsHiddenInUI || !blueprintBuff.ShowInDialogue)) || (fact is Ability && fact.Blueprint is BlueprintAbility { ShowInDialogue: false }) || (fact is Feature && fact.Blueprint is BlueprintFeature { ShowInDialogue: false }) || string.IsNullOrWhiteSpace(fact.Name) || string.IsNullOrWhiteSpace(value))
-		{
-			return;
-		}
-		if (!(fact is Buff))
-		{
-			if (!(fact is Ability))
-			{
-				if (fact is Feature)
-				{
-					AbilityAdded.Add(fact);
-				}
-			}
-			else
-			{
-				AbilityAdded.Add(fact);
-			}
-		}
-		else
-		{
-			BuffAdded.Add(fact);
-		}
-	}
-
-	public void HandleCaseStatusChanged(BlueprintCase blueprint)
-	{
-		switch (Game.Instance.DetectiveSystem.GetCaseStatus(blueprint))
-		{
-		case CaseStatus.Opened:
-			CasesOpened.Add(blueprint);
-			break;
-		case CaseStatus.Closed:
-			CasesClosed.Add(blueprint);
-			break;
-		}
-	}
-
-	public void HandleClueStatusChanged(BlueprintClue blueprint)
-	{
-		if (!blueprint.ParentCase.Blueprint.IsClosed() && Game.Instance.DetectiveSystem.HasClue(blueprint) && !CluesReceived.Any((BlueprintClue c) => c.HasOverride(blueprint)))
-		{
-			CluesReceived.Add(blueprint);
-			AddendumsReceived.RemoveAll((BlueprintClueAddendum a) => a.ParentClue.Blueprint == blueprint);
-		}
-	}
-
-	public void HandleClueAddendumStatusChanged(BlueprintClueAddendum blueprint)
-	{
-		if (!blueprint.ParentCase.Blueprint.IsOpen() && Game.Instance.DetectiveSystem.HasClue(blueprint.ParentClue))
-		{
-			AddendumsReceived.Add(blueprint);
-		}
-	}
-
-	public void HandleConclusionStatusChanged(BlueprintConclusion blueprint)
-	{
-		if (!blueprint.ParentCase.Blueprint.IsClosed())
-		{
-			ConclusionsConstructed.Add(blueprint);
-		}
 	}
 }

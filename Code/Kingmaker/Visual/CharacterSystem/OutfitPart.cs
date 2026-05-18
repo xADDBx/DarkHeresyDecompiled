@@ -10,13 +10,14 @@ using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Visual.Highlighting;
 using Owlcat.Runtime.Visual.OccludedObjectHighlighting;
 using Owlcat.Runtime.Visual.XPBD.Authoring;
+using Owlcat.Runtime.Visual.XPBD.Layouts.MeshSkinning;
 using UnityEngine;
 
 namespace Kingmaker.Visual.CharacterSystem;
 
 [Serializable]
 [KnowledgeDatabaseID("45241611d15846cdb63f60a3131403b1")]
-public class OutfitPart : EquipmentFeatureProvider
+public class OutfitPart : IEquipmentFeatureProvider
 {
 	[SerializeField]
 	private OutfitPartType m_Type;
@@ -28,6 +29,10 @@ public class OutfitPart : EquipmentFeatureProvider
 	[KDB("Material to apply on spawn. If empty - material from prefab will be used.")]
 	[SerializeField]
 	private Material m_Material;
+
+	[KDB("R - first layer, G - second layer. B & A NOT in use.")]
+	[SerializeField]
+	public Texture2D ColorizeMask;
 
 	[SerializeField]
 	private bool m_ModifyTransform;
@@ -54,6 +59,10 @@ public class OutfitPart : EquipmentFeatureProvider
 	[KDB("Геймплейные особенности предмета")]
 	[SerializeField]
 	private BlueprintEquipmentFeatureReference[] m_Features;
+
+	private IEquipmentFeatureProvider m_EquipmentFeatureProvider;
+
+	private IEquipmentFeatureProvider Features => m_EquipmentFeatureProvider ?? (m_EquipmentFeatureProvider = new EquipmentFeatureProvider(m_Features));
 
 	public OutfitPartType Type => m_Type;
 
@@ -82,7 +91,7 @@ public class OutfitPart : EquipmentFeatureProvider
 		return componentsInChildren;
 	}
 
-	public CharacterBuilder.OutfitPartInfo Attach(Transform root, Dictionary<string, Transform> attachBonesCache)
+	public CharacterBuilder.OutfitPartInfo Attach(Transform root, Dictionary<string, Transform> attachBonesCache, EquipmentEntity sourceEe)
 	{
 		Transform value;
 		Transform transform = (attachBonesCache.TryGetValue(m_Bone.BoneName, out value) ? value : root.FindChildRecursive(m_Bone.BoneName));
@@ -97,6 +106,7 @@ public class OutfitPart : EquipmentFeatureProvider
 			return null;
 		}
 		GameObject gameObject = UnityEngine.Object.Instantiate(Prefab, transform, worldPositionStays: false);
+		gameObject.name = Prefab.name;
 		if ((bool)Material)
 		{
 			SetupMaterialsInNewOutfitPart(gameObject);
@@ -108,12 +118,12 @@ public class OutfitPart : EquipmentFeatureProvider
 			gameObject.transform.localRotation = Quaternion.Euler(m_Rotation);
 		}
 		GameObject physicsMasterMesh = SetupPhysicsBody(gameObject, transform, root);
-		return new CharacterBuilder.OutfitPartInfo(this, gameObject, transform, physicsMasterMesh);
+		return new CharacterBuilder.OutfitPartInfo(this, gameObject, transform, physicsMasterMesh, sourceEe);
 	}
 
 	private GameObject SetupPhysicsBody(GameObject outfitObj, Transform bone, Transform root)
 	{
-		if (TryGetPhysicsDeformerLayout(out var triangleSkinmap, out var prefabMesh))
+		if (Features.TryGetPhysicsDeformerLayout(out var triangleSkinmap, out var prefabMesh))
 		{
 			MeshBody component = outfitObj.GetComponent<MeshBody>();
 			if (component != null)
@@ -189,8 +199,34 @@ public class OutfitPart : EquipmentFeatureProvider
 		return $"{Prefab?.name} on {m_Bone}";
 	}
 
-	protected override BlueprintEquipmentFeatureReference[] GetFeatureList()
+	public bool HasFeature(EquipmentFeatureFlag feature)
 	{
-		return m_Features;
+		return Features.HasFeature(feature);
+	}
+
+	public bool TryGetPhysicsDeformerLayout(out TriangleSkinmap triangleSkinmap, out GameObject prefabMesh)
+	{
+		return Features.TryGetPhysicsDeformerLayout(out triangleSkinmap, out prefabMesh);
+	}
+
+	public bool IsHiddenByVisibilityFeatures(CharacterDisplayOptions displayOptions)
+	{
+		return Features.IsHiddenByVisibilityFeatures(displayOptions);
+	}
+
+	public IEnumerable<T> GetFeatureComponents<T>()
+	{
+		if (m_Features == null)
+		{
+			yield break;
+		}
+		BlueprintEquipmentFeatureReference[] features = m_Features;
+		foreach (BlueprintEquipmentFeatureReference blueprintEquipmentFeatureReference in features)
+		{
+			foreach (T component in blueprintEquipmentFeatureReference.Get().GetComponents<T>())
+			{
+				yield return component;
+			}
+		}
 	}
 }

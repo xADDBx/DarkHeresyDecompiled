@@ -39,7 +39,7 @@ public class NetLobbyDlcListBaseView : View<NetLobbyDlcListVM>
 		base.gameObject.SetActive(value: true);
 		m_HostDlcsLabel.text = UIStrings.Instance.NetLobbyTexts.HostsDlcList;
 		m_HostHasNoDlc.text = UIStrings.Instance.NetLobbyTexts.HostHasNoDlc;
-		UISounds.Instance.Sounds.MessageBox.MessageBoxShow.Play();
+		ModalWindowsSounds.Instance.MessageBox.Show.Play();
 		SetPlayers();
 		ScrollToTop();
 		EscHotkeyManager.Instance.Subscribe(delegate
@@ -50,7 +50,7 @@ public class NetLobbyDlcListBaseView : View<NetLobbyDlcListVM>
 
 	protected override void OnUnbind()
 	{
-		UISounds.Instance.Sounds.MessageBox.MessageBoxHide.Play();
+		ModalWindowsSounds.Instance.MessageBox.Hide.Play();
 		base.gameObject.SetActive(value: false);
 	}
 

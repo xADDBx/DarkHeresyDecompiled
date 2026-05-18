@@ -85,7 +85,11 @@ public static class WeaponAnimationStyleHelper
 		WeaponType.EldarRifleShoulderLaser
 	};
 
-	private static readonly List<WeaponType> s_EldarHeavyOnHipWeapons = new List<WeaponType> { WeaponType.EldarHeavyHip };
+	private static readonly List<WeaponType> s_EldarHeavyOnHipWeapons = new List<WeaponType>
+	{
+		WeaponType.EldarHeavyHipBase,
+		WeaponType.EldarHeavyHipLaser
+	};
 
 	private static readonly List<WeaponType> s_EldarHeavyOnShoulderWeapons = new List<WeaponType> { WeaponType.EldarHeavyShoulder };
 
@@ -296,7 +300,11 @@ public static class WeaponAnimationStyleHelper
 			WeaponAnimationStyle.EldarRifle
 		},
 		{
-			WeaponType.EldarHeavyHip,
+			WeaponType.EldarHeavyHipBase,
+			WeaponAnimationStyle.EldarHeavyHip
+		},
+		{
+			WeaponType.EldarHeavyHipLaser,
 			WeaponAnimationStyle.EldarHeavyHip
 		},
 		{

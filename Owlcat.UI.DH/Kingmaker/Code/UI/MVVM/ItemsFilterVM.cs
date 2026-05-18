@@ -76,7 +76,7 @@ public class ItemsFilterVM : ViewModel
 
 	public void ResetFilter()
 	{
-		m_OnFilterReset?.Execute();
+		m_OnFilterReset?.Execute(Unit.Default);
 	}
 
 	public void SetShowUnavailable(bool show)

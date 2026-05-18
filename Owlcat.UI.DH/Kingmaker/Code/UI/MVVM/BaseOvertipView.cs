@@ -1,5 +1,8 @@
+using System;
 using Cinemachine;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
@@ -17,7 +20,7 @@ public abstract class BaseOvertipView<TViewModel> : View<TViewModel> where TView
 
 	private int m_LastScreenHeight = -1;
 
-	private RectTransform m_OwnRectTransform;
+	protected RectTransform m_OwnRectTransform;
 
 	private CanvasGroup m_CanvasGroup;
 
@@ -27,7 +30,11 @@ public abstract class BaseOvertipView<TViewModel> : View<TViewModel> where TView
 
 	private Vector2 m_PositionCorrection;
 
-	protected Vector2 PositionCorrectionFromView;
+	protected Vector2 m_PositionCorrectionFromView;
+
+	private bool m_WasVisible;
+
+	private IDisposable m_FlashlightVisibilityTimer;
 
 	private CanvasGroup CanvasGroup
 	{
@@ -94,25 +101,49 @@ public abstract class BaseOvertipView<TViewModel> : View<TViewModel> where TView
 			PFLog.UI.Error(base.gameObject.name + ": ViewModel == null, but View are still not Destroyed");
 			return;
 		}
-		if (ForceUpdatePosition)
+		if (ForceUpdatePosition || m_FlashlightVisibilityTimer != null)
 		{
 			ViewportPosition = UIUtilityRect.GetNormalizedPositionInCamera(base.ViewModel.Position);
 			UpdatePosition(ViewportPosition);
 		}
 		if (!CheckVisibility)
 		{
-			SetCanvasGroupVisible(isVisible: false);
+			if ((!Game.Instance.Player.Flashlight.FlashlightInUse || !TryCreateFlashlightVisibilityTimer()) && m_FlashlightVisibilityTimer == null)
+			{
+				m_FlashlightVisibilityTimer?.Dispose();
+				m_FlashlightVisibilityTimer = null;
+				SetCanvasGroupVisible(isVisible: false);
+				m_WasVisible = false;
+			}
 			return;
 		}
 		m_IsOnScreen = TryGetViewportPosition(out var viewportPos);
 		ViewportPosition = viewportPos;
 		bool flag = m_IsOnScreen && CheckVisibility;
+		m_WasVisible = CheckVisibility;
+		m_FlashlightVisibilityTimer?.Dispose();
+		m_FlashlightVisibilityTimer = null;
 		SetActiveInternal(flag);
 		UpdateActive(flag);
 		if (flag && !ForceUpdatePosition)
 		{
 			UpdatePosition(viewportPos);
 		}
+	}
+
+	private bool TryCreateFlashlightVisibilityTimer()
+	{
+		if (!m_WasVisible || CheckVisibility || m_FlashlightVisibilityTimer != null)
+		{
+			return false;
+		}
+		float flashlightDelayTimer = UIConfig.Instance.ExplorationConfig.FlashlightDelayTimer;
+		m_FlashlightVisibilityTimer = ObservableSubscribeExtensions.Subscribe(Observable.Timer(flashlightDelayTimer.Seconds(), UnityTimeProvider.Update), delegate
+		{
+			m_WasVisible = CheckVisibility;
+			m_FlashlightVisibilityTimer = null;
+		}).AddTo(this);
+		return true;
 	}
 
 	private void SetCanvasGroupVisible(bool isVisible)
@@ -154,7 +185,7 @@ public abstract class BaseOvertipView<TViewModel> : View<TViewModel> where TView
 		if (num != 0 || flag)
 		{
 			m_CachedCanvasPosition = canvasPosition;
-			m_PositionCorrection = PositionCorrectionFromView + new Vector2(0f, base.ViewModel.OvertipVerticalCorrection);
+			m_PositionCorrection = m_PositionCorrectionFromView + new Vector2(0f, base.ViewModel.OvertipVerticalCorrection);
 			Vector2 vector = UIUtilityRect.NormalizedToPixelPosition(m_ParentRect, canvasPosition);
 			m_OwnRectTransform.anchoredPosition = vector + m_PositionCorrection;
 		}

@@ -29,8 +29,8 @@ public class QuestObjectiveNotificationView : QuestNotificationBaseView<QuestObj
 		base.OnBind();
 	}
 
-	protected override BlueprintUISound.UISound GetSound()
+	protected override UISound GetSound()
 	{
-		return UISounds.Instance.Sounds.Notifications.NewInformation;
+		return NotificationsSounds.Instance.Notifications.NewInformation;
 	}
 }

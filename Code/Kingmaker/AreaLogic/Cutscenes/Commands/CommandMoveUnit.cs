@@ -34,7 +34,7 @@ public class CommandMoveUnit : CommandBase
 
 		public Path Path;
 
-		public Exception ExceptionToThrow;
+		public CommandResult? PathCalculationResult;
 	}
 
 	[SerializeReference]
@@ -68,29 +68,34 @@ public class CommandMoveUnit : CommandBase
 	[Tooltip("Hotfix WH-118691")]
 	private bool m_SnapToGridInCombat;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	public override bool ShouldHaveControlledUnit => true;
+
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		commandData.Unit = Unit.GetValue();
-		Vector3 targetPosition = Target.GetValue();
-		float value;
-		float? orientation = ((Orientation != null && Orientation.TryGetValue(out value)) ? new float?(value) : null);
-		if (commandData.Unit == null)
+		if (!Unit.TryGetValue(out var value))
 		{
-			throw new Exception($"Unit {commandData.Unit} not found");
+			return CommandResult.Fail("Cant find unit");
 		}
+		if (!Target.TryGetValue(out var targetPosition))
+		{
+			return CommandResult.Fail("Cant find target");
+		}
+		commandData.Unit = value;
+		float value2;
+		float? orientation = ((Orientation != null && Orientation.TryGetValue(out value2)) ? new float?(value2) : null);
 		commandData.Path = PathfindingService.Instance.FindPathRT_Delayed(commandData.Unit.MovementAgent, targetPosition, 0.3f, 1, delegate(ForcedPath path)
 		{
 			commandData.Path = null;
 			if (path.error)
 			{
-				commandData.ExceptionToThrow = new Exception("An error path was returned. Ignoring. Unit [" + commandData.Unit?.UniqueId + ", '" + commandData.Unit?.Blueprint?.Name + "']");
+				commandData.PathCalculationResult = CommandResult.Fail($"An error path was returned. Ignoring. Unit [{commandData.Unit}']");
 			}
 			else if (commandData.Unit == null || commandData.Unit.IsDisposed)
 			{
 				path.Claim(this);
 				path.Release(this);
-				commandData.ExceptionToThrow = new Exception("Unit was disposed while searching for path");
+				commandData.PathCalculationResult = CommandResult.Fail("Unit was disposed while searching for path");
 			}
 			else
 			{
@@ -108,20 +113,34 @@ public class CommandMoveUnit : CommandBase
 				}
 			}
 		});
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		Unit.GetValue().Translocate(Target.GetValue(), null);
+		if (!Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Cant find unit");
+		}
+		if (!Target.TryGetValue(out var value2))
+		{
+			return CommandResult.Fail("Cant find target");
+		}
+		value.Translocate(value2, null);
 		if (HideOnReachTarget)
 		{
-			DoHideOnReachTarget();
+			value.IsInGame = false;
 		}
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
+		if (Game.Instance.Controllers.EntitySpawner.IsEntityInCreationQueue(commandData.Unit))
+		{
+			return false;
+		}
 		if (IsUnitDisabled(commandData.Unit))
 		{
 			return true;
@@ -138,22 +157,22 @@ public class CommandMoveUnit : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		Exception exceptionToThrow = commandData.ExceptionToThrow;
-		if (exceptionToThrow != null)
+		CommandResult? pathCalculationResult = commandData.PathCalculationResult;
+		if (pathCalculationResult.HasValue && !pathCalculationResult.GetValueOrDefault().IsSuccess)
 		{
-			commandData.ExceptionToThrow = null;
-			throw new Exception("Re-throwing path exception", exceptionToThrow);
+			return commandData.PathCalculationResult.Value;
 		}
 		if (time > (double)m_Timeout)
 		{
 			Interrupt(player);
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Path = null;
@@ -162,37 +181,43 @@ public class CommandMoveUnit : CommandBase
 		{
 			commandHandle.Interrupt();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
+		if (!Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Cant find unit");
+		}
 		Data commandData = player.GetCommandData<Data>(this);
-		AbstractUnitEntity unit = commandData.Unit;
-		if (unit == null)
+		switch (commandData.CommandHandle?.Result)
 		{
-			return;
+		case AbstractUnitCommand.ResultType.None:
+			commandData.CommandHandle.Interrupt();
+			break;
+		case AbstractUnitCommand.ResultType.Fail:
+		case AbstractUnitCommand.ResultType.Interrupt:
+			value.Translocate(Target.GetValue(), null);
+			break;
 		}
-		UnitCommandHandle commandHandle = commandData.CommandHandle;
-		if (commandHandle == null || commandHandle.Result != AbstractUnitCommand.ResultType.Success)
-		{
-			unit.Translocate(Target.GetValue(), null);
-		}
-		if ((bool)unit.View)
+		if (value.View != null)
 		{
 			if (DisableAvoidance)
 			{
-				unit.View.MovementAgent.AvoidanceDisabled = false;
+				value.View.MovementAgent.AvoidanceDisabled = false;
 			}
 			commandData.Unit?.View.MovementAgent.Blocker.BlockAtCurrentPosition();
 		}
 		if (m_SnapToGridInCombat && Game.Instance.Controllers.TurnController.TurnBasedModeActive)
 		{
-			(unit as UnitEntity)?.SnapToGrid();
+			(value as UnitEntity)?.SnapToGrid();
 		}
 		if (HideOnReachTarget)
 		{
-			DoHideOnReachTarget();
+			value.IsInGame = false;
 		}
+		return CommandResult.Success;
 	}
 
 	private bool IsUnitDisabled(AbstractUnitEntity unit)
@@ -225,13 +250,5 @@ public class CommandMoveUnit : CommandBase
 			return null;
 		}
 		return "No unit";
-	}
-
-	private void DoHideOnReachTarget()
-	{
-		if (Unit != null && Unit.TryGetValue(out var value) && value != null)
-		{
-			value.IsInGame = false;
-		}
 	}
 }

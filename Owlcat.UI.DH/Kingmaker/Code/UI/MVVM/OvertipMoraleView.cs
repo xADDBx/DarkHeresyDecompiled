@@ -1,5 +1,5 @@
 using DG.Tweening;
-using Kingmaker.UnitLogic.Abilities;
+using Kingmaker.Predictions;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class OvertipMoraleView : View<UnitMoraleVM>
+public class OvertipMoraleView : View<OvertipMoraleVM>
 {
 	[SerializeField]
 	private UnitMoraleView m_MoraleView;
@@ -47,12 +47,12 @@ public class OvertipMoraleView : View<UnitMoraleVM>
 	{
 		UpdateMorale();
 		UpdateVisibility();
-		ObservableSubscribeExtensions.Subscribe(base.ViewModel.UpdateMoraleValue, delegate
+		ObservableSubscribeExtensions.Subscribe(base.ViewModel.MoraleVM.UpdateMoraleValue, delegate
 		{
 			UpdateMorale();
 		}).AddTo(this);
-		base.ViewModel.UpdateVisibility.Subscribe(UpdateVisibility).AddTo(this);
-		m_MoraleView.Bind(base.ViewModel);
+		base.ViewModel.MoraleVM.UpdateVisibility.Subscribe(UpdateVisibility).AddTo(this);
+		m_MoraleView.Bind(base.ViewModel.MoraleVM);
 	}
 
 	protected override void OnUnbind()
@@ -62,6 +62,13 @@ public class OvertipMoraleView : View<UnitMoraleVM>
 		m_CanvasGroup.blocksRaycasts = false;
 		m_CanvasGroup.alpha = 0f;
 		m_MoraleView.Unbind();
+	}
+
+	protected override void OnDestroy()
+	{
+		m_FadeInTween?.Pause();
+		m_FadeOutTween?.Pause();
+		base.OnDestroy();
 	}
 
 	private void UpdateVisibility()
@@ -84,34 +91,47 @@ public class OvertipMoraleView : View<UnitMoraleVM>
 
 	private void UpdateMorale()
 	{
-		UIMoralePredictionData currentValue = base.ViewModel.MoraleDeltaValue.CurrentValue;
+		UIMoralePredictionData currentValue = base.ViewModel.MoraleVM.MoraleDeltaValue.CurrentValue;
 		SetMoraleDeltaText(currentValue.MinDelta, currentValue.MaxDelta);
 	}
 
 	private void SetMoraleDeltaText(int deltaMin, int deltaMax)
 	{
-		int num = Mathf.Abs(deltaMax);
-		if (num == 0)
+		if (deltaMax == 0 && deltaMin == 0)
 		{
 			m_DeltaValue.SetText(string.Empty);
 			m_DeltaValueSign.SetText(string.Empty);
-			return;
 		}
-		int num2 = Mathf.Abs(deltaMin);
-		bool num3 = deltaMax > 0;
-		string text = (num3 ? "+" : "-");
-		string text2 = ((num2 != num) ? $"[{num2}-{num}]" : num.ToString());
-		m_DeltaValue.SetText(text2);
-		m_DeltaValueSign.SetText(text);
-		Color color = (num3 ? m_DeltaPositiveColor : m_DeltaNegativeColor);
-		m_DeltaValue.color = color;
-		m_DeltaValueSign.color = color;
+		else if (deltaMin < 0 && deltaMax > 0)
+		{
+			SetMoraleIncreased(deltaMax, deltaMax);
+			PFLog.UI.Error($"Morale prediction returned inconclusive result: min={deltaMin}, max={deltaMax}");
+		}
+		else if (deltaMax > 0)
+		{
+			SetMoraleIncreased(deltaMin, deltaMax);
+		}
+		else
+		{
+			SetMoraleDecreased(deltaMin, deltaMax);
+		}
 	}
 
-	protected override void OnDestroy()
+	private void SetMoraleIncreased(int deltaMin, int deltaMax)
 	{
-		m_FadeInTween?.Pause();
-		m_FadeOutTween?.Pause();
-		base.OnDestroy();
+		m_DeltaValueSign.SetText("+");
+		m_DeltaValue.color = m_DeltaPositiveColor;
+		m_DeltaValueSign.color = m_DeltaPositiveColor;
+		string text = ((deltaMin == deltaMax) ? deltaMax.ToString() : $"[{deltaMin}-{deltaMax}]");
+		m_DeltaValue.SetText(text);
+	}
+
+	private void SetMoraleDecreased(int deltaMin, int deltaMax)
+	{
+		m_DeltaValueSign.SetText("-");
+		m_DeltaValue.color = m_DeltaNegativeColor;
+		m_DeltaValueSign.color = m_DeltaNegativeColor;
+		string text = ((deltaMin == deltaMax) ? deltaMax.ToString() : $"[{Mathf.Abs(deltaMax)}-{Mathf.Abs(deltaMin)}]");
+		m_DeltaValue.SetText(text);
 	}
 }

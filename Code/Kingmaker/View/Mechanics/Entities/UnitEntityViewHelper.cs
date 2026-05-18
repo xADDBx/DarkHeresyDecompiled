@@ -1,5 +1,7 @@
 using JetBrains.Annotations;
 using Kingmaker.Code.Enums.Helper;
+using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.CharactersRigidbody;
 using UnityEngine;
@@ -18,12 +20,17 @@ public static class UnitEntityViewHelper
 		return (view as UnitEntityView)?.RigidbodyController;
 	}
 
-	public static Vector3 GetViewPosition([NotNull] this AbstractUnitEntityView view, Vector3 mechanicsPosition)
+	public static Vector3 GetViewPosition([NotNull] this IAbstractUnitEntityView view)
+	{
+		return view.GetViewPosition(view.Data.Position);
+	}
+
+	public static Vector3 GetViewPosition([NotNull] this IAbstractUnitEntityView view, Vector3 mechanicsPosition)
 	{
 		if (view.MovementAgent.NodeLinkTraverser.IsTraverseNow)
 		{
-			return SizePathfindingHelper.FromMechanicsToViewPosition(view.EntityData, mechanicsPosition);
+			return SizePathfindingHelper.FromMechanicsToViewPosition((MechanicEntity)view.Data, mechanicsPosition);
 		}
-		return view.GetViewPositionOnGround(mechanicsPosition);
+		return view.AsAbstractUnitEntityView().GetViewPositionOnGround(mechanicsPosition);
 	}
 }

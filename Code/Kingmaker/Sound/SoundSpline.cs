@@ -40,7 +40,7 @@ public class SoundSpline : MonoBehaviour
 		for (int i = 0; i < base.transform.childCount; i++)
 		{
 			Transform child = base.transform.GetChild(i);
-			if (child.gameObject.activeSelf && child.gameObject.name != "Sound")
+			if (child.gameObject.name != "Sound")
 			{
 				list.Add(child.position);
 			}

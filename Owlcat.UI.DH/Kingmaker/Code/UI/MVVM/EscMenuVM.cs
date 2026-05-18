@@ -20,13 +20,9 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class EscMenuVM : ViewModel, IGameModeHandler, ISubscriber, INetLobbyRequest
 {
-	private readonly Action m_CloseAction;
-
-	private readonly ReactiveProperty<bool> m_IsInSpace = new ReactiveProperty<bool>();
-
-	private readonly ReactiveProperty<bool> m_IsInCutscene = new ReactiveProperty<bool>();
-
 	public bool InternalWindowOpened;
+
+	private readonly Action m_CloseAction;
 
 	private readonly ReactiveCommand<Unit> m_UpdateButtonsInteractable = new ReactiveCommand<Unit>();
 
@@ -34,13 +30,17 @@ public class EscMenuVM : ViewModel, IGameModeHandler, ISubscriber, INetLobbyRequ
 
 	private readonly ReactiveProperty<string> m_AreaName = new ReactiveProperty<string>();
 
+	private readonly ReactiveProperty<bool> m_IsInCutscene = new ReactiveProperty<bool>();
+
+	private readonly ReactiveProperty<bool> m_IsInGlobalMap = new ReactiveProperty<bool>();
+
 	public bool IsSavingAllowed { get; private set; }
 
 	public bool IsOptionsAllowed { get; private set; }
 
 	public bool IsFormationAllowed { get; private set; }
 
-	public ReadOnlyReactiveProperty<bool> IsInSpace => m_IsInSpace;
+	public ReadOnlyReactiveProperty<bool> IsInGlobalMap => m_IsInGlobalMap;
 
 	public ReadOnlyReactiveProperty<bool> IsInCutscene => m_IsInCutscene;
 
@@ -52,7 +52,7 @@ public class EscMenuVM : ViewModel, IGameModeHandler, ISubscriber, INetLobbyRequ
 
 	public EscMenuVM(Action closeAction)
 	{
-		m_IsInSpace.Value = Game.Instance.IsModeActive(GameModeType.SpaceCombat) || Game.Instance.IsModeActive(GameModeType.StarSystem) || Game.Instance.IsModeActive(GameModeType.GlobalMap);
+		m_IsInGlobalMap.Value = Game.Instance.IsModeActive(GameModeType.GlobalMap);
 		m_IsInCutscene.Value = Game.Instance.IsModeActive(GameModeType.Cutscene);
 		IsOptionsAllowed = !IsInCutscene.CurrentValue;
 		IsFormationAllowed = !IsInCutscene.CurrentValue && !Game.Instance.IsModeActive(GameModeType.Dialog);
@@ -259,7 +259,7 @@ public class EscMenuVM : ViewModel, IGameModeHandler, ISubscriber, INetLobbyRequ
 
 	public void OnGameModeStart(GameModeType gameMode)
 	{
-		m_IsInSpace.Value = Game.Instance.IsModeActive(GameModeType.SpaceCombat) || Game.Instance.IsModeActive(GameModeType.StarSystem) || Game.Instance.IsModeActive(GameModeType.GlobalMap);
+		m_IsInGlobalMap.Value = Game.Instance.IsModeActive(GameModeType.GlobalMap);
 		m_IsInCutscene.Value = Game.Instance.IsModeActive(GameModeType.Cutscene);
 		IsOptionsAllowed = !IsInCutscene.CurrentValue;
 		IsFormationAllowed = !IsInCutscene.CurrentValue && !Game.Instance.IsModeActive(GameModeType.Dialog);

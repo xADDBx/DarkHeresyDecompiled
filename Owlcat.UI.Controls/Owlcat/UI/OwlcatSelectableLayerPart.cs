@@ -9,9 +9,9 @@ namespace Owlcat.UI;
 [Serializable]
 public class OwlcatSelectableLayerPart
 {
-	public class CanvasFader
+	public class CanvasFader : IDisposable
 	{
-		private CanvasGroup m_CanvasGroup;
+		private readonly CanvasGroup m_CanvasGroup;
 
 		private float m_StartAlpha;
 
@@ -25,7 +25,7 @@ public class OwlcatSelectableLayerPart
 
 		private IDisposable m_FadeAnimation;
 
-		private Action m_DisposeCallback;
+		private readonly Action m_DisposeCallback;
 
 		public CanvasFader(CanvasGroup canvasGroup, Action disposeCallback)
 		{
@@ -79,17 +79,80 @@ public class OwlcatSelectableLayerPart
 
 		private void StopFading()
 		{
-			m_FadeAnimation.Dispose();
+			m_FadeAnimation?.Dispose();
 			m_FadeAnimation = null;
 			m_IsFading = false;
 		}
 
-		private void Dispose()
+		public void Dispose()
 		{
 			StopFading();
 			m_DisposeCallback?.Invoke();
 		}
 	}
+
+	private readonly struct StateData
+	{
+		public readonly Color Tint;
+
+		public readonly Color Replace;
+
+		public readonly Sprite LegacySprite;
+
+		public readonly Sprite Sprite;
+
+		public readonly bool Active;
+
+		public readonly float CanvasAlpha;
+
+		public readonly Color LibraryColor;
+
+		public readonly string AnimTrigger;
+
+		public readonly TweenBehavior Tween;
+
+		public StateData(Color tint, Color replace, Sprite legacySprite, Sprite sprite, bool active, float canvasAlpha, Color libraryColor, string animTrigger, TweenBehavior tween)
+		{
+			Tint = tint;
+			Replace = replace;
+			LegacySprite = legacySprite;
+			Sprite = sprite;
+			Active = active;
+			CanvasAlpha = canvasAlpha;
+			LibraryColor = libraryColor;
+			AnimTrigger = animTrigger;
+			Tween = tween;
+		}
+	}
+
+	[SerializeField]
+	private OwlcatSelectableActiveBlock m_ActiveBlock = OwlcatSelectableActiveBlock.DefaultActiveBlock;
+
+	[SerializeField]
+	private OwlcatSelectableUnityAnimationBlock m_UnityAnimation = OwlcatSelectableUnityAnimationBlock.DefaultUnityAnimationBlock;
+
+	[SerializeField]
+	private OwlcatSelectableTweenAnimationBlock m_TweenAnimation;
+
+	[SerializeField]
+	private CanvasGroup m_TargetCanvasGroup;
+
+	[SerializeField]
+	private OwlcatSelectableCanvasGroupBlock m_CanvasGroupBlock = OwlcatSelectableCanvasGroupBlock.DefaultActiveBlock;
+
+	private CanvasFader m_CanvasFader;
+
+	[SerializeField]
+	private OwlcatSelectableColorLibraryBlock m_ColorLibrary = OwlcatSelectableColorLibraryBlock.DefaultActiveBlock;
+
+	[SerializeField]
+	private ColorBlock m_Colors = ColorBlock.defaultColorBlock;
+
+	[SerializeField]
+	private OwlcatSelectableSpriteSwapBlock m_SpriteSwap;
+
+	[SerializeField]
+	private SpriteState m_SpriteState;
 
 	[SerializeField]
 	private Graphic m_TargetGraphic;
@@ -98,125 +161,11 @@ public class OwlcatSelectableLayerPart
 	private GameObject m_TargetGameObject;
 
 	[SerializeField]
-	private CanvasGroup m_TargetCanvasGroup;
-
-	[SerializeField]
 	private OwlcatTransition m_Transition = OwlcatTransition.ColorTint;
-
-	[SerializeField]
-	private ColorBlock m_Colors = ColorBlock.defaultColorBlock;
-
-	[SerializeField]
-	private SpriteState m_SpriteState;
-
-	[SerializeField]
-	private OwlcatSelectableActiveBlock m_ActiveBlock = OwlcatSelectableActiveBlock.DefaultActiveBlock;
-
-	[SerializeField]
-	private OwlcatSelectableCanvasGroupBlock m_CanvasGroupBlock = OwlcatSelectableCanvasGroupBlock.DefaultActiveBlock;
-
-	[SerializeField]
-	private OwlcatSelectableSpriteSwapBlock m_SpriteSwap;
-
-	[SerializeField]
-	private OwlcatSelectableColorLibraryBlock m_ColorLibrary = OwlcatSelectableColorLibraryBlock.DefaultActiveBlock;
-
-	[SerializeField]
-	private OwlcatSelectableUnityAnimationBlock m_UnityAnimation = OwlcatSelectableUnityAnimationBlock.DefaultUnityAnimationBlock;
-
-	[SerializeField]
-	private OwlcatSelectableTweenAnimationBlock m_TweenAnimation;
 
 	private bool m_IsActive = true;
 
 	private OwlcatSelectionState m_LastState = OwlcatSelectionState.Normal;
-
-	private CanvasFader m_CanvasFader;
-
-	public bool IsActive
-	{
-		get
-		{
-			return m_IsActive;
-		}
-		set
-		{
-			m_IsActive = value;
-			DoPartTransitionInternal(m_LastState, instant: true);
-		}
-	}
-
-	public Image Image
-	{
-		get
-		{
-			return m_TargetGraphic as Image;
-		}
-		set
-		{
-			m_TargetGraphic = value;
-		}
-	}
-
-	public Graphic TargetGraphic
-	{
-		get
-		{
-			return m_TargetGraphic;
-		}
-		set
-		{
-			m_TargetGraphic = value;
-		}
-	}
-
-	public CanvasGroup CanvasGroup
-	{
-		get
-		{
-			return m_TargetCanvasGroup;
-		}
-		set
-		{
-			m_TargetCanvasGroup = value;
-		}
-	}
-
-	public OwlcatTransition Transition
-	{
-		get
-		{
-			return m_Transition;
-		}
-		set
-		{
-			m_Transition = value;
-		}
-	}
-
-	public ColorBlock Colors
-	{
-		get
-		{
-			return m_Colors;
-		}
-		set
-		{
-			m_Colors = value;
-		}
-	}
-
-	public SpriteState SpriteState
-	{
-		get
-		{
-			return m_SpriteState;
-		}
-		set
-		{
-			m_SpriteState = value;
-		}
-	}
 
 	public OwlcatSelectableActiveBlock ActiveBlock
 	{
@@ -227,42 +176,6 @@ public class OwlcatSelectableLayerPart
 		set
 		{
 			m_ActiveBlock = value;
-		}
-	}
-
-	public OwlcatSelectableCanvasGroupBlock CanvasGroupBlock
-	{
-		get
-		{
-			return m_CanvasGroupBlock;
-		}
-		set
-		{
-			m_CanvasGroupBlock = value;
-		}
-	}
-
-	public OwlcatSelectableSpriteSwapBlock SpriteSwap
-	{
-		get
-		{
-			return m_SpriteSwap;
-		}
-		set
-		{
-			m_SpriteSwap = value;
-		}
-	}
-
-	public OwlcatSelectableColorLibraryBlock ColorLibrary
-	{
-		get
-		{
-			return m_ColorLibrary;
-		}
-		set
-		{
-			m_ColorLibrary = value;
 		}
 	}
 
@@ -290,172 +203,139 @@ public class OwlcatSelectableLayerPart
 		}
 	}
 
-	public virtual void DoPartTransition(OwlcatSelectionState state, bool instant)
+	public CanvasGroup CanvasGroup
 	{
-		m_LastState = state;
-		if (IsActive)
+		get
 		{
-			DoPartTransitionInternal(state, instant);
+			return m_TargetCanvasGroup;
+		}
+		set
+		{
+			m_TargetCanvasGroup = value;
 		}
 	}
 
-	private void DoPartTransitionInternal(OwlcatSelectionState state, bool instant)
+	public OwlcatSelectableCanvasGroupBlock CanvasGroupBlock
 	{
-		if (m_Transition != 0)
+		get
 		{
-			Color color;
-			Color targetColor;
-			Sprite newSprite;
-			Sprite newSprite2;
-			bool state2;
-			float state3;
-			Color targetColor2;
-			string triggerName;
-			TweenBehavior tweenAnimation;
-			switch (state)
+			return m_CanvasGroupBlock;
+		}
+		set
+		{
+			m_CanvasGroupBlock = value;
+		}
+	}
+
+	public OwlcatSelectableColorLibraryBlock ColorLibrary
+	{
+		get
+		{
+			return m_ColorLibrary;
+		}
+		set
+		{
+			m_ColorLibrary = value;
+		}
+	}
+
+	public ColorBlock Colors
+	{
+		get
+		{
+			return m_Colors;
+		}
+		set
+		{
+			m_Colors = value;
+		}
+	}
+
+	public OwlcatSelectableSpriteSwapBlock SpriteSwap
+	{
+		get
+		{
+			return m_SpriteSwap;
+		}
+		set
+		{
+			m_SpriteSwap = value;
+		}
+	}
+
+	public SpriteState SpriteState
+	{
+		get
+		{
+			return m_SpriteState;
+		}
+		set
+		{
+			m_SpriteState = value;
+		}
+	}
+
+	public bool IsActive
+	{
+		get
+		{
+			return m_IsActive;
+		}
+		set
+		{
+			if (m_IsActive != value)
 			{
-			case OwlcatSelectionState.Normal:
-				color = m_Colors.normalColor;
-				targetColor = m_Colors.normalColor;
-				newSprite = null;
-				newSprite2 = m_SpriteSwap.normalSprite;
-				state2 = m_ActiveBlock.Normal;
-				state3 = m_CanvasGroupBlock.Normal;
-				targetColor2 = m_ColorLibrary.Normal.Color;
-				triggerName = m_UnityAnimation.NormalTrigger;
-				tweenAnimation = m_TweenAnimation.NormalTween;
-				break;
-			case OwlcatSelectionState.Focused:
-				color = m_Colors.selectedColor;
-				targetColor = m_Colors.selectedColor;
-				newSprite = m_SpriteState.selectedSprite;
-				newSprite2 = m_SpriteSwap.focusedSprite;
-				state2 = m_ActiveBlock.Selected;
-				state3 = m_CanvasGroupBlock.Selected;
-				targetColor2 = m_ColorLibrary.Focused.Color;
-				triggerName = m_UnityAnimation.FocusedTrigger;
-				tweenAnimation = m_TweenAnimation.FocusedTween;
-				break;
-			case OwlcatSelectionState.Highlighted:
-				color = m_Colors.highlightedColor;
-				targetColor = m_Colors.highlightedColor;
-				newSprite = m_SpriteState.highlightedSprite;
-				newSprite2 = m_SpriteSwap.highlightedSprite;
-				state2 = m_ActiveBlock.Highlighted;
-				state3 = m_CanvasGroupBlock.Highlighted;
-				targetColor2 = m_ColorLibrary.Highlighted.Color;
-				triggerName = m_UnityAnimation.HighlightedTrigger;
-				tweenAnimation = m_TweenAnimation.HighlightedTween;
-				break;
-			case OwlcatSelectionState.Pressed:
-				color = m_Colors.pressedColor;
-				targetColor = m_Colors.pressedColor;
-				newSprite = m_SpriteState.pressedSprite;
-				newSprite2 = m_SpriteSwap.pressedSprite;
-				state2 = m_ActiveBlock.Pressed;
-				state3 = m_CanvasGroupBlock.Pressed;
-				targetColor2 = m_ColorLibrary.Pressed.Color;
-				triggerName = m_UnityAnimation.PressedTrigger;
-				tweenAnimation = m_TweenAnimation.PressedTween;
-				break;
-			case OwlcatSelectionState.Disabled:
-				color = m_Colors.disabledColor;
-				targetColor = m_Colors.disabledColor;
-				newSprite = m_SpriteState.disabledSprite;
-				newSprite2 = m_SpriteSwap.disabledSprite;
-				state2 = m_ActiveBlock.Disabled;
-				state3 = m_CanvasGroupBlock.Disabled;
-				targetColor2 = m_ColorLibrary.Disabled.Color;
-				triggerName = m_UnityAnimation.DisabledTrigger;
-				tweenAnimation = m_TweenAnimation.DisabledTween;
-				break;
-			default:
-				color = Color.black;
-				targetColor = m_Colors.pressedColor;
-				newSprite = null;
-				newSprite2 = null;
-				state2 = false;
-				state3 = 0f;
-				targetColor2 = Color.black;
-				triggerName = string.Empty;
-				tweenAnimation = null;
-				break;
-			}
-			switch (m_Transition)
-			{
-			case OwlcatTransition.ColorTint:
-				StartColorTween(color * m_Colors.colorMultiplier, instant);
-				break;
-			case OwlcatTransition.SpriteSwapLegacy:
-				DoSpriteSwap(newSprite);
-				break;
-			case OwlcatTransition.Activate:
-				DoActiveState(state2);
-				break;
-			case OwlcatTransition.CanvasGroup:
-				DoCanvasGroupState(state3, instant);
-				break;
-			case OwlcatTransition.SpriteSwap:
-				DoSpriteSwap(newSprite2);
-				break;
-			case OwlcatTransition.ColorLibrary:
-				StartColorTween(targetColor2, instant);
-				break;
-			case OwlcatTransition.ColorReplace:
-				StartColorReplace(targetColor);
-				break;
-			case OwlcatTransition.UnityAnimation:
-				DoUnityAnimation(triggerName);
-				break;
-			case OwlcatTransition.TweenAnimation:
-				DoDoTweenAnimation(tweenAnimation);
-				break;
+				m_IsActive = value;
+				DoPartTransitionInternal(m_LastState, instant: true);
 			}
 		}
 	}
 
-	private void StartColorTween(Color targetColor, bool instant)
+	public Image Image
 	{
-		if (!(m_TargetGraphic == null) && IsActive)
+		get
 		{
-			m_TargetGraphic.CrossFadeColor(targetColor, instant ? 0f : m_Colors.fadeDuration, ignoreTimeScale: true, useAlpha: true);
+			return m_TargetGraphic as Image;
+		}
+		set
+		{
+			m_TargetGraphic = value;
 		}
 	}
 
-	private void StartColorReplace(Color targetColor)
+	public Graphic TargetGraphic
 	{
-		if (!(m_TargetGraphic == null) && IsActive)
+		get
 		{
-			m_TargetGraphic.color = targetColor;
+			return m_TargetGraphic;
+		}
+		set
+		{
+			m_TargetGraphic = value;
 		}
 	}
 
-	private void DoCanvasGroupState(float state, bool instant)
+	public OwlcatTransition Transition
 	{
-		if (CanvasGroup == null || !IsActive || CanvasGroup.alpha.Equals(state) || CanvasGroup.alpha == state)
+		get
 		{
-			return;
+			return m_Transition;
 		}
-		if (instant || Mathf.Approximately(m_CanvasGroupBlock.FadeDuration, 0f))
+		set
 		{
-			CanvasGroup.alpha = state;
-			return;
+			m_Transition = value;
 		}
-		if (m_CanvasFader == null)
+	}
+
+	private void DoActiveState(bool state)
+	{
+		if (!(m_TargetGameObject == null))
 		{
-			m_CanvasFader = new CanvasFader(CanvasGroup, delegate
+			state &= IsActive;
+			if (state != m_TargetGameObject.activeSelf)
 			{
-				m_CanvasFader = null;
-			});
-		}
-		m_CanvasFader.StartFade(state, m_CanvasGroupBlock.FadeDuration);
-	}
-
-	private void DoSpriteSwap(Sprite newSprite)
-	{
-		if (!(Image == null) && IsActive)
-		{
-			Image.overrideSprite = newSprite;
+				m_TargetGameObject.SetActive(state);
+			}
 		}
 	}
 
@@ -475,14 +355,108 @@ public class OwlcatSelectableLayerPart
 		}
 	}
 
-	private void DoActiveState(bool state)
+	private void DoCanvasGroupState(float state, bool instant)
 	{
-		if (!(m_TargetGameObject == null))
+		if (!IsActive || CanvasGroup == null || CanvasGroup.alpha.Equals(state))
 		{
-			state &= IsActive;
-			if (state != m_TargetGameObject.activeSelf)
+			return;
+		}
+		if (instant || Mathf.Approximately(m_CanvasGroupBlock.FadeDuration, 0f))
+		{
+			m_CanvasFader?.Dispose();
+			CanvasGroup.alpha = state;
+			return;
+		}
+		if (m_CanvasFader == null)
+		{
+			m_CanvasFader = new CanvasFader(CanvasGroup, delegate
 			{
-				m_TargetGameObject.SetActive(state);
+				m_CanvasFader = null;
+			});
+		}
+		m_CanvasFader.StartFade(state, m_CanvasGroupBlock.FadeDuration);
+	}
+
+	private void StartColorTween(Color targetColor, bool instant)
+	{
+		if (IsActive && !(m_TargetGraphic == null))
+		{
+			m_TargetGraphic.CrossFadeColor(targetColor, instant ? 0f : m_Colors.fadeDuration, ignoreTimeScale: true, useAlpha: true);
+		}
+	}
+
+	private void StartColorReplace(Color targetColor)
+	{
+		if (IsActive && !(m_TargetGraphic == null))
+		{
+			m_TargetGraphic.color = targetColor;
+		}
+	}
+
+	private void DoSpriteSwap(Sprite newSprite)
+	{
+		if (IsActive && !(Image == null))
+		{
+			Image.overrideSprite = newSprite;
+		}
+	}
+
+	private StateData GetStateData(OwlcatSelectionState s)
+	{
+		return s switch
+		{
+			OwlcatSelectionState.Normal => new StateData(m_Colors.normalColor, m_Colors.normalColor, null, m_SpriteSwap.normalSprite, m_ActiveBlock.Normal, m_CanvasGroupBlock.Normal, m_ColorLibrary.Normal.Color, m_UnityAnimation.NormalTrigger, m_TweenAnimation.NormalTween), 
+			OwlcatSelectionState.Focused => new StateData(m_Colors.selectedColor, m_Colors.selectedColor, m_SpriteState.selectedSprite, m_SpriteSwap.focusedSprite, m_ActiveBlock.Selected, m_CanvasGroupBlock.Selected, m_ColorLibrary.Focused.Color, m_UnityAnimation.FocusedTrigger, m_TweenAnimation.FocusedTween), 
+			OwlcatSelectionState.Highlighted => new StateData(m_Colors.highlightedColor, m_Colors.highlightedColor, m_SpriteState.highlightedSprite, m_SpriteSwap.highlightedSprite, m_ActiveBlock.Highlighted, m_CanvasGroupBlock.Highlighted, m_ColorLibrary.Highlighted.Color, m_UnityAnimation.HighlightedTrigger, m_TweenAnimation.HighlightedTween), 
+			OwlcatSelectionState.Pressed => new StateData(m_Colors.pressedColor, m_Colors.pressedColor, m_SpriteState.pressedSprite, m_SpriteSwap.pressedSprite, m_ActiveBlock.Pressed, m_CanvasGroupBlock.Pressed, m_ColorLibrary.Pressed.Color, m_UnityAnimation.PressedTrigger, m_TweenAnimation.PressedTween), 
+			OwlcatSelectionState.Disabled => new StateData(m_Colors.disabledColor, m_Colors.disabledColor, m_SpriteState.disabledSprite, m_SpriteSwap.disabledSprite, m_ActiveBlock.Disabled, m_CanvasGroupBlock.Disabled, m_ColorLibrary.Disabled.Color, m_UnityAnimation.DisabledTrigger, m_TweenAnimation.DisabledTween), 
+			_ => new StateData(Color.black, m_Colors.pressedColor, null, null, active: false, 0f, Color.black, string.Empty, null), 
+		};
+	}
+
+	public virtual void DoPartTransition(OwlcatSelectionState state, bool instant)
+	{
+		m_LastState = state;
+		if (IsActive)
+		{
+			DoPartTransitionInternal(state, instant);
+		}
+	}
+
+	private void DoPartTransitionInternal(OwlcatSelectionState state, bool instant)
+	{
+		if (m_Transition != 0)
+		{
+			StateData stateData = GetStateData(state);
+			switch (m_Transition)
+			{
+			case OwlcatTransition.ColorTint:
+				StartColorTween(stateData.Tint * m_Colors.colorMultiplier, instant);
+				break;
+			case OwlcatTransition.SpriteSwapLegacy:
+				DoSpriteSwap(stateData.LegacySprite);
+				break;
+			case OwlcatTransition.Activate:
+				DoActiveState(stateData.Active);
+				break;
+			case OwlcatTransition.CanvasGroup:
+				DoCanvasGroupState(stateData.CanvasAlpha, instant);
+				break;
+			case OwlcatTransition.SpriteSwap:
+				DoSpriteSwap(stateData.Sprite);
+				break;
+			case OwlcatTransition.ColorLibrary:
+				StartColorTween(stateData.LibraryColor, instant);
+				break;
+			case OwlcatTransition.ColorReplace:
+				StartColorReplace(stateData.Replace);
+				break;
+			case OwlcatTransition.UnityAnimation:
+				DoUnityAnimation(stateData.AnimTrigger);
+				break;
+			case OwlcatTransition.TweenAnimation:
+				DoDoTweenAnimation(stateData.Tween);
+				break;
 			}
 		}
 	}

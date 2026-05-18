@@ -1,21 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class CharInfoSkillsAndWeaponsConsoleView : CharInfoSkillsAndWeaponsBaseView, ICharInfoComponentConsoleView, ICharInfoComponentView
+public class CharInfoSkillsAndWeaponsConsoleView : CharInfoSkillsAndWeaponsBaseView
 {
 	[Header("Console")]
 	[SerializeField]
 	protected CharInfoAbilityScoresBlockConsoleView m_AbilityScoresBlockConsoleView;
-
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
 
 	private Action<IConsoleEntity> m_OnFocusChangeAction;
 
@@ -36,8 +32,6 @@ public class CharInfoSkillsAndWeaponsConsoleView : CharInfoSkillsAndWeaponsBaseV
 	protected override void OnBind()
 	{
 		base.OnBind();
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		CurrentSection.Subscribe(UpdateNavigation).AddTo(this);
 		CurrentSection.Value = m_ViewsOrder.First();
 	}
 
@@ -47,38 +41,10 @@ public class CharInfoSkillsAndWeaponsConsoleView : CharInfoSkillsAndWeaponsBaseV
 		m_OnFocusChangeAction = null;
 	}
 
-	private void OnNext(InputActionEventData data)
+	private void OnNext()
 	{
 		int index = (m_ViewsOrder.IndexOf(CurrentSection.Value) + 1) % m_ViewsOrder.Count;
 		CurrentSection.Value = m_ViewsOrder[index];
-	}
-
-	private void UpdateNavigation(CharInfoComponentType type)
-	{
-		bool isFocused = m_NavigationBehaviour.IsFocused;
-		m_NavigationBehaviour.Clear();
-		switch (type)
-		{
-		case CharInfoComponentType.Abilities:
-			m_NavigationBehaviour.AddEntityVertical(m_AbilityScoresBlockConsoleView.GetNavigation(1));
-			break;
-		case CharInfoComponentType.Weapons:
-			m_NavigationBehaviour.AddEntityVertical(m_WeaponsBlockPCView.GetNavigation());
-			break;
-		case CharInfoComponentType.Skills:
-			if (m_SkillsBlockPCView is CharInfoSkillsBlockConsoleView charInfoSkillsBlockConsoleView)
-			{
-				m_NavigationBehaviour.AddEntityVertical(charInfoSkillsBlockConsoleView.GetConsoleEntity(1));
-			}
-			break;
-		default:
-			throw new ArgumentOutOfRangeException();
-		}
-		if (isFocused)
-		{
-			m_NavigationBehaviour.FocusOnFirstValidEntity();
-			m_OnFocusChangeAction?.Invoke(m_NavigationBehaviour.DeepestNestedFocus);
-		}
 	}
 
 	protected override void InternalBindSection(CharInfoComponentType section)
@@ -105,31 +71,13 @@ public class CharInfoSkillsAndWeaponsConsoleView : CharInfoSkillsAndWeaponsBaseV
 		}
 	}
 
-	void ICharInfoComponentConsoleView.AddInput(ref InputLayer inputLayer, ref GridConsoleNavigationBehaviour navigationBehaviour, ConsoleHintsWidget hintsWidget)
+	public CompositeDisposable AddInput()
 	{
-		navigationBehaviour.FocusOnFirstValidEntity();
-		navigationBehaviour.AddColumn<GridConsoleNavigationBehaviour>(m_NavigationBehaviour);
-	}
-
-	public CompositeDisposable AddInput(InputLayer inputLayer, ConsoleHintsWidget hintsWidget, ReadOnlyReactiveProperty<bool> enabledHints = null)
-	{
-		InputBindStruct inputBindStruct = inputLayer.AddButton(OnNext, 11, enabledHints);
-		CompositeDisposable obj = new CompositeDisposable
-		{
-			inputBindStruct,
-			hintsWidget.BindHint(inputBindStruct, UIStrings.Instance.InventoryScreen.ToggleStats)
-		};
-		obj.AddTo(this);
-		return obj;
+		return new CompositeDisposable();
 	}
 
 	public void SetFocusChangeAction(Action<IConsoleEntity> onFocusChange)
 	{
 		m_OnFocusChangeAction = onFocusChange;
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigation()
-	{
-		return m_NavigationBehaviour;
 	}
 }

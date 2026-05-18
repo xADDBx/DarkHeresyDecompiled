@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Networking;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.UI;

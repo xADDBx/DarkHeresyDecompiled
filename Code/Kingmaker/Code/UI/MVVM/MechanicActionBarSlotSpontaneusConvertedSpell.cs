@@ -12,14 +12,12 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Newtonsoft.Json;
 using Owlcat.UI;
 using OwlPack.Runtime;
-using StateHasher.Core;
-using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MechanicActionBarSlotSpontaneusConvertedSpell : MechanicActionBarSlot, IHashable, IOwlPackable<MechanicActionBarSlotSpontaneusConvertedSpell>
+public class MechanicActionBarSlotSpontaneusConvertedSpell : MechanicActionBarSlot, IOwlPackable<MechanicActionBarSlotSpontaneusConvertedSpell>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -157,17 +155,7 @@ public class MechanicActionBarSlotSpontaneusConvertedSpell : MechanicActionBarSl
 
 	public override TooltipBaseTemplate GetTooltipTemplate()
 	{
-		return CombatLogTooltipService.CreateTooltipTemplateAbility(Spell);
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		Hash128 val2 = ClassHasher<AbilityData>.GetHash128(Spell);
-		result.Append(ref val2);
-		return result;
+		return CombatLogTooltipService.CreateTooltipTemplateAbilityForActionBar(Spell);
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

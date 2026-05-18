@@ -2,9 +2,9 @@ using System;
 using JetBrains.Annotations;
 using Kingmaker.Code.Framework.GameLog;
 using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
@@ -78,21 +78,21 @@ public class Rulebook : IRulebookTrigger
 			rulebookEvent2.Reason = rulebookEvent2;
 			return;
 		}
-		MechanicEntityFact mechanicEntityFact = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.Fact;
-		if (mechanicEntityFact != null)
+		MechanicEntityFact fact = EvalContext.Current.Fact;
+		if (fact != null)
 		{
-			rulebookEvent2.Reason = mechanicEntityFact;
+			rulebookEvent2.Reason = fact;
 			return;
 		}
 		RuleReason? ruleReason = ((RulebookEvent)m_RuleContext.Previous)?.Reason;
-		MechanicsContext current = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
+		EvalContext current = EvalContext.Current;
 		if (ruleReason.HasValue)
 		{
 			rulebookEvent2.Reason = ruleReason.Value.Copy(current);
 		}
-		else if (current != null)
+		else if (current.Blueprint != null)
 		{
-			rulebookEvent2.Reason = current;
+			rulebookEvent2.Reason = new RuleReason(current);
 		}
 		else
 		{
@@ -106,7 +106,8 @@ public class Rulebook : IRulebookTrigger
 		{
 			return evt;
 		}
-		using (SimpleContextData<IRulebookEvent, MechanicsContext.Scope.Rule>.Set(evt))
+		RulebookEvent rule = (evt as RulebookEvent) ?? throw new ArgumentException("evt");
+		using (EvalContext.Current.PushRule(rule))
 		{
 			using (ProfileScope.New(TypesCache.GetTypeName(typeof(TEvent))))
 			{

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.UnityExtensions;
 using R3;
@@ -113,10 +113,7 @@ public class TMPLinkHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHa
 	{
 		m_TextComponent = GetComponent<TextMeshProUGUI>();
 		m_RectTransform = GetComponent<RectTransform>();
-		DelayedInvoker.InvokeInFrames(delegate
-		{
-			ResetTransition();
-		}, 2).AddTo(this);
+		DelayedInvoker.InvokeInFrames(ResetTransition, 2).AddTo(this);
 	}
 
 	protected void OnDisable()
@@ -259,7 +256,7 @@ public class TMPLinkHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHa
 	public void ResetTransition()
 	{
 		TMP_LinkInfo[] linkInfo = m_TextComponent.textInfo.linkInfo;
-		if (linkInfo != null && linkInfo.Length != 0)
+		if (linkInfo != null && linkInfo.Length != 0 && m_TextComponent.textInfo.linkCount > 0)
 		{
 			TMP_LinkInfo[] array = linkInfo;
 			for (int i = 0; i < array.Length; i++)
@@ -312,7 +309,7 @@ public class TMPLinkHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHa
 			{
 				for (int j = 0; j < 4; j++)
 				{
-					m_TextComponent.textInfo.meshInfo[materialReferenceIndex].colors32[vertexIndex + j] = Color.Lerp(tMP_CharacterInfo.color * color, color, num);
+					m_TextComponent.textInfo.meshInfo[materialReferenceIndex].colors32[vertexIndex + j] = Color.Lerp(tMP_CharacterInfo.color * color, color, (float)num);
 				}
 			}
 		}
@@ -336,10 +333,11 @@ public class TMPLinkHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHa
 			return;
 		}
 		TMP_CharacterInfo tMP_CharacterInfo = textInfo.characterInfo[index];
-		TMP_CharacterInfo tMP_CharacterInfo2 = textInfo.characterInfo[index + lenght - 1];
+		int num = index + lenght - 1;
+		TMP_CharacterInfo tMP_CharacterInfo2 = textInfo.characterInfo[num];
 		int lineNumber = tMP_CharacterInfo.lineNumber;
-		int num = tMP_CharacterInfo2.lineNumber - tMP_CharacterInfo.lineNumber + 1;
-		for (int i = m_MarkObjectsPool.Count; i < num; i++)
+		int num2 = tMP_CharacterInfo2.lineNumber - tMP_CharacterInfo.lineNumber + 1;
+		for (int i = m_MarkObjectsPool.Count; i < num2; i++)
 		{
 			Transform parent = (m_Settings.DisplayMarkBehind ? base.transform.parent : base.transform);
 			int siblingIndex = (m_Settings.DisplayMarkBehind ? base.transform.GetSiblingIndex() : 0);
@@ -347,17 +345,19 @@ public class TMPLinkHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHa
 			rectTransform.SetSiblingIndex(siblingIndex);
 			if (m_Settings.DisplayMarkBehind)
 			{
-				rectTransform.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+				LayoutElement component = rectTransform.gameObject.GetComponent<LayoutElement>();
+				component = ((component == null) ? rectTransform.gameObject.AddComponent<LayoutElement>() : component);
+				component.ignoreLayout = true;
 			}
 			m_MarkObjectsPool.Add(rectTransform);
 		}
-		for (int j = 0; j < num; j++)
+		for (int j = 0; j < num2; j++)
 		{
-			int num2 = ((j == tMP_CharacterInfo.lineNumber - lineNumber) ? index : (GetLastLetterIdInLine(index, lineNumber + j) + 1));
-			int num3 = ((j == tMP_CharacterInfo2.lineNumber - lineNumber) ? (index + lenght - 1) : GetLastLetterIdInLine(index, lineNumber + j + 1));
+			int firstLetterId = ((j == tMP_CharacterInfo.lineNumber - lineNumber) ? index : (GetLastLetterIdInLine(index, lineNumber + j) + 1));
+			int lastLetterId = ((j == tMP_CharacterInfo2.lineNumber - lineNumber) ? num : GetLastLetterIdInLine(index, lineNumber + j + 1));
 			RectTransform rectTransform2 = m_MarkObjectsPool.ElementAt(j);
-			CalculateGlossaryPointCoordinates(textInfo.characterInfo[num2], textInfo.characterInfo[num3], out var height, out var width, out var middlePoint);
-			rectTransform2.anchoredPosition = (m_Settings.DisplayMarkBehind ? ((Vector2)base.transform.parent.InverseTransformPoint(m_RectTransform.TransformPoint(middlePoint))) : middlePoint);
+			CalculateGlossaryPointCoordinates(firstLetterId, lastLetterId, out var height, out var width, out var middlePoint);
+			rectTransform2.position = m_RectTransform.TransformPoint(middlePoint);
 			rectTransform2.sizeDelta = new Vector2(width, height) + m_Settings.MarkPadding;
 			rectTransform2.gameObject.SetActive(value: true);
 		}
@@ -375,11 +375,28 @@ public class TMPLinkHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHa
 		return -1;
 	}
 
-	private void CalculateGlossaryPointCoordinates(TMP_CharacterInfo firstLetter, TMP_CharacterInfo lastLetter, out float height, out float width, out Vector2 middlePoint)
+	private void CalculateGlossaryPointCoordinates(int firstLetterId, int lastLetterId, out float height, out float width, out Vector2 middlePoint)
 	{
-		height = Mathf.Abs(firstLetter.topRight.y - firstLetter.bottomRight.y);
-		width = lastLetter.topRight.x - firstLetter.topLeft.x;
-		middlePoint = new Vector2(firstLetter.topLeft.x + width / 2f, firstLetter.topRight.y - height / 2f);
+		TMP_TextInfo textInfo = m_TextComponent.textInfo;
+		TMP_CharacterInfo tMP_CharacterInfo = textInfo.characterInfo[firstLetterId];
+		TMP_CharacterInfo tMP_CharacterInfo2 = textInfo.characterInfo[lastLetterId];
+		float y = tMP_CharacterInfo.bottomRight.y;
+		float y2 = tMP_CharacterInfo.topRight.y;
+		for (int i = firstLetterId + 1; i <= lastLetterId; i++)
+		{
+			TMP_CharacterInfo tMP_CharacterInfo3 = textInfo.characterInfo[i];
+			if (y > tMP_CharacterInfo3.bottomRight.y)
+			{
+				y = tMP_CharacterInfo3.bottomRight.y;
+			}
+			if (y2 < tMP_CharacterInfo3.topRight.y)
+			{
+				y2 = tMP_CharacterInfo3.topRight.y;
+			}
+		}
+		height = Mathf.Abs(y2 - y);
+		width = tMP_CharacterInfo2.topRight.x - tMP_CharacterInfo.topLeft.x;
+		middlePoint = new Vector2(tMP_CharacterInfo.topLeft.x + width / 2f, y2 - height / 2f);
 	}
 
 	public void CallEvent(LinkEventData linkEvent, PointerEventData eventData, TMP_LinkInfo info)

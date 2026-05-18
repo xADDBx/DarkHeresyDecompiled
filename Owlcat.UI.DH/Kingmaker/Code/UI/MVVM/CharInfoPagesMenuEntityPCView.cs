@@ -1,6 +1,5 @@
 using System;
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Sound;
 using Owlcat.UI;
@@ -28,8 +27,8 @@ public class CharInfoPagesMenuEntityPCView : SelectionGroupEntityView<CharInfoPa
 
 	protected override void DestroyViewImplementation()
 	{
-		UISounds.Instance.Sounds.Selector.SelectorStop.Play();
-		UISounds.Instance.Sounds.Selector.SelectorLoopStop.Play();
+		SystemSounds.Instance.Selector.Stop.Play();
+		SystemSounds.Instance.Selector.LoopStop.Play();
 		base.DestroyViewImplementation();
 	}
 

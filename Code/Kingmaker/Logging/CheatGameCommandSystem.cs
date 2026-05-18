@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Core.Cheats;
 using Core.Cheats.ServerPlugins;
@@ -52,7 +53,7 @@ public static class CheatGameCommandSystem
 
 	private static IRestServerPlugin[] CreateServerPlugins(in CheatsManagerHolder.CheatSystem system)
 	{
-		return new IRestServerPlugin[9]
+		return new List<IRestServerPlugin>
 		{
 			new ConsolePlugin(ConsoleLogSink.Poll),
 			new CommandPlugin(RunCheatCommandGameCommand.Create),
@@ -63,7 +64,7 @@ public static class CheatGameCommandSystem
 			new KnownPlugin(system.Database),
 			new BindingsPlugin(),
 			new DumpStatePlugin()
-		};
+		}.ToArray();
 	}
 
 	private static CheatsManagerHolder.CheatSystem CreateForThisDomainWithExternals(Action<string, string> externalDelegate)

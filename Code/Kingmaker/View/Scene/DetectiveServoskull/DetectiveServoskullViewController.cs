@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Framework.Networking.Sync;
 using Kingmaker.Code.Gameplay.Features.DetectiveClues.View;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
@@ -141,16 +142,16 @@ public sealed class DetectiveServoskullViewController : MonoBehaviour, IDetectiv
 			FxFadeOut ensuredFadeOut = gameObject.EnsureComponent<FxFadeOut>();
 			ensuredFadeOut.Duration = scanFxFadeSeconds;
 			gameObject.transform.SetParent(m_ScannerBone.transform, worldPositionStays: true);
-			float scanEndTime = Time.time + scanFxDurationSeconds;
-			float scanFadeEndTime = scanEndTime + scanFxFadeSeconds;
-			while (Time.time < scanEndTime)
+			TimeSpan scanEndTime = Game.Instance.Controllers.TimeController.GameTime + TimeSpan.FromSeconds(scanFxDurationSeconds);
+			TimeSpan scanFadeEndTime = scanEndTime + TimeSpan.FromSeconds(scanFxFadeSeconds);
+			while (Game.Instance.Controllers.TimeController.GameTime < scanEndTime)
 			{
-				await Task.Delay(100);
+				await NextTickAwaiter.New();
 			}
 			ensuredFadeOut.StartForceFadeOut = true;
-			while (Time.time < scanFadeEndTime)
+			while (Game.Instance.Controllers.TimeController.GameTime < scanFadeEndTime)
 			{
-				await Task.Delay(100);
+				await NextTickAwaiter.New();
 			}
 		}
 	}

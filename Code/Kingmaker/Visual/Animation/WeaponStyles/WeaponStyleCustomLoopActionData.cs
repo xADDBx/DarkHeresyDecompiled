@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Utility.Attributes;
+using Owlcat.QA.Validation;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.WeaponStyles;
@@ -18,6 +19,7 @@ public class WeaponStyleCustomLoopActionData : IWeaponStyleAnimationClipsProvide
 
 		public AnimationClipWrapper Out;
 
+		[ValidateNotNull]
 		public AnimationClipWrapper Loop;
 	}
 

@@ -27,6 +27,7 @@ public class AnalysisButtonView : View<DetectiveStudyVM>
 		m_ButtonLabel.text = UIStrings.Instance.DetectiveJournal.ToStudiesLabel.Text;
 		m_Description.text = base.ViewModel.StudyGroup?.StudyName;
 		m_Button.OnLeftClickAsObservable().Subscribe(base.ViewModel.OnStudyClick).AddTo(this);
+		m_Button.SetInteractable(base.ViewModel.IsInteractable);
 		base.gameObject.SetActive(value: true);
 	}
 

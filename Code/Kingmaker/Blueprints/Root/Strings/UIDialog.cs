@@ -14,17 +14,13 @@ public class UIDialog
 
 	public LocalizedString HasRelatedItems;
 
+	public LocalizedString HasCloseCaseData;
+
 	public LocalizedString Succeeded;
 
 	public LocalizedString Failed;
 
-	public LocalizedString AligmentShiftedFormat;
-
-	public LocalizedString AlignmentRequirementLabel;
-
-	public LocalizedString AnswerDialogueFormat;
-
-	public LocalizedString AnswerYouNeedItem;
+	public LocalizedString AlignmentRequirementFormat;
 
 	public LocalizedString OpenGlossary;
 
@@ -50,5 +46,5 @@ public class UIDialog
 
 	public LocalizedString NewConclusionConstructed;
 
-	public static UIDialog Instance => UIStrings.Instance.Dialog;
+	public LocalizedString ProtocolLabel;
 }

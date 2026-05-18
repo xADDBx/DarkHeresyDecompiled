@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Framework.VO;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.Visual.Sound;
@@ -211,7 +212,11 @@ public static class SoundBanksManager
 	[NotNull]
 	private static IEnumerable<string> CollectVoiceBanks()
 	{
-		return from sb in ConfigRoot.Instance.CharGenRoot.Voices.Where((BlueprintUnitAsksList c) => c != null).SelectMany((BlueprintUnitAsksList c) => c.SoundBanks)
+		return from sb in (from c in ConfigRoot.Instance.CharGenRoot.VoiceEntries
+				where c != null
+				select VOSettings.Instance.GetAsksByVoGuid(c.VoId.Guid) into a
+				where a != null
+				select a).SelectMany((BlueprintUnitAsksList a) => a.SoundBanks)
 			where !string.IsNullOrEmpty(sb)
 			select sb;
 	}

@@ -1,4 +1,3 @@
-using Owlcat.UI;
 using TMPro;
 using UnityEngine;
 
@@ -7,52 +6,52 @@ namespace Kingmaker.Code.UI.MVVM;
 public class SettingsControlConsole : MonoBehaviour
 {
 	[SerializeField]
-	public ConsoleHint LeftStickButtonHint;
+	public HintView LeftStickButtonHint;
 
 	[SerializeField]
-	public ConsoleHint DPadRightHint;
+	public HintView DPadRightHint;
 
 	[SerializeField]
-	public ConsoleHint DPadDownHint;
+	public HintView DPadDownHint;
 
 	[SerializeField]
-	public ConsoleHint DPadLeftHint;
+	public HintView DPadLeftHint;
 
 	[SerializeField]
-	public ConsoleHint DPadUpHint;
+	public HintView DPadUpHint;
 
 	[SerializeField]
-	public ConsoleHint LeftUpHint;
+	public HintView LeftUpHint;
 
 	[SerializeField]
-	public ConsoleHint LeftBottomHint;
+	public HintView LeftBottomHint;
 
 	[SerializeField]
-	public ConsoleHint FuncAdditionalHint;
+	public HintView FuncAdditionalHint;
 
 	[SerializeField]
-	public ConsoleHint RightBottomHint;
+	public HintView RightBottomHint;
 
 	[SerializeField]
-	public ConsoleHint RightUpHint;
+	public HintView RightUpHint;
 
 	[SerializeField]
-	public ConsoleHint OptionsHint;
+	public HintView OptionsHint;
 
 	[SerializeField]
-	public ConsoleHint Func02Hint;
+	public HintView Func02Hint;
 
 	[SerializeField]
-	public ConsoleHint DeclineHint;
+	public HintView DeclineHint;
 
 	[SerializeField]
-	public ConsoleHint ConfirmHint;
+	public HintView ConfirmHint;
 
 	[SerializeField]
-	public ConsoleHint Func01Hint;
+	public HintView Func01Hint;
 
 	[SerializeField]
-	public ConsoleHint RightStickButtonHint;
+	public HintView RightStickButtonHint;
 
 	[SerializeField]
 	public TextMeshProUGUI ConsoleCoopPingHint;

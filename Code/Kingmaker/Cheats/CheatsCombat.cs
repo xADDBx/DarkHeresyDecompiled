@@ -5,29 +5,32 @@ using System.Linq;
 using Core.Cheats;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.JsonSystem.EditorDatabase;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.Gameplay.Parts;
+using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Designers;
+using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Parts;
-using Kingmaker.Items;
 using Kingmaker.Mechanics.Damage;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem;
+using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.Sound;
 using Kingmaker.UI.InputSystems;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Levelup.Obsolete.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
@@ -35,6 +38,7 @@ using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.View;
 using Kingmaker.View.Roaming;
+using ObservableCollections;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -64,7 +68,7 @@ public class CheatsCombat
 			});
 			keyboard.Bind("KillAll", delegate
 			{
-				CheatsHelper.Run("kill_all");
+				CheatsHelper.Run("kill_all @mouseover");
 			});
 			keyboard.Bind("Damage", delegate
 			{
@@ -86,10 +90,12 @@ public class CheatsCombat
 			{
 				CheatsHelper.Run("summon null null @cursor");
 			});
+			keyboard.Bind("Cheat_AddToSelectedUnits", AddToSelectedUnits);
 			keyboard.Bind("RestAll", delegate
 			{
 				CheatsHelper.Run("rest_all");
 			});
+			keyboard.Bind("CheatRestCurrentUnit", RestCurrentUnit);
 			keyboard.Bind("AllAudioMute", AudioMuteManager.ToggleAllMute);
 			keyboard.Bind("MusicMute", AudioMuteManager.ToggleMusicMute);
 			SmartConsole.RegisterCommand("attach_buff", AttachBuff);
@@ -105,6 +111,8 @@ public class CheatsCombat
 			SmartConsole.RegisterCommand("manual_combat_end", ManualCombatEnd);
 			SmartConsole.RegisterCommand("manual_combat_next_round", ManualCombatNextRound);
 			SmartConsole.RegisterCommand("end_preparation_turn", EndPreparationTurn);
+			SmartConsole.RegisterCommand("activate_peril", ActivatePeril);
+			SmartConsole.RegisterCommand("activate_phenomena", ActivatePhenomena);
 		}
 	}
 
@@ -184,12 +192,12 @@ public class CheatsCombat
 	}
 
 	[Cheat(Name = "kill_all", ExecutionPolicy = ExecutionPolicy.PlayMode)]
-	public static void KillAll()
+	public static void KillAll(MechanicEntity entity)
 	{
 		bool flag = false;
 		foreach (BaseUnitEntity allBaseUnit in Game.Instance.EntityPools.AllBaseUnits)
 		{
-			if (allBaseUnit.CombatState.IsInCombat && allBaseUnit.CombatGroup.IsEnemy(GameHelper.GetPlayerCharacter()))
+			if (allBaseUnit.CombatState.IsInCombat && allBaseUnit.CombatGroup.IsEnemy(GameHelper.GetPlayerCharacter()) && allBaseUnit != entity)
 			{
 				flag = true;
 				KillUnit(allBaseUnit);
@@ -256,6 +264,50 @@ public class CheatsCombat
 		unit.Health.LastHandledDamage = null;
 	}
 
+	[Cheat(Name = "list_combat_units", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ListCombatUnits()
+	{
+		int num = 0;
+		foreach (BaseUnitEntity allBaseUnit in Game.Instance.EntityPools.AllBaseUnits)
+		{
+			if (allBaseUnit.IsInCombat)
+			{
+				string text = (allBaseUnit.IsPlayerFaction ? "Ally" : "Enemy");
+				PFLog.SmartConsole.Log("[" + text + "] " + allBaseUnit.CharacterName + " (" + Utilities.GetBlueprintPath(allBaseUnit.Blueprint) + ")");
+				num++;
+			}
+		}
+		if (num == 0)
+		{
+			PFLog.SmartConsole.Log("No units currently in combat");
+		}
+		else
+		{
+			PFLog.SmartConsole.Log($"Total units in combat: {num}");
+		}
+	}
+
+	[Cheat(Name = "list_combat_buffs", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ListCombatBuffs()
+	{
+		int num = 0;
+		foreach (BaseUnitEntity allBaseUnit in Game.Instance.EntityPools.AllBaseUnits)
+		{
+			if (allBaseUnit.IsInCombat)
+			{
+				string text = (allBaseUnit.IsPlayerFaction ? "Ally" : "Enemy");
+				List<string> list = allBaseUnit.Buffs.Enumerable.Select((Buff b) => (b.ExpirationInRounds <= 0) ? b.Blueprint.name : $"{b.Blueprint.name}({b.ExpirationInRounds})").ToList();
+				string text2 = ((list.Count > 0) ? string.Join(", ", list) : "<no buffs>");
+				PFLog.SmartConsole.Log("[" + text + "] " + allBaseUnit.CharacterName + ": " + text2);
+				num++;
+			}
+		}
+		if (num == 0)
+		{
+			PFLog.SmartConsole.Log("No units currently in combat");
+		}
+	}
+
 	[Cheat(Name = "list_buffs", ExecutionPolicy = ExecutionPolicy.PlayMode)]
 	public static void ListBuffs(BaseUnitEntity targetUnit)
 	{
@@ -269,6 +321,24 @@ public class CheatsCombat
 		{
 			PFLog.Default.Log("Buffs on " + selectedUnit.CharacterName);
 			PrintBuffs(selectedUnit.Buffs.Enumerable);
+		}
+	}
+
+	[Cheat(Name = "list_buffs_mouse", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ListBuffsUnderMouse()
+	{
+		BaseUnitEntity unitUnderMouse = Utilities.GetUnitUnderMouse();
+		if (unitUnderMouse == null)
+		{
+			PFLog.SmartConsole.Log("No unit under mouse");
+			return;
+		}
+		List<Buff> list = unitUnderMouse.Buffs.Enumerable.ToList();
+		PFLog.SmartConsole.Log($"Buffs on {unitUnderMouse.CharacterName} ({Utilities.GetBlueprintPath(unitUnderMouse.Blueprint)}): {list.Count}");
+		foreach (Buff item in list)
+		{
+			string text = ((item.ExpirationInRounds > 0) ? $"; Rounds Left: {item.ExpirationInRounds}" : "");
+			PFLog.SmartConsole.Log("  " + Utilities.GetBlueprintPath(item.Blueprint) + text);
 		}
 	}
 
@@ -299,17 +369,27 @@ public class CheatsCombat
 	{
 		foreach (BaseUnitEntity allCharactersAndStarship in Game.Instance.Player.AllCharactersAndStarships)
 		{
-			PartHealth.RestUnit(allCharactersAndStarship);
-			allCharactersAndStarship.GetArmorOptional()?.HealDamageAll();
+			allCharactersAndStarship.Restore();
 		}
-		foreach (ItemEntity item in Game.Instance.PartySharedInventory.Collection)
+	}
+
+	private static void RestCurrentUnit()
+	{
+		BaseUnitEntity baseUnitEntity = (Game.Instance.Controllers.TurnController?.CurrentUnit as BaseUnitEntity) ?? Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Value;
+		if (baseUnitEntity != null)
 		{
-			item.RestoreCharges();
+			baseUnitEntity.CombatState.ResetActionAndMovementPoints();
+			baseUnitEntity.CombatState.AttackInRoundCount = 0;
+			baseUnitEntity.CombatState.AttackedInRoundCount = 0;
+			baseUnitEntity.CombatState.HitInRoundCount = 0;
+			baseUnitEntity.CombatState.GotHitInRoundCount = 0;
+			baseUnitEntity.GetAbilityCooldownsOptional()?.Clear();
+			baseUnitEntity.GetTwoWeaponFightingOptional()?.ResetAttacks();
+			EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
+			{
+				h.HandleActionBarSlotsUpdated();
+			});
 		}
-		EventBus.RaiseEvent(delegate(IActionBarSlotsUpdatedHandler h)
-		{
-			h.HandleActionBarSlotsUpdated();
-		});
 	}
 
 	[Cheat(ExecutionPolicy = ExecutionPolicy.PlayMode)]
@@ -335,7 +415,94 @@ public class CheatsCombat
 		}
 	}
 
+	private static void AddToSelectedUnits()
+	{
+		if (TryGetFactToAdd(out var fact))
+		{
+			AddFactToSelectedUnits(fact);
+		}
+	}
+
+	private static void AddFactToSelectedUnits(BlueprintMechanicEntityFact fact)
+	{
+		if (fact == null)
+		{
+			return;
+		}
+		if (fact is BlueprintItem blueprint)
+		{
+			PFLog.SmartConsole.Log("item " + fact.NameSafe() + " added");
+			CheatsUnlock.CreateItem(blueprint);
+		}
+		else
+		{
+			if (!(fact is BlueprintUnitFact blueprint2))
+			{
+				return;
+			}
+			ObservableList<BaseUnitEntity> selectedUnits = Game.Instance.Controllers.SelectionCharacter.SelectedUnits;
+			if (selectedUnits != null && selectedUnits.Count != 0)
+			{
+				foreach (BaseUnitEntity item in selectedUnits)
+				{
+					PFLog.SmartConsole.Log("fact " + fact.NameSafe() + " added to " + item.Name);
+					item.AddFact(blueprint2);
+				}
+				return;
+			}
+			PFLog.SmartConsole.Log("No selected units");
+		}
+	}
+
+	private static bool TryGetFactToAdd(out BlueprintMechanicEntityFact fact)
+	{
+		fact = null;
+		if (TryGetFactFromBuffer(out fact))
+		{
+			PFLog.SmartConsole.Log("fact " + fact.NameSafe() + " taken from buffer");
+			return true;
+		}
+		if (TryGetFactFromEditorSelection(out fact))
+		{
+			PFLog.SmartConsole.Log("fact " + fact.NameSafe() + " taken from editor selection");
+			return true;
+		}
+		return false;
+	}
+
+	private static bool TryGetFactFromEditorSelection(out BlueprintMechanicEntityFact fact)
+	{
+		fact = null;
+		return fact != null;
+	}
+
+	private static bool TryGetFactFromBuffer(out BlueprintMechanicEntityFact fact)
+	{
+		fact = null;
+		string text = GUIUtility.systemCopyBuffer?.Trim();
+		if (string.IsNullOrEmpty(text))
+		{
+			return false;
+		}
+		if (text.StartsWith("add_feature ", StringComparison.OrdinalIgnoreCase))
+		{
+			string text2 = text;
+			int length = "add_feature ".Length;
+			text = text2.Substring(length, text2.Length - length);
+		}
+		else if (text.StartsWith("create_item ", StringComparison.OrdinalIgnoreCase))
+		{
+			string text2 = text;
+			int length = "create_item ".Length;
+			text = text2.Substring(length, text2.Length - length);
+		}
+		text = text.Trim();
+		fact = Utilities.GetBlueprint<BlueprintMechanicEntityFact>(text);
+		return fact != null;
+	}
+
 	[Cheat(Name = "detach_fact", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	[CheatTargetsUnit]
 	public static void DetachFact(BlueprintUnitFact fact)
 	{
 		if (fact == null)
@@ -349,6 +516,7 @@ public class CheatsCombat
 	}
 
 	[Cheat(Name = "attach_fact", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	[CheatTargetsUnit]
 	public static void AttachFact(BlueprintUnitFact fact)
 	{
 		if (fact == null)
@@ -374,6 +542,56 @@ public class CheatsCombat
 		if (factionBp != null)
 		{
 			baseUnitEntity.Faction.Set(factionBp);
+		}
+	}
+
+	[Cheat(Name = "activate_peril", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ActivatePeril(string parameters)
+	{
+		if (!int.TryParse(parameters, out var result))
+		{
+			PFLog.SmartConsole.Log("Cannot find peril index given parameters");
+			return;
+		}
+		BlueprintPsykerRoot psykerRoot = ConfigRoot.Instance.PsykerRoot;
+		if (result < 0 || psykerRoot.PerilsOfTheWarp.Length <= result)
+		{
+			PFLog.SmartConsole.Log($"Wrong index for peril. There are only {psykerRoot.PerilsOfTheWarp.Length} of them");
+			return;
+		}
+		BaseUnitEntity unitUnderMouse = Utilities.GetUnitUnderMouse();
+		if (unitUnderMouse == null)
+		{
+			PFLog.SmartConsole.Log("No unit under mouse to trigger peril");
+		}
+		else
+		{
+			RulePerformPsychicPhenomena.RunPsychicPhenomenaEffectOnTarget(unitUnderMouse, null, psykerRoot.PerilsOfTheWarp[result], isPerils: true);
+		}
+	}
+
+	[Cheat(Name = "activate_phenomena", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	public static void ActivatePhenomena(string parameters)
+	{
+		if (!int.TryParse(parameters, out var result))
+		{
+			PFLog.SmartConsole.Log("Cannot find phenomena index given parameters");
+			return;
+		}
+		BlueprintPsykerRoot psykerRoot = ConfigRoot.Instance.PsykerRoot;
+		if (result < 0 || psykerRoot.PsychicPhenomena.Length <= result)
+		{
+			PFLog.SmartConsole.Log($"Wrong index for phenomena. There are only {psykerRoot.PsychicPhenomena.Length} of them");
+			return;
+		}
+		BaseUnitEntity unitUnderMouse = Utilities.GetUnitUnderMouse();
+		if (unitUnderMouse == null)
+		{
+			PFLog.SmartConsole.Log("No unit under mouse to trigger phenomena");
+		}
+		else
+		{
+			RulePerformPsychicPhenomena.RunPsychicPhenomenaEffectOnTarget(unitUnderMouse, null, psykerRoot.PsychicPhenomena[result], isPerils: false);
 		}
 	}
 
@@ -505,7 +723,7 @@ public class CheatsCombat
 	}
 
 	[Cheat(Name = "add_bonus_ability_usage", ExecutionPolicy = ExecutionPolicy.PlayMode)]
-	public static void AddBonusAbilityUsage(int count = 1, int costBonus = -5, RestrictionsHolder restrictions = null)
+	public static void AddBonusAbilityUsage(int count = 1, int costBonus = -5, RestrictionsHolder restrictions = null, bool ingorePartAbilityRestrictions = false)
 	{
 		MechanicEntity currentUnit = Game.Instance.Controllers.TurnController.CurrentUnit;
 		if (currentUnit == null)
@@ -514,7 +732,7 @@ public class CheatsCombat
 			return;
 		}
 		EntityFactSource source = new EntityFactSource(currentUnit);
-		currentUnit.GetOrCreate<UnitPartBonusAbility>().AddBonusAbility(source, count, costBonus, restrictions.ToReference<RestrictionsHolder.Reference>());
+		currentUnit.GetOrCreate<UnitPartBonusAbility>().AddBonusAbility(source, count, costBonus, restrictions.ToReference<RestrictionsHolder.Reference>(), ingorePartAbilityRestrictions);
 	}
 
 	private static void Iddqd(string parameters)
@@ -567,31 +785,19 @@ public class CheatsCombat
 	{
 		string stat = Utilities.GetParamString(p, 1, "Missing ability score: str|dex|con|int|wis|cha").ToLowerInvariant();
 		int? paramInt = Utilities.GetParamInt(p, 2, "Missing damage value");
-		if (!paramInt.HasValue)
+		if (paramInt.HasValue)
 		{
-			return;
-		}
-		int value = paramInt.Value;
-		if (value <= 0)
-		{
-			SmartConsole.Print("Damage value must be >= 1");
-			return;
-		}
-		StatType? statType = GetStatType(stat);
-		if (!statType.HasValue)
-		{
-			SmartConsole.Print("Can't parse ability score, use one of these: str|dex|con|int|wis|cha");
-			return;
-		}
-		foreach (BaseUnitEntity selectedUnit in Game.Instance.Controllers.SelectionCharacter.SelectedUnits)
-		{
-			if (drain)
+			if (paramInt.Value <= 0)
 			{
-				selectedUnit.Stats.GetStat<ModifiableValueAttributeStat>(statType.Value).Drain += value;
+				SmartConsole.Print("Damage value must be >= 1");
+			}
+			else if (!GetStatType(stat).HasValue)
+			{
+				SmartConsole.Print("Can't parse ability score, use one of these: str|dex|con|int|wis|cha");
 			}
 			else
 			{
-				selectedUnit.Stats.GetStat<ModifiableValueAttributeStat>(statType.Value).Damage += value;
+				SmartConsole.Print("Drain/Damage are dead mechanics, this command has no effect");
 			}
 		}
 	}
@@ -619,5 +825,40 @@ public class CheatsCombat
 	public static void CombatTextDebug(bool enable)
 	{
 		CombatTextDebugEnabled = enable;
+	}
+
+	[Cheat(Name = "crit_add")]
+	public static void Cheat_AddCritical(BlueprintBodyPart damageBodyPart, int amount)
+	{
+		BaseUnitEntity unitForCheat = Utilities.GetUnitForCheat();
+		unitForCheat.Health.AddCriticalEffectStages(damageBodyPart, amount, unitForCheat);
+	}
+
+	[Cheat(Name = "crit_remove")]
+	public static void Cheat_RemoveCritical(BlueprintBodyPart damageBodyPart, int amount)
+	{
+		BaseUnitEntity unitForCheat = Utilities.GetUnitForCheat();
+		unitForCheat.Health.RemoveCriticalEffectStages(damageBodyPart, amount, unitForCheat);
+	}
+
+	[Cheat(Name = "crit_remove_all")]
+	public static void Cheat_RemoveCriticalAll()
+	{
+		BaseUnitEntity unitForCheat = Utilities.GetUnitForCheat();
+		foreach (BlueprintBodyPart bodyPart in unitForCheat.BodyParts)
+		{
+			int criticalStage = unitForCheat.Health.GetCriticalStage(bodyPart);
+			if (criticalStage > 0)
+			{
+				unitForCheat.Health.RemoveCriticalEffectStages(bodyPart, criticalStage, unitForCheat);
+			}
+		}
+	}
+
+	[Cheat(Name = "attach_buff", ExecutionPolicy = ExecutionPolicy.PlayMode)]
+	[CheatTargetsUnit]
+	public static void AttachBuffTyped(BlueprintBuff buff)
+	{
+		Utilities.GetUnitUnderMouse()?.AddFact(buff, null, new BuffDuration(null, BuffEndCondition.RemainAfterCombat, BuffExpireMoment.TurnStart));
 	}
 }

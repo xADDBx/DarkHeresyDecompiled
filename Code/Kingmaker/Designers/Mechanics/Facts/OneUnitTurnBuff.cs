@@ -1,5 +1,6 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -17,6 +18,9 @@ public class OneUnitTurnBuff : UnitBuffComponentDelegate, ITurnStartHandler, ISu
 {
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		base.Buff.Remove();
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current)
+		{
+			base.Buff.Remove();
+		}
 	}
 }

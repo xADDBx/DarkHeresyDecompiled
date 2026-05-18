@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Kingmaker;
+using Kingmaker.Code.Framework.Networking.Sync;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.RuleSystem;
@@ -9,6 +10,7 @@ using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Squads;
+using Kingmaker.UnitLogic.Squads.Goals;
 using Kingmaker.Utility;
 using Owlcat.BehaviourTrees;
 using Pathfinding;
@@ -16,7 +18,7 @@ using UnityEngine;
 
 namespace Owlcat.AI;
 
-public class MoveToGraphNodeNode : TaskNode
+public class MoveToGraphNodeNode : TaskNode, IPathClaimer
 {
 	private readonly EntityVariable m_Agent;
 
@@ -79,11 +81,15 @@ public class MoveToGraphNodeNode : TaskNode
 			PFLog.AI.Log("Move command was not set up -> already moved");
 			return true;
 		}
-		if (threatsHandlingStrategy != 0)
+		UnitMoveToProperParams commandParams;
+		await using (AsyncSimulationScope.Get())
 		{
-			await runtimeData.UpdateMoveVariants(agent, threatsHandlingStrategy);
+			if (threatsHandlingStrategy == AiThreatsHandlingStrategy.Ignore)
+			{
+				await runtimeData.UpdateMoveVariants(agent, threatsHandlingStrategy);
+			}
+			commandParams = await TryCreateMoveCommandAsync(agent, targetNode, runtimeData.AgentMoveVariants, targetNodeSelectionPolicy, threatsHandlingStrategy);
 		}
-		UnitMoveToProperParams commandParams = await TryCreateMoveCommandAsync(agent, targetNode, runtimeData.AgentMoveVariants, targetNodeSelectionPolicy, threatsHandlingStrategy);
 		if (commandParams == null)
 		{
 			PFLog.AI.Log("Move command was not set up -> already moved");
@@ -95,18 +101,21 @@ public class MoveToGraphNodeNode : TaskNode
 		}
 		while (!agent.Commands.Empty)
 		{
-			await Task.Delay(100);
+			await NextTickAwaiter.New();
 		}
-		PFLog.AI.Log($"Try move to {commandParams.ForcedPath.path.Last()}");
+		PFLog.AI.Log("Try move to " + commandParams.ForcedPath.path.Last().AsString());
 		UnitCommandHandle commandHandle = agent.Commands.RunImmediate(commandParams);
 		if (commandHandle == null)
 		{
 			return false;
 		}
-		while (!commandHandle.IsFinished)
+		await using (AsyncSimulationScope.Get())
 		{
-			runtimeData.ResetIdleTime();
-			await Task.Delay(100);
+			while (!commandHandle.IsFinished)
+			{
+				runtimeData.ResetIdleTime();
+				await NextTickAwaiter.New();
+			}
 		}
 		runtimeData.Invalidate();
 		return true;
@@ -114,6 +123,11 @@ public class MoveToGraphNodeNode : TaskNode
 
 	private async Task<UnitMoveToProperParams> TryCreateMoveCommandAsync(BaseUnitEntity agent, GridNodeBase targetNode, AiAreaScanner.PathData moveVariants, TargetNodeSelectionPolicy targetNodeSelectionPolicy, AiThreatsHandlingStrategy threatsHandlingStrategy)
 	{
+		UnitMoveToProperParams unitMoveToProperParams = await TryCreateCommandFromSquadPlanAsync(agent, targetNode, threatsHandlingStrategy);
+		if (unitMoveToProperParams != null)
+		{
+			return unitMoveToProperParams;
+		}
 		ForcedPath forcedPath = await CreatePathToTargetNodeAsync(agent, targetNode, moveVariants, targetNodeSelectionPolicy, threatsHandlingStrategy);
 		if (forcedPath == null)
 		{
@@ -123,13 +137,13 @@ public class MoveToGraphNodeNode : TaskNode
 		int num = ruleCalculateMovementCost.ResultPointCount;
 		while (num > 0)
 		{
-			GraphNode graphNode = forcedPath.path[num - 1];
-			if (CanStopAtNode(agent, graphNode, moveVariants))
+			GraphNode node = forcedPath.path[num - 1];
+			if (CanStopAtNode(agent, node, moveVariants))
 			{
 				break;
 			}
 			num--;
-			PFLog.AI.Log($"{graphNode} is unreachable, trim path");
+			PFLog.AI.Log(node.AsString() + " is unreachable, trim path");
 		}
 		if (num < 2)
 		{
@@ -203,5 +217,14 @@ public class MoveToGraphNodeNode : TaskNode
 		ForcedPath forcedPath = WarhammerPathHelper.ConstructPathTo(targetNode, pathData.cells);
 		forcedPath.Claim(this);
 		return forcedPath;
+	}
+
+	private Task<UnitMoveToProperParams> TryCreateCommandFromSquadPlanAsync(BaseUnitEntity agent, GridNodeBase targetNode, AiThreatsHandlingStrategy threatsHandlingStrategy)
+	{
+		return SquadPlanConsumer.TryConsumeAsync(this, agent, GoalFactory, threatsHandlingStrategy);
+		IMovementGoal GoalFactory()
+		{
+			return new RangedPositionGoal(targetNode);
+		}
 	}
 }

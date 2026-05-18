@@ -31,7 +31,7 @@ public class OverrideDefaultAbilityRange : MechanicEntityFactComponentDelegate, 
 			}
 			else
 			{
-				evt.OverrideRange = m_Range.GetValue(new PropertyContext(evt.ConcreteInitiator, base.Context, null, evt));
+				evt.OverrideRange = m_Range.GetValue(evt.ConcreteInitiator, base.Context, null, evt);
 			}
 		}
 	}

@@ -93,20 +93,20 @@ public abstract class LootView<TLootCollector, TInteractionSlot, TPlayerStash> :
 		}
 		if (flag)
 		{
-			m_OnPanelsChanged.Execute();
+			m_OnPanelsChanged.Execute(Unit.Default);
 		}
 	}
 
 	private void Show()
 	{
 		m_Animator.AppearAnimation();
-		UISounds.Instance.Sounds.Loot.GetLootWindowOpenSound(base.ViewModel.Mode).Play();
+		ModalWindowsSounds.Instance.Loot.GetLootWindowOpenSound(base.ViewModel.Mode).Play();
 	}
 
 	private void Hide()
 	{
 		ContextMenuHelper.HideContextMenu();
 		m_Animator.DisappearAnimation();
-		UISounds.Instance.Sounds.Loot.GetLootWindowCloseSound(base.ViewModel.Mode).Play();
+		ModalWindowsSounds.Instance.Loot.GetLootWindowCloseSound(base.ViewModel.Mode).Play();
 	}
 }

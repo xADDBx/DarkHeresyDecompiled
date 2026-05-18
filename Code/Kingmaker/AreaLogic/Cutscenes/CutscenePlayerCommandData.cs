@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.AreaLogic.Cutscenes.Commands;
+using Kingmaker.Blueprints;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Utility.CodeTimer;
 
@@ -31,6 +32,8 @@ public class CutscenePlayerCommandData
 
 		public string MarkedUnit;
 
+		public bool IsDisabledDueToError;
+
 		public void Reset()
 		{
 			IsActive = false;
@@ -49,6 +52,8 @@ public class CutscenePlayerCommandData
 	private readonly CommandBase m_Command;
 
 	private DebugCommandPlayerData m_DebugData = new DebugCommandPlayerData();
+
+	public bool IsDisabledDueToError { get; private set; }
 
 	public bool IsComplete { get; private set; }
 
@@ -100,11 +105,11 @@ public class CutscenePlayerCommandData
 	{
 		try
 		{
-			RunInternal(skipping);
+			HandleCommandResult(RunInternal(skipping));
 		}
-		catch (Exception ex)
+		catch (Exception e)
 		{
-			HandleCommandException(ex);
+			HandleCommandResult(CommandBase.CommandResult.FromException(e));
 		}
 	}
 
@@ -112,11 +117,11 @@ public class CutscenePlayerCommandData
 	{
 		try
 		{
-			TickInternal(skipping);
+			HandleCommandResult(TickInternal(skipping));
 		}
-		catch (Exception ex)
+		catch (Exception e)
 		{
-			HandleCommandException(ex);
+			HandleCommandResult(CommandBase.CommandResult.FromException(e));
 		}
 	}
 
@@ -124,11 +129,17 @@ public class CutscenePlayerCommandData
 	{
 		try
 		{
-			return InterruptInternal<T>();
+			if (!(m_Command is T))
+			{
+				return false;
+			}
+			CommandBase.CommandResult result = m_Command.Interrupt(m_Player);
+			HandleCommandResult(result);
+			return result.IsSuccess;
 		}
-		catch (Exception ex)
+		catch (Exception e)
 		{
-			HandleCommandException(ex);
+			HandleCommandResult(CommandBase.CommandResult.FromException(e));
 		}
 		return false;
 	}
@@ -141,11 +152,11 @@ public class CutscenePlayerCommandData
 		}
 		try
 		{
-			Complete();
+			HandleCommandResult(Complete());
 		}
-		catch (Exception ex)
+		catch (Exception e)
 		{
-			HandleCommandException(ex);
+			HandleCommandResult(CommandBase.CommandResult.FromException(e));
 		}
 	}
 
@@ -155,9 +166,9 @@ public class CutscenePlayerCommandData
 		{
 			ForceStopInternal(releaseControlledUnit);
 		}
-		catch (Exception ex)
+		catch (Exception e)
 		{
-			HandleCommandException(ex);
+			HandleCommandResult(CommandBase.CommandResult.FromException(e));
 		}
 	}
 
@@ -169,12 +180,13 @@ public class CutscenePlayerCommandData
 		}
 	}
 
-	private void RunInternal(bool skipping)
+	private CommandBase.CommandResult RunInternal(bool skipping)
 	{
+		CommandBase.CommandResult result = CommandBase.CommandResult.Success;
 		MarkUnit();
 		if (skipping && m_Command.TrySkip(m_Player))
 		{
-			m_Command.Skip(m_Player);
+			result = m_Command.Skip(m_Player);
 			m_DebugData.IsSkipped = true;
 		}
 		else
@@ -185,48 +197,49 @@ public class CutscenePlayerCommandData
 				m_DebugData.PlayTime = 0.0;
 				m_DebugData.IsActive = true;
 				PlayTime = 0f;
-				m_Command.Run(m_Player, skipping);
+				result = m_Command.Run(m_Player, skipping);
 			}
 		}
 		if (m_Command.IsFinished(m_Player) && !m_Command.IsContinuous)
 		{
-			Complete();
+			result = Complete();
 		}
+		return result;
 	}
 
-	private void TickInternal(bool skipping)
+	private CommandBase.CommandResult TickInternal(bool skipping)
 	{
 		float deltaTime = Game.Instance.Controllers.TimeController.DeltaTime;
 		PlayTime += deltaTime;
 		m_DebugData.PlayTime = PlayTime;
-		m_Command.SetTime(PlayTime, m_Player);
+		CommandBase.CommandResult result = m_Command.SetTime(PlayTime, m_Player);
+		if (!result.IsSuccess)
+		{
+			return result;
+		}
 		if (skipping && m_Command.TrySkip(m_Player))
 		{
-			m_Command.Interrupt(m_Player);
+			result = m_Command.Interrupt(m_Player);
 			m_DebugData.IsSkipped = true;
+			if (!result.IsSuccess)
+			{
+				return result;
+			}
 		}
 		if (m_Command.TryPrepareForStop(m_Player))
 		{
-			Complete();
+			result = Complete();
 		}
+		return result;
 	}
 
-	private void Complete()
+	private CommandBase.CommandResult Complete()
 	{
-		m_Command.Stop(m_Player);
+		CommandBase.CommandResult result = m_Command.Stop(m_Player);
 		m_DebugData.IsComplete = true;
 		IsComplete = true;
 		ReleaseUnit();
-	}
-
-	private bool InterruptInternal<T>()
-	{
-		if (!(m_Command is T))
-		{
-			return false;
-		}
-		m_Command.Interrupt(m_Player);
-		return true;
+		return result;
 	}
 
 	private void ForceStopInternal(bool releaseControlledUnit)
@@ -241,19 +254,41 @@ public class CutscenePlayerCommandData
 		}
 	}
 
-	private void HandleCommandException(Exception ex)
+	private void HandleCommandResult(CommandBase.CommandResult result)
 	{
+		if (result.IsSuccess)
+		{
+			return;
+		}
 		IsComplete = true;
 		ReleaseUnit();
 		m_DebugData.IsFailed = true;
-		m_DebugData.ExceptionMessage = ex.Message;
-		m_Player.FailedCommands.Add(m_Command);
-		m_Player.HandleException(ex, m_Track, m_Command);
+		m_DebugData.ExceptionMessage = "cmd " + m_Command.NameSafe() + ": " + result.ErrorMessage;
+		if (m_Command.EvaluationErrorHandlingPolicy == EvaluationErrorHandlingPolicy.Ignore)
+		{
+			return;
+		}
+		if (m_Player.FailedCommands.Contains(m_Command))
+		{
+			IsDisabledDueToError = true;
+			m_DebugData.IsDisabledDueToError = true;
+			return;
+		}
+		m_Player.LogError("[" + m_Player.Cutscene.Name + "] error in cmd " + m_Command.NameSafe() + ": " + result.ErrorMessage, result.LoudReport, m_Command);
+		switch (m_Command.EvaluationErrorHandlingPolicy)
+		{
+		case EvaluationErrorHandlingPolicy.SkipTrack:
+			m_Track.ForceStop(shouldSignal: true, releaseControlledUnit: true);
+			break;
+		case EvaluationErrorHandlingPolicy.SkipGate:
+			m_Player.StopGateOnErrorInsideTrack(m_Track);
+			break;
+		}
 	}
 
 	public bool MarkUnit()
 	{
-		IAbstractUnitEntity controlledUnit = m_Command.GetControlledUnit();
+		IAbstractUnitEntity controlledUnit = GetControlledUnit();
 		if (controlledUnit != null)
 		{
 			bool num = CutsceneControlledUnit.MarkUnit(controlledUnit, m_Player);
@@ -271,7 +306,7 @@ public class CutscenePlayerCommandData
 
 	private void ReleaseUnit()
 	{
-		IAbstractUnitEntity controlledUnit = m_Command.GetControlledUnit();
+		IAbstractUnitEntity controlledUnit = GetControlledUnit();
 		if (controlledUnit != null)
 		{
 			CutsceneControlledUnit.ReleaseUnit(controlledUnit, m_Player);
@@ -281,6 +316,22 @@ public class CutscenePlayerCommandData
 
 	public IAbstractUnitEntity GetControlledUnit()
 	{
-		return m_Command.GetControlledUnit();
+		try
+		{
+			return m_Command.GetControlledUnit();
+		}
+		catch (Exception ex)
+		{
+			m_DebugData.IsFailed = true;
+			m_DebugData.ExceptionMessage = ex.Message;
+			m_Player.LogError("[" + m_Player.Cutscene.Name + "] error in cmd " + m_Command.NameSafe() + " failed to get controlled unit", needQaReport: true, m_Command);
+			return null;
+		}
+	}
+
+	public void ClearErrorStatus()
+	{
+		IsDisabledDueToError = false;
+		DebugData.IsDisabledDueToError = false;
 	}
 }

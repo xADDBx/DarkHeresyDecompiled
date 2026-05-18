@@ -7,6 +7,7 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
@@ -106,7 +107,7 @@ public class FirstRoundTrigger : UnitFactComponentDelegate, ITurnStartHandler, I
 		Data data = RequestSavableData<Data>();
 		if (data == null || !data.HappenedThisCombat)
 		{
-			using (base.Fact.MaybeContext?.SetScope(base.Owner))
+			using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 			{
 				base.Fact.RunActionInContext(Actions, base.Owner);
 			}

@@ -1,11 +1,10 @@
 using System;
 using System.Linq;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Fmw.Blueprints;
@@ -34,6 +33,6 @@ public sealed class CountUnitsInAreaEffectGetter : IntPropertyGetter, PropertyCo
 
 	protected override int GetBaseValue()
 	{
-		return (UseAreaEffectFromContext ? SimpleContextData<AreaEffectEntity, MechanicsContext.Scope.AreaEffect>.Current : ((!OnlySpawnedByContextOwner) ? Game.Instance.EntityPools.AreaEffects.FirstOrDefault((AreaEffectEntity i) => i.Blueprint == AreaEffect.Blueprint) : this.GetMechanicContext().MaybeOwner?.GetOptional<UnitPartSpawnedAreaEffects>()?.Get(AreaEffect.Blueprint)))?.InGameEntitiesInside.Count((MechanicEntity i) => UnitRestriction.IsPassed(this.GetMechanicContext(), base.CurrentEntity, i)) ?? (-1);
+		return (UseAreaEffectFromContext ? this.GetEvalContext().AreaEffect : ((!OnlySpawnedByContextOwner) ? Game.Instance.EntityPools.AreaEffects.FirstOrDefault((AreaEffectEntity i) => i.Blueprint == AreaEffect.Blueprint) : this.GetEvalContext().Owner?.GetOptional<UnitPartSpawnedAreaEffects>()?.Get(AreaEffect.Blueprint)))?.InGameEntitiesInside.Count((MechanicEntity i) => UnitRestriction.IsPassed(EvalContext.Current, base.CurrentEntity, i)) ?? (-1);
 	}
 }

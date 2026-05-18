@@ -93,7 +93,7 @@ public sealed class OwlcatVirtualTerrain : OwlcatTerrainBase, IFeedbackProvider,
 	[UsedImplicitly]
 	private void OnEnable()
 	{
-		TerrainStreamingFeedbackFeature.RegisterFeedbackProvider(this);
+		TerrainStreamingFeedback.RegisterFeedbackProvider(this);
 		TerrainStreamingSystem.RegisterListener(this);
 		Invalidate();
 	}
@@ -101,7 +101,7 @@ public sealed class OwlcatVirtualTerrain : OwlcatTerrainBase, IFeedbackProvider,
 	[UsedImplicitly]
 	private void OnDisable()
 	{
-		TerrainStreamingFeedbackFeature.UnregisterFeedbackProvider(this);
+		TerrainStreamingFeedback.UnregisterFeedbackProvider(this);
 		TerrainStreamingSystem.UnregisterListener(this);
 	}
 

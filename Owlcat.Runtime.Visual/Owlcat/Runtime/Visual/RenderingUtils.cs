@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Owlcat.Runtime.Visual.Utilities;
+using Owlcat.Runtime.Visual.Waaagh;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -14,8 +16,6 @@ namespace Owlcat.Runtime.Visual;
 
 public static class RenderingUtils
 {
-	private static int s_PostProcessingTemporaryTargetId = Shader.PropertyToID("_TemporaryColorTexture");
-
 	private static List<ShaderTagId> s_LegacyShaderPassNames = new List<ShaderTagId>
 	{
 		new ShaderTagId("Always"),
@@ -501,6 +501,18 @@ public static class RenderingUtils
 		result.dimension = input.dimension;
 		result.slices = input.volumeDepth;
 		result.name = name;
+		result.enableRandomWrite = input.enableRandomWrite;
+		return result;
+	}
+
+	public static TextureDesc CreateTextureDesc(string name, RenderTextureDescriptor input, GraphicsFormat format)
+	{
+		TextureDesc result = new TextureDesc(input.width, input.height);
+		result.colorFormat = format;
+		result.dimension = input.dimension;
+		result.slices = input.volumeDepth;
+		result.name = name;
+		result.enableRandomWrite = input.enableRandomWrite;
 		return result;
 	}
 
@@ -693,5 +705,141 @@ public static class RenderingUtils
 			buffer.Release();
 		}
 		buffer = new GraphicsBuffer(target, minCount, stride);
+	}
+
+	internal static bool RTHandleNeedsReAlloc(RTHandle handle, in TextureDesc descriptor, bool scaled)
+	{
+		if (handle == null || handle.rt == null)
+		{
+			return true;
+		}
+		if (handle.useScaling != scaled)
+		{
+			return true;
+		}
+		if (!scaled && (handle.rt.width != descriptor.width || handle.rt.height != descriptor.height))
+		{
+			return true;
+		}
+		if (handle.rt.enableShadingRate && handle.rt.graphicsFormat != descriptor.colorFormat)
+		{
+			return true;
+		}
+		RenderTextureDescriptor descriptor2 = handle.rt.descriptor;
+		GraphicsFormat num = ((descriptor2.depthStencilFormat != 0) ? descriptor2.depthStencilFormat : descriptor2.graphicsFormat);
+		bool flag = descriptor2.shadowSamplingMode != ShadowSamplingMode.None;
+		if (num == descriptor.format && descriptor2.dimension == descriptor.dimension && descriptor2.volumeDepth == descriptor.slices && descriptor2.enableRandomWrite == descriptor.enableRandomWrite && descriptor2.enableShadingRate == descriptor.enableShadingRate && descriptor2.useMipMap == descriptor.useMipMap && descriptor2.autoGenerateMips == descriptor.autoGenerateMips && flag == descriptor.isShadowMap && descriptor2.msaaSamples == (int)descriptor.msaaSamples && descriptor2.bindMS == descriptor.bindTextureMS && descriptor2.useDynamicScale == descriptor.useDynamicScale && descriptor2.useDynamicScaleExplicit == descriptor.useDynamicScaleExplicit && descriptor2.memoryless == descriptor.memoryless && handle.rt.filterMode == descriptor.filterMode && handle.rt.wrapMode == descriptor.wrapMode && handle.rt.anisoLevel == descriptor.anisoLevel && !(Mathf.Abs(handle.rt.mipMapBias - descriptor.mipMapBias) > Mathf.Epsilon))
+		{
+			return handle.name != descriptor.name;
+		}
+		return true;
+	}
+
+	public static bool ReAllocateHandleIfNeeded(ref RTHandle handle, in RenderTextureDescriptor descriptor, FilterMode filterMode = FilterMode.Point, TextureWrapMode wrapMode = TextureWrapMode.Repeat, int anisoLevel = 1, float mipMapBias = 0f, string name = "")
+	{
+		TextureDesc descriptor2 = RTHandleResourcePool.CreateTextureDesc(descriptor, TextureSizeMode.Explicit, anisoLevel, 0f, filterMode, wrapMode, name);
+		if (RTHandleNeedsReAlloc(handle, in descriptor2, scaled: false))
+		{
+			if (handle != null && handle.rt != null)
+			{
+				AddStaleResourceToPoolOrRelease(RTHandleResourcePool.CreateTextureDesc(handle.rt.descriptor, TextureSizeMode.Explicit, handle.rt.anisoLevel, handle.rt.mipMapBias, handle.rt.filterMode, handle.rt.wrapMode, handle.name), handle);
+			}
+			if (WaaaghPipeline.s_RTHandlePool.TryGetResource(in descriptor2, out handle))
+			{
+				return true;
+			}
+			RTHandleAllocInfo info = CreateRTHandleAllocInfo(in descriptor, filterMode, wrapMode, anisoLevel, mipMapBias, name);
+			handle = RTHandles.Alloc(descriptor.width, descriptor.height, info);
+			return true;
+		}
+		return false;
+	}
+
+	public static bool ReAllocateHandleIfNeeded(ref RTHandle handle, TextureDesc descriptor, string name)
+	{
+		descriptor.name = name;
+		descriptor.sizeMode = TextureSizeMode.Explicit;
+		if (RTHandleNeedsReAlloc(handle, in descriptor, scaled: false))
+		{
+			if (handle != null && handle.rt != null)
+			{
+				AddStaleResourceToPoolOrRelease(RTHandleResourcePool.CreateTextureDesc(handle.rt.descriptor, TextureSizeMode.Explicit, handle.rt.anisoLevel, handle.rt.mipMapBias, handle.rt.filterMode, handle.rt.wrapMode, handle.name), handle);
+			}
+			if (WaaaghPipeline.s_RTHandlePool.TryGetResource(in descriptor, out handle))
+			{
+				return true;
+			}
+			RTHandleAllocInfo info = CreateRTHandleAllocInfo(in descriptor, name);
+			handle = RTHandles.Alloc(descriptor.width, descriptor.height, info);
+			return true;
+		}
+		return false;
+	}
+
+	internal static void AddStaleResourceToPoolOrRelease(TextureDesc desc, RTHandle handle)
+	{
+		if (!WaaaghPipeline.s_RTHandlePool.AddResourceToPool(in desc, handle, Time.frameCount))
+		{
+			RTHandles.Release(handle);
+		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	internal static RTHandleAllocInfo CreateRTHandleAllocInfo(in TextureDesc descriptor, string name)
+	{
+		RTHandleAllocInfo result = default(RTHandleAllocInfo);
+		result.slices = descriptor.slices;
+		result.format = descriptor.format;
+		result.filterMode = descriptor.filterMode;
+		result.wrapModeU = descriptor.wrapMode;
+		result.wrapModeV = descriptor.wrapMode;
+		result.wrapModeW = descriptor.wrapMode;
+		result.dimension = descriptor.dimension;
+		result.enableRandomWrite = descriptor.enableRandomWrite;
+		result.enableShadingRate = descriptor.enableShadingRate;
+		result.useMipMap = descriptor.useMipMap;
+		result.autoGenerateMips = descriptor.autoGenerateMips;
+		result.anisoLevel = descriptor.anisoLevel;
+		result.mipMapBias = descriptor.mipMapBias;
+		result.isShadowMap = descriptor.isShadowMap;
+		result.msaaSamples = descriptor.msaaSamples;
+		result.bindTextureMS = descriptor.bindTextureMS;
+		result.useDynamicScale = descriptor.useDynamicScale;
+		result.useDynamicScaleExplicit = descriptor.useDynamicScaleExplicit;
+		result.memoryless = descriptor.memoryless;
+		result.vrUsage = descriptor.vrUsage;
+		result.enableShadingRate = descriptor.enableShadingRate;
+		result.name = name;
+		return result;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	internal static RTHandleAllocInfo CreateRTHandleAllocInfo(in RenderTextureDescriptor descriptor, FilterMode filterMode, TextureWrapMode wrapMode, int anisoLevel, float mipMapBias, string name)
+	{
+		GraphicsFormat format = ((descriptor.graphicsFormat != 0) ? descriptor.graphicsFormat : descriptor.depthStencilFormat);
+		RTHandleAllocInfo result = default(RTHandleAllocInfo);
+		result.slices = descriptor.volumeDepth;
+		result.format = format;
+		result.filterMode = filterMode;
+		result.wrapModeU = wrapMode;
+		result.wrapModeV = wrapMode;
+		result.wrapModeW = wrapMode;
+		result.dimension = descriptor.dimension;
+		result.enableRandomWrite = descriptor.enableRandomWrite;
+		result.enableShadingRate = descriptor.enableShadingRate;
+		result.useMipMap = descriptor.useMipMap;
+		result.autoGenerateMips = descriptor.autoGenerateMips;
+		result.anisoLevel = anisoLevel;
+		result.mipMapBias = mipMapBias;
+		result.isShadowMap = descriptor.shadowSamplingMode != ShadowSamplingMode.None;
+		result.msaaSamples = (MSAASamples)descriptor.msaaSamples;
+		result.bindTextureMS = descriptor.bindMS;
+		result.useDynamicScale = descriptor.useDynamicScale;
+		result.useDynamicScaleExplicit = descriptor.useDynamicScaleExplicit;
+		result.memoryless = descriptor.memoryless;
+		result.vrUsage = descriptor.vrUsage;
+		result.enableShadingRate = descriptor.enableShadingRate;
+		result.name = name;
+		return result;
 	}
 }

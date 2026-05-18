@@ -18,6 +18,6 @@ public class DetectiveSignalFoundAskController : BaseAsksController, IDetectiveR
 
 	private void ScheduleAsk()
 	{
-		PartDetectiveServoSkull.Find()?.Owner.View.Asks?.DetectiveSignalFound.Schedule();
+		PartDetectiveServoSkull.Find()?.Owner.View.Asks?.SignalFound.Schedule();
 	}
 }

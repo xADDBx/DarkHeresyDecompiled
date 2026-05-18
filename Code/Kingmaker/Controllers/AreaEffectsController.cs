@@ -6,11 +6,11 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.GuidUtility;
 using Kingmaker.View;
@@ -24,7 +24,7 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 	{
 		private readonly BlueprintAreaEffect _blueprint;
 
-		private readonly MechanicsContext _parentContext;
+		private readonly IEvalContext _parentContext;
 
 		private readonly TargetWrapper _target;
 
@@ -34,16 +34,14 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 
 		private readonly bool _usePatternFromAbility;
 
-		private readonly bool _getOrientationFromCaster;
-
 		private readonly float? _initiative;
 
-		public AreaEffectSpawner(BlueprintAreaEffect blueprint, MechanicsContext parentContext, TargetWrapper target)
-			: this(blueprint, parentContext, target, null, onUnit: false, usePatternFromAbility: false, getOrientationFromCaster: false, null)
+		public AreaEffectSpawner(BlueprintAreaEffect blueprint, IEvalContext parentContext, TargetWrapper target)
+			: this(blueprint, parentContext, target, null, onUnit: false, usePatternFromAbility: false, null)
 		{
 		}
 
-		private AreaEffectSpawner(BlueprintAreaEffect blueprint, MechanicsContext parentContext, TargetWrapper target, TimeSpan? duration = null, bool onUnit = false, bool usePatternFromAbility = false, bool getOrientationFromCaster = false, float? initiative = null)
+		private AreaEffectSpawner(BlueprintAreaEffect blueprint, IEvalContext parentContext, TargetWrapper target, TimeSpan? duration = null, bool onUnit = false, bool usePatternFromAbility = false, float? initiative = null)
 		{
 			_blueprint = blueprint;
 			_parentContext = parentContext;
@@ -51,12 +49,11 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 			_duration = duration;
 			_onUnit = onUnit;
 			_usePatternFromAbility = usePatternFromAbility;
-			_getOrientationFromCaster = getOrientationFromCaster;
 			_initiative = initiative;
 		}
 
-		private AreaEffectSpawner(AreaEffectSpawner spawner, TimeSpan? duration = null, bool? onUnit = null, bool? usePatternFromAbility = null, bool? getOrientationFromCaster = null, float? initiative = null)
-			: this(spawner._blueprint, spawner._parentContext, spawner._target, duration ?? spawner._duration, onUnit ?? spawner._onUnit, usePatternFromAbility ?? spawner._usePatternFromAbility, getOrientationFromCaster ?? spawner._getOrientationFromCaster, initiative ?? spawner._initiative)
+		private AreaEffectSpawner(AreaEffectSpawner spawner, TimeSpan? duration = null, bool? onUnit = null, bool? usePatternFromAbility = null, float? initiative = null)
+			: this(spawner._blueprint, spawner._parentContext, spawner._target, duration ?? spawner._duration, onUnit ?? spawner._onUnit, usePatternFromAbility ?? spawner._usePatternFromAbility, initiative ?? spawner._initiative)
 		{
 		}
 
@@ -79,16 +76,9 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 			return new AreaEffectSpawner(spawner, null, null, usePatternFromAbility2);
 		}
 
-		public AreaEffectSpawner GetOrientationFromCaster(bool getOrientationFromCaster = true)
-		{
-			AreaEffectSpawner spawner = this;
-			bool? getOrientationFromCaster2 = getOrientationFromCaster;
-			return new AreaEffectSpawner(spawner, null, null, null, getOrientationFromCaster2);
-		}
-
 		public AreaEffectSpawner Initiative(float? initiative)
 		{
-			return new AreaEffectSpawner(this, null, null, null, null, initiative);
+			return new AreaEffectSpawner(this, null, null, null, initiative);
 		}
 
 		public AreaEffectEntity Spawn()
@@ -97,7 +87,7 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 			{
 				throw new InvalidOperationException();
 			}
-			return AreaEffectsController.Spawn(_parentContext, _blueprint, _target, _duration, _onUnit, _usePatternFromAbility, _getOrientationFromCaster, _initiative);
+			return AreaEffectsController.Spawn(_parentContext, _blueprint, _target, _duration, _onUnit, _usePatternFromAbility, _initiative);
 		}
 	}
 
@@ -150,7 +140,7 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 		TickAreaEffects(isTurnBased, Initiative.Event.RoundEnd);
 	}
 
-	private static AreaEffectEntity Spawn(MechanicsContext parentContext, BlueprintAreaEffect blueprint, TargetWrapper target, TimeSpan? duration, bool onUnit, bool usePatternFromAbility, bool getOrientationFromCaster, float? initiative)
+	private static AreaEffectEntity Spawn(IEvalContext parentContext, BlueprintAreaEffect blueprint, TargetWrapper target, TimeSpan? duration, bool onUnit, bool usePatternFromAbility, float? initiative)
 	{
 		SceneEntitiesState state = ((!onUnit) ? Game.Instance.LoadedAreaState.MainState : (target.Entity?.HoldingState ?? ContextData<EntitySpawnController.EntitySpawnData>.Current?.TargetState));
 		AreaEffectEntity areaEffectEntity = Entity.Initialize(new AreaEffectEntity(Uuid.Instance.CreateGuid().ToString(), isInGame: true, parentContext, blueprint, target, Game.Instance.Controllers.TimeController.GameTime, duration, onUnit, usePatternFromAbility, initiative));
@@ -214,7 +204,7 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 		}
 	}
 
-	public static AreaEffectSpawner CreateSpawner(BlueprintAreaEffect blueprint, MechanicsContext parentContext, TargetWrapper target)
+	public static AreaEffectSpawner CreateSpawner(BlueprintAreaEffect blueprint, IEvalContext parentContext, TargetWrapper target)
 	{
 		return new AreaEffectSpawner(blueprint, parentContext, target);
 	}

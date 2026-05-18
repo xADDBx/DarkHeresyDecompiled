@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
-using Kingmaker.View;
+using Kingmaker.EntitySystem.Interfaces;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -11,7 +10,7 @@ using UnityEngine;
 namespace Kingmaker.AreaLogic.Cutscenes.Commands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class CutscenePathEntity : SimpleEntity, IHashable, IOwlPackable<CutscenePathEntity>
+public sealed class CutscenePathEntity : SimpleEntity, IHashable, IOwlPackable<CutscenePathEntity>
 {
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -32,22 +31,13 @@ public class CutscenePathEntity : SimpleEntity, IHashable, IOwlPackable<Cutscene
 		}
 	};
 
-	public CutscenePathEntity(EntityViewBase view)
-		: base(view)
+	public CutscenePathEntity(IEntityConfig config)
+		: base(config)
 	{
 	}
 
-	public CutscenePathEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	protected CutscenePathEntity(JsonConstructorMark _)
+	private CutscenePathEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	public CutscenePathEntity()
 	{
 	}
 
@@ -61,7 +51,7 @@ public class CutscenePathEntity : SimpleEntity, IHashable, IOwlPackable<Cutscene
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		CutscenePathEntity source = new CutscenePathEntity();
+		CutscenePathEntity source = new CutscenePathEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<CutscenePathEntity, TPossiblyBase>(ref source);
 	}
 

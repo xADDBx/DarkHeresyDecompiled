@@ -6,12 +6,12 @@ using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
@@ -85,6 +85,8 @@ public abstract class BuffTrigger : MechanicEntityFactComponentDelegate
 
 	public ActionList RankDecreased = new ActionList();
 
+	public ActionList AboutToApply = new ActionList();
+
 	private bool IsFilterSingleBuff => BuffFilter == BuffFilterType.SingleBuff;
 
 	private bool IsFilterBuffList => BuffFilter == BuffFilterType.BuffList;
@@ -105,7 +107,7 @@ public abstract class BuffTrigger : MechanicEntityFactComponentDelegate
 			return;
 		}
 		delta = ((e == EventType.Removed || e == EventType.RankDecreased) ? (-delta) : delta);
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(GetTarget(buff, caster)))
+		using (EvalContext.Current.PushTarget(GetTarget(buff, caster)))
 		{
 			using (SimpleContextData<int, Buff.Scope.RankDelta>.Set(delta))
 			{
@@ -147,6 +149,37 @@ public abstract class BuffTrigger : MechanicEntityFactComponentDelegate
 		}
 	}
 
+	protected void HandleBeforeApply(RuleCalculateCanApplyBuff evt)
+	{
+		if (!evt.CanApply)
+		{
+			return;
+		}
+		Buff appliedBuff = evt.AppliedBuff;
+		MechanicEntity mechanicEntity = evt.Context?.MaybeCaster;
+		if (!MatchesFilter(appliedBuff, mechanicEntity))
+		{
+			return;
+		}
+		MechanicEntity mechanicEntity2 = (TargetCaster ? mechanicEntity : evt.Initiator);
+		if (!Restrictions.IsPassed(evt.Context, base.Owner, mechanicEntity2))
+		{
+			return;
+		}
+		using (SimpleContextData<MechanicEntityFact, Buff.Scope.Parent>.SetIfNotNull(ParentIsTriggeringBuff ? appliedBuff : null))
+		{
+			if (mechanicEntity2 != null)
+			{
+				using (EvalContext.Current.PushTarget(mechanicEntity2))
+				{
+					AboutToApply.Run();
+					return;
+				}
+			}
+			AboutToApply.Run();
+		}
+	}
+
 	private MechanicEntity GetTarget(Buff buff, MechanicEntity caster)
 	{
 		if (!TargetCaster)
@@ -157,6 +190,15 @@ public abstract class BuffTrigger : MechanicEntityFactComponentDelegate
 	}
 
 	private bool IsSuitable(Buff buff, MechanicEntity caster)
+	{
+		if (!MatchesFilter(buff, caster))
+		{
+			return false;
+		}
+		return Restrictions.IsPassed(buff.Context, base.Owner, GetTarget(buff, caster));
+	}
+
+	private bool MatchesFilter(Buff buff, MechanicEntity caster)
 	{
 		if (BuffFilter switch
 		{
@@ -170,16 +212,12 @@ public abstract class BuffTrigger : MechanicEntityFactComponentDelegate
 		{
 			return false;
 		}
-		if (CasterFilter switch
+		return CasterFilter switch
 		{
-			CasterType.Any => 1, 
-			CasterType.Owner => (caster == base.Owner) ? 1 : 0, 
-			CasterType.Same => (caster == base.Context.MaybeCaster) ? 1 : 0, 
+			CasterType.Any => true, 
+			CasterType.Owner => caster == base.Owner, 
+			CasterType.Same => caster == base.Context.MaybeCaster, 
 			_ => throw new ArgumentOutOfRangeException(), 
-		} == 0)
-		{
-			return false;
-		}
-		return Restrictions.IsPassed(buff.Context, base.Owner, GetTarget(buff, caster));
+		};
 	}
 }

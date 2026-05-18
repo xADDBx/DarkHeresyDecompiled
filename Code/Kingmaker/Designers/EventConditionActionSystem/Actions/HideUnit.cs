@@ -1,8 +1,8 @@
 using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.View.Mechanics.Entities;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -35,7 +35,7 @@ public class HideUnit : GameAction
 	protected override void RunAction()
 	{
 		AbstractUnitEntity value = Target.GetValue();
-		AbstractUnitEntityView view = value.View;
+		IAbstractUnitEntityView view = value.View;
 		if (Unhide)
 		{
 			view.UnFade();
@@ -47,17 +47,14 @@ public class HideUnit : GameAction
 			{
 				value.IsInGame = true;
 			}
+			return;
 		}
-		else if (Fade)
+		value.Commands.InterruptAllInterruptible();
+		view.MovementAgent.Blocker.Unblock();
+		if (Fade)
 		{
-			value.Commands.InterruptAllInterruptible();
 			view.FadeHide();
-			view.MovementAgent.Blocker.Unblock();
-			value.IsInGame = false;
 		}
-		else
-		{
-			value.IsInGame = false;
-		}
+		value.IsInGame = false;
 	}
 }

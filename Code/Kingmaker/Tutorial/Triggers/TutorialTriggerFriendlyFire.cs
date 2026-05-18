@@ -23,7 +23,7 @@ public class TutorialTriggerFriendlyFire : TutorialTrigger, IWarhammerAttackHand
 
 	public void HandleAttack(RulePerformAttack withWeaponAttackHit)
 	{
-		if (withWeaponAttackHit.ResultIsHit && IsAlly(withWeaponAttackHit, m_AllyType))
+		if (withWeaponAttackHit.Initiator.IsInPlayerParty && withWeaponAttackHit.ResultIsHit && IsAlly(withWeaponAttackHit, m_AllyType))
 		{
 			TryToTrigger(withWeaponAttackHit, delegate(TutorialContext context)
 			{

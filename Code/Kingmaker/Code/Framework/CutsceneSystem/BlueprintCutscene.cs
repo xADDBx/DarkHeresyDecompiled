@@ -34,6 +34,9 @@ public class BlueprintCutscene : BlueprintScriptableObject, IEvaluationErrorHand
 	[Tooltip("If set, units moved by this cutscene cannot start a dialog")]
 	public bool ForbidDialogs;
 
+	[Tooltip("If set, stops all playing barks on cutscene start and prevents other barks from playing while this cutscene is active")]
+	public bool SuppressOtherBarks;
+
 	[SerializeField]
 	[HideIf("LockControl")]
 	[Tooltip("If set, the cutscene auto-pauses when there's a dialog, rest, or exclusive cutscene playing")]
@@ -45,8 +48,13 @@ public class BlueprintCutscene : BlueprintScriptableObject, IEvaluationErrorHand
 	[Tooltip("If not set, cutscene is paused when all anchors are in fog of war or away enough from party")]
 	public bool Sleepless;
 
+	[HideIf("PreventCopies")]
 	[Tooltip("If set, exact copies of this cutscene (with the same parameters) can play at the same time. You probably do not need to set this.")]
 	public bool AllowCopies;
+
+	[HideIf("AllowCopies")]
+	[Tooltip("If set, PlayCutscene is a no-op when a live instance with the same parameters is already playing.")]
+	public bool PreventCopies;
 
 	public bool ShowOverlay;
 

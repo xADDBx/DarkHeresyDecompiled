@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -11,7 +12,6 @@ using Kingmaker.Designers.EventConditionActionSystem.Events;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.StateHasher.Hashers;
 using Newtonsoft.Json;
@@ -37,9 +37,14 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 	[OwlPackInclude]
 	public UnitReference ServiceCaster;
 
-	private readonly List<SceneEntitiesState> m_AddStates = new List<SceneEntitiesState>();
+	[JsonProperty]
+	[OwlPackInclude]
+	public TimeSpan InteractionGlobalCooldownExpiry;
 
-	public readonly SavedFogMasks SavedFogOfWarMasks = new SavedFogMasks();
+	[OwlPackInclude]
+	public Dictionary<string, int> InteractionActivationCounts = new Dictionary<string, int>();
+
+	private readonly List<SceneEntitiesState> m_AddStates = new List<SceneEntitiesState>();
 
 	public readonly RuntimeAreaSettings Settings = new RuntimeAreaSettings();
 
@@ -47,17 +52,33 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 	{
 		Name = "AreaPersistentState",
 		OldNames = null,
-		Fields = new FieldInfo[3]
+		Fields = new FieldInfo[5]
 		{
 			new FieldInfo("m_Area", typeof(Area)),
 			new FieldInfo("m_MainState", typeof(SceneEntitiesState)),
-			new FieldInfo("ServiceCaster", typeof(UnitReference))
+			new FieldInfo("ServiceCaster", typeof(UnitReference)),
+			new FieldInfo("InteractionGlobalCooldownExpiry", typeof(TimeSpan)),
+			new FieldInfo("InteractionActivationCounts", typeof(Dictionary<string, int>))
 		}
 	};
 
 	[JsonProperty]
 	[OwlPackInclude]
 	private SceneEntitiesState m_MainState { get; set; }
+
+	[JsonProperty]
+	private List<string> KnownSceneStates
+	{
+		get
+		{
+			return m_AddStates.Select((SceneEntitiesState v) => v.SceneName).ToList();
+		}
+		set
+		{
+			m_AddStates.Clear();
+			m_AddStates.AddRange(value.Select((string v) => new SceneEntitiesState(v)));
+		}
+	}
 
 	public bool ShouldLoad { get; set; }
 
@@ -82,7 +103,23 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 
 	public SceneEntitiesState MainState => m_MainState;
 
-	public string AreaGuid => m_AreaGuid;
+	public string AreaGuid
+	{
+		get
+		{
+			string text = m_AreaGuid;
+			if (text == null)
+			{
+				Area area = m_Area;
+				if (area == null)
+				{
+					return null;
+				}
+				text = area.UniqueId;
+			}
+			return text;
+		}
+	}
 
 	public AreaPersistentState([NotNull] BlueprintArea blueprint)
 	{
@@ -281,6 +318,11 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 		m_AddStates.Add(sceneState);
 	}
 
+	public void RemoveState([NotNull] SceneEntitiesState state)
+	{
+		m_AddStates.Remove(state);
+	}
+
 	public virtual Hash128 GetHash128()
 	{
 		Hash128 result = default(Hash128);
@@ -291,6 +333,16 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 		UnitReference obj = ServiceCaster;
 		Hash128 val3 = UnitReferenceHasher.GetHash128(ref obj);
 		result.Append(ref val3);
+		result.Append(ref InteractionGlobalCooldownExpiry);
+		List<string> knownSceneStates = KnownSceneStates;
+		if (knownSceneStates != null)
+		{
+			for (int i = 0; i < knownSceneStates.Count; i++)
+			{
+				Hash128 val4 = StringHasher.GetHash128(knownSceneStates[i]);
+				result.Append(ref val4);
+			}
+		}
 		return result;
 	}
 
@@ -315,6 +367,8 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 		SceneEntitiesState value = m_MainState;
 		formatter.Field(1, "m_MainState", ref value, state);
 		formatter.Field(2, "ServiceCaster", ref ServiceCaster, state);
+		formatter.Field(3, "InteractionGlobalCooldownExpiry", ref InteractionGlobalCooldownExpiry, state);
+		formatter.Field(4, "InteractionActivationCounts", ref InteractionActivationCounts, state);
 		formatter.EndObject();
 	}
 
@@ -340,6 +394,12 @@ public class AreaPersistentState : IHashable, IOwlPackable, IOwlPackable<AreaPer
 				break;
 			case 2:
 				ServiceCaster = formatter.ReadPackable<UnitReference>(state);
+				break;
+			case 3:
+				InteractionGlobalCooldownExpiry = formatter.ReadPackable<TimeSpan>(state);
+				break;
+			case 4:
+				InteractionActivationCounts = formatter.ReadPackable<Dictionary<string, int>>(state);
 				break;
 			}
 		}

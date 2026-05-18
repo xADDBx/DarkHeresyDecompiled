@@ -5,11 +5,11 @@ namespace Kingmaker.UI.AR;
 [BurstCompile]
 public struct OutlineCellFilterData
 {
-	public int belongToAllAreaMask;
+	public uint belongToAllAreaMask;
 
-	public int belongToAnyAreasMask;
+	public uint belongToAnyAreasMask;
 
-	public int notBelongToAnyAreasMask;
+	public uint notBelongToAnyAreasMask;
 
 	public SurfaceBufferMask surfaceBuffer;
 }

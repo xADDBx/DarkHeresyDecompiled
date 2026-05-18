@@ -1,5 +1,3 @@
-using Owlcat.UI;
-using R3;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -8,20 +6,12 @@ public class CharInfoPagesMenuConsoleView : CharInfoPagesMenuPCView
 {
 	[Header("Hints")]
 	[SerializeField]
-	private ConsoleHint m_PreviousFilterHint;
+	private HintView m_PreviousFilterHint;
 
 	[SerializeField]
-	private ConsoleHint m_NextFilterHint;
+	private HintView m_NextFilterHint;
 
-	public void AddHints(InputLayer inputLayer, ReadOnlyReactiveProperty<bool> enabledHints = null)
+	public void AddHints()
 	{
-		m_PreviousFilterHint.Bind(inputLayer.AddButton(delegate
-		{
-			SelectPrev();
-		}, 14, enabledHints)).AddTo(this);
-		m_NextFilterHint.Bind(inputLayer.AddButton(delegate
-		{
-			SelectNext();
-		}, 15, enabledHints)).AddTo(this);
 	}
 }

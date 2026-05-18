@@ -15,9 +15,9 @@ namespace Kingmaker.Code.Gameplay.Components.SkillCheck;
 [ComponentName("Custom/PreciseSpecialistHitChanceOverflow")]
 [AllowedOn(typeof(BlueprintMechanicEntityFact))]
 [TypeId("e7e9c3b4c1f24b9094e27e5ff0c4d0be")]
-public class PreciseSpecialistHitChanceOverflow : MechanicEntityFactComponentDelegate, IGlobalRulebookHandler<RulePerformSkillCheck>, IRulebookHandler<RulePerformSkillCheck>, ISubscriber, IGlobalRulebookSubscriber
+public class PreciseSpecialistHitChanceOverflow : MechanicEntityFactComponentDelegate, IGlobalRulebookHandler<RuleCalculateSkillCheck>, IRulebookHandler<RuleCalculateSkillCheck>, ISubscriber, IGlobalRulebookSubscriber
 {
-	public void OnEventAboutToTrigger(RulePerformSkillCheck evt)
+	void IRulebookHandler<RuleCalculateSkillCheck>.OnEventAboutToTrigger(RuleCalculateSkillCheck evt)
 	{
 		if (evt.Type == SkillCheckType.CritSave && Rulebook.CurrentContext.First is RulePerformAttack rulePerformAttack && rulePerformAttack.Ability.IsPrecise && rulePerformAttack.InitiatorUnit == base.Owner)
 		{
@@ -30,7 +30,7 @@ public class PreciseSpecialistHitChanceOverflow : MechanicEntityFactComponentDel
 		}
 	}
 
-	public void OnEventDidTrigger(RulePerformSkillCheck evt)
+	void IRulebookHandler<RuleCalculateSkillCheck>.OnEventDidTrigger(RuleCalculateSkillCheck evt)
 	{
 	}
 }

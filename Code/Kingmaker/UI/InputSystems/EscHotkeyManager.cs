@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Code.UI.MVVM;
 using Owlcat.Runtime.Core.Utility.Locator;
 using R3;
 using UnityEngine;

@@ -6,9 +6,9 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.View;
 using Kingmaker.View.MapObjects.SriptZones;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -112,7 +112,7 @@ public class HideScriptZoneUnit : GameAction
 		{
 			PFLog.Default.Log("HideScriptZoneUnit: Hiding unit " + baseUnitEntity.CharacterName);
 		}
-		UnitEntityView view = baseUnitEntity.View;
+		IUnitEntityView view = baseUnitEntity.View;
 		if (Fade && view?.Fader != null)
 		{
 			baseUnitEntity.Commands.InterruptAllInterruptible();
@@ -177,7 +177,7 @@ public class HideScriptZoneUnit : GameAction
 			{
 				PFLog.Default.Log($"HideScriptZoneUnit: Attempting to restore unit {item.CharacterName} (ID: {item.UniqueId}), IsDead: {item.LifeState.IsDead}, IsInGame: {item.IsInGame}");
 			}
-			UnitEntityView view = item.View;
+			IUnitEntityView view = item.View;
 			if (view != null)
 			{
 				if (LogAction)

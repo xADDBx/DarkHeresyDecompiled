@@ -6,11 +6,6 @@ public class ReputationMetricsEvent : MetricsEvent
 {
 	protected override string Name => "reputation";
 
-	public ReputationMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public ReputationMetricsEvent Faction(FactionType faction)
 	{
 		AddParam("faction", faction switch
@@ -20,7 +15,7 @@ public class ReputationMetricsEvent : MetricsEvent
 			FactionType.MinistorumAndRedemptionists => "ministorum_and_redemptionists", 
 			FactionType.RulingCouncilOfNobles => "ruling_council_of_nobles", 
 			FactionType.None => "none", 
-			_ => MetricsEvent.EnumToSnakeCase(faction), 
+			_ => MetricsUtils.EnumToSnakeCase(faction), 
 		});
 		return this;
 	}
@@ -31,7 +26,7 @@ public class ReputationMetricsEvent : MetricsEvent
 		{
 			ReputationType.Fear => "fear", 
 			ReputationType.Respect => "respect", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
 		return this;
 	}

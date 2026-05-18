@@ -8,13 +8,13 @@ using UnityEngine;
 namespace Kingmaker.EntitySystem.Entities.Base;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class PositionSaverPart : ViewBasedPart, IHashable, IOwlPackable<PositionSaverPart>
+public class PositionSaverPart : EntityPartWithConfig, IHashable, IOwlPackable<PositionSaverPart>
 {
 	[JsonProperty]
 	[OwlPackInclude]
 	private Vector3? m_Position;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PositionSaverPart",
 		OldNames = null,
@@ -53,7 +53,7 @@ public class PositionSaverPart : ViewBasedPart, IHashable, IOwlPackable<Position
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		PositionSaverPart source = new PositionSaverPart();
 		result = Unsafe.As<PositionSaverPart, TPossiblyBase>(ref source);

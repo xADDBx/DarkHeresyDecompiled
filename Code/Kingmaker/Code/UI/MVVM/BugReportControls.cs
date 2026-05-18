@@ -1,8 +1,6 @@
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Owlcat.UI;
 using R3;
-using Rewired;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -14,42 +12,7 @@ public static class BugReportControls
 
 	public static CompositeDisposable AddBugReportControls()
 	{
-		s_LeftStickBtnPressed = false;
-		s_RightStickBtnPressed = false;
-		InputLayer inputLayer = new InputLayer
-		{
-			ContextName = "BugReportBaseLayer"
-		};
-		return new CompositeDisposable
-		{
-			inputLayer.AddButton(delegate
-			{
-				s_LeftStickBtnPressed = true;
-				TryToOpenBugReport();
-			}, 18),
-			inputLayer.AddButton(delegate
-			{
-				s_LeftStickBtnPressed = false;
-			}, 18, InputActionEventType.ButtonJustReleased),
-			inputLayer.AddButton(delegate
-			{
-				s_LeftStickBtnPressed = false;
-			}, 18, InputActionEventType.ButtonLongPressJustReleased),
-			inputLayer.AddButton(delegate
-			{
-				s_RightStickBtnPressed = true;
-				TryToOpenBugReport();
-			}, 19),
-			inputLayer.AddButton(delegate
-			{
-				s_RightStickBtnPressed = false;
-			}, 19, InputActionEventType.ButtonJustReleased),
-			inputLayer.AddButton(delegate
-			{
-				s_RightStickBtnPressed = false;
-			}, 19, InputActionEventType.ButtonLongPressJustReleased),
-			GamePad.Instance.SetBugReportLayer(inputLayer)
-		};
+		return new CompositeDisposable();
 	}
 
 	private static void TryToOpenBugReport()

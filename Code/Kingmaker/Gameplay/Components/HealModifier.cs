@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -26,7 +27,7 @@ public abstract class HealModifier : MechanicEntityFactComponentDelegate
 
 	protected void TryApply(RuleCalculateHeal rule)
 	{
-		MechanicsContext context = rule.Context;
+		IEvalContext context = rule.Context;
 		if (context != null && Restrictions.IsPassed(context, base.Owner, null, rule))
 		{
 			Modifier.TryApply(rule.Modifiers, base.Fact, Descriptor);

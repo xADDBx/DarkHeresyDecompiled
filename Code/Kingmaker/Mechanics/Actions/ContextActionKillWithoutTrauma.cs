@@ -26,11 +26,11 @@ public class ContextActionKillWithoutTrauma : ContextAction
 		{
 			Element.LogError(this, "Invalid target for effect '{0}'", GetType().Name);
 		}
-		else if (base.Context.MaybeCaster == null || !base.Context.MaybeCaster.IsAttackingGreenNPC(base.Target.Entity))
+		else if (base.Context.Caster == null || !base.Context.Caster.IsAttackingGreenNPC(base.Target.Entity))
 		{
 			EventBus.RaiseEvent(delegate(IUIContextActionKillHandler h)
 			{
-				h.HandleOnContextActionKill(base.Context.MaybeCaster, base.Target.Entity, base.Context.Blueprint as BlueprintMechanicEntityFact, ContextData<SavingThrowData>.Current?.Rule);
+				h.HandleOnContextActionKill(base.Context.Caster, base.Target.Entity, base.Context.Blueprint as BlueprintMechanicEntityFact, ContextData<SavingThrowData>.Current?.Rule);
 			});
 			partLifeState.MarkedForDeath = true;
 		}

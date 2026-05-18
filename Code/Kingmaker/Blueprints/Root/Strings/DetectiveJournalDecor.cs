@@ -17,8 +17,6 @@ public class DetectiveJournalDecor
 	[Header("Info")]
 	public LocalizedString PaperTitlePerson;
 
-	public LocalizedString PaperReportNamePerson;
-
 	public LocalizedString HeightLabel;
 
 	public LocalizedString WeightLabel;
@@ -65,8 +63,6 @@ public class DetectiveJournalDecor
 	public LocalizedString ConclusionDesc;
 
 	[Header("Greek")]
-	public LocalizedString GreekLetterDelta;
-
 	public LocalizedString GreekLetterPhy;
 
 	public LocalizedString GreekLetterOmega;

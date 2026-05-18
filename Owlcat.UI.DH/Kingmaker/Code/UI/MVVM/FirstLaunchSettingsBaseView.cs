@@ -33,10 +33,6 @@ public abstract class FirstLaunchSettingsBaseView : View<FirstLaunchSettingsVM>
 
 	protected bool IsFocusedOnLanguageItem;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
-	private InputLayer m_InputLayer;
-
 	[SerializeField]
 	private SplashScreenController.ScreenUnit m_PhotosensitivityUnit;
 
@@ -50,7 +46,6 @@ public abstract class FirstLaunchSettingsBaseView : View<FirstLaunchSettingsVM>
 
 	protected override void OnBind()
 	{
-		BuildNavigation();
 		SetupTexts();
 		base.ViewModel.AccessiabilityPageVM.Subscribe(delegate(FirstLaunchAccessiabilityPageVM vm)
 		{
@@ -60,7 +55,6 @@ public abstract class FirstLaunchSettingsBaseView : View<FirstLaunchSettingsVM>
 		{
 			OnLanguagePage(vm != null);
 		}).AddTo(this);
-		m_NavigationBehaviour.Focus.Subscribe(OnFocusEntity).AddTo(this);
 		base.ViewModel.LanguageChanged.Subscribe(SetupTexts).AddTo(this);
 		base.ViewModel.ShowPhotosensitivityScreen.Subscribe(ShowPhotoSensitivityScreen).AddTo(this);
 		Show();
@@ -69,50 +63,10 @@ public abstract class FirstLaunchSettingsBaseView : View<FirstLaunchSettingsVM>
 	protected override void OnUnbind()
 	{
 		Hide();
-		m_NavigationBehaviour.Clear();
-		m_NavigationBehaviour = null;
-		m_InputLayer = null;
 	}
 
 	protected virtual void InitializeImpl()
 	{
-	}
-
-	private void BuildNavigation()
-	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		BuildNavigationImpl(m_NavigationBehaviour);
-		m_InputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = "FirstLaunchSettingsBaseViewInput"
-		});
-		CreateInputImpl(m_InputLayer);
-		GamePad.Instance.PushLayer(m_InputLayer).AddTo(this);
-	}
-
-	protected virtual void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-	}
-
-	protected virtual void CreateInputImpl(InputLayer inputLayer)
-	{
-	}
-
-	protected void ConfirmAction()
-	{
-		if (m_IsLanguagePage && IsFocusedOnLanguageItem)
-		{
-			m_NavigationBehaviour.CurrentEntity.OnConfirmClick();
-		}
-		base.ViewModel.NextPage();
-	}
-
-	protected void DeclineAction()
-	{
-		if (!m_IsLanguagePage)
-		{
-			base.ViewModel.PreviousPage();
-		}
 	}
 
 	private void Show()
@@ -122,7 +76,7 @@ public abstract class FirstLaunchSettingsBaseView : View<FirstLaunchSettingsVM>
 		{
 			h.HandleFullScreenUiChanged(state: true, FullScreenUIType.FirstLaunchSettings);
 		});
-		UISounds.Instance.Sounds.Settings.SettingsOpen.Play();
+		FullScreenUniqueSounds.Instance.Settings.Open.Play();
 	}
 
 	private void Hide()
@@ -132,20 +86,13 @@ public abstract class FirstLaunchSettingsBaseView : View<FirstLaunchSettingsVM>
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.FirstLaunchSettings);
 		});
-		UISounds.Instance.Sounds.Settings.SettingsClose.Play();
+		FullScreenUniqueSounds.Instance.Settings.Close.Play();
 	}
 
 	private void OnLanguagePage(bool value)
 	{
 		m_IsLanguagePage = value;
 		IsNotOnLanguagePage.Value = !value;
-	}
-
-	private void OnFocusEntity(IConsoleEntity entity)
-	{
-		IsFocusedOnLanguageItem = entity is FirstLaunchEntityLanguageItemBaseView;
-		IsNotOnLanguagePage.Value = !m_IsLanguagePage;
-		SetupTexts();
 	}
 
 	private void SetContinueButtonVisibility(bool isVisible)

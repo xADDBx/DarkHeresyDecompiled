@@ -1,6 +1,4 @@
-using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.UI.Sound;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
@@ -9,10 +7,6 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class LootCollectorVM : ViewModel
 {
-	public readonly string LootDisplayName;
-
-	public readonly bool HasSkillCheck;
-
 	private readonly LootVM m_Loot;
 
 	private readonly ReactiveProperty<bool> m_ExtendedView = new ReactiveProperty<bool>();
@@ -21,11 +15,7 @@ public class LootCollectorVM : ViewModel
 
 	private readonly ReactiveProperty<bool> m_IsTrashMode = new ReactiveProperty<bool>();
 
-	public string SkillCheckText { get; }
-
 	public LootVM Loot => m_Loot;
-
-	private LootWindowMode Mode => m_Loot.Mode;
 
 	public ObservableList<LootObjectVM> ContextLoot => m_Loot?.ContextLoot;
 
@@ -38,9 +28,6 @@ public class LootCollectorVM : ViewModel
 	public LootCollectorVM(LootVM lootVM)
 	{
 		m_Loot = lootVM;
-		LootDisplayName = UIStrings.Instance.LootWindow.GetLootNameByContext(Mode);
-		HasSkillCheck = lootVM.SkillCheckResult != null;
-		SkillCheckText = UtilitySkillcheck.GetLootSkillCheck(lootVM.SkillCheckResult);
 	}
 
 	public void CollectAll()
@@ -65,8 +52,10 @@ public class LootCollectorVM : ViewModel
 		m_Loot.ChangeView();
 	}
 
-	public void SetTrashMode()
+	public void ToggleTrashMode()
 	{
 		m_IsTrashMode.Value = !IsTrashMode.CurrentValue;
+		ModalWindowsSounds.UISoundLoot loot = ModalWindowsSounds.Instance.Loot;
+		(m_IsTrashMode.Value ? loot.ActivateTrashMode : loot.DeactivateTrashMode).Play();
 	}
 }

@@ -6,21 +6,22 @@ public class AlignmentMetricsEvent : MetricsEvent
 {
 	protected override string Name => "alignment";
 
-	public AlignmentMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
+	public AlignmentMetricsEvent Id(string id)
 	{
+		AddParam("id", id);
+		return this;
 	}
 
-	public AlignmentMetricsEvent Type(AlignmentAxis type)
+	public AlignmentMetricsEvent Axis(AlignmentAxis axis)
 	{
-		AddParam("type", type switch
+		AddParam("axis", axis switch
 		{
 			AlignmentAxis.Monodominance => "monodominance", 
 			AlignmentAxis.None => "none", 
 			AlignmentAxis.Torian => "torian", 
 			AlignmentAxis.Xanthite => "xanthite", 
 			AlignmentAxis.Xenophilia => "xenophilia", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			_ => MetricsUtils.EnumToSnakeCase(axis), 
 		});
 		return this;
 	}

@@ -1,7 +1,9 @@
 using Kingmaker.Code.Gameplay.Parts;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Features.Channeling;
+using Kingmaker.UI.Pointer;
 using Kingmaker.UnitLogic.Abilities;
 using Owlcat.UI;
 using R3;
@@ -24,16 +26,20 @@ public class EntityOvertipVisibilityVM : ViewModel
 		m_EntityState = entityState;
 		m_IsBarkActive = isBarkActive;
 		m_HasCombatText = hasCombatText;
-		m_DistanceVisibility = new OvertipDistanceVisibilityStrategy(() => Game.Instance.CursorController.CursorPosition);
+		m_DistanceVisibility = new OvertipDistanceVisibilityStrategy(() => CursorController.CursorPosition);
 	}
 
 	public bool IsOvertipActive()
 	{
-		if (m_EntityState.IsVisibleForPlayer.CurrentValue)
+		if (!m_EntityState.IsVisibleForPlayer.CurrentValue)
 		{
-			return !m_EntityState.IsDead.CurrentValue;
+			return false;
 		}
-		return false;
+		if (m_EntityState.IsDead.CurrentValue)
+		{
+			return HasOngoingEvents();
+		}
+		return true;
 	}
 
 	public float GetVisibilityRate(Vector3 viewportPos)
@@ -43,28 +49,11 @@ public class EntityOvertipVisibilityVM : ViewModel
 
 	public bool IsForcedHidden()
 	{
-		if (m_EntityState.IsVisibleForPlayer.CurrentValue && !m_EntityState.IsDead.CurrentValue && IsValidGameMode() && !IsCombatEndWindow())
-		{
-			return IsPreciseAttack();
-		}
-		return true;
-		static bool IsCombatEndWindow()
-		{
-			return RootVM.Instance.HUDContext?.CombatEndWindowVM.CurrentValue != null;
-		}
-		static bool IsPreciseAttack()
+		if (m_EntityState.IsVisibleForPlayer.CurrentValue && (!m_EntityState.IsDead.CurrentValue || HasOngoingEvents()) && IsValidGameMode() && RootVM.Instance.HUDContext?.CombatEndWindowVM.CurrentValue == null)
 		{
 			return Game.Instance.Controllers.PreciseAttackController.HasTarget;
 		}
-		static bool IsValidGameMode()
-		{
-			GameModeType currentModeType = Game.Instance.CurrentModeType;
-			if (currentModeType != GameModeType.Cutscene)
-			{
-				return currentModeType != GameModeType.Dialog;
-			}
-			return false;
-		}
+		return true;
 	}
 
 	public bool IsForcedVisible()
@@ -108,6 +97,25 @@ public class EntityOvertipVisibilityVM : ViewModel
 		if (m_EntityState.Ability.CurrentValue != null)
 		{
 			return !m_EntityState.CheckCanBeTargeted;
+		}
+		return false;
+	}
+
+	private bool HasOngoingEvents()
+	{
+		if (!m_HasCombatText.CurrentValue && !m_IsBarkActive.CurrentValue)
+		{
+			return UtilityUnit.GetUnitInteractionFrom(m_EntityState?.MechanicEntity.MechanicEntity) != null;
+		}
+		return true;
+	}
+
+	private bool IsValidGameMode()
+	{
+		GameModeType currentModeType = Game.Instance.CurrentModeType;
+		if (currentModeType != GameModeType.Cutscene)
+		{
+			return currentModeType != GameModeType.Dialog;
 		}
 		return false;
 	}

@@ -37,7 +37,7 @@ public abstract class BlueprintCueBase : BlueprintScriptableObject, IConditionDe
 		}
 	}
 
-	public virtual bool CanShow()
+	public virtual bool CanShow(bool isFromSequence = false)
 	{
 		if (!this)
 		{

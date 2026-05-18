@@ -13,7 +13,9 @@ using Owlcat.Runtime.Visual.VirtualTexture.Materials;
 using Owlcat.Runtime.Visual.VirtualTexture.PostRender;
 using Owlcat.Runtime.Visual.VirtualTexture.Profiling;
 using Owlcat.Runtime.Visual.VirtualTexture.Streaming;
+using Owlcat.Runtime.Visual.Waaagh;
 using Owlcat.Runtime.Visual.Waaagh.PipelineResources;
+using Owlcat.Runtime.Visual.Waaagh.Recorders;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -37,8 +39,6 @@ public class VirtualTextureManager
 	public const string kVTAttributeName = "VirtualTexture(";
 
 	private const int kClearFeedbackKernel = 0;
-
-	private const int kPackFeedbackKernel = 1;
 
 	private readonly GPUDrivenBatchRendererGroup m_BRG;
 
@@ -72,6 +72,8 @@ public class VirtualTextureManager
 
 	private HashSet<int> m_DestroyedMaterials;
 
+	private readonly VTFeedbackRotation m_FeedbackRotation = new VTFeedbackRotation();
+
 	internal static Action NeedUpdatePreviews;
 
 	internal static Action OnTileLoaderSync;
@@ -98,7 +100,7 @@ public class VirtualTextureManager
 
 	public float VirtualAtlasOccupancy => m_VirtualAtlas.Occupancy;
 
-	public bool VTEnabledGlobal => m_Settings?.Enabled ?? false;
+	internal PipelineRuntimeResources PipelineResources => m_Resources;
 
 	internal AtlasAllocator AtlasAllocator => m_VirtualAtlas.AtlasAllocator;
 
@@ -156,12 +158,14 @@ public class VirtualTextureManager
 		m_BRG.OnCreatedMaterials -= OnBRGCreatedMaterials;
 	}
 
+	public void ResolveFeedback(in RecordContext context)
+	{
+		bool shouldDispatch = m_Settings.FeedbackResolveMode == VTFeedbackResolveMode.PerPass || m_FeedbackRotation.ShouldDispatch();
+		VTFeedbackResolve.Record(in context, shouldDispatch);
+	}
+
 	public void PreRender(CommandBuffer cmd, List<Camera> cameras)
 	{
-		if (!m_Settings.Enabled)
-		{
-			return;
-		}
 		using (new ProfilingScope(ProfilingSampler.Get(ProfileId.VTPreRender)))
 		{
 			m_FrameId = Time.frameCount;
@@ -169,10 +173,16 @@ public class VirtualTextureManager
 			{
 				m_AsyncContext.FrameId = m_FrameId;
 				cmd.BeginSample("VT PreRender");
+				if (!m_PostRenderWorker.IsBusy)
+				{
+					RemoveDestroyedMaterialsFromAtlas();
+					ProcessChangedMaterialsInAtlas();
+				}
 				if (!m_VirtualAtlas.IsEmpty)
 				{
-					ClearFeedbackBuffer(cmd);
+					ClearPackedFeedbackBuffer(cmd);
 				}
+				m_FeedbackRotation.BeginFrame();
 				cmd.EndSample("VT PreRender");
 			}
 		}
@@ -283,13 +293,11 @@ public class VirtualTextureManager
 		return GPUDrivenRenderer.PropertyData.Matrix(ShaderPropertyId._VTStackIndices, textureStackIndices);
 	}
 
-	private void ClearFeedbackBuffer(CommandBuffer cmd)
+	private void ClearPackedFeedbackBuffer(CommandBuffer cmd)
 	{
 		cmd.SetComputeBufferParam(m_Resources.VTFeedbackCS, 0, ShaderPropertyId._VTFeedbackBuffer, m_FeedbackBuffer.PackedFeedbackBufferUAV);
 		cmd.SetComputeIntParam(m_Resources.VTFeedbackCS, ShaderPropertyId._VTFeedbackBufferLength, m_FeedbackBuffer.PackedFeedbackBufferUAV.count);
 		cmd.DispatchCompute(m_Resources.VTFeedbackCS, 0, RenderingUtils.DivRoundUp(m_FeedbackBuffer.PackedFeedbackBufferUAV.count, 64), 1, 1);
-		cmd.SetRenderTarget(m_FeedbackBuffer.FeedbackRT);
-		cmd.ClearRenderTarget(RTClearFlags.Color, Color.clear);
 	}
 
 	public void PostRender(CommandBuffer cmd, List<Camera> cameras)
@@ -305,10 +313,6 @@ public class VirtualTextureManager
 
 	private bool CanTick(List<Camera> cameras)
 	{
-		if (!m_Settings.Enabled)
-		{
-			return false;
-		}
 		if (cameras.Count == 0)
 		{
 			return false;
@@ -329,7 +333,6 @@ public class VirtualTextureManager
 		bool loadFeedback = true;
 		if (m_AsyncContext.ReadbackProcessor.HasAnyFreeRequests())
 		{
-			PackFeedbackBuffer(cmd);
 			m_AsyncContext.ReadbackProcessor.RequestReadback(cmd, m_FeedbackBuffer.PackedFeedbackBufferUAV);
 		}
 		if (!m_PostRenderWorker.IsBusy)
@@ -374,15 +377,6 @@ public class VirtualTextureManager
 		}
 	}
 
-	private void PackFeedbackBuffer(CommandBuffer cmd)
-	{
-		cmd.SetComputeBufferParam(m_Resources.VTFeedbackCS, 1, ShaderPropertyId._VTFeedbackBuffer, m_FeedbackBuffer.PackedFeedbackBufferUAV);
-		cmd.SetComputeTextureParam(m_Resources.VTFeedbackCS, 1, ShaderPropertyId._VTFeedbackRT, m_FeedbackBuffer.FeedbackRT);
-		cmd.SetComputeIntParam(m_Resources.VTFeedbackCS, ShaderPropertyId._VTFeedbackBufferLength, m_FeedbackBuffer.PackedFeedbackBufferUAV.count);
-		cmd.SetComputeIntParam(m_Resources.VTFeedbackCS, ShaderPropertyId._VirtualAtlasWidthInTiles, VirtualAtlasResolutionInTiles.x);
-		cmd.DispatchCompute(m_Resources.VTFeedbackCS, 1, RenderingUtils.DivRoundUp(m_FeedbackBuffer.PackedFeedbackBufferUAV.count, 64), 1, 1);
-	}
-
 	private void UpdateAsyncStats()
 	{
 		Counters.VirtualAtlasOccupancy.Value = m_VirtualAtlas.Occupancy;
@@ -392,27 +386,28 @@ public class VirtualTextureManager
 		Counters.FeedbackConsumption.Value = FeedbackConsumptionTracker.FindMaxOfConsumptionMemory();
 	}
 
-	internal void PushGlobals(CommandBuffer cmd, in float2 globalMipBias)
+	internal void PushGlobalTextures(CommandBuffer cmd)
 	{
 		if (m_VirtualAtlas != null && math.all(VirtualAtlasResolutionInTiles > 0))
 		{
 			cmd.SetGlobalTexture(ShaderPropertyId._VTAtlas, m_PhysicalAtlas.AtlasTex);
 			cmd.SetGlobalTexture(ShaderPropertyId._VTIndirectTex, m_IndirectTextureRenderer.IndirectTexture);
-			ConfigureCB(in globalMipBias);
-			ConstantBuffer.PushGlobal(cmd, in m_AsyncContext.ConstantBuffer, ShaderPropertyId.VirtualTextureConstantBuffer);
 			cmd.SetGlobalBuffer(ShaderPropertyId._VTTextureStackDataBuffer, m_VirtualAtlas.TextureStackDataBuffer);
 		}
 	}
 
-	private void ConfigureCB(in float2 globalMipBias)
+	internal void FillGlobalShaderVariables(ref WaaaghShaderVariablesGlobal g, in float2 globalMipBias)
 	{
-		m_AsyncContext.ConstantBuffer._VTPageParams = new float4(m_AsyncContext.VirtualAtlas.ResolutionInTiles.x, m_AsyncContext.VirtualAtlas.ResolutionInTiles.y, m_AsyncContext.VirtualAtlas.MipCount - 1, 0f);
-		float2 x = m_AsyncContext.PhysicalAtlas.Resolution.TilesInSlice;
-		float2 @float = math.rcp(x);
-		m_AsyncContext.ConstantBuffer._VTTileParams = new float4(1f / 18f, 8f / 9f, 144f / (float)m_AsyncContext.PhysicalAtlas.Resolution.PixelsInSlice.x, 144f / (float)m_AsyncContext.PhysicalAtlas.Resolution.PixelsInSlice.y);
-		m_AsyncContext.ConstantBuffer._VTPhysicalAtlasSize = new float4(x.x, x.y, @float.x, @float.y);
-		float num = math.pow(2f, m_AsyncContext.FeedbackConsumptionTracker.MipBias);
-		m_AsyncContext.ConstantBuffer._VTFeedbackMipBias = num * globalMipBias.y;
+		if (m_VirtualAtlas != null && math.all(VirtualAtlasResolutionInTiles > 0))
+		{
+			g._VTPageParams = new float4(m_AsyncContext.VirtualAtlas.ResolutionInTiles.x, m_AsyncContext.VirtualAtlas.ResolutionInTiles.y, m_AsyncContext.VirtualAtlas.MipCount - 1, 0f);
+			float2 x = m_AsyncContext.PhysicalAtlas.Resolution.TilesInSlice;
+			float2 @float = math.rcp(x);
+			g._VTTileParams = new float4(1f / 18f, 8f / 9f, 144f / (float)m_AsyncContext.PhysicalAtlas.Resolution.PixelsInSlice.x, 144f / (float)m_AsyncContext.PhysicalAtlas.Resolution.PixelsInSlice.y);
+			g._VTPhysicalAtlasSize = new float4(x.x, x.y, @float.x, @float.y);
+			float num = math.pow(2f, m_AsyncContext.FeedbackConsumptionTracker.MipBias);
+			g._VTFeedbackMipBias = num * globalMipBias.y;
+		}
 	}
 
 	public void ProcessChangedMaterials(List<Material> materials)
@@ -443,14 +438,6 @@ public class VirtualTextureManager
 			m_VirtualAtlas.Reset();
 			OnVirtualAtlasResolutionChanged(VirtualAtlasResolutionInTiles);
 			UpdateMaterials(MaterialUpdateType.OnChange);
-		}
-	}
-
-	public static void SetFeedbackBufferRandomWriteTarget(CommandBuffer cmd, RenderTexture vtFeedbackRt)
-	{
-		if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.Metal)
-		{
-			cmd.SetRandomWriteTarget(7, vtFeedbackRt);
 		}
 	}
 

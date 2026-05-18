@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Settings;
 using Owlcat.Runtime.Core.Utility;
 
@@ -9,31 +11,21 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [TypeId("276c921d2c4c446cb44a4272bfc6323d")]
 public class MobStatManager : UnitDifficultyModifiersManager
 {
-	protected override void UpdateModifiers()
+	protected override void TryApplyDifficultyModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		RemoveModifiers();
-		if (base.Owner.Blueprint.Army != null)
+		if (base.Owner.Blueprint.Army != null && (uint)(stat - 29) <= 1u)
 		{
-			float num = SettingsHelper.CalculateCRModifier(SettingsRoot.Difficulty.NPCAttributesBaseValuePercentModifier);
-			float num2 = (float)(int)SettingsRoot.Difficulty.NPCAttributesBaseValuePercentModifier * num;
-			int flatModifier = (int)((float)(int)SettingsRoot.Difficulty.EnemyDodgePercentModifier * num);
-			float resultPercentModifier = 1f + num2 / 100f;
-			AddModifier(StatType.WeaponSkill, GetFlatModifier(resultPercentModifier, StatType.WeaponSkill));
-			AddModifier(StatType.BallisticSkill, GetFlatModifier(resultPercentModifier, StatType.BallisticSkill));
-			AddModifier(StatType.Strength, GetFlatModifier(resultPercentModifier, StatType.Strength));
-			AddModifier(StatType.Toughness, GetFlatModifier(resultPercentModifier, StatType.Toughness));
-			AddModifier(StatType.Agility, GetFlatModifier(resultPercentModifier, StatType.Agility));
-			AddModifier(StatType.Perception, GetFlatModifier(resultPercentModifier, StatType.Perception));
-			AddModifier(StatType.Intelligence, GetFlatModifier(resultPercentModifier, StatType.Intelligence));
-			AddModifier(StatType.Willpower, GetFlatModifier(resultPercentModifier, StatType.Willpower));
-			AddModifier(StatType.Fellowship, GetFlatModifier(resultPercentModifier, StatType.Fellowship));
-			AddModifier(StatType.Defence, flatModifier);
-			AddModifier(StatType.ArmorDamageReduction, flatModifier);
+			int num = SettingsRoot.Difficulty.EnemyDodgeModifier;
+			if (num != 0)
+			{
+				CollectFlatModifier(collector, num);
+			}
 		}
 	}
 
-	private int GetFlatModifier(float resultPercentModifier, StatType stat)
+	protected override void CollectDifficultyAffectedStats(ICollection<AffectedStatEntry> entries)
 	{
-		return 0;
+		entries.Add(new AffectedStatEntry(StatType.Defence));
+		entries.Add(new AffectedStatEntry(StatType.ArmorDamageReduction));
 	}
 }

@@ -9,15 +9,15 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipTemplateScatterDeviation : TooltipBaseTemplate
 {
-	private string m_Header;
+	private readonly string m_Header;
 
-	private int m_Min;
+	private readonly int m_Min;
 
-	private int m_Max;
+	private readonly int m_Max;
 
-	private int m_Value;
+	private readonly int m_Value;
 
-	private Color m_Color;
+	private readonly Color m_Color;
 
 	public TooltipTemplateScatterDeviation(string header, int min, int max, int value, Color color)
 	{
@@ -30,24 +30,30 @@ public class TooltipTemplateScatterDeviation : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_Header);
+		yield return new BrickTitleVM(m_Header);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickShotDirection(m_Min, m_Max, m_Value);
-		yield return new TooltipBrickSeparator(TooltipBrickElementType.Small);
-		string text = AddColor(UIStrings.Instance.CombatLog.CentralShotDirection.Text);
-		string slightDeviationText = AddColor(UIStrings.Instance.CombatLog.SlightDeviationShotDirection.Text);
-		string strongDeviationText = AddColor(UIStrings.Instance.CombatLog.StrongDeviationShotDirection.Text);
-		yield return new TooltipBrickTextValue("<b>" + text + "</b>", "0—" + m_Min);
-		yield return new TooltipBrickTextValue("<b>" + slightDeviationText + "</b>", m_Min + 1 + "—" + m_Max);
-		yield return new TooltipBrickTextValue("<b>" + strongDeviationText + "</b>", m_Max + 1 + "—100");
-		yield return new TooltipBrickSeparator(TooltipBrickElementType.Small);
-		yield return new TooltipBrickText(UIStrings.Instance.CombatLog.DeviationDescription.Text);
-		yield return new TooltipBrickSeparator(TooltipBrickElementType.Small);
+		yield return new BrickShotDirectionVM(m_Min, m_Max, m_Value);
+		yield return new BrickSeparatorVM(TooltipBrickElementType.Small);
+		UICombatLogTexts combatLog = UIStrings.Instance.CombatLog;
+		string text = AddColor(combatLog.CentralShotDirection.Text);
+		string slightDeviationText = AddColor(combatLog.SlightDeviationShotDirection.Text);
+		string strongDeviationText = AddColor(combatLog.StrongDeviationShotDirection.Text);
+		string text2 = "<b>" + text + "</b>";
+		int min = m_Min;
+		yield return new BrickTextValueVM(text2, "0—" + min);
+		string text3 = "<b>" + slightDeviationText + "</b>";
+		string text4 = (m_Min + 1).ToString();
+		min = m_Max;
+		yield return new BrickTextValueVM(text3, text4 + "—" + min);
+		yield return new BrickTextValueVM("<b>" + strongDeviationText + "</b>", m_Max + 1 + "—100");
+		yield return new BrickSeparatorVM(TooltipBrickElementType.Small);
+		yield return new BrickTextVM(UIStrings.Instance.CombatLog.DeviationDescription.Text);
+		yield return new BrickSeparatorVM(TooltipBrickElementType.Small);
 		BlueprintEncyclopediaGlossaryEntry glossaryEntry = UIUtilityEncyclopedy.GetGlossaryEntry("BurstAttacks");
-		yield return new TooltipBrickText(glossaryEntry.GetDescription());
+		yield return new BrickTextVM(glossaryEntry.GetDescription());
 	}
 
 	private string AddColor(string text)

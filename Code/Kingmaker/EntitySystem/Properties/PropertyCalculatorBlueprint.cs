@@ -1,5 +1,7 @@
 using System;
 using Kingmaker.Blueprints;
+using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties;
@@ -12,8 +14,8 @@ public class PropertyCalculatorBlueprint : BlueprintScriptableObject
 
 	public PropertyCalculator Value;
 
-	public int GetValue(PropertyContext context)
+	public int GetValue(MechanicEntity entity, IEvalContext context = null)
 	{
-		return Value.GetValue(context) + Add;
+		return Value.GetValue(entity, context) + Add;
 	}
 }

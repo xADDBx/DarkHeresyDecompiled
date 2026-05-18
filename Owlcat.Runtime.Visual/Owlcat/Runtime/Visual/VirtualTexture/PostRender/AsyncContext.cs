@@ -32,8 +32,6 @@ public class AsyncContext : IDisposable
 
 	public int FrameId;
 
-	public VirtualTextureConstantBuffer ConstantBuffer;
-
 	public List<StreamingBatch> PendingBatches;
 
 	public VirtualAtlas VirtualAtlas => m_VirtualAtlas;
@@ -62,7 +60,6 @@ public class AsyncContext : IDisposable
 		ResidentTiles = new NativeList<int2>(y, Allocator.Persistent);
 		LoadRequests = new NativeList<PageLoadInfo>(y, Allocator.Persistent);
 		m_ReadbackProcessor = new AsyncReadbackProcessor();
-		ConstantBuffer = default(VirtualTextureConstantBuffer);
 		PendingBatches = new List<StreamingBatch>();
 	}
 

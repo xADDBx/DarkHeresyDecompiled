@@ -28,7 +28,6 @@ using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Kingmaker.View.MapObjects.InteractionRestrictions;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using StateHasher.Core.Hashers;
@@ -68,7 +67,7 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 
 	private bool m_InteractThroughVariants;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionLootPart",
 		OldNames = null,
@@ -212,9 +211,9 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 		}
 	}
 
-	public override void SetSource(IAbstractEntityPartComponent source)
+	public override void SetConfig(IEntityPartConfig source)
 	{
-		base.SetSource(source);
+		base.SetConfig(source);
 		if (m_KnownItems == null)
 		{
 			foreach (LootEntry item in MapObjectLoot)
@@ -315,10 +314,10 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 			return;
 		}
 		UpdateMarkerName();
-		DroppedLoot.EntityData entityData = base.Owner as DroppedLoot.EntityData;
-		if (DestroyWhenEmpty || base.Settings.LootContainerType == LootContainerType.Environment || (entityData != null && entityData.IsDroppedByPlayer))
+		DroppedLootEntity droppedLootEntity = base.Owner as DroppedLootEntity;
+		if (DestroyWhenEmpty || base.Settings.LootContainerType == LootContainerType.Environment || (droppedLootEntity != null && droppedLootEntity.IsDroppedByPlayer))
 		{
-			if (entityData != null)
+			if (droppedLootEntity != null)
 			{
 				Game.Instance.Controllers.EntityDestroyer.Destroy(base.Owner);
 			}
@@ -335,8 +334,8 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 
 	protected override void OnInteract(BaseUnitEntity user)
 	{
-		EntityViewBase[] loots = ((base.Owner.View is DroppedLoot) ? MassLootHelper.GetObjectsWithLoot(base.View).ToArray() : new EntityViewBase[1] { base.View });
-		EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<ILootInteractionHandler>)delegate(ILootInteractionHandler l)
+		EntityViewBase[] loots = ((base.Owner.View is DroppedLootView) ? MassLootHelper.GetObjectsWithLoot(base.View.AsMapObjectView()).ToArray() : new EntityViewBase[1] { base.View.AsMapObjectView() });
+		base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<ILootInteractionHandler>)delegate(ILootInteractionHandler l)
 		{
 			l.HandleLootInteraction(loots, base.Settings.LootContainerType, OnLootClosed);
 		}, isCheckRuntime: true);
@@ -385,7 +384,7 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 
 	public bool CanInsertItem(ItemEntity item)
 	{
-		if (base.Settings.LootConditions == null)
+		if (base.Settings.LootConditions == null || base.Settings.LootConditions.IsEmpty() || base.Settings.LootConditions.IsNull())
 		{
 			return true;
 		}
@@ -483,22 +482,22 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 		{
 			return m_Unit.CharacterName;
 		}
-		LocalizedString localizedString = base.Settings.DisplayName?.String;
-		if (localizedString == null)
+		LocalizedString displayName = base.Settings.DisplayName;
+		if (displayName == null)
 		{
 			return string.Empty;
 		}
-		return localizedString;
+		return displayName;
 	}
 
 	public string GetDescription()
 	{
-		LocalizedString localizedString = ObjectExtensions.Or(base.Settings.Description, null)?.String;
-		if (localizedString == null)
+		LocalizedString description = base.Settings.Description;
+		if (description == null)
 		{
 			return string.Empty;
 		}
-		return localizedString;
+		return description;
 	}
 
 	IEnumerable<IInteractionVariantActor> IHasInteractionVariantActors.GetInteractionVariantActors()
@@ -538,6 +537,7 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 
 	protected override void OnDidInteract(BaseUnitEntity user)
 	{
+		base.OnDidInteract(user);
 		foreach (InteractionRestrictionPart needItemRestriction in GetNeedItemRestrictions())
 		{
 			if (needItemRestriction != null)
@@ -545,6 +545,7 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 				needItemRestriction.IsDisabled = true;
 			}
 		}
+		SetUnlocked();
 		IEnumerable<InteractionRestrictionPart> GetNeedItemRestrictions()
 		{
 			yield return base.View.Data.Parts.GetOptional<SleightOfHandMultikeyItemRestrictionPart>();
@@ -586,7 +587,7 @@ public class InteractionLootPart : InteractionPart<InteractionLootSettings>, IIt
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionLootPart source = new InteractionLootPart();
 		result = Unsafe.As<InteractionLootPart, TPossiblyBase>(ref source);

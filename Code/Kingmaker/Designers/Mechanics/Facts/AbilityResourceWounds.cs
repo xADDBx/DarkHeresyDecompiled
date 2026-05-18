@@ -4,6 +4,8 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Abilities;
@@ -20,6 +22,7 @@ namespace Kingmaker.Designers.Mechanics.Facts;
 [Obsolete]
 [AllowedOn(typeof(BlueprintAbility))]
 [TypeId("a9527063b166443eb98d0ed049b9560d")]
+[SetsContextScope(ContextEntryPointKind.AbilityOnCast)]
 public class AbilityResourceWounds : BlueprintComponent, IAbilityResourceLogic, IAbilityRestriction
 {
 	public ContextValue Cost;
@@ -63,8 +66,11 @@ public class AbilityResourceWounds : BlueprintComponent, IAbilityResourceLogic, 
 
 	public int CalculateCost(AbilityData ability)
 	{
-		using AbilityExecutionContext context = ability.ClaimExecutionContext(ability.Caster);
-		return Cost.Calculate(context);
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(ability, ability.Caster).Get(out ctx))
+		{
+			return Cost.Calculate(ctx);
+		}
 	}
 
 	public int CalculateResourceAmount(AbilityData ability)

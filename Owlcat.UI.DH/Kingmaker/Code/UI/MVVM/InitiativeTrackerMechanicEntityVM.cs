@@ -19,7 +19,7 @@ public class InitiativeTrackerMechanicEntityVM : CombatMechanicEntityVM
 	}
 
 	public InitiativeTrackerMechanicEntityVM(MechanicEntity mechanicMechanicEntity, int index, bool isCurrent)
-		: base(mechanicMechanicEntity, isCurrent)
+		: base(mechanicMechanicEntity, null, isCurrent)
 	{
 		m_OrderIndex = new ReactiveProperty<int>(index).AddTo(this);
 	}

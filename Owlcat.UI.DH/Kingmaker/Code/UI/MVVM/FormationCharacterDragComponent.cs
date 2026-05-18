@@ -44,7 +44,7 @@ public class FormationCharacterDragComponent : MonoBehaviour, IDragHandler, IEve
 				SetTargetLocalPosition(localPoint);
 			}
 			ClampToWindow();
-			m_DragCommand.Execute();
+			m_DragCommand.Execute(Unit.Default);
 		}
 	}
 

@@ -75,6 +75,6 @@ public class InfoWindowVM : InfoBaseVM, IInfoWindowHandler, ISubscriber, IDialog
 
 	public void HandleDialogStarted(BlueprintDialog dialog)
 	{
-		m_ForceClose.Execute();
+		m_ForceClose.Execute(Unit.Default);
 	}
 }

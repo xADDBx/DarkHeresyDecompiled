@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.EntityInfo;
 
-public class CoverInfoProvider : IEntityInfoProvider<GameObject>
+public class CoverInfoProvider : IEntityInfoProvider<GameObjectInfo>
 {
 	private readonly UIStrings m_UIStrings;
 
@@ -14,9 +14,14 @@ public class CoverInfoProvider : IEntityInfoProvider<GameObject>
 		m_UIStrings = uiStrings;
 	}
 
-	public bool TryGetEntityInfo(GameObject gameObject, out IEntityInfo entityInfo)
+	public bool TryGetEntityInfo(GameObjectInfo info, out IEntityInfo entityInfo)
 	{
-		if (!TryGetCoverType(gameObject, out var coverType) || coverType == LosCalculations.CoverType.Obstacle)
+		if (!info.GameObject || !info.IsHighlighted || !info.IsTurnBasedMode)
+		{
+			entityInfo = null;
+			return false;
+		}
+		if (!TryGetCoverType(info.GameObject, out var coverType) || coverType == LosCalculations.CoverType.Obstacle)
 		{
 			entityInfo = null;
 			return false;
@@ -28,7 +33,7 @@ public class CoverInfoProvider : IEntityInfoProvider<GameObject>
 		}
 		entityInfo = new EntitySimpleInfo
 		{
-			WorldPosition = gameObject.transform.position,
+			WorldPosition = info.GameObject.transform.position,
 			Title = title,
 			Description = description
 		};

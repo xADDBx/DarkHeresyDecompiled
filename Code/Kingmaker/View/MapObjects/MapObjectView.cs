@@ -13,6 +13,8 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
+using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -30,7 +32,7 @@ namespace Kingmaker.View.MapObjects;
 
 [AddComponentMenu("Map Object View")]
 [KnowledgeDatabaseID("037fe06a751be534fa04d8b0764331d1")]
-public class MapObjectView : MechanicEntityView, IDetectHover, IEntitySubscriber, IAwarenessHandler<EntitySubscriber>, IAwarenessHandler, ISubscriber<IMapObjectEntity>, ISubscriber, IEventTag<IAwarenessHandler, EntitySubscriber>, IAreaHandler, IResource
+public class MapObjectView : MechanicEntityView, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig, IMapObjectView, IMechanicEntityView, IEntityView, IDetectHover, IEntitySubscriber, IAwarenessHandler<EntitySubscriber>, IAwarenessHandler, ISubscriber<IMapObjectEntity>, ISubscriber, IEventTag<IAwarenessHandler, EntitySubscriber>, IAreaHandler, IResource
 {
 	[Flags]
 	protected enum HighlightingFlags
@@ -66,6 +68,10 @@ public class MapObjectView : MechanicEntityView, IDetectHover, IEntitySubscriber
 	protected static UIConfig UIConfig => ConfigRoot.Instance.UIConfig;
 
 	public FactHolder FactHolder => m_FactHolder ?? (m_FactHolder = GetComponent<FactHolder>());
+
+	bool IMapObjectView.NeedsVoiceOver => NeedsVoiceOver;
+
+	VoIdField IMapObjectView.VoId => VoId;
 
 	public new MapObjectEntity Data => (MapObjectEntity)base.Data;
 
@@ -466,8 +472,7 @@ public class MapObjectView : MechanicEntityView, IDetectHover, IEntitySubscriber
 		{
 			if (NoticeHighlightOnReveal && !Data.WasHighlightedOnRevealAndNoticed)
 			{
-				Data.WasHighlightedOnRevealAndNoticed = true;
-				m_HighlightingTriggers.Value &= ~HighlightingFlags.NoticeOnReveal;
+				Game.Instance.GameCommandQueue.MarkHighlightedAndNoticed(Data);
 			}
 			if (isHover)
 			{
@@ -491,6 +496,11 @@ public class MapObjectView : MechanicEntityView, IDetectHover, IEntitySubscriber
 			}
 			UpdateHighlight();
 		}
+	}
+
+	public void MarkHighlightedAndNoticed()
+	{
+		m_HighlightingTriggers.Value &= ~HighlightingFlags.NoticeOnReveal;
 	}
 
 	public void ForceHighlightExternal(bool value)
@@ -714,5 +724,35 @@ public class MapObjectView : MechanicEntityView, IDetectHover, IEntitySubscriber
 				h.HandleObjectHighlightChange();
 			}, isCheckRuntime: true);
 		}
+	}
+
+	T IMapObjectView.GetComponent<T>()
+	{
+		return GetComponent<T>();
+	}
+
+	T IMapObjectView.GetComponentInChildren<T>()
+	{
+		return GetComponentInChildren<T>();
+	}
+
+	T[] IMapObjectView.GetComponents<T>()
+	{
+		return GetComponents<T>();
+	}
+
+	GameObject IMechanicEntityView.get_gameObject()
+	{
+		return base.gameObject;
+	}
+
+	T[] IMechanicEntityView.GetComponentsInChildren<T>()
+	{
+		return GetComponentsInChildren<T>();
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

@@ -13,6 +13,8 @@ public class AdditionalAlbedoAnimationController
 		public AdditionalAlbedoMaterial Material;
 
 		public AdditionalAlbedoMaterial.Snapshot Snapshot;
+
+		public int RendererId;
 	}
 
 	private bool m_MaterialsModified;
@@ -21,13 +23,19 @@ public class AdditionalAlbedoAnimationController
 
 	public List<AdditionalAlbedoSettings> Animations = new List<AdditionalAlbedoSettings>();
 
-	public void AddMaterial(in AdditionalAlbedoMaterial material)
+	public void AddMaterial(in AdditionalAlbedoMaterial material, int rendererId)
 	{
 		Entry entry = default(Entry);
 		entry.Material = material;
 		entry.Snapshot = material.TakeSnapshot();
+		entry.RendererId = rendererId;
 		Entry item = entry;
 		m_Entries.Add(item);
+	}
+
+	public void ClearMaterial(int rendererId)
+	{
+		m_Entries.RemoveAll((Entry entry) => entry.RendererId == rendererId);
 	}
 
 	public void ClearMaterials()

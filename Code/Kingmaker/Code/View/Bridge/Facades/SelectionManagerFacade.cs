@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Code.View.Bridge.Interfaces;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.View;
 using UnityEngine;
@@ -9,9 +11,7 @@ namespace Kingmaker.Code.View.Bridge.Facades;
 
 public static class SelectionManagerFacade
 {
-	private static ISelectionManager s_SelectionManager;
-
-	public static ISelectionManager SelectionManager => s_SelectionManager ?? (s_SelectionManager = Game.Instance.RootUIContext.SelectionManager);
+	public static ISelectionManager SelectionManager => Game.Instance.RootUIContext.SelectionManager;
 
 	public static void SelectAll(IEnumerable<BaseUnitEntity> characters = null)
 	{
@@ -23,9 +23,9 @@ public static class SelectionManagerFacade
 		SelectionManager?.UpdateSelectedUnits();
 	}
 
-	public static void MultiSelect(IEnumerable<UnitEntityView> views, bool canAddToSelection = true)
+	public static void MultiSelect(IEnumerable<IUnitEntityView> views, bool canAddToSelection = true)
 	{
-		SelectionManager?.MultiSelect(views, canAddToSelection);
+		SelectionManager?.MultiSelect(views.Cast<UnitEntityView>(), canAddToSelection);
 	}
 
 	public static bool IsSelected(AbstractUnitEntity unit)
@@ -33,9 +33,9 @@ public static class SelectionManagerFacade
 		return SelectionManager?.IsSelected(unit) ?? false;
 	}
 
-	public static void SelectUnit(UnitEntityView unit, bool single = true, bool sendSelectionEvent = true, bool ask = true)
+	public static void SelectUnit(IUnitEntityView unit, bool single = true, bool sendSelectionEvent = true, bool ask = true)
 	{
-		SelectionManager?.SelectUnit(unit, single, sendSelectionEvent, ask);
+		SelectionManager?.SelectUnit(unit.AsUnitEntityView(), single, sendSelectionEvent, ask);
 	}
 
 	public static void UnselectUnit(BaseUnitEntity data)

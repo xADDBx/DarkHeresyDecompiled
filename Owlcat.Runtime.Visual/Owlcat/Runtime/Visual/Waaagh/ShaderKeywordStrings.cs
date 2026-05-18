@@ -12,8 +12,6 @@ public static class ShaderKeywordStrings
 
 	public static readonly string COLORED_SHADOWS = "COLORED_SHADOWS";
 
-	public static readonly string VT_DISABLED_GLOBAL = "VT_DISABLED_GLOBAL";
-
 	public static readonly string _LIGHT_COOKIES = "_LIGHT_COOKIES";
 
 	public static readonly string TonemapACES = "_TONEMAP_ACES";

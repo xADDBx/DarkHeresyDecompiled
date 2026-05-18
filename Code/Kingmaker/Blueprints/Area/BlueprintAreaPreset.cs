@@ -63,6 +63,12 @@ public class BlueprintAreaPreset : BlueprintScriptableObject
 	[ValidateNoNullEntries]
 	public List<BlueprintUnitReference> ExCompanions = new List<BlueprintUnitReference>();
 
+	[ValidateNoNullEntries]
+	public List<BlueprintUnitReference> ExCompanionsKicked = new List<BlueprintUnitReference>();
+
+	[ValidateNoNullEntries]
+	public List<BlueprintUnitReference> ExCompanionsDead = new List<BlueprintUnitReference>();
+
 	public ActionList StartGameActions;
 
 	[Header("State")]
@@ -88,6 +94,9 @@ public class BlueprintAreaPreset : BlueprintScriptableObject
 
 	[ValidateNoNullEntries]
 	public List<BlueprintEtudeReference> ForceCompleteEtudes = new List<BlueprintEtudeReference>();
+
+	[ValidateNoNullEntries]
+	public List<BlueprintAreaReference> VisitedAreas = new List<BlueprintAreaReference>();
 
 	[Header("Dialogs State")]
 	[DependenciesFilter]
@@ -155,7 +164,8 @@ public class BlueprintAreaPreset : BlueprintScriptableObject
 
 	public virtual void SetupState()
 	{
-		Game.Instance.Player.StartPreset = Campaign?.StartGamePreset ?? this;
+		Game.Instance.Player.StartPreset = this;
+		Game.Instance.Player.Campaign = Campaign;
 		if (m_OverrideGameDifficulty?.Preset != null)
 		{
 			SettingsController.Instance.DifficultyPresetsController.SetDifficultyPreset(m_OverrideGameDifficulty?.Preset, confirm: true);
@@ -202,25 +212,33 @@ public class BlueprintAreaPreset : BlueprintScriptableObject
 				StartParentEtudeRecursively(item7.Get(), "preset " + name + ", " + item7.NameSafe() + " in StartEtudes ");
 			}
 		}
-		foreach (BlueprintCueBaseReference item8 in CuesSeen.EmptyIfNull().NotNull())
+		foreach (BlueprintAreaReference item8 in VisitedAreas.EmptyIfNull().NotNull())
 		{
-			Game.Instance.DialogState.ShownCuesAdd(item8.Get());
+			BlueprintArea blueprintArea = item8.Get();
+			if (blueprintArea != null)
+			{
+				Game.Instance.Player.VisitedAreas.Add(blueprintArea);
+			}
 		}
-		foreach (BlueprintDialogReference item9 in DialogsSeen.EmptyIfNull().NotNull())
+		foreach (BlueprintCueBaseReference item9 in CuesSeen.EmptyIfNull().NotNull())
 		{
-			Game.Instance.DialogState.ShownDialogsAdd(item9.Get());
+			Game.Instance.DialogState.ShownCuesAdd(item9.Get());
 		}
-		foreach (BlueprintAnswerReference item10 in AnswersSelected.EmptyIfNull().NotNull())
+		foreach (BlueprintDialogReference item10 in DialogsSeen.EmptyIfNull().NotNull())
 		{
-			Game.Instance.DialogState.SelectedAnswersAdd(item10.Get());
+			Game.Instance.DialogState.ShownDialogsAdd(item10.Get());
+		}
+		foreach (BlueprintAnswerReference item11 in AnswersSelected.EmptyIfNull().NotNull())
+		{
+			Game.Instance.DialogState.SelectedAnswersAdd(item11.Get());
 		}
 		foreach (BaseUnitEntity allCharacter in Game.Instance.Player.AllCharacters)
 		{
 			allCharacter.Progression.AdvanceExperienceTo(PartyXp, log: false);
 		}
-		foreach (ItemEntity item11 in Game.Instance.PartySharedInventory.Collection)
+		foreach (ItemEntity item12 in Game.Instance.PartySharedInventory.Collection)
 		{
-			item11.Identify();
+			item12.Identify();
 		}
 		if (SetLocale)
 		{

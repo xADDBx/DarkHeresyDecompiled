@@ -25,7 +25,7 @@ using UnityEngine;
 
 namespace Kingmaker.UI.Selection;
 
-public abstract class SelectionManagerBase : MonoBehaviour, ISelectionManager, INetRoleSetHandler, ISubscriber, IAreaHandler, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, INetStopPlayingHandler
+public abstract class SelectionManagerBase : MonoBehaviour, ISelectionManager, INetRoleSetHandler, ISubscriber, IAreaHandler, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, INetStopPlayingHandler, IInGameHandler, ISubscriber<IEntity>
 {
 	[SerializeField]
 	protected BaseUnitMark m_SelectionMarkPrefab;
@@ -76,6 +76,16 @@ public abstract class SelectionManagerBase : MonoBehaviour, ISelectionManager, I
 		Game.Instance.GameCommandQueue.HoldUnits(SelectedUnits);
 	}
 
+	public void MultiSelect(IEnumerable<IUnitEntityView> views, bool canAddToSelection = true)
+	{
+		MultiSelect(views.Cast<UnitEntityView>(), canAddToSelection);
+	}
+
+	public void SelectUnit(IUnitEntityView unit, bool single = true, bool sendSelectionEvent = true, bool ask = true)
+	{
+		SelectUnit((UnitEntityView)unit, single, sendSelectionEvent, ask);
+	}
+
 	public bool IsSelected(AbstractUnitEntity unit)
 	{
 		if (!SelectedUnits.Contains(unit))
@@ -113,7 +123,7 @@ public abstract class SelectionManagerBase : MonoBehaviour, ISelectionManager, I
 					break;
 				}
 			}
-			if (!(!allBaseAwakeUnit.View || (!allBaseAwakeUnit.IsDirectlyControllable && !allBaseAwakeUnit.Faction.IsPlayer) || flag))
+			if (!(allBaseAwakeUnit.View == null || (!allBaseAwakeUnit.IsDirectlyControllable && !allBaseAwakeUnit.Faction.IsPlayer) || flag))
 			{
 				BaseUnitMark baseUnitMark = UnityEngine.Object.Instantiate(m_SelectionMarkPrefab, allBaseAwakeUnit.View.ViewTransform, worldPositionStays: true);
 				baseUnitMark.transform.localPosition = Vector3.zero;
@@ -136,7 +146,7 @@ public abstract class SelectionManagerBase : MonoBehaviour, ISelectionManager, I
 
 	private static bool TryDestroyMark(BaseUnitMark mark)
 	{
-		if (!mark || !mark.Unit.View || (!mark.Unit.IsDirectlyControllable && !mark.Unit.IsPlayerFaction))
+		if (!mark || mark.Unit.View == null || (!mark.Unit.IsDirectlyControllable && !mark.Unit.IsPlayerFaction))
 		{
 			if ((bool)mark)
 			{
@@ -307,6 +317,15 @@ public abstract class SelectionManagerBase : MonoBehaviour, ISelectionManager, I
 				num += Game.Instance.Controllers.SelectionCharacter.ActualGroup.Count;
 			}
 			Instance?.SelectUnit(Game.Instance.Controllers.SelectionCharacter.ActualGroup[num].View);
+		}
+	}
+
+	public void HandleObjectInGameChanged()
+	{
+		BaseUnitEntity baseUnitEntity = EventInvokerExtensions.BaseUnitEntity;
+		if (baseUnitEntity != null && baseUnitEntity.IsDirectlyControllable() && !baseUnitEntity.IsViewActive)
+		{
+			RemoveSelection(baseUnitEntity);
 		}
 	}
 }

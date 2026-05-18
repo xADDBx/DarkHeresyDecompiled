@@ -9,20 +9,24 @@ namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.Highlighting;
 [BurstCompile]
 internal struct CullingJob : IJobParallelFor
 {
-	public NativeArray<BoundsVisibility> Bounds;
+	[ReadOnly]
+	public NativeArray<Bounds> Bounds;
+
+	public NativeArray<TestPlanesResults> BoundsVisibility;
 
 	[ReadOnly]
 	public NativeArray<Plane> CameraPlanes;
 
 	public void Execute(int index)
 	{
-		BoundsVisibility value = Bounds[index];
-		value.Visibility = TestPlanesAABBInternalFast(ref CameraPlanes, ref value.Bounds);
-		Bounds[index] = value;
+		ref NativeArray<TestPlanesResults> boundsVisibility = ref BoundsVisibility;
+		ref NativeArray<Plane> cameraPlanes = ref CameraPlanes;
+		Bounds bounds = Bounds[index];
+		boundsVisibility[index] = TestPlanesAABBInternalFast(ref cameraPlanes, in bounds);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TestPlanesResults TestPlanesAABBInternalFast(ref NativeArray<Plane> planes, ref Bounds bounds)
+	public static TestPlanesResults TestPlanesAABBInternalFast(ref NativeArray<Plane> planes, in Bounds bounds)
 	{
 		Vector3 boundsMin = bounds.min;
 		Vector3 boundsMax = bounds.max;

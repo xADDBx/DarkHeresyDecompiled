@@ -14,7 +14,7 @@ using R3;
 
 namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
-public class DetectiveJournalClueVM : ViewModel, IClueDataChangedHandler, ISubscriber, IConclusionsUpdateHandler
+public class DetectiveJournalClueVM : ViewModel, IClueDataChangedHandler, ISubscriber, IConclusionsUpdateHandler, IConclusionStatusChanged
 {
 	public readonly BlueprintClue Clue;
 
@@ -69,7 +69,7 @@ public class DetectiveJournalClueVM : ViewModel, IClueDataChangedHandler, ISubsc
 			ConnectedClues = (from l in clue.LinkedClues
 				where l.IsUnlocked()
 				select l.Clue.Blueprint into c
-				where Game.Instance.DetectiveSystem.HasItem(c)
+				where Game.Instance.DetectiveSystem.HasItemExcludingHidden(c)
 				select c).ToHashSet();
 		}
 		UpdateConstructConclusions();
@@ -157,12 +157,12 @@ public class DetectiveJournalClueVM : ViewModel, IClueDataChangedHandler, ISubsc
 		ConclusionsVM.Clear();
 		Dictionary<BlueprintCaseItem, List<BlueprintConclusion>> dictionary = new Dictionary<BlueprintCaseItem, List<BlueprintConclusion>>();
 		List<BlueprintConclusion> conclusionsFor = UIUtilityDetective.GetConclusionsFor(Clue);
-		IEnumerable<BlueprintConclusion> collection = Clue.Addendums.Where((BpRef<BlueprintClueAddendum> addendum) => Game.Instance.DetectiveSystem.HasItem(addendum.Blueprint)).SelectMany((BpRef<BlueprintClueAddendum> addendum) => UIUtilityDetective.GetConclusionsFor(addendum.Blueprint));
+		IEnumerable<BlueprintConclusion> collection = Clue.Addendums.Where((BpRef<BlueprintClueAddendum> addendum) => Game.Instance.DetectiveSystem.HasItemExcludingHidden(addendum.Blueprint)).SelectMany((BpRef<BlueprintClueAddendum> addendum) => UIUtilityDetective.GetConclusionsFor(addendum.Blueprint));
 		conclusionsFor.AddRange(collection);
 		foreach (BlueprintConclusion item in conclusionsFor)
 		{
 			BlueprintConclusion.Source suitableConclusionSource = UIUtilityDetective.GetSuitableConclusionSource(item);
-			if (Game.Instance.DetectiveSystem.HasItem(suitableConclusionSource.Item2) && (!(suitableConclusionSource.Item2.Blueprint is BlueprintClueAddendum blueprintClueAddendum) || Game.Instance.DetectiveSystem.HasItem((BlueprintClue?)blueprintClueAddendum.ParentClue)))
+			if (Game.Instance.DetectiveSystem.HasItemExcludingHidden(suitableConclusionSource.Item2) && (!(suitableConclusionSource.Item2.Blueprint is BlueprintClueAddendum blueprintClueAddendum) || Game.Instance.DetectiveSystem.HasItemExcludingHidden((BlueprintClue?)blueprintClueAddendum.ParentClue)))
 			{
 				if (!dictionary.ContainsKey(suitableConclusionSource.Item1))
 				{
@@ -172,13 +172,13 @@ public class DetectiveJournalClueVM : ViewModel, IClueDataChangedHandler, ISubsc
 			}
 		}
 		IEnumerable<BlueprintCaseItem> source = from kvp in dictionary
-			where !kvp.Value.Any((BlueprintConclusion c) => Game.Instance.DetectiveSystem.HasItem(c))
+			where !kvp.Value.Any((BlueprintConclusion c) => Game.Instance.DetectiveSystem.HasItemExcludingHidden(c))
 			select kvp.Key;
 		ConclusionsVM.AddRange(source.Select((BlueprintCaseItem c) => new ConstructConclusionVM(c, delegate
 		{
 			m_ClickOnDeduction?.Invoke(c);
 		}, null)));
-		m_ConclusionsUpdated?.Execute();
+		m_ConclusionsUpdated?.Execute(Unit.Default);
 	}
 
 	public void RefreshDataFor(BlueprintClue clue)
@@ -198,5 +198,10 @@ public class DetectiveJournalClueVM : ViewModel, IClueDataChangedHandler, ISubsc
 	private void UpdateNotesState()
 	{
 		m_HasNotes.Value = Clue.Notes.Any((BpRef<BlueprintClueNote> n) => n.Blueprint.IsVisible);
+	}
+
+	public void HandleConclusionStatusChanged(BlueprintConclusion blueprint)
+	{
+		UpdateConstructConclusions();
 	}
 }

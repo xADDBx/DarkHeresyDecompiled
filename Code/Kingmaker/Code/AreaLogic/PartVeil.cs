@@ -7,8 +7,8 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Gameplay.Features.Encounter;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
@@ -25,6 +25,12 @@ public class PartVeil : EntityPart<Area>, IHashable, IOwlPackable<PartVeil>
 	[JsonProperty]
 	[OwlPackInclude]
 	private int m_Damage;
+
+	private List<BlueprintPsykerRoot.PhenomenaData> m_CachedPhenomena;
+
+	private List<BlueprintPsykerRoot.PhenomenaData> m_CachedPerils;
+
+	private ActiveEncounter m_CachedEncounter;
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -62,7 +68,7 @@ public class PartVeil : EntityPart<Area>, IHashable, IOwlPackable<PartVeil>
 		{
 			int delta = value - m_Damage;
 			m_Damage = value;
-			EventBus.RaiseEvent(delegate(IVeilDamageHandler h)
+			base.EventBus.RaiseEvent(delegate(IVeilDamageHandler h)
 			{
 				h.HandleVeilDamageChanged(delta, m_Damage);
 			});
@@ -74,6 +80,44 @@ public class PartVeil : EntityPart<Area>, IHashable, IOwlPackable<PartVeil>
 		base.OnAttach();
 		MinDamage = base.Owner.Blueprint.StartVeilDamage;
 		Damage = MinDamage;
+	}
+
+	public List<BlueprintPsykerRoot.PhenomenaData> GetResolvedPhenomena()
+	{
+		InvalidateCacheIfNeeded();
+		return m_CachedPhenomena ?? (m_CachedPhenomena = ResolveList(PsykerRoot.PsychicPhenomena, base.Owner.Blueprint.PhenomenaOverride, ActiveEncounter.Current?.Blueprint.PhenomenaOverride));
+	}
+
+	public List<BlueprintPsykerRoot.PhenomenaData> GetResolvedPerils()
+	{
+		InvalidateCacheIfNeeded();
+		return m_CachedPerils ?? (m_CachedPerils = ResolveList(PsykerRoot.PerilsOfTheWarp, base.Owner.Blueprint.PerilsOverride, ActiveEncounter.Current?.Blueprint.PerilsOverride));
+	}
+
+	public void InvalidatePhenomenaCache()
+	{
+		m_CachedPhenomena = null;
+		m_CachedPerils = null;
+		m_CachedEncounter = ActiveEncounter.Current;
+	}
+
+	private void InvalidateCacheIfNeeded()
+	{
+		if (m_CachedEncounter != ActiveEncounter.Current)
+		{
+			InvalidatePhenomenaCache();
+		}
+	}
+
+	private static List<BlueprintPsykerRoot.PhenomenaData> ResolveList(BlueprintPsykerRoot.PhenomenaData[] rootList, PhenomenaListOverride areaOverride, PhenomenaListOverride encounterOverride)
+	{
+		List<BlueprintPsykerRoot.PhenomenaData> input = PhenomenaListResolver.ResolveFromRoot(rootList);
+		input = areaOverride.Resolve(input);
+		if (encounterOverride != null)
+		{
+			input = encounterOverride.Resolve(input);
+		}
+		return input;
 	}
 
 	public void UpdateDamage([NotNull] MechanicEntity initiator, UpdateVeilEventType @event, [CanBeNull] AbilityData ability = null, int customDamageDelta = 0)

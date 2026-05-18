@@ -26,7 +26,7 @@ public class AnimationClipEventMapped : AnimationClipEvent
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
 		AbstractUnitEntity abstractUnitEntity = (animationManager as UnitAnimationManager)?.View.Or(null)?.EntityData;
 		if (abstractUnitEntity != null)
@@ -36,6 +36,5 @@ public class AnimationClipEventMapped : AnimationClipEvent
 				h.HandleAnimationEvent(Type);
 			}, isCheckRuntime: true);
 		}
-		return null;
 	}
 }

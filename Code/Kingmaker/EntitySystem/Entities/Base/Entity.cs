@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
@@ -6,16 +7,16 @@ using Kingmaker.Controllers;
 using Kingmaker.Controllers.FogOfWar.Culling;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Framework.EntitySystem;
 using Kingmaker.Items;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.QA.Arbiter.Profiling;
 using Kingmaker.UnitLogic;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.View;
+using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.View.MapObjects;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
@@ -138,6 +139,9 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 
 	public virtual float2 FoWPosition => new float2(Position.x, Position.z);
 
+	public IEntityEventBus EventBus { get; } = Kingmaker.PubSubSystem.Core.EventBus.Shared;
+
+
 	[JsonProperty]
 	[OwlPackInclude]
 	public string UniqueId { get; protected set; }
@@ -145,9 +149,9 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 	public ViewHandlingOnDisposePolicyType ViewHandlingOnDisposePolicy => m_ViewHandlingOnDisposePolicyOverride ?? DefaultViewHandlingOnDisposePolicy;
 
 	[CanBeNull]
-	public IEntityViewBase View { get; private set; }
+	public IEntityView View { get; private set; }
 
-	private EntityViewBase m_view => (EntityViewBase)View;
+	public IEntityConfig Config { get; private set; }
 
 	public bool Destroyed { get; private set; }
 
@@ -173,6 +177,10 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 
 	public bool IsInCameraFrustum_Closer { get; set; } = true;
 
+
+	public Vector3 ViewPosition => View?.Position ?? Position;
+
+	public float ViewOrientation => View?.Orientation ?? Config?.Orientation ?? 0f;
 
 	public virtual bool NeedsView => true;
 
@@ -283,7 +291,7 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 			}
 			if (SetViewTransform && !ContextData<DisableSetViewTransform>.Current)
 			{
-				IEntityViewBase view = View;
+				IEntityView view = View;
 				if (view != null)
 				{
 					Transform viewTransform = view.ViewTransform;
@@ -310,9 +318,10 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 				return;
 			}
 			m_Orientation = value;
+			OnOrientationChanged();
 			if (SetViewTransform && SetViewOrientation && !ContextData<DisableSetViewTransform>.Current)
 			{
-				IEntityViewBase view = View;
+				IEntityView view = View;
 				if (view != null)
 				{
 					Transform viewTransform = view.ViewTransform;
@@ -419,15 +428,12 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		m_IsInGame = isInGame;
 	}
 
-	protected Entity(JsonConstructorMark _)
+	protected Entity(IEntityConfig config)
+		: this(config.EntityId, config.IsInGameBySettings)
 	{
 	}
 
 	protected Entity(OwlPackConstructorParameter _)
-	{
-	}
-
-	protected Entity()
 	{
 	}
 
@@ -442,14 +448,20 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		OnInitialize();
 		if (!ContextData<UnitHelper.ChargenUnit>.Current)
 		{
-			PartUnitBody optional = GetOptional<PartUnitBody>();
-			if (optional != null)
-			{
-				optional.Initialize();
-				optional.InitializeWeapons(optional.Owner.OriginalBlueprint.Body);
-			}
+			TryInitializeUnitWeapons();
 		}
 		IsInitialized = true;
+	}
+
+	[SkipAnalysis]
+	private void TryInitializeUnitWeapons()
+	{
+		PartUnitBody optional = GetOptional<PartUnitBody>();
+		if (optional != null)
+		{
+			optional.Initialize();
+			optional.InitializeWeapons(optional.Owner.OriginalBlueprint.Body);
+		}
 	}
 
 	protected virtual void OnPrepareOrPrePostLoad()
@@ -490,11 +502,11 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		}
 	}
 
-	public void AttachToViewOnLoad([CanBeNull] IEntityViewBase view)
+	public void AttachToViewOnLoad([CanBeNull] IEntityView view, bool assetIdEquality = true)
 	{
 		if (view != null && view.GO != null)
 		{
-			UniqueId = view.UniqueViewId;
+			UniqueId = view.EntityId;
 		}
 		else
 		{
@@ -505,7 +517,7 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 				if (IsInGame && NeedsView)
 				{
 					IsInGame = false;
-					PFLog.Default.Error("Entity data '{0}' (id={1}) failed to create a view on load", GetType().Name, UniqueId);
+					PFLog.Entity.Error("Entity data '{0}' (id={1}) failed to create a view on load", GetType().Name, UniqueId);
 				}
 				return;
 			}
@@ -630,27 +642,21 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		}
 	}
 
-	public void AttachView([NotNull] IEntityViewBase view)
+	public void AttachView([NotNull] IEntityView view)
 	{
 		if (view == null)
 		{
-			PFLog.Default.ErrorWithReport("Try attach null view to " + ToString());
+			throw new ArgumentNullException("view");
 		}
-		else
+		if (View != view)
 		{
-			if (View == view)
-			{
-				return;
-			}
 			if (View != null)
 			{
 				DetachView();
 			}
 			View = view;
 			View.AttachToData(this);
-			m_view.EntityPartComponentEnsureEntityPart(Parts);
-			AbstractEntityPartComponent[] components = m_view.GetComponents<AbstractEntityPartComponent>();
-			Parts.RemoveAll((ViewBasedPart i) => i.ShouldCheckSourceComponent && !components.HasItem((AbstractEntityPartComponent ii) => i.SourceType == ii.GetType().Name));
+			SetConfig((IEntityConfig)View);
 			try
 			{
 				OnViewDidAttach();
@@ -691,6 +697,28 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		}
 	}
 
+	private void SetConfig(IEntityConfig config)
+	{
+		Config = config;
+		List<IEntityPartConfig> parts;
+		using (config.Parts.ToPooledList(out parts))
+		{
+			foreach (IEntityPartConfig item in parts)
+			{
+				Parts.GetOrCreate<EntityPartWithConfig>(item.EntityPartType).SetConfig(item);
+			}
+			Parts.RemoveAll((EntityPartWithConfig i) => i.ShouldCheckSourceComponent && !parts.HasItem(i.IsFromSource));
+			try
+			{
+				OnSetConfig(config);
+			}
+			catch (Exception ex)
+			{
+				PFLog.Entity.Exception(ex);
+			}
+		}
+	}
+
 	public void AreaLoadingComplete()
 	{
 		Parts.AreaLoadingComplete();
@@ -711,7 +739,7 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		{
 			if (HoldingState != null)
 			{
-				PFLog.Default.ErrorWithReport("It is unsafe to destroy entities which still in game state");
+				PFLog.Entity.ErrorWithReport("It is unsafe to destroy entities which still in game state");
 			}
 			try
 			{
@@ -754,7 +782,7 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 			{
 				PFLog.Entity.Exception(ex);
 			}
-			IEntityViewBase view = View;
+			IEntityView view = View;
 			ViewHandlingOnDisposePolicyType viewHandlingOnDisposePolicyType = m_ViewHandlingOnDisposePolicyOverride ?? DefaultViewHandlingOnDisposePolicy;
 			DetachView();
 			if (view != null)
@@ -856,12 +884,16 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		}
 	}
 
+	protected virtual void OnSetConfig(IEntityConfig config)
+	{
+	}
+
 	protected virtual void OnAreaLoadingComplete()
 	{
 	}
 
 	[CanBeNull]
-	protected abstract IEntityViewBase CreateViewForData();
+	protected abstract IEntityView CreateViewForData();
 
 	public IEntity GetSubscribingEntity()
 	{
@@ -883,7 +915,7 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 
 	private void TrySetTransformFromConfigOnLoad()
 	{
-		IEntityViewBase view = View;
+		IEntityView view = View;
 		if (view != null && !view.CreatedAtRuntime)
 		{
 			Transform viewTransform = View.ViewTransform;
@@ -903,7 +935,7 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 
 	public void SetTransformFromView()
 	{
-		IEntityViewBase view = View;
+		IEntityView view = View;
 		if (view != null)
 		{
 			Transform viewTransform = view.ViewTransform;
@@ -979,6 +1011,10 @@ public abstract class Entity : IEntity, IDisposable, IHashable, IOwlPackable, IO
 		{
 			h.HandleEntityPositionChanged();
 		}, isCheckRuntime: true);
+	}
+
+	protected virtual void OnOrientationChanged()
+	{
 	}
 
 	protected virtual Vector3 ViewPositionToEntityPosition(Vector3 viewPosition)

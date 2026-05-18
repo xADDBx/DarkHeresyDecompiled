@@ -10,6 +10,7 @@ using Kingmaker.Code.Gameplay.Controllers;
 using Kingmaker.Code.Gameplay.Controllers.Asks;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.Gameplay.Controllers.DetectiveRadar;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Controllers;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.Clicks.Handlers;
@@ -30,6 +31,7 @@ using Kingmaker.Framework.Pathfinding;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 using Kingmaker.Gameplay.Features.Elevator;
 using Kingmaker.Gameplay.Features.Encounter;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Tutorial;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.UI.Sound;
@@ -94,11 +96,12 @@ public class GamesModeFactoryFacade
 		Initialize();
 	}
 
+	[SkipAnalysis]
 	private void Initialize()
 	{
 		if (!GameModesFactory.AllControllers.Any())
 		{
-			PointerController controller = new PointerController(new ClickWithSelectedAbilityHandler(), new ClickUnitHandler(), new ClickMapObjectHandler(), new ClickGroundHandler(), new ClickOnDetectClicksObjectHandler(), new ClickSurfaceDeploymentHandler());
+			PointerController controller = new PointerController(new ClickWithSelectedAbilityHandler(), new ClickUnitHandler(), new ClickMapObjectHandler(), new ClickGroundHandler(), new ClickOnDetectClicksObjectHandler(), new ClickSurfaceDeploymentHandler(), new ClickCheatRemoteTeleportHandler());
 			Register(new SuppressEntitiesController(), Default, Dialog, Pause, Cutscene);
 			Register(new UnitGroupsController(), Default, SpaceCombat, StarSystem, Dialog, Cutscene);
 			Register(new SlowMoController(), Default, Cutscene);
@@ -120,6 +123,7 @@ public class GamesModeFactoryFacade
 			Register(new FollowersFormationController(), Default);
 			Register(new UnitFollowUnitController(), Default);
 			Register(new UnitMoveController(), Default, SpaceCombat, StarSystem, Dialog, Cutscene, GlobalMap);
+			Register(new ElevatorControllerLate(), Default, Dialog, Cutscene);
 			Register(new UnitMoveControllerLate(), Default, SpaceCombat, StarSystem, Dialog, Cutscene, GlobalMap);
 			Register(new MovePredictionController(), Default);
 			Register(new ModePredictionInterpolationController(), Default);
@@ -161,7 +165,7 @@ public class GamesModeFactoryFacade
 			Register(new DialogController(), Dialog);
 			Register(new UnitLifeController(), Default, SpaceCombat, StarSystem, Dialog, Cutscene, GlobalMap, CutsceneGlobalMap);
 			Register(new UnitReturnToConsciousController(), Default, Dialog, Cutscene, GlobalMap, CutsceneGlobalMap);
-			Register(new HealthController(), All.Except(Pause, Cutscene, CutsceneGlobalMap, GameOver));
+			Register(new OutOfCombatHealController(), All.Except(Pause, Cutscene, CutsceneGlobalMap, GameOver));
 			Register(new UnitAnimationController(), Default, SpaceCombat, StarSystem, Dialog, Cutscene);
 			Register(new FootprintsController(), Default, Dialog, Cutscene);
 			Register(new UnitForceMoveController(), Default);
@@ -186,6 +190,8 @@ public class GamesModeFactoryFacade
 			Register(new AutoPauseController(), Default);
 			Register(new TimerController(), Default);
 			Register(new BarkBanterController(), Default, StarSystem);
+			Register(new BarkController(), Default);
+			Register(new InteractionGlobalCooldownController(), Default, Dialog, Pause, Cutscene);
 			Register(new DopplerSoundController(), Default, SpaceCombat);
 			Register(new PreciseAttackController(), Default);
 			Register(new VisualEffectsController(), All.Except(None, BugReport));
@@ -209,6 +215,7 @@ public class GamesModeFactoryFacade
 			Register(new DefaultInterpolationController(), All);
 			Register(new TimeSpeedController(), All);
 			Register(new InteractionFXController(), All);
+			Register(new InteractionNavigationController(), Default);
 			Register(new FogOfWarCompleteController(), Default, SpaceCombat, StarSystem, Dialog, Pause, Cutscene, GlobalMap, CutsceneGlobalMap);
 			Register(new ForcedCoversController(), All);
 			Register(new LevelUpFxController(), Default);
@@ -219,6 +226,7 @@ public class GamesModeFactoryFacade
 			Register(new VoiceOverController(), All);
 			Register(new ProximityAsksController(), Default);
 			Register(new GPUSoundController(), All);
+			Register(new PerformanceMetricsController(), All);
 		}
 	}
 

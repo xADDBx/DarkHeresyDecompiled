@@ -43,7 +43,7 @@ public class EntityReference : IHashable, IOwlPackable, IOwlPackable<EntityRefer
 	};
 
 	[CanBeNull]
-	public IEntityViewBase FindView()
+	public IEntityView FindView()
 	{
 		return FindData()?.View;
 	}

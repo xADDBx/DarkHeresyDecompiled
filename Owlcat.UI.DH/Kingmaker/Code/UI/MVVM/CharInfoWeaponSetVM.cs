@@ -50,7 +50,7 @@ public class CharInfoWeaponSetVM : ViewModel
 		}
 		else
 		{
-			m_SelectedHand.Value = (Secondary.ItemSlot.HasItem ? Secondary : null);
+			m_SelectedHand.Value = ((Secondary.Item.CurrentValue != null) ? Secondary : null);
 		}
 	}
 

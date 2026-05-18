@@ -5,13 +5,12 @@ using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using OwlPack.Runtime;
-using StateHasher.Core;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MechanicActionBarSlotEmpty : MechanicActionBarSlot, IHashable, IOwlPackable<MechanicActionBarSlotEmpty>
+public class MechanicActionBarSlotEmpty : MechanicActionBarSlot, IOwlPackable<MechanicActionBarSlotEmpty>
 {
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -31,7 +30,7 @@ public class MechanicActionBarSlotEmpty : MechanicActionBarSlot, IHashable, IOwl
 
 	public override void OnClick()
 	{
-		UISounds.Instance.Sounds.Combat.ActionBarCanNotSlotClick.Play();
+		CombatSounds.Instance.Combat.ActionBarCanNotSlotClick.Play();
 	}
 
 	public override int GetResource()
@@ -82,14 +81,6 @@ public class MechanicActionBarSlotEmpty : MechanicActionBarSlot, IHashable, IOwl
 	protected override bool CanUseIfTurnBased()
 	{
 		return false;
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		return result;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

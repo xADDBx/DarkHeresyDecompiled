@@ -6,21 +6,22 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CombatMessageDamage : CombatMessageBase
 {
+	public enum DamageBonus
+	{
+		None,
+		Hp,
+		Armor,
+		Vital,
+		Critical
+	}
+
 	public int Amount;
 
 	public Sprite Sprite;
 
-	public bool IsVital;
-
 	public bool IsImmune;
 
-	public bool IsEnemy;
-
-	public bool HasHPDamageBonus;
-
-	public bool HasArmorDamageBonus;
-
-	public bool HasCriticalEffect;
+	public DamageBonus Bonus;
 
 	public Vector3 SourcePosition;
 
@@ -29,7 +30,7 @@ public class CombatMessageDamage : CombatMessageBase
 	public override string GetText()
 	{
 		string text = Amount.ToString();
-		if (IsVital)
+		if (Bonus == DamageBonus.Vital)
 		{
 			return text + "!";
 		}
@@ -52,6 +53,6 @@ public class CombatMessageDamage : CombatMessageBase
 
 	public override bool GetAttention()
 	{
-		return IsVital;
+		return Bonus == DamageBonus.Vital;
 	}
 }

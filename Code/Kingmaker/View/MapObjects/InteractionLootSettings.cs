@@ -52,10 +52,10 @@ public class InteractionLootSettings : InteractionSettings
 	[FormerlySerializedAs("MapMarkerName")]
 	[FormerlySerializedAs("MapMarkerDesc")]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset DisplayName;
+	public LocalizedString DisplayName;
 
 	[CanBeNull]
-	public SharedStringAsset Description;
+	public LocalizedString Description;
 
 	[FormerlySerializedAs("ItemRestriction")]
 	[CanBeNull]

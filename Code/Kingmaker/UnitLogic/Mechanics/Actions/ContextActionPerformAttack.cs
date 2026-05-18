@@ -43,15 +43,15 @@ public class ContextActionPerformAttack : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
+		MechanicEntity caster = base.Context.Caster;
 		MechanicEntity entity = base.Target.Entity;
-		if (maybeCaster == null || entity == null)
+		if (caster == null || entity == null)
 		{
 			return;
 		}
 		AbilityData abilityData = base.Context.SourceAbility;
-		ItemEntityWeapon itemEntityWeapon = (UseCurrentWeapon ? maybeCaster.GetFirstWeapon() : abilityData?.Weapon);
-		ItemEntityWeapon itemEntityWeapon2 = (UseCurrentWeapon ? maybeCaster.GetSecondWeapon() : abilityData?.Weapon);
+		ItemEntityWeapon itemEntityWeapon = (UseCurrentWeapon ? caster.GetFirstWeapon() : abilityData?.Weapon);
+		ItemEntityWeapon itemEntityWeapon2 = (UseCurrentWeapon ? caster.GetSecondWeapon() : abilityData?.Weapon);
 		ItemEntityWeapon itemEntityWeapon3 = ((itemEntityWeapon != null && (!OnlyMeleeWeapon || itemEntityWeapon.Blueprint.IsMelee)) ? itemEntityWeapon : itemEntityWeapon2);
 		if (UseCurrentWeapon)
 		{
@@ -60,7 +60,7 @@ public class ContextActionPerformAttack : ContextAction
 			{
 				return;
 			}
-			abilityData = new AbilityData(blueprintAbility, maybeCaster)
+			abilityData = new AbilityData(blueprintAbility, caster)
 			{
 				IsCharge = (abilityData?.IsCharge ?? false),
 				OverrideWeapon = itemEntityWeapon3
@@ -70,27 +70,28 @@ public class ContextActionPerformAttack : ContextAction
 		{
 			return;
 		}
-		RulePerformAttack rulePerformAttack = new RulePerformAttack(maybeCaster, entity, abilityData, 0);
-		if (base.AbilityContext != null)
+		RulePerformAttack rulePerformAttack = new RulePerformAttack(caster, entity, abilityData, 0);
+		AbilityExecutionContext abilityContext = base.AbilityContext;
+		if (abilityContext != null)
 		{
-			rulePerformAttack.RollPerformAttackRule.DangerArea.UnionWith(base.AbilityContext.Pattern.Nodes);
+			rulePerformAttack.RollPerformAttackRule.DangerArea.UnionWith(abilityContext.Pattern.Nodes);
 		}
 		Rulebook.Trigger(rulePerformAttack);
 		if (PerformActionsOnHit && rulePerformAttack.ResultIsHit)
 		{
-			using (base.Context.SetScope(entity, null))
+			using (base.Context.PushTarget(entity))
 			{
 				ActionsOnHit.Run();
 			}
 		}
 		RuleDealDamage resultDamageRule = rulePerformAttack.ResultDamageRule;
-		if (resultDamageRule == null || resultDamageRule.ResultValue * 100 < itemEntityWeapon3.Blueprint.DamageMax * PercentOfMaxDamageNeededForActions)
+		if (resultDamageRule == null || resultDamageRule.ResultValue * 100 < itemEntityWeapon3.DamageMax * PercentOfMaxDamageNeededForActions)
 		{
 			return;
 		}
 		if (PerformActionsOnDamagePortion)
 		{
-			using (base.Context.SetScope(entity, null))
+			using (base.Context.PushTarget(entity))
 			{
 				ActionsOnDamagePortion.Run();
 			}
@@ -104,7 +105,7 @@ public class ContextActionPerformAttack : ContextAction
 		{
 			return;
 		}
-		using (base.Context.SetScope(entity, null))
+		using (base.Context.PushTarget(entity))
 		{
 			ActionsOnKill.Run();
 		}

@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
@@ -210,7 +211,7 @@ public class IKController : MonoBehaviour
 			{
 				GrounderIk.enabled = false;
 			}
-			if (!(CharacterUnitEntity.EntityData?.View == null) && !CharacterUnitEntity.EntityData.Body.IsPolymorphed)
+			if (CharacterUnitEntity.EntityData?.View != null && !CharacterUnitEntity.EntityData.Body.IsPolymorphed)
 			{
 				CheckStylesForIk(handsEquipment.ActiveMainHandWeaponType, handsEquipment.ActiveOffHandWeaponType, CharacterUnitEntity);
 			}
@@ -377,12 +378,12 @@ public class IKController : MonoBehaviour
 
 	public void MountedCombatIk(BaseUnitEntity saddledUnit)
 	{
-		if (saddledUnit.View.GetComponent<MountOffsets>() == null)
+		if (saddledUnit.View.AsAbstractUnitEntityView().GetComponent<MountOffsets>() == null)
 		{
 			UberDebug.Log("NOT on mount " + saddledUnit.View.name);
 			return;
 		}
-		mount = saddledUnit.View.GetComponent<MountOffsets>();
+		mount = saddledUnit.View.AsAbstractUnitEntityView().GetComponent<MountOffsets>();
 		Size size = saddledUnit.Size;
 		mount.SetSizeConfig(size);
 		RaceMountOffsetsConfig.MountOffsetData mountOffsets = mount.GetMountOffsets(CharacterUnitEntity.EntityData.Blueprint.Race);

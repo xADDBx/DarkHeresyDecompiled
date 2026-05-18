@@ -14,8 +14,6 @@ public class FocusLayer : MonoBehaviour
 
 		private readonly ICommandProvider m_Provider;
 
-		private readonly IReadOnlyCollection<Command> m_Commands;
-
 		private readonly Command m_Command;
 
 		private bool m_Disposed;
@@ -31,12 +29,6 @@ public class FocusLayer : MonoBehaviour
 			m_Layer.Add(m_Provider = provider);
 		}
 
-		public Disposable(CommandLayer layer, IReadOnlyCollection<Command> commands)
-			: this(layer)
-		{
-			m_Layer.Add(m_Commands = commands);
-		}
-
 		public Disposable(CommandLayer layer, Command command)
 			: this(layer)
 		{
@@ -45,23 +37,22 @@ public class FocusLayer : MonoBehaviour
 
 		public void Dispose()
 		{
-			m_Disposed = true;
-			if (m_Provider != null)
+			if (!m_Disposed)
 			{
-				m_Layer.Remove(m_Provider);
-			}
-			if (m_Commands != null)
-			{
-				m_Layer.Remove(m_Commands);
-			}
-			if (m_Command != null)
-			{
-				m_Layer.Remove(m_Command);
+				m_Disposed = true;
+				if (m_Provider != null)
+				{
+					m_Layer.Remove(m_Provider);
+				}
+				if (m_Command != null)
+				{
+					m_Layer.Remove(m_Command);
+				}
 			}
 		}
 	}
 
-	private readonly CommandLayer m_Layer = new CommandLayer(".\\Library\\PackageCache\\com.owlcat.uikit@31ccf1b446d8\\Runtime\\Owlcat.UI\\Input@2\\DisplayOrder\\FocusLayer.cs", 12);
+	private readonly CommandLayer m_Layer = new CommandLayer(".\\Library\\PackageCache\\com.owlcat.uikit@e0adba617622\\Runtime\\Owlcat.UI\\Input@2\\DisplayOrder\\FocusLayer.cs", 11);
 
 	[SerializeField]
 	private CommandLayerMode m_Mode;
@@ -78,21 +69,36 @@ public class FocusLayer : MonoBehaviour
 		}
 	}
 
-	public IReadOnlyCollection<Command> Commands => m_Layer.Commands;
+	public IReadOnlyList<Command> Commands => m_Layer.Commands;
 
 	public IDisposable Add(Command command)
 	{
 		return new Disposable(m_Layer, command);
 	}
 
-	public IDisposable Add(IReadOnlyCollection<Command> commands)
-	{
-		return new Disposable(m_Layer, commands);
-	}
-
 	public IDisposable Add(ICommandProvider provider)
 	{
 		return new Disposable(m_Layer, provider);
+	}
+
+	public void Remove(Command command)
+	{
+		m_Layer.Remove(command);
+	}
+
+	public void Remove(ICommandProvider provider)
+	{
+		m_Layer.Remove(provider);
+	}
+
+	public bool Contains(Command command)
+	{
+		return m_Layer.Contains(command);
+	}
+
+	public bool Contains(ICommandProvider provider)
+	{
+		return m_Layer.Contains(provider);
 	}
 
 	private void OnValidate()

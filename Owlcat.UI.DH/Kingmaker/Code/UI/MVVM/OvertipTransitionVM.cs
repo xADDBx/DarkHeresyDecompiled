@@ -18,11 +18,11 @@ public class OvertipTransitionVM : BaseOvertipMapObjectVM
 
 	public readonly bool EnableInCombat;
 
+	protected override bool UpdateEnabled => MapObjectEntity?.IsInGame ?? false;
+
 	public ReadOnlyReactiveProperty<string> Title => m_Title;
 
 	public ReadOnlyReactiveProperty<bool> HasCharactersMovingToHere => m_HasCharactersMovingToHere;
-
-	protected override bool UpdateEnabled => MapObjectEntity?.IsInGame ?? false;
 
 	protected override Vector3 GetEntityPosition()
 	{
@@ -45,14 +45,14 @@ public class OvertipTransitionVM : BaseOvertipMapObjectVM
 
 	private bool IsCharactersMove()
 	{
-		if (!UpdateEnabled)
+		if (!UpdateEnabled || MapObjectEntity == null)
 		{
 			return false;
 		}
 		foreach (BaseUnitEntity partyAndPet in Game.Instance.Player.PartyAndPets)
 		{
 			UnitAreaTransition current = partyAndPet.Commands.GetCurrent<UnitAreaTransition>();
-			if (current != null && current.TransitionPart.Owner == MapObjectEntity)
+			if (current != null && current.TransitionPart?.Owner == MapObjectEntity)
 			{
 				return true;
 			}

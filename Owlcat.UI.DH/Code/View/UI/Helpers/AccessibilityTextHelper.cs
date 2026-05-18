@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Settings;
 using TMPro;
 
@@ -16,18 +17,26 @@ public class AccessibilityTextHelper : IDisposable
 
 		public readonly float AutoSizeMax;
 
+		public readonly TextFieldParams TextFieldParams;
+
 		public TextData(TMP_Text text)
 		{
 			TextInitialSize = text.fontSize;
 			AutoSizeMin = text.fontSizeMin;
 			AutoSizeMax = text.fontSizeMax;
+			TextFieldParams = new TextFieldParams(text.fontStyle, text.alignment);
 		}
 
-		public TextData(float textInitialSize, float autoSizeMin, float autoSizeMax)
+		public void ApplyTo(TMP_Text text)
 		{
-			TextInitialSize = textInitialSize;
-			AutoSizeMin = autoSizeMin;
-			AutoSizeMax = autoSizeMax;
+			text.fontSizeMax = AutoSizeMax;
+			text.fontSizeMin = AutoSizeMin;
+			text.fontSize = TextInitialSize;
+			text.fontStyle = TextFieldParams.FontStyle;
+			if (TextFieldParams.TextAlignment.HasValue)
+			{
+				text.alignment = TextFieldParams.TextAlignment.Value;
+			}
 		}
 	}
 
@@ -93,14 +102,18 @@ public class AccessibilityTextHelper : IDisposable
 	public void Dispose()
 	{
 		m_IsUpdated = false;
-		foreach (KeyValuePair<TMP_Text, TextData> item in m_TextToInitSizeMap)
+		foreach (var (text, textData2) in m_TextToInitSizeMap)
 		{
-			item.Deconstruct(out var key, out var value);
-			TMP_Text tMP_Text = key;
-			TextData textData = value;
-			tMP_Text.fontSizeMax = textData.AutoSizeMax;
-			tMP_Text.fontSizeMin = textData.AutoSizeMin;
-			tMP_Text.fontSize = textData.TextInitialSize;
+			textData2.ApplyTo(text);
+		}
+	}
+
+	public static void ApplyParamsTo(TMP_Text text, TextFieldParams @params)
+	{
+		text.fontStyle = @params.FontStyle;
+		if (@params.TextAlignment.HasValue)
+		{
+			text.alignment = @params.TextAlignment.Value;
 		}
 	}
 }

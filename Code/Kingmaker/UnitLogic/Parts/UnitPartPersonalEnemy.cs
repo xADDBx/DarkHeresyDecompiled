@@ -52,7 +52,7 @@ public class UnitPartPersonalEnemy : BaseUnitPart, IAreaHandler, ISubscriber, IH
 
 	protected override void OnPostLoad()
 	{
-		EventBus.Subscribe(this);
+		base.EventBus.Subscribe(this);
 	}
 
 	public void OnAreaBeginUnloading()
@@ -62,7 +62,7 @@ public class UnitPartPersonalEnemy : BaseUnitPart, IAreaHandler, ISubscriber, IH
 	public void OnAreaDidLoad()
 	{
 		Init(Enemy.ToBaseUnitEntity());
-		EventBus.Unsubscribe(this);
+		base.EventBus.Unsubscribe(this);
 	}
 
 	public override Hash128 GetHash128()

@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Area;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Armors;
-using Kingmaker.Code.Gameplay.Parts;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Gameplay.Features.Items.Utility;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -22,19 +24,21 @@ using UnityEngine;
 namespace Kingmaker.Items;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPackable<ItemEntityArmor>
+public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IStatModifier, IHashable, IOwlPackable<ItemEntityArmor>
 {
 	public static readonly StatType[] PenaltyDependentSkills = new StatType[0];
 
-	private Modifier? m_damageReductionModifier;
+	[OwlPackInclude]
+	public ItemPowerLevel PowerLevelOverride;
 
-	private Modifier? m_durabilityModifier;
+	[OwlPackInclude]
+	public ItemFaction FactionOverride;
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "ItemEntityArmor",
 		OldNames = null,
-		Fields = new FieldInfo[28]
+		Fields = new FieldInfo[31]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -62,14 +66,23 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 			new FieldInfo("IsIdentified", typeof(bool)),
 			new FieldInfo("SellTime", typeof(TimeSpan?)),
 			new FieldInfo("OriginArea", typeof(BlueprintArea)),
+			new FieldInfo("SourceContainer", typeof(BlueprintItem)),
 			new FieldInfo("VendorBlueprint", typeof(BlueprintMechanicEntityFact)),
-			new FieldInfo("IsNonRemovable", typeof(bool))
+			new FieldInfo("IsNonRemovable", typeof(bool)),
+			new FieldInfo("PowerLevelOverride", typeof(ItemPowerLevel)),
+			new FieldInfo("FactionOverride", typeof(ItemFaction))
 		}
 	};
+
+	public ItemPowerLevel PowerLevel => base.Blueprint.ResolvePowerLevel(PowerLevelOverride);
 
 	public ItemEntityShield Shield { get; private set; }
 
 	public override bool IsPartOfAnotherItem => Shield != null;
+
+	public int ArmorDamageReduction => base.Blueprint.GetArmorDamageReduction(PowerLevelOverride);
+
+	public int ArmorDurability => base.Blueprint.GetArmorDurability(PowerLevelOverride);
 
 	public ItemEntityArmor([NotNull] BlueprintItemArmor bpItem, ItemEntityShield shield = null)
 		: base(bpItem)
@@ -77,12 +90,8 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 		Shield = shield;
 	}
 
-	protected ItemEntityArmor(JsonConstructorMark _)
+	protected ItemEntityArmor(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntityArmor()
 	{
 	}
 
@@ -118,15 +127,68 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 		base.OnWillUnequip();
 	}
 
+	public override bool CanBeMerged(ItemEntity other)
+	{
+		if (base.CanBeMerged(other) && other is ItemEntityArmor itemEntityArmor && PowerLevelOverride == itemEntityArmor.PowerLevelOverride)
+		{
+			return FactionOverride == itemEntityArmor.FactionOverride;
+		}
+		return false;
+	}
+
+	public StatFactionModifierConfig[] GetFractionModifiers()
+	{
+		ItemFaction itemFaction = ((FactionOverride != 0) ? FactionOverride : base.Blueprint.Faction);
+		if (itemFaction != 0)
+		{
+			return ConfigRoot.Instance.ItemFactionRoot.GetArmorModifiers(itemFaction);
+		}
+		return Array.Empty<StatFactionModifierConfig>();
+	}
+
+	public override StatBaseValue GetStatBaseValue(StatType type)
+	{
+		return type switch
+		{
+			StatType.ItemArmorDamageReduction => ArmorDamageReduction, 
+			StatType.ItemArmorAmount => ArmorDurability, 
+			_ => base.GetStatBaseValue(type), 
+		};
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		StatFactionModifierConfig[] fractionModifiers = GetFractionModifiers();
+		foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
+		{
+			if (statFactionModifierConfig.Stat == stat)
+			{
+				collector.Modifiers.Add(statFactionModifierConfig.ModifierType, statFactionModifierConfig.Value, null, null, BonusType.None, StatType.Unknown, statFactionModifierConfig.Descriptor);
+			}
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		StatFactionModifierConfig[] fractionModifiers = GetFractionModifiers();
+		foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
+		{
+			entries.Add(new AffectedStatEntry(statFactionModifierConfig.Stat));
+		}
+	}
+
 	private void AddArmorModifiers([CanBeNull] MechanicEntity wielder)
 	{
-		if (wielder == null || wielder.UseArmorOfEquipment)
+		if (wielder != null && wielder.UseArmorOfEquipment)
 		{
-			PartArmor partArmor = wielder?.GetOptional<PartArmor>();
-			if (partArmor != null)
+			PartEquipmentStats orCreate = wielder.GetOrCreate<PartEquipmentStats>();
+			orCreate.Register(this, StatType.ItemArmorDamageReduction, ArmorDamageReduction);
+			orCreate.Register(this, StatType.ItemArmorAmount, ArmorDurability);
+			StatFactionModifierConfig[] fractionModifiers = GetFractionModifiers();
+			foreach (StatFactionModifierConfig statFactionModifierConfig in fractionModifiers)
 			{
-				m_damageReductionModifier = partArmor.DamageReduction.AddItemModifier(base.Blueprint.ArmorDamageReduction, this);
-				m_durabilityModifier = partArmor.Durability.AddItemModifier(base.Blueprint.ArmorDurability, this);
+				StatType stat = ((statFactionModifierConfig.Stat == StatType.ItemArmorDefence) ? StatType.Defence : statFactionModifierConfig.Stat);
+				orCreate.Register(this, stat, statFactionModifierConfig.Value, statFactionModifierConfig.ModifierType, statFactionModifierConfig.Descriptor);
 			}
 		}
 	}
@@ -134,16 +196,18 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 	private void RemoveArmorModifiers()
 	{
 		MechanicEntity owner = base.Owner;
-		if (owner == null || owner.UseArmorOfEquipment)
+		if (owner != null && owner.UseArmorOfEquipment)
 		{
-			PartArmor partArmor = base.Owner?.GetOptional<PartArmor>();
-			if (partArmor != null)
-			{
-				partArmor.DamageReduction.RemoveModifier(m_damageReductionModifier);
-				m_damageReductionModifier = null;
-				partArmor.Durability.RemoveModifier(m_durabilityModifier);
-				m_durabilityModifier = null;
-			}
+			base.Owner.GetOptional<PartEquipmentStats>()?.Unregister(this);
+		}
+	}
+
+	public void RefreshArmorModifiers()
+	{
+		if (base.Owner != null)
+		{
+			RemoveArmorModifiers();
+			AddArmorModifiers(base.Owner);
 		}
 	}
 
@@ -157,7 +221,7 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ItemEntityArmor source = new ItemEntityArmor();
+		ItemEntityArmor source = new ItemEntityArmor(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ItemEntityArmor, TPossiblyBase>(ref source);
 	}
 
@@ -206,10 +270,13 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 		formatter.NullableField(24, "SellTime", ref value7, state);
 		BlueprintArea value8 = base.OriginArea;
 		formatter.Field(25, "OriginArea", ref value8, state);
+		formatter.Field(26, "SourceContainer", ref SourceContainer, state);
 		BlueprintMechanicEntityFact value9 = base.VendorBlueprint;
-		formatter.Field(26, "VendorBlueprint", ref value9, state);
+		formatter.Field(27, "VendorBlueprint", ref value9, state);
 		bool value10 = base.IsNonRemovable;
-		formatter.UnmanagedField(27, "IsNonRemovable", ref value10, state);
+		formatter.UnmanagedField(28, "IsNonRemovable", ref value10, state);
+		formatter.EnumField(29, "PowerLevelOverride", ref PowerLevelOverride, state);
+		formatter.EnumField(30, "FactionOverride", ref FactionOverride, state);
 		formatter.EndObject();
 	}
 
@@ -306,10 +373,19 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IHashable, IOwlPa
 				base.OriginArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 26:
-				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				SourceContainer = formatter.ReadPackable<BlueprintItem>(state);
 				break;
 			case 27:
+				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				break;
+			case 28:
 				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 29:
+				PowerLevelOverride = formatter.ReadEnum<ItemPowerLevel>(state);
+				break;
+			case 30:
+				FactionOverride = formatter.ReadEnum<ItemFaction>(state);
 				break;
 			}
 		}

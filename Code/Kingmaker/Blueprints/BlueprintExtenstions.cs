@@ -85,6 +85,12 @@ public static class BlueprintExtenstions
 		}
 	}
 
+	public static bool HasComponent<T>([CanBeNull] this BlueprintScriptableObject blueprint)
+	{
+		T component;
+		return blueprint.TryGetComponent<T>(out component);
+	}
+
 	public static string NameSafe(this ScriptableObject obj)
 	{
 		if (!obj)

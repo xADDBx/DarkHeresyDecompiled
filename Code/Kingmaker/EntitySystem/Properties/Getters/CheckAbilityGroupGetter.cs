@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -26,7 +27,7 @@ public class CheckAbilityGroupGetter : BoolPropertyGetter, PropertyContextAccess
 
 	protected override bool GetBaseValue()
 	{
-		AbilityData ability = this.GetAbility();
+		AbilityData ability = EvalContext.Current.Ability;
 		if (ability != null)
 		{
 			return Groups.FirstOrDefault(ability.Blueprint.AbilityGroups.HasReference) != null;

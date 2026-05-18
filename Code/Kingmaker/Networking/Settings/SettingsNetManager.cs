@@ -16,26 +16,25 @@ public sealed class SettingsNetManager
 
 	public void Init()
 	{
-		SettingsForSync = new ISettingsEntity[31]
+		SettingsForSync = new ISettingsEntity[30]
 		{
 			SettingsRoot.Difficulty.GameDifficulty,
 			SettingsRoot.Difficulty.OnlyOneSave,
 			SettingsRoot.Difficulty.CombatEncountersCapacity,
 			SettingsRoot.Difficulty.RespecAllowed,
-			SettingsRoot.Difficulty.EnemyDodgePercentModifier,
-			SettingsRoot.Difficulty.MinPartyDamage,
-			SettingsRoot.Difficulty.MinPartyDamageFraction,
-			SettingsRoot.Difficulty.NPCAttributesBaseValuePercentModifier,
-			SettingsRoot.Difficulty.HardCrowdControlOnPartyMaxDurationRounds,
+			SettingsRoot.Difficulty.EnemyDurability,
+			SettingsRoot.Difficulty.EnemyDamage,
 			SettingsRoot.Difficulty.SkillCheckModifier,
-			SettingsRoot.Difficulty.EnemyHitPointsPercentModifier,
-			SettingsRoot.Difficulty.AllyResolveModifier,
-			SettingsRoot.Difficulty.PartyDamageDealtAfterArmorReductionPercentModifier,
 			SettingsRoot.Difficulty.EnemyMovementPoints,
-			SettingsRoot.Difficulty.AvoidableDamagePercentModifier,
-			SettingsRoot.Difficulty.MinCRScaling,
-			SettingsRoot.Difficulty.MaxCRScaling,
-			SettingsRoot.Difficulty.NPCDifficulty,
+			SettingsRoot.Difficulty.EnemyDamageModifier,
+			SettingsRoot.Difficulty.PartyDamageModifier,
+			SettingsRoot.Difficulty.EnemyDodgeModifier,
+			SettingsRoot.Difficulty.EnemySkillModifier,
+			SettingsRoot.Difficulty.PartyPositiveMoraleChangeModifier,
+			SettingsRoot.Difficulty.PartyNegativeMoraleChangeModifier,
+			SettingsRoot.Difficulty.EnemyPositiveMoraleChangeModifier,
+			SettingsRoot.Difficulty.EnemyNegativeMoraleChangeModifier,
+			SettingsRoot.Difficulty.AllyResolveModifier,
 			SettingsRoot.Game.Autopause.PauseOnLostFocus,
 			SettingsRoot.Game.Autopause.PauseOnTrapDetected,
 			SettingsRoot.Game.Autopause.PauseOnHiddenObjectDetected,

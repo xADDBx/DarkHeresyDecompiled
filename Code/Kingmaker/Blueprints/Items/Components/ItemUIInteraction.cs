@@ -18,6 +18,9 @@ namespace Kingmaker.Blueprints.Items.Components;
 public sealed class ItemUIInteraction : BlueprintComponent
 {
 	[SerializeField]
+	private ConditionsChecker _conditions = new ConditionsChecker();
+
+	[SerializeField]
 	private ItemUIInteractionType _type;
 
 	[SerializeField]
@@ -25,6 +28,14 @@ public sealed class ItemUIInteraction : BlueprintComponent
 	private ActionList _actions = new ActionList();
 
 	public ItemUIInteractionType Type => _type;
+
+	public bool CanInteract([NotNull] BaseUnitEntity user)
+	{
+		using (ContextData<InteractingUnitData>.Request().Setup(user))
+		{
+			return _conditions.Check();
+		}
+	}
 
 	public void Interact([NotNull] ItemEntity item, [NotNull] BaseUnitEntity user)
 	{

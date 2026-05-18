@@ -1,6 +1,7 @@
 using System.Linq;
 using Kingmaker.Code.Gameplay.Controllers;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Utility.DotNetExtensions;
@@ -14,15 +15,40 @@ public class PowerBalanceAsksController : BaseAsksController, IPowerBalanceHandl
 	{
 		if (state == PowerBalanceState.LosingBattle && combatGroup.IsPlayerEnemy)
 		{
-			SelectRandomAlivePartyMember()?.View.Asks?.WeAreWinning.Schedule();
+			BaseUnitEntity baseUnitEntity = SelectRandomAlivePartyMember();
+			if (baseUnitEntity != null)
+			{
+				using (EvalContext.PushAsksContext(baseUnitEntity, baseUnitEntity))
+				{
+					baseUnitEntity.View.Asks?.WeAreWinning.Schedule();
+				}
+			}
 		}
 		else if (state == PowerBalanceState.LosingBattle && combatGroup.IsPlayerGroup)
 		{
-			SelectRandomAlivePartyMember()?.View.Asks?.WeAreLoosing.Schedule();
+			BaseUnitEntity baseUnitEntity2 = SelectRandomAlivePartyMember();
+			if (baseUnitEntity2 != null)
+			{
+				using (EvalContext.PushAsksContext(baseUnitEntity2, baseUnitEntity2))
+				{
+					baseUnitEntity2.View.Asks?.WeAreLoosing.Schedule();
+				}
+			}
 		}
-		else if (state == PowerBalanceState.Shattered && combatGroup.IsPlayerEnemy)
+		else
 		{
-			combatGroup.Units.Where((BaseUnitEntity u) => u.CanAct).Random(PFStatefulRandom.Bark)?.View.Asks?.WeAreLostByMorale.Schedule();
+			if (state != PowerBalanceState.Shattered || !combatGroup.IsPlayerEnemy)
+			{
+				return;
+			}
+			BaseUnitEntity baseUnitEntity3 = combatGroup.Units.Where((BaseUnitEntity u) => u.CanAct).Random(PFStatefulRandom.Bark);
+			if (baseUnitEntity3 != null)
+			{
+				using (EvalContext.PushAsksContext(baseUnitEntity3, baseUnitEntity3))
+				{
+					baseUnitEntity3.View.Asks?.WeAreLostByMorale.Schedule();
+				}
+			}
 		}
 	}
 

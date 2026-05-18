@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Settings;
 using Kingmaker.UnitLogic.Progression.Features;
@@ -26,9 +28,8 @@ public class NPCDifficultyModifiersManager : UnitDifficultyModifiersManager
 
 	public BlueprintFeature BossFeature => m_BossFeature?.Get();
 
-	protected override void UpdateModifiers()
+	protected override void OnDifficultyOrFactionChanged()
 	{
-		RemoveModifiers();
 		if (base.Owner.Blueprint.Army != null && !base.Owner.Facts.Contains(TroopFeature))
 		{
 			UnitDifficultyType difficultyType = base.Owner.Blueprint.DifficultyType;
@@ -45,14 +46,31 @@ public class NPCDifficultyModifiersManager : UnitDifficultyModifiersManager
 		{
 			base.Owner.AddFact(BossFeature);
 		}
-		if (base.Owner.IsPlayerEnemy)
+	}
+
+	protected override void TryApplyDifficultyModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		if (base.Owner.IsPlayerFaction && stat == StatType.Resolve)
 		{
-			AddPercentModifier(StatType.HitPoints, SettingsRoot.Difficulty.EnemyHitPointsPercentModifier);
-			AddPercentModifier(StatType.ArmorDurability, SettingsRoot.Difficulty.EnemyHitPointsPercentModifier);
+			int num = SettingsRoot.Difficulty.AllyResolveModifier;
+			if (num != 0)
+			{
+				CollectFlatModifier(collector, num);
+			}
 		}
-		if (base.Owner.IsPlayerFaction)
+		if (base.Owner.IsPlayerEnemy && stat == StatType.MovementPoints)
 		{
-			AddModifier(StatType.Resolve, SettingsRoot.Difficulty.AllyResolveModifier);
+			int num2 = SettingsRoot.Difficulty.EnemyMovementPoints;
+			if (num2 != 0)
+			{
+				CollectFlatModifier(collector, num2);
+			}
 		}
+	}
+
+	protected override void CollectDifficultyAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		entries.Add(new AffectedStatEntry(StatType.Resolve));
+		entries.Add(new AffectedStatEntry(StatType.MovementPoints));
 	}
 }

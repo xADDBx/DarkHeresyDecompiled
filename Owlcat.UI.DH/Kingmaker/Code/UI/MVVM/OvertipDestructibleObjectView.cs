@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
+using Kingmaker.Predictions;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UnitLogic.Abilities;
 using R3;
@@ -67,17 +67,7 @@ public abstract class OvertipDestructibleObjectView : BaseOvertipView<OvertipDes
 
 	private IDisposable m_HoverDelay;
 
-	protected override bool CheckVisibility
-	{
-		get
-		{
-			if ((base.ViewModel.MechanicEntityUIState.IsTBM.CurrentValue || base.ViewModel.VisibleInExploration) && base.ViewModel.IsVisibleForPlayer.CurrentValue && !base.ViewModel.MapObjectEntity.Suppressed)
-			{
-				return !base.ViewModel.IsCutscene;
-			}
-			return false;
-		}
-	}
+	protected override bool CheckVisibility => base.ViewModel.IsVisible();
 
 	private bool CheckVisibleTrigger
 	{
@@ -129,7 +119,7 @@ public abstract class OvertipDestructibleObjectView : BaseOvertipView<OvertipDes
 		m_CombatTextBlockPCView.Bind(base.ViewModel.CombatTextBlockVM);
 		m_BarkBlockPCView.Bind(base.ViewModel.BarkBlockVM);
 		base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed.Subscribe(EnableAdditionalRaycasts).AddTo(this);
-		base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer.CombineLatest(base.ViewModel.MechanicEntityUIState.IsCurrentUnitTurn, base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.IsAoETarget, base.ViewModel.CameraDistance, (bool isVisible, bool current, bool hotkeyHighlight, bool hover, bool isAoE, Vector3 distance) => new { isVisible, current, hotkeyHighlight, hover, isAoE, distance }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
+		base.ViewModel.MechanicEntityUIState.IsVisibleForPlayer.CombineLatest(base.ViewModel.MechanicEntityUIState.IsCurrentUnitTurn, base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.IsAoETarget, base.ViewModel.CameraDistance, base.ViewModel.MechanicEntityUIState.AbilityTargetUIData, (bool isVisible, bool current, bool hotkeyHighlight, bool hover, bool isAoE, Vector3 distance, AbilityTargetUIData _) => new { isVisible, current, hotkeyHighlight, hover, isAoE, distance }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(_ =>
 		{
 			UpdateVisibility();
 		})
@@ -151,6 +141,12 @@ public abstract class OvertipDestructibleObjectView : BaseOvertipView<OvertipDes
 
 	protected override void OnUnbind()
 	{
+		m_HealthBlockView.Unbind();
+		m_NameBlockPCView.Unbind();
+		m_HitChanceBlockPCView.Unbind();
+		m_DamageBlockPCView.Unbind();
+		m_CombatTextBlockPCView.Unbind();
+		m_BarkBlockPCView.Unbind();
 		m_FadeAnimator?.Kill();
 		m_FadeAnimator = null;
 		m_ScaleAnimator?.Kill();
@@ -179,43 +175,45 @@ public abstract class OvertipDestructibleObjectView : BaseOvertipView<OvertipDes
 
 	private void UpdateVisibility()
 	{
+		m_Visibility.Value = GetVisibilityState();
+		if (m_Visibility.CurrentValue != 0)
+		{
+			m_CombatTextBlockPCView.UpdateVisualForCommon();
+		}
+	}
+
+	private UnitOvertipVisibility GetVisibilityState()
+	{
 		if (!CheckVisibility)
 		{
-			m_Visibility.Value = UnitOvertipVisibility.Invisible;
-			return;
+			return UnitOvertipVisibility.Invisible;
 		}
-		bool flag = base.ViewModel.CameraDistance.CurrentValue.sqrMagnitude < m_FarDistance;
-		if (base.ViewModel.MechanicEntityUIState.IsDestructibleNotCover.CurrentValue)
+		if (CheckVisibleTrigger)
 		{
-			if (CheckVisibleTrigger)
-			{
-				m_Visibility.Value = (flag ? UnitOvertipVisibility.Full : UnitOvertipVisibility.Near);
-			}
-			else if (base.ViewModel.MechanicEntityUIState.IsAoETarget.CurrentValue)
-			{
-				m_Visibility.Value = UnitOvertipVisibility.NotFull;
-			}
-			else
-			{
-				m_Visibility.Value = ((!flag) ? UnitOvertipVisibility.Far : UnitOvertipVisibility.Near);
-			}
+			return GetVisibilityStateByDistance();
 		}
-		if (base.ViewModel.MechanicEntityUIState.IsCover.CurrentValue)
+		if (base.ViewModel.MechanicEntityUIState.IsTarget.CurrentValue)
 		{
-			if (CheckVisibleTrigger)
+			if (!base.ViewModel.IsPrimaryTarget())
 			{
-				m_Visibility.Value = (flag ? UnitOvertipVisibility.NotFull : UnitOvertipVisibility.Near);
+				return UnitOvertipVisibility.NotFull;
 			}
-			else if (base.ViewModel.MechanicEntityUIState.IsAoETarget.CurrentValue)
-			{
-				m_Visibility.Value = UnitOvertipVisibility.NotFull;
-			}
-			else
-			{
-				m_Visibility.Value = UnitOvertipVisibility.Invisible;
-			}
+			return UnitOvertipVisibility.Full;
 		}
-		m_CombatTextBlockPCView.UpdateVisualForCommon();
+		if (!base.ViewModel.MechanicEntityUIState.IsCover.CurrentValue)
+		{
+			return GetVisibilityStateByDistance();
+		}
+		return UnitOvertipVisibility.Invisible;
+	}
+
+	private UnitOvertipVisibility GetVisibilityStateByDistance()
+	{
+		if (!(base.ViewModel.CameraDistance.CurrentValue.sqrMagnitude < m_FarDistance))
+		{
+			return UnitOvertipVisibility.Near;
+		}
+		return UnitOvertipVisibility.Full;
 	}
 
 	private void DoVisibility(UnitOvertipVisibility unitOvertipVisibility)
@@ -231,7 +229,7 @@ public abstract class OvertipDestructibleObjectView : BaseOvertipView<OvertipDes
 
 	private void TryDestroyViewImplementation()
 	{
-		if ((base.ViewModel != null && base.ViewModel.HasActiveCombatMessage.CurrentValue) || m_CombatTextBlockPCView.HasCombatTextMessages)
+		if (base.ViewModel != null && base.ViewModel.HasActiveCombatMessage.CurrentValue)
 		{
 			DelayedInvoker.InvokeInFrames(TryDestroyViewImplementation, 5);
 			return;

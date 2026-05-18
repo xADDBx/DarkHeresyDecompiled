@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Code.Editor;
@@ -8,6 +9,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Localization;
+using Kingmaker.Localization.Shared;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -18,6 +20,7 @@ using UnityEngine;
 
 namespace Kingmaker.AreaLogic.Etudes;
 
+[Obsolete]
 [TypeId("1db2a7f1e66ae3d47b9e16af07f04a25")]
 public class EtudeBracketOverrideBark : EtudeBracketOverrideInteraction, IBarkSource
 {
@@ -29,7 +32,8 @@ public class EtudeBracketOverrideBark : EtudeBracketOverrideInteraction, IBarkSo
 	[SerializeReference]
 	public AbstractUnitEvaluator Unit;
 
-	public SharedStringAsset WhatToBarkShared;
+	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
+	public LocalizedString WhatToBarkShared;
 
 	public bool ForceVoId;
 
@@ -41,9 +45,9 @@ public class EtudeBracketOverrideBark : EtudeBracketOverrideInteraction, IBarkSo
 	public VoiceOverActAs ActAs;
 
 	[Tooltip("Bark duration depends on text length")]
-	public bool BarkDurationByText;
+	public bool BarkDurationByText = true;
 
-	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { WhatToBarkShared.String };
+	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { WhatToBarkShared };
 
 	public bool IsVoIdForced => ForceVoId;
 
@@ -75,9 +79,9 @@ public class EtudeBracketOverrideBark : EtudeBracketOverrideInteraction, IBarkSo
 
 	public override AbstractUnitCommand.ResultType Interact(BaseUnitEntity user, AbstractUnitEntity target)
 	{
-		float duration = (BarkDurationByText ? UtilityBark.GetBarkDuration(WhatToBarkShared.String) : UtilityBark.DefaultBarkTime);
+		float duration = (BarkDurationByText ? UtilityBark.GetBarkDuration(WhatToBarkShared) : UtilityBark.DefaultBarkTime);
 		string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, target);
-		BarkPlayer.Bark(target, WhatToBarkShared.String, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration, user);
+		BarkPlayer.Bark(target, WhatToBarkShared, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration, user);
 		return AbstractUnitCommand.ResultType.Success;
 	}
 }

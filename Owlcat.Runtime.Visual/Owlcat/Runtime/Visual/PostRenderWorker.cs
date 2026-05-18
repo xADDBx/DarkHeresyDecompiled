@@ -89,7 +89,7 @@ public class PostRenderWorker : IDisposable
 			UploadBatches(context, cmd);
 			m_Streamer.StreamAll(context, m_ResidentTilesLoadRequests);
 			UploadBatches(context, cmd);
-			m_Context.IndirectTextureRenderer.PrepareData(m_Context, default(JobHandle)).Complete();
+			context.IndirectTextureRenderer.PrepareData(context, default(JobHandle)).Complete();
 		}
 	}
 

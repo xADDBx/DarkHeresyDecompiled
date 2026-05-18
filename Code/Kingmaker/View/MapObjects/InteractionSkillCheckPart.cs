@@ -17,8 +17,8 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Persistence;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Interaction;
 using Kingmaker.Localization;
@@ -52,7 +52,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 	[OwlPackInclude]
 	private HashSet<UnitReference> m_PunishedUsers = new HashSet<UnitReference>();
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionSkillCheckPart",
 		OldNames = null,
@@ -136,7 +136,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 			{
 				return null;
 			}
-			return base.Settings.GetDC();
+			return (DCOverride == 0) ? base.Settings.GetDC() : DCOverride;
 		}
 	}
 
@@ -150,9 +150,31 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 
 	public bool ShowInteractFx => false;
 
-	public int? RequiredItemsCount => 0;
+	public int? RequiredItemsCount => RequiresMeltaCharge ? 1 : 0;
 
-	public BlueprintItem RequiredItem => null;
+	public BlueprintItem RequiredItem
+	{
+		get
+		{
+			if (!RequiresMeltaCharge)
+			{
+				return null;
+			}
+			return ConfigRoot.Instance.Consumables.MeltaChargeItem;
+		}
+	}
+
+	private bool RequiresMeltaCharge
+	{
+		get
+		{
+			if (base.Settings.Skill == StatType.SkillDemolition)
+			{
+				return base.Settings.NeedSupply;
+			}
+			return false;
+		}
+	}
 
 	public StatType Skill => GetSkill();
 
@@ -202,7 +224,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 
 	public string GetInteractionName()
 	{
-		return base.Settings.DisplayName?.String.Text ?? LocalizedTexts.Instance.Stats.GetText(GetSkill());
+		return base.Settings.DisplayName?.Text ?? LocalizedTexts.Instance.Stats.GetText(GetSkill());
 	}
 
 	public bool CheckRestriction(BaseUnitEntity user)
@@ -212,7 +234,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 
 	public void ShowSuccessBark(BaseUnitEntity user)
 	{
-		ShowBark(user, base.Settings.ShortDescriptionPassed?.String, user);
+		ShowBark(user, base.Settings.ShortDescriptionPassed, user);
 	}
 
 	public void ShowRestrictionBark(BaseUnitEntity user)
@@ -231,11 +253,6 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 
 	bool IInteractionVariantActor.TryInteract(BaseUnitEntity user)
 	{
-		OnInteract(user);
-		if (!CheckPassed)
-		{
-			return AlreadyUsed;
-		}
 		return true;
 	}
 
@@ -243,6 +260,10 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 	{
 		base.OnDidInteract(user);
 		InteractedUnits.Add(user.FromBaseUnitEntity());
+		if (CheckPassed)
+		{
+			SetUnlocked();
+		}
 		if (!base.Settings.OnlyCheckOnce || !AlreadyUsed)
 		{
 			return;
@@ -284,7 +305,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 					{
 						if (!ExperienceObtained && skill != 0)
 						{
-							Experience.GainForSkillCheck(num, rollUnit);
+							Experience.GainForSkillCheck(base.Settings.Difficulty, num, rollUnit);
 							ExperienceObtained = true;
 						}
 						break;
@@ -296,14 +317,10 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 		}
 		if (flag || base.Settings.TriggerActionsEveryClick)
 		{
-			MapObjectView mapObjectView = base.View.Or(null);
-			if ((object)mapObjectView != null)
+			base.View.FactHolder.Or(null)?.GetFact()?.CallComponents(delegate(ISkillCheckInteractionTrigger t)
 			{
-				mapObjectView.FactHolder.Or(null)?.GetFact()?.CallComponents(delegate(ISkillCheckInteractionTrigger t)
-				{
-					t.OnInteract(user, this, CheckPassed);
-				});
-			}
+				t.OnInteract(user, this, CheckPassed);
+			});
 			ActionsHolder actionsHolder = ((!CheckPassed) ? base.Settings.CheckFailedActions?.Get() : base.Settings.CheckPassedActions?.Get());
 			if (actionsHolder != null)
 			{
@@ -325,10 +342,10 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 		{
 			Game.Instance.Teleport(blueprintAreaEnterPoint, includeFollowers: true);
 		}
-		SharedStringAsset sharedStringAsset = (CheckPassed ? base.Settings.CheckPassedBark : base.Settings.CheckFailBark);
-		if ((bool)sharedStringAsset)
+		LocalizedString localizedString = (CheckPassed ? base.Settings.CheckPassedBark : base.Settings.CheckFailBark);
+		if (localizedString != null && !localizedString.Empty)
 		{
-			ShowBark(base.Settings.ShowOnUser ? ((MechanicEntity)user) : ((MechanicEntity)base.Owner), sharedStringAsset.String, user);
+			ShowBark(base.Settings.ShowOnUser ? ((MechanicEntity)user) : ((MechanicEntity)base.Owner), localizedString, user);
 		}
 		else if (skill == StatType.SkillTechUse)
 		{
@@ -393,13 +410,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 		{
 			return new List<BaseUnitEntity> { user };
 		}
-		List<BaseUnitEntity> list = (from x in Game.Instance.Player.Party.Where(delegate(BaseUnitEntity x)
-			{
-				ModifiableValue statOptional = x.Stats.GetStatOptional(skill);
-				return statOptional != null && statOptional.ModifiedValue >= 0;
-			})
-			orderby x.Stats.GetStatOptional(skill)?.ModifiedValue ?? 0 descending
-			select x).ToList();
+		List<BaseUnitEntity> list = Game.Instance.Player.Party.Where((BaseUnitEntity x) => (int)x.Actor.GetStat(skill, null, default(StatContext), "GetRollUnits") >= 0).OrderByDescending((Func<BaseUnitEntity, int>)((BaseUnitEntity x) => x.Actor.GetStat(skill, null, default(StatContext), "GetRollUnits"))).ToList();
 		if (list.Count != 0)
 		{
 			return list;
@@ -466,8 +477,8 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 			if ((units.Count <= 1 || !item.IsPet) && (!InteractOnlyByNotInteractedUnit || !InteractedUnits.Contains(item.FromBaseUnitEntity())))
 			{
 				StatType skill = GetSkill();
-				int num2 = ((skill == StatType.Unknown) ? 1 : ((int)item.Stats.GetStat(skill)));
-				if (item.CanAct && item.CanMove && (baseUnitEntity == null || num2 > num))
+				int num2 = ((skill == StatType.Unknown) ? 1 : ((int)item.Actor.GetStat(skill, null, default(StatContext), "SelectUnitInternal")));
+				if (CanBeSelected(item) && (baseUnitEntity == null || num2 > num))
 				{
 					baseUnitEntity = item;
 					num = num2;
@@ -569,7 +580,7 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionSkillCheckPart source = new InteractionSkillCheckPart();
 		result = Unsafe.As<InteractionSkillCheckPart, TPossiblyBase>(ref source);

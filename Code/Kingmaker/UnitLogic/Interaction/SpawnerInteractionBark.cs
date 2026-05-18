@@ -5,6 +5,8 @@ using Code.Editor;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Code.Framework.VO;
 using Kingmaker.Code.UI.MVVM;
+using Kingmaker.Designers.EventConditionActionSystem.ContextData;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Localization;
 using Kingmaker.Localization.Shared;
@@ -26,7 +28,7 @@ public class SpawnerInteractionBark : SpawnerInteraction, IBarkSource
 	[SerializeField]
 	[HideIf("UseRandomBark")]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	private SharedStringAsset? Bark;
+	private LocalizedString? Bark;
 
 	public bool ForceVoId;
 
@@ -44,7 +46,7 @@ public class SpawnerInteractionBark : SpawnerInteraction, IBarkSource
 	[SerializeField]
 	[ShowIf("UseRandomBark")]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	private SharedStringAsset[] RandomBarks = new SharedStringAsset[0];
+	private LocalizedString[] RandomBarks = new LocalizedString[0];
 
 	[NonSerialized]
 	private int _lastRandomBarkIdx = -1;
@@ -66,17 +68,17 @@ public class SpawnerInteractionBark : SpawnerInteraction, IBarkSource
 	{
 		if (!UseRandomBark && Bark != null)
 		{
-			yield return Bark.String;
+			yield return Bark;
 			yield break;
 		}
-		SharedStringAsset[] randomBarks = RandomBarks;
-		foreach (SharedStringAsset sharedStringAsset in randomBarks)
+		LocalizedString[] randomBarks = RandomBarks;
+		for (int i = 0; i < randomBarks.Length; i++)
 		{
-			yield return sharedStringAsset.String;
+			yield return randomBarks[i];
 		}
 	}
 
-	private SharedStringAsset? GetBark()
+	private LocalizedString? GetBark()
 	{
 		if (UseRandomBark)
 		{
@@ -92,14 +94,17 @@ public class SpawnerInteractionBark : SpawnerInteraction, IBarkSource
 
 	public override AbstractUnitCommand.ResultType Interact(BaseUnitEntity user, AbstractUnitEntity target)
 	{
-		SharedStringAsset bark = GetBark();
+		LocalizedString bark = GetBark();
 		if (bark == null)
 		{
 			return AbstractUnitCommand.ResultType.Success;
 		}
-		AbstractUnitEntity abstractUnitEntity = (ShowOnUser ? user : target);
-		string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, abstractUnitEntity);
-		BarkPlayer.Bark(abstractUnitEntity, bark.String, (VoiceOverType)ActAs, voGuidBySourceAndTarget, -1f, user);
+		using (ContextData<ActionExecutionContextData>.Request().Setup(ActionExecutionContextData.Type.Interaction))
+		{
+			AbstractUnitEntity abstractUnitEntity = (ShowOnUser ? user : target);
+			string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, abstractUnitEntity);
+			BarkPlayer.Bark(abstractUnitEntity, bark, (VoiceOverType)ActAs, voGuidBySourceAndTarget, -1f, user);
+		}
 		return AbstractUnitCommand.ResultType.Success;
 	}
 }

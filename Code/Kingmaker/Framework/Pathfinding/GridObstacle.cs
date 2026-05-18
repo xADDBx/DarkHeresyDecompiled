@@ -49,6 +49,9 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 	[ShowIf("IsLosBlocker")]
 	public bool _KeepConnections;
 
+	[Tooltip("Hides vertical AR visual like shields.")]
+	public bool _hideArVisual;
+
 	[Tooltip("Высота GridObstacle вдоль оси Υ. Значение умножается на скейл объекта вдоль оси Υ.")]
 	public float _LosBlockerHeight;
 
@@ -78,6 +81,14 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 	private bool _prevZeroHeight;
 
 	private bool _prevKeepConnections;
+
+	private bool _prevHideArVisual;
+
+	private bool _hasOverride;
+
+	private LosCalculations.CoverType _originalType;
+
+	private LosCalculations.CoverType _originalTypeBackward;
 
 	[CanBeNull]
 	private EntityViewBase _entityView;
@@ -163,6 +174,11 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 		{
 			base.name = "GridObstacle";
 		}
+		if (_prevHideArVisual != _hideArVisual)
+		{
+			_prevHideArVisual = _hideArVisual;
+			GridObstacleCache.Instance?.OnObstacleChanged(this);
+		}
 	}
 
 	protected override void Awake()
@@ -179,6 +195,7 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 	private void OnDestroy()
 	{
 		GridObstacle.OnDestroyCallback?.Invoke(this);
+		GridObstacleCache.Instance?.OnObstacleChanged(this);
 	}
 
 	protected override void OnEnable()
@@ -191,7 +208,7 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 				h.HandleGridObstacleEnabled(this, enabled: true);
 			});
 		}
-		GridObstacleCache.Instance?.Invalidate();
+		GridObstacleCache.Instance?.OnObstacleChanged(this);
 	}
 
 	protected override void OnDisable()
@@ -204,7 +221,7 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 				h.HandleGridObstacleEnabled(this, enabled: false);
 			});
 		}
-		GridObstacleCache.Instance?.Invalidate();
+		GridObstacleCache.Instance?.OnObstacleChanged(this);
 	}
 
 	public override void NotifyUpdated(GridLookup<NavmeshClipper>.Root previousState)
@@ -218,11 +235,35 @@ public class GridObstacle : NavmeshClipper, IGridObstacle
 		_prevHeightBackward = HeightBackward;
 		_prevZeroHeight = _ZeroHeight;
 		_prevKeepConnections = _KeepConnections;
-		GridObstacleCache.Instance?.Invalidate();
+		GridObstacleCache.Instance?.OnObstacleChanged(this);
 	}
 
 	public void Init()
 	{
+	}
+
+	public void Override(LosCalculations.CoverType type, LosCalculations.CoverType typeBackward)
+	{
+		if (!_hasOverride)
+		{
+			_originalType = Type;
+			_originalTypeBackward = _TypeBackward;
+			_hasOverride = true;
+		}
+		Type = type;
+		_TypeBackward = typeBackward;
+		GridObstacleCache.Instance?.OnObstacleChanged(this);
+	}
+
+	public void RestoreOriginal()
+	{
+		if (_hasOverride)
+		{
+			Type = _originalType;
+			_TypeBackward = _originalTypeBackward;
+			_hasOverride = false;
+			GridObstacleCache.Instance?.OnObstacleChanged(this);
+		}
 	}
 
 	public override Rect GetBounds(GraphTransform graphTransform, float radiusMargin)

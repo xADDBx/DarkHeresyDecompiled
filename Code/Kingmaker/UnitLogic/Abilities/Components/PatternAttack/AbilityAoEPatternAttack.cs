@@ -318,7 +318,6 @@ public class AbilityAoEPatternAttack : IEnumerator<AbilityDeliveryTarget>, IEnum
 		{
 			TimeSpan seconds = SpawnAreaEffect.DurationValue.Calculate(context).Seconds;
 			AreaEffectsController.CreateSpawner(blueprint, context, target).Duration(seconds).UsePatternFromAbility(SpawnAreaEffect.UseAttackPattern)
-				.GetOrientationFromCaster(SpawnAreaEffect.GetOrientationFromCaster)
 				.Spawn();
 		}
 	}

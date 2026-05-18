@@ -44,6 +44,27 @@ public class MusicStateHandler
 		Report
 	}
 
+	public enum MusicChargenState
+	{
+		None,
+		Declamation
+	}
+
+	public enum MusicChargenPCVoice
+	{
+		None,
+		BeneficentFemale,
+		BeneficentMale,
+		CruelFemale,
+		CruelMale,
+		SlyFemale,
+		SlyMale,
+		ZealousFemale,
+		ZealousMale,
+		PragmaticFemale,
+		PragmaticMale
+	}
+
 	public static readonly string MainMusicEventStart = "Music_Play";
 
 	public static readonly string MainMusicEventStop = "Music_Stop";
@@ -65,6 +86,8 @@ public class MusicStateHandler
 	private bool m_OverrideSettingState;
 
 	private AkStateReference m_OverrideMusicSetting;
+
+	private bool m_AreaTransitionInProgress;
 
 	private CountableFlag m_ActiveBossFight = new CountableFlag();
 
@@ -177,11 +200,6 @@ public class MusicStateHandler
 		}
 	}
 
-	public void OnChargenChange(bool chargen)
-	{
-		SetMusicState((!chargen) ? MusicState.MainMenu : MusicState.Chargen);
-	}
-
 	public void OnMusicStateChange(MusicState state)
 	{
 		if (state != MusicState.DetectiveBoard || (!Game.Instance.Player.IsInCombat && !m_IsStoryMusicState))
@@ -193,6 +211,16 @@ public class MusicStateHandler
 	public void OnDetectiveJournalChange(DetectiveBoardMusicState state)
 	{
 		SetState("MusicDetectiveBoard", state.ToString());
+	}
+
+	public void SetMusicChargenState(MusicChargenState state)
+	{
+		SetState("MusicChargenState", state.ToString());
+	}
+
+	public void SetMusicChargenPCVoice(MusicChargenPCVoice voice)
+	{
+		SetState("MusicChargenPCVoice", voice.ToString());
 	}
 
 	public void SetMusicSettingState(MusicSettingState state)
@@ -311,10 +339,26 @@ public class MusicStateHandler
 		}
 	}
 
+	public void BeginAreaTransition()
+	{
+		m_AreaTransitionInProgress = true;
+		m_OverrideSettingState = false;
+		m_OverrideMusicSetting = null;
+	}
+
+	public void EndAreaTransition()
+	{
+		m_AreaTransitionInProgress = false;
+	}
+
 	public void DisableOverrideAreaSetting()
 	{
 		m_OverrideMusicSetting = null;
 		m_OverrideSettingState = false;
+		if (m_AreaTransitionInProgress)
+		{
+			return;
+		}
 		BlueprintArea currentlyLoadedArea = Game.Instance.CurrentlyLoadedArea;
 		BlueprintAreaPart blueprintAreaPart = SimpleBlueprintExtendAsObject.Or(Game.Instance.CurrentlyLoadedAreaPart, currentlyLoadedArea);
 		if (currentlyLoadedArea != null)

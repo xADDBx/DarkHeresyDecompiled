@@ -4,7 +4,11 @@ namespace Owlcat.UI;
 
 internal struct DisposableBag : IDisposable
 {
-	private Type m_Type;
+	private readonly string m_ClearingAssertMsg;
+
+	private readonly string m_DisposedAssertMsg;
+
+	private readonly string m_ClearRecursiveAssertMsg;
 
 	private IDisposable[] m_Disposables;
 
@@ -14,13 +18,17 @@ internal struct DisposableBag : IDisposable
 
 	private bool m_IsClearing;
 
+	public readonly bool IsDisposed => m_IsDisposed;
+
 	public DisposableBag(Type type, int capacity)
 	{
-		m_Type = type;
 		m_Disposables = ((capacity == 0) ? null : new IDisposable[capacity]);
 		m_Count = 0;
 		m_IsDisposed = false;
 		m_IsClearing = false;
+		m_ClearingAssertMsg = $"Detected Add() while clearing ({type})";
+		m_DisposedAssertMsg = $"Detected Add() into disposed object ({type})";
+		m_ClearRecursiveAssertMsg = $"Detected Clear() recursive call ({type})";
 	}
 
 	public void Add(IDisposable disposable)

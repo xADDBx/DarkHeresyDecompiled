@@ -37,6 +37,8 @@ public class DetectiveReportBaseView : View<DetectiveReportVM>
 
 	protected static readonly int Closed = Animator.StringToHash("Closed");
 
+	public Observable<Unit> StampAnimationFinishedAsObservable => m_PaperReportView.StampAnimationFinishedAsObservable;
+
 	protected override void OnBind()
 	{
 		m_CardView.Bind(base.ViewModel.CaseCardVM);

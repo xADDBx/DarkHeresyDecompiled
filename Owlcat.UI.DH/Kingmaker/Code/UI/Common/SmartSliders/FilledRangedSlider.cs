@@ -1,4 +1,5 @@
 using DG.Tweening;
+using Kingmaker.Utility.Attributes;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -20,6 +21,18 @@ public class FilledRangedSlider : MonoBehaviour
 
 	[SerializeField]
 	private float m_BlinkDuration = 0.4f;
+
+	[SerializeField]
+	private bool m_HasHandle;
+
+	[ShowIf("m_HasHandle")]
+	[SerializeField]
+	private RectTransform m_Handle;
+
+	[SerializeField]
+	private float m_HandleVisibleThreshold;
+
+	private Vector3[] m_FillCorners;
 
 	private bool m_Horizontal;
 
@@ -74,9 +87,38 @@ public class FilledRangedSlider : MonoBehaviour
 		ResetRange();
 	}
 
+	private void UpdateHandle(float start, float end)
+	{
+		if (!m_HasHandle)
+		{
+			return;
+		}
+		float num = Mathf.Abs(end - start);
+		if (!(num > m_HandleVisibleThreshold) || !(Mathf.Abs(1f - num) > float.Epsilon))
+		{
+			m_Handle.gameObject.SetActive(value: false);
+			return;
+		}
+		if (m_FillCorners == null)
+		{
+			m_FillCorners = new Vector3[4];
+		}
+		m_RangedImage.rectTransform.GetWorldCorners(m_FillCorners);
+		Vector3 vector = m_FillCorners[1];
+		float num2 = (m_FillCorners[2].x - vector.x) * start;
+		Vector3 position = m_Handle.position;
+		Vector3 vector2 = default(Vector3);
+		vector2.x = vector.x + num2;
+		vector2.y = position.y;
+		vector2.z = position.z;
+		Vector3 position2 = vector2;
+		m_Handle.position = position2;
+		m_Handle.gameObject.SetActive(value: true);
+	}
+
 	private void ResetRange()
 	{
-		ApplyRange(0.5f, 0.5f);
+		ApplyRange(0f, 0f);
 	}
 
 	private void ApplyRange(float from, float to)
@@ -91,6 +133,7 @@ public class FilledRangedSlider : MonoBehaviour
 		float start = Mathf.Min(from, to);
 		float end = Mathf.Max(from, to);
 		SetShaderRange(start, end);
+		UpdateHandle(start, end);
 	}
 
 	private void SetShaderRange(float start, float end)

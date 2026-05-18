@@ -10,14 +10,14 @@ namespace Kingmaker.Code.Gameplay.Components.SkillCheck;
 [Serializable]
 [ComponentName("SkillCheck/SkillCheckModifierGlobal")]
 [TypeId("1ab4cec70e1f47cbaa48e9efd817ddec")]
-public sealed class SkillCheckModifierGlobal : SkillCheckModifier, IGlobalRulebookHandler<RulePerformSkillCheck>, IRulebookHandler<RulePerformSkillCheck>, ISubscriber, IGlobalRulebookSubscriber
+public sealed class SkillCheckModifierGlobal : SkillCheckModifier, IGlobalRulebookHandler<RuleCalculateSkillCheck>, IRulebookHandler<RuleCalculateSkillCheck>, ISubscriber, IGlobalRulebookSubscriber
 {
-	void IRulebookHandler<RulePerformSkillCheck>.OnEventAboutToTrigger(RulePerformSkillCheck evt)
+	void IRulebookHandler<RuleCalculateSkillCheck>.OnEventAboutToTrigger(RuleCalculateSkillCheck evt)
 	{
 		TryApply(evt);
 	}
 
-	void IRulebookHandler<RulePerformSkillCheck>.OnEventDidTrigger(RulePerformSkillCheck evt)
+	void IRulebookHandler<RuleCalculateSkillCheck>.OnEventDidTrigger(RuleCalculateSkillCheck evt)
 	{
 	}
 }

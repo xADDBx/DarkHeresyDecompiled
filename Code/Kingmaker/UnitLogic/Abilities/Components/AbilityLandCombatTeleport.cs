@@ -171,7 +171,7 @@ public class AbilityLandCombatTeleport : AbilityCustomLogic, IAbilityTargetRestr
 		float appearDuration = (isCaster ? settings.CasterAppearDuration : settings.SideAppearDuration);
 		float disappearDuration = (isCaster ? settings.CasterDisappearDuration : settings.SideDisappearDuration);
 		appearDuration = Math.Max(appearDuration, 0.3f);
-		unit.View.StopMoving();
+		unit.StopMoving();
 		FxHelper.SpawnFxOnEntity(prefab, unit.View);
 		if (disappearDuration > 0.01f)
 		{
@@ -247,9 +247,9 @@ public class AbilityLandCombatTeleport : AbilityCustomLogic, IAbilityTargetRestr
 		}
 		if (LookAtRandomDirection)
 		{
-			return targetPos + Quaternion.AngleAxis(45 * caster.Random.Range(0, 8), Vector3.up) * Vector3.right;
+			return targetPos + Quaternion.AngleAxis((float)(45 * caster.Random.Range(0, 8)), Vector3.up) * Vector3.right;
 		}
-		return targetPos + caster.View.ViewTransform.forward;
+		return targetPos + caster.Forward;
 	}
 
 	private int DistanceToClosestEnemyInCells(GridNodeBase checkNode, IntRect rect, IEnumerable<BaseUnitEntity> enemies)

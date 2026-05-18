@@ -16,8 +16,9 @@ public class WaitFlag : CommandBase
 
 	public BlueprintUnlockableFlag Flag => m_Flag?.Get();
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
+		return CommandResult.Success;
 	}
 
 	public override bool TrySkip(CutscenePlayerData player)
@@ -25,8 +26,19 @@ public class WaitFlag : CommandBase
 		return false;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -34,7 +46,8 @@ public class WaitFlag : CommandBase
 		return Flag.IsUnlocked;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

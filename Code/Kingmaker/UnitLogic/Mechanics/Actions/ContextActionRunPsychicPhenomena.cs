@@ -1,7 +1,6 @@
-using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.AreaLogic;
 using Kingmaker.Controllers;
 using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
-using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
 using Owlcat.Runtime.Core.Utility;
 
@@ -12,8 +11,6 @@ public class ContextActionRunPsychicPhenomena : ContextAction
 {
 	public bool UsePerilsEffect;
 
-	private BlueprintPsykerRoot PsykerRoot => ConfigRoot.Instance.PsykerRoot;
-
 	public override string GetCaption()
 	{
 		return "Run psychic phenomena";
@@ -21,7 +18,14 @@ public class ContextActionRunPsychicPhenomena : ContextAction
 
 	protected override void RunAction()
 	{
-		BlueprintPsykerRoot.PhenomenaData phenomena = (UsePerilsEffect ? PsykerRoot.PerilsOfTheWarp : PsykerRoot.PsychicPhenomena).Random(PFStatefulRandom.Mechanics);
-		PsychicPhenomenaController.TriggerPsychicPhenomenaForced(base.TargetEntity, base.Context, phenomena, UsePerilsEffect);
+		PartVeil partVeil = Game.Instance.LoadedArea?.Veil;
+		if (partVeil != null)
+		{
+			BlueprintPsykerRoot.PhenomenaData phenomenaData = PhenomenaListResolver.SelectWeighted(UsePerilsEffect ? partVeil.GetResolvedPerils() : partVeil.GetResolvedPhenomena(), PFStatefulRandom.Mechanics);
+			if (phenomenaData != null)
+			{
+				PsychicPhenomenaController.TriggerPsychicPhenomenaForced(base.TargetEntity, base.Context, phenomenaData, UsePerilsEffect);
+			}
+		}
 	}
 }

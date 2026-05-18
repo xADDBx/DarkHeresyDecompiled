@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Networking;
 using Kingmaker.Networking.NetGameFsm;
 using Kingmaker.PubSubSystem;
@@ -13,17 +12,11 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class GamepadConnectDisconnectVM : ViewModel
 {
-	private readonly ReactiveCommand<Unit> m_GamepadConnected = new ReactiveCommand<Unit>();
-
-	private readonly ReactiveCommand<Unit> m_GamepadDisconnected = new ReactiveCommand<Unit>();
-
 	private readonly ReactiveCommand<Unit> m_ControllerDeclined = new ReactiveCommand<Unit>();
 
 	private readonly Action<Game.ControllerModeType> m_ChangeControllerModeAction;
 
-	public Observable<Unit> GamepadConnected => m_GamepadConnected;
-
-	public Observable<Unit> GamepadDisconnected => m_GamepadDisconnected;
+	private readonly Game.ControllerModeType m_RequestControllerType;
 
 	private Game.ControllerModeType? ControllerOverride => Game.ControllerOverride;
 
@@ -31,8 +24,11 @@ public class GamepadConnectDisconnectVM : ViewModel
 
 	public Observable<Unit> ControllerDeclined => m_ControllerDeclined;
 
-	public GamepadConnectDisconnectVM(Action<Game.ControllerModeType> changeControllerModeAction)
+	public Game.ControllerModeType RequestControllerType => m_RequestControllerType;
+
+	public GamepadConnectDisconnectVM(Action<Game.ControllerModeType> changeControllerModeAction, Game.ControllerModeType requestType)
 	{
+		m_RequestControllerType = requestType;
 		m_ChangeControllerModeAction = changeControllerModeAction;
 	}
 
@@ -53,7 +49,7 @@ public class GamepadConnectDisconnectVM : ViewModel
 
 	public void SwitchControlMode()
 	{
-		Game.Instance.ControllerMode = ((Game.Instance.ControllerMode != Game.ControllerModeType.Gamepad) ? Game.ControllerModeType.Gamepad : Game.ControllerModeType.Mouse);
+		Game.Instance.ControllerMode = m_RequestControllerType;
 		Game.DontChangeController = true;
 		NetGame.State currentState = PhotonManager.NetGame.CurrentState;
 		Action onComplete = ((currentState == NetGame.State.NetInitialized || currentState == NetGame.State.InLobby) ? ((Action)delegate
@@ -69,10 +65,9 @@ public class GamepadConnectDisconnectVM : ViewModel
 		Game.Instance.RootUIContext.ResetUI(onComplete);
 	}
 
-	public void DeclineController()
+	public void DeclineControllerSwitch()
 	{
-		Game.Instance.ControllerMode = Game.ControllerModeType.Mouse;
 		Game.DontChangeController = true;
-		m_ControllerDeclined.Execute();
+		m_ControllerDeclined.Execute(Unit.Default);
 	}
 }

@@ -16,6 +16,11 @@ public class CommandCustomeCutsceneController : CommandBase
 
 	private bool m_IsVfxComplete;
 
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
 	public override bool IsFinished(CutscenePlayerData player)
 	{
 		return m_IsVfxComplete;
@@ -26,33 +31,32 @@ public class CommandCustomeCutsceneController : CommandBase
 		return $"CutsceneController {CustomeControllerEvaluator}";
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		m_IsVfxComplete = false;
 		if (CustomeControllerEvaluator.TryGetValue(out var value))
 		{
 			value.OnRun(OnComplete);
-			return;
+			return CommandResult.Success;
 		}
-		PFLog.Default.Error("Не удалось найти CutsceneCamera на указанном объекте");
 		m_IsVfxComplete = true;
+		return CommandResult.Fail("Failed to find CutsceneCamera on object");
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		m_IsVfxComplete = true;
 		if (CustomeControllerEvaluator.TryGetValue(out var value))
 		{
 			value.OnStop();
+			return CommandResult.Success;
 		}
-		else
-		{
-			PFLog.Default.Error("Не удалось найти CutsceneCamera на указанном объекте");
-		}
+		return CommandResult.Fail("Failed to find CutsceneCamera on object");
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	private void OnComplete()
@@ -60,7 +64,8 @@ public class CommandCustomeCutsceneController : CommandBase
 		m_IsVfxComplete = true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

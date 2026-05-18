@@ -33,7 +33,7 @@ public class CombatUnitDelayedActionView : View<CombatMechanicEntityVM>
 			return;
 		}
 		m_PortraitWidget.SetPortrait(base.ViewModel.MechanicEntity, !base.ViewModel.UsedSubtypeIcon);
-		m_PortraitWidget.SetVisualLayer(base.ViewModel.IsEnemy.CurrentValue, base.ViewModel.IsPlayerFaction);
+		base.ViewModel.FactionInfo.Subscribe(HandleUnitFactionChanged).AddTo(this);
 		m_SelectionButton.Bind(base.ViewModel);
 		base.ViewModel.ConcentrationVM.Subscribe(m_ActionView.Bind).AddTo(this);
 		SetActive(isActive: true);
@@ -43,5 +43,10 @@ public class CombatUnitDelayedActionView : View<CombatMechanicEntityVM>
 	{
 		m_SelectionButton.Unbind();
 		m_PortraitWidget.ClearPortrait();
+	}
+
+	private void HandleUnitFactionChanged((bool isEnemy, bool isPlayerFaction) data)
+	{
+		m_PortraitWidget.SetVisualLayer(data.isEnemy, data.isPlayerFaction);
 	}
 }

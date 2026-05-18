@@ -12,9 +12,6 @@ public class AnimationClipEvent : ICloneable, IComparable
 	[SerializeField]
 	private bool m_IsLooped;
 
-	[SerializeField]
-	private bool m_IsIstant;
-
 	public float Time
 	{
 		get
@@ -43,17 +40,7 @@ public class AnimationClipEvent : ICloneable, IComparable
 		}
 	}
 
-	public bool IsInstant
-	{
-		get
-		{
-			return m_IsIstant;
-		}
-		set
-		{
-			m_IsIstant = value;
-		}
-	}
+	public object UserData { get; set; }
 
 	public AnimationClipEvent()
 	{
@@ -70,7 +57,7 @@ public class AnimationClipEvent : ICloneable, IComparable
 		m_IsLooped = isLooped;
 	}
 
-	public virtual Action Start(IAnimationManager animationManager)
+	public virtual void Start(IAnimationManager animationManager)
 	{
 		throw new NotImplementedException();
 	}
@@ -78,11 +65,6 @@ public class AnimationClipEvent : ICloneable, IComparable
 	public virtual object Clone()
 	{
 		return new AnimationClipEvent(Time);
-	}
-
-	public virtual bool DoNotStartIfStarted(AnimationClipEvent @event)
-	{
-		return false;
 	}
 
 	public int CompareTo(object @object)
@@ -100,6 +82,6 @@ public class AnimationClipEvent : ICloneable, IComparable
 
 	public override string ToString()
 	{
-		return string.Format("{0}AnimationClipEvent at {1}", (IsInstant && IsLooped) ? "Instant looped " : (IsInstant ? "Instant " : (IsLooped ? "Looped " : "")), Time);
+		return string.Format("{0}AnimationClipEvent at {1}", IsLooped ? "Looped " : "", Time);
 	}
 }

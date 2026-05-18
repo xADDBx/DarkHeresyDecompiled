@@ -1,15 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Code.Visual.Animation;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Framework.Networking.Sync;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Framework.Interaction;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.UnitLogic.Commands;
+using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Parts;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -33,7 +36,7 @@ public class PartDetectiveServoSkull : EntityPart<AbstractUnitEntity>, IHashable
 
 	public IDetectiveServoskullDelegate? Delegate { get; set; }
 
-	public bool IsBusy => base.Owner.GetOptional<InteractionProcessPart>()?.HasActiveInteraction ?? false;
+	public bool IsBusy => base.Owner.HasActiveInteraction();
 
 	public BaseUnitEntity Leader => base.Owner.GetRequired<UnitPartFamiliar>().Leader;
 
@@ -70,17 +73,37 @@ public class PartDetectiveServoSkull : EntityPart<AbstractUnitEntity>, IHashable
 		base.Owner.Sleepless.Release();
 	}
 
-	public async Task Scan(MapObjectEntity? target)
+	public async Task Scan(MapObjectEntity? target, CancellationToken ct = default(CancellationToken))
 	{
 		if (!Enabled)
 		{
 			throw new InvalidOperationException();
 		}
-		if (target != null)
+		if (target == null)
 		{
-			Delegate?.SetScanTargetEntity(target);
-			await MoveToScanPosition(target);
-			await (Delegate?.PlayScanAnimation(target) ?? Task.CompletedTask);
+			return;
+		}
+		Delegate?.SetScanTargetEntity(target);
+		AsyncSimulationScope scope = AsyncSimulationScope.Get();
+		try
+		{
+			_ = 1;
+			try
+			{
+				await MoveToScanPosition(target);
+				ct.ThrowIfCancellationRequested();
+				await (Delegate?.PlayScanAnimation(target) ?? Task.CompletedTask);
+				ct.ThrowIfCancellationRequested();
+			}
+			catch (OperationCanceledException) when (ct.IsCancellationRequested)
+			{
+				base.Owner.Commands.InterruptAllInterruptible();
+				throw;
+			}
+		}
+		finally
+		{
+			await scope.DisposeAsync();
 			Delegate?.SetScanTargetEntity(null);
 		}
 	}
@@ -90,21 +113,46 @@ public class PartDetectiveServoSkull : EntityPart<AbstractUnitEntity>, IHashable
 		Vector3 normalized = (base.Owner.Position - target.Position).normalized;
 		float scanToTargetDistance = ConfigRoot.Instance.DetectiveServoskull.ScanToTargetDistance;
 		Vector3 vector = target.Position + normalized * scanToTargetDistance;
-		ForcedPath path = PathfindingService.Instance.FindPathRT_Blocking(base.Owner.View.MovementAgent, vector, 0.1f);
-		await base.Owner.Commands.Run(new UnitMoveToParams(path, vector, 0.1f)
+		try
 		{
-			MovementType = WalkSpeedType.Run
-		});
-		while (true)
-		{
-			IDetectiveServoskullDelegate? @delegate = Delegate;
-			if (@delegate != null && @delegate.IsVisualSyncedToAgent)
+			ForcedPath path = PathfindingService.Instance.FindPathRT_Blocking(base.Owner.View.MovementAgent, vector, 0.1f);
+			await using (AsyncSimulationScope.Get())
 			{
-				break;
+				UnitCommandHandle unitCommandHandle = base.Owner.Commands.Run(new UnitMoveToParams(path, vector, 0.1f)
+				{
+					MovementType = WalkSpeedType.Run
+				});
+				if (unitCommandHandle != null)
+				{
+					await unitCommandHandle;
+				}
+				while (true)
+				{
+					IDetectiveServoskullDelegate @delegate = Delegate;
+					if (@delegate == null || @delegate.IsVisualSyncedToAgent)
+					{
+						break;
+					}
+					await NextTickAwaiter.New();
+				}
 			}
-			await Task.Delay(100);
+		}
+		catch (Exception ex)
+		{
+			PFLog.Pathfinding.Error("ServoSkull: failed to move to scan position, scanning from current position. " + ex.Message);
 		}
 		base.Owner.TurnTo(target.Position);
+		await using (AsyncSimulationScope.Get())
+		{
+			for (int i = 0; i < 60; i++)
+			{
+				if (Mathf.Abs(Mathf.DeltaAngle(base.Owner.Orientation, base.Owner.DesiredOrientation)) < 5f)
+				{
+					break;
+				}
+				await NextTickAwaiter.New();
+			}
+		}
 	}
 
 	public static PartDetectiveServoSkull? Find()

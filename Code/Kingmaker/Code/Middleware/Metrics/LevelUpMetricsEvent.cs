@@ -4,11 +4,6 @@ public class LevelUpMetricsEvent : MetricsEvent
 {
 	protected override string Name => "level_up";
 
-	public LevelUpMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public LevelUpMetricsEvent SelectionId(string selection)
 	{
 		AddParam("selection", selection);

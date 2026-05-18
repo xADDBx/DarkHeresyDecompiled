@@ -1,4 +1,6 @@
+using System.Linq;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Facades;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -66,9 +68,22 @@ public sealed class ClickUnitHandler : IClickEventHandler
 		}
 		if (componentNonAlloc.EntityData.LifeState.IsDead)
 		{
+			PartUnitInteractions optional2 = componentNonAlloc.EntityData.Parts.GetOptional<PartUnitInteractions>();
 			if (Game.Instance.Player.IsInCombat)
 			{
-				return 0f;
+				if (optional2 == null)
+				{
+					return 0f;
+				}
+				if (!optional2.Interactions.Any((IUnitInteraction i) => i.AllowInCombat && i.AllowWithHelpless))
+				{
+					return 0f;
+				}
+				return 0.9f;
+			}
+			if (optional2 != null && optional2.Interactions.Any((IUnitInteraction i) => i.AllowWithHelpless))
+			{
+				return 0.9f;
 			}
 			if (!componentNonAlloc.EntityData.IsDeadAndHasLoot && (!Game.Instance.Player.UISettings.ShowInspect || Game.Instance.Player.IsInCombat))
 			{
@@ -111,7 +126,11 @@ public sealed class ClickUnitHandler : IClickEventHandler
 			AbstractUnitEntity entityData = targetUnit.EntityData;
 			if (entityData != null && entityData.IsDeadOrUnconscious)
 			{
-				Game.Instance.Controllers.ClickEventsController.GetHandler<ClickGroundHandler>().OnClick(gameObject, worldPosition, button, simulate, muteEvents);
+				PartUnitInteractions optional = targetUnit.EntityData.Parts.GetOptional<PartUnitInteractions>();
+				if (optional == null || !optional.Interactions.Any((IUnitInteraction i) => i.AllowInCombat && i.AllowWithHelpless))
+				{
+					Game.Instance.Controllers.ClickEventsController.GetHandler<ClickGroundHandler>().OnClick(gameObject, worldPosition, button, simulate, muteEvents);
+				}
 			}
 		}
 		if (PhotonManager.Ping.CheckPingCoop(delegate
@@ -151,7 +170,7 @@ public sealed class ClickUnitHandler : IClickEventHandler
 		}
 		if (!selectedUnit.IsInCombat && targetUnit.EntityData.IsDeadAndHasLoot)
 		{
-			Vector3 targetPosition = ((targetUnit is UnitEntityView unitEntityView && unitEntityView.EntityData.Inventory.IsLootDropped) ? targetUnit.Data.Position : targetUnit.ViewTransform.position);
+			Vector3 targetPosition = ((targetUnit is UnitEntityView unitEntityView && unitEntityView.EntityData.Inventory.IsLootDropped) ? targetUnit.Data.Position : targetUnit.transform.position);
 			PathfindingService.Instance.FindPathRT(selectedUnit.MovementAgent, targetPosition, targetUnit.MovementAgent.Corpulence * 2f, delegate(ForcedPath path)
 			{
 				if (path.error)
@@ -223,6 +242,15 @@ public sealed class ClickUnitHandler : IClickEventHandler
 		}
 	}
 
+	public static void HandleUnitClickWithSelectedAbility(MechanicEntity mechanicEntity)
+	{
+		ClickWithSelectedAbilityHandler selectedAbilityHandler = Game.Instance.Controllers.SelectedAbilityHandler;
+		if (mechanicEntity is BaseUnitEntity baseUnitEntity && !(selectedAbilityHandler?.Ability == null))
+		{
+			selectedAbilityHandler.OnClick(baseUnitEntity.View.gameObject, baseUnitEntity.View.transform.position, -1);
+		}
+	}
+
 	private static void RunMoveCommandTB(BaseUnitEntity unit, MoveCommandSettings settings)
 	{
 		if (Game.Instance.Controllers.TurnController.TurnBasedModeActive && unit == Game.Instance.Controllers.TurnController.CurrentUnit)
@@ -255,7 +283,7 @@ public sealed class ClickUnitHandler : IClickEventHandler
 				}
 			}
 		}
-		PathfindingService.Instance.FindPathRT(selectedUnit.MovementAgent, targetUnit.ViewTransform.position, interaction.Distance, delegate(ForcedPath path)
+		PathfindingService.Instance.FindPathRT(selectedUnit.MovementAgent, targetUnit.ViewPosition, interaction.Distance, delegate(ForcedPath path)
 		{
 			if (path.error)
 			{
@@ -267,9 +295,9 @@ public sealed class ClickUnitHandler : IClickEventHandler
 			}
 			else
 			{
-				if (path.vectorPath.Count > 2 || (path.vectorPath[1] - path.vectorPath[0]).sqrMagnitude > 1f || (path.vectorPath[0] - targetUnit.ViewTransform.position).magnitude > (float)interaction.Distance - 1f)
+				if (path.vectorPath.Count > 2 || (path.vectorPath[1] - path.vectorPath[0]).sqrMagnitude > 1f || (path.vectorPath[0] - targetUnit.ViewPosition).magnitude > (float)interaction.Distance - 1f)
 				{
-					UnitMoveToParams cmdParams = new UnitMoveToParams(path, targetUnit.ViewTransform.position, interaction.Distance)
+					UnitMoveToParams cmdParams = new UnitMoveToParams(path, targetUnit.ViewPosition, interaction.Distance)
 					{
 						IsSynchronized = true
 					};
@@ -285,16 +313,35 @@ public sealed class ClickUnitHandler : IClickEventHandler
 
 	private static void InteractInCombat(IUnitInteraction interaction, BaseUnitEntity selectedUnit, AbstractUnitEntity targetUnit)
 	{
-		if (selectedUnit.DistanceToInCells(targetUnit) > 1)
+		if (!CanInteract(interaction, selectedUnit, targetUnit, out var warning))
 		{
 			EventBus.RaiseEvent(delegate(ICursorNotificationUIHandler h)
 			{
-				h.HandleNotification(ConfigRoot.Instance.LocalizedTexts.Reasons.TargetTooFar, WarningNotificationFormat.Attention);
+				h.HandleNotification(warning, WarningNotificationFormat.Attention);
 			});
 		}
 		else
 		{
 			selectedUnit.Commands.Run(new UnitInteractWithUnitParams(targetUnit));
 		}
+	}
+
+	private static bool CanInteract(IUnitInteraction interaction, BaseUnitEntity selectedUnit, AbstractUnitEntity targetUnit, out string warningMessage)
+	{
+		warningMessage = null;
+		ReasonStrings reasons = ConfigRoot.Instance.LocalizedTexts.Reasons;
+		if (Game.Instance.Controllers.TurnController.IsPreparationTurn)
+		{
+			warningMessage = reasons.UnavailableGeneric;
+		}
+		if (selectedUnit.DistanceToInCells(targetUnit) > 1)
+		{
+			warningMessage = reasons.TargetTooFar;
+		}
+		if (selectedUnit.CombatState.ActionPoints < interaction.ActionCost)
+		{
+			warningMessage = reasons.NotEnoughActionPoints;
+		}
+		return warningMessage == null;
 	}
 }

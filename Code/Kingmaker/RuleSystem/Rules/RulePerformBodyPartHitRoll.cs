@@ -1,11 +1,13 @@
 using JetBrains.Annotations;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "attacker", Target = "defender")]
 public class RulePerformBodyPartHitRoll : RulebookEvent
 {
 	public RuleRollD100 ResultD100 { get; private set; }

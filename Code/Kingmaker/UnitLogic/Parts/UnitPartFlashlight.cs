@@ -55,7 +55,7 @@ public class UnitPartFlashlight : BaseUnitPart, IHashable, IOwlPackable<UnitPart
 	protected override void OnViewDidAttach()
 	{
 		base.OnViewDidAttach();
-		Gender gender = base.Owner.Blueprint.Gender;
+		Gender gender = base.Owner.Gender;
 		Race race = base.Owner.Blueprint.Race?.RaceId ?? Race.Human;
 		if (base.Owner.View.CharacterAvatar != null)
 		{
@@ -65,7 +65,7 @@ public class UnitPartFlashlight : BaseUnitPart, IHashable, IOwlPackable<UnitPart
 
 	protected override void OnViewWillDetach()
 	{
-		Gender gender = base.Owner.Blueprint.Gender;
+		Gender gender = base.Owner.Gender;
 		Race race = base.Owner.Blueprint.Race?.RaceId ?? Race.Human;
 		if (base.Owner.View.CharacterAvatar != null)
 		{

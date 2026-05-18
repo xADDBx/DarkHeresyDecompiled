@@ -12,7 +12,6 @@ using Kingmaker.View.Mechanics.Entities;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -42,26 +41,24 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 
 	[Header("Hints")]
 	[SerializeField]
-	private ConsoleHint m_DPadSurfaceHint;
+	private HintView m_DPadSurfaceHint;
 
 	[SerializeField]
-	private ConsoleHint m_DPadCombatHint;
+	private HintView m_DPadCombatHint;
 
 	[SerializeField]
-	private ConsoleHint m_DPadInternalHint;
+	private HintView m_DPadInternalHint;
 
 	[SerializeField]
-	private ConsoleHint m_ConfirmHint;
+	private HintView m_ConfirmHint;
 
 	[SerializeField]
-	private ConsoleHint m_InfoHint;
+	private HintView m_InfoHint;
 
 	[SerializeField]
-	private ConsoleHint m_AbilitiesHint;
+	private HintView m_AbilitiesHint;
 
 	private IDisposable m_Disposable;
-
-	private InputLayer m_InputLayer;
 
 	private readonly ReactiveProperty<bool> m_IsActive = new ReactiveProperty<bool>();
 
@@ -99,7 +96,7 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(base.ViewModel.Consumables.UnitChanged, delegate
 		{
-			OnDeclineClicked(default(InputActionEventData));
+			OnDeclineClicked();
 			m_VerticalCarousel.SetSlots(base.ViewModel.Consumables.Slots);
 		}).AddTo(this);
 		base.ViewModel.QuickAccessSlot.Subscribe(OnQuickAccessSlotChanged).AddTo(this);
@@ -114,30 +111,12 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 
 	protected override void OnUnbind()
 	{
-		m_InputLayer = null;
 		m_CanActivateSubscription?.Dispose();
 		m_Disposable?.Dispose();
 	}
 
 	private void CreateInput()
 	{
-		m_InputLayer = new InputLayer
-		{
-			ContextName = "SurfaceActionBarPartQuickAccessConsoleView"
-		};
-		m_DPadInternalHint.BindCustomAction(new List<int> { 6, 7, 4, 5 }, m_InputLayer).AddTo(this);
-		m_InputLayer.AddButton(OnUpClicked, 6, m_VerticalCarousel.HasSlots).AddTo(this);
-		m_InputLayer.AddButton(OnDownClicked, 7, m_VerticalCarousel.HasSlots).AddTo(this);
-		m_InputLayer.AddButton(OnLeftClicked, 4, m_HorizontalCarousel.HasSlots).AddTo(this);
-		m_InputLayer.AddButton(OnRightClicked, 5, m_HorizontalCarousel.HasSlots).AddTo(this);
-		m_InputLayer.AddAxis2D(OnLeftStickMoved, 0, 1, repeat: false).AddTo(this);
-		m_InputLayer.AddAxis2D(OnRightStickMoved, 2, 3, repeat: false).AddTo(this);
-		m_InfoHint.Bind(m_InputLayer.AddButton(ToggleTooltip, 19, m_HasSlot, InputActionEventType.ButtonJustReleased)).AddTo(this);
-		m_InputLayer.AddButton(OnDeclineClicked, 9).AddTo(this);
-		m_ConfirmHint.Bind(m_InputLayer.AddButton(OnConfirmClicked, 8, m_CanActivate)).AddTo(this);
-		m_InputLayer.AddButton(CheckPingCoop, 8, m_CanActivate.Not().ToReadOnlyReactiveProperty(initialValue: false)).AddTo(this);
-		m_AbilitiesHint.Bind(m_InputLayer.AddButton(OnAbilitiesActivate, 11)).AddTo(this);
-		m_WeaponsConsoleView.AddInput(m_InputLayer);
 	}
 
 	private void Activate(bool active)
@@ -145,16 +124,14 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		if (active)
 		{
 			m_MoveAnimator.AppearAnimation();
-			UISounds.Instance.Sounds.ActionBar.DPadShow.Play();
+			CombatSounds.Instance.ActionBar.DPadShow.Play();
 			Game.Instance.Controllers.ClickEventsController.ClearPointerMode();
-			GamePad.Instance.PushLayer(m_InputLayer);
-			Game.Instance.CursorController.SetActive(active: true);
+			Game.Instance.CursorController.SetActive(value: true);
 		}
 		else
 		{
 			m_MoveAnimator.DisappearAnimation();
-			UISounds.Instance.Sounds.ActionBar.DPadHide.Play();
-			GamePad.Instance.PopLayer(m_InputLayer);
+			CombatSounds.Instance.ActionBar.DPadHide.Play();
 		}
 	}
 
@@ -187,23 +164,11 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		}
 	}
 
-	private void ToggleTooltip(InputActionEventData data)
+	public void AddInput()
 	{
-		m_ShowTooltip = !RootUIContext.Instance.TooltipIsShown;
-		OnQuickAccessSlotChanged(base.ViewModel.QuickAccessSlot.CurrentValue);
 	}
 
-	public void AddInput(InputLayer inputLayer, ReadOnlyReactiveProperty<bool> enable, bool inCombat)
-	{
-		(inCombat ? m_DPadCombatHint : m_DPadSurfaceHint).BindCustomAction(new List<int> { 6, 7, 4, 5 }, inputLayer).AddTo(this);
-		inputLayer.AddButton(OnUpClicked, 6, enable).AddTo(this);
-		inputLayer.AddButton(OnDownClicked, 7, enable, InputActionEventType.ButtonJustReleased).AddTo(this);
-		inputLayer.AddButton(OnLeftClicked, 4, enable).AddTo(this);
-		inputLayer.AddButton(OnRightClicked, 5, enable).AddTo(this);
-		m_WeaponsConsoleView.AddInput(inputLayer);
-	}
-
-	private void OnUpClicked(InputActionEventData data)
+	private void OnUpClicked()
 	{
 		if (!m_IsActive.Value)
 		{
@@ -214,7 +179,7 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		m_VerticalCarousel.ClickNext();
 	}
 
-	private void OnDownClicked(InputActionEventData data)
+	private void OnDownClicked()
 	{
 		if (!m_IsActive.Value)
 		{
@@ -225,7 +190,7 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		m_VerticalCarousel.ClickPrevious();
 	}
 
-	private void OnLeftClicked(InputActionEventData data)
+	private void OnLeftClicked()
 	{
 		if (!m_IsActive.Value)
 		{
@@ -236,7 +201,7 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		m_HorizontalCarousel.ClickPrevious();
 	}
 
-	private void OnRightClicked(InputActionEventData data)
+	private void OnRightClicked()
 	{
 		if (!m_IsActive.Value)
 		{
@@ -247,23 +212,13 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		m_HorizontalCarousel.ClickNext();
 	}
 
-	private void OnLeftStickMoved(InputActionEventData data, Vector2 vector)
+	private void OnConfirmClicked()
 	{
-		SurfaceMainInputLayer.MoveCursor(vector);
-	}
-
-	private void OnRightStickMoved(InputActionEventData data, Vector2 vector)
-	{
-		SurfaceMainInputLayer.MoveRotateCamera(vector);
-	}
-
-	private void OnConfirmClicked(InputActionEventData data)
-	{
-		UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+		ButtonsSounds.Instance.Default.Click.Play();
 		base.ViewModel.QuickAccessSlot.CurrentValue.OnMainClick();
 	}
 
-	private void CheckPingCoop(InputActionEventData data)
+	private void CheckPingCoop()
 	{
 		if (m_CanActivate.Value)
 		{
@@ -279,22 +234,22 @@ public class ActionBarPartQuickAccessConsoleView : View<ActionBarVM>, IUnitDirec
 		});
 	}
 
-	private void OnDeclineClicked(InputActionEventData data)
+	private void OnDeclineClicked()
 	{
 		m_IsActive.Value = false;
 		m_IsActive.Value = false;
 		m_IsActive.Value = false;
 	}
 
-	private void OnAbilitiesActivate(InputActionEventData data)
+	private void OnAbilitiesActivate()
 	{
-		OnDeclineClicked(data);
+		OnDeclineClicked();
 		m_AbilitiesConsoleView.Activate();
 	}
 
 	public void HandleHoverChange(AbstractUnitEntityView unitEntityView, bool isHover, bool isDirect)
 	{
-		if ((bool)SettingsRoot.Game.TurnBased.AutoSelectWeaponAbility && (Game.Instance.Player.IsInCombat || GamePad.Instance.CursorEnabled) && !m_HorizontalCarousel.IsActive.CurrentValue && !m_VerticalCarousel.IsActive.CurrentValue && !RootUIContext.Instance.IsInitiativeTrackerActive)
+		if ((bool)SettingsRoot.Game.TurnBased.AutoSelectWeaponAbility && Game.Instance.Player.IsInCombat && !m_HorizontalCarousel.IsActive.CurrentValue && !m_VerticalCarousel.IsActive.CurrentValue && !RootUIContext.Instance.IsInitiativeTrackerActive)
 		{
 			if (!isHover)
 			{

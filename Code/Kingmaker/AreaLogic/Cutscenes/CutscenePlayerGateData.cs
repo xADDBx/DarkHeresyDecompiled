@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -144,7 +143,6 @@ public class CutscenePlayerGateData : IOwlPackable, IOwlPackable<CutscenePlayerG
 	{
 		if (m_IsActivated && !m_IsCompleted)
 		{
-			PFLog.Cutscene.Warning(m_Player.Cutscene.Name + ": Gate reset while some tracks are still active");
 			foreach (CutscenePlayerTrackData track in m_Tracks)
 			{
 				track.ForceStop(shouldSignal: false, releaseControlledUnit: true);
@@ -158,7 +156,7 @@ public class CutscenePlayerGateData : IOwlPackable, IOwlPackable<CutscenePlayerG
 		m_IsCancelled = false;
 		foreach (CutscenePlayerTrackData track2 in m_Tracks)
 		{
-			track2.ForceStop(shouldSignal: false, releaseControlledUnit: true);
+			track2.Reset();
 		}
 	}
 
@@ -242,22 +240,12 @@ public class CutscenePlayerGateData : IOwlPackable, IOwlPackable<CutscenePlayerG
 			return;
 		}
 		bool flag = !m_IsEndless;
-		for (int i = 0; i < m_Tracks.Count; i++)
+		foreach (CutscenePlayerTrackData track in m_Tracks)
 		{
-			CutscenePlayerTrackData cutscenePlayerTrackData = m_Tracks[i];
-			try
+			track.Tick(skipping);
+			if (!track.Track.IsContinuous)
 			{
-				cutscenePlayerTrackData.Tick(skipping);
-				if (!cutscenePlayerTrackData.Track.IsContinuous)
-				{
-					flag &= cutscenePlayerTrackData.IsCompleted;
-				}
-			}
-			catch (Exception e)
-			{
-				m_Tracks.RemoveAt(i);
-				i--;
-				m_Player.HandleException(e, cutscenePlayerTrackData, null);
+				flag &= track.IsCompleted;
 			}
 		}
 		if (flag && !m_IsNonContinuousPartCompleted)
@@ -355,7 +343,7 @@ public class CutscenePlayerGateData : IOwlPackable, IOwlPackable<CutscenePlayerG
 			CutsceneTrack track = (cutsceneGate.Tracks.IsValidIndex(track2.TrackIndex) ? cutsceneGate.Tracks[track2.TrackIndex] : null);
 			flag &= track2.TryRestoreOnPostLoad(track, player);
 		}
-		m_IsEndless = Gate.Tracks.All((CutsceneTrack t) => t.IsContinuous && t.EndGateIds.Count == 0);
+		m_IsEndless = Gate.Tracks.Count > 0 && Gate.Tracks.All((CutsceneTrack t) => t.IsContinuous && t.EndGateIds.Count == 0);
 		return flag;
 	}
 

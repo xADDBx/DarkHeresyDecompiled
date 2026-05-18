@@ -13,10 +13,6 @@ public class SoundController : OverridableControllerBase<SoundComponent, SoundOv
 {
 	private const float kDiffThreshold = 0.5f;
 
-	private const string kRtpcGlobalEffectGain = "rtpc_GlobalEffect_Gain";
-
-	private const string kRtpcGlobalEffect = "rtpc_GlobalEffect";
-
 	private AudioObject m_AudioObject;
 
 	private uint m_PlayingId;
@@ -24,6 +20,14 @@ public class SoundController : OverridableControllerBase<SoundComponent, SoundOv
 	private float m_LastGainRTPCValue;
 
 	private float m_LastGlobalEffectRTPCValue;
+
+	private float m_LastGlobalRTPCValue;
+
+	private string m_RtpcGain;
+
+	private string m_RtpcEffect;
+
+	private string m_RtpcGlobal;
 
 	public SoundController(SoundComponent component)
 		: base(component)
@@ -34,6 +38,18 @@ public class SoundController : OverridableControllerBase<SoundComponent, SoundOv
 	public override void Initialize(GlobalEffectContext context)
 	{
 		base.Initialize(context);
+		if (!string.IsNullOrEmpty(base.Component.EffectRtpcName))
+		{
+			m_RtpcGain = "rtpc_GlobalEffect_" + base.Component.EffectRtpcName + "_Gain";
+			m_RtpcEffect = "rtpc_GlobalEffect_" + base.Component.EffectRtpcName;
+			m_RtpcGlobal = "rtpc_GlobalEffect_" + base.Component.EffectRtpcName + "_Global";
+		}
+		else
+		{
+			m_RtpcGain = "rtpc_GlobalEffect_Gain";
+			m_RtpcEffect = "rtpc_GlobalEffect";
+			m_RtpcGlobal = null;
+		}
 		GameObject gameObject = new GameObject("AudioObject_" + base.Component.SoundEventName);
 		gameObject.transform.parent = context.GlobalEffect.transform;
 		gameObject.transform.localPosition = Vector3.zero;
@@ -78,19 +94,23 @@ public class SoundController : OverridableControllerBase<SoundComponent, SoundOv
 				return;
 			}
 			SoundParameter soundParameter = base.VolumeOverride.CompositeParameterList.Value.FirstOrDefault((SoundParameter se) => se.AkSoundEvent == base.Component.SoundEventName);
-			if (soundParameter != null)
+			if (soundParameter == null)
 			{
-				if (Mathf.Abs(m_LastGainRTPCValue - soundParameter.GlobalEffectGainRTPC.value) > 0.5f)
+				return;
+			}
+			if (Mathf.Abs(m_LastGainRTPCValue - soundParameter.GlobalEffectGainRTPC.value) > 0.5f)
+			{
+				m_LastGainRTPCValue = soundParameter.GlobalEffectGainRTPC.value;
+				AkUnitySoundEngine.SetRTPCValue(m_RtpcGain, soundParameter.GlobalEffectGainRTPC.value, m_AudioObject.gameObject);
+			}
+			if (Mathf.Abs(m_LastGlobalEffectRTPCValue - soundParameter.GlobalEffectRTPC.value) > 0.5f)
+			{
+				m_LastGlobalEffectRTPCValue = soundParameter.GlobalEffectRTPC.value;
+				AkUnitySoundEngine.SetRTPCValue(m_RtpcEffect, soundParameter.GlobalEffectRTPC.value, m_AudioObject.gameObject);
+				if (m_RtpcGlobal != null)
 				{
-					m_LastGainRTPCValue = soundParameter.GlobalEffectGainRTPC.value;
-					AkUnitySoundEngine.SetRTPCValue("rtpc_GlobalEffect_Gain", soundParameter.GlobalEffectGainRTPC.value, m_AudioObject.gameObject);
-					UnityEngine.Debug.Log(string.Format("{0}: {1}", "rtpc_GlobalEffect_Gain", m_LastGainRTPCValue));
-				}
-				if (Mathf.Abs(m_LastGlobalEffectRTPCValue - soundParameter.GlobalEffectRTPC.value) > 0.5f)
-				{
-					m_LastGlobalEffectRTPCValue = soundParameter.GlobalEffectRTPC.value;
-					AkUnitySoundEngine.SetRTPCValue("rtpc_GlobalEffect", soundParameter.GlobalEffectRTPC.value, m_AudioObject.gameObject);
-					UnityEngine.Debug.Log($"rtpc_GlobalEffect: {m_LastGlobalEffectRTPCValue}");
+					m_LastGlobalRTPCValue = soundParameter.GlobalEffectRTPC.value;
+					AkUnitySoundEngine.SetRTPCValue(m_RtpcGlobal, soundParameter.GlobalEffectRTPC.value);
 				}
 			}
 		}

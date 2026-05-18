@@ -136,7 +136,7 @@ public class MainMenuButtonFx : ContextButtonFx
 			s.AppendInterval(effectSettings.FirstDelay);
 			s.AppendCallback(delegate
 			{
-				UISounds.Instance.Sounds.MainMenu.ButtonsFirstLaunchFxAnimation.Play();
+				FullScreenUniqueSounds.Instance.MainMenu.ButtonsFirstLaunchFxAnimation.Play();
 			});
 			s.Append(m_BlinkBackground.DOFade(1f, effectSettings.FadeInTime).SetEase(Ease.Linear));
 			s.Join(m_Label.DOFade(1f, effectSettings.FadeInTime)).SetEase(Ease.Linear);
@@ -181,7 +181,7 @@ public class MainMenuButtonFx : ContextButtonFx
 		{
 			if (FirstLaunchSettings.HasShown)
 			{
-				UISounds.Instance.Sounds.MainMenu.ButtonsFxAnimation.Play();
+				FullScreenUniqueSounds.Instance.MainMenu.ButtonsFxAnimation.Play();
 			}
 		});
 		s.Append(m_BlinkBackground.DOFade(0.5f, 0.1f)).SetEase(Ease.Linear);

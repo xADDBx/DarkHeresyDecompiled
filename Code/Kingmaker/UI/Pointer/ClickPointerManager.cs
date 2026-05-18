@@ -66,7 +66,7 @@ public class ClickPointerManager : MonoBehaviour, IGameModeHandler, ISubscriber,
 				m_UnitMarksList.Add((unit, value));
 			}
 			value.SetVisible(visible: true);
-			value.transform.localPosition = clickEventWorldPosition;
+			value.transform.position = clickEventWorldPosition;
 			if (unit.IsMainCharacter)
 			{
 				value.SetSignalState(SignalIsActive);
@@ -84,7 +84,7 @@ public class ClickPointerManager : MonoBehaviour, IGameModeHandler, ISubscriber,
 				m_PreviewUnitMarks.Add(unit, value);
 			}
 			value.SetVisible(visible: true);
-			value.transform.localPosition = markerPos;
+			value.transform.position = markerPos;
 		}
 	}
 
@@ -143,7 +143,7 @@ public class ClickPointerManager : MonoBehaviour, IGameModeHandler, ISubscriber,
 		float y = Mathf.Atan2(direction.x, direction.z) * 57.29578f;
 		PreviewArrow.transform.eulerAngles = new Vector3(0f, y, 0f);
 		Quaternion quaternion = Quaternion.LookRotation(direction);
-		PreviewArrow.transform.localPosition = worldPosition + quaternion * Vector3.forward;
+		PreviewArrow.transform.position = worldPosition + quaternion * Vector3.forward;
 	}
 
 	public void OnGameModeStart(GameModeType gameMode)
@@ -167,7 +167,7 @@ public class ClickPointerManager : MonoBehaviour, IGameModeHandler, ISubscriber,
 		return false;
 	}
 
-	public void OnViewDetached(IEntityViewBase view)
+	public void OnViewDetached(IEntityView view)
 	{
 		if (EventInvokerExtensions.Entity is BaseUnitEntity baseUnitEntity)
 		{

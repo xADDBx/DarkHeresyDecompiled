@@ -15,7 +15,7 @@ namespace Kingmaker.Designers.EventConditionActionSystem.Evaluators;
 public class ConditionalUnitEvaluator : AbstractUnitEvaluator, IOwlPackable<ConditionalUnitEvaluator>
 {
 	[Serializable]
-	private class ConditionalPair
+	public class ConditionalPair
 	{
 		public ConditionsChecker Condition;
 
@@ -38,6 +38,8 @@ public class ConditionalUnitEvaluator : AbstractUnitEvaluator, IOwlPackable<Cond
 		OldNames = null,
 		Fields = new FieldInfo[0]
 	};
+
+	public ConditionalPair[] Units => m_Units;
 
 	protected override AbstractUnitEntity GetAbstractUnitEntityInternal()
 	{

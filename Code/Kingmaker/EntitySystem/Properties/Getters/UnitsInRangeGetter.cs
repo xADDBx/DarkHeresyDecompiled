@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Kingmaker.Controllers.Optimization;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Pathfinding;
 using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
@@ -40,18 +41,17 @@ public class UnitsInRangeGetter : IntPropertyGetter, PropertyContextAccessor.ICu
 			PFLog.Default.Error(this, "Target is missing");
 			return 0;
 		}
-		MechanicsContext context = this.GetMechanicContext() ?? base.CurrentEntity.MainFact.MaybeContext;
 		int num = m_RangeInCells;
 		if (Value != null)
 		{
-			num += Value.Calculate(context);
+			num += Value.Calculate(EvalContext.Current);
 		}
 		float num2 = ((m_RangeInCells == 1) ? 0.95f : 0f);
 		List<BaseUnitEntity> list = EntityBoundsHelper.FindUnitsInRange(baseUnitEntity.Position, num.Cells().Meters + num2);
 		int num3 = 0;
 		foreach (BaseUnitEntity item in list)
 		{
-			if (item.UniqueId != baseUnitEntity.UniqueId && item.LifeState.IsConscious && IsSuitableCombatGroup(item, baseUnitEntity) && (m_Value.Empty || m_Value.GetBoolValue(base.PropertyContext.WithCurrentEntity(item))))
+			if (item.UniqueId != baseUnitEntity.UniqueId && item.LifeState.IsConscious && IsSuitableCombatGroup(item, baseUnitEntity) && (m_Value.Empty || m_Value.GetBoolValue(item)))
 			{
 				num3++;
 			}

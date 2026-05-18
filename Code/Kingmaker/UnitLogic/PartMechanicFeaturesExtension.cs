@@ -31,7 +31,7 @@ public static class PartMechanicFeaturesExtension
 			MechanicsFeatureType.DisableAttacksOfOpportunity => features.DisableAttacksOfOpportunity, 
 			MechanicsFeatureType.IgnoreThreateningAreaForMovementCostCalculation => features.IgnoreThreateningAreaForMovementCostCalculation, 
 			MechanicsFeatureType.DisablePush => features.DisablePush, 
-			MechanicsFeatureType.DoNotReviveOutOfCombat => features.DoNotReviveOutOfCombat, 
+			MechanicsFeatureType.DoNotHealOutOfCombat => features.DoNotHealOutOfCombat, 
 			MechanicsFeatureType.AutoHit => features.AutoHit, 
 			MechanicsFeatureType.AutoMiss => features.AutoMiss, 
 			MechanicsFeatureType.CanRerollSavingThrow => features.CanRerollSavingThrow, 
@@ -47,8 +47,6 @@ public static class PartMechanicFeaturesExtension
 			MechanicsFeatureType.ImmuneToMovementPointReduction => features.ImmuneToMovementPointReduction, 
 			MechanicsFeatureType.SecondaryCriticalChance => features.SecondaryCriticalChance, 
 			MechanicsFeatureType.OverpenetrationDoesNotDecreaseDamage => features.OverpenetrationDoesNotDecreaseDamage, 
-			MechanicsFeatureType.IsFirstInFight => features.IsFirstInFight, 
-			MechanicsFeatureType.IsLastInFight => features.IsLastInFight, 
 			MechanicsFeatureType.IgnoreMeleeOutnumbering => features.IgnoreMeleeOutnumbering, 
 			MechanicsFeatureType.DoesNotCountTurns => features.DoesNotCountTurns, 
 			MechanicsFeatureType.HasNoAPPenaltyCostForTwoWeaponFighting => features.HasNoAPPenaltyCostForTwoWeaponFighting, 
@@ -97,6 +95,7 @@ public static class PartMechanicFeaturesExtension
 			MechanicsFeatureType.PassThroughSmallUnits => features.PassThroughSmallUnits, 
 			MechanicsFeatureType.CanAoODuringOwnTurn => features.CanAoODuringOwnTurn, 
 			MechanicsFeatureType.IgnoreDefence => features.IgnoreDefence, 
+			MechanicsFeatureType.CantMoveInCombat => features.CantMoveInCombat, 
 			_ => throw new ArgumentOutOfRangeException("type", type, null), 
 		};
 	}

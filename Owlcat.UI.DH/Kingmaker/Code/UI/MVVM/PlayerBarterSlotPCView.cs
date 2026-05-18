@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.GameCommands;
 using R3;
 using R3.Triggers;
 using UnityEngine;
@@ -47,11 +46,11 @@ public class PlayerBarterSlotPCView : InventorySlotView
 
 	protected override void OnClick()
 	{
-		Game.Instance.GameCommandQueue.RemoveFromSellVendor(base.ViewModel.ItemEntity, 1);
+		base.ViewModel.TryMove(1);
 	}
 
 	protected override void OnDoubleClick()
 	{
-		Game.Instance.GameCommandQueue.RemoveFromSellVendor(base.ViewModel.ItemEntity, base.ViewModel.ItemEntity.Count);
+		base.ViewModel.TryMove(base.ViewModel.ItemEntity.Count);
 	}
 }

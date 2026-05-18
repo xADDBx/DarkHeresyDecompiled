@@ -59,4 +59,6 @@ public class UISaveLoadTexts
 	public LocalizedString CannotLoadCurrentIronManSave;
 
 	public LocalizedString CannotLoadIronManSaveInCoop;
+
+	public LocalizedString SaveNameLabel;
 }

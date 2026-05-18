@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Code.UI.MVVM;
+using Code.View.UI.UIUtils;
 using Kingmaker.GameModes;
 using Kingmaker.UI;
 using Kingmaker.View;
@@ -29,7 +29,7 @@ public static class UIUtilityRect
 		return LimitPositionRectInRect(nPos, parent.rect, child.rect.size, child.pivot);
 	}
 
-	public static void SetPopupWindowPosition(RectTransform windowTransform, RectTransform sourceTransform, Vector2 shiftPosition, List<Vector2> priorityPivots = null)
+	public static void SetPopupWindowPosition(RectTransform windowTransform, Transform sourceTransform, Vector2 shiftPosition, List<Vector2> priorityPivots = null)
 	{
 		if (sourceTransform == null)
 		{
@@ -37,14 +37,19 @@ public static class UIUtilityRect
 			return;
 		}
 		List<Vector2> list = new List<Vector2>();
-		TooltipEngine.SetPivots(list, priorityPivots);
+		UIUtilityTooltip.SetPivots(list, priorityPivots);
 		Vector3 vector = UICamera.Instance.WorldToViewportPoint(sourceTransform.position);
+		Vector2 vector2 = Vector2.zero;
 		RectTransform component = windowTransform.parent.gameObject.GetComponent<RectTransform>();
-		vector = new Vector2(vector.x - sourceTransform.rect.width * (sourceTransform.pivot.x - 0.5f) / component.rect.width, vector.y - sourceTransform.rect.height * (sourceTransform.pivot.y - 0.5f) / component.rect.height);
+		Rect rect = component.rect;
+		if (sourceTransform is RectTransform { rect: var rect2, pivot: var pivot } rectTransform)
+		{
+			vector = new Vector2(vector.x - rect2.width * (pivot.x - 0.5f) / rect.width, vector.y - rect2.height * (pivot.y - 0.5f) / rect.height);
+			vector2 = new Vector2(rectTransform.rect.width / 2f + shiftPosition.x, rect2.height / 2f + shiftPosition.y);
+		}
 		Vector2 anchorMax = (windowTransform.anchorMin = vector);
 		windowTransform.anchorMax = anchorMax;
-		Vector2 vector3 = new Vector2(sourceTransform.rect.width / 2f + shiftPosition.x, sourceTransform.rect.height / 2f + shiftPosition.y);
-		Vector2 vector4 = new Vector2(vector3.x / component.rect.width, vector3.y / component.rect.height);
+		Vector2 vector4 = new Vector2(vector2.x / component.rect.width, vector2.y / rect.height);
 		foreach (Vector2 item in list)
 		{
 			Vector2 vector5 = new Vector2(1f - item.x * 2f, 1f - item.y * 2f);

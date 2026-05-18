@@ -1,9 +1,12 @@
 using System;
+using System.Linq;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules;
+using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Owlcat.Runtime.Core.Utility;
 
@@ -19,6 +22,16 @@ public sealed class BuffImmunity : MechanicEntityFactComponentDelegate, IInitiat
 
 	public bool DisableGameLog;
 
+	public bool IsImmune(RuleCalculateCanApplyBuff evt)
+	{
+		return Restrictions.IsPassed(evt.Context, null, null, evt);
+	}
+
+	public bool IsImmune(IEvalContext context)
+	{
+		return Restrictions.IsPassed(context);
+	}
+
 	void IRulebookHandler<RuleCalculateCanApplyBuff>.OnEventAboutToTrigger(RuleCalculateCanApplyBuff evt)
 	{
 		if (Restrictions.IsPassed(evt.Context, null, null, evt))
@@ -30,5 +43,14 @@ public sealed class BuffImmunity : MechanicEntityFactComponentDelegate, IInitiat
 
 	void IRulebookHandler<RuleCalculateCanApplyBuff>.OnEventDidTrigger(RuleCalculateCanApplyBuff evt)
 	{
+	}
+
+	protected override void OnActivateOrPostLoad()
+	{
+		Buff[] array = base.Owner.Buffs.Enumerable.Where((Buff buff) => Restrictions.IsPassed(buff.Context)).ToArray();
+		foreach (Buff fact in array)
+		{
+			base.Owner.Buffs.Remove(fact);
+		}
 	}
 }

@@ -1,3 +1,5 @@
+using UnityEngine.Serialization;
+
 namespace Kingmaker.UnitLogic.Enums;
 
 public enum MechanicsFeatureType
@@ -21,7 +23,8 @@ public enum MechanicsFeatureType
 	RotationForbidden = 16,
 	SuppressedDismember = 17,
 	SuppressedDecomposition = 18,
-	DoNotReviveOutOfCombat = 20,
+	[FormerlySerializedAs("DoNotReviveOutOfCombat")]
+	DoNotHealOutOfCombat = 20,
 	AutoHit = 23,
 	AutoMiss = 24,
 	CanRerollSavingThrow = 27,
@@ -37,7 +40,6 @@ public enum MechanicsFeatureType
 	ImmuneToMovementPointReduction = 37,
 	SecondaryCriticalChance = 38,
 	OverpenetrationDoesNotDecreaseDamage = 39,
-	IsFirstInFight = 41,
 	IgnoreMeleeOutnumbering = 44,
 	DoesNotCountTurns = 45,
 	HasNoAPPenaltyCostForTwoWeaponFighting = 46,
@@ -47,7 +49,6 @@ public enum MechanicsFeatureType
 	PsychicPowersDoNotProvokeAoO = 50,
 	RemoveFromInitiative = 51,
 	BlockOverpenetration = 52,
-	IsLastInFight = 53,
 	CanMoveThroughEnemies = 54,
 	HealInsteadOfDamageForDOTs = 56,
 	CanUseBothDesperateMeasureAndHeroicAct = 58,
@@ -82,5 +83,6 @@ public enum MechanicsFeatureType
 	DoNotUseMorale = 87,
 	PassThroughSmallUnits = 88,
 	CanAoODuringOwnTurn = 89,
-	IgnoreDefence = 90
+	IgnoreDefence = 90,
+	CantMoveInCombat = 91
 }

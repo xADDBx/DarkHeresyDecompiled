@@ -9,7 +9,7 @@ using Kingmaker.Controllers.Projectiles;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Pathfinding;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.Utility;
@@ -143,7 +143,7 @@ public class AbilityCustomTeleport : AbilityCustomLogic, IAbilityTargetRestricti
 		{
 			yield return deliver.Current;
 		}
-		using (context.SetScope(caster.ToITargetWrapper()))
+		using (EvalContext.PushContext(context, caster))
 		{
 			ActionsOnCasterAfter.Run();
 		}
@@ -228,7 +228,7 @@ public class AbilityCustomTeleport : AbilityCustomLogic, IAbilityTargetRestricti
 		float appearDuration = (isCaster ? settings.CasterAppearDuration : settings.SideAppearDuration);
 		float disappearDuration = (isCaster ? settings.CasterDisappearDuration : settings.SideDisappearDuration);
 		appearDuration = Math.Max(appearDuration, 0.3f);
-		unit.View.StopMoving();
+		unit.StopMoving();
 		FxHelper.SpawnFxOnEntity(prefab, unit.View);
 		if (disappearDuration > 0.01f)
 		{
@@ -309,9 +309,9 @@ public class AbilityCustomTeleport : AbilityCustomLogic, IAbilityTargetRestricti
 		}
 		if (LookAtRandomDirection)
 		{
-			return targetPos + Quaternion.AngleAxis(45 * caster.Random.Range(0, 8), Vector3.up) * Vector3.right;
+			return targetPos + Quaternion.AngleAxis((float)(45 * caster.Random.Range(0, 8)), Vector3.up) * Vector3.right;
 		}
-		return targetPos + caster.View.ViewTransform.forward;
+		return targetPos + caster.Forward;
 	}
 
 	private int DistanceToClosestEnemyInCells(GridNodeBase checkNode, IntRect rect, IEnumerable<BaseUnitEntity> enemies)

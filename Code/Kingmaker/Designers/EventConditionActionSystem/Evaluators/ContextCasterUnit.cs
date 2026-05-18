@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
-using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 
@@ -28,7 +27,7 @@ public class ContextCasterUnit : AbstractUnitEvaluator, IOwlPackable<ContextCast
 
 	protected override AbstractUnitEntity GetAbstractUnitEntityInternal()
 	{
-		return SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.MaybeCaster as BaseUnitEntity;
+		return EvalContext.Current.Caster as BaseUnitEntity;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

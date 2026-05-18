@@ -1,3 +1,4 @@
+using System.Linq;
 using Kingmaker;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Items;
@@ -13,16 +14,19 @@ public class SetAbilityFromWeaponNode : BehaviourTreeNode
 
 	private readonly WeaponHandType m_Hand;
 
-	public SetAbilityFromWeaponNode(EntityVariable agent, AbilityVariable variable, WeaponHandType hand)
+	private readonly AbilityType m_AbilityType;
+
+	public SetAbilityFromWeaponNode(EntityVariable agent, AbilityVariable variable, WeaponHandType hand, AbilityType abilityType)
 	{
 		m_Agent = agent;
 		m_Variable = variable;
 		m_Hand = hand;
+		m_AbilityType = abilityType;
 	}
 
 	public override NodeVisitResult ForwardVisit()
 	{
-		m_Variable.Value = GetAbility((BaseUnitEntity)m_Agent.Value, m_Hand);
+		m_Variable.Value = GetAbility((BaseUnitEntity)m_Agent.Value, m_Hand, m_AbilityType);
 		if (!(m_Variable.Value != null))
 		{
 			return NodeVisitResult.Failure;
@@ -30,7 +34,7 @@ public class SetAbilityFromWeaponNode : BehaviourTreeNode
 		return NodeVisitResult.Success;
 	}
 
-	private static AbilityData GetAbility(BaseUnitEntity caster, WeaponHandType hand)
+	private static AbilityData GetAbility(BaseUnitEntity caster, WeaponHandType hand, AbilityType abilityType)
 	{
 		ItemEntityWeapon itemEntityWeapon = hand switch
 		{
@@ -43,6 +47,13 @@ public class SetAbilityFromWeaponNode : BehaviourTreeNode
 			PFLog.AI.Error($"No weapon in {hand}");
 			return null;
 		}
-		return itemEntityWeapon.Abilities[0]?.Data;
+		return abilityType switch
+		{
+			AbilityType.Any => itemEntityWeapon.Abilities[0]?.Data, 
+			AbilityType.Burst => itemEntityWeapon.Abilities.FirstOrDefault((Ability a) => a.Blueprint.IsBurst)?.Data, 
+			AbilityType.AOE => itemEntityWeapon.Abilities.FirstOrDefault((Ability a) => a.Blueprint.IsAoE)?.Data, 
+			AbilityType.SingleShot => itemEntityWeapon.Abilities.FirstOrDefault((Ability a) => !a.Blueprint.IsAoE && !a.Blueprint.IsBurst)?.Data, 
+			_ => null, 
+		};
 	}
 }

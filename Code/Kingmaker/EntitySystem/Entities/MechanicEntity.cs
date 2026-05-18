@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using Code.Framework.Utility.UnityExtensions;
 using JetBrains.Annotations;
-using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Enums.Helper;
 using Kingmaker.Code.Gameplay.Blueprints;
@@ -13,12 +12,13 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.GameModes;
-using Kingmaker.Gameplay.Components;
+using Kingmaker.Gameplay.Parts;
 using Kingmaker.Items;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem.Core;
@@ -31,7 +31,6 @@ using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Groups;
 using Kingmaker.UnitLogic.Interaction;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
@@ -39,10 +38,8 @@ using Kingmaker.UnitLogic.Squads;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
 using Kingmaker.View.Covers;
-using Kingmaker.View.Mechanics;
-using Kingmaker.Visual.Animation.Kingmaker;
+using Kingmaker.Visual.Animation;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using Pathfinding;
 using StateHasher.Core;
@@ -67,6 +64,8 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 	[OwlPackInclude]
 	protected BlueprintMechanicEntityFact m_Blueprint;
 
+	private MechanicActor m_Actor;
+
 	private PartMechanicFeatures m_Features;
 
 	private int m_GraphVersionIndex;
@@ -89,7 +88,7 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 
 	public Initiative Initiative => m_Initiative;
 
-	public new MechanicEntityView View => (MechanicEntityView)base.View;
+	public new IMechanicEntityView View => (IMechanicEntityView)base.View;
 
 	public virtual float Corpulence => 0.3f;
 
@@ -98,12 +97,14 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 	public Vector3 EyePosition => base.Position + LosCalculations.EyeShift;
 
 	[CanBeNull]
-	public virtual UnitMovementAgentBase MaybeMovementAgent => null;
+	public virtual UnitMovementAgent MaybeMovementAgent => null;
 
 	[CanBeNull]
-	public virtual UnitAnimationManager MaybeAnimationManager => null;
+	public virtual AnimationManager MaybeAnimationManager => null;
 
 	public virtual bool IsInLockControlCutscene => false;
+
+	public MechanicActor Actor => m_Actor;
 
 	public PartMechanicFeatures Features => m_Features ?? (m_Features = GetRequired<PartMechanicFeatures>());
 
@@ -184,18 +185,13 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		}
 	}
 
-	public bool CanRotate
+	public virtual bool CanRotate
 	{
 		get
 		{
-			if (!IsProne && !IsHelpless && !Features.RotationForbidden)
+			if (!IsProne && !IsHelpless)
 			{
-				UnitAnimationManager unitAnimationManager = ObjectExtensions.Or(MaybeAnimationManager, null);
-				if ((object)unitAnimationManager == null)
-				{
-					return true;
-				}
-				return !unitAnimationManager.IsPreventingRotation;
+				return !Features.RotationForbidden;
 			}
 			return false;
 		}
@@ -207,7 +203,7 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		{
 			if (!(Game.Instance.CurrentModeType == GameModeType.Cutscene))
 			{
-				if (!IsHelpless && IsAble && !Features.CantMove && !GetOptional<UnitPartForceMove>())
+				if (!IsHelpless && IsAble && !Features.CantMove && (!Features.CantMoveInCombat || !IsInCombat) && !GetOptional<UnitPartForceMove>())
 				{
 					UnitPartEncumbrance optional = GetOptional<UnitPartEncumbrance>();
 					if (optional == null)
@@ -222,20 +218,15 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		}
 	}
 
-	public bool CanAct
+	public virtual bool CanAct
 	{
 		get
 		{
 			if (!(Game.Instance.CurrentModeType == GameModeType.Cutscene))
 			{
-				if (!IsHelpless && IsAble && !Features.CantAct)
+				if (!IsHelpless && IsAble)
 				{
-					UnitAnimationManager unitAnimationManager = ObjectExtensions.Or(MaybeAnimationManager, null);
-					if ((object)unitAnimationManager == null)
-					{
-						return true;
-					}
-					return !unitAnimationManager.IsInExclusiveState;
+					return !Features.CantAct;
 				}
 				return false;
 			}
@@ -243,24 +234,7 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		}
 	}
 
-	public bool CanActInTurnBased
-	{
-		get
-		{
-			UnitAnimationManager maybeAnimationManager = MaybeAnimationManager;
-			bool flag = maybeAnimationManager != null && maybeAnimationManager.IsInExclusiveState;
-			bool flag2 = maybeAnimationManager != null && (maybeAnimationManager.IsProne || maybeAnimationManager.IsStandUp);
-			if (!(Game.Instance.CurrentModeType == GameModeType.Cutscene))
-			{
-				if (!IsHelpless && IsAble && !Features.CantAct && !flag)
-				{
-					return !flag2;
-				}
-				return false;
-			}
-			return true;
-		}
-	}
+	public virtual bool CanActInTurnBased => CanAct;
 
 	public virtual bool CanDodge => false;
 
@@ -294,7 +268,8 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 
 	public virtual bool BlockOccupiedNodes => true;
 
-	public virtual bool IsMechanism => OriginalBlueprint.GetComponent<MechanismComponent>();
+	[Obsolete("Use PartHealth.IsForbidDirectHpDamage / IsCountHpAsArmor / IsCountAsDestructible instead.")]
+	public virtual bool IsMechanism => GetOptional<PartMechanism>() != null;
 
 	public NNInfo CurrentNode
 	{
@@ -346,13 +321,8 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 
 	public virtual bool IsCompanion => false;
 
-	protected MechanicEntity(JsonConstructorMark _)
-		: base(_)
-	{
-	}
-
-	protected MechanicEntity(OwlPackConstructorParameter _)
-		: base(_)
+	protected MechanicEntity(IMechanicEntityConfig config)
+		: this(config.EntityId, config.IsInGameBySettings, config.MechanicFactBlueprint)
 	{
 	}
 
@@ -367,7 +337,8 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		m_Blueprint = (m_OriginalBlueprint = blueprint);
 	}
 
-	protected MechanicEntity()
+	protected MechanicEntity(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
@@ -387,6 +358,7 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		{
 			m_Initiative = new Initiative();
 		}
+		m_Actor = new MechanicActor(this);
 	}
 
 	protected override void OnInitialize()
@@ -528,35 +500,6 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		return 0;
 	}
 
-	[CanBeNull]
-	public T GetStatOptional<T>(StatType type) where T : ModifiableValue
-	{
-		PartStatsContainer optional = GetOptional<PartStatsContainer>();
-		if (optional == null)
-		{
-			return null;
-		}
-		return optional.GetStatOptional<T>(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValue GetStatOptional(StatType type)
-	{
-		return GetStatOptional<ModifiableValue>(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValueAttributeStat GetAttributeOptional(StatType type)
-	{
-		return GetStatOptional<ModifiableValueAttributeStat>(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValueSkill GetSkillOptional(StatType type)
-	{
-		return GetStatOptional<ModifiableValueSkill>(type);
-	}
-
 	public bool IsEnemy(IMechanicEntity entity)
 	{
 		return this.GetCombatGroupOptional()?.IsEnemy((MechanicEntity)entity) ?? false;
@@ -590,7 +533,7 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 	}
 
 	[CanBeNull]
-	public EntityFact AddFact([CanBeNull] BlueprintMechanicEntityFact blueprint, MechanicsContext parentContext = null, BuffDuration? duration = null)
+	public EntityFact AddFact([CanBeNull] BlueprintMechanicEntityFact blueprint, IEvalContext parentContext = null, BuffDuration? duration = null)
 	{
 		if (blueprint == null)
 		{
@@ -608,15 +551,11 @@ public abstract class MechanicEntity : Entity, IEntityPartsManagerDelegate, IIni
 		using PooledStringBuilder pooledStringBuilder = ContextData<PooledStringBuilder>.Request();
 		StringBuilder builder = pooledStringBuilder.Builder;
 		builder.Append(GetType().Name);
-		builder.Append(" [");
+		builder.Append("[");
+		builder.Append(OriginalBlueprint.name);
+		builder.Append(" as ");
 		builder.Append(Blueprint.name);
 		builder.Append("] ");
-		if (View != null)
-		{
-			builder.Append('[');
-			builder.Append(View.name);
-			builder.Append("] ");
-		}
 		builder.Append('#');
 		builder.Append(base.UniqueId);
 		return builder.ToString();
@@ -647,22 +586,18 @@ public abstract class MechanicEntity<TBlueprint> : MechanicEntity, IHashable, IO
 
 	public override Type RequiredBlueprintType => typeof(TBlueprint);
 
-	protected MechanicEntity(JsonConstructorMark _)
-		: base(_)
+	protected MechanicEntity(IMechanicEntityConfig config)
+		: base(config)
+	{
+	}
+
+	protected MechanicEntity(string uniqueId, bool isInGame, [NotNull] TBlueprint blueprint)
+		: base(uniqueId, isInGame, blueprint)
 	{
 	}
 
 	protected MechanicEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected MechanicEntity(string uniqueId, bool isInGame, TBlueprint blueprint)
-		: base(uniqueId, isInGame, blueprint)
-	{
-	}
-
-	protected MechanicEntity()
 	{
 	}
 

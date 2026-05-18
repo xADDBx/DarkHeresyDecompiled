@@ -149,14 +149,7 @@ public class WarhammerPathPlayer : WarhammerPath<WarhammerPathPlayerMetric, Warh
 
 	private float CalculateTotalMetricForGridNode(WarhammerPathPlayerMetric length, GridNodeBase gridNode)
 	{
-		if (ConfigRoot.Instance.CombatRoot.UseManhattanHeuristic)
-		{
-			int num = Math.Abs(gridNode.XCoordinateInGrid - base.TargetNode.XCoordinateInGrid) + Math.Abs(gridNode.ZCoordinateInGrid - base.TargetNode.ZCoordinateInGrid);
-			return length.Length + (float)num * base.Unit.Blueprint.WarhammerMovementApPerCell;
-		}
-		Vector2Int from = new Vector2Int(gridNode.XCoordinateInGrid, gridNode.ZCoordinateInGrid);
-		Vector2Int to = new Vector2Int(base.TargetNode.XCoordinateInGrid, base.TargetNode.ZCoordinateInGrid);
-		return length.Length + (float)WarhammerGeometryUtils.DistanceToInCells(from, default(IntRect), to, default(IntRect)) * base.Unit.Blueprint.WarhammerMovementApPerCell;
+		return length.Length;
 	}
 
 	protected override void OnHeapExhausted()

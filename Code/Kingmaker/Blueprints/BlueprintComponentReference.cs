@@ -1,8 +1,12 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.StateHasher.Hashers;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -12,26 +16,50 @@ namespace Kingmaker.Blueprints;
 
 [HashRoot]
 [OwlPackable(OwlPackableMode.Generate)]
-public readonly struct BlueprintComponentReference : IEquatable<BlueprintComponentReference>, IComparable<BlueprintComponentReference>, IHashable, IOwlPackable, IOwlPackable<BlueprintComponentReference>
+[MemoryPackable(GenerateType.Object)]
+public readonly struct BlueprintComponentReference : IEquatable<BlueprintComponentReference>, IComparable<BlueprintComponentReference>, IMemoryPackable<BlueprintComponentReference>, IMemoryPackFormatterRegister, IHashable, IOwlPackable, IOwlPackable<BlueprintComponentReference>
 {
+	[Preserve]
+	private sealed class BlueprintComponentReferenceFormatter : MemoryPackFormatter<BlueprintComponentReference>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref BlueprintComponentReference value)
+		{
+			BlueprintComponentReference.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref BlueprintComponentReference value)
+		{
+			BlueprintComponentReference.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref BlueprintComponentReference value)
+		{
+			BlueprintComponentReference.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref BlueprintComponentReference value)
+		{
+			BlueprintComponentReference.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly BlueprintScriptableObject Blueprint;
 
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly string ComponentName;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "BlueprintComponentReference",
-		Fields = new FieldInfo[2]
-		{
-			new FieldInfo("Blueprint", typeof(BlueprintScriptableObject)),
-			new FieldInfo("ComponentName", typeof(string))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackConstructor]
 	public BlueprintComponentReference(BlueprintScriptableObject blueprint, string componentName)
 	{
 		Blueprint = blueprint;
@@ -117,6 +145,127 @@ public readonly struct BlueprintComponentReference : IEquatable<BlueprintCompone
 	public override int GetHashCode()
 	{
 		return HashCode.Combine(Blueprint, ComponentName);
+	}
+
+	static BlueprintComponentReference()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "BlueprintComponentReference",
+			Fields = new FieldInfo[2]
+			{
+				new FieldInfo("Blueprint", typeof(BlueprintScriptableObject)),
+				new FieldInfo("ComponentName", typeof(string))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<BlueprintComponentReference>())
+		{
+			MemoryPackFormatterProvider.Register(new BlueprintComponentReferenceFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<BlueprintComponentReference[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<BlueprintComponentReference>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref BlueprintComponentReference value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		writer.WriteObjectHeader(2);
+		writer.WriteValue(in value.Blueprint);
+		writer.WriteString(value.ComponentName);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref BlueprintComponentReference value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = default(BlueprintComponentReference);
+			return;
+		}
+		BlueprintScriptableObject value2;
+		string componentName;
+		if (memberCount == 2)
+		{
+			value2 = reader.ReadValue<BlueprintScriptableObject>();
+			componentName = reader.ReadString();
+		}
+		else
+		{
+			if (memberCount > 2)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(BlueprintComponentReference), 2, memberCount);
+				return;
+			}
+			value2 = null;
+			componentName = null;
+			if (memberCount != 0)
+			{
+				reader.ReadValue(ref value2);
+				if (memberCount != 1)
+				{
+					componentName = reader.ReadString();
+					_ = 2;
+				}
+			}
+		}
+		value = new BlueprintComponentReference(value2, componentName);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref BlueprintComponentReference value)
+	{
+		writer.WriteObjectHeader();
+		writer.WriteProperty("Blueprint");
+		writer.WriteValue(value.Blueprint);
+		writer.WriteProperty("ComponentName");
+		writer.WriteString(value.ComponentName);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref BlueprintComponentReference value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = default(BlueprintComponentReference);
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		BlueprintScriptableObject blueprint = null;
+		string componentName = null;
+		bool[] array = new bool[2];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (!(text == "Blueprint"))
+			{
+				if (text == "ComponentName")
+				{
+					componentName = reader.ReadString();
+					array[1] = true;
+				}
+			}
+			else
+			{
+				blueprint = reader.ReadValue<BlueprintScriptableObject>();
+				array[0] = true;
+			}
+		}
+		value = new BlueprintComponentReference(blueprint, componentName);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public Hash128 GetHash128()

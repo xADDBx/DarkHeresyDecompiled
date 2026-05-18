@@ -234,20 +234,20 @@ public class PantographView : MonoBehaviour, IPantographHandler, ISubscriber, ID
 		{
 			if (!m_SoundIsPlaying)
 			{
-				UISounds.Instance.Sounds.Pantograph.PantographStart.Play();
-				UISounds.Instance.Sounds.Pantograph.PantographLoopStart.Play();
+				SystemSounds.Instance.Pantograph.Start.Play();
+				SystemSounds.Instance.Pantograph.LoopStart.Play();
 				m_SoundIsPlaying = true;
 			}
 		}).OnComplete(delegate
 		{
-			UISounds.Instance.Sounds.Pantograph.PantographStop.Play();
-			UISounds.Instance.Sounds.Pantograph.PantographLoopStop.Play();
+			SystemSounds.Instance.Pantograph.Stop.Play();
+			SystemSounds.Instance.Pantograph.LoopStop.Play();
 			m_SoundIsPlaying = false;
 		})
 			.OnKill(delegate
 			{
-				UISounds.Instance.Sounds.Pantograph.PantographStop.Play();
-				UISounds.Instance.Sounds.Pantograph.PantographLoopStop.Play();
+				SystemSounds.Instance.Pantograph.Stop.Play();
+				SystemSounds.Instance.Pantograph.LoopStop.Play();
 				m_SoundIsPlaying = false;
 			})
 			.SetUpdate(isIndependentUpdate: true);
@@ -270,8 +270,8 @@ public class PantographView : MonoBehaviour, IPantographHandler, ISubscriber, ID
 	{
 		if (m_SoundIsPlaying)
 		{
-			UISounds.Instance.Sounds.Pantograph.PantographStop.Play();
-			UISounds.Instance.Sounds.Pantograph.PantographLoopStop.Play();
+			SystemSounds.Instance.Pantograph.Stop.Play();
+			SystemSounds.Instance.Pantograph.LoopStop.Play();
 			m_SoundIsPlaying = false;
 		}
 		m_TweenerHead.Kill();

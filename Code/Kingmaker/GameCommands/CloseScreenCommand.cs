@@ -1,29 +1,57 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class CloseScreenCommand : GameCommandWithSynchronized, IOwlPackable<CloseScreenCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class CloseScreenCommand : GameCommandWithSynchronized, IMemoryPackable<CloseScreenCommand>, IMemoryPackFormatterRegister, IOwlPackable<CloseScreenCommand>
 {
+	[Preserve]
+	private sealed class CloseScreenCommandFormatter : MemoryPackFormatter<CloseScreenCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CloseScreenCommand value)
+		{
+			CloseScreenCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref CloseScreenCommand value)
+		{
+			CloseScreenCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref CloseScreenCommand value)
+		{
+			CloseScreenCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref CloseScreenCommand value)
+		{
+			CloseScreenCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly byte m_Screen;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "CloseScreenCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_Screen", typeof(byte))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
+	[MemoryPackConstructor]
 	private CloseScreenCommand(byte m_screen)
 	{
 		m_Screen = m_screen;
@@ -45,6 +73,136 @@ public sealed class CloseScreenCommand : GameCommandWithSynchronized, IOwlPackab
 		{
 			h.CloseScreen((IScreenUIHandler.ScreenType)m_Screen);
 		});
+	}
+
+	static CloseScreenCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "CloseScreenCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_Screen", typeof(byte))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<CloseScreenCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new CloseScreenCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<CloseScreenCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<CloseScreenCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CloseScreenCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteUnmanagedWithObjectHeader(1, in value.m_Screen);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref CloseScreenCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		byte value2;
+		if (memberCount == 1)
+		{
+			if (value == null)
+			{
+				reader.ReadUnmanaged<byte>(out value2);
+			}
+			else
+			{
+				value2 = value.m_Screen;
+				reader.ReadUnmanaged<byte>(out value2);
+			}
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(CloseScreenCommand), 1, memberCount);
+				return;
+			}
+			value2 = (byte)((value != null) ? value.m_Screen : 0);
+			if (memberCount != 0)
+			{
+				reader.ReadUnmanaged<byte>(out value2);
+				_ = 1;
+			}
+			_ = value;
+		}
+		value = new CloseScreenCommand(value2);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref CloseScreenCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Screen");
+		writer.WriteUnmanaged(value.m_Screen);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref CloseScreenCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		byte v = (byte)((value != null) ? value.m_Screen : 0);
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_Screen")
+				{
+					reader.ReadUnmanaged<byte>(out v);
+					array[0] = true;
+				}
+			}
+			else if (text == "m_Screen")
+			{
+				reader.ReadUnmanaged<byte>(out v);
+			}
+		}
+		_ = value;
+		value = new CloseScreenCommand(v);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

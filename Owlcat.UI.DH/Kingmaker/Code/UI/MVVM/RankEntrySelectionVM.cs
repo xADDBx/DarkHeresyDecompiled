@@ -461,7 +461,7 @@ public class RankEntrySelectionVM : VirtualListElementVMBase, IRankEntrySelectIt
 			FilteredGroupList.AddRange(filtered);
 			flag = filtered.Any();
 		}
-		m_OnFilterChange?.Execute();
+		m_OnFilterChange?.Execute(Unit.Default);
 		m_HasUnavailableFeatures.Value = flag2;
 	}
 

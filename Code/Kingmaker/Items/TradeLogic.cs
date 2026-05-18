@@ -1,15 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using Code.Framework.Utility.UnityExtensions;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Blueprints.Root.Strings.GameLog;
 using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Gameplay.Features.Reputation;
@@ -17,11 +13,9 @@ using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.Utility.GameConst;
 using R3;
 using UnityEngine;
 
@@ -29,44 +23,6 @@ namespace Kingmaker.Items;
 
 public class TradeLogic : IItemsCollectionHandler, ISubscriber
 {
-	private sealed class UIDealNotification
-	{
-		private readonly StringBuilder _builder = new StringBuilder();
-
-		private int _count;
-
-		private static int MaxCount => UIConsts.ItemsToShowLootNotificationWindow;
-
-		public void Add(ItemEntity item)
-		{
-			_count++;
-			if (_count <= MaxCount)
-			{
-				_builder.AppendLine("<b>" + item.Name + "</b>");
-			}
-		}
-
-		public void Show()
-		{
-			if (_count > MaxCount)
-			{
-				_builder.AppendLine(string.Format(UIStrings.Instance.LootWindow.NotificationMessageForGainLootItem, _count - MaxCount));
-			}
-			if (_builder.ToString().IsNullOrEmpty())
-			{
-				return;
-			}
-			using (GameLogContext.Scope)
-			{
-				GameLogContext.Text = _builder.ToString();
-				EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
-				{
-					h.HandleWarning(GameLogStrings.Instance.ItemGained.Message.Text ?? "", addToLog: false);
-				});
-			}
-		}
-	}
-
 	private MechanicEntity m_VendorEntity;
 
 	private readonly List<ItemEntity> m_cachedItems = new List<ItemEntity>();
@@ -137,11 +93,13 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 		{
 			if (ItemsForBuy.Items.Count > 0 || ItemsForSell.Items.Count > 0)
 			{
-				return Game.Instance.Player.Money + DealPrice >= 0;
+				return IsEnoughMoneyToDeal;
 			}
 			return false;
 		}
 	}
+
+	public bool IsEnoughMoneyToDeal => Game.Instance.Player.Money + DealPrice >= 0;
 
 	public bool IsChanged
 	{
@@ -211,7 +169,7 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 			{
 				item2.Identify();
 			}
-			if (VendorsManager.IsTrash(item2) && item2.Wielder == null)
+			if (VendorsManager.IsTrash(item2) && IsTradable(item2))
 			{
 				m_trashInPlayerStash.Add(item2);
 			}
@@ -235,7 +193,7 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 			m_cachedItems.AddRange(m_trashInPlayerStash);
 			foreach (ItemEntity cachedItem in m_cachedItems)
 			{
-				if (cachedItem.Wielder == null && cachedItem.Count > 0)
+				if (IsTradable(cachedItem))
 				{
 					m_trashForSale.Add(cachedItem);
 					AddForSellInternal(cachedItem, cachedItem.Count);
@@ -254,7 +212,7 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 			m_cachedItems.AddRange(m_trashForSale);
 			foreach (ItemEntity cachedItem2 in m_cachedItems)
 			{
-				if (cachedItem2.Count > 0 && cachedItem2.Wielder == null)
+				if (IsTradable(cachedItem2))
 				{
 					m_trashInPlayerStash.Add(cachedItem2);
 					RemoveFromSaleInternal(cachedItem2, cachedItem2.Count);
@@ -471,7 +429,6 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 			.Send();
 		Game.Instance.Statistic.HandleVendorDeal(vendor, ItemsForBuy);
 		ItemEntity dealItem = null;
-		UIDealNotification uIDealNotification = new UIDealNotification();
 		ItemEntity[] array = ItemsForBuy.ToArray();
 		foreach (ItemEntity itemEntity in array)
 		{
@@ -480,7 +437,6 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 			itemEntity.RemoveVendorSlotData();
 			ItemsForBuy.Transfer(itemEntity, Game.Instance.PartySharedInventory.Collection);
 			dealItem = itemEntity;
-			uIDealNotification.Add(itemEntity);
 		}
 		array = ItemsForSell.ToArray();
 		foreach (ItemEntity itemEntity2 in array)
@@ -507,12 +463,11 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 		{
 			h.HandleBuyItem(dealItem);
 		});
-		uIDealNotification.Show();
 	}
 
 	void IItemsCollectionHandler.HandleItemsAdded(ItemsCollection collection, ItemEntity item, int count)
 	{
-		if (collection != null && VendorsManager.IsTrash(item) && item.Wielder == null)
+		if (collection != null && VendorsManager.IsTrash(item) && IsTradable(item))
 		{
 			if (collection == PlayerStash && item.Count > 0)
 			{
@@ -599,5 +554,14 @@ public class TradeLogic : IItemsCollectionHandler, ISubscriber
 		{
 			h.HandleDealPriceChanged();
 		});
+	}
+
+	private bool IsTradable(ItemEntity item)
+	{
+		if (item.Wielder == null && item.HoldingSlot == null)
+		{
+			return item.Count > 0;
+		}
+		return false;
 	}
 }

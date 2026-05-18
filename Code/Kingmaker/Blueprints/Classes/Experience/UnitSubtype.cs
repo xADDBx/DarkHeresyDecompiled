@@ -1,3 +1,5 @@
+using System;
+
 namespace Kingmaker.Blueprints.Classes.Experience;
 
 public enum UnitSubtype
@@ -8,9 +10,12 @@ public enum UnitSubtype
 	Sniper,
 	Persecutor,
 	Defender,
+	[Obsolete]
 	DualWielder,
+	[Obsolete]
 	Specialist,
 	Psyker,
+	[Obsolete]
 	Navigator,
 	Boss,
 	Default

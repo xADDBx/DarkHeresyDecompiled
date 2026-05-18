@@ -102,18 +102,9 @@ public class SaveSlotGroupVM : VirtualListElementVMBase
 		m_OnAddSave.Execute(slot);
 	}
 
-	public bool TryHandleDeleteSave(SaveSlotVM slot)
+	public void RemoveSlot(SaveSlotVM slot)
 	{
-		if (SaveLoadSlots == null)
-		{
-			return false;
-		}
-		SaveLoadSlots.Remove(slot);
-		if (SaveLoadSlots.Count == 0)
-		{
-			Dispose();
-		}
-		return true;
+		SaveLoadSlots?.Remove(slot);
 	}
 
 	private void SwitchExpand(bool expand)

@@ -72,9 +72,6 @@ public class WaaaghAdditionalCameraData : MonoBehaviour, IAdditionalData
 	private bool m_AllowIndirectRendering = true;
 
 	[SerializeField]
-	private RenderTexture m_TargetDepthTexture;
-
-	[SerializeField]
 	private bool m_AllowRenderScaling;
 
 	[SerializeField]
@@ -207,18 +204,6 @@ public class WaaaghAdditionalCameraData : MonoBehaviour, IAdditionalData
 		}
 	}
 
-	public RenderTexture TargetDepthTexture
-	{
-		get
-		{
-			return m_TargetDepthTexture;
-		}
-		set
-		{
-			m_TargetDepthTexture = value;
-		}
-	}
-
 	public bool AllowRenderScaling
 	{
 		get
@@ -263,7 +248,7 @@ public class WaaaghAdditionalCameraData : MonoBehaviour, IAdditionalData
 		}
 	}
 
-	public ScriptableRenderer ScriptableRenderer
+	public IPipelineRenderer ScriptableRenderer
 	{
 		get
 		{

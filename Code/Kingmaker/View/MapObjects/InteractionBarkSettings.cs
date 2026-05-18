@@ -24,7 +24,7 @@ public class InteractionBarkSettings : InteractionSettings, IBarkSource
 	[SerializeField]
 	[HideIf("UseRandomBark")]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	private SharedStringAsset? Bark;
+	private LocalizedString? Bark;
 
 	public bool ForceVoId;
 
@@ -42,7 +42,7 @@ public class InteractionBarkSettings : InteractionSettings, IBarkSource
 	[SerializeField]
 	[ShowIf("UseRandomBark")]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	private SharedStringAsset[] RandomBarks = new SharedStringAsset[0];
+	private LocalizedString[] RandomBarks = new LocalizedString[0];
 
 	public bool BarkDurationByText = true;
 
@@ -66,6 +66,8 @@ public class InteractionBarkSettings : InteractionSettings, IBarkSource
 	[ShowCreator]
 	public ConditionsReference? Condition;
 
+	public bool UseGlobalCooldown;
+
 	public override bool ShouldShowUseAnimationState => false;
 
 	public override bool ShouldShowDialog => false;
@@ -86,7 +88,7 @@ public class InteractionBarkSettings : InteractionSettings, IBarkSource
 
 	public bool Spammable => IsSpammable;
 
-	public SharedStringAsset? GetBark()
+	public LocalizedString? GetBark()
 	{
 		if (UseRandomBark)
 		{
@@ -104,12 +106,12 @@ public class InteractionBarkSettings : InteractionSettings, IBarkSource
 	{
 		if (Bark != null)
 		{
-			yield return Bark.String;
+			yield return Bark;
 		}
-		SharedStringAsset[] randomBarks = RandomBarks;
-		foreach (SharedStringAsset sharedStringAsset in randomBarks)
+		LocalizedString[] randomBarks = RandomBarks;
+		for (int i = 0; i < randomBarks.Length; i++)
 		{
-			yield return sharedStringAsset.String;
+			yield return randomBarks[i];
 		}
 	}
 }

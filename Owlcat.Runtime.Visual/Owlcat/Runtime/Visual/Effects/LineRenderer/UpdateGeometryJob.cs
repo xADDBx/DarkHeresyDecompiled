@@ -158,8 +158,8 @@ public struct UpdateGeometryJob : IJobParallelFor
 				value2.Uv += lineDescriptor.UvOffset;
 				VerticesLit[num8] = vertexColorUvNormalTangent;
 				VerticesLit[num8 + 1] = value2;
-				value.Encapsulate(vertexColorUvNormalTangent.Pos);
-				value.Encapsulate(value2.Pos);
+				value.Encapsulate((Vector3)vertexColorUvNormalTangent.Pos);
+				value.Encapsulate((Vector3)value2.Pos);
 			}
 			else
 			{
@@ -190,8 +190,8 @@ public struct UpdateGeometryJob : IJobParallelFor
 				value3.Uv += lineDescriptor.UvOffset;
 				VerticesUnlit[num8] = vertexColorUv;
 				VerticesUnlit[num8 + 1] = value3;
-				value.Encapsulate(vertexColorUv.Pos);
-				value.Encapsulate(value3.Pos);
+				value.Encapsulate((Vector3)vertexColorUv.Pos);
+				value.Encapsulate((Vector3)value3.Pos);
 			}
 			if (MeshIndicesIsDirty && j < positionCount - 1)
 			{

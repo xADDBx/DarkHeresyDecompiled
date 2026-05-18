@@ -65,7 +65,7 @@ public class OpenedCaseTransformControlsPCView : OpenedCaseTransformControlsBase
 	private void ResetPositionButtonClick()
 	{
 		ResetPosition();
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Common.ResetZoomAndPositionButton, isButton: true);
+		UISounds.Instance.Play(SystemSounds.Instance.Controls.ResetZoomAndPositionButton, isButton: true);
 	}
 
 	private void ApplyBindAction(Action<string, Action> bindAction)

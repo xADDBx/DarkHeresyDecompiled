@@ -1,11 +1,9 @@
 using System.Collections;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Sound;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -28,22 +26,19 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 	private RectTransform m_Content;
 
 	[SerializeField]
-	private ConsoleHint m_CloseWindowHint;
+	private HintView m_CloseWindowHint;
 
 	[SerializeField]
-	private ConsoleHint m_OptionsCloseHint;
+	private HintView m_OptionsCloseHint;
 
 	[SerializeField]
-	private ConsoleHint m_EnterSmallTutorHintsHint;
+	private HintView m_EnterSmallTutorHintsHint;
 
 	[SerializeField]
 	private RectTransform m_TooltipPlace;
 
 	[SerializeField]
 	private float m_Offset;
-
-	[SerializeField]
-	private FloatConsoleNavigationBehaviour.NavigationParameters m_NavigationParameters;
 
 	private bool m_IsHintsSetup;
 
@@ -60,12 +55,6 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 		m_IsInSmallTutor.Value = false;
 		m_ScrollRect.ScrollToTop();
 		Rebind();
-		m_GlossaryHint.SetActive(state: false);
-		m_CloseGlossaryHint.SetActive(state: false);
-		m_EncyclopediaHint.SetActive(state: false);
-		m_CloseWindowHint.SetActive(state: false);
-		m_EnterSmallTutorHintsHint.SetLabel(UIStrings.Instance.CommonTexts.Expand);
-		m_OptionsCloseHint.SetLabel(UIStrings.Instance.CommonTexts.CloseWindow.Text);
 	}
 
 	protected override void OnUnbind()
@@ -91,7 +80,6 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 		m_IsInSmallTutor.Value = false;
 		CloseGlossary();
 		m_IsHintsSetup = false;
-		DisposeInput();
 		base.ViewModel.ChangeExpandState();
 	}
 
@@ -100,67 +88,11 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 		if (!m_IsHintsSetup)
 		{
 			CloseGlossary();
-			InputLayer inputLayer = new InputLayer
-			{
-				ContextName = "TutorialHintsLayer"
-			};
-			m_Disposable.Clear();
-			m_Disposable.Add(m_EnterSmallTutorHintsHint.Bind(inputLayer.AddButton(delegate
-			{
-				EnterTutorialNavigation();
-			}, 16, m_IsInSmallTutor.Not().ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased)));
-			m_Disposable.Add(m_OptionsCloseHint.Bind(inputLayer.AddButton(delegate
-			{
-				base.ViewModel.Hide();
-			}, 16, m_IsInSmallTutor.Not().ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustLongPressed)));
-			GamePad.Instance.SetOverlayLayer(inputLayer);
 		}
-	}
-
-	private void DisposeInput()
-	{
-		GamePad.Instance.SetOverlayLayer(null);
-		NavigationBehaviour = null;
-		GamePad.Instance.PopLayer(InputLayer);
-		InputLayer = null;
 	}
 
 	private void CreateInput()
 	{
-		NavigationBehaviour = new FloatConsoleNavigationBehaviour(m_NavigationParameters).AddTo(this);
-		GlossaryInputLayer = NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = "SmallTutorGlossary"
-		});
-		InputLayer = new InputLayer
-		{
-			ContextName = "SmallTutorialWindow"
-		};
-		DelayedGlossaryCalculation();
-		m_CloseWindowHint.Bind(InputLayer.AddButton(delegate
-		{
-			base.ViewModel.Hide();
-		}, 9, IsGlossaryMode.Not().And(m_IsInSmallTutor).ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		m_CloseWindowHint.SetLabel(UIStrings.Instance.CommonTexts.CloseWindow.Text);
-		m_ToggleHint.Bind(InputLayer.AddButton(base.SelectDeselectToggle, 10, IsGlossaryMode.Not().And(m_IsInSmallTutor).ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		m_GlossaryHint.Bind(InputLayer.AddButton(delegate
-		{
-			ShowGlossary();
-		}, 11, IsGlossaryMode.Not().And(HasGlossaryPoints).And(m_IsInSmallTutor)
-			.ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		m_GlossaryHint.SetLabel(UIStrings.Instance.Dialog.OpenGlossary);
-		m_CloseGlossaryHint.Bind(GlossaryInputLayer.AddButton(delegate
-		{
-			CloseGlossary();
-		}, 9, IsGlossaryMode)).AddTo(this);
-		m_CloseGlossaryHint.SetLabel(UIStrings.Instance.Dialog.CloseGlossary);
-		m_EncyclopediaHint.Bind(GlossaryInputLayer.AddButton(delegate
-		{
-			GoToEncyclopedia();
-		}, 10, HasGlossaryPoints.And(IsGlossaryMode.And(IsPossibleGoToEncyclopedia)).And(m_IsInSmallTutor).ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		m_EncyclopediaHint.SetLabel(UIStrings.Instance.EncyclopediaTexts.EncyclopediaGlossaryButton);
-		InputLayer.AddAxis(Scroll, 3, IsGlossaryMode.Not().ToReadOnlyReactiveProperty(initialValue: false)).AddTo(this);
-		GamePad.Instance.PushLayer(InputLayer).AddTo(this);
 	}
 
 	protected override void OnFocusLink(string key)
@@ -177,7 +109,7 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 	{
 		if (IsGlossaryMode.Value)
 		{
-			m_FirstGlossaryFocus.ShowTooltip(TooltipHelper.GetLinkTooltipTemplate(LinkKey), new TooltipConfig(InfoCallPCMethod.RightMouseButton, InfoCallConsoleMethod.LongRightStickButton, isGlossary: false, isEncyclopedia: false, m_TooltipPlace), null, NavigationBehaviour);
+			m_FirstGlossaryFocus.ShowTooltip(TooltipHelper.GetLinkTooltipTemplate(LinkKey), new TooltipConfig(InfoCallPCMethod.RightMouseButton, InfoCallConsoleMethod.LongRightStickButton, isGlossary: false, isEncyclopedia: false, m_TooltipPlace));
 		}
 	}
 
@@ -189,7 +121,7 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 	protected override void OnShow()
 	{
 		base.OnShow();
-		UISounds.Instance.Sounds.Tutorial.ShowSmallTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.ShowSmallTutorial.Play();
 		StartCoroutine(SetSizeDelayed());
 	}
 
@@ -198,7 +130,7 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 		base.OnHide();
 		m_IsHintsSetup = false;
 		CloseGlossary();
-		UISounds.Instance.Sounds.Tutorial.HideSmallTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.HideSmallTutorial.Play();
 		base.ViewModel.ChangeExpandState();
 	}
 
@@ -235,15 +167,15 @@ public class TutorialSmallWindowConsoleView : TutorialWindowConsoleView<Tutorial
 		m_ScrollRect.EnsureVisibleVertical(m_FirstGlossaryFocus.transform as RectTransform);
 	}
 
-	public void Scroll(InputActionEventData data, float x)
+	public void Scroll(float x)
 	{
 		if (!(m_ScrollRect == null))
 		{
-			PointerEventData data2 = new PointerEventData(EventSystem.current)
+			PointerEventData data = new PointerEventData(EventSystem.current)
 			{
 				scrollDelta = new Vector2(0f, x * m_ScrollRect.scrollSensitivity)
 			};
-			m_ScrollRect.OnSmoothlyScroll(data2);
+			m_ScrollRect.OnSmoothlyScroll(data);
 		}
 	}
 }

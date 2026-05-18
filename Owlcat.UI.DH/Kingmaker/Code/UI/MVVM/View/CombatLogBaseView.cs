@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using DG.Tweening;
 using Kingmaker.Code.Framework.GameLog;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -68,6 +67,7 @@ public abstract class CombatLogBaseView : View<CombatLogVM>, IResizeElement, IHi
 
 	protected override void OnBind()
 	{
+		bool logIsPinned = Game.Instance.Player.UISettings.LogIsPinned;
 		m_VirtualList.Subscribe(base.ViewModel.Items).AddTo(this);
 		(from list in base.ViewModel.Items.ObserveAdd().ChunkFrame(1, UnityFrameProvider.PreLateUpdate)
 			select list.Length into count
@@ -77,6 +77,7 @@ public abstract class CombatLogBaseView : View<CombatLogVM>, IResizeElement, IHi
 		IsPinned.Subscribe(SwitchPinnedState).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 		GameUIState.Instance.GameMode.Subscribe(OnGameModeChanged).AddTo(this);
+		IsPinned.Value = logIsPinned;
 		base.gameObject.SetActive(value: true);
 	}
 
@@ -154,15 +155,16 @@ public abstract class CombatLogBaseView : View<CombatLogVM>, IResizeElement, IHi
 
 	public virtual void SwitchPinnedState(bool pinned)
 	{
+		Game.Instance.Player.UISettings.LogIsPinned = pinned;
 		if (pinned)
 		{
 			OnChannelUpdated(base.ViewModel.CurrentChannel.CurrentValue);
-			UISounds.Instance.Sounds.CombatLog.CombatLogOpen.Play();
+			CombatSounds.Instance.CombatLog.Open.Play();
 		}
 		else
 		{
 			SetContainerState(state: false);
-			UISounds.Instance.Sounds.CombatLog.CombatLogClose.Play();
+			CombatSounds.Instance.CombatLog.Close.Play();
 		}
 	}
 

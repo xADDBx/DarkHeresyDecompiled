@@ -15,22 +15,39 @@ public class CommandUnitAnimationCoverBlocker : CommandBase
 
 	public bool CoverAvailable;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		UnitAnimationManager animationManager = Unit.GetValue().View.AnimationManager;
-		if (!(animationManager == null))
+		if (!Unit.TryGetValue(out var value))
 		{
-			animationManager.InCutsceneCoverAvailable = CoverAvailable;
+			return CommandResult.Fail("Failed to find unit");
 		}
+		UnitAnimationManager animationManager = value.View.AnimationManager;
+		if (animationManager == null)
+		{
+			return CommandResult.Fail("No unit animation manager");
+		}
+		animationManager.InCutsceneCoverAvailable = CoverAvailable;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)

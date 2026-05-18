@@ -33,9 +33,9 @@ public class EtudeBracketShowObjects : EtudeBracketTrigger
 		for (int i = 0; i < objects.Length; i++)
 		{
 			IEntity entity = objects[i].FindData();
-			if (entity is UnitSpawnerBase.MyData { SpawnedUnit: var spawnedUnit })
+			if (entity is AbstractUnitSpawnerEntity abstractUnitSpawnerEntity)
 			{
-				entity = spawnedUnit.Entity;
+				entity = abstractUnitSpawnerEntity.SpawnedUnit;
 			}
 			if (entity != null)
 			{
@@ -50,9 +50,9 @@ public class EtudeBracketShowObjects : EtudeBracketTrigger
 		for (int i = 0; i < objects.Length; i++)
 		{
 			IEntity entity = objects[i].FindData();
-			if (entity is UnitSpawnerBase.MyData { SpawnedUnit: var spawnedUnit })
+			if (entity is AbstractUnitSpawnerEntity abstractUnitSpawnerEntity)
 			{
-				entity = spawnedUnit.Entity;
+				entity = abstractUnitSpawnerEntity.SpawnedUnit;
 			}
 			if (entity != null)
 			{

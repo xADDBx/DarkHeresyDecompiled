@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Owlcat.Runtime.Core.Utility;
@@ -15,8 +16,8 @@ public class CheckAbilityWeaponIsSourceOfFactGetter : BoolPropertyGetter, Proper
 
 	protected override bool GetBaseValue()
 	{
-		MechanicEntityFact fact = this.GetFact();
-		ItemEntityWeapon abilityWeapon = this.GetAbilityWeapon();
+		MechanicEntityFact fact = EvalContext.Current.Fact;
+		ItemEntityWeapon abilityWeapon = EvalContext.Current.AbilityWeapon;
 		if (fact != null && abilityWeapon != null)
 		{
 			return fact.IsFrom(abilityWeapon);

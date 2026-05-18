@@ -26,4 +26,16 @@ public abstract class BlueprintStarshipItem : BlueprintItemEquipment
 	public int AssembleItemRequiredScrap;
 
 	public int DisassembleScrapGiven;
+
+	public override string InventoryEquipSound
+	{
+		get
+		{
+			throw new NotImplementedException();
+		}
+		set
+		{
+			throw new NotImplementedException();
+		}
+	}
 }

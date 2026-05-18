@@ -29,7 +29,7 @@ public class UnitFromSpawner : AbstractUnitEvaluator, IOwlPackable<UnitFromSpawn
 
 	protected override AbstractUnitEntity GetAbstractUnitEntityInternal()
 	{
-		return (Spawner.FindData() as UnitSpawnerBase.MyData)?.SpawnedUnit.Entity;
+		return (Spawner.FindData() as AbstractUnitSpawnerEntity)?.SpawnedUnit;
 	}
 
 	public override string GetCaptionShort()

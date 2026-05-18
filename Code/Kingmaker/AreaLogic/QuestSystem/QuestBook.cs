@@ -46,13 +46,13 @@ public class QuestBook : Entity, IHashable, IOwlPackable<QuestBook>
 		where q.State != QuestState.None
 		select q;
 
-	protected QuestBook(OwlPackConstructorParameter _)
-		: base(_)
+	public QuestBook()
+		: base("quest-book-id", isInGame: true)
 	{
 	}
 
-	public QuestBook()
-		: base("quest-book-id", isInGame: true)
+	protected QuestBook(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
@@ -67,7 +67,8 @@ public class QuestBook : Entity, IHashable, IOwlPackable<QuestBook>
 				return;
 			}
 			questObjective.Start();
-			Metrics.Quest.Id(questObjective.Blueprint.AssetGuid).State(QuestMetricsEvent.States.Started).Send();
+			Metrics.QuestObjective.Id(questObjective.Blueprint.AssetGuid).QuestId(questObjective.Quest.Blueprint.AssetGuid).State(QuestObjectiveMetricsEvent.States.Started)
+				.Send();
 		}
 	}
 
@@ -84,7 +85,8 @@ public class QuestBook : Entity, IHashable, IOwlPackable<QuestBook>
 			return;
 		}
 		questObjective.Complete();
-		Metrics.Quest.Id(questObjective.Blueprint.AssetGuid).State(QuestMetricsEvent.States.Completed).Send();
+		Metrics.QuestObjective.Id(questObjective.Blueprint.AssetGuid).QuestId(questObjective.Quest.Blueprint.AssetGuid).State(QuestObjectiveMetricsEvent.States.Completed)
+			.Send();
 	}
 
 	public void FailObjective(BlueprintQuestObjective bpObjective)
@@ -100,7 +102,8 @@ public class QuestBook : Entity, IHashable, IOwlPackable<QuestBook>
 			return;
 		}
 		questObjective.Fail();
-		Metrics.Quest.Id(questObjective.Blueprint.AssetGuid).State(QuestMetricsEvent.States.Failed).Send();
+		Metrics.QuestObjective.Id(questObjective.Blueprint.AssetGuid).QuestId(questObjective.Quest.Blueprint.AssetGuid).State(QuestObjectiveMetricsEvent.States.Failed)
+			.Send();
 	}
 
 	public void ResetObjective(BlueprintQuestObjective bpObjective)
@@ -172,7 +175,7 @@ public class QuestBook : Entity, IHashable, IOwlPackable<QuestBook>
 		return quest.TryGetObjective(bpObjective) ?? throw new Exception("Can't find objective in quest");
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}

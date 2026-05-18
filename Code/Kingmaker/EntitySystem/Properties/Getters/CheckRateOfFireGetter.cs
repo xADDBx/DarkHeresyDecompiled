@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -19,7 +20,7 @@ public class CheckRateOfFireGetter : PropertyGetter, PropertyContextAccessor.IAb
 
 	protected override int GetBaseValueInternal()
 	{
-		int rateOfFire = this.GetAbility().RateOfFire;
+		int rateOfFire = EvalContext.Current.Ability.RateOfFire;
 		if (ReturnRateOfFire)
 		{
 			return rateOfFire;

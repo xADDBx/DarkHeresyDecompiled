@@ -139,7 +139,7 @@ public class RankEntryStatItemCommonView : VirtualListElementViewBase<RankEntryS
 			return;
 		}
 		base.ViewModel.CareerPathVM.SelectNextItem();
-		UISounds.Instance.Sounds.Buttons.DoctrineNextButtonClick.Play();
+		ButtonsSounds.Instance.DoctrineNextButton.Click.Play();
 	}
 
 	public string GetConfirmClickHint()

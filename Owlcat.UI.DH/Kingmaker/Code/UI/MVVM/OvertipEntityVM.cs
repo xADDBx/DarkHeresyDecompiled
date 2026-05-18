@@ -21,10 +21,6 @@ public abstract class OvertipEntityVM : ViewModel, INetPingEntity, ISubscriber
 
 	public bool IsInDialog => Game.Instance.CurrentModeType == GameModeType.Dialog;
 
-	public bool IsPreciseAttack => Game.Instance.Controllers.PreciseAttackController.HasTarget;
-
-	public bool IsInCombatEndWindow => RootVM.Instance.HUDContext.CombatEndWindowVM.CurrentValue != null;
-
 	protected virtual bool UpdateEnabled => true;
 
 	public Observable<(NetPlayer player, Entity entity)> CoopPingEntity => m_CoopPingEntity;

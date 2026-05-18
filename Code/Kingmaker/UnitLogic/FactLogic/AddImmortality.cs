@@ -16,7 +16,7 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowedOn(typeof(BlueprintUnitFact))]
 [AllowedOn(typeof(BlueprintUnit))]
 [TypeId("2f139fc00ae2f194c9aae4a2cf82d4ae")]
-public class AddImmortality : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class AddImmortality : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class Runtime : EntityFactComponent<BaseUnitEntity, AddImmortality>, IHashable, IOwlPackable<Runtime>

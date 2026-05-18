@@ -2,7 +2,6 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -26,21 +25,14 @@ public class CombatStateTrigger : UnitFactComponentDelegate, IUnitCombatHandler<
 
 	public void HandleUnitJoinCombat()
 	{
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-		{
-			base.Fact.RunActionInContext(CombatStartActions, base.Owner.ToITargetWrapper());
-		}
+		base.Fact.RunActionInContext(CombatStartActions, base.Owner);
 	}
 
 	public void HandleUnitLeaveCombat()
 	{
-		if (UnitMustBeConscious && base.Owner.IsDeadOrUnconscious)
+		if (!UnitMustBeConscious || !base.Owner.IsDeadOrUnconscious)
 		{
-			return;
-		}
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
-		{
-			base.Fact.RunActionInContext(CombatEndActions, base.Owner.ToITargetWrapper());
+			base.Fact.RunActionInContext(CombatEndActions, base.Owner);
 		}
 	}
 }

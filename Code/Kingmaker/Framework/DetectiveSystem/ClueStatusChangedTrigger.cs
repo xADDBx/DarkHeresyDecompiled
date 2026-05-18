@@ -10,6 +10,7 @@ using Owlcat.Runtime.Core.Utility;
 namespace Kingmaker.Framework.DetectiveSystem;
 
 [Serializable]
+[Obsolete("Unused")]
 [ComponentName("Detective System/ClueStatusChangedTrigger")]
 [TypeId("39aea2c3e91a48b1aab8ae879a8d2249")]
 public class ClueStatusChangedTrigger : EntityFactComponentDelegate, IClueStatusChanged, ISubscriber
@@ -29,7 +30,7 @@ public class ClueStatusChangedTrigger : EntityFactComponentDelegate, IClueStatus
 
 	public void HandleClueStatusChanged(BlueprintClue blueprint)
 	{
-		if (!(Clue != blueprint) && Game.Instance.DetectiveSystem.HasClue(Clue) == (Status == ExpectedStatus.Added))
+		if (!(Clue != blueprint) && Game.Instance.DetectiveSystem.HasClueExcludingHidden(Clue) == (Status == ExpectedStatus.Added))
 		{
 			Actions.Run();
 		}

@@ -2,7 +2,7 @@ using System;
 
 namespace Kingmaker.UnitLogic.Abilities;
 
-public class DamagePredictionData
+public sealed record DamagePredictionData
 {
 	public int MinDamage;
 

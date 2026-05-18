@@ -4,6 +4,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -41,7 +42,7 @@ public class AbilityAreaPresenceCheckerBuffPart : UnitBuffComponentDelegate, ITa
 				{
 					return;
 				}
-				using (areaEffectEntity.Context.SetScope(item))
+				using (EvalContext.PushContext(areaEffectEntity.Context, item))
 				{
 					areaEffectUnitPresenceChecker.ActionsOnAllUnitsInside.Run();
 				}

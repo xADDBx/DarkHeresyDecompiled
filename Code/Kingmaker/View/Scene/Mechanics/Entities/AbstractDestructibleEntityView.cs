@@ -10,7 +10,10 @@ using Kingmaker.Code._Legacy.Components;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
 using Kingmaker.Framework.Pathfinding;
 using Kingmaker.GameModes;
 using Kingmaker.Localization;
@@ -24,14 +27,28 @@ using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
+using Kingmaker.Visual.Animation;
 using Pathfinding;
 using UnityEngine;
 
 namespace Kingmaker.View.Scene.Mechanics.Entities;
 
 [KnowledgeDatabaseID("0c80e47b166948f7ad3a7aea3af3b59a")]
-public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructionStagesManager, IDamageFXHandler, ISubscriber, IGameModeHandler
+public abstract class AbstractDestructibleEntityView : MapObjectView, IAbstractDestructibleEntityView, IMapObjectView, IMechanicEntityView, IEntityView, IDestructibleEntityConfig, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig, IDestructionStagesManager, IDamageFXHandler, ISubscriber, IGameModeHandler
 {
+	internal readonly struct DestructionStageViewSetup
+	{
+		public readonly DestructionStage Type;
+
+		public readonly GameObject NavmeshModifier;
+
+		public DestructionStageViewSetup(DestructionStage type, GameObject navmeshModifier)
+		{
+			Type = type;
+			NavmeshModifier = navmeshModifier;
+		}
+	}
+
 	[Serializable]
 	private class DestructionStageSettings
 	{
@@ -60,7 +77,7 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 	[CanBeNull]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
 	[ShowIf("VisibleInExploration")]
-	public SharedStringAsset ExplorationBark;
+	public LocalizedString ExplorationBark;
 
 	private new Collider[] m_Colliders;
 
@@ -69,6 +86,8 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 	[CanBeNull]
 	private DestructionStageSettings m_CurrentStageSettings;
 
+	private DestructibleAnimationManager m_AnimationManager;
+
 	private Vector3? m_OvertipPosition;
 
 	private Rect m_CachedBounds;
@@ -76,6 +95,9 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 	private Vector3 m_PrevPosition;
 
 	private bool m_ForceRecalculateBounds = true;
+
+	[CanBeNull]
+	private GridObstacle[] m_AllStagesGridObstaclesCache;
 
 	[field: SerializeField]
 	public bool DisableAutoHit { get; private set; }
@@ -118,6 +140,8 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 		}
 	}
 
+	public override BlueprintMechanicEntityFact MechanicFactBlueprint => Blueprint ?? base.MechanicFactBlueprint;
+
 	public Rect Bounds => CalculateBounds();
 
 	public Bounds RenderersBounds { get; private set; }
@@ -129,6 +153,8 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 	public GridObstacle[] CurrentStageGridObstacles => m_CurrentStageSettings?.GridObstacles ?? Array.Empty<GridObstacle>();
 
 	public GridObstacle[] WholeStageGridObstacles => m_DestructionStages.FirstItem((DestructionStageSettings i) => i.Type == DestructionStage.Whole)?.GridObstacles ?? Array.Empty<GridObstacle>();
+
+	public GridObstacle[] AllGridObstacles => m_AllStagesGridObstaclesCache ?? (m_AllStagesGridObstaclesCache = CollectAllGridObstacles());
 
 	public Vector3 OvertipPosition
 	{
@@ -160,7 +186,7 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 			Bounds valueOrDefault = bounds.GetValueOrDefault();
 			if (!bounds.HasValue)
 			{
-				valueOrDefault = new Bounds(base.ViewTransform.position, Vector3.one);
+				valueOrDefault = new Bounds(base.transform.position, Vector3.one);
 				bounds = valueOrDefault;
 			}
 			m_OvertipPosition = bounds.Value.center + new Vector3(0f, bounds.Value.extents.y, 0f);
@@ -178,6 +204,57 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 			}
 			return true;
 		}
+	}
+
+	internal DestructionStageViewSetup[] GetDestructionStageViewSetup()
+	{
+		if (m_DestructionStages == null || m_DestructionStages.Length == 0)
+		{
+			return Array.Empty<DestructionStageViewSetup>();
+		}
+		List<DestructionStageViewSetup> list = new List<DestructionStageViewSetup>(m_DestructionStages.Length);
+		for (int i = 0; i < m_DestructionStages.Length; i++)
+		{
+			DestructionStageSettings destructionStageSettings = m_DestructionStages[i];
+			if (destructionStageSettings != null)
+			{
+				list.Add(new DestructionStageViewSetup(destructionStageSettings.Type, destructionStageSettings.NavmeshModifier));
+			}
+		}
+		return list.ToArray();
+	}
+
+	private GridObstacle[] CollectAllGridObstacles()
+	{
+		if (m_DestructionStages == null || m_DestructionStages.Length == 0)
+		{
+			return Array.Empty<GridObstacle>();
+		}
+		int num = 0;
+		DestructionStageSettings[] destructionStages = m_DestructionStages;
+		foreach (DestructionStageSettings destructionStageSettings in destructionStages)
+		{
+			if (destructionStageSettings?.GridObstacles != null)
+			{
+				num += destructionStageSettings.GridObstacles.Length;
+			}
+		}
+		if (num == 0)
+		{
+			return Array.Empty<GridObstacle>();
+		}
+		GridObstacle[] array = new GridObstacle[num];
+		int num2 = 0;
+		destructionStages = m_DestructionStages;
+		foreach (DestructionStageSettings destructionStageSettings2 in destructionStages)
+		{
+			if (destructionStageSettings2?.GridObstacles != null)
+			{
+				Array.Copy(destructionStageSettings2.GridObstacles, 0, array, num2, destructionStageSettings2.GridObstacles.Length);
+				num2 += destructionStageSettings2.GridObstacles.Length;
+			}
+		}
+		return array;
 	}
 
 	protected override bool CheckHighlightConditions()
@@ -232,6 +309,7 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 				destructionStageSettings2.NavmeshModifier.gameObject.SetActive(value: false);
 			}
 		}
+		m_AnimationManager = GetComponent<DestructibleAnimationManager>();
 	}
 
 	protected override Color GetHighlightColor()
@@ -287,7 +365,7 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 		Bounds valueOrDefault = bounds.GetValueOrDefault();
 		if (!bounds.HasValue)
 		{
-			valueOrDefault = new Bounds(base.ViewTransform.position, Vector3.one);
+			valueOrDefault = new Bounds(base.transform.position, Vector3.one);
 			bounds = valueOrDefault;
 		}
 		RenderersBounds = bounds.Value;
@@ -330,17 +408,37 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 		m_ForceRecalculateBounds = true;
 		m_CurrentDestructionStage = stage;
 		UpdateHighlight();
-		DestructionStageSettings destructionStageSettings = m_DestructionStages.FirstItem((DestructionStageSettings i) => i.Type == stage);
-		if (destructionStageSettings != m_CurrentStageSettings)
+		DestructionStageSettings newStageSettings = m_DestructionStages.FirstItem((DestructionStageSettings i) => i.Type == stage);
+		m_CurrentStageSettings?.GridObstacles.ForEach(delegate(GridObstacle x)
 		{
-			m_CurrentStageSettings?.NavmeshModifier.gameObject.SetActive(value: false);
-			destructionStageSettings?.NavmeshModifier.gameObject.SetActive(value: true);
-			m_CurrentStageSettings = destructionStageSettings;
+			x.gameObject.SetActive(value: false);
+		});
+		newStageSettings?.GridObstacles.ForEach(delegate(GridObstacle x)
+		{
+			x.gameObject.SetActive(value: true);
+		});
+		if (!onLoad && stage == DestructionStage.Destroyed && m_AnimationManager != null)
+		{
+			m_AnimationManager.PlayOnDestroy(delegate
+			{
+				HandleVisualStageChange(m_CurrentStageSettings, newStageSettings);
+			});
 		}
+		else
+		{
+			HandleVisualStageChange(m_CurrentStageSettings, newStageSettings);
+		}
+		m_CurrentStageSettings = newStageSettings;
 		EventBus.RaiseEvent((IMapObjectEntity)Data, (Action<IDestructibleEntityHandler>)delegate(IDestructibleEntityHandler h)
 		{
 			h.HandleDestructionStageChanged(stage);
 		}, isCheckRuntime: true);
+	}
+
+	private void HandleVisualStageChange(DestructionStageSettings prev, DestructionStageSettings next)
+	{
+		prev?.NavmeshModifier.gameObject.SetActive(value: false);
+		next?.NavmeshModifier.gameObject.SetActive(value: true);
 	}
 
 	public override void HandleHoverChange(bool isHover)
@@ -398,9 +496,10 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 
 	public void HandleDamageDealt(RuleDealDamage dealDamage)
 	{
-		if (!(dealDamage.Target.View != this))
+		if (dealDamage.Target.View == this)
 		{
 			StartCoroutine(HighlightOnHit());
+			m_AnimationManager?.PlayOnHit();
 		}
 	}
 
@@ -445,6 +544,36 @@ public abstract class AbstractDestructibleEntityView : MapObjectView, IDestructi
 			return !flag2;
 		}
 		return true;
+	}
+
+	T IMapObjectView.GetComponent<T>()
+	{
+		return GetComponent<T>();
+	}
+
+	T IMapObjectView.GetComponentInChildren<T>()
+	{
+		return GetComponentInChildren<T>();
+	}
+
+	T[] IMapObjectView.GetComponents<T>()
+	{
+		return GetComponents<T>();
+	}
+
+	GameObject IMechanicEntityView.get_gameObject()
+	{
+		return base.gameObject;
+	}
+
+	T[] IMechanicEntityView.GetComponentsInChildren<T>()
+	{
+		return GetComponentsInChildren<T>();
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 
 	string IDestructionStagesManager.get_name()

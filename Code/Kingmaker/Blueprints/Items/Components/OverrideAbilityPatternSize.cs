@@ -1,6 +1,5 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
@@ -31,8 +30,7 @@ public class OverrideAbilityPatternSize : UnitFactComponentDelegate
 
 	public void OverrideSize(AbilityData ability, IAbilityAoEPatternProvider originPattern)
 	{
-		PropertyContext context = new PropertyContext(base.Owner, base.Context, null, null, ability);
-		if (Restriction.IsPassed(context))
+		if (Restriction.IsPassed(base.Context, base.Owner, null, null, ability))
 		{
 			int value = AddToSize.Calculate(base.Context);
 			originPattern.OverrideHaloSize(value);

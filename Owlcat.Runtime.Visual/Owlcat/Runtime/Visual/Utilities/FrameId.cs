@@ -12,7 +12,7 @@ public static class FrameId
 
 	public static int FrameCount => s_FrameCount;
 
-	internal static void Update()
+	internal static bool Update()
 	{
 		float num;
 		bool flag;
@@ -40,5 +40,6 @@ public static class FrameId
 			s_LastTime = ((num > s_Time) ? s_Time : 0f);
 			s_Time = num;
 		}
+		return flag;
 	}
 }

@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.EntityInfo;
@@ -5,7 +6,12 @@ namespace Kingmaker.Code.UI.MVVM.EntityInfo;
 public sealed class AreaEffectInfoWidget : BaseEntityInfoWidget<EntityInfoElementView>
 {
 	[SerializeField]
+	private TMP_Text m_NameText;
+
+	[SerializeField]
 	private EntityInfoElementView m_ElementPrefab;
+
+	private Color? m_DefaultNameColor;
 
 	public override bool TryShow(IEntityInfo entityInfo)
 	{
@@ -21,6 +27,14 @@ public sealed class AreaEffectInfoWidget : BaseEntityInfoWidget<EntityInfoElemen
 
 	private void Setup(AreaEffectEntityInfo areaEffectInfo)
 	{
+		Color valueOrDefault = m_DefaultNameColor.GetValueOrDefault();
+		if (!m_DefaultNameColor.HasValue)
+		{
+			valueOrDefault = m_NameText.color;
+			m_DefaultNameColor = valueOrDefault;
+		}
+		m_NameText.SetText(areaEffectInfo.Name);
+		m_NameText.color = areaEffectInfo.NameColor ?? m_DefaultNameColor.Value;
 		SetPosition(areaEffectInfo.WorldPosition);
 		HideAllElements();
 		int count = areaEffectInfo.Descriptions.Count;
@@ -39,12 +53,14 @@ public sealed class AreaEffectInfoWidget : BaseEntityInfoWidget<EntityInfoElemen
 		if (descriptionEntry is AreaEffectInfoEntry areaEffectInfoEntry)
 		{
 			element.SetText(areaEffectInfoEntry.Text);
+			element.SetTextColor(areaEffectInfoEntry.Color);
 			element.SetIcon(areaEffectInfoEntry.Icon);
 			element.SetDOT(null);
 		}
 		else if (descriptionEntry is DOTEffectInfoEntry dOTEffectInfoEntry)
 		{
 			element.SetText(dOTEffectInfoEntry.Text);
+			element.SetTextColor(null);
 			element.SetDOT(dOTEffectInfoEntry.Type);
 			element.SetIcon(null);
 		}

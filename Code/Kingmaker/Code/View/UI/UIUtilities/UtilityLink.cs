@@ -4,6 +4,7 @@ using Kingmaker.Blueprints.Encyclopedia;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.UI;
 using Kingmaker.UI.Common;
+using Kingmaker.UI.Pointer;
 using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.Utility.DotNetExtensions;
 using R3;
@@ -90,7 +91,7 @@ public static class UtilityLink
 		IDisposable update = ObservableSubscribeExtensions.Subscribe(text.UpdateAsObservable(), delegate
 		{
 			int num;
-			if (!entered || (num = TMP_TextUtilities.FindIntersectingLink(text, Input.mousePosition, (camera != null) ? camera : UICamera.Claim())) == -1)
+			if (!entered || (num = TMP_TextUtilities.FindIntersectingLink(text, CursorController.CursorPosition, (camera != null) ? camera : UICamera.Claim())) == -1)
 			{
 				if (linkIndex.HasValue)
 				{

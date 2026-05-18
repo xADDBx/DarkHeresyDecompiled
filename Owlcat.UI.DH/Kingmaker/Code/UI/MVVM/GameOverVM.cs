@@ -1,74 +1,98 @@
-using System;
-using System.Linq;
 using Code.View.UI.UIUtils;
-using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.OBSOLETE;
-using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence;
+using Kingmaker.Localization;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
 using Owlcat.UI;
-using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class GameOverVM : ViewModel
 {
-	private readonly ReactiveProperty<string> m_Reason = new ReactiveProperty<string>(string.Empty);
-
-	private readonly ReactiveProperty<bool> m_CanQuickLoad = new ReactiveProperty<bool>(value: false);
-
-	public ReadOnlyReactiveProperty<string> Reason => m_Reason;
-
-	public ReadOnlyReactiveProperty<bool> CanQuickLoad => m_CanQuickLoad;
-
 	private SaveManager SaveManager => Game.Instance.SaveManager;
 
-	public bool IsIronMan => SettingsRoot.Difficulty.OnlyOneSave;
+	private bool IsIronMan => SettingsRoot.Difficulty.OnlyOneSave;
 
-	public bool HasDowngradedIronManSave => SaveManager.HasDowngradedIronManSave;
+	private bool HasDowngradedIronManSave => SaveManager.HasDowngradedIronManSave;
+
+	public ModalWindowVM ModalWindowVM { get; }
 
 	public GameOverVM()
 	{
-		m_Reason.Value = GetReasonString();
+		UIGameOverScreen gameOverScreen = UIStrings.Instance.GameOverScreen;
+		LocalizedString title = gameOverScreen.Title;
+		if (IsIronMan)
+		{
+			ModalWindowVM = new ModalWindowVM(title, null, BuildIronManActions());
+			return;
+		}
+		ModalWindowAction[] actions = new ModalWindowAction[3]
+		{
+			new ModalWindowAction
+			{
+				Name = gameOverScreen.QuickLoadLabel,
+				Action = OnQuickLoad
+			},
+			new ModalWindowAction
+			{
+				Name = gameOverScreen.LoadLabel,
+				Action = OnButtonLoadGame
+			},
+			new ModalWindowAction
+			{
+				Name = gameOverScreen.MainMenuLabel,
+				Action = OnButtonMainMenu
+			}
+		};
+		ModalWindowVM = new ModalWindowVM(title, null, actions);
+		if (SaveManager.GetLatestSave() != null)
+		{
+			return;
+		}
+		ModalWindowVM.SetButtonEnabled(0, enabled: false);
 		MainThreadDispatcher.StartCoroutine(UIUtilitySaves.WaitForSaveUpdated(delegate
 		{
-			m_CanQuickLoad.Value = SaveManager.GetLatestSave() != null;
+			if (SaveManager.GetLatestSave() != null)
+			{
+				ModalWindowVM.SetButtonEnabled(0, enabled: true);
+			}
 		}));
 	}
 
-	private string GetReasonString()
+	private ModalWindowAction[] BuildIronManActions()
 	{
-		string result = string.Empty;
-		switch (Game.Instance.Player.GameOverReason)
+		UIGameOverScreen gameOverScreen = UIStrings.Instance.GameOverScreen;
+		if (!HasDowngradedIronManSave)
 		{
-		case Player.GameOverReasonType.PartyIsDefeated:
-			result = UIGameOverScreen.Instance.PartyIsDefeatedLabel;
-			break;
-		case Player.GameOverReasonType.EssentialUnitIsDead:
+			return new ModalWindowAction[1]
+			{
+				new ModalWindowAction
+				{
+					Name = gameOverScreen.MainMenuLabel,
+					Action = OnButtonMainMenu
+				}
+			};
+		}
+		return new ModalWindowAction[2]
 		{
-			BaseUnitEntity baseUnitEntity = Game.Instance.EntityPools.AllBaseUnits.FirstOrDefault((BaseUnitEntity c) => c.LifeState.IsFinallyDead && c.IsEssentialForGame);
-			result = ((baseUnitEntity != null) ? string.Format((baseUnitEntity.Gender == Gender.Female) ? UIGameOverScreen.Instance.FemaleDeadLabel : UIGameOverScreen.Instance.MaleDeadLabel, baseUnitEntity.CharacterName) : ((string)UIGameOverScreen.Instance.PartyIsDefeatedLabel));
-			break;
-		}
-		case Player.GameOverReasonType.KingdomIsDestroyed:
-			result = UIGameOverScreen.Instance.PartyIsDefeatedLabel;
-			break;
-		case Player.GameOverReasonType.QuestFailed:
-			result = UIGameOverScreen.Instance.QuestIsFailedLabel;
-			break;
-		default:
-			throw new ArgumentOutOfRangeException();
-		case Player.GameOverReasonType.Won:
-			break;
-		}
-		return result;
+			new ModalWindowAction
+			{
+				Name = gameOverScreen.IronManDeleteSaveLabel,
+				Action = OnIronManDeleteSave
+			},
+			new ModalWindowAction
+			{
+				Name = gameOverScreen.IronManContinueGameLabel,
+				Action = OnIronManContinueGame
+			}
+		};
 	}
 
-	public void OnButtonLoadGame()
+	private void OnButtonLoadGame()
 	{
 		EventBus.RaiseEvent(delegate(ISaveLoadUIHandler h)
 		{
@@ -76,20 +100,24 @@ public class GameOverVM : ViewModel
 		});
 	}
 
-	public void OnQuickLoad()
+	private void OnQuickLoad()
 	{
 		MainThreadDispatcher.StartCoroutine(UIUtilitySaves.WaitForSaveUpdated(delegate
 		{
-			Game.Instance.LoadGame(SaveManager.GetLatestSave());
+			SaveInfo latestSave = SaveManager.GetLatestSave();
+			if (latestSave != null)
+			{
+				Game.Instance.LoadGame(latestSave);
+			}
 		}));
 	}
 
-	public void OnButtonMainMenu()
+	private void OnButtonMainMenu()
 	{
 		Game.Instance.ResetToMainMenu();
 	}
 
-	public void OnIronManDeleteSave()
+	private void OnIronManDeleteSave()
 	{
 		if (HasDowngradedIronManSave)
 		{
@@ -98,7 +126,7 @@ public class GameOverVM : ViewModel
 		OnButtonMainMenu();
 	}
 
-	public void OnIronManContinueGame()
+	private void OnIronManContinueGame()
 	{
 		if (HasDowngradedIronManSave)
 		{

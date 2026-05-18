@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -26,26 +25,6 @@ public class StatCheckLootMainPageBaseView<TStatCheckLootUnitCardView> : StatChe
 		base.ViewModel.ClearUnitSlots.Subscribe(ClearUnitSlots).AddTo(this);
 	}
 
-	protected override void OnUnbind()
-	{
-		base.OnUnbind();
-		m_InputLayer = null;
-	}
-
-	protected override void BuildNavigationImpl()
-	{
-		m_NavigationBehaviour.SetEntitiesHorizontal(m_UnitCardSlots);
-		m_InputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = "StatCheckLootMainPageBaseViewInput"
-		});
-		CreateInputImpl(m_InputLayer);
-	}
-
-	protected virtual void CreateInputImpl(InputLayer inputLayer)
-	{
-	}
-
 	protected void OnCheckStat()
 	{
 		base.ViewModel.CheckStat();
@@ -69,13 +48,12 @@ public class StatCheckLootMainPageBaseView<TStatCheckLootUnitCardView> : StatChe
 			if (i >= m_UnitCardSlots.Count)
 			{
 				PFLog.UI.Error("StatCheckLootMainPageBaseView.UpdateUnitSlots - UnitSlotVMs count is more than slots count!");
-				return;
+				break;
 			}
 			TStatCheckLootUnitCardView val = m_UnitCardSlots[i];
 			val.Bind(base.ViewModel.UnitSlotVMByStatType.ElementAt(i).Value);
 			val.gameObject.SetActive(value: true);
 		}
-		m_NavigationBehaviour.FocusOnCurrentEntity();
 	}
 
 	private void ClearUnitSlots()

@@ -1,7 +1,5 @@
 using System;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Localization.Enums;
-using Owlcat.UI;
 using TMPro;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -10,13 +8,10 @@ public class CrossPlatformConsoleVirtualKeyboard : IVirtualKeyboard
 {
 	private IVirtualKeyboard m_Keyboard;
 
-	private InputLayer m_InputLayer;
-
 	public static readonly string InputLayerContextName = "Virtual Keyboard";
 
 	public CrossPlatformConsoleVirtualKeyboard(TMP_InputField inputField)
 	{
-		CreateInputLayer();
 	}
 
 	public void OpenKeyboard(Action<string> successCallback, Action cancelCallback, string titleText, string inputText, string placeholderText, Locale language, uint maxTextLength)
@@ -26,7 +21,6 @@ public class CrossPlatformConsoleVirtualKeyboard : IVirtualKeyboard
 			successCallback?.Invoke(inputText + " (keyboard not supported)");
 			return;
 		}
-		GamePad.Instance.PushLayer(m_InputLayer);
 		if (maxTextLength == 0)
 		{
 			maxTextLength = 128u;
@@ -42,27 +36,8 @@ public class CrossPlatformConsoleVirtualKeyboard : IVirtualKeyboard
 		m_Keyboard.OpenKeyboard(successCallback, cancelCallback, titleText, inputText, placeholderText, language, maxTextLength);
 	}
 
-	private void CreateInputLayer()
-	{
-		if (m_InputLayer == null)
-		{
-			m_InputLayer = new InputLayer
-			{
-				ContextName = InputLayerContextName
-			};
-			m_InputLayer.AddButton(delegate
-			{
-				Abort();
-			}, 9);
-		}
-	}
-
 	public void Abort()
 	{
 		m_Keyboard?.Abort();
-		DelayedInvoker.InvokeInTime(delegate
-		{
-			GamePad.Instance.PopLayer(m_InputLayer);
-		}, 0.5f);
 	}
 }

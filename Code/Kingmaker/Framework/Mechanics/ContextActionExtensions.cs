@@ -1,8 +1,6 @@
 using JetBrains.Annotations;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 
 namespace Kingmaker.Framework.Mechanics;
@@ -21,7 +19,7 @@ public static class ContextActionExtensions
 	{
 		if (actions.HasActions && target != null)
 		{
-			if (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current?.Entity != target)
+			if (EvalContext.Current.Target?.Entity != target)
 			{
 				actions.RunWithTarget((TargetWrapper)target);
 			}
@@ -38,7 +36,7 @@ public static class ContextActionExtensions
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(target))
+		using (EvalContext.Current.PushTarget(target))
 		{
 			actions.Run();
 		}
@@ -48,7 +46,7 @@ public static class ContextActionExtensions
 	{
 		if (actions.HasActions)
 		{
-			if (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current?.Entity != target)
+			if (EvalContext.Current.Target?.Entity != target)
 			{
 				actions.RunWithTarget((TargetWrapper)target);
 			}

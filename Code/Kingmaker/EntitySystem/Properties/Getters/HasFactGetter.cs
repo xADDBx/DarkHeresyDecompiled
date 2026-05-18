@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -20,7 +21,7 @@ public class HasFactGetter : BoolPropertyGetter, PropertyContextAccessor.ITarget
 
 	protected override bool GetBaseValue()
 	{
-		return ((this.GetTargetByType(Target) as BaseUnitEntity) ?? throw new Exception($"HasFactGetter: can't find suitable target of type {Target}")).Facts.Contains((BlueprintUnitFact)m_Fact);
+		return ((EvalContext.Current.GetEntityByType(Target) as BaseUnitEntity) ?? throw new Exception($"HasFactGetter: can't find suitable target of type {Target}")).Facts.Contains((BlueprintUnitFact)m_Fact);
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

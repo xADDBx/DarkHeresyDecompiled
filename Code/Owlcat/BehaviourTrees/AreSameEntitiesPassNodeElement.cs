@@ -2,7 +2,7 @@ using Owlcat.Runtime.Core.Utility;
 
 namespace Owlcat.BehaviourTrees;
 
-[NodeMenuItem("Add Node/Variables/Entity/Are Same Entities Pass Node", "Are Same Entities Pass Node")]
+[NodeMenuItem("Add Node/Variables/MechanicEntity/Are Same Entities Pass Node", "Are Same Entities Pass Node")]
 [TypeId("24451c6345e0481f9fb525fe22cb42b2")]
 public class AreSameEntitiesPassNodeElement : ConditionPassNodeElement<AreSameEntitiesPassNode>
 {

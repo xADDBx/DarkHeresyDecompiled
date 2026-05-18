@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
@@ -50,11 +51,11 @@ public static class UIInventoryHelper
 	public static bool TryUnequip(EquipSlotVM slot)
 	{
 		ItemSlot itemSlot = slot.ItemSlot;
-		if (Game.Instance.Player.IsInCombat)
+		if (UIUtilityCombat.IsCombatLockActive())
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, addToLog: false, WarningNotificationFormat.Warning);
+				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, null, addToLog: false, WarningNotificationFormat.Warning);
 			});
 			return false;
 		}
@@ -62,7 +63,7 @@ public static class UIInventoryHelper
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, addToLog: false);
+				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, null, addToLog: false);
 			});
 			return false;
 		}
@@ -94,32 +95,6 @@ public static class UIInventoryHelper
 		return true;
 	}
 
-	private static bool CanEquipItemInCombat(ItemEntity item)
-	{
-		bool num = item is ItemEntityWeapon;
-		bool flag = item is ItemEntityShield;
-		bool flag2 = item is ItemEntityUsable;
-		return num || flag || flag2;
-	}
-
-	public static bool CanChangeEquipment(BaseUnitEntity unit)
-	{
-		return !Game.Instance.Controllers.TurnController.TurnBasedModeActive;
-	}
-
-	public static bool CanEquipItem(ItemEntity item, BaseUnitEntity unit)
-	{
-		if (!CanChangeEquipment(unit))
-		{
-			return false;
-		}
-		if (Game.Instance.Player.IsInCombat)
-		{
-			return CanEquipItemInCombat(item);
-		}
-		return true;
-	}
-
 	public static void TryEquip(ItemSlotVM slot, BaseUnitEntity unit)
 	{
 		if (unit == null || slot == null || !slot.HasItem || (unit is UnitEntity && !unit.CanBeControlled()))
@@ -127,18 +102,18 @@ public static class UIInventoryHelper
 			return;
 		}
 		ItemEntity item = slot.ItemEntity;
-		if (!CanEquipItem(item, unit))
+		if (UIUtilityCombat.IsCombatLockActive())
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, addToLog: false, WarningNotificationFormat.Warning);
+				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, null, addToLog: false, WarningNotificationFormat.Warning);
 			});
 		}
 		else if (RootUIContext.Instance.IsChargenShown)
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, addToLog: false);
+				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, null, addToLog: false);
 			});
 		}
 		else if (!unit.Body.AllSlots.Any((ItemSlot sl) => sl.CanInsertItem(item)))
@@ -168,7 +143,7 @@ public static class UIInventoryHelper
 			}
 			else
 			{
-				UISounds.Instance.Sounds.Combat.CombatGridCantPerformActionClick.Play();
+				CombatSounds.Instance.Combat.CombatGridCantPerformActionClick.Play();
 			}
 		}
 	}
@@ -187,18 +162,18 @@ public static class UIInventoryHelper
 
 	public static void TryDrop(ItemEntity item)
 	{
-		if (Game.Instance.Player.IsInCombat)
+		if (UIUtilityCombat.IsCombatLockActive())
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, addToLog: false, WarningNotificationFormat.Warning);
+				h.HandleWarning(WarningNotificationType.EquipInCombatIsImpossible, null, addToLog: false, WarningNotificationFormat.Warning);
 			});
 		}
 		else if (RootUIContext.Instance.IsChargenShown)
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, addToLog: false);
+				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, null, addToLog: false);
 			});
 		}
 		else if (UtilityGame.IsGlobalMap())
@@ -254,7 +229,7 @@ public static class UIInventoryHelper
 	{
 		ReadOnlyReactiveProperty<ItemEntity> item = from.Item;
 		bool fromShip = item != null && item.CurrentValue.Origin == ItemsItemOrigin.ShipComponents;
-		if (Game.Instance.Player.IsInCombat)
+		if (UIUtilityCombat.IsCombatLockActive())
 		{
 			EventBus.RaiseEvent(delegate(IInventoryNotificationHandler h)
 			{
@@ -266,7 +241,7 @@ public static class UIInventoryHelper
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, addToLog: false);
+				h.HandleWarning(WarningNotificationType.EquipInLevlUpIsImpossible, null, addToLog: false);
 			});
 			return;
 		}

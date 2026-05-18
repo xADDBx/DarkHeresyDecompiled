@@ -78,6 +78,12 @@ internal readonly struct CellEdgeSegment
 		return new GridDirection(m_Index / 2 * 2);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public EdgeDirection GetEdgeDirection()
+	{
+		return new EdgeDirection((byte)(m_Index / 2));
+	}
+
 	public override string ToString()
 	{
 		return m_Index switch

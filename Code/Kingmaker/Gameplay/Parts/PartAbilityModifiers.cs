@@ -7,7 +7,6 @@ using Kingmaker.Code.Framework;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.EntitySystem;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.Framework;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Framework.Abilities.Components;
@@ -139,12 +138,17 @@ public sealed class PartAbilityModifiers : MechanicEntityPart, IHashable, IOwlPa
 		public readonly BlueprintComponentReference SourceComponent;
 
 		public AdditionalModifierTagEntry([NotNull] BlueprintAbilityTag sourceTag, [NotNull] BlueprintAbilityTag additionalTag, [NotNull] EntityFactComponent source)
+			: this(sourceTag, additionalTag, source.Fact, source.SourceBlueprintComponent)
+		{
+		}
+
+		public AdditionalModifierTagEntry([NotNull] BlueprintAbilityTag sourceTag, [NotNull] BlueprintAbilityTag additionalTag, [NotNull] EntityFactRef sourceFact, [NotNull] BlueprintComponentReference sourceComponent)
 		{
 			this = default(AdditionalModifierTagEntry);
 			SourceTag = sourceTag;
 			AdditionalTag = additionalTag;
-			SourceFact = source.Fact;
-			SourceComponent = source.SourceBlueprintComponent;
+			SourceFact = sourceFact;
+			SourceComponent = sourceComponent;
 		}
 	}
 
@@ -215,7 +219,12 @@ public sealed class PartAbilityModifiers : MechanicEntityPart, IHashable, IOwlPa
 
 		public bool IsSuitableFor([NotNull] Ability ability)
 		{
-			if (Ability != ability.Blueprint && (AbilityTag == null || !ability.Blueprint.Tags.Contains(AbilityTag)) && (Ability != null || AbilityTag != null))
+			bool flag = Ability == ability.Blueprint || (AbilityTag != null && ability.Blueprint.Tags.Contains(AbilityTag)) || (Ability == null && AbilityTag == null);
+			if (!flag && Ability != null)
+			{
+				flag = ability.Owner?.GetOptional<PartAbilityReplacements>()?.GetTargetFor(ability) == Ability;
+			}
+			if (!flag)
 			{
 				return false;
 			}
@@ -223,8 +232,7 @@ public sealed class PartAbilityModifiers : MechanicEntityPart, IHashable, IOwlPa
 			RestrictionCalculator restrictionCalculator = (SourceComponent.Get() as IRestrictionProvider)?.GetRestriction() ?? (mechanicEntityFact as ToggleAbility)?.Blueprint.AbilityModifierRestriction;
 			if (mechanicEntityFact != null && restrictionCalculator != null)
 			{
-				PropertyContext context = new PropertyContext(mechanicEntityFact.Owner, mechanicEntityFact.MaybeContext, null, null, ability.Data);
-				return restrictionCalculator.IsPassed(context);
+				return restrictionCalculator.IsPassed(mechanicEntityFact.MaybeContext, mechanicEntityFact.Owner, null, null, ability.Data);
 			}
 			return true;
 		}
@@ -452,6 +460,12 @@ public sealed class PartAbilityModifiers : MechanicEntityPart, IHashable, IOwlPa
 			select e.Modifier).Distinct();
 	}
 
+	[CanBeNull]
+	public BlueprintAbilityModifier GetManuallyAddedModifier(Ability ability)
+	{
+		return _addedModifiers.FirstOrDefault((AddedEntry e) => e.IsAddedManually && e.IsSuitableFor(ability) && IsSuitableModifier(e.Modifier, ability))?.Modifier;
+	}
+
 	public bool IsAddedManually(BlueprintAbility ability, BlueprintAbilityModifier modifier)
 	{
 		return FindEntry(ability, modifier)?.IsAddedManually ?? false;
@@ -668,6 +682,12 @@ public sealed class PartAbilityModifiers : MechanicEntityPart, IHashable, IOwlPa
 		}
 	}
 
+	private void AddToggleAbility(ToggleAbilityEntry entry)
+	{
+		ToggleAbilityEntry item = new ToggleAbilityEntry(entry.Modifier, entry.Target);
+		_toggleAbilityEntries.Add(item);
+	}
+
 	public void UnbindModifier([NotNull] BlueprintAbilityModifier modifier, [NotNull] BlueprintToggleAbility target)
 	{
 		_toggleAbilityEntries.RemoveAll((ToggleAbilityEntry i) => i.Modifier == modifier && i.Target == target);
@@ -678,9 +698,26 @@ public sealed class PartAbilityModifiers : MechanicEntityPart, IHashable, IOwlPa
 		_additionalModifierTags.Add(new AdditionalModifierTagEntry(sourceTag, additionalTag, source));
 	}
 
+	private void AddAdditionalModifierTag(AdditionalModifierTagEntry entry)
+	{
+		_additionalModifierTags.Add(new AdditionalModifierTagEntry(entry.SourceTag, entry.AdditionalTag, entry.SourceFact, entry.SourceComponent));
+	}
+
 	public void RemoveAdditionalModifierTag([NotNull] EntityFactComponent source)
 	{
 		_additionalModifierTags.RemoveAll((AdditionalModifierTagEntry i) => i.SourceFact == source.Fact && i.SourceComponent == source.SourceBlueprintComponent);
+	}
+
+	public void CopyModifiersTo(PartAbilityModifiers otherPart)
+	{
+		foreach (AdditionalModifierTagEntry additionalModifierTag in _additionalModifierTags)
+		{
+			otherPart.AddAdditionalModifierTag(additionalModifierTag);
+		}
+		foreach (ToggleAbilityEntry toggleAbilityEntry in _toggleAbilityEntries)
+		{
+			otherPart.AddToggleAbility(toggleAbilityEntry);
+		}
 	}
 
 	[CanBeNull]

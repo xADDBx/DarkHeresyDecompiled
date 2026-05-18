@@ -30,11 +30,11 @@ public class RewardContext : ViewModel, IAlignmentRankShiftHandler, ISubscriber<
 		AlignmentAxis axis = shift.Axis;
 		int mainCharacterAlignmentMark = AlignmentShiftExtension.GetMainCharacterAlignmentMark(axis);
 		int currentRank = mainCharacterAlignmentMark - shift.Value;
-		int alignmentMarkRankIndex = AlignmentShiftExtension.GetAlignmentMarkRankIndex(axis, mainCharacterAlignmentMark);
-		int alignmentMarkRankIndex2 = AlignmentShiftExtension.GetAlignmentMarkRankIndex(axis, currentRank);
-		if (alignmentMarkRankIndex > alignmentMarkRankIndex2)
+		int alignmentRankIndex = AlignmentShiftExtension.GetAlignmentRankIndex(axis, mainCharacterAlignmentMark);
+		int alignmentRankIndex2 = AlignmentShiftExtension.GetAlignmentRankIndex(axis, currentRank);
+		if (alignmentRankIndex > alignmentRankIndex2)
 		{
-			m_AlignmentRewardVM.Value = new AlignmentMarkRewardVM(axis, alignmentMarkRankIndex, DisposeSoulMarkReward);
+			m_AlignmentRewardVM.Value = new AlignmentMarkRewardVM(axis, alignmentRankIndex, DisposeSoulMarkReward);
 		}
 	}
 

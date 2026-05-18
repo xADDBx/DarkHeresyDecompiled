@@ -1,21 +1,25 @@
 using System.Collections.Generic;
 using System.Linq;
-using Code.View.UI.MVVM.Tooltip.Bricks.Items;
 using Code.View.UI.UIUtils;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Armors;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Components.Features;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Items;
 using Kingmaker.UnitLogic.Progression.Features;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 namespace Kingmaker.Code.UI.MVVM;
 
+[UsedImplicitly]
 public class ArmorItemPart : BaseItemPart
 {
 	private Dictionary<TooltipElement, Sprite> m_ElementsIcons = new Dictionary<TooltipElement, Sprite>
@@ -51,9 +55,11 @@ public class ArmorItemPart : BaseItemPart
 		string text = m_ItemTooltipData.GetText(TooltipElement.Subname);
 		ItemEntity item = m_Item;
 		Sprite image = ((item != null) ? ObjectExtensions.Or(item.Icon, null) : null) ?? SimpleBlueprintExtendAsObject.Or(m_BlueprintItem, null)?.Icon;
+		BlueprintItemArmor blueprintItemArmor = m_BlueprintItem as BlueprintItemArmor;
 		bool hasUpgrade = m_BlueprintItem.PrototypeLink is BlueprintItemArmor;
-		List<ArmourTagUISettings> tagSettings = (m_BlueprintItem as BlueprintItemArmor)?.ArmourTags.ToList() ?? new List<ArmourTagUISettings>();
-		list.Add(new TooltipBrickArmourHeader(itemName, image, GetStatDataFor(TooltipElement.Durability), GetStatDataFor(TooltipElement.DamageReduction), hasUpgrade, tagSettings, text));
+		List<ArmourTagUISettings> tagSettings = blueprintItemArmor?.ArmourTags.ToList() ?? new List<ArmourTagUISettings>();
+		string itemLabel = ((blueprintItemArmor != null && blueprintItemArmor.Category != 0) ? UIUtilityText.WrapWithWeight(LocalizedTexts.Instance.Stats.GetText(blueprintItemArmor.Category), TextFontWeight.SemiBold) : null);
+		list.Add(new BrickArmourHeaderVM(itemName, image, GetStatDataFor(TooltipElement.Durability), GetStatDataFor(TooltipElement.DamageReduction), hasUpgrade, tagSettings, m_BlueprintItem, text, itemLabel));
 		return list;
 	}
 
@@ -67,16 +73,29 @@ public class ArmorItemPart : BaseItemPart
 		{
 			AddRestrictions(list, type);
 		}
+		AddArtisticDescription(list);
 		return list;
 	}
 
 	private void AddArmorStats(List<ITooltipBrick> bricks)
 	{
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
+		AddMaxDefence(list);
 		AddArmourTags(list);
 		if (list.Any())
 		{
 			bricks.AddRange(list);
+		}
+	}
+
+	private void AddMaxDefence(List<ITooltipBrick> bricks)
+	{
+		int num = (m_BlueprintItem as BlueprintItemArmor)?.MaxDefence ?? 0;
+		if (num > 0)
+		{
+			string text = UIStrings.Instance.Tooltips.MaxDefence;
+			string value = UIUtilityText.AddPercentTo(num);
+			bricks.Add(new BrickIconStatValueVM(new TextValueAddElement(text, value)));
 		}
 	}
 
@@ -91,15 +110,17 @@ public class ArmorItemPart : BaseItemPart
 		{
 			return;
 		}
-		bricks.Add(new TooltipBrickText(string.Empty));
-		foreach (ArmourTagUISettings item in list)
+		bricks.Add(new BrickTextVM(string.Empty));
+		foreach (ArmourTagUISettings tag in list)
 		{
-			if (item.OwnerBlueprint is BlueprintFeature)
+			if (tag.OwnerBlueprint is BlueprintFeature)
 			{
-				Sprite armourTagIcon = UIConfig.Instance.FeatureTagsConfig.GetArmourTagIcon(item);
-				Color armourMountColor = UIConfig.Instance.FeatureTagsConfig.GetArmourMountColor(item);
-				TempTagUtils.GetTagNameAndDescription(item, out var tagName, out var tagDescription);
-				bricks.Add(new TooltipBrickTagDescription(armourTagIcon, armourMountColor, tagName, tagDescription));
+				Sprite armourTagIcon = UIConfig.Instance.FeatureTagsConfig.GetArmourTagIcon(tag);
+				Color armourMountColor = UIConfig.Instance.FeatureTagsConfig.GetArmourMountColor(tag);
+				string descriptionWithItemEquipped = UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagName(tag));
+				string descriptionWithItemEquipped2 = UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagDescription(tag));
+				bricks.Add(new BrickSpaceVM(25f));
+				bricks.Add(new BrickTagDescriptionVM(armourTagIcon, armourMountColor, descriptionWithItemEquipped, descriptionWithItemEquipped2));
 			}
 		}
 	}
@@ -116,6 +137,6 @@ public class ArmorItemPart : BaseItemPart
 			CompareData compareData2 = m_CompareItemTooltipData.GetCompareData(type);
 			comparison = CompareValues(compareData.Value, compareData2.Value);
 		}
-		return new StatData(highlight: (!m_ItemTooltipData.GetHasValue(type)) ? StatData.StatHighlight.Negative : StatData.StatHighlight.Default, value: text, label: tooltipElementLabel, icon: value, comparison: comparison);
+		return new StatData(highlight: (!m_ItemTooltipData.GetHasValue(type)) ? StatData.StatHighlight.Negative : StatData.StatHighlight.Default, text: new TextValueElement(tooltipElementLabel, text), icon: value, comparison: comparison);
 	}
 }

@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.UnitLogic.Abilities;
+using Kingmaker.Utility;
 using Kingmaker.View.Covers;
 using Owlcat.AI.Mechanics.Positioning;
 using Owlcat.BehaviourTrees;
@@ -25,7 +27,26 @@ public class SetGraphNodeToUseAbilityFromNode : BehaviourTreeNode
 
 	private readonly PropertyCalculator m_FunctionToMaximize;
 
-	public SetGraphNodeToUseAbilityFromNode(EntityVariable agent, GraphNodeVariable variable, GraphNodeListVariable nodes, MechanicEntityListVariable targets, AbilityVariable ability, PropertyCalculator functionToMaximize)
+	[CanBeNull]
+	private readonly PropertyCalculatorBlueprintVariable m_CalculatorBlueprint;
+
+	private bool HasScoringFunction
+	{
+		get
+		{
+			if (m_CalculatorBlueprint?.Value == null)
+			{
+				if (m_FunctionToMaximize != null)
+				{
+					return !m_FunctionToMaximize.Empty;
+				}
+				return false;
+			}
+			return true;
+		}
+	}
+
+	public SetGraphNodeToUseAbilityFromNode(EntityVariable agent, GraphNodeVariable variable, GraphNodeListVariable nodes, MechanicEntityListVariable targets, AbilityVariable ability, PropertyCalculator functionToMaximize, [CanBeNull] PropertyCalculatorBlueprintVariable calculatorBlueprint = null)
 	{
 		m_Agent = agent;
 		m_Variable = variable;
@@ -33,11 +54,22 @@ public class SetGraphNodeToUseAbilityFromNode : BehaviourTreeNode
 		m_Targets = targets;
 		m_Ability = ability;
 		m_FunctionToMaximize = functionToMaximize;
+		m_CalculatorBlueprint = calculatorBlueprint;
+	}
+
+	private int EvaluateScore(MechanicEntity entity, TargetWrapper target = null, AbilityData ability = null)
+	{
+		PropertyCalculatorBlueprint propertyCalculatorBlueprint = m_CalculatorBlueprint?.Value;
+		if (propertyCalculatorBlueprint != null)
+		{
+			return propertyCalculatorBlueprint.Value.GetValue(entity, null, target, null, ability) + propertyCalculatorBlueprint.Add;
+		}
+		return m_FunctionToMaximize.GetValue(entity, null, target, null, ability);
 	}
 
 	public override NodeVisitResult ForwardVisit()
 	{
-		m_Variable.Value = GetGraphNodeToUseAbilityFrom(m_Agent.Value, m_Targets.Value, m_NodesList.Value, m_Ability.Value, m_FunctionToMaximize);
+		m_Variable.Value = GetGraphNodeToUseAbilityFrom(m_Agent.Value, m_Targets.Value, m_NodesList.Value, m_Ability.Value);
 		if (m_Variable.Value == null)
 		{
 			return NodeVisitResult.Failure;
@@ -45,7 +77,7 @@ public class SetGraphNodeToUseAbilityFromNode : BehaviourTreeNode
 		return NodeVisitResult.Success;
 	}
 
-	private static GraphNode GetGraphNodeToUseAbilityFrom(MechanicEntity caster, List<MechanicEntity> targets, List<GraphNode> nodes, AbilityData ability, PropertyCalculator utilityFunction)
+	private GraphNode GetGraphNodeToUseAbilityFrom(MechanicEntity caster, List<MechanicEntity> targets, List<GraphNode> nodes, AbilityData ability)
 	{
 		if (nodes == null || nodes.Count == 0 || ability == null || ability.Blueprint == null)
 		{
@@ -65,7 +97,7 @@ public class SetGraphNodeToUseAbilityFromNode : BehaviourTreeNode
 				{
 					continue;
 				}
-				if (utilityFunction == null || utilityFunction.Empty)
+				if (!HasScoringFunction)
 				{
 					return item;
 				}
@@ -74,7 +106,7 @@ public class SetGraphNodeToUseAbilityFromNode : BehaviourTreeNode
 				{
 					foreach (MechanicEntity target in targets)
 					{
-						num2 += utilityFunction.GetValue(new PropertyContext(caster, null, target, null, ability));
+						num2 += EvaluateScore(caster, target, ability);
 					}
 					if (num2 > num)
 					{

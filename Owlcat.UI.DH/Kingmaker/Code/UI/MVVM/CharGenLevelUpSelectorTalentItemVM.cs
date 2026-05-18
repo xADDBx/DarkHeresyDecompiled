@@ -1,6 +1,5 @@
 using System;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;

@@ -18,7 +18,6 @@ using Kingmaker.View.MapObjects.InteractionRestrictions;
 using Kingmaker.View.MapObjects.Traps;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
 
@@ -91,11 +90,11 @@ public sealed class UnitInteractWithObject : UnitCommand<UnitInteractWithObjectP
 
 	private void UpdateTarget()
 	{
-		if (!OverrideTarget.HasValue && TargetObject is TrapObjectData trapObjectData && (bool)trapObjectData.View.Settings.ScriptZoneTrigger)
+		if (!OverrideTarget.HasValue && TargetObject is TrapObjectData { ScriptZone: not null } trapObjectData)
 		{
-			Vector3 normalized = (trapObjectData.View.ViewTransform.position - base.Executor.Position).normalized;
+			Vector3 normalized = (trapObjectData.ViewPosition - base.Executor.Position).normalized;
 			Vector3 point = base.Executor.Position + normalized * (base.Executor.Corpulence + 0.25f);
-			if (trapObjectData.View.Settings.ScriptZoneTrigger.Data.ContainsPosition(point))
+			if (trapObjectData.ScriptZone.ContainsPosition(point))
 			{
 				OverrideTarget = base.Executor.Position + normalized * 0.01f;
 			}
@@ -133,7 +132,7 @@ public sealed class UnitInteractWithObject : UnitCommand<UnitInteractWithObjectP
 		base.OnEnded();
 		if (Interaction?.InteractionStopSound != null && Interaction.InteractionStopSound != "")
 		{
-			SoundEventsManager.PostEvent(Interaction.InteractionStopSound, Interaction.View.Or(null)?.gameObject);
+			SoundEventsManager.PostEvent(Interaction.InteractionStopSound, Interaction.View?.gameObject);
 		}
 	}
 

@@ -3,6 +3,7 @@ using Kingmaker.ElementsSystem;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 
 namespace Kingmaker.Framework.DetectiveSystem;
 
@@ -12,6 +13,9 @@ public sealed class HasClueAddendum : Condition, IHasDetectiveCaseItemCondition
 {
 	[ValidateNotNull]
 	public BpRef<BlueprintClueAddendum> Addendum;
+
+	[InfoBox("Не учитывать то, что полученно после закрытия дела")]
+	public bool ExcludeHidden;
 
 	BlueprintCaseItem IHasDetectiveCaseItemCondition.CaseItem => (BlueprintClueAddendum?)Addendum;
 
@@ -24,6 +28,6 @@ public sealed class HasClueAddendum : Condition, IHasDetectiveCaseItemCondition
 
 	protected override bool CheckCondition()
 	{
-		return Game.Instance.DetectiveSystem.HasClueAddendum(Addendum);
+		return Game.Instance.DetectiveSystem.HasItem((BlueprintClueAddendum?)Addendum, ExcludeHidden);
 	}
 }

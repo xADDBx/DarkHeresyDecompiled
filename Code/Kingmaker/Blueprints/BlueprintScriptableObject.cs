@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.ElementsSystem;
+using MemoryPack;
 using Newtonsoft.Json;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Logging;
@@ -16,6 +17,7 @@ namespace Kingmaker.Blueprints;
 [HashRoot]
 [TypeId("3ec4f91d40b87d34197f44f40a969d92")]
 [OwlPackable(OwlPackableMode.NoGenerate)]
+[MemoryPackable(GenerateType.NoGenerate)]
 public class BlueprintScriptableObject : SimpleBlueprint, IHavePrototype
 {
 	[NonOverridable]

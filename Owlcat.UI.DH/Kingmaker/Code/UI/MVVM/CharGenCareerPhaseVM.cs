@@ -1,207 +1,119 @@
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Blueprints;
-using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.UI.MVVM.View;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.GameCommands;
+using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.UnitLogic.Levelup;
-using Kingmaker.UnitLogic.Levelup.Components;
-using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Progression.Paths;
+using ObservableCollections;
 using Owlcat.UI;
 using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class CharGenCareerPhaseVM : CharGenPhaseBaseVM, ICareerPathHoverHandler, ISubscriber, ICharGenCareerPathHandler
+public class CharGenCareerPhaseVM : CharGenPhaseBaseVM
 {
-	private readonly Dictionary<BlueprintPath, FeatureSelectionItem> m_CareerPathToSelectionItem = new Dictionary<BlueprintPath, FeatureSelectionItem>();
+	private readonly ObservableList<CharGenCareerSelectionItemVM> m_Items = new ObservableList<CharGenCareerSelectionItemVM>();
 
-	private readonly ReactiveProperty<LevelUpManager> m_LevelUpManager = new ReactiveProperty<LevelUpManager>();
+	private readonly ReactiveProperty<CharGenCareerSelectionItemVM> m_SelectedItem = new ReactiveProperty<CharGenCareerSelectionItemVM>();
 
-	private readonly ReactiveProperty<TooltipBaseTemplate> m_ReactiveTooltipTemplate = new ReactiveProperty<TooltipBaseTemplate>();
+	public readonly SelectionGroupRadioVM<CharGenCareerSelectionItemVM> SelectionGroup;
 
-	private SelectionStateFeature m_SelectionStateFeature;
+	private readonly SelectionStateFeature m_SelectionState;
 
-	private bool m_Subscribed;
+	private CharGenCareerSelectionItemVM m_HoveredItem;
 
-	public UnitProgressionVM UnitProgressionVM;
+	private BaseUnitEntity m_Unit => m_CharGenContext.CurrentUnit.CurrentValue;
 
-	public CharGenCareerPhaseVM(CharGenContext charGenContext)
-		: base(charGenContext, CharGenPhaseType.Career)
+	public ReadOnlyReactiveProperty<CharGenCareerSelectionItemVM> SelectedItem => m_SelectedItem;
+
+	public CharGenCareerPhaseVM(CharGenContext charGenContext, InfoSectionVM infoSectionVM, SelectionStateFeature selectionState)
+		: base(charGenContext, CharGenPhaseType.Career, allowSwitchOff: true)
 	{
-		base.HasPantograph = false;
-		SetShowVisualSettings(show: false);
-		SetPhaseHint(UIStrings.Instance.CharGen.SelectDoctrineHint);
-		CreateTooltipSystem();
-		AddDisposable(EventBus.Subscribe(this));
-	}
-
-	public void HandleHoverStart(BlueprintCareerPath careerPath)
-	{
-		if (UnitProgressionVM == null)
-		{
-			return;
-		}
-		bool flag = UnitProgressionVM.AllCareerPaths.FirstOrDefault((CareerPathVM c) => c.CareerPath == careerPath)?.IsUnlocked ?? false;
-		foreach (CareerPathVM allCareerPath in UnitProgressionVM.AllCareerPaths)
-		{
-			if (allCareerPath.PrerequisiteCareerPaths.Contains(careerPath))
-			{
-				allCareerPath.SetItemState(CareerItemState.Highlighted);
-			}
-			else if (flag)
-			{
-				if (allCareerPath.CareerPath.Tier == careerPath.Tier && allCareerPath.CareerPath != careerPath)
-				{
-					allCareerPath.SetItemState(CareerItemState.Darkened);
-				}
-				else
-				{
-					allCareerPath.SetItemState((allCareerPath.IsUnlocked || allCareerPath.CanShowToAnotherCoopPlayer()) ? CareerItemState.Unlocked : CareerItemState.Locked);
-				}
-			}
-		}
-	}
-
-	public void HandleHoverStop()
-	{
-		SetupDefaultItemsState();
-	}
-
-	void ICharGenCareerPathHandler.HandleCareerPath(BlueprintCareerPath careerPath)
-	{
-		CareerPathVM careerPathVM = UnitProgressionVM.AllCareerPaths.FirstOrDefault((CareerPathVM vm) => vm.CareerPath == careerPath);
-		if (careerPathVM == null)
-		{
-			PFLog.UI.Error("CareerPathVM not found " + careerPath.AssetGuid);
-			return;
-		}
-		UnitProgressionVM.SetCareerPath(careerPathVM);
-		if (m_CareerPathToSelectionItem.TryGetValue(careerPathVM.CareerPath, out var value))
-		{
-			m_SelectionStateFeature.ClearSelection();
-			m_SelectionStateFeature.Select(value);
-		}
-		UpdateIsCompleted();
-		SetPhaseHint(string.Empty);
-		UpdateTooltipTemplate();
+		m_SelectionState = selectionState;
+		m_PhaseName.Value = selectionState.Blueprint.Title;
+		base.DisplayMode = CharGenDisplayMode.PortraitOnly;
+		base.BlueprintSelectionWithUI = selectionState.Blueprint;
+		InfoVM = infoSectionVM;
+		SelectionGroup = new SelectionGroupRadioVM<CharGenCareerSelectionItemVM>(m_Items, m_SelectedItem).AddTo(this);
+		SelectedItem.Subscribe(HandleSelectedItem).AddTo(this);
+		RefreshItemList();
 	}
 
 	protected override bool CheckIsCompleted()
 	{
-		SelectionStateFeature selectionStateFeature = m_SelectionStateFeature;
-		if (selectionStateFeature != null && selectionStateFeature.IsMade)
+		if (m_IsAvailable.CurrentValue && m_SelectionState.IsMade)
 		{
-			return selectionStateFeature.IsValid;
+			return m_SelectionState.IsValid;
 		}
 		return false;
 	}
 
 	protected override void OnBeginDetailedView()
 	{
-		if (!m_Subscribed)
-		{
-			UnitProgressionVM = AddDisposableAndReturn(new UnitProgressionVM(CharGenContext.CurrentUnit, m_LevelUpManager, UnitProgressionMode.CharGen));
-			AddDisposable(CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager));
-			AddDisposable(UnitProgressionVM.PreselectedCareer.Subscribe(HandleSelectCareer));
-			m_Subscribed = true;
-		}
-		UnitProgressionVM.UpdateSelectionsFromUnit(CharGenContext.LevelUpManager.CurrentValue.PreviewUnit);
-		SetupDefaultItemsState();
+		UpdateTooltip();
 	}
 
-	protected override void DisposeImplementation()
+	protected override void OnEndDetailedView()
 	{
-		base.DisposeImplementation();
-		m_CareerPathToSelectionItem.Clear();
+		base.OnEndDetailedView();
+		InfoVM.SetTemplate(null);
 	}
 
-	private void CreateTooltipSystem()
+	private void RefreshItemList()
 	{
-		AddDisposable(InfoVM = new InfoSectionVM());
-		AddDisposable(SecondaryInfoVM = new InfoSectionVM());
-		AddDisposable(m_ReactiveTooltipTemplate.Subscribe(InfoVM.SetTemplate));
-	}
-
-	public void UpdateTooltipTemplate(BlueprintCareerPath careerPath = null)
-	{
-		if (careerPath == null)
+		List<BlueprintCareerPath> paths = m_SelectionState.Items.Select((FeatureSelectionItem i) => i.Feature).OfType<BlueprintCareerPath>().ToList();
+		foreach (CharGenCareerSelectionItemVM item in m_Items.Where((CharGenCareerSelectionItemVM i) => !paths.Contains(i.CareerPath)).ToList())
 		{
-			m_ReactiveTooltipTemplate.Value = GetTooltipTemplate();
-			return;
+			m_Items.Remove(item);
 		}
-		CareerPathVM careerPathVM = UnitProgressionVM.AllCareerPaths.FirstOrDefault((CareerPathVM vm) => vm.CareerPath == careerPath);
-		m_ReactiveTooltipTemplate.Value = ((careerPathVM != null) ? ((TooltipBaseTemplate)new TooltipTemplateCareer(careerPathVM)) : ((TooltipBaseTemplate)new TooltipTemplateCharGenDoctrinesDesc()));
-	}
-
-	private TooltipBaseTemplate GetTooltipTemplate()
-	{
-		CareerPathVM currentValue = UnitProgressionVM.PreselectedCareer.CurrentValue;
-		if (currentValue == null)
+		foreach (BlueprintCareerPath path in paths)
 		{
-			return new TooltipTemplateCharGenDoctrinesDesc();
-		}
-		return new TooltipTemplateCareer(currentValue);
-	}
-
-	private void HandleSelectCareer(CareerPathVM careerPathVM)
-	{
-		if (careerPathVM != null && m_SelectionStateFeature != null)
-		{
-			Game.Instance.GameCommandQueue.CharGenSelectCareerPath(careerPathVM.CareerPath);
-		}
-	}
-
-	private void HandleLevelUpManager(LevelUpManager manager)
-	{
-		if (manager == null)
-		{
-			return;
-		}
-		IEnumerable<BlueprintSelectionFeature> featureSelectionsByGroup = UtilityChargen.GetFeatureSelectionsByGroup(manager.Path, FeatureGroup.ChargenCareerPath, manager.PreviewUnit);
-		if (!featureSelectionsByGroup.Any())
-		{
-			return;
-		}
-		BlueprintSelectionFeature blueprintSelectionFeature = featureSelectionsByGroup.First();
-		foreach (FeatureSelectionItem selectionItem in blueprintSelectionFeature.GetSelectionItems(manager.PreviewUnit, manager.Path))
-		{
-			ApplyCareerPath component = selectionItem.Feature.GetComponent<ApplyCareerPath>();
-			if (component != null)
+			if (!m_Items.Any((CharGenCareerSelectionItemVM i) => i.CareerPath == path))
 			{
-				m_CareerPathToSelectionItem[component.CareerPath] = selectionItem;
+				CharGenCareerSelectionItemVM charGenCareerSelectionItemVM = new CharGenCareerSelectionItemVM(path, OnHoverItem);
+				AddDisposable(charGenCareerSelectionItemVM);
+				m_Items.Add(charGenCareerSelectionItemVM);
 			}
 		}
-		m_SelectionStateFeature = manager.GetSelectionState(manager.Path, blueprintSelectionFeature, 0) as SelectionStateFeature;
 	}
 
-	private void SetupDefaultItemsState()
+	private void HandleSelectedItem(CharGenCareerSelectionItemVM item)
 	{
-		if (UnitProgressionVM == null)
+		if (m_CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp)
 		{
-			return;
+			m_CharGenContext.LevelUpManager.CurrentValue.SelectCareerPath(item.CareerPath);
 		}
-		CareerPathVM careerPathVM = UnitProgressionVM.AllCareerPaths.FirstOrDefault((CareerPathVM c) => c.IsSelected.Value);
-		foreach (CareerPathVM allCareerPath in UnitProgressionVM.AllCareerPaths)
+		else
 		{
-			if (careerPathVM != null && allCareerPath.CareerPath == careerPathVM.CareerPath)
+			m_SelectionState.ClearSelection();
+			if (item != null)
 			{
-				allCareerPath.SetItemState(CareerItemState.Selected);
+				FeatureSelectionItem selectionItem = m_SelectionState.Items.First((FeatureSelectionItem f) => f.Feature == item.CareerPath);
+				m_SelectionState.Select(selectionItem);
 			}
-			else if (careerPathVM == null && allCareerPath.CareerPath.Tier == CareerPathTier.One)
-			{
-				allCareerPath.SetItemState(CareerItemState.Ready);
-			}
-			else
-			{
-				allCareerPath.SetItemState((allCareerPath.IsUnlocked || allCareerPath.CanShowToAnotherCoopPlayer()) ? CareerItemState.Unlocked : CareerItemState.Locked);
-			}
+		}
+		UpdateIsCompleted();
+		UpdateTooltip();
+		EventBus.RaiseEvent(delegate(ILevelUpManagerUIHandler h)
+		{
+			h.HandleUISelectCareerPath();
+		});
+	}
+
+	private void OnHoverItem(CharGenCareerSelectionItemVM item)
+	{
+		m_HoveredItem = item;
+		UpdateTooltip();
+	}
+
+	private void UpdateTooltip()
+	{
+		if (base.IsInDetailedView.CurrentValue)
+		{
+			CharGenCareerSelectionItemVM obj = m_HoveredItem ?? SelectedItem.CurrentValue;
+			InfoVM.SetTemplate(obj?.Template ?? new TooltipTemplateLevelUpPhaseDescription(base.BlueprintSelectionWithUI));
 		}
 	}
 }

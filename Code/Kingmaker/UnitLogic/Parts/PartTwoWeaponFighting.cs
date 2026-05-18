@@ -4,6 +4,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.SystemMechanics;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -98,7 +99,10 @@ public class PartTwoWeaponFighting : UnitPart, ITurnStartHandler<EntitySubscribe
 
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		ResetAttacks();
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current)
+		{
+			ResetAttacks();
+		}
 	}
 
 	public void ResetAttacks()

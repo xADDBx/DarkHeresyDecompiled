@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.Features.Items.Utility;
 using Owlcat.Runtime.Core.Utility;
 
@@ -16,6 +17,6 @@ public class CheckWeaponProgressionTypeGetter : BoolPropertyGetter, PropertyCont
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetAbilityWeapon()?.Blueprint.ProgressionType == Type;
+		return EvalContext.Current.AbilityWeapon?.Blueprint.ProgressionType == Type;
 	}
 }

@@ -8,6 +8,8 @@ namespace Kingmaker.EntitySystem.Stats.Base;
 
 public static class StatTypeHelper
 {
+	public static readonly int AllStatsArraySize = EnumUtils.GetMaxValuePlusOne<StatType>();
+
 	public static readonly StatType[] AllStats = (from v in EnumUtils.GetValues<StatType>()
 		where v != StatType.Unknown
 		select v).ToArray();
@@ -107,7 +109,7 @@ public static class StatTypeHelper
 			StatType.Fellowship
 		},
 		{
-			StatType.HitPoints,
+			StatType.MaxHitPoints,
 			StatType.Toughness
 		},
 		{
@@ -142,15 +144,15 @@ public static class StatTypeHelper
 		StatType.SkillLoreXenos,
 		StatType.SkillLoreWarp,
 		StatType.SkillTechUse,
-		StatType.SkillInterrogation,
-		StatType.SkillMettle,
 		StatType.SkillAwareness,
 		StatType.SkillWits,
+		StatType.SkillInterrogation,
+		StatType.SkillMettle,
 		StatType.SkillIntimidation,
 		StatType.SkillDiplomacy,
 		StatType.SkillMedicae,
 		StatType.Initiative,
-		StatType.HitPoints
+		StatType.MaxHitPoints
 	};
 
 	private static readonly SkillType[] s_CombatSkills = new SkillType[5]
@@ -181,7 +183,7 @@ public static class StatTypeHelper
 	{
 		if (stat != 0)
 		{
-			return Attributes.Contains(stat);
+			return Attributes.IndexOf(stat) != -1;
 		}
 		return false;
 	}
@@ -190,7 +192,7 @@ public static class StatTypeHelper
 	{
 		if (stat != 0)
 		{
-			return Skills.Contains(stat);
+			return Skills.IndexOf(stat) != -1;
 		}
 		return false;
 	}
@@ -199,7 +201,7 @@ public static class StatTypeHelper
 	{
 		if (stat != 0)
 		{
-			return KnowledgeSkills.HasItem(stat);
+			return KnowledgeSkills.IndexOf(stat) != -1;
 		}
 		return false;
 	}

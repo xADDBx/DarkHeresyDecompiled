@@ -38,9 +38,9 @@ public interface IItemsCollection : IEnumerable<ItemEntity>, IEnumerable
 	[CanBeNull]
 	ItemEntity Add([NotNull] ItemEntity newItem, bool noAutoMerge = false);
 
-	void Add([NotNull] BlueprintItem newBpItem, int count, [CanBeNull] Action<ItemEntity> callback = null, bool noAutoMerge = false);
+	void Add([NotNull] BlueprintItem newBpItem, int count, [CanBeNull] Action<ItemEntity> callback = null, bool noAutoMerge = false, int? equipmentCR = null);
 
-	ItemEntity Add([NotNull] BlueprintItem newBpItem);
+	ItemEntity Add([NotNull] BlueprintItem newBpItem, int? equipmentCR = null);
 
 	ItemEntity Remove([NotNull] ItemEntity item, int? count = null);
 

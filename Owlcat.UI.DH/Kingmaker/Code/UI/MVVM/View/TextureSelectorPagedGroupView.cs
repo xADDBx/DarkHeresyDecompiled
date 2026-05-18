@@ -1,4 +1,3 @@
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Common.PageNavigation;
 using Kingmaker.Utility.DotNetExtensions;
 using R3;
@@ -63,46 +62,5 @@ public class TextureSelectorPagedGroupView : TextureSelectorGroupView
 		{
 			m_Paginator.SetPageIndex(num / m_ItemsPerRow);
 		}
-	}
-
-	public override bool HandleUp()
-	{
-		return false;
-	}
-
-	public override bool HandleDown()
-	{
-		return false;
-	}
-
-	public override bool HandleLeft()
-	{
-		if (!UtilityNet.IsControlMainCharacter())
-		{
-			return false;
-		}
-		return base.ViewModel.SelectPrevValidEntity();
-	}
-
-	public override bool HandleRight()
-	{
-		if (!UtilityNet.IsControlMainCharacter())
-		{
-			return false;
-		}
-		return base.ViewModel.SelectNextValidEntity();
-	}
-
-	public override void SetFocus(bool value)
-	{
-	}
-
-	public override bool CanConfirmClick()
-	{
-		return false;
-	}
-
-	public override void OnConfirmClick()
-	{
 	}
 }

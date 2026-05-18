@@ -16,7 +16,7 @@ public abstract class UnitInfoPart : View<UnitInfoVM>
 
 	protected override void OnBind()
 	{
-		base.ViewModel.IsHover.CombineLatest(base.ViewModel.Data.HasLineOfSight, base.ViewModel.Data.HasHit, base.ViewModel.HasAbility, base.ViewModel.Data.Damage, base.ViewModel.Data.MaxHeal, base.ViewModel.IsPreciseAttack, base.ViewModel.Data.PreciseAttackHasNoTarget, base.ViewModel.Data.IsDeadOrUnconsciousIsDead, base.ViewModel.Data.HasConcentration, delegate(bool isHover, bool hasLineOfSight, bool hasHit, bool hasAbility, UnitInfoReactiveData.PredictedDamage damage, int maxHeal, bool isPreciseAttack, bool preciseAttackHasNoTarget, bool isDeadOrUnconsciousIsDead, bool hasConcentration)
+		base.ViewModel.IsHover.CombineLatest(base.ViewModel.Data.HasLineOfSight, base.ViewModel.Data.HasHit, base.ViewModel.HasAbility, base.ViewModel.Data.Damage, base.ViewModel.Data.MaxHeal, base.ViewModel.IsPreciseAttack, base.ViewModel.Data.PreciseAttackHasNoTarget, base.ViewModel.Data.IsDeadOrUnconsciousIsDead, base.ViewModel.Data.HasConcentration, base.ViewModel.HasMorale, delegate(bool _, bool hasLineOfSight, bool hasHit, bool hasAbility, UnitInfoReactiveData.PredictedDamage damage, int maxHeal, bool isPreciseAttack, bool preciseAttackHasNoTarget, bool isDeadOrUnconsciousIsDead, bool hasConcentration, bool hasMorale)
 		{
 			UnitInfoPartState result = default(UnitInfoPartState);
 			result.HasLineOfSight = hasLineOfSight;
@@ -28,6 +28,7 @@ public abstract class UnitInfoPart : View<UnitInfoVM>
 			result.PreciseAttackHasNoTarget = preciseAttackHasNoTarget;
 			result.IsDeadOrUnconscious = isDeadOrUnconsciousIsDead;
 			result.HasConcentration = hasConcentration;
+			result.HasMorale = hasMorale;
 			return result;
 		}).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(Show)
 			.AddTo(this);

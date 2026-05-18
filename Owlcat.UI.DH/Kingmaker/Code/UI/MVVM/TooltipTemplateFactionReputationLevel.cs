@@ -21,14 +21,14 @@ public class TooltipTemplateFactionReputationLevel : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(UIStrings.Instance.CommonTexts.Information, TooltipTitleType.H1);
+		yield return new BrickTitleVM(UIStrings.Instance.CommonTexts.Information, TooltipTitleType.H1);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		return new List<ITooltipBrick>
 		{
-			new TooltipBrickFactionStatus(null, UIStrings.Instance.CharacterSheet.GetFactionLabel(FactionType), Status)
+			new BrickFactionStatusVM(UIStrings.Instance.CharacterSheet.GetFactionLabel(FactionType), Status)
 		};
 	}
 }

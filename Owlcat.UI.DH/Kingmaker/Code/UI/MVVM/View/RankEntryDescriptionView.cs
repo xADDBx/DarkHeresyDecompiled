@@ -1,4 +1,3 @@
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Owlcat.UI;
 using TMPro;
 using UnityEngine;

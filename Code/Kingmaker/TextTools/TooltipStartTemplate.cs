@@ -17,7 +17,7 @@ public class TooltipStartTemplate : TextTemplate
 
 	public override int Balance => 1;
 
-	private GlossaryColors Colors => ConfigRoot.Instance.UIConfig.PaperGlossaryColors;
+	private static GlossaryColors Colors => ConfigRoot.Instance.UIConfig.PaperGlossaryColors;
 
 	public TooltipStartTemplate(TooltipType type)
 	{
@@ -40,25 +40,25 @@ public class TooltipStartTemplate : TextTemplate
 			type = EntityLink.GetEntityType(UtilityLink.GetKeysFromLink(text)[0]);
 		}
 		string color = GetColor(emptyLink, type);
-		return "<b><color=" + color + "><link=\"" + text + "\">";
+		return "<link=\"" + text + "\"><color=" + color + "><b>";
 	}
 
 	private string GetColor(bool emptyLink, EntityLink.Type type = EntityLink.Type.Empty)
 	{
 		if (emptyLink)
 		{
-			return "#" + ColorUtility.ToHtmlStringRGB(Colors.GlossaryEmpty);
+			return "#" + ColorUtility.ToHtmlStringRGB((Color)Colors.GlossaryEmpty);
 		}
 		if (type == EntityLink.Type.UnitFact)
 		{
-			return "#" + ColorUtility.ToHtmlStringRGB(Colors.GlossaryMechanics);
+			return "#" + ColorUtility.ToHtmlStringRGB((Color)Colors.GlossaryMechanics);
 		}
 		return m_Type switch
 		{
-			TooltipType.Glosary => "#" + ColorUtility.ToHtmlStringRGB(Colors.GlossaryGlossary), 
-			TooltipType.Decisions => "#" + ColorUtility.ToHtmlStringRGB(Colors.GlossaryDecisions), 
-			TooltipType.Mechanics => "#" + ColorUtility.ToHtmlStringRGB(Colors.GlossaryMechanics), 
-			_ => "#" + ColorUtility.ToHtmlStringRGB(Colors.GlossaryDefault), 
+			TooltipType.Glosary => "#" + ColorUtility.ToHtmlStringRGB((Color)Colors.GlossaryGlossary), 
+			TooltipType.Decisions => "#" + ColorUtility.ToHtmlStringRGB((Color)Colors.GlossaryDecisions), 
+			TooltipType.Mechanics => "#" + ColorUtility.ToHtmlStringRGB((Color)Colors.GlossaryMechanics), 
+			_ => "#" + ColorUtility.ToHtmlStringRGB((Color)Colors.GlossaryDefault), 
 		};
 	}
 }

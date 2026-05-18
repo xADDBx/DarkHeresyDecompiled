@@ -6,17 +6,6 @@ namespace Owlcat.Runtime.Visual.Waaagh;
 
 public static class CameraExtensions
 {
-	public static bool TryGetScriptableRenderer<T>(this Camera camera, out T result) where T : ScriptableRenderer
-	{
-		if (camera.TryGetComponent<WaaaghAdditionalCameraData>(out var component) && component.ScriptableRenderer is T val)
-		{
-			result = val;
-			return true;
-		}
-		result = null;
-		return false;
-	}
-
 	public static WaaaghAdditionalCameraData GetWaaaghAdditionalCameraData(this Camera camera)
 	{
 		GameObject gameObject = camera.gameObject;

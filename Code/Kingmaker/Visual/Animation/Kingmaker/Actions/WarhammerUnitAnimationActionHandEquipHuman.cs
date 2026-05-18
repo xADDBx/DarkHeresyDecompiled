@@ -91,7 +91,7 @@ public class WarhammerUnitAnimationActionHandEquipHuman : UnitAnimationAction, I
 			ActionData actionData = new ActionData
 			{
 				clip = clip,
-				wasMoving = (handle.Manager.NewSpeed > 0f)
+				wasMoving = (handle.Manager.Speed > 0f)
 			};
 			AvatarMask avatarMask = ((actionData.wasMoving && AvatarMasks.Count > 0) ? AvatarMasks[0] : null);
 			handle.StartClip(clip, avatarMask, ClipDurationType.Oneshot);
@@ -110,7 +110,7 @@ public class WarhammerUnitAnimationActionHandEquipHuman : UnitAnimationAction, I
 	{
 		base.OnUpdate(handle, deltaTime);
 		ActionData actionData = handle.ActionData as ActionData;
-		bool flag = handle.Manager.NewSpeed > 0f;
+		bool flag = handle.Manager.Speed > 0f;
 		if (actionData.wasMoving != flag && AvatarMasks.Count > 0)
 		{
 			actionData.wasMoving = flag;

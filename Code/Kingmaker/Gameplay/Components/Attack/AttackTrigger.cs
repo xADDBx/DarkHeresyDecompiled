@@ -2,12 +2,11 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.RuleSystem.Rules;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Gameplay.Components.Attack;
@@ -16,6 +15,9 @@ namespace Kingmaker.Gameplay.Components.Attack;
 [AllowMultipleComponents]
 [AllowedOn(typeof(BlueprintMechanicEntityFact))]
 [TypeId("d69d33d437cc46cbbc8a98b52b206822")]
+[SetsContext(ContextField.Target, Availability.Definitely)]
+[ContextRoleForField("ActionOnTarget", ContextField.Target, "attack victim", FallsBackTo = "rule.Target")]
+[ContextRoleForField("ActionOnCaster", ContextField.Target, "who performed attack", FallsBackTo = "rule.Initiator")]
 public abstract class AttackTrigger : MechanicEntityFactComponentDelegate
 {
 	public RestrictionCalculator Restrictions = new RestrictionCalculator();
@@ -32,11 +34,27 @@ public abstract class AttackTrigger : MechanicEntityFactComponentDelegate
 		{
 			return;
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(evt.Target))
+		using (EvalContext.Current.PushTarget(evt.Target))
 		{
 			ActionOnTarget.Run();
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(evt.Initiator))
+		using (EvalContext.Current.PushTarget(evt.Initiator))
+		{
+			ActionOnCaster.Run();
+		}
+	}
+
+	protected void TryTrigger(RulePerformAttackRoll evt, bool before)
+	{
+		if (!Restrictions.IsPassed(base.Context, null, null, evt) || TriggerBefore != before)
+		{
+			return;
+		}
+		using (EvalContext.Current.PushTarget(evt.Target))
+		{
+			ActionOnTarget.Run();
+		}
+		using (EvalContext.Current.PushTarget(evt.Initiator))
 		{
 			ActionOnCaster.Run();
 		}

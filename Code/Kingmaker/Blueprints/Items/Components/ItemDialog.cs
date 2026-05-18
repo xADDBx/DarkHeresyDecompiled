@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.Localization;
 using Owlcat.Runtime.Core.Utility;

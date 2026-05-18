@@ -81,10 +81,6 @@ public class UINetLobbyTexts
 
 	public LocalizedString KickPlayer;
 
-	public LocalizedString SelectPlayers;
-
-	public LocalizedString UnselectPlayers;
-
 	public LocalizedString SelectRegion;
 
 	public LocalizedString HowToPlay;
@@ -94,8 +90,6 @@ public class UINetLobbyTexts
 	public LocalizedString IsNotEnoughPlayersForGame;
 
 	public LocalizedString ImpossibleToStartCoopGameInThisMoment;
-
-	public LocalizedString NotAvailableInCoopMode;
 
 	public LocalizedString ResetCurrentSave;
 
@@ -114,8 +108,6 @@ public class UINetLobbyTexts
 	public LocalizedString BlockedPlayerInLobby;
 
 	public LocalizedString CantJoinLobbyDuePrivacySettings;
-
-	public LocalizedString ShowPlayerInformation;
 
 	public LocalizedString ShowGamerCard;
 

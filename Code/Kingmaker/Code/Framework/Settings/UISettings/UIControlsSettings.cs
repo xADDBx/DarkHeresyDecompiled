@@ -28,6 +28,8 @@ public class UIControlsSettings : IUISettingsSheet
 
 	public UISettingsEntityBool CameraFollowsUnit;
 
+	public UISettingsEntityDropdownHighlightObjectsMode HighlightObjectsMode;
+
 	public void LinkToSettings()
 	{
 		MouseSensitivity.LinkSetting(SettingsRoot.Controls.MouseSensitivity);
@@ -41,6 +43,7 @@ public class UIControlsSettings : IUISettingsSheet
 		MouseRightButtonFunction.LinkSetting(SettingsRoot.Controls.MouseRightButtonFunction);
 		ConvertSnapLogic.LinkSetting(SettingsRoot.Controls.ConvertSnapLogic);
 		CameraFollowsUnit.LinkSetting(SettingsRoot.Controls.CameraFollowsUnit);
+		HighlightObjectsMode.LinkSetting(SettingsRoot.Controls.HighlightObjectsMode);
 	}
 
 	public void InitializeSettings()

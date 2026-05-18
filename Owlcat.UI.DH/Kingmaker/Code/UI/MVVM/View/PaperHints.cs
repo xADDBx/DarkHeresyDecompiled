@@ -1,12 +1,11 @@
 using System;
-using Owlcat.UI;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
 [Serializable]
 public class PaperHints
 {
-	public ConsoleHint PageUpHint;
+	public HintView PageUpHint;
 
-	public ConsoleHint PageDownHint;
+	public HintView PageDownHint;
 }

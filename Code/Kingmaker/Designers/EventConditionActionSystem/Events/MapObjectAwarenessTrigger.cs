@@ -21,14 +21,14 @@ public class MapObjectAwarenessTrigger : EntityFactComponentDelegate, IAwareness
 
 	public void OnEntityNoticed(BaseUnitEntity character)
 	{
-		MapObjectView view = EventInvokerExtensions.GetEntity<MapObjectEntity>().View;
-		if (view == null || !view.IsOwnerOf(base.Runtime))
+		MapObjectView mapObjectView = EventInvokerExtensions.GetEntity<MapObjectEntity>().View as MapObjectView;
+		if (mapObjectView == null || !mapObjectView.IsOwnerOf(base.Runtime))
 		{
 			return;
 		}
 		using (ContextData<SpotterData>.Request().Setup(character))
 		{
-			using (ContextData<MechanicEntityData>.Request().Setup(view.Data))
+			using (ContextData<MechanicEntityData>.Request().Setup(mapObjectView.Data))
 			{
 				Actions.Run();
 			}

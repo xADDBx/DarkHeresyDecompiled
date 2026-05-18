@@ -25,8 +25,6 @@ public abstract class AnimationActionBase : ScriptableObject
 
 	public virtual bool SupportCaching => true;
 
-	public virtual bool ForceFinishOnJoinCombat => false;
-
 	public abstract void OnStart(AnimationActionHandle handle);
 
 	public abstract void OnFinish(AnimationActionHandle handle);

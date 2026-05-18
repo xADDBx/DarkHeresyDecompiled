@@ -25,7 +25,7 @@ public class ContextActionOnCorpseNexusLegs : ContextAction
 
 	protected override void RunAction()
 	{
-		UnitPartCorpseNexusLegs unitPartCorpseNexusLegs = base.Context.MaybeCaster?.GetOptional<UnitPartCorpseNexusLegs>();
+		UnitPartCorpseNexusLegs unitPartCorpseNexusLegs = base.Context.Caster?.GetOptional<UnitPartCorpseNexusLegs>();
 		if (unitPartCorpseNexusLegs == null)
 		{
 			return;
@@ -40,7 +40,7 @@ public class ContextActionOnCorpseNexusLegs : ContextAction
 		}
 		foreach (BaseUnitEntity item in list)
 		{
-			using (base.Context.SetScope(item))
+			using (base.Context.PushTarget(item))
 			{
 				Actions.Run();
 			}

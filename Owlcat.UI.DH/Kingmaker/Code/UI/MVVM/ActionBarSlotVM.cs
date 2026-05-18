@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Equipment;
-using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Gameplay.Parts;
@@ -14,11 +12,9 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.CasterCheckers;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.FactLogic;
-using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using Photon.Realtime;
 using R3;
@@ -101,7 +97,7 @@ public class ActionBarSlotVM : ViewModel, IHoverActionBarSlotHandler, ISubscribe
 
 	private bool m_TargetSelectionStarted;
 
-	private PartAbilityModifiers Ability = new PartAbilityModifiers();
+	private PartAbilityModifiers Ability;
 
 	private Sprite m_OriginIcon;
 
@@ -239,9 +235,7 @@ public class ActionBarSlotVM : ViewModel, IHoverActionBarSlotHandler, ISubscribe
 		: this()
 	{
 		IsFake = true;
-		ReactiveProperty<Sprite> icon = m_Icon;
-		BlueprintAbility ability = abilityFact.Ability;
-		icon.Value = ((ability != null) ? ObjectExtensions.Or(ability.Icon, UIConfig.Instance.UIIcons.DefaultAbilityIcon) : null);
+		m_Icon.Value = abilityFact.Ability?.Icon.GetDefaultIfNull(DefaultImageType.Ability);
 		m_ResourceCount.Value = -1;
 		m_ActionPointCost.Value = abilityFact.AP;
 		m_Tooltip.Value = new TooltipTemplateDataProvider(abilityFact.Ability);
@@ -277,7 +271,7 @@ public class ActionBarSlotVM : ViewModel, IHoverActionBarSlotHandler, ISubscribe
 			m_Conversion = (from a in MechanicActionBarSlot.GetConvertedAbilityData()
 				where a.IsVisible()
 				select a).ToList();
-			m_Icon.Value = MechanicActionBarSlot.GetIcon() ?? UIConfig.Instance.UIIcons.DefaultAbilityIcon;
+			m_Icon.Value = MechanicActionBarSlot.GetIcon().GetDefaultIfNull(DefaultImageType.Ability);
 			m_ForeIcon.Value = MechanicActionBarSlot.GetForeIcon();
 			m_HasConvert.Value = m_Conversion.Count > 0;
 			m_Tooltip.Value = MechanicActionBarSlot.GetTooltipTemplate();
@@ -340,9 +334,10 @@ public class ActionBarSlotVM : ViewModel, IHoverActionBarSlotHandler, ISubscribe
 			}
 			if (Ability == null)
 			{
-				Ability = MechanicActionBarSlot.Unit.GetOrCreate<PartAbilityModifiers>();
+				Ability = MechanicActionBarSlot.Unit.GetOptional<PartAbilityModifiers>();
 			}
-			HasAbilityModification = Ability.AddedModifiers.Any((PartAbilityModifiers.AddedEntry value) => value.Ability == AbilityData.OriginalBlueprint);
+			PartAbilityModifiers ability = Ability;
+			HasAbilityModification = ability != null && ability.AddedModifiers.Any((PartAbilityModifiers.AddedEntry value) => value.Ability == AbilityData.OriginalBlueprint);
 		}
 		catch (Exception arg)
 		{
@@ -581,7 +576,7 @@ public class ActionBarSlotVM : ViewModel, IHoverActionBarSlotHandler, ISubscribe
 	{
 		m_IsPossibleActive.Value = MechanicActionBarSlot.IsPossibleActive;
 		m_IsPossibleWithoutNetRole.Value = MechanicActionBarSlot.IsPossibleActiveWithoutNetRole;
-		m_UpdateDragAndDropState.Execute();
+		m_UpdateDragAndDropState.Execute(Unit.Default);
 	}
 
 	public void SetSelectionBusy(bool isBusy)

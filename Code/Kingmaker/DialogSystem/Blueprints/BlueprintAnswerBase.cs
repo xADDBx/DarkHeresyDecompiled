@@ -1,6 +1,5 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.ElementsSystem.Interfaces;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;

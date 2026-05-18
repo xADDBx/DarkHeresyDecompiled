@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.View;
 using Kingmaker.Visual.Animation.WeaponStyles;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -139,7 +140,7 @@ public class UnitAnimationActionClimb : UnitAnimationAction
 			}
 			nodeLinkTraverser.VerticalSpeed = climbSettings.VerticalSpeed;
 			nodeLinkTraverser.IsLargeEntity = climbSettings.IsLargeUnit;
-			handle.AnimationLayer = AnimationLayerType.Locomotion;
+			handle.AnimationLayer = UnitAnimationLayerType.Locomotion;
 			handle.HasCrossfadePriority = true;
 			handle.ActionData = new Data();
 		}
@@ -233,7 +234,7 @@ public class UnitAnimationActionClimb : UnitAnimationAction
 
 	private void SynchronizeAnimationWithViewPosition(UnitAnimationActionHandle handle, TraverseData traverseData, MechanicEntity entity)
 	{
-		float ratio = Mathf.Sqrt((entity.View.ViewTransform.position.To2D() - traverseData.WaypointFrom2D).sqrMagnitude / (traverseData.WaypointTo2D - traverseData.WaypointFrom2D).sqrMagnitude);
+		float ratio = Mathf.Sqrt((entity.GetView().transform.position.To2D() - traverseData.WaypointFrom2D).sqrMagnitude / (traverseData.WaypointTo2D - traverseData.WaypointFrom2D).sqrMagnitude);
 		WeaponStyleClimbData climbClips = GetClimbClips(handle.WeaponStyle);
 		ClimbSettings climbSettings = GetClimbSettings(traverseData, climbClips);
 		(float time, float endTime) horizontalOutTimeByDistanceRatio = GetHorizontalOutTimeByDistanceRatio(climbSettings, ratio);

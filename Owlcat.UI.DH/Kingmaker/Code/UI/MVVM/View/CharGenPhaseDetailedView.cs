@@ -11,13 +11,13 @@ public abstract class CharGenPhaseDetailedView<TViewModel> : View<TViewModel>, I
 	[SerializeField]
 	private FadeAnimator m_PageAnimator;
 
-	protected readonly ReactiveProperty<bool> CanGoBackOnDecline = new ReactiveProperty<bool>(value: true);
+	protected readonly ReactiveProperty<bool> m_CanGoBackOnDecline = new ReactiveProperty<bool>(value: true);
 
-	protected readonly ReactiveProperty<bool> CanGoNextInMenu = new ReactiveProperty<bool>();
+	protected readonly ReactiveProperty<bool> m_CanGoNextInMenu = new ReactiveProperty<bool>();
 
-	protected readonly ReactiveProperty<bool> CanGoNextOnConfirm = new ReactiveProperty<bool>();
+	protected readonly ReactiveProperty<bool> m_CanGoNextOnConfirm = new ReactiveProperty<bool>();
 
-	protected PaperHints PaperHints;
+	protected PaperHints m_PaperHints;
 
 	protected virtual bool HasYScrollBindInternal => true;
 
@@ -28,21 +28,19 @@ public abstract class CharGenPhaseDetailedView<TViewModel> : View<TViewModel>, I
 		base.gameObject.SetActive(value: false);
 	}
 
-	public abstract void AddInput(ref InputLayer inputLayer, ref GridConsoleNavigationBehaviour navigationBehaviour, ConsoleHintsWidget hintsWidget, ReadOnlyReactiveProperty<bool> isMainCharacter);
-
 	public ReadOnlyReactiveProperty<bool> GetCanGoNextOnConfirmProperty()
 	{
-		return CanGoNextOnConfirm;
+		return m_CanGoNextOnConfirm;
 	}
 
 	public virtual ReadOnlyReactiveProperty<bool> CanGoNextInMenuProperty()
 	{
-		return CanGoNextOnConfirm;
+		return m_CanGoNextOnConfirm;
 	}
 
 	public ReadOnlyReactiveProperty<bool> GetCanGoBackOnDeclineProperty()
 	{
-		return CanGoBackOnDecline;
+		return m_CanGoBackOnDecline;
 	}
 
 	public virtual bool PressConfirmOnPhase()
@@ -57,7 +55,7 @@ public abstract class CharGenPhaseDetailedView<TViewModel> : View<TViewModel>, I
 
 	public void SetPaperHints(PaperHints paperHints)
 	{
-		PaperHints = paperHints;
+		m_PaperHints = paperHints;
 	}
 
 	protected override void OnBind()

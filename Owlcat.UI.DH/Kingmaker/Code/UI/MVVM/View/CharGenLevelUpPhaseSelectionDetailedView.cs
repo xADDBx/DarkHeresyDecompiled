@@ -1,4 +1,3 @@
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.UI.Common;
 using Owlcat.UI;
 using R3;
@@ -31,12 +30,14 @@ public class CharGenLevelUpPhaseSelectionDetailedView<TViewModel> : CharGenPhase
 
 	private void OnComplete(bool state)
 	{
-		string text = (state ? UIStrings.Instance.CharGen.GetPhaseName(base.ViewModel.PhaseType) : UIStrings.Instance.CharGen.GetChoosePhaseName(base.ViewModel.PhaseType));
-		m_ListHeaderText.text = text;
-		m_ListSelectable?.SetActiveLayer((!state) ? 1 : 0);
-	}
-
-	public override void AddInput(ref InputLayer inputLayer, ref GridConsoleNavigationBehaviour navigationBehaviour, ConsoleHintsWidget hintsWidget, ReadOnlyReactiveProperty<bool> isMainCharacter)
-	{
+		string text = ((base.ViewModel.BlueprintSelectionWithUI == null) ? base.ViewModel.PhaseName.CurrentValue : ((string)(state ? base.ViewModel.BlueprintSelectionWithUI.Title : base.ViewModel.BlueprintSelectionWithUI.CallToAction)));
+		if ((bool)m_ListHeaderText)
+		{
+			m_ListHeaderText.text = text;
+		}
+		if ((bool)m_ListSelectable)
+		{
+			m_ListSelectable.SetActiveLayer((!state) ? 1 : 0);
+		}
 	}
 }

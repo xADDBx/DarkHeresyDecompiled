@@ -23,8 +23,6 @@ public class OvertipCombatTextBlockView : View<OvertipCombatTextBlockVM>
 	[SerializeField]
 	private List<RectTransform> m_PartRects;
 
-	private List<CanvasGroup> m_PartCanvasGroups;
-
 	[SerializeField]
 	private float m_BottomPadding = 5f;
 
@@ -42,15 +40,9 @@ public class OvertipCombatTextBlockView : View<OvertipCombatTextBlockVM>
 	[SerializeField]
 	private CanvasGroup[] m_fadeOnAwake;
 
-	private bool m_HasActiveCommonCombatText;
-
-	private bool m_HasActiveMoraleCombatText;
+	private List<CanvasGroup> m_PartCanvasGroups;
 
 	private bool m_IsInitialize;
-
-	private readonly ReactiveCommand<Unit> m_UpdateVisual = new ReactiveCommand<Unit>();
-
-	private List<CombatMessageBase> m_MessagesList = new List<CombatMessageBase>();
 
 	private IDisposable m_MessageDelay;
 
@@ -58,21 +50,9 @@ public class OvertipCombatTextBlockView : View<OvertipCombatTextBlockVM>
 
 	private bool m_IsMoraleActive;
 
-	public bool HasCombatTextMessages
-	{
-		get
-		{
-			if (!m_HasActiveCommonCombatText)
-			{
-				return m_HasActiveMoraleCombatText;
-			}
-			return true;
-		}
-	}
-
 	public void UpdateVisualForCommon()
 	{
-		m_UpdateVisual.Execute();
+		UpdateVisualInternal();
 	}
 
 	public void HideInstant()
@@ -83,83 +63,79 @@ public class OvertipCombatTextBlockView : View<OvertipCombatTextBlockVM>
 
 	protected override void OnBind()
 	{
-		m_UpdateVisual.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(UpdateVisualInternal).AddTo(this);
-		m_CombatTextCommonCreator.SetCallback(delegate
-		{
-			m_UpdateVisual.Execute();
-		});
-		m_CombatTextHitPointsCreator.SetCallback(delegate
-		{
-			m_UpdateVisual.Execute();
-		});
-		m_CombatTextMoraleCreator.SetCallback(delegate
-		{
-			m_UpdateVisual.Execute();
-		});
+		m_CombatTextCommonCreator.SetCallbacks(HandleMessageViewDisposed, UpdateVisualInternal);
+		m_CombatTextHitPointsCreator.SetCallbacks(HandleMessageViewDisposed, UpdateVisualInternal);
+		m_CombatTextMoraleCreator.SetCallbacks(HandleMessageViewDisposed, UpdateVisualInternal);
 		m_PartCanvasGroups = m_PartRects.Select((RectTransform r) => r.GetComponent<CanvasGroup>()).ToList();
-		base.ViewModel.CombatMessage.Subscribe(OnCombatMessage).AddTo(this);
+		base.ViewModel.CombatMessageEnqueued.Subscribe(OnCombatMessageEnqueued).AddTo(this);
 		m_CombatTextCommonCreator.Clear();
 		m_CombatTextHitPointsCreator.Clear();
 		m_CombatTextMoraleCreator.Clear();
-		m_UpdateVisual.Execute();
+		base.ViewModel.IsForceHidden.Subscribe(delegate
+		{
+			UpdateVisualInternal();
+		}).AddTo(this);
+		UpdateVisualInternal();
 	}
 
 	protected override void OnUnbind()
 	{
+		base.ViewModel.ClearAllMessages();
 		m_CombatTextCommonCreator.Clear();
 		m_CombatTextHitPointsCreator.Clear();
 		m_CombatTextMoraleCreator.Clear();
-		UpdateHasActiveCombatText();
 		m_MessageDelay?.Dispose();
 		m_MessageDelay = null;
 	}
 
-	private void OnCombatMessage(CombatMessageBase message)
+	private void HandleMessageViewDisposed(CombatMessageBase message)
 	{
-		if (!base.ViewModel.IsForbiddenToShow)
-		{
-			m_MessageDelay?.Dispose();
-			m_MessagesList.Add(message);
-			m_MessageDelay = Observable.Timer(0.1f.Seconds()).Subscribe(AddCombatMessage);
-		}
+		base.ViewModel.ClearMessage(message);
 	}
 
-	private void AddCombatMessage()
+	private void OnCombatMessageEnqueued(Unit unit)
 	{
-		if (m_MessagesList.Count == 1)
+		if (base.ViewModel.IsForceHidden.CurrentValue)
 		{
-			AddCombatText(m_MessagesList.First(), single: true);
+			base.ViewModel.ClearAllMessages();
+			return;
 		}
-		else
+		m_MessageDelay?.Dispose();
+		m_MessageDelay = Observable.Timer(0.1f.Seconds()).Subscribe(ShowCombatMessage);
+	}
+
+	private void ShowCombatMessage()
+	{
+		bool single = base.ViewModel.MessagesCount == 1;
+		CombatMessageBase message;
+		while (base.ViewModel.GetNextMessage(out message))
 		{
-			for (int i = 0; i < m_MessagesList.Count; i++)
-			{
-				AddCombatText(m_MessagesList[i], single: false, i % 2 > 0);
-			}
+			AddCombatText(message, single);
 		}
-		m_MessagesList.Clear();
-		m_UpdateVisual.Execute();
+		UpdateVisualInternal();
 	}
 
 	private void UpdateVisualInternal()
 	{
-		UpdateHasActiveCombatText();
-		if (m_HasActiveMoraleCombatText && !m_IsMoraleActive)
+		bool currentValue = base.ViewModel.IsForceHidden.CurrentValue;
+		bool flag = !currentValue && m_CombatTextCommonCreator.ActiveViews.Count > 0;
+		bool flag2 = !currentValue && m_CombatTextMoraleCreator.ActiveViews.Count > 0;
+		if (flag2 && !m_IsMoraleActive)
 		{
 			m_CombatTextMoraleContainerAnimator.AppearAnimation();
 			m_IsMoraleActive = true;
 		}
-		else if (!m_HasActiveMoraleCombatText && m_IsMoraleActive)
+		else if (!flag2 && m_IsMoraleActive)
 		{
 			m_CombatTextMoraleContainerAnimator.DisappearAnimation();
 			m_IsMoraleActive = false;
 		}
-		if (m_HasActiveCommonCombatText && !m_IsCommonActive)
+		if (flag && !m_IsCommonActive)
 		{
 			m_CombatTextContainerAnimator.AppearAnimation();
 			m_IsCommonActive = true;
 		}
-		else if (!m_HasActiveCommonCombatText && m_IsCommonActive)
+		else if (!flag && m_IsCommonActive)
 		{
 			m_CombatTextContainerAnimator.DisappearAnimation();
 			m_IsCommonActive = false;
@@ -183,9 +159,9 @@ public class OvertipCombatTextBlockView : View<OvertipCombatTextBlockVM>
 		Vector2 sizeDelta = default(Vector2);
 		for (int j = 0; j < m_CombatTextCommonCreator.ActiveViews.Count; j++)
 		{
-			CombatTextEntityBaseView<CombatMessageBase> combatTextEntityBaseView = m_CombatTextCommonCreator.ActiveViews[j];
-			sizeDelta = new Vector2(Mathf.Max(sizeDelta.x, combatTextEntityBaseView.Size.x), sizeDelta.y + combatTextEntityBaseView.Size.y);
-			combatTextEntityBaseView.Rect.anchoredPosition = new Vector2(combatTextEntityBaseView.XPos, (float)j * combatTextEntityBaseView.Rect.rect.height);
+			CombatTextCommonView combatTextCommonView = m_CombatTextCommonCreator.ActiveViews[j];
+			sizeDelta = new Vector2(Mathf.Max(sizeDelta.x, combatTextCommonView.Size.x), sizeDelta.y + combatTextCommonView.Size.y);
+			combatTextCommonView.Rect.anchoredPosition = new Vector2(combatTextCommonView.XPos, (float)j * combatTextCommonView.Rect.rect.height);
 		}
 		m_CombatTextCommonCreator.ContainerRect.sizeDelta = sizeDelta;
 	}
@@ -231,15 +207,6 @@ public class OvertipCombatTextBlockView : View<OvertipCombatTextBlockVM>
 			combatTextHitPointsView3.SetDirection(UIUtilityRect.GetNormalizedPositionInCamera(combatMessageDamage.TargetPosition) - UIUtilityRect.GetNormalizedPositionInCamera(combatMessageDamage.SourcePosition), single, even);
 			combatTextHitPointsView3.PlayAnimation();
 		}
-		UpdateHasActiveCombatText();
-	}
-
-	private void UpdateHasActiveCombatText()
-	{
-		m_HasActiveCommonCombatText = m_CombatTextCommonCreator.ActiveViews.Count > 0;
-		m_HasActiveMoraleCombatText = m_CombatTextMoraleCreator.ActiveViews.Count > 0;
-		int activeMessagesCount = m_CombatTextCommonCreator.ActiveViews.Count + m_CombatTextMoraleCreator.ActiveViews.Count + m_CombatTextHitPointsCreator.ActiveViews.Count;
-		base.ViewModel.SetActiveMessagesCount(activeMessagesCount);
 	}
 
 	private void Awake()

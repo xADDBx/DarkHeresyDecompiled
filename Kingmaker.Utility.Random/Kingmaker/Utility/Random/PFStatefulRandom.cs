@@ -135,6 +135,8 @@ public static class PFStatefulRandom
 
 	public static Kingmaker.Utility.StatefulRandom.StatefulRandom UnitRandom;
 
+	public static Kingmaker.Utility.StatefulRandom.StatefulRandom AI;
+
 	public static Kingmaker.Utility.StatefulRandom.StatefulRandom PreviewUnitRandom;
 
 	public static Kingmaker.Utility.StatefulRandom.StatefulRandom NonDeterministic;
@@ -182,6 +184,7 @@ public static class PFStatefulRandom
 		Designers = new Kingmaker.Utility.StatefulRandom.StatefulRandom("Designers");
 		Qa = new Kingmaker.Utility.StatefulRandom.StatefulRandom("Qa");
 		UnitRandom = new Kingmaker.Utility.StatefulRandom.StatefulRandom("UnitRandom");
+		AI = new Kingmaker.Utility.StatefulRandom.StatefulRandom("AI");
 		PreviewUnitRandom = new Kingmaker.Utility.StatefulRandom.StatefulRandom("PreviewUnitRandom");
 		NonDeterministic = new Kingmaker.Utility.StatefulRandom.StatefulRandom("NonDeterministic");
 		All = CollectAllStatefulRandom();
@@ -222,6 +225,7 @@ public static class PFStatefulRandom
 			Designers,
 			Qa,
 			UnitRandom,
+			AI,
 			PreviewUnitRandom,
 			NonDeterministic,
 			Controllers.Inclemency,

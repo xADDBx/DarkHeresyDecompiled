@@ -78,7 +78,7 @@ public class KeyBindingSetupDialogBaseView : View<KeyBindingSetupDialogVM>
 		{
 			m_IsShowed = true;
 			m_Animator.AppearAnimation();
-			UISounds.Instance.Sounds.MessageBox.MessageBoxShow.Play();
+			ModalWindowsSounds.Instance.MessageBox.Show.Play();
 		}
 	}
 
@@ -86,7 +86,7 @@ public class KeyBindingSetupDialogBaseView : View<KeyBindingSetupDialogVM>
 	{
 		if (m_IsShowed)
 		{
-			UISounds.Instance.Sounds.MessageBox.MessageBoxHide.Play();
+			ModalWindowsSounds.Instance.MessageBox.Hide.Play();
 			m_Animator.DisappearAnimation(delegate
 			{
 				base.gameObject.SetActive(value: false);

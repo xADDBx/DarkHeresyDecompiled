@@ -2,21 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Assets.Code.View.UI.MVVM;
 using Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Items;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Cheats;
+using Kingmaker.Code.UI.MVVM.Vendor;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Interfaces;
 using Kingmaker.Code.View.Bridge.Interfaces.Canvas;
 using Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 using Kingmaker.Code.View.UI.MVVM.HUD.PreciseAttack;
 using Kingmaker.Code.View.UI.MVVM.ServiceWindows;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence;
@@ -36,7 +34,6 @@ using Kingmaker.UI.Common.DebugInformation;
 using Kingmaker.UI.DragNDrop;
 using Kingmaker.UI.Events;
 using Kingmaker.UI.InputSystems;
-using Kingmaker.UI.Pointer;
 using Kingmaker.UI.Selection;
 using Kingmaker.UI.Sound;
 using Kingmaker.UI.UIKitDependencies;
@@ -49,17 +46,16 @@ using UnityEngine.SceneManagement;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHandler, ISubscriber, IModalWindowUIHandler, IPartyGainExperienceHandler, IGameModeHandler
+public class RootUIContext : IFullScreenUIHandler, ISubscriber, IModalWindowUIHandler, IPartyGainExperienceHandler, IGameModeHandler, IRootUIContext, IBugReportContext
 {
 	private readonly List<Type> m_BugReportVMs = new List<Type>
 	{
 		typeof(ActionBarVM),
 		typeof(BookEventVM),
 		typeof(BuffVM),
-		typeof(ObsoleteCharacterInfoVM),
+		typeof(CharacterInfoVM),
 		typeof(CharGenVM),
 		typeof(CombatLogVM),
-		typeof(PCCursor),
 		typeof(GameOverVM),
 		typeof(DialogVM),
 		typeof(EscMenuVM),
@@ -119,12 +115,14 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		{
 			typeof(CharGenVM),
 			"CharacterProgression"
+		},
+		{
+			typeof(CharacterInfoVM),
+			"CharacterScreen "
 		}
 	};
 
 	private MonoBehaviour m_RootView;
-
-	private MonoBehaviour m_CommonView;
 
 	private MonoBehaviour m_UILoadingScreenView;
 
@@ -140,14 +138,48 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 
 	private ModalWindowUIType m_ModalWindowUIType;
 
+	private bool GroupChangerIsShown => RootVM.Instance?.GroupChangerVM?.CurrentValue != null;
+
+	private bool IsLootShow => (RootVM.Instance?.LootContext?.IsShown).GetValueOrDefault();
+
+	public bool IsLoadingScreen => LoadingScreenRootVM?.LoadingScreenVM.CurrentValue != null;
+
+	public bool TooltipIsShown
+	{
+		get
+		{
+			if (RootVM.Instance?.TooltipContext.TooltipVM.CurrentValue == null)
+			{
+				return RootVM.Instance?.TooltipContext.ComparativeTooltipVM.CurrentValue != null;
+			}
+			return true;
+		}
+	}
+
+	public bool SaveLoadIsShown => RootVM?.SaveLoadVM.CurrentValue != null;
+
+	public bool IsBugReportOpen => RootVM.Instance?.BugReportVM.CurrentValue != null;
+
+	public bool IsInventoryShow => RootVM.WindowsPanelVM?.Value.InventoryVM.CurrentValue != null;
+
+	public bool IsChargenShown => RootVM?.CharGenContext.CharGenVM?.CurrentValue != null;
+
+	public FullScreenUIType FullScreenUIType => m_FullScreenUIType;
+
+	public ServiceWindowsType CurrentServiceWindow => ServiceWindowsType.None;
+
+	public bool IsInitiativeTrackerActive => (RootVM.Instance.HUDContext?.InitiativeTrackerVM?.CurrentValue?.ConsoleActive?.CurrentValue).GetValueOrDefault();
+
+	public bool CreditsAreShown => false;
+
+	public bool HasIngameMenu => RootVM?.EscMenuVM?.Value != null;
+
 	public static RootUIContext Instance => (RootUIContext)Game.Instance.RootUIContext;
 
 	public GameUIState GameUIState { get; private set; } = new GameUIState();
 
 
 	public RootVM RootVM { get; private set; }
-
-	public CommonVM CommonVM { get; private set; }
 
 	public LoadingScreenRootVM LoadingScreenRootVM { get; private set; }
 
@@ -157,7 +189,9 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 
 	public bool IsDebugBlueprintsInformationShow { get; set; }
 
-	public bool IsCharGenShown => RootVM?.CharGenContextVM.CharGenVM?.CurrentValue != null;
+	public bool IsDebugStringsInformationShow { get; set; }
+
+	public bool IsCharGenShown => RootVM?.CharGenContext.CharGenVM?.CurrentValue != null;
 
 	public bool IsInMainMenu => RootVM?.MainMenuVM.CurrentValue != null;
 
@@ -193,56 +227,8 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 
 	public IMainCanvas MainCanvas => Kingmaker.UI.Canvases.MainCanvas.Instance;
 
-	private bool GroupChangerIsShown => RootVM.Instance?.GroupChangerVM?.CurrentValue != null;
-
-	private bool IsLootShow => (RootVM.Instance?.LootContext?.IsShown).GetValueOrDefault();
-
-	public bool IsLoadingScreen => LoadingScreenRootVM?.LoadingScreenVM.CurrentValue != null;
-
-	public bool TooltipIsShown
-	{
-		get
-		{
-			if (RootVM.Instance?.TooltipContext.TooltipVM.CurrentValue == null)
-			{
-				return RootVM.Instance?.TooltipContext.ComparativeTooltipVM.CurrentValue != null;
-			}
-			return true;
-		}
-	}
-
-	public bool SaveLoadIsShown => RootVM?.SaveLoadVM.CurrentValue != null;
-
-	public bool IsBugReportOpen => RootVM.Instance?.BugReportVM.CurrentValue != null;
-
-	public bool IsVendorShow => CommonVM?.VendorVM?.CurrentValue != null;
-
-	public bool IsVendorSelectingWindowShow => CommonVM?.VendorSelectingWindowVM?.CurrentValue != null;
-
-	public bool IsInventoryShow => RootVM.WindowsPanelVM?.Value.InventoryVM.CurrentValue != null;
-
-	public bool IsChargenShown => RootVM?.CharGenContextVM.CharGenVM?.CurrentValue != null;
-
-	public FullScreenUIType FullScreenUIType => m_FullScreenUIType;
-
-	public ServiceWindowsType CurrentServiceWindow => ServiceWindowsType.None;
-
-	public bool IsInitiativeTrackerActive => (RootVM.Instance.HUDContext?.InitiativeTrackerVM?.CurrentValue?.ConsoleActive?.CurrentValue).GetValueOrDefault();
-
-	public bool CreditsAreShown => false;
-
-	public bool HasIngameMenu => RootVM?.EscMenuVM?.Value != null;
-
 	public string GetInterfaceName()
 	{
-		if (Instance.CommonVM?.VendorVM?.CurrentValue != null)
-		{
-			if (Instance.CommonVM.VendorVM.CurrentValue.ActiveTab.CurrentValue == VendorWindowsTab.Trade)
-			{
-				return "Vendor";
-			}
-			return Instance.CommonVM.VendorVM.CurrentValue.ActiveTab.CurrentValue.ToString();
-		}
 		if (RootVM.Instance == null)
 		{
 			return string.Empty;
@@ -283,6 +269,16 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		{
 			return "PreciseShot";
 		}
+		ReactiveProperty<VendorBaseScreenVM> vendorVM = RootVM.Instance.VendorVM;
+		if (vendorVM != null && !vendorVM.IsDisposed && vendorVM.CurrentValue != null)
+		{
+			VendorWindowsTab currentValue4 = RootVM.Instance.VendorVM.CurrentValue.ActiveTab.CurrentValue;
+			if (currentValue4 == VendorWindowsTab.Trade)
+			{
+				return "Vendor";
+			}
+			return currentValue4.ToString();
+		}
 		return string.Empty;
 	}
 
@@ -309,11 +305,15 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 										{
 											if (!(mainTemplate is TooltipTemplateLevelUpAbility tooltipTemplateLevelUpAbility))
 											{
-												if (mainTemplate is TooltipTemplateLevelUpToggleAbility tooltipTemplateLevelUpToggleAbility)
+												if (!(mainTemplate is TooltipTemplateLevelUpToggleAbility tooltipTemplateLevelUpToggleAbility))
 												{
-													return GetBlueprintName(tooltipTemplateLevelUpToggleAbility.BlueprintAbility);
+													if (mainTemplate is TooltipTemplateCareer tooltipTemplateCareer)
+													{
+														return GetBlueprintName(tooltipTemplateCareer.BlueprintCareerPath);
+													}
+													return string.Empty;
 												}
-												return string.Empty;
+												return GetBlueprintName(tooltipTemplateLevelUpToggleAbility.BlueprintAbility);
 											}
 											return GetBlueprintName(tooltipTemplateLevelUpAbility.BlueprintAbility);
 										}
@@ -364,12 +364,12 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 			MakeExtractor((PartyCharacterVM vm) => vm.UnitEntityData.Blueprint.NameSafe()),
 			MakeExtractor((EquipSlotVM vm) => vm.Item.CurrentValue.Blueprint.NameSafe()),
 			MakeExtractor<CharInfoFeatureVM>(GetNameFromCharInfoFeatureVM),
-			MakeExtractor((CharInfoTalentItemVM vm) => vm.Name),
+			MakeExtractor((CharInfoTalentItemVM vm) => vm.Talent.name),
 			MakeExtractor((JournalNavigationGroupVM vm) => vm.Title),
 			MakeExtractor((JournalQuestVM vm) => vm.Quest.Blueprint.NameSafe()),
 			MakeExtractor((JournalQuestObjectiveVM vm) => vm.Objective.Blueprint.NameSafe())
 		};
-		if (RootVM.Instance.ServiceWindowsContext.FullScreenUIType == FullScreenUIType.DetectiveJournal)
+		if (GameUIState.Instance.CurrentFullScreenUIType.CurrentValue == FullScreenUIType.DetectiveJournal)
 		{
 			List<Func<MonoBehaviour, string>> collection = new List<Func<MonoBehaviour, string>>
 			{
@@ -546,6 +546,39 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		return vm.Acronym;
 	}
 
+	public void HandleFullScreenUiChanged(bool state, FullScreenUIType fullScreenUIType)
+	{
+		m_FullScreenUIType = (state ? fullScreenUIType : FullScreenUIType.Unknown);
+	}
+
+	public void HandleModalWindowUiChanged(bool state, ModalWindowUIType modalWindowUIType)
+	{
+		m_ModalWindowUIType = (state ? modalWindowUIType : ModalWindowUIType.Unknown);
+	}
+
+	public void HandlePartyGainExperience(int gained, bool isExperienceForEncounter)
+	{
+		if ((!RootVM.Instance.DialogContext.HasDialog || SettingsRoot.Game.Dialogs.ShowXPGainedNotification.GetValue()) && !Game.Instance.Controllers.TurnController.InCombat && gained != 0)
+		{
+			string format = $"<link=\"{EntityLink.Type.Encyclopedia}:ExperiencePoints\">{UINotificationTexts.Instance.XPGainedFormat.Text}</link>";
+			string text = string.Format(format, gained);
+			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
+			{
+				h.HandleWarning(WarningNotificationType.ExpGain, text, addToLog: false);
+			});
+		}
+	}
+
+	public void OnGameModeStart(GameModeType gameMode)
+	{
+		DragNDropManager.Instance?.CancelDrag();
+	}
+
+	public void OnGameModeStop(GameModeType gameMode)
+	{
+		DragNDropManager.Instance?.CancelDrag();
+	}
+
 	private static void InitializeUISystems()
 	{
 		PFLog.UI.Log("Initializing UI Systems");
@@ -565,9 +598,6 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 			{
 				UIKitLogger.SetLogger(new LogChannelLoggerWrapper(PFLog.UI, "UI"));
 				UIKitSoundManager.SetSoundManager(UISounds.Instance);
-				UIKitRewiredCursorController.SetRewiredCursorController(ConsoleCursor.Instance);
-				InputLayer.SetCanReceiveInputPredicate(LoadingProcess.Instance.CanReceiveInput);
-				GamePadIcons.SetInstance(ConsoleRoot.Instance.Icons);
 			}
 			s_UIKitDependenciesInitialized = true;
 		}
@@ -629,12 +659,11 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		EventBus.Subscribe(this).AddTo(m_Disposables);
 		InitializeUIKitDependencies();
 		InitializeUISystems();
-		CreateCommonViewAndVM();
+		CreateRootView();
 		if (showLoadingScreen)
 		{
 			PFLog.UI.Log("Restart Loading Screen");
-			CommonVM.CloseTutorialOnLoad();
-			LoadingScreenRootVM.ShowLoadingScreen();
+			HandleOnLoad();
 		}
 	}
 
@@ -715,6 +744,16 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		return Instance.IsDebugBlueprintsInformationShow;
 	}
 
+	public void SwitchDebugStringsInformationShow()
+	{
+		Instance.IsDebugStringsInformationShow = !Instance.IsDebugStringsInformationShow;
+	}
+
+	public bool GetDebugStringsInformationShow()
+	{
+		return Instance.IsDebugStringsInformationShow;
+	}
+
 	void IRootUIContext.ChangeUIPlatform(bool nextPlatform)
 	{
 		ChangeUIPlatform(nextPlatform);
@@ -727,11 +766,7 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 
 	private void ResetUIViewAndVM()
 	{
-		PFLog.UI.Log("Disposing UI VM and View");
-		CommonVM?.Dispose();
-		CommonVM = null;
-		DestroyView(m_CommonView);
-		m_CommonView = null;
+		PFLog.UI.Log("Disposing RootVM and destroying RootView");
 		RootVM?.Dispose();
 		RootVM = null;
 		DestroyView(m_RootView);
@@ -740,15 +775,16 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		m_Disposables = null;
 	}
 
-	private void CreateCommonViewAndVM()
+	private void CreateRootView()
 	{
-		PFLog.UI.Log("Creating Common View and VM");
-		RootUIConfig config = GetConfig("UI_Common_Scene");
-		CommonVM = new CommonVM();
-		m_CommonView = config.TryCreateView(CommonVM);
-		RootVM = new RootVM();
-		m_RootView = config.TryCreateView(RootVM);
-		s_SoundGameObject = config.gameObject;
+		if (!Game.IsTestRun)
+		{
+			PFLog.UI.Log("Creating RootView and RootVM");
+			RootUIConfig config = GetConfig("UI_Common_Scene");
+			RootVM = new RootVM(HandleOnLoad);
+			m_RootView = config.TryCreateView(RootVM);
+			s_SoundGameObject = config.gameObject;
+		}
 	}
 
 	private static void DestroyView(MonoBehaviour view)
@@ -776,17 +812,6 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 	public static void ChangeUIPlatform(bool nextPlatform)
 	{
 		PFLog.UI.Log("Changing UI Platform");
-		GamePad gamePad = GamePad.Instance;
-		int length = Enum.GetValues(typeof(ConsoleType)).Length;
-		gamePad.ConsoleTypeProperty.Value = (ConsoleType)((int)(gamePad.ConsoleTypeProperty.Value + length + (nextPlatform ? 1 : (-1))) % length);
-		Game.Instance.ControllerMode = ((gamePad.ConsoleTypeProperty.Value != 0) ? Game.ControllerModeType.Gamepad : Game.ControllerModeType.Mouse);
-		ResetUI(delegate
-		{
-			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
-			{
-				h.HandleWarning($"Input controller: {gamePad.ConsoleTypeProperty.Value}");
-			});
-		});
 	}
 
 	public static bool CanChangeInput()
@@ -824,7 +849,7 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 
 	public static bool CanChangeLanguage()
 	{
-		if (Game.Instance.CurrentModeType != GameModeType.Dialog && Game.Instance.CurrentModeType != GameModeType.GameOver && !Instance.GroupChangerIsShown)
+		if (Game.Instance.CurrentModeType != GameModeType.GameOver && !Instance.GroupChangerIsShown)
 		{
 			return !Instance.IsChargenShown;
 		}
@@ -880,36 +905,15 @@ public class RootUIContext : IRootUIContext, IBugReportContext, IFullScreenUIHan
 		}
 	}
 
-	public void HandleFullScreenUiChanged(bool state, FullScreenUIType fullScreenUIType)
+	private void HandleOnLoad()
 	{
-		m_FullScreenUIType = (state ? fullScreenUIType : FullScreenUIType.Unknown);
-	}
-
-	public void HandleModalWindowUiChanged(bool state, ModalWindowUIType modalWindowUIType)
-	{
-		m_ModalWindowUIType = (state ? modalWindowUIType : ModalWindowUIType.Unknown);
-	}
-
-	public void HandlePartyGainExperience(int gained, bool isExperienceForEncounter)
-	{
-		if ((!RootVM.Instance.DialogContext.HasDialog || SettingsRoot.Game.Dialogs.ShowXPGainedNotification.GetValue()) && !Game.Instance.Controllers.TurnController.InCombat)
+		if (Game.Instance.TutorialSystem.HasShownData)
 		{
-			string format = "<link=\"Encyclopedia:ExperiencePoints\">" + UINotificationTexts.Instance.XPGainedFormat.Text + "</link>";
-			string text = string.Format(format, gained);
-			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
+			EventBus.RaiseEvent(delegate(INewTutorialUIHandler h)
 			{
-				h.HandleWarning(text, addToLog: false);
+				h.HideTutorial(Game.Instance.TutorialSystem.ShowingData);
 			});
 		}
-	}
-
-	public void OnGameModeStart(GameModeType gameMode)
-	{
-		DragNDropManager.Instance?.CancelDrag();
-	}
-
-	public void OnGameModeStop(GameModeType gameMode)
-	{
-		DragNDropManager.Instance?.CancelDrag();
+		LoadingScreenRootVM.ShowLoadingScreen();
 	}
 }

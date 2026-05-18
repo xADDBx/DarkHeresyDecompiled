@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Quests.Logic.CrusadeQuests;
+using Kingmaker.Code.Gameplay.Enums.Stats;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.ElementsSystem.Interfaces;
 using Kingmaker.Enums;
@@ -12,6 +13,7 @@ using Kingmaker.Localization;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using OwlPack.Runtime;
 using UnityEngine;
 
@@ -94,6 +96,11 @@ public class BlueprintQuest : BlueprintFact, IEditorCommentHolder
 	[HideInInspector]
 	[SerializeField]
 	private EditorCommentHolder m_EditorComment;
+
+	[InfoBox("Этот блок настроек - meta информация для статистики")]
+	public Chapter Chapter;
+
+	public Cluster Cluster;
 
 	private bool m_IsRumour => false;
 
@@ -181,7 +188,7 @@ public class BlueprintQuest : BlueprintFact, IEditorCommentHolder
 		int num = m_Objectives.RemoveAll((BlueprintQuestObjectiveReference objective) => objective == null);
 		if (num > 0)
 		{
-			PFLog.Default.Warning(this, "Quest '{0}': removed {1} missing objectives", this, num);
+			PFLog.Quests.Warning(this, "Quest '{0}': removed {1} missing objectives", this, num);
 		}
 	}
 
@@ -199,8 +206,11 @@ public class BlueprintQuest : BlueprintFact, IEditorCommentHolder
 		List<BlueprintQuestObjectiveReference> list = m_Objectives.ToList();
 		foreach (BlueprintQuestObjective addendum in Addendums)
 		{
-			addendum.SetIsAddendum(isAddendum: true);
-			list.RemoveAll((BlueprintQuestObjectiveReference r) => r.Is(addendum));
+			if (addendum != null)
+			{
+				addendum.SetIsAddendum(isAddendum: true);
+				list.RemoveAll((BlueprintQuestObjectiveReference r) => r.Is(addendum));
+			}
 		}
 		foreach (BlueprintQuestObjectiveReference item in list)
 		{
@@ -210,7 +220,7 @@ public class BlueprintQuest : BlueprintFact, IEditorCommentHolder
 		{
 			objective.Get().Addendums.ForEach(delegate(BlueprintQuestObjective addendum)
 			{
-				addendum.SetIsAddendum(isAddendum: true);
+				addendum?.SetIsAddendum(isAddendum: true);
 			});
 		});
 		SetDirty();
@@ -240,7 +250,7 @@ public class BlueprintQuest : BlueprintFact, IEditorCommentHolder
 		{
 			if (objective.Quest != null)
 			{
-				PFLog.Default.Warning("Objective already linked to quest, link changed");
+				PFLog.Quests.Warning("Objective already linked to quest, link changed");
 				objective.Quest.UnlinkObjective(objective);
 			}
 			m_Objectives.Add(objective.ToReference<BlueprintQuestObjectiveReference>());
@@ -253,7 +263,7 @@ public class BlueprintQuest : BlueprintFact, IEditorCommentHolder
 	{
 		if (!m_Objectives.HasItem((BlueprintQuestObjectiveReference r) => r.Is(objective)))
 		{
-			PFLog.Default.Warning("Quest doesn't contains this objective");
+			PFLog.Quests.Warning("Quest doesn't contains this objective");
 		}
 		m_Objectives.RemoveAll((BlueprintQuestObjectiveReference r) => r.Is(objective));
 		objective.SetQuest(null);

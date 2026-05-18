@@ -21,14 +21,4 @@ public class AddStatBonusAbilityValue : UnitBuffComponentDelegate
 	public StatType Stat;
 
 	public ContextValue Value;
-
-	protected override void OnActivateOrPostLoad()
-	{
-		base.Owner.Stats.GetStat(Stat)?.AddModifier(Value.Calculate(base.Context), base.Runtime, Descriptor);
-	}
-
-	protected override void OnDeactivate()
-	{
-		base.Owner.Stats.GetStat(Stat)?.RemoveModifiersFrom(base.Runtime);
-	}
 }

@@ -1,6 +1,7 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
@@ -35,7 +36,7 @@ public sealed class ContextActionMoraleChange : ContextAction
 		});
 	}
 
-	public MoralePredictionData GetMoralePrediction([NotNull] AbilityExecutionContext context)
+	public MoralePredictionData GetMoralePrediction([NotNull] IEvalContext context)
 	{
 		MoralePredictionData result = default(MoralePredictionData);
 		result.MoraleDelta = m_Amount.Calculate(context);

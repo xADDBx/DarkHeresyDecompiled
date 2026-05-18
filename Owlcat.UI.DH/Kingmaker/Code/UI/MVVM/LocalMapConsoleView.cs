@@ -1,5 +1,4 @@
 using Kingmaker.Blueprints.Area;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Events;
 using Kingmaker.UI.Pointer;
@@ -7,7 +6,6 @@ using Kingmaker.View;
 using Kingmaker.Visual.LocalMap;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -24,15 +22,10 @@ public class LocalMapConsoleView : LocalMapBaseView
 	private float m_StickMapDragFactor = 1f;
 
 	[SerializeField]
-	private ConsoleHintsWidget m_ConsoleHintsWidget;
+	private HintView m_OpenLegendHint;
 
 	[SerializeField]
-	private ConsoleHint m_OpenLegendHint;
-
-	[SerializeField]
-	private ConsoleHint m_HideLegendHint;
-
-	private InputLayer m_InputLayer;
+	private HintView m_HideLegendHint;
 
 	private readonly ReactiveProperty<bool> m_LegendShowed = new ReactiveProperty<bool>();
 
@@ -50,50 +43,8 @@ public class LocalMapConsoleView : LocalMapBaseView
 		AddInput();
 	}
 
-	protected override void OnUnbind()
-	{
-		base.OnUnbind();
-		SwitchCursor(m_InputLayer, state: false);
-	}
-
 	public void AddInput()
 	{
-		m_InputLayer = new InputLayer
-		{
-			ContextName = "LocalMap",
-			CursorEnabled = false
-		};
-		m_ConsoleHintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			Close();
-		}, 9), UIStrings.Instance.CommonTexts.CloseWindow).AddTo(this);
-		m_OpenLegendHint.Bind(m_InputLayer.AddButton(delegate
-		{
-			InteractLocalMapHistory(state: true);
-		}, 11, m_LegendShowed.Not().ToReadOnlyReactiveProperty(initialValue: false))).AddTo(this);
-		m_HideLegendHint.Bind(m_InputLayer.AddButton(delegate
-		{
-			InteractLocalMapHistory(state: false);
-		}, 11, m_LegendShowed)).AddTo(this);
-		m_ConsoleHintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			SwitchCameraMode(!m_RotateCameraMode.Value);
-		}, 19), UIStrings.Instance.HUDTexts.SwitchCameraMode).AddTo(this);
-		m_ConsoleHintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			SwitchCursor(m_InputLayer, !m_CursorActive.Value);
-		}, 18), UIStrings.Instance.HUDTexts.Pointer).AddTo(this);
-		m_ConsoleHintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			FindRogueTrader(smooth: true);
-		}, 10), UIStrings.Instance.LocalMapTexts.CenterOnRogueTrader).AddTo(this);
-		m_InputLayer.AddAxis2D(OnLeftStickMove, 0, 1, repeat: false).AddTo(this);
-		m_InputLayer.AddAxis2D(OnRightStickMove, 2, 3, repeat: false).AddTo(this);
-		m_InputLayer.AddButton(delegate
-		{
-			ConfirmClick();
-		}, 8).AddTo(this);
-		GamePad.Instance.PushLayer(m_InputLayer).AddTo(this);
 	}
 
 	private static void RotateCamera(bool direction)
@@ -109,17 +60,13 @@ public class LocalMapConsoleView : LocalMapBaseView
 		}
 	}
 
-	private void SwitchCursor(InputLayer inputLayer, bool state)
+	private void SwitchCursor(bool state)
 	{
-		if (inputLayer != null)
+		m_CursorActive.Value = state;
+		EventBus.RaiseEvent(delegate(ITooltipHandler h)
 		{
-			inputLayer.CursorEnabled = state;
-			m_CursorActive.Value = state;
-			EventBus.RaiseEvent(delegate(ITooltipHandler h)
-			{
-				h.HandleHintRequest(null, shouldShow: true);
-			});
-		}
+			h.HandleHintRequest(null, shouldShow: true);
+		});
 	}
 
 	private void SwitchCameraMode(bool state)
@@ -137,19 +84,12 @@ public class LocalMapConsoleView : LocalMapBaseView
 		m_LegendShowed.Value = state;
 	}
 
-	private void OnLeftStickMove(InputActionEventData eventData, Vector2 vec)
+	private void OnLeftStickMove(Vector2 vec)
 	{
-		if (m_CursorActive.Value)
-		{
-			ConsoleCursor.Instance.MoveCursor(vec / m_StickCursorFactor);
-		}
-		else
-		{
-			UpdateMapPosition(vec * CurrentZoom * (0f - m_StickMapDragFactor));
-		}
+		UpdateMapPosition(vec * m_CurrentZoom * (0f - m_StickMapDragFactor));
 	}
 
-	private void OnRightStickMove(InputActionEventData eventData, Vector2 vec)
+	private void OnRightStickMove(Vector2 vec)
 	{
 		if (m_RotateCameraMode.Value)
 		{
@@ -193,7 +133,7 @@ public class LocalMapConsoleView : LocalMapBaseView
 			base.ViewModel.OnClick(m_CameraFollowerVector, state: false);
 			return;
 		}
-		Vector2 viewportPos = GetViewportPos(ConsoleCursor.Instance.Position);
+		Vector2 viewportPos = GetViewportPos(CursorController.CursorPosition);
 		base.ViewModel.OnClick(viewportPos, state: false);
 		base.ViewModel.OnClick(viewportPos, state: true);
 		UIKitSoundManager.PlayButtonClickSound();
@@ -203,13 +143,13 @@ public class LocalMapConsoleView : LocalMapBaseView
 	{
 		base.InteractableRightButtons();
 		Vector3 localScale = m_Image.rectTransform.localScale;
-		MinZoom.Value = localScale.x > m_ZoomMinSize && localScale.y > m_ZoomMinSize;
-		MaxZoom.Value = localScale.x < m_ZoomMaxSize && localScale.y < m_ZoomMaxSize;
+		m_MinZoom.Value = localScale.x > base.ZoomMin && localScale.y > base.ZoomMin;
+		m_MaxZoom.Value = localScale.x < base.ZoomMax && localScale.y < base.ZoomMax;
 	}
 
 	private void Close()
 	{
-		SwitchCursor(m_InputLayer, state: false);
+		SwitchCursor(state: false);
 		EventBus.RaiseEvent(delegate(INewServiceWindowUIHandler h)
 		{
 			h.HandleCloseAll();

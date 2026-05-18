@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -25,8 +26,8 @@ public class CurrentWeaponBlueprintDamageGetter : IntPropertyGetter, PropertyCon
 	{
 		return Type switch
 		{
-			WeaponDamage.Min => this.GetAbilityWeapon().Blueprint.DamageMin, 
-			WeaponDamage.Max => this.GetAbilityWeapon().Blueprint.DamageMax, 
+			WeaponDamage.Min => EvalContext.Current.AbilityWeapon.DamageMin, 
+			WeaponDamage.Max => EvalContext.Current.AbilityWeapon.DamageMax, 
 			_ => 0, 
 		};
 	}

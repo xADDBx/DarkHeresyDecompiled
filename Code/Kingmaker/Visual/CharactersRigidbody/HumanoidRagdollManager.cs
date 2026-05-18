@@ -88,16 +88,14 @@ public class HumanoidRagdollManager : MonoBehaviour, IUpdatable
 	{
 		if (m_UpdatePoseFlag && !m_RagdollLinks.Empty() && (bool)m_ActiveRagdoll)
 		{
-			float num = delta / (float)RealTimeController.SystemStepTimeSpan.TotalSeconds;
+			float t = Mathf.Min(delta / (float)RealTimeController.SystemStepTimeSpan.TotalSeconds, 1f);
 			for (int i = 0; i < m_RagdollLinks.Count; i++)
 			{
 				(Transform bone, Transform ragdollBone) tuple = m_RagdollLinks[i];
 				Transform item = tuple.bone;
 				Transform item2 = tuple.ragdollBone;
-				float maxDistanceDelta = num * Vector3.Distance(item.position, item2.position);
-				item.position = Vector3.MoveTowards(item.position, item2.position, maxDistanceDelta);
-				float maxDegreesDelta = num * Quaternion.Angle(item.rotation, item2.rotation);
-				item.rotation = Quaternion.RotateTowards(item.rotation, item2.rotation, maxDegreesDelta);
+				item.position = Vector3.Lerp(item.position, item2.position, t);
+				item.rotation = Quaternion.Lerp(item.rotation, item2.rotation, t);
 			}
 		}
 	}

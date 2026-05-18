@@ -16,9 +16,6 @@ public class UIVendor
 
 	public LocalizedString NotEnoughReputation;
 
-	[Obsolete]
-	public LocalizedString NotEnoughProfitFactor;
-
 	public LocalizedString NotEnoughMoney;
 
 	public LocalizedString ChooseVendorForTrade;
@@ -46,4 +43,8 @@ public class UIVendor
 	public LocalizedString NoItemsVendor;
 
 	public LocalizedString ReputationLockHint;
+
+	public LocalizedString CantSellKeyItem;
+
+	public LocalizedString NoItemsToDeal;
 }

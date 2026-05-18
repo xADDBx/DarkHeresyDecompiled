@@ -7,6 +7,6 @@ namespace Kingmaker.UnitLogic.Levelup.Selections.CharacterGender;
 [Serializable]
 [TypeId("b7c62c426800408d97b8b19db8bbd755")]
 [OwlPackable(OwlPackableMode.NoGenerate)]
-public class BlueprintGenderSelection : BlueprintSelection
+public class BlueprintGenderSelection : BlueprintSelectionWithUI
 {
 }

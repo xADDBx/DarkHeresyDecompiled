@@ -1,11 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.UnitLogic.Levelup;
-using Kingmaker.UnitLogic.Progression.Features.Advancements;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
@@ -22,7 +19,7 @@ public class CharInfoBaseAbilityScoresBlockVM : CharInfoComponentWithLevelUpVM
 
 	protected virtual List<StatType> StatsTypes { get; }
 
-	protected CharInfoBaseAbilityScoresBlockVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit, ReadOnlyReactiveProperty<LevelUpManager> levelUpManager, StatsContainer _)
+	protected CharInfoBaseAbilityScoresBlockVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit, ReadOnlyReactiveProperty<LevelUpManager> levelUpManager)
 		: base(unit, levelUpManager)
 	{
 		base.PreviewUnit.Subscribe(delegate
@@ -36,14 +33,10 @@ public class CharInfoBaseAbilityScoresBlockVM : CharInfoComponentWithLevelUpVM
 	{
 	}
 
-	protected CharInfoBaseAbilityScoresBlockVM(StatsContainer stats)
-		: this(null, null, stats)
+	protected CharInfoBaseAbilityScoresBlockVM(BaseUnitEntity unit)
+		: this(null, null)
 	{
-	}
-
-	protected CharInfoBaseAbilityScoresBlockVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit, ReadOnlyReactiveProperty<LevelUpManager> levelUpManager)
-		: this(unit, levelUpManager, unit.CurrentValue.Stats.Container)
-	{
+		FillStats(unit, null);
 	}
 
 	private void HandleUpdatePreviewUnit()
@@ -59,42 +52,35 @@ public class CharInfoBaseAbilityScoresBlockVM : CharInfoComponentWithLevelUpVM
 	protected override void RefreshData()
 	{
 		base.RefreshData();
-		FillStats(Unit.CurrentValue.Stats.Container, base.PreviewUnit.CurrentValue?.Stats.Container);
+		FillStats(Unit.CurrentValue, base.PreviewUnit.CurrentValue);
 	}
 
-	protected void FillStats(StatsContainer stats, StatsContainer previewStats)
+	private void FillStats(BaseUnitEntity entity, BaseUnitEntity previewEntity)
 	{
+		if (entity == null)
+		{
+			ClearStats();
+			return;
+		}
+		if (Stats.Count > 0 && Stats.Count == StatsTypes.Count)
+		{
+			foreach (CharInfoStatVM stat in Stats)
+			{
+				stat.UpdateEntity(entity, previewEntity);
+			}
+			return;
+		}
 		ClearStats();
 		foreach (StatType item2 in StatsTypes.OrderBy((StatType s) => StatTypeHelper.DisplayOrder.IndexOf(s)))
 		{
-			ModifiableValue statOptional = stats.GetStatOptional(item2);
-			if (statOptional != null)
-			{
-				ModifiableValue previewStat = previewStats?.GetStat(item2);
-				CharInfoStatVM item = new CharInfoStatVM(statOptional, previewStat).AddTo(this);
-				Stats.Add(item);
-			}
+			CharInfoStatVM item = ((previewEntity != null) ? new CharInfoStatVM(entity, item2, previewEntity).AddTo(this) : new CharInfoStatVM(entity, item2, showPermanentValue: false).AddTo(this));
+			Stats.Add(item);
 		}
-		UpdateRecommendedMarks();
-		m_OnStatsUpdated.Execute();
+		m_OnStatsUpdated.Execute(R3.Unit.Default);
 	}
 
 	private void ClearStats()
 	{
 		Stats.Clear();
-	}
-
-	private void UpdateRecommendedMarks()
-	{
-		List<StatType> selectedCareerRecommendedStats = UtilityChargen.GetSelectedCareerRecommendedStats<BlueprintSkillAdvancement>(Unit.CurrentValue);
-		SetRecommendedMarks(selectedCareerRecommendedStats);
-	}
-
-	public void SetRecommendedMarks(List<StatType> recommendedSkills)
-	{
-		foreach (CharInfoStatVM stat in Stats)
-		{
-			stat.UpdateRecommendedMark(recommendedSkills);
-		}
 	}
 }

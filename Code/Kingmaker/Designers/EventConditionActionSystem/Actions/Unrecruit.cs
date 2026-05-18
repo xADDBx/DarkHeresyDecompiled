@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Code.Gameplay.Actions;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
@@ -10,85 +11,56 @@ using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Parts;
-using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
-using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
 
 [ComponentName("Actions/Unrecruit")]
-[AllowMultipleComponents]
 [PlayerUpgraderAllowed(false)]
+[AllowMultipleComponents]
 [TypeId("7d6c4f7ff596e5e4086531c0f96ac650")]
-public class Unrecruit : GameAction
+public class Unrecruit : CompanionActionBase
 {
-	[ValidateNotNull]
-	[SerializeField]
-	[FormerlySerializedAs("CompanionBlueprint")]
-	private BlueprintUnitReference m_CompanionBlueprint;
+	public ActionList? OnUnrecruit;
 
-	public ActionList OnUnrecruit;
+	protected virtual CompanionExState ExState => CompanionExState.InReserve;
 
-	public BlueprintUnit CompanionBlueprint
+	protected override void RunAction(BlueprintUnit unit)
 	{
-		get
-		{
-			return m_CompanionBlueprint?.Get();
-		}
-		set
-		{
-			m_CompanionBlueprint = value.ToReference<BlueprintUnitReference>();
-		}
+		UnrecruitUnit(unit, ExState, OnUnrecruit);
 	}
 
-	protected override void RunAction()
+	public static void UnrecruitUnit(BlueprintUnit unit, CompanionExState exState, ActionList? onUnrecruit)
 	{
-		UnrecruitUnit(CompanionBlueprint, OnUnrecruit);
-	}
-
-	public static void UnrecruitUnit(BlueprintUnit unit, ActionList onUnrecruit)
-	{
+		BlueprintUnit unit = unit;
 		BaseUnitEntity mainCharacter = Game.Instance.Player.MainCharacterEntity;
-		BaseUnitEntity baseUnitEntity = Game.Instance.Player.AllCharacters.Where((BaseUnitEntity u) => u != mainCharacter).FirstOrDefault((BaseUnitEntity u) => unit == u.Blueprint);
-		if (baseUnitEntity == null)
-		{
-			Element.LogError("No companion unit found when unrecruiting {0}", unit);
-			return;
-		}
-		DoUnrecruit(baseUnitEntity, onUnrecruit);
-		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity, (Action<ICompanionChangeHandler>)delegate(ICompanionChangeHandler h)
+		BaseUnitEntity obj = Game.Instance.Player.AllCharacters.Where((BaseUnitEntity u) => u != mainCharacter).FirstOrDefault((BaseUnitEntity u) => unit == u.Blueprint) ?? throw new Exception($"No companion unit found when un-recruiting {unit}");
+		DoUnrecruit(obj, exState, onUnrecruit);
+		EventBus.RaiseEvent((IBaseUnitEntity)obj, (Action<ICompanionChangeHandler>)delegate(ICompanionChangeHandler h)
 		{
 			h.HandleUnrecruit();
 		}, isCheckRuntime: true);
 	}
 
-	private static void DoUnrecruit(BaseUnitEntity companion, ActionList onUnrecruit)
+	private static void DoUnrecruit(BaseUnitEntity companion, CompanionExState exState, ActionList? onUnrecruit)
 	{
-		UnitPartCompanion optional = companion.GetOptional<UnitPartCompanion>();
-		if (optional != null && optional.State == CompanionState.ExCompanion)
+		UnitPartCompanion obj = companion.GetOrCreate<UnitPartCompanion>() ?? throw new Exception("No companion part in " + companion.Name + ".");
+		if (obj.State == CompanionState.ExCompanion)
 		{
-			Element.LogError("Companion {0} already lost, cannot unrecruit again.", companion);
+			throw new Exception("Companion " + companion.Name + " already lost, cannot unrecruit again.");
 		}
-		if ((bool)companion.View)
-		{
-			companion.View.StopMoving();
-		}
+		companion.StopMoving();
 		Game.Instance.Player.RemoveCompanion(companion);
-		companion.GetOrCreate<UnitPartCompanion>().SetState(CompanionState.ExCompanion);
+		obj.SetExState(exState);
+		obj.SetState(CompanionState.ExCompanion);
 		using (ContextData<RecruitedUnitData>.Request().Setup(companion))
 		{
 			onUnrecruit?.Run();
 		}
 	}
 
-	private bool IsCompanion(BlueprintUnit unit)
-	{
-		return unit == CompanionBlueprint;
-	}
-
 	public override string GetCaption()
 	{
-		return $"Unrecruit ({CompanionBlueprint})";
+		return "Unrecruit InReserve(" + base.CaptionName + ")";
 	}
 }

@@ -1,34 +1,62 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Globalmap.Blueprints;
 using Kingmaker.PubSubSystem.Core;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class AreaTransitionGameCommand : GameCommand, IOwlPackable<AreaTransitionGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class AreaTransitionGameCommand : GameCommand, IMemoryPackable<AreaTransitionGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<AreaTransitionGameCommand>
 {
+	[Preserve]
+	private sealed class AreaTransitionGameCommandFormatter : MemoryPackFormatter<AreaTransitionGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref AreaTransitionGameCommand value)
+		{
+			AreaTransitionGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref AreaTransitionGameCommand value)
+		{
+			AreaTransitionGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref AreaTransitionGameCommand value)
+		{
+			AreaTransitionGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref AreaTransitionGameCommand value)
+		{
+			AreaTransitionGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private BlueprintMultiEntranceEntryReference m_MultiEntranceEntryRef;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "AreaTransitionGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_MultiEntranceEntryRef", typeof(BlueprintMultiEntranceEntryReference))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	private AreaTransitionGameCommand()
 	{
 	}
@@ -49,6 +77,151 @@ public sealed class AreaTransitionGameCommand : GameCommand, IOwlPackable<AreaTr
 				h.HandleAreaTransition();
 			});
 		}
+	}
+
+	static AreaTransitionGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "AreaTransitionGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_MultiEntranceEntryRef", typeof(BlueprintMultiEntranceEntryReference))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<AreaTransitionGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new AreaTransitionGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<AreaTransitionGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<AreaTransitionGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref AreaTransitionGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(1);
+		writer.WritePackable(in value.m_MultiEntranceEntryRef);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref AreaTransitionGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		BlueprintMultiEntranceEntryReference value2;
+		if (memberCount == 1)
+		{
+			if (value != null)
+			{
+				value2 = value.m_MultiEntranceEntryRef;
+				reader.ReadPackable(ref value2);
+				goto IL_006a;
+			}
+			value2 = reader.ReadPackable<BlueprintMultiEntranceEntryReference>();
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(AreaTransitionGameCommand), 1, memberCount);
+				return;
+			}
+			value2 = ((value != null) ? value.m_MultiEntranceEntryRef : null);
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				_ = 1;
+			}
+			if (value != null)
+			{
+				goto IL_006a;
+			}
+		}
+		value = new AreaTransitionGameCommand
+		{
+			m_MultiEntranceEntryRef = value2
+		};
+		return;
+		IL_006a:
+		value.m_MultiEntranceEntryRef = value2;
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref AreaTransitionGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_MultiEntranceEntryRef");
+		writer.WritePackable(value.m_MultiEntranceEntryRef);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref AreaTransitionGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		BlueprintMultiEntranceEntryReference val = ((value != null) ? value.m_MultiEntranceEntryRef : null);
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_MultiEntranceEntryRef")
+				{
+					val = reader.ReadPackable<BlueprintMultiEntranceEntryReference>();
+					array[0] = true;
+				}
+			}
+			else if (text == "m_MultiEntranceEntryRef")
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		if (value != null)
+		{
+			value.m_MultiEntranceEntryRef = val;
+		}
+		else
+		{
+			value = new AreaTransitionGameCommand
+			{
+				m_MultiEntranceEntryRef = val
+			};
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

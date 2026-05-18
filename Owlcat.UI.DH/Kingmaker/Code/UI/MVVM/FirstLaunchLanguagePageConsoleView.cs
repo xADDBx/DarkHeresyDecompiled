@@ -1,4 +1,3 @@
-using Owlcat.UI;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -7,11 +6,6 @@ public class FirstLaunchLanguagePageConsoleView : FirstLaunchSettingsPageBaseVie
 {
 	[SerializeField]
 	private FirstLaunchEntityLanguageConsoleView m_FirstLaunchEntityLanguageConsoleView;
-
-	protected override void SetNavigationBehaviourImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		m_FirstLaunchEntityLanguageConsoleView.SetNavigationBehaviour(navigationBehaviour);
-	}
 
 	protected override void OnBind()
 	{

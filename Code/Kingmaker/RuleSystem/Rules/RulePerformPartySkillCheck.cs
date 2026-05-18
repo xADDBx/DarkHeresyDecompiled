@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.Settings;
@@ -72,7 +73,7 @@ public class RulePerformPartySkillCheck : RulebookEvent
 		m_DifficultyClass = skillCheck.Difficulty;
 		m_StatType = skillCheck.StatType;
 		Voice = skillCheck.Voice;
-		ForceResultModifiers.CopyFrom(skillCheck.ForceResultModifiers);
+		ForceResultModifiers.CopyFrom(skillCheck.ChanceRule.ForceResultModifiers);
 	}
 
 	public RulePerformPartySkillCheck(StatType statType, int difficultyClass, bool applyPartyChecksInCapital = true)
@@ -96,10 +97,10 @@ public class RulePerformPartySkillCheck : RulebookEvent
 		{
 			if (applicableUnit.CanAct)
 			{
-				int modifiedValue = applicableUnit.Stats.GetStat(m_StatType).ModifiedValue;
-				if (m_StatValue < modifiedValue)
+				int num = applicableUnit.Actor.GetStat(m_StatType, null, default(StatContext), "Calculate");
+				if (m_StatValue < num)
 				{
-					m_StatValue = modifiedValue;
+					m_StatValue = num;
 					Roller = applicableUnit;
 				}
 			}
@@ -135,7 +136,7 @@ public class RulePerformPartySkillCheck : RulebookEvent
 		}
 		RulePerformSkillCheck rulePerformSkillCheck = new RulePerformSkillCheck(Roller, m_StatType, m_DifficultyClass);
 		rulePerformSkillCheck.Voice = Voice;
-		rulePerformSkillCheck.ForceResultModifiers.CopyFrom(ForceResultModifiers);
+		rulePerformSkillCheck.ChanceRule.ForceResultModifiers.CopyFrom(ForceResultModifiers);
 		return rulePerformSkillCheck;
 	}
 
@@ -150,7 +151,7 @@ public class RulePerformPartySkillCheck : RulebookEvent
 			roll.Roll();
 		}
 		SkillCheck = roll;
-		m_D100 = roll.ResultChanceRule;
+		m_D100 = roll.RollRule;
 	}
 
 	private IEnumerable<BaseUnitEntity> GetApplicableUnits()

@@ -12,6 +12,7 @@ using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Enums;
+using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
@@ -169,6 +170,11 @@ public static class AttackOfOpportunityHelper
 			return false;
 		}
 		if (target.LifeState.IsDead)
+		{
+			return false;
+		}
+		UnitPartAoOInstructions optional = attacker.GetOptional<UnitPartAoOInstructions>();
+		if (optional != null && !optional.CanMakeAoOAgainst(target))
 		{
 			return false;
 		}

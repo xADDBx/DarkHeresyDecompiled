@@ -97,16 +97,6 @@ public abstract class VirtualListComponent : MonoBehaviour
 		return compositeDisposable;
 	}
 
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		return m_VirtualList.GetNavigationBehaviour();
-	}
-
-	public GridConsoleNavigationBehaviour GetActiveNavigationBehaviour()
-	{
-		return m_VirtualList.GetActiveNavigationBehaviour();
-	}
-
 	public void ClearNavigation()
 	{
 		m_VirtualList.ClearNavigation();

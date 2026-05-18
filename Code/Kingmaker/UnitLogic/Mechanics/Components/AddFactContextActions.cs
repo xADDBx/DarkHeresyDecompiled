@@ -63,7 +63,7 @@ public class AddFactContextActions : EntityFactComponentDelegate, ITickEachRound
 		}
 	}
 
-	protected override void OnActivate()
+	protected override void OnDidActivate()
 	{
 		if (!DisabledBecauseOfReapply && !DisabledBecauseOfLevelUp)
 		{

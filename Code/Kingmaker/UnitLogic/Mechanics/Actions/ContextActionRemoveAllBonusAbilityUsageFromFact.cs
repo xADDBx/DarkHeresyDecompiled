@@ -1,7 +1,6 @@
 using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
@@ -31,14 +30,10 @@ public class ContextActionRemoveAllBonusAbilityUsageFromFact : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicsContext current = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current != null)
+		MechanicEntity mechanicEntity = (ToTarget ? base.Target.Entity : base.Context.Caster);
+		if (mechanicEntity != null && mechanicEntity is BaseUnitEntity baseUnitEntity)
 		{
-			MechanicEntity mechanicEntity = (ToTarget ? base.Target.Entity : current.MaybeCaster);
-			if (mechanicEntity != null && mechanicEntity is BaseUnitEntity baseUnitEntity)
-			{
-				baseUnitEntity.GetOptional<UnitPartBonusAbility>()?.RemoveBonusAbility(SourceFact);
-			}
+			baseUnitEntity.GetOptional<UnitPartBonusAbility>()?.RemoveBonusAbility(SourceFact);
 		}
 	}
 }

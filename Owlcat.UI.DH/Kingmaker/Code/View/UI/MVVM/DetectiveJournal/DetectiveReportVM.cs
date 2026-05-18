@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.GameCommands;
 using Kingmaker.Visual.Sound;
 using Owlcat.UI;
 using R3;
@@ -25,6 +26,8 @@ public class DetectiveReportVM : ViewModel
 	public readonly ReadOnlyReactiveProperty<bool> QuestionIsAnswered;
 
 	private readonly Action<bool> m_OnClose;
+
+	public bool IsInteractable => UtilityNet.IsControlMainCharacter();
 
 	public Observable<Unit> AnimateHideCommand => m_AnimateHideCommand;
 
@@ -53,9 +56,9 @@ public class DetectiveReportVM : ViewModel
 
 	public void SendReport()
 	{
-		Game.Instance.DetectiveSystem.CloseCase(BlueprintCase, ReportContext.SelectedAnswer.CurrentValue.Answer);
+		Game.Instance.GameCommandQueue.CloseCase(BlueprintCase, ReportContext.SelectedAnswer.CurrentValue.Answer);
 		MarkAllCaseItemsAsViewed();
-		m_AnimateHideCommand.Execute();
+		m_AnimateHideCommand.Execute(Unit.Default);
 		SoundState.Instance.OnDetectiveJournalChange(MusicStateHandler.DetectiveBoardMusicState.None);
 		SoundState.Instance.OpenedCaseWasShowBefore = false;
 	}

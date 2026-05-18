@@ -1,5 +1,3 @@
-using System;
-using JetBrains.Annotations;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.Runtime.Core.Utility;
@@ -11,26 +9,21 @@ using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class InfoSectionView : View<InfoSectionVM>, IConsoleNavigationOwner, IConsoleEntity, INavigationDownDirectionHandler
+public class InfoSectionView : View<InfoSectionVM>
 {
-	[UsedImplicitly]
 	private bool m_IsInit;
 
 	[SerializeField]
-	[UsedImplicitly]
 	private FadeAnimator m_FadeAnimator;
 
 	[SerializeField]
-	[UsedImplicitly]
 	private InfoBodyView m_InfoBodyView;
 
 	[SerializeField]
-	[UsedImplicitly]
 	private ScrollRectExtended m_ScrollRectExtended;
 
-	private GridConsoleNavigationBehaviour m_Navigation;
-
-	private IDisposable m_NavigationFocusSubscription;
+	[SerializeField]
+	private bool m_SaveScrollPosition;
 
 	private readonly ReactiveProperty<bool> m_IsActive = new ReactiveProperty<bool>(value: true);
 
@@ -75,14 +68,15 @@ public class InfoSectionView : View<InfoSectionVM>, IConsoleNavigationOwner, ICo
 	protected override void OnUnbind()
 	{
 		Hide();
-		m_NavigationFocusSubscription?.Dispose();
-		m_NavigationFocusSubscription = null;
 	}
 
 	private void Show()
 	{
 		m_FadeAnimator.AppearAnimation();
-		m_ScrollRectExtended.Or(null)?.ScrollToTop();
+		if (!m_SaveScrollPosition)
+		{
+			ResetPosition();
+		}
 	}
 
 	public void Hide()
@@ -119,29 +113,6 @@ public class InfoSectionView : View<InfoSectionVM>, IConsoleNavigationOwner, ICo
 		}
 	}
 
-	private void OnFocusChanged(IConsoleEntity entity)
-	{
-		MonoBehaviour monoBehaviour2 = ((entity is MonoBehaviour monoBehaviour) ? monoBehaviour : ((entity is SimpleConsoleNavigationEntity simpleConsoleNavigationEntity) ? simpleConsoleNavigationEntity.MonoBehaviour : ((!(entity is TMPLinkNavigationEntity tMPLinkNavigationEntity)) ? null : tMPLinkNavigationEntity.MonoBehaviour)));
-		MonoBehaviour monoBehaviour3 = monoBehaviour2;
-		if (monoBehaviour3 != null)
-		{
-			m_ScrollRectExtended.EnsureVisibleVertical(monoBehaviour3.transform as RectTransform, 50f, smoothly: false, needPinch: false);
-		}
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		TooltipDataChanged();
-		m_Navigation = m_InfoBodyView.GetNavigationBehaviour(this);
-		m_NavigationFocusSubscription?.Dispose();
-		m_NavigationFocusSubscription = m_Navigation.DeepestFocusAsObservable.Subscribe(OnFocusChanged);
-		return m_Navigation;
-	}
-
-	public void EntityFocused(IConsoleEntity entity)
-	{
-	}
-
 	public bool HandleDown()
 	{
 		float num = 1f;
@@ -151,5 +122,10 @@ public class InfoSectionView : View<InfoSectionVM>, IConsoleNavigationOwner, ICo
 			return true;
 		}
 		return false;
+	}
+
+	public void ResetPosition()
+	{
+		m_ScrollRectExtended.Or(null)?.ScrollToTop();
 	}
 }

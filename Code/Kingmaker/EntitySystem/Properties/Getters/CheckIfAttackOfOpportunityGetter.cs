@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Owlcat.Runtime.Core.Utility;
 
@@ -9,7 +10,7 @@ public class CheckIfAttackOfOpportunityGetter : BoolPropertyGetter, PropertyCont
 {
 	protected override bool GetBaseValue()
 	{
-		AbilityData abilityData = base.PropertyContext.Ability ?? this.GetRule().Reason.Ability;
+		AbilityData abilityData = EvalContext.Current.Ability ?? EvalContext.Current.Rule.Reason.Ability;
 		if ((object)abilityData != null && abilityData.IsAttackOfOpportunity)
 		{
 			return true;

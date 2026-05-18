@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints.Area;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.View.Equipment;
@@ -25,7 +26,7 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 	{
 		Name = "ItemEntityMechadendrite",
 		OldNames = null,
-		Fields = new FieldInfo[28]
+		Fields = new FieldInfo[29]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -53,6 +54,7 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 			new FieldInfo("IsIdentified", typeof(bool)),
 			new FieldInfo("SellTime", typeof(TimeSpan?)),
 			new FieldInfo("OriginArea", typeof(BlueprintArea)),
+			new FieldInfo("SourceContainer", typeof(BlueprintItem)),
 			new FieldInfo("VendorBlueprint", typeof(BlueprintMechanicEntityFact)),
 			new FieldInfo("IsNonRemovable", typeof(bool))
 		}
@@ -63,26 +65,22 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 	{
 	}
 
-	public ItemEntityMechadendrite(JsonConstructorMark _)
+	public ItemEntityMechadendrite(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntityMechadendrite()
 	{
 	}
 
 	public override void OnDidEquipped(MechanicEntity wielder)
 	{
 		base.OnDidEquipped(wielder);
-		if (!(base.Owner is UnitEntity unitEntity) || !(unitEntity.View != null))
+		if (!(base.Owner is UnitEntity { View: not null } unitEntity))
 		{
 			return;
 		}
-		unitEntity.View.MechadendritesEquipment?.MechadendritesDatas.Add(new UnitMechadendriteEquipmentData(unitEntity.View, unitEntity.View.CharacterAvatar, this));
+		unitEntity.View.MechadendritesEquipment?.MechadendritesDatas.Add(new UnitMechadendriteEquipmentData(unitEntity.View.AsUnitEntityView(), unitEntity.View.CharacterAvatar, this));
 		unitEntity.View.MechadendritesEquipment?.UpdateAll();
 		UnitPartMechadendrites orCreate = base.Owner.GetOrCreate<UnitPartMechadendrites>();
-		if (orCreate != null && !(base.Owner.View == null))
+		if (orCreate != null && base.Owner.View != null)
 		{
 			MechadendriteSettings[] componentsInChildren = base.Owner.View.GetComponentsInChildren<MechadendriteSettings>();
 			foreach (MechadendriteSettings settings in componentsInChildren)
@@ -95,7 +93,7 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 	public override void OnWillUnequip()
 	{
 		base.OnWillUnequip();
-		if (!(base.Owner is UnitEntity unitEntity) || !(unitEntity.View != null))
+		if (!(base.Owner is UnitEntity { View: not null } unitEntity))
 		{
 			return;
 		}
@@ -107,7 +105,7 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 		unitEntity.View.MechadendritesEquipment?.MechadendritesDatas.Remove(unitMechadendriteEquipmentData);
 		unitMechadendriteEquipmentData.DestroyModel();
 		UnitPartMechadendrites orCreate = base.Owner.GetOrCreate<UnitPartMechadendrites>();
-		if (orCreate != null && !(base.Owner.View == null))
+		if (orCreate != null && base.Owner.View != null)
 		{
 			MechadendriteSettings[] componentsInChildren = base.Owner.View.GetComponentsInChildren<MechadendriteSettings>();
 			foreach (MechadendriteSettings settings in componentsInChildren)
@@ -127,7 +125,7 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ItemEntityMechadendrite source = new ItemEntityMechadendrite();
+		ItemEntityMechadendrite source = new ItemEntityMechadendrite(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ItemEntityMechadendrite, TPossiblyBase>(ref source);
 	}
 
@@ -176,10 +174,11 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 		formatter.NullableField(24, "SellTime", ref value7, state);
 		BlueprintArea value8 = base.OriginArea;
 		formatter.Field(25, "OriginArea", ref value8, state);
+		formatter.Field(26, "SourceContainer", ref SourceContainer, state);
 		BlueprintMechanicEntityFact value9 = base.VendorBlueprint;
-		formatter.Field(26, "VendorBlueprint", ref value9, state);
+		formatter.Field(27, "VendorBlueprint", ref value9, state);
 		bool value10 = base.IsNonRemovable;
-		formatter.UnmanagedField(27, "IsNonRemovable", ref value10, state);
+		formatter.UnmanagedField(28, "IsNonRemovable", ref value10, state);
 		formatter.EndObject();
 	}
 
@@ -276,9 +275,12 @@ public class ItemEntityMechadendrite : ItemEntity<BlueprintItemMechadendrite>, I
 				base.OriginArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 26:
-				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				SourceContainer = formatter.ReadPackable<BlueprintItem>(state);
 				break;
 			case 27:
+				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				break;
+			case 28:
 				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
 				break;
 			}

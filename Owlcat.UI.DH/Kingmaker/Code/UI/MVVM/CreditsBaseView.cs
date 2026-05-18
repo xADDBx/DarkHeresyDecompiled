@@ -7,7 +7,6 @@ using Kingmaker.Blueprints.Credits;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.Common;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Sound;
@@ -19,7 +18,7 @@ using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public abstract class CreditsBaseView : View<CreditsVM>, ICreditsView, IInitializable
+public abstract class CreditsBaseView : View<CreditsVM>, ICreditsView
 {
 	[Header("Main Page")]
 	[SerializeField]
@@ -93,22 +92,23 @@ public abstract class CreditsBaseView : View<CreditsVM>, ICreditsView, IInitiali
 
 	private string m_Filter;
 
-	protected readonly LinkedList<PageGenerator.SearchResult> ResultSearch = new LinkedList<PageGenerator.SearchResult>();
-
 	private LinkedListNode<PageGenerator.SearchResult> m_ResultSearchView;
 
 	private bool m_PlayPagesCoroutineIsPlaying;
 
-	public Transform Content => m_Content;
+	private bool m_IsInitialized;
 
-	public void Initialize()
-	{
-		base.gameObject.SetActive(value: false);
-		m_MenuSelector.Initialize();
-	}
+	protected readonly LinkedList<PageGenerator.SearchResult> ResultSearch = new LinkedList<PageGenerator.SearchResult>();
+
+	public Transform Content => m_Content;
 
 	protected override void OnBind()
 	{
+		if (!m_IsInitialized)
+		{
+			m_MenuSelector.Initialize();
+			m_IsInitialized = true;
+		}
 		SetupTexts();
 		base.ViewModel.Pause.Subscribe(delegate(bool value)
 		{
@@ -129,7 +129,7 @@ public abstract class CreditsBaseView : View<CreditsVM>, ICreditsView, IInitiali
 		}).AddTo(this);
 		base.ViewModel.OnSelectGroup.Subscribe(SelectCreditsGroup).AddTo(this);
 		base.gameObject.SetActive(value: true);
-		UISounds.Instance.Sounds.LocalMap.PlayOpen();
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayOpenSound(ServiceWindowsType.LocalMap);
 		m_MenuSelector.Bind(base.ViewModel.SelectionGroup);
 		m_SelectorView.Bind(base.ViewModel.Selector);
 		StartCreditsCoroutine(base.ViewModel.Groups?.FirstOrDefault(), 0, -1, withSound: false);
@@ -153,8 +153,10 @@ public abstract class CreditsBaseView : View<CreditsVM>, ICreditsView, IInitiali
 			m_CurrentBlock = null;
 		}
 		m_PlayPagesCoroutineIsPlaying = false;
-		UISounds.Instance.Sounds.LocalMap.PlayClose();
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayCloseSound(ServiceWindowsType.LocalMap);
 		base.gameObject.SetActive(value: false);
+		m_MenuSelector.Unbind();
+		m_SelectorView.Unbind();
 		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.Credits);

@@ -14,7 +14,7 @@ public struct InteractionActorWithConditions
 
 	public readonly ConditionsChecker SelectConditions;
 
-	public readonly SharedStringAsset CannotSelectReason;
+	public readonly LocalizedString CannotSelectReason;
 
 	public InteractionActorWithConditions(IInteractionVariantActor actor)
 	{
@@ -24,7 +24,7 @@ public struct InteractionActorWithConditions
 		CannotSelectReason = null;
 	}
 
-	public InteractionActorWithConditions(IInteractionVariantActor variantActor, List<InteractionWithConditions.ShowReason> showReasons, ConditionsChecker selectConditions, SharedStringAsset cannotSelectReason)
+	public InteractionActorWithConditions(IInteractionVariantActor variantActor, List<InteractionWithConditions.ShowReason> showReasons, ConditionsChecker selectConditions, LocalizedString cannotSelectReason)
 	{
 		VariantActor = variantActor;
 		ShowReasons = showReasons;
@@ -34,6 +34,6 @@ public struct InteractionActorWithConditions
 
 	public string GetReasonFor(ConditionsHolder passedCondition)
 	{
-		return ShowReasons.FirstOrDefault((InteractionWithConditions.ShowReason r) => r.Conditions.Get() == passedCondition)?.Reason?.String.Text;
+		return ShowReasons.FirstOrDefault((InteractionWithConditions.ShowReason r) => r.Conditions.Get() == passedCondition)?.ShowHint?.Text;
 	}
 }

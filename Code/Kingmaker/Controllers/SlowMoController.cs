@@ -10,7 +10,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.Visual.Animation.Kingmaker;
+using Kingmaker.Visual.Animation;
 
 namespace Kingmaker.Controllers;
 
@@ -39,7 +39,7 @@ public class SlowMoController : IUnitCommandStartHandler, ISubscriber<IMechanicE
 			Game.Instance.Controllers.TimeController.SlowMoTimeScale = SlowMoFactor;
 		}
 		m_ActingUnits.Add(unit);
-		UnitAnimationManager maybeAnimationManager = unit.MaybeAnimationManager;
+		AnimationManager maybeAnimationManager = unit.MaybeAnimationManager;
 		if ((object)maybeAnimationManager != null)
 		{
 			maybeAnimationManager.DefaultSpeed = 1f / SlowMoFactor;
@@ -55,7 +55,7 @@ public class SlowMoController : IUnitCommandStartHandler, ISubscriber<IMechanicE
 
 	private void RemoveUnitFromNormalTimeFlowImpl(AbstractUnitEntity unit)
 	{
-		UnitAnimationManager maybeAnimationManager = unit.MaybeAnimationManager;
+		AnimationManager maybeAnimationManager = unit.MaybeAnimationManager;
 		if ((object)maybeAnimationManager != null)
 		{
 			maybeAnimationManager.DefaultSpeed = 1f;

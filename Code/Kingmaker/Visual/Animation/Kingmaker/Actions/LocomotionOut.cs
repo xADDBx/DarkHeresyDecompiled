@@ -1,8 +1,6 @@
 using Code.Visual.Animation;
-using Kingmaker.View;
 using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.WeaponStyles;
-using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Kingmaker.Actions;
@@ -34,7 +32,7 @@ public class LocomotionOut : LocomotionState
 	{
 		UpdateLocomotionData();
 		UnitAnimationActionLocomotion.WalkingTypeData walkingTypeData = GetWalkingTypeData();
-		m_Clip = ((walkingTypeData.Out != null && walkingTypeData.Out.AnimationClip != null) ? walkingTypeData.Out : null);
+		m_Clip = (IsUsingCustomStoppingAnimation(walkingTypeData) ? walkingTypeData.Out : null);
 		m_ReduceSpeedDuration = walkingTypeData.Parameters.OutTransition;
 		m_StartTime = m_Handle.GetTime();
 		m_EndTime = ((m_Clip != null) ? (m_StartTime + m_Clip.Length) : (m_StartTime + m_ReduceSpeedDuration));
@@ -44,10 +42,20 @@ public class LocomotionOut : LocomotionState
 			UnitAnimationActionClip unitAnimationActionClip = UnitAnimationActionClip.Create(m_Clip, "OnEnterState");
 			unitAnimationActionClip.TransitionIn = 0.1f;
 			unitAnimationActionClip.TransitionOut = 0.1f;
-			m_LocomotionOutHandle = m_Handle.Manager.CreateHandle(unitAnimationActionClip);
-			m_LocomotionOutHandle.AnimationLayer = AnimationLayerType.LocomotionOut;
-			m_Handle.Manager.Execute(m_LocomotionOutHandle);
+			m_Handle.Manager.TryExecute(unitAnimationActionClip, delegate(AnimationActionHandle h)
+			{
+				h.AnimationLayer = UnitAnimationLayerType.LocomotionOut;
+			}, out m_LocomotionOutHandle);
 		}
+	}
+
+	private bool IsUsingCustomStoppingAnimation(UnitAnimationActionLocomotion.WalkingTypeData walkingTypeData)
+	{
+		if (!m_Handle.Manager.View.AgentASP.DecelerateBeforeStop && walkingTypeData.Out != null)
+		{
+			return walkingTypeData.Out.AnimationClip != null;
+		}
+		return false;
 	}
 
 	public override void OnExitState()
@@ -64,7 +72,7 @@ public class LocomotionOut : LocomotionState
 		{
 			return LocomotionStateType.Traverse;
 		}
-		if (m_Handle.Unit != null && m_Handle.Unit.AgentASP.IsInNodeLinkQueue && !(m_Handle.Unit.MovementAgent is UnitMovementAgentContinuous))
+		if (m_Handle.Unit != null && m_Handle.Unit.AgentASP.IsInNodeLinkQueue && !m_Handle.Unit.MovementAgent.IsDirectionalMovementActive)
 		{
 			return LocomotionStateType.Traverse;
 		}
@@ -76,14 +84,13 @@ public class LocomotionOut : LocomotionState
 			}
 			return LocomotionStateType.Idle;
 		}
-		if (m_Handle.Unit != null && !(m_Handle.Unit.MovementAgent is UnitMovementAgentContinuous) && m_Handle.Unit.AgentASP.IsReallyMoving && (m_Handle.Unit.AgentASP.PathCursor.LastWaypoint3D - m_FinalDestination).sqrMagnitude > 0.1f)
+		if (m_Handle.Unit != null && !m_Handle.Unit.MovementAgent.IsDirectionalMovementActive && m_Handle.Unit.AgentASP.IsReallyMoving && (m_Handle.Unit.AgentASP.PathCursor.LastWaypoint3D - m_FinalDestination).sqrMagnitude > 0.1f)
 		{
 			return LocomotionStateType.Run;
 		}
 		if (m_WalkSpeedType != m_Handle.Manager.WalkSpeedType && m_Handle.Manager.Animator.enabled)
 		{
 			m_Handle.ActiveAnimation?.StartTransitionOut();
-			m_Handle.ActiveAnimation?.StopEvents();
 			UpdateLocomotionData();
 			TryStartClip();
 		}
@@ -117,7 +124,6 @@ public class LocomotionOut : LocomotionState
 	private UnitAnimationActionLocomotion.WalkingTypeData GetWalkingTypeData()
 	{
 		WeaponStyleLocomotionData locomotionData = m_AnimationAction.WeaponStyleSettings[base.m_ActualWeaponStyle]?.Locomotion ?? m_AnimationAction.NonCombatLocomotionData;
-		UnitAnimationActionLocomotion.CustomCombatWalkType customCombatWalkType = m_AnimationAction.GetCustomCombatWalkType(m_Handle.Unit.Or(null)?.AgentASP.PathCursor);
-		return m_AnimationAction.GetWalkingTypeData(locomotionData, m_WalkSpeedType, customCombatWalkType);
+		return m_AnimationAction.GetWalkingTypeData(locomotionData, m_WalkSpeedType);
 	}
 }

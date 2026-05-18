@@ -1,7 +1,7 @@
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items;
 using Kingmaker.Items.Slots;
 using Kingmaker.PubSubSystem;
@@ -84,8 +84,7 @@ public class InventoryDollAdditionalStatsVM : CharInfoComponentWithLevelUpVM, IU
 			m_Dodge.Value = "Obsolete";
 			m_DodgeTooltip.Value = new TooltipTemplateHint("Obsolete");
 			m_DodgeReduction.Value = "Obsolete";
-			ModifiableValue statOptional = Unit.CurrentValue.GetStatOptional(StatType.Resolve);
-			m_Resolve.Value = ((statOptional != null) ? $"{statOptional.ModifiedValue}" : "—");
+			m_Resolve.Value = string.Format("{0}", Unit.CurrentValue.Actor.GetStat(StatType.Resolve, null, default(StatContext), "UpdateData").ModifiedValue);
 			m_Parry.Value = "Obsolete";
 		}
 	}

@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Localization;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -50,10 +51,16 @@ public class UnitInfoPartPreciseAttack : UnitInfoPart
 	private CompareInfoElement[] m_CompareCriticalEffects;
 
 	[SerializeField]
-	private UnitInfoPartElementView m_AdditionalEffect;
+	private UnitInfoPartElementView m_AdditionalEffectPrefab;
 
 	[SerializeField]
-	private UnitInfoPartCompareElementView m_CompareAdditionalEffect;
+	private Transform m_AdditionalEffectRoot;
+
+	[SerializeField]
+	private UnitInfoPartCompareElementView m_CompareAdditionalEffectPrefab;
+
+	[SerializeField]
+	private Transform m_CompareAdditionalEffectRoot;
 
 	[SerializeField]
 	private UnitInfoPartElementView m_CritsThroughArmorElement;
@@ -72,6 +79,12 @@ public class UnitInfoPartPreciseAttack : UnitInfoPart
 	private IDisposable m_ArmorHintDisposable;
 
 	private IDisposable m_CritsThroughArmorHintDisposable;
+
+	private readonly List<UnitInfoPartElementView> m_AdditionalEffectPool = new List<UnitInfoPartElementView>();
+
+	private readonly List<UnitInfoPartCompareElementView> m_CompareAdditionalEffectPool = new List<UnitInfoPartCompareElementView>();
+
+	private readonly List<string> m_AdditionalEffectBuffer = new List<string>();
 
 	protected override void OnBind()
 	{
@@ -98,7 +111,7 @@ public class UnitInfoPartPreciseAttack : UnitInfoPart
 	{
 		int effectsCount = bodyPart?.CriticalEffectStagesCount ?? 0;
 		CreateCriticalEffects(bodyPart, m_CriticalEffects, effectsCount);
-		AddAdditionalEffect(bodyPart, m_AdditionalEffect);
+		RebuildAdditionalEffects(bodyPart);
 		SetupCriticalEffectsHintElements();
 		base.ViewModel.SetDirtyContent(isDirty: true);
 	}
@@ -122,7 +135,7 @@ public class UnitInfoPartPreciseAttack : UnitInfoPart
 			}).ToArray();
 		}
 		CreateCriticalEffects(bodyPart, m_CompareElements, num);
-		AddAdditionalEffect(bodyPart, m_CompareAdditionalEffect.ElementView);
+		RebuildCompareAdditionalEffects(bodyPart);
 		for (int i = 0; i < num; i++)
 		{
 			bool alreadyApplied;
@@ -178,31 +191,51 @@ public class UnitInfoPartPreciseAttack : UnitInfoPart
 		infoElement.View.SetActive(active: true);
 	}
 
-	private void AddAdditionalEffect(BlueprintBodyPart bodyPart, UnitInfoPartElementView additionalEffect)
+	private void RebuildAdditionalEffects(BlueprintBodyPart bodyPart)
 	{
-		additionalEffect.SetActive(active: false);
-		if (bodyPart != null)
+		ClearPool(m_AdditionalEffectPool);
+		base.ViewModel.CollectAdditionalEffects(bodyPart, m_AdditionalEffectBuffer);
+		foreach (string item in m_AdditionalEffectBuffer)
 		{
-			if (bodyPart.CanBreakTargetConcentrationIfHit(base.ViewModel.Unit, checkTargetHasConcentration: false))
-			{
-				additionalEffect.SetName(LocalizedTexts.Instance.PreciseAttack.CanBreakTargetConcentrationIfHit);
-				additionalEffect.SetActive(active: true);
-			}
-			else if (bodyPart.CanChangeTargetTurnOrderIfHit())
-			{
-				additionalEffect.SetName(LocalizedTexts.Instance.PreciseAttack.CanChangeTargetTurnOrderIfHit);
-				additionalEffect.SetActive(active: true);
-			}
+			UnitInfoPartElementView widget = WidgetFactory.GetWidget(m_AdditionalEffectPrefab, activate: false, strictMatching: true);
+			widget.transform.SetParent(m_AdditionalEffectRoot, worldPositionStays: false);
+			widget.SetName(item);
+			widget.gameObject.SetActive(value: true);
+			m_AdditionalEffectPool.Add(widget);
 		}
+	}
+
+	private void RebuildCompareAdditionalEffects(BlueprintBodyPart bodyPart)
+	{
+		ClearPool(m_CompareAdditionalEffectPool);
+		base.ViewModel.CollectAdditionalEffects(bodyPart, m_AdditionalEffectBuffer);
+		foreach (string item in m_AdditionalEffectBuffer)
+		{
+			UnitInfoPartCompareElementView widget = WidgetFactory.GetWidget(m_CompareAdditionalEffectPrefab, activate: false, strictMatching: true);
+			widget.transform.SetParent(m_CompareAdditionalEffectRoot, worldPositionStays: false);
+			widget.SetName(item);
+			widget.gameObject.SetActive(value: true);
+			m_CompareAdditionalEffectPool.Add(widget);
+		}
+	}
+
+	private static void ClearPool<T>(List<T> pool) where T : MonoBehaviour
+	{
+		foreach (T item in pool)
+		{
+			WidgetFactory.DisposeWidget(item);
+		}
+		pool.Clear();
 	}
 
 	private void SetupCriticalEffectsHintElements()
 	{
 		int critsThroughArmor = base.ViewModel.GetCritsThroughArmor();
-		bool num = base.ViewModel.Data.ArmorLeft.CurrentValue > 0;
+		int num = base.ViewModel.Data.BodyPart.CurrentValue?.CriticalEffectStagesCount ?? 0;
+		bool num2 = base.ViewModel.Data.ArmorLeft.CurrentValue > 0;
 		bool flag = base.ViewModel.HealthDamage > 0;
-		bool flag2 = num && !flag;
-		bool flag3 = critsThroughArmor > 0 && flag2;
+		bool flag2 = num2 && !flag;
+		bool flag3 = critsThroughArmor > 0 && flag2 && num > 0;
 		m_CritsThroughArmorElement.SetActive(flag3);
 		m_ProtectedByArmorElement.SetActive(flag2);
 		m_ArmorHintDisposable?.Dispose();
@@ -220,6 +253,13 @@ public class UnitInfoPartPreciseAttack : UnitInfoPart
 			LocalizedString criticalEffectsThroughArmor = UIStrings.Instance.UnitInfo.CriticalEffectsThroughArmor;
 			m_CritsThroughArmorElement.SetName(criticalEffectsThroughArmor);
 		}
+	}
+
+	protected override void OnDestroy()
+	{
+		base.OnDestroy();
+		ClearPool(m_AdditionalEffectPool);
+		ClearPool(m_CompareAdditionalEffectPool);
 	}
 
 	private void Awake()

@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
@@ -8,6 +9,7 @@ using Kingmaker.UnitLogic.Parts;
 
 namespace Kingmaker.RuleSystem.Rules.Damage;
 
+[RuleRoles(Initiator = "healer", Target = "healed unit")]
 public class RuleHealDamage : RulebookTargetEvent
 {
 	public readonly struct Fluent

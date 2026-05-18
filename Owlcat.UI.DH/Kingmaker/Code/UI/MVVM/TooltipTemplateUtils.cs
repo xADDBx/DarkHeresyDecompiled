@@ -23,7 +23,7 @@ public static class TooltipTemplateUtils
 			select desc.AdditionalDescription.Text).ToList();
 	}
 
-	public static string AggregateDescription(string description, List<string> additionalDesc)
+	public static string AggregateDescription(string description, List<string> additionalDesc, string separator = "\n")
 	{
 		if (description == null)
 		{
@@ -33,6 +33,6 @@ public static class TooltipTemplateUtils
 			}
 			description = string.Empty;
 		}
-		return additionalDesc.Aggregate(description, (string current, string addDesc) => current + ((current.Length > 0) ? "\n" : "") + addDesc);
+		return additionalDesc.Aggregate(description, (string current, string addDesc) => current + ((current.Length > 0) ? separator : "") + addDesc);
 	}
 }

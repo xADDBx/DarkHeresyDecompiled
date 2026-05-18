@@ -32,10 +32,8 @@ public abstract class StatusEffectBaseView : CharInfoFeatureSimpleBaseView
 	{
 		base.OnBind();
 		SetupDescription();
-		TextHelper.AppendTexts(m_Duration);
-		m_SourcePanel.SetActive(value: false);
+		m_TextHelper.AppendTexts(m_Duration);
 		m_DOTPanel.SetActive(value: false);
-		m_StackText.gameObject.SetActive(value: false);
 	}
 
 	private void SetupDescription()
@@ -44,6 +42,8 @@ public abstract class StatusEffectBaseView : CharInfoFeatureSimpleBaseView
 		{
 			m_Duration.gameObject.SetActive(!string.IsNullOrEmpty(base.ViewModel.TimeLeft));
 			m_Duration.text = base.ViewModel.TimeLeft;
+			m_SourceName.text = base.ViewModel.SourceName;
+			m_StackText.text = base.ViewModel.StacksText;
 		}
 	}
 }

@@ -29,12 +29,7 @@ public class MapObjectFromScene : MapObjectEvaluator, IOwlPackable<MapObjectFrom
 
 	protected override MapObjectEntity GetMapObjectInternal()
 	{
-		MapObjectView mapObjectView = MapObject.FindView() as MapObjectView;
-		if (mapObjectView != null)
-		{
-			return mapObjectView.Data;
-		}
-		return null;
+		return MapObject.FindData() as MapObjectEntity;
 	}
 
 	public override string GetCaptionShort()

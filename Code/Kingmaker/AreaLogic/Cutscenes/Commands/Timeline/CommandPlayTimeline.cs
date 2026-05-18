@@ -62,7 +62,7 @@ public class CommandPlayTimeline : CommandBase
 		}
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		DirectorAdapter directorAdapter = Director.FindView() as DirectorAdapter;
 		PlayableDirector playableDirector = (directorAdapter ? directorAdapter.GetComponent<PlayableDirector>() : null);
@@ -71,8 +71,7 @@ public class CommandPlayTimeline : CommandBase
 		commandData.Director = playableDirector;
 		if (!directorAdapter || !playableDirector)
 		{
-			PFLog.Default.Error($"Command {this} in {player.Cutscene}: cannot find PlayableDirector {Director}");
-			return;
+			return CommandResult.Fail($"Command {this} in {player.Cutscene}: cannot find PlayableDirector {Director}");
 		}
 		TimelineGateSignalReceiver timelineGateSignalReceiver = player.View.gameObject.EnsureComponent<TimelineGateSignalReceiver>();
 		TimelineAsset playable = playableDirector.playableAsset as TimelineAsset;
@@ -86,15 +85,29 @@ public class CommandPlayTimeline : CommandBase
 		}
 		playableDirector.Play();
 		directorAdapter.Play();
-		directorAdapter.SetTime(skipping ? ((float)playableDirector.duration + 1f) : 0f);
+		if (skipping)
+		{
+			directorAdapter.SetTime((float)playableDirector.duration + 1f);
+			directorAdapter.FixupUnitPositions();
+		}
+		else
+		{
+			directorAdapter.SetTime(0f);
+		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return OnRun(player, skipping: true);
 	}
 
 	private bool EvaluateIsContinuous()
 	{
+		if (Director == null)
+		{
+			return false;
+		}
 		DirectorAdapter directorAdapter = Director.FindView() as DirectorAdapter;
 		PlayableDirector obj = (directorAdapter ? directorAdapter.GetComponent<PlayableDirector>() : null);
 		if ((object)obj == null)
@@ -123,23 +136,23 @@ public class CommandPlayTimeline : CommandBase
 		return true;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data commandData = player.GetCommandData<Data>(this);
-		PlayableDirector director = commandData.Director;
-		if ((bool)director && director.playableGraph.IsValid())
-		{
-			director.Stop();
-		}
 		DirectorAdapter adapter = commandData.Adapter;
-		if ((bool)adapter)
+		if (adapter != null)
 		{
 			adapter.Stop();
 		}
+		PlayableDirector director = commandData.Director;
+		if (director != null && director.playableGraph.IsValid())
+		{
+			director.Stop();
+		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.Adapter != null)
@@ -150,16 +163,18 @@ public class CommandPlayTimeline : CommandBase
 		{
 			commandData.SignalReceiver.UpdateTime(time);
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		if ((bool)commandData.Director && (bool)commandData.Adapter)
 		{
 			commandData.Adapter.SetTime((float)commandData.Director.duration + 1f);
+			commandData.Adapter.FixupUnitPositions();
 		}
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

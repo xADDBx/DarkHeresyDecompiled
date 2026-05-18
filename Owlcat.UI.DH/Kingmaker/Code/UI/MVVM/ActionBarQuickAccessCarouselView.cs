@@ -147,7 +147,7 @@ public class ActionBarQuickAccessCarouselView : MonoBehaviour, IDisposable
 		{
 			m_FindNextFirst = false;
 			m_MainSlotVM.Value = GetNearSlotVM(next: true);
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 		}
 	}
 
@@ -157,7 +157,7 @@ public class ActionBarQuickAccessCarouselView : MonoBehaviour, IDisposable
 		{
 			m_FindNextFirst = true;
 			m_MainSlotVM.Value = GetNearSlotVM(next: false);
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 		}
 	}
 

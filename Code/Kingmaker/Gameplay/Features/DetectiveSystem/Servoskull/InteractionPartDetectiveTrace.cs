@@ -8,6 +8,7 @@ using Kingmaker.Code.Framework.CutsceneSystem;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -73,7 +74,7 @@ public class InteractionPartDetectiveTrace : NewInteractionPart<InteractionDetec
 			BlueprintDialog maybeBlueprint2 = m_Settings.Dialog.MaybeBlueprint;
 			if (maybeBlueprint2 != null)
 			{
-				DialogData data = DialogController.SetupDialogWithMapObject(maybeBlueprint2, base.Target.View, null, m_Initiator);
+				DialogData data = DialogController.SetupDialogWithMapObject(maybeBlueprint2, base.Target, null, m_Initiator);
 				Game.Instance.Controllers.DialogController.StartDialog(data);
 			}
 			MapObjectEntity target = base.Target;
@@ -93,34 +94,29 @@ public class InteractionPartDetectiveTrace : NewInteractionPart<InteractionDetec
 			{
 				detectiveTraceEntity.Followed();
 			}
-			EventBus.RaiseEvent((IMapObjectEntity)base.Target, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+			base.EventBus.RaiseEvent((IMapObjectEntity)base.Target, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
 			{
 				h.HandleObjectInteractChanged();
 			}, isCheckRuntime: true);
 			UnitReference r = Game.Instance.Player.PartyCharacters.Random(PFStatefulRandom.UnitRandom);
-			SharedStringAsset bark = m_Settings.Bark;
-			if ((object)bark != null)
+			LocalizedString bark = m_Settings.Bark;
+			if (bark != null && !bark.Empty)
 			{
-				LocalizedString @string = bark.String;
-				if (@string != null && !@string.Empty)
+				string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(m_Settings, base.Target);
+				IBarkHandle handle = BarkPlayer.Bark(base.Target, bark, VoiceOverType.Bark, voGuidBySourceAndTarget, -1f, m_Initiator);
+				if (base.Target is DetectiveTraceRootEntity)
 				{
-					string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(m_Settings, base.Target);
-					IBarkHandle handle = BarkPlayer.Bark(base.Target, bark.String, VoiceOverType.Bark, voGuidBySourceAndTarget, -1f, m_Initiator);
-					if (base.Target is DetectiveTraceRootEntity)
-					{
-						Game.Instance.Controllers.VoiceOverController.ScheduleAskAfterBark(r.ToAbstractUnitEntity(), handle);
-					}
-					return;
+					Game.Instance.Controllers.VoiceOverController.ScheduleAskAfterBark(r.ToAbstractUnitEntity(), handle);
 				}
 			}
-			if (base.Target is DetectiveTraceRootEntity)
+			else if (base.Target is DetectiveTraceRootEntity)
 			{
 				Game.Instance.Controllers.VoiceOverController.ScheduleAskTracesFound(r.ToAbstractUnitEntity());
 			}
 		}
 	}
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionPartDetectiveTrace",
 		OldNames = null,
@@ -168,6 +164,10 @@ public class InteractionPartDetectiveTrace : NewInteractionPart<InteractionDetec
 	public override UnitAnimationInteractionType UseAnimationState => UnitAnimationInteractionType.None;
 
 	public override bool CanBeForceShown => base.Settings.CanBeShownByTab;
+
+	public bool ShowNotFollowedOnMap => base.Settings.ShowNotFollowedOnMap;
+
+	public bool IsVariative => base.Settings.IsVariative;
 
 	public int? InteractionDC => null;
 
@@ -224,7 +224,7 @@ public class InteractionPartDetectiveTrace : NewInteractionPart<InteractionDetec
 
 	public string? GetInteractionName()
 	{
-		return base.Settings.DisplayName?.String.Text;
+		return base.Settings.DisplayName.Text;
 	}
 
 	public bool CheckRestriction(BaseUnitEntity user)
@@ -263,7 +263,7 @@ public class InteractionPartDetectiveTrace : NewInteractionPart<InteractionDetec
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionPartDetectiveTrace source = new InteractionPartDetectiveTrace();
 		result = Unsafe.As<InteractionPartDetectiveTrace, TPossiblyBase>(ref source);

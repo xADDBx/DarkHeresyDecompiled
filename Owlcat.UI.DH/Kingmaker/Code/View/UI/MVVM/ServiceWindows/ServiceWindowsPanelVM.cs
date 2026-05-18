@@ -19,8 +19,6 @@ namespace Kingmaker.Code.View.UI.MVVM.ServiceWindows;
 
 public class ServiceWindowsPanelVM : ViewModel
 {
-	private readonly Action m_Close;
-
 	private readonly ReactiveProperty<MenuEntityVM> m_SelectedMenuEntity = new ReactiveProperty<MenuEntityVM>();
 
 	private readonly ReactiveProperty<CharInfoNameAndPortraitVM> m_CharInfoAndPortraitVM = new ReactiveProperty<CharInfoNameAndPortraitVM>();
@@ -47,15 +45,13 @@ public class ServiceWindowsPanelVM : ViewModel
 
 	private readonly ReactiveProperty<ServiceWindowsType> m_LockedWindowType = new ReactiveProperty<ServiceWindowsType>(ServiceWindowsType.None);
 
-	private IDisposable m_CurrentWindow;
+	private readonly Action m_Close;
 
-	private CharInfoPageType m_Type;
+	private readonly UnitBuffBlockVM m_BuffBlockVM;
 
-	private BaseUnitEntity m_Unit;
+	private readonly BuffGroupsVM m_BuffGroupsVM;
 
-	public readonly MenuVM MenuVM;
-
-	private Dictionary<FullScreenUIType, ServiceWindowsType> m_UITypeToWindowType = new Dictionary<FullScreenUIType, ServiceWindowsType>
+	private readonly Dictionary<FullScreenUIType, ServiceWindowsType> m_UITypeToWindowType = new Dictionary<FullScreenUIType, ServiceWindowsType>
 	{
 		{
 			FullScreenUIType.Inventory,
@@ -87,6 +83,18 @@ public class ServiceWindowsPanelVM : ViewModel
 		}
 	};
 
+	private IDisposable m_CurrentWindow;
+
+	private CharInfoPageType m_Type;
+
+	private BaseUnitEntity m_Unit;
+
+	public readonly MenuVM MenuVM;
+
+	private ServiceWindowsType CurrentWindowType => (ServiceWindowsType)(m_SelectedMenuEntity.Value?.EnumId ?? 0);
+
+	public bool HasPrevWindow { get; private set; }
+
 	public ReadOnlyReactiveProperty<InventoryVM> InventoryVM => m_InventoryVM;
 
 	public ReadOnlyReactiveProperty<CharacterInfoVM> CharInfoVM => m_CharInfoVM;
@@ -107,11 +115,9 @@ public class ServiceWindowsPanelVM : ViewModel
 
 	public ReadOnlyReactiveProperty<ServiceWindowsType> LockedWindowType => m_LockedWindowType;
 
-	private ServiceWindowsType CurrentWindowType => (ServiceWindowsType)(m_SelectedMenuEntity.Value?.EnumId ?? 0);
-
 	public Texture FoWTextureTemp { get; private set; }
 
-	public ServiceWindowsPanelVM(ServiceWindowsType windowType, Action close, CharInfoPageType type = CharInfoPageType.Characteristics, BaseUnitEntity unit = null)
+	public ServiceWindowsPanelVM(ServiceWindowsType windowType, Action close, CharInfoPageType type = CharInfoPageType.Convictions, BaseUnitEntity unit = null)
 	{
 		ServiceWindowsPanelVM serviceWindowsPanelVM = this;
 		m_Close = close;
@@ -120,9 +126,12 @@ public class ServiceWindowsPanelVM : ViewModel
 		m_IsFromLevelUp.Value = RootUIContext.Instance.IsChargenShown;
 		if (unit != null)
 		{
-			Game.Instance.Controllers.SelectionCharacter.SetSelected(unit);
+			Game.Instance.Controllers.SelectionCharacter.SetSelected(unit, force: false, forceFullScreenState: true);
 		}
 		m_SelectedUnit = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI;
+		m_BuffBlockVM = new UnitBuffBlockVM(m_SelectedUnit.CurrentValue).AddTo(this);
+		m_SelectedUnit.Subscribe(m_BuffBlockVM.SetUnitData).AddTo(this);
+		m_BuffGroupsVM = new BuffGroupsVM(m_BuffBlockVM.Buffs).AddTo(this);
 		FoWTextureTemp = Shader.GetGlobalTexture(FogOfWarConstantBuffer._FogOfWarMask);
 		List<MenuEntityVM> list = new List<MenuEntityVM>
 		{
@@ -200,7 +209,7 @@ public class ServiceWindowsPanelVM : ViewModel
 		}
 	}
 
-	public void HandleCharInfo(CharInfoPageType type = CharInfoPageType.Characteristics, BaseUnitEntity unit = null)
+	public void HandleCharInfo(CharInfoPageType type = CharInfoPageType.Convictions, BaseUnitEntity unit = null)
 	{
 		m_Type = type;
 		m_Unit = unit;
@@ -215,7 +224,7 @@ public class ServiceWindowsPanelVM : ViewModel
 		{
 			m_SelectedUnit.Value = unit;
 		}
-		m_CharInfoVM.Value = new CharacterInfoVM(type, m_SelectedUnit).AddTo(this);
+		m_CharInfoVM.Value = new CharacterInfoVM(type, m_SelectedUnit, m_BuffGroupsVM).AddTo(this);
 		m_CurrentWindow = CharInfoVM.CurrentValue;
 		m_CurrentUIType.Value = FullScreenUIType.CharacterScreen;
 		m_IsFromLevelUp.Value = RootUIContext.Instance.IsChargenShown;
@@ -305,7 +314,7 @@ public class ServiceWindowsPanelVM : ViewModel
 			ReactiveProperty<CharInfoNameAndPortraitVM> charInfoAndPortraitVM = m_CharInfoAndPortraitVM;
 			if (charInfoAndPortraitVM.Value == null)
 			{
-				CharInfoNameAndPortraitVM charInfoNameAndPortraitVM2 = (charInfoAndPortraitVM.Value = new CharInfoNameAndPortraitVM(m_SelectedUnit));
+				CharInfoNameAndPortraitVM charInfoNameAndPortraitVM2 = (charInfoAndPortraitVM.Value = new CharInfoNameAndPortraitVM(m_BuffBlockVM, m_BuffGroupsVM, m_SelectedUnit));
 			}
 		}
 		else
@@ -327,11 +336,19 @@ public class ServiceWindowsPanelVM : ViewModel
 	{
 		if (m_CurrentWindow != null)
 		{
+			HasPrevWindow = true;
 			if (m_CurrentWindow is IServiceWindow serviceWindow)
 			{
 				serviceWindow.HandleOnSwitchedFromWindow();
 			}
 			m_CurrentWindow.Dispose();
+			m_InventoryVM.Value = null;
+			m_CharInfoVM.Value = null;
+			m_JournalVM.Value = null;
+			m_ReputationVM.Value = null;
+			m_DetectiveJournalVM.Value = null;
+			m_EncyclopediaVM.Value = null;
+			m_LocalMapVM.Value = null;
 		}
 	}
 
@@ -350,6 +367,7 @@ public class ServiceWindowsPanelVM : ViewModel
 		m_CurrentUIType.Value = FullScreenUIType.Unknown;
 		m_LockedWindowType.Value = ServiceWindowsType.None;
 		m_Close?.Invoke();
+		HasPrevWindow = false;
 	}
 
 	private void LockOnWindow(ServiceWindowsType windowType)
@@ -361,16 +379,16 @@ public class ServiceWindowsPanelVM : ViewModel
 	{
 		if (m_CurrentWindow != null)
 		{
-			UISounds.Instance.Sounds.PlaySwitchSound(windowType);
+			UISounds.Instance.Sounds.ServiceWindowsSounds.PlaySwitchSound(windowType);
 		}
 		else
 		{
-			UISounds.Instance.Sounds.PlayOpenSound(windowType);
+			UISounds.Instance.Sounds.ServiceWindowsSounds.PlayOpenSound(windowType);
 		}
 	}
 
 	private void PlayCloseSound(ServiceWindowsType windowType)
 	{
-		UISounds.Instance.Sounds.PlayCloseSound(windowType);
+		UISounds.Instance.Sounds.ServiceWindowsSounds.PlayCloseSound(windowType);
 	}
 }

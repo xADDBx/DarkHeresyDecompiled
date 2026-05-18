@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Code.Framework.CutsceneSystem;
 using Kingmaker.Designers.EventConditionActionSystem.NamedParameters;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.GuidUtility;
 using Kingmaker.View;
@@ -13,7 +16,7 @@ using UnityEngine;
 namespace Kingmaker.AreaLogic.Cutscenes;
 
 [KnowledgeDatabaseID("a31f060d9d48c194eafe99981b1b4c73")]
-public class CutscenePlayerView : EntityViewBase, ICutscenePlayerView, IEntityViewBase
+public class CutscenePlayerView : EntityViewBase, ICutscenePlayerView, IEntityView
 {
 	public BlueprintCutscene Cutscene { get; set; }
 
@@ -39,6 +42,13 @@ public class CutscenePlayerView : EntityViewBase, ICutscenePlayerView, IEntityVi
 			state = Game.Instance.State.LoadedAreaState.MainState;
 		}
 		Game.Instance.Controllers.EntitySpawner.SpawnEntityWithView(cutscenePlayerView, state);
+		if (ContextData<NamedParametersContext.ContextData>.Current != null && ContextData<NamedParametersContext.ContextData>.Current.Context.Params.Any())
+		{
+			foreach (KeyValuePair<string, INamedParameterValue> param in ContextData<NamedParametersContext.ContextData>.Current.Context.Params)
+			{
+				cutscenePlayerView.PlayerData.Parameters.Params.TryAdd(param.Key, param.Value);
+			}
+		}
 		if (context != null)
 		{
 			cutscenePlayerView.PlayerData.ParameterSetter = context;
@@ -54,5 +64,15 @@ public class CutscenePlayerView : EntityViewBase, ICutscenePlayerView, IEntityVi
 		}
 		cutscenePlayerView.PlayerData.Start(queued);
 		return cutscenePlayerView;
+	}
+
+	GameObject ICutscenePlayerView.get_gameObject()
+	{
+		return base.gameObject;
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

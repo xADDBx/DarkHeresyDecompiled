@@ -1,5 +1,3 @@
-using System;
-
 namespace Kingmaker.Visual.Animation.Events;
 
 public class AnimationClipEventChangeWeaponsVisibility : AnimationClipEvent
@@ -20,10 +18,9 @@ public class AnimationClipEventChangeWeaponsVisibility : AnimationClipEvent
 		IsOffHandWeaponActive = isOffHandWeaponActive;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
 		animationManager.CallbackReceiver.ChangeShowingWeapon(IsActive, IsOffHandWeaponActive);
-		return null;
 	}
 
 	public override object Clone()

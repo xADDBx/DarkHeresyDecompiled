@@ -12,14 +12,14 @@ internal struct IntersectionResult
 	public Vector3 Point;
 
 	[CanBeNull]
-	public UnitMovementAgentBase Unit1;
+	public UnitMovementAgent Unit1;
 
 	[CanBeNull]
-	public UnitMovementAgentBase Unit2;
+	public UnitMovementAgent Unit2;
 
 	public Vector3 NavmeshContactPoint;
 
-	public void Update(Vector3 point, float sqrDistance, UnitMovementAgentBase unit1, UnitMovementAgentBase unit2)
+	public void Update(Vector3 point, float sqrDistance, UnitMovementAgent unit1, UnitMovementAgent unit2)
 	{
 		if (!HasIntersection || sqrDistance < SqrDistance)
 		{
@@ -31,7 +31,7 @@ internal struct IntersectionResult
 		}
 	}
 
-	public void Update(Vector3 point, float sqrDistance, UnitMovementAgentBase unit, Vector3 navmeshContactPoint)
+	public void Update(Vector3 point, float sqrDistance, UnitMovementAgent unit, Vector3 navmeshContactPoint)
 	{
 		if (!HasIntersection || sqrDistance < SqrDistance)
 		{

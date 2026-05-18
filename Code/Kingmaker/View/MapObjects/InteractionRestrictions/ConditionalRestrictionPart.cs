@@ -14,7 +14,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class ConditionalRestrictionPart : InteractionRestrictionPart<ConditionalRestrictionSettings>, IHashable, IOwlPackable<ConditionalRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "ConditionalRestrictionPart",
 		OldNames = null,
@@ -25,9 +25,9 @@ public class ConditionalRestrictionPart : InteractionRestrictionPart<Conditional
 		}
 	};
 
-	public override SharedStringAsset RestrictedBark => base.Settings.RestrictedBark;
+	public override LocalizedString RestrictedBark => base.Settings.RestrictedBark;
 
-	public override SharedStringAsset AllowedBark => base.Settings.AllowedBark;
+	public override LocalizedString AllowedBark => base.Settings.AllowedBark;
 
 	protected override string GetDefaultBark(BaseUnitEntity baseUnitEntity, bool restricted)
 	{
@@ -70,7 +70,7 @@ public class ConditionalRestrictionPart : InteractionRestrictionPart<Conditional
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		ConditionalRestrictionPart source = new ConditionalRestrictionPart();
 		result = Unsafe.As<ConditionalRestrictionPart, TPossiblyBase>(ref source);

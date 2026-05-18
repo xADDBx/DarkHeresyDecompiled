@@ -87,7 +87,7 @@ public class PointMarkerVM : ViewModel
 
 	private void UpdateVisibility()
 	{
-		if ((Game.Instance.CurrentModeType != GameModeType.Default && Game.Instance.CurrentModeType != GameModeType.SpaceCombat && Game.Instance.CurrentModeType != GameModeType.GlobalMap && Game.Instance.CurrentModeType != GameModeType.Pause) || Game.Instance.GetCamera() == null)
+		if ((Game.Instance.CurrentModeType != GameModeType.Default && Game.Instance.CurrentModeType != GameModeType.GlobalMap && Game.Instance.CurrentModeType != GameModeType.Pause) || Game.Instance.GetCamera() == null)
 		{
 			m_IsVisible.Value = false;
 			return;

@@ -1,6 +1,5 @@
 using System;
 using Kingmaker.Enums.Sound;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.View.Mechadendrites;
@@ -20,32 +19,35 @@ public class AnimationClipEventAct : AnimationClipEvent
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
-		AbstractUnitEntity abstractUnitEntity = (animationManager as UnitAnimationManager)?.View.Or(null)?.EntityData;
-		if (abstractUnitEntity != null)
+		if (TryGetUnitEntity(animationManager, out var unitEntity))
 		{
-			EventBus.RaiseEvent((IMechanicEntity)abstractUnitEntity, (Action<IAnimationEventHandler>)delegate(IAnimationEventHandler h)
+			EventBus.RaiseEvent((IMechanicEntity)unitEntity, (Action<IAnimationEventHandler>)delegate(IAnimationEventHandler h)
 			{
 				h.HandleAnimationEvent(MappedAnimationEventType.Act);
 			}, isCheckRuntime: true);
 		}
-		else if (animationManager is UnitAnimationManager unitAnimationManager && unitAnimationManager.GetComponentInParent<MechadendriteSettings>() != null)
-		{
-			AbstractUnitEntity abstractUnitEntity2 = unitAnimationManager.LocoMotionHandle?.Unit.Data;
-			if (abstractUnitEntity2 != null)
-			{
-				EventBus.RaiseEvent((IMechanicEntity)abstractUnitEntity2, (Action<IAnimationEventHandler>)delegate(IAnimationEventHandler h)
-				{
-					h.HandleAnimationEvent(MappedAnimationEventType.Act);
-				}, isCheckRuntime: true);
-				abstractUnitEntity2.MaybeAnimationManager?.GetComponentInParent<UnitAnimationCallbackReceiver>()?.PostCommandActEvent();
-				return null;
-			}
-			return null;
-		}
 		animationManager.CallbackReceiver.PostCommandActEvent();
-		return null;
+	}
+
+	private static bool TryGetUnitEntity(IAnimationManager animationManager, out IAbstractUnitEntity unitEntity)
+	{
+		unitEntity = null;
+		if (!(animationManager is UnitAnimationManager unitAnimationManager))
+		{
+			return false;
+		}
+		unitEntity = unitAnimationManager.View.Or(null)?.EntityData;
+		if (unitEntity == null && unitAnimationManager.GetComponentInParent<MechadendriteSettings>() != null)
+		{
+			UnitAnimationManager componentInParent = unitAnimationManager.GetComponentInParent<UnitAnimationManager>();
+			if ((object)componentInParent != null)
+			{
+				unitEntity = componentInParent.View.Or(null)?.EntityData;
+			}
+		}
+		return unitEntity != null;
 	}
 
 	public override object Clone()

@@ -157,7 +157,7 @@ public sealed class GridNodeToEntityCache : IDisposable
 
 	private static ScoreFlags Score(MechanicEntity entity)
 	{
-		if (entity.IsDisposed || !entity.IsInState)
+		if (entity.IsDisposed || !entity.IsInState || !entity.IsInGame)
 		{
 			return ScoreFlags.Invalid;
 		}

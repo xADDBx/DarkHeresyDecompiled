@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -44,21 +43,17 @@ public class LocatorEntity : Entity, IHashable, IOwlPackable<LocatorEntity>
 		}
 	}
 
-	protected LocatorEntity(JsonConstructorMark _)
+	public LocatorEntity(IEntityConfig config)
+		: base(config)
+	{
+	}
+
+	protected LocatorEntity(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	public LocatorEntity(LocatorView view)
-		: base(view.UniqueId, view.IsInGameBySettings)
-	{
-	}
-
-	protected LocatorEntity()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -73,7 +68,7 @@ public class LocatorEntity : Entity, IHashable, IOwlPackable<LocatorEntity>
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		LocatorEntity source = new LocatorEntity();
+		LocatorEntity source = new LocatorEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<LocatorEntity, TPossiblyBase>(ref source);
 	}
 

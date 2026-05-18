@@ -1,28 +1,55 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.GameCommands.Contexts;
 using Kingmaker.Networking;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PingDialogAnswerVoteGameCommand : GameCommand, IOwlPackable<PingDialogAnswerVoteGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class PingDialogAnswerVoteGameCommand : GameCommand, IMemoryPackable<PingDialogAnswerVoteGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<PingDialogAnswerVoteGameCommand>
 {
+	[Preserve]
+	private sealed class PingDialogAnswerVoteGameCommandFormatter : MemoryPackFormatter<PingDialogAnswerVoteGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref PingDialogAnswerVoteGameCommand value)
+		{
+			PingDialogAnswerVoteGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref PingDialogAnswerVoteGameCommand value)
+		{
+			PingDialogAnswerVoteGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref PingDialogAnswerVoteGameCommand value)
+		{
+			PingDialogAnswerVoteGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref PingDialogAnswerVoteGameCommand value)
+		{
+			PingDialogAnswerVoteGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private string m_Answer;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "PingDialogAnswerVoteGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_Answer", typeof(string))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
@@ -31,6 +58,7 @@ public sealed class PingDialogAnswerVoteGameCommand : GameCommand, IOwlPackable<
 	{
 	}
 
+	[MemoryPackConstructor]
 	public PingDialogAnswerVoteGameCommand(string m_answer)
 		: this()
 	{
@@ -41,6 +69,135 @@ public sealed class PingDialogAnswerVoteGameCommand : GameCommand, IOwlPackable<
 	{
 		NetPlayer playerOrEmpty = GameCommandPlayer.GetPlayerOrEmpty();
 		PhotonManager.Ping.PingDialogAnswerVoteLocally(playerOrEmpty, m_Answer);
+	}
+
+	static PingDialogAnswerVoteGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "PingDialogAnswerVoteGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_Answer", typeof(string))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<PingDialogAnswerVoteGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new PingDialogAnswerVoteGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<PingDialogAnswerVoteGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<PingDialogAnswerVoteGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref PingDialogAnswerVoteGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(1);
+		writer.WriteString(value.m_Answer);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref PingDialogAnswerVoteGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		string answer;
+		if (memberCount == 1)
+		{
+			if (value == null)
+			{
+				answer = reader.ReadString();
+			}
+			else
+			{
+				answer = value.m_Answer;
+				answer = reader.ReadString();
+			}
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(PingDialogAnswerVoteGameCommand), 1, memberCount);
+				return;
+			}
+			answer = ((value != null) ? value.m_Answer : null);
+			if (memberCount != 0)
+			{
+				answer = reader.ReadString();
+				_ = 1;
+			}
+			_ = value;
+		}
+		value = new PingDialogAnswerVoteGameCommand(answer);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref PingDialogAnswerVoteGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Answer");
+		writer.WriteString(value.m_Answer);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref PingDialogAnswerVoteGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		string answer = ((value != null) ? value.m_Answer : null);
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_Answer")
+				{
+					answer = reader.ReadString();
+					array[0] = true;
+				}
+			}
+			else if (text == "m_Answer")
+			{
+				answer = reader.ReadString();
+			}
+		}
+		_ = value;
+		value = new PingDialogAnswerVoteGameCommand(answer);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

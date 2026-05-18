@@ -9,6 +9,6 @@ public class ItalicStartTemplate : TextTemplate
 
 	public override string Generate(bool capitalized, List<string> parameters)
 	{
-		return "<i>";
+		return "<style=\"Italic\">";
 	}
 }

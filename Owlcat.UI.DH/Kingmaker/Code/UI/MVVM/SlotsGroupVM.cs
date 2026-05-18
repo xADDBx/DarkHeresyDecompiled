@@ -185,7 +185,7 @@ public abstract class SlotsGroupVM<TViewModel> : ViewModel, ISlotsGroupVM<TViewM
 
 	public void TriggerCollectionChanged()
 	{
-		m_CollectionChangedCommand.Execute();
+		m_CollectionChangedCommand.Execute(Unit.Default);
 	}
 
 	private void InternalUpdate()
@@ -356,7 +356,7 @@ public abstract class SlotsGroupVM<TViewModel> : ViewModel, ISlotsGroupVM<TViewM
 			VisibleCollection[index].Dispose();
 			VisibleCollection.RemoveAt(index);
 		}
-		m_CollectionChangedCommand.Execute();
+		m_CollectionChangedCommand.Execute(Unit.Default);
 	}
 
 	private TViewModel GetVirtualSlot(ItemEntity item, int index)

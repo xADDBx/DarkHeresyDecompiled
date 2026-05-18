@@ -1,7 +1,5 @@
-using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.UI.Common.DebugInformation;
 using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
@@ -11,7 +9,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
 
-public abstract class TutorialWindowPCView<TViewModel> : TutorialWindowBaseView<TViewModel>, IHasBlueprintInfo where TViewModel : TutorialWindowVM
+public abstract class TutorialWindowPCView<TViewModel> : TutorialWindowBaseView<TViewModel> where TViewModel : TutorialWindowVM
 {
 	[SerializeField]
 	private OwlcatMultiButton m_CloseButton;
@@ -36,8 +34,6 @@ public abstract class TutorialWindowPCView<TViewModel> : TutorialWindowBaseView<
 
 	private UITutorial m_UITutorial;
 
-	public BlueprintScriptableObject Blueprint => base.ViewModel?.Data?.Blueprint;
-
 	protected override void OnBind()
 	{
 		base.OnBind();
@@ -48,7 +44,7 @@ public abstract class TutorialWindowPCView<TViewModel> : TutorialWindowBaseView<
 		}).AddTo(this);
 		m_DontShowToggle.OnPointerClickAsObservable().Subscribe(delegate
 		{
-			UISounds.Instance.Sounds.Tutorial.BanTutorialType.Play();
+			ModalWindowsSounds.Instance.Tutorial.BanTutorialType.Play();
 		}).AddTo(this);
 	}
 

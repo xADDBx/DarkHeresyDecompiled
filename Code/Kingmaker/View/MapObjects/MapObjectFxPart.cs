@@ -13,13 +13,13 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MapObjectFxPart : ViewBasedPart<MapObjectFxSettings>, IAreaHandler, ISubscriber, IHashable, IOwlPackable<MapObjectFxPart>
+public class MapObjectFxPart : EntityPartWithConfig<MapObjectFxSettings>, IAreaHandler, ISubscriber, IHashable, IOwlPackable<MapObjectFxPart>
 {
 	private GameObject m_FxInstance;
 
 	private bool m_IsLoaded;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "MapObjectFxPart",
 		OldNames = null,
@@ -40,9 +40,9 @@ public class MapObjectFxPart : ViewBasedPart<MapObjectFxSettings>, IAreaHandler,
 		m_IsLoaded = true;
 	}
 
-	protected override void OnSettingsDidSet(bool isNewSettings)
+	protected override void OnConfigDidSet(bool isNewConfig)
 	{
-		base.OnSettingsDidSet(isNewSettings);
+		base.OnConfigDidSet(isNewConfig);
 		if (!m_IsLoaded)
 		{
 			FxActive = base.Settings.StartActive;
@@ -93,7 +93,7 @@ public class MapObjectFxPart : ViewBasedPart<MapObjectFxSettings>, IAreaHandler,
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		MapObjectFxPart source = new MapObjectFxPart();
 		result = Unsafe.As<MapObjectFxPart, TPossiblyBase>(ref source);

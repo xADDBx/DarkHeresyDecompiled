@@ -20,7 +20,7 @@ public static class Json
 		{
 			(JsonConverter)new Color32Converter(),
 			(JsonConverter)new StringOrIntEnumConverter(),
-			(JsonConverter)new SharedStringConverter(),
+			(JsonConverter)new LocalizedStringConverter(),
 			(JsonConverter)new UnityObjectConverter(),
 			(JsonConverter)new BlueprintReferenceConverter(),
 			(JsonConverter)new BehaviourTreeReferenceConverter(),

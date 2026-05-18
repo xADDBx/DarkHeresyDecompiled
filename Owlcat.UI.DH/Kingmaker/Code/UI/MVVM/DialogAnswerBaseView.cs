@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using System.Text;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
@@ -50,6 +52,12 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 	[SerializeField]
 	private TextStyle m_DetectiveRelatedItemsStyle;
 
+	[SerializeField]
+	private TextStyle m_DetectiveCloseCaseDataStyle;
+
+	[SerializeField]
+	private TextStyle m_AlignmentShiftStyle;
+
 	[Space]
 	[Header("VotesCoop")]
 	[SerializeField]
@@ -97,7 +105,12 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 		{
 			m_NumberText.text = GetBindingText();
 		}
-		m_AnswerText.text = TryGetConditionText() + TryGetSkillCheckRequirementText() + TryGetSkillCheckText() + TryGetRelatedDetectiveItems() + TryGetExchangeText() + TryGetConvictionRequirementsText() + TryGetConvictionShiftText() + (base.ViewModel.IsRequirementSatisfied ? base.ViewModel.AnswerRawText : m_SpoilerText);
+		if (base.ViewModel.HasVisibleConvictionRequirements && !base.ViewModel.CanSelect)
+		{
+			m_AnswerText.text = TryGetConvictionRequirementsText();
+			return;
+		}
+		m_AnswerText.text = TryGetConditionText() + TryGetSkillCheckRequirementText() + TryGetSkillCheckText() + TryGetRelatedDetectiveItems() + TryGetCloseCaseData() + TryGetExchangeText() + TryGetConvictionRequirementsText() + GetConvictionShiftText() + (base.ViewModel.ShowSpoiler ? m_SpoilerText : base.ViewModel.AnswerRawText);
 	}
 
 	private string GetBindingText()
@@ -109,13 +122,13 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 		return "-//" + base.ViewModel.BindingDisplayText + " --- ";
 	}
 
-	private string TryGetConvictionShiftText()
+	private string GetConvictionShiftText()
 	{
 		if (!base.ViewModel.HasVisibleConvictionShifts)
 		{
 			return string.Empty;
 		}
-		return base.ViewModel.ConvictionShiftText;
+		return UIUtilityAlignment.GetAlignmentText(base.ViewModel.Answer.AlignmentShifts).ApplyStyle(m_AlignmentShiftStyle);
 	}
 
 	private string TryGetConvictionRequirementsText()
@@ -124,7 +137,11 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 		{
 			return string.Empty;
 		}
-		return string.Format(UIDialog.Instance.AlignmentRequirementLabel, base.ViewModel.ConvictionDirection, base.ViewModel.ConvictionRankText);
+		if (base.ViewModel.CanSelect)
+		{
+			return "<link=\"DialogConditions:" + base.ViewModel.AssetGuid + "><sprite name=\"" + m_DialogAnswerGraphicConfig.ConditionSuccessSpriteID + "\" color=#" + m_DialogAnswerGraphicConfig.ConditionSuccessSpriteColor.HTML() + "></link>";
+		}
+		return string.Format(UIStrings.Instance.Dialog.AlignmentRequirementFormat, UIUtilityAlignment.GetAlignmentRequirementText(base.ViewModel.Answer));
 	}
 
 	private string TryGetConditionText()
@@ -167,6 +184,24 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 		return "<link=DialogExchange:" + exchangeIDText + "><sprite name=\"" + dialogExchangeSpriteID + "\" color=#" + text + "></link> ";
 	}
 
+	private string TryGetCloseCaseData()
+	{
+		if (!base.ViewModel.HasCloseCaseData)
+		{
+			return string.Empty;
+		}
+		using (GameLogContext.Scope)
+		{
+			string assetGuid = base.ViewModel.AssetGuid;
+			string dialogDetectiveCloseCaseSpriteID = m_DialogAnswerGraphicConfig.DialogDetectiveCloseCaseSpriteID;
+			string text = m_DialogAnswerGraphicConfig.DialogCloseCaseSpriteColor.HTML();
+			GameLogContext.TextStyle = m_DetectiveCloseCaseDataStyle;
+			string text2 = UIStrings.Instance.Dialog.HasCloseCaseData.Text;
+			GameLogContext.TextStyle = UIConfig.Instance.DefaultTextStyle;
+			return "<link=CloseCase:" + assetGuid + "><sprite name=\"" + dialogDetectiveCloseCaseSpriteID + "\" color=#" + text + ">" + text2 + "</link>";
+		}
+	}
+
 	private string TryGetRelatedDetectiveItems()
 	{
 		if (!base.ViewModel.HasRelatedDetectiveItems)
@@ -180,7 +215,8 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 			string text = m_DialogAnswerGraphicConfig.DialogExchangeSpriteColor.HTML();
 			GameLogContext.TextStyle = m_DetectiveRelatedItemsStyle;
 			string text2 = UIStrings.Instance.Dialog.HasRelatedItems.Text;
-			return "<link=RelatedDetectiveItems:" + assetGuid + "><sprite name=\"" + dialogDetectiveRelatedItemsSpriteID + "\" color=#" + text + "> " + text2 + " </link> ";
+			GameLogContext.TextStyle = UIConfig.Instance.DefaultTextStyle;
+			return "<link=RelatedDetectiveItems:" + assetGuid + "><sprite name=\"" + dialogDetectiveRelatedItemsSpriteID + "\" color=#" + text + ">" + text2 + "</link> ";
 		}
 	}
 
@@ -217,12 +253,13 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 		StringBuilder stringBuilder = new StringBuilder();
 		try
 		{
-			foreach (SkillCheckDC skillCheck in base.ViewModel.SkillChecks)
+			SkillCheckDC skillCheckDC = base.ViewModel.SkillChecks.FirstOrDefault();
+			if (skillCheckDC != null)
 			{
-				string text = ((skillCheck.StatType == StatType.Unknown) ? m_DialogAnswerGraphicConfig.SkillcheckInAnswerErrorColor.HTML() : m_DialogAnswerGraphicConfig.SkillcheckInAnswerColor.HTML());
-				string text2 = UtilityLink.PackKeys(EntityLink.Type.SkillcheckDC, skillCheck.StatType);
-				string text3 = LocalizedTexts.Instance.Stats.GetText(skillCheck.StatType);
-				string text4 = $"{UtilitySkillcheck.GetSkillCheckChance(skillCheck)}%";
+				string text = ((skillCheckDC.StatType == StatType.Unknown) ? m_DialogAnswerGraphicConfig.SkillcheckInAnswerErrorColor.HTML() : m_DialogAnswerGraphicConfig.SkillcheckInAnswerColor.HTML());
+				string text2 = UtilityLink.PackKeys(EntityLink.Type.SkillcheckDC, skillCheckDC.StatType);
+				string text3 = LocalizedTexts.Instance.Stats.GetText(skillCheckDC.StatType);
+				string text4 = $"{UtilitySkillcheck.GetSkillCheckChance(skillCheckDC)}%";
 				string diceSpriteID = m_DialogAnswerGraphicConfig.DiceSpriteID;
 				stringBuilder.Append("<color=#" + text + "><link=\"" + text2 + "\"><sprite name=\"" + diceSpriteID + "\" color=#" + m_DialogAnswerGraphicConfig.DiceSpriteColor.HTML() + ">" + text3 + ": " + text4 + " | </link></color>");
 			}
@@ -282,7 +319,7 @@ public class DialogAnswerBaseView : View<AnswerVM>, IConsoleNavigationEntity, IC
 	{
 		if (!base.ViewModel.TryDoCoopPing())
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+			ButtonsSounds.Instance.Default.Click.Play();
 			ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
 			{
 				base.ViewModel?.OnChooseAnswer();

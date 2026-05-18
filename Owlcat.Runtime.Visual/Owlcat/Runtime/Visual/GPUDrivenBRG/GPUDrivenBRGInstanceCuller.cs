@@ -10,15 +10,12 @@ using Owlcat.Runtime.Core.ObjectTracking;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.BakedLighting;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Integrations.GPUDriven;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.LOD;
-using Owlcat.Runtime.Visual.GPUDrivenBRG.Passes;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Profiling.Main;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Profiling.Memory;
 using Owlcat.Runtime.Visual.Waaagh;
 using Owlcat.Runtime.Visual.Waaagh.Data;
 using Owlcat.Runtime.Visual.Waaagh.Debugging;
-using Owlcat.Runtime.Visual.Waaagh.PipelineResources;
 using Owlcat.Runtime.Visual.Waaagh.Shadows;
-using Owlcat.ShaderLibrary.Visual.Debug;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -46,9 +43,9 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 	private struct PrepareCullingDataJob : IJob
 	{
 		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-		public delegate bool _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000198B_0024PostfixBurstDelegate(in CullingSplit cullingSplit);
+		internal delegate bool _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate(in CullingSplit cullingSplit);
 
-		internal static class _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000198B_0024BurstDirectCall
+		internal static class _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024BurstDirectCall
 		{
 			private static IntPtr Pointer;
 
@@ -57,12 +54,12 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 			{
 				if (Pointer == (IntPtr)0)
 				{
-					Pointer = BurstCompiler.CompileFunctionPointer<_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000198B_0024PostfixBurstDelegate>(HasValidCullingSphere).Value;
+					Pointer = BurstCompiler.CompileFunctionPointer<_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate>(HasValidCullingSphere).Value;
 				}
 				P_0 = Pointer;
 				[MethodImpl(MethodImplOptions.AggressiveInlining)]
 				[BurstCompile]
-				[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000198B_0024PostfixBurstDelegate))]
+				[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate))]
 				static bool HasValidCullingSphere(in CullingSplit cullingSplit)
 				{
 					return Invoke(in cullingSplit);
@@ -119,17 +116,17 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 			return true;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			[BurstCompile]
-			[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000198B_0024PostfixBurstDelegate))]
+			[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate))]
 			static bool HasValidCullingSphere(in CullingSplit cullingSplit)
 			{
-				return _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000198B_0024BurstDirectCall.Invoke(in cullingSplit);
+				return _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024BurstDirectCall.Invoke(in cullingSplit);
 			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		[CompilerGenerated]
 		[BurstCompile]
-		public static bool _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0024BurstManaged(in CullingSplit cullingSplit)
+		internal static bool _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0024BurstManaged(in CullingSplit cullingSplit)
 		{
 			return cullingSplit.sphereRadius > 0f;
 		}
@@ -151,72 +148,19 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 
 		private readonly GPUDrivenResourceRegistry m_ResourceRegistry;
 
-		[CanBeNull]
-		private readonly Material m_DebugOverdrawMaterial;
-
-		private readonly GPUDrivenIndexAllocator.IndexAllocation m_DebugOverdrawMaterialIndex;
-
-		[CanBeNull]
-		private readonly Material m_DebugOverdrawMaterialForward;
-
-		private readonly GPUDrivenIndexAllocator.IndexAllocation m_DebugOverdrawMaterialIndexForward;
-
 		public DebugUtility(GPUDrivenResourceRegistry resourceRegistry, [CanBeNull] WaaaghDebugData debugData)
 		{
 			m_ResourceRegistry = resourceRegistry;
 			m_DebugData = debugData;
-			WaaaghDebugData debugData2 = m_DebugData;
-			if ((object)debugData2 != null)
-			{
-				DebugResources resources = debugData2.Resources;
-				if (resources != null)
-				{
-					Shader debugOverdrawPS = resources.DebugOverdrawPS;
-					if ((object)debugOverdrawPS != null)
-					{
-						m_DebugOverdrawMaterial = CoreUtils.CreateEngineMaterial(debugOverdrawPS);
-						m_DebugOverdrawMaterial.SetShaderPassEnabled("GBuffer", enabled: true);
-						m_DebugOverdrawMaterial.SetShaderPassEnabled("ForwardLit", enabled: true);
-						m_DebugOverdrawMaterialIndex = m_ResourceRegistry.GetOrRegisterMaterial(m_DebugOverdrawMaterial).EnsureAllocationValidity();
-						m_DebugOverdrawMaterialForward = CoreUtils.CreateEngineMaterial(debugOverdrawPS);
-						m_DebugOverdrawMaterialForward.SetShaderPassEnabled("GBuffer", enabled: false);
-						m_DebugOverdrawMaterialForward.SetShaderPassEnabled("ForwardLit", enabled: true);
-						m_DebugOverdrawMaterialIndexForward = m_ResourceRegistry.GetOrRegisterMaterial(m_DebugOverdrawMaterialForward).EnsureAllocationValidity();
-						return;
-					}
-				}
-			}
-			m_DebugOverdrawMaterial = null;
-			m_DebugOverdrawMaterialIndex = GPUDrivenIndexAllocator.IndexAllocation.Invalid;
-			m_DebugOverdrawMaterialForward = null;
-			m_DebugOverdrawMaterialIndexForward = GPUDrivenIndexAllocator.IndexAllocation.Invalid;
 		}
 
 		public DrawingOverrides? GetDrawingOverridesOrDefault(in GPUDrivenRendererGroupPool.ViewType viewType)
 		{
-			if (viewType == GPUDrivenRendererGroupPool.ViewType.Camera)
-			{
-				WaaaghDebugData debugData = m_DebugData;
-				if ((object)debugData != null)
-				{
-					RenderingDebug renderingDebug = debugData.RenderingDebug;
-					if (renderingDebug != null && renderingDebug.OverdrawMode == DebugOverdrawMode.QuadOverdraw && m_DebugOverdrawMaterial != null && !m_DebugOverdrawMaterialIndex.Equals(GPUDrivenIndexAllocator.IndexAllocation.Invalid) && m_DebugOverdrawMaterialForward != null && !m_DebugOverdrawMaterialIndexForward.Equals(GPUDrivenIndexAllocator.IndexAllocation.Invalid))
-					{
-						DrawingOverrides value = default(DrawingOverrides);
-						value.OverrideBatchMaterialID = m_ResourceRegistry.ReadUnmanagedMaterialInfo(m_DebugOverdrawMaterialIndex).EffectiveBatchMaterialID;
-						value.OverrideBatchMaterialIDForward = m_ResourceRegistry.ReadUnmanagedMaterialInfo(m_DebugOverdrawMaterialIndexForward).EffectiveBatchMaterialID;
-						value.OverrideBatchLayer = 7;
-						return value;
-					}
-				}
-			}
 			return null;
 		}
 
 		public void Dispose()
 		{
-			CoreUtils.Destroy(m_DebugOverdrawMaterial);
-			CoreUtils.Destroy(m_DebugOverdrawMaterialForward);
 		}
 	}
 

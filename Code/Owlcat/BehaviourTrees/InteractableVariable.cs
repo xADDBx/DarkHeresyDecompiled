@@ -1,16 +1,15 @@
 using JetBrains.Annotations;
 using Kingmaker.View.MapObjects;
-using Owlcat.Runtime.Core.Utility;
 
 namespace Owlcat.BehaviourTrees;
 
-public class InteractableVariable : BlackboardVariable<InteractionAction>
+public class InteractableVariable : BlackboardVariable<InteractionActionPart>
 {
 	[CanBeNull]
-	public override InteractionAction Value { get; set; }
+	public override InteractionActionPart Value { get; set; }
 
 	public override string ToString()
 	{
-		return base.Key + ": " + (Value.Or(null)?.gameObject.ToString() ?? "<null>");
+		return base.Key + ": " + (Value?.ToString() ?? "<null>");
 	}
 }

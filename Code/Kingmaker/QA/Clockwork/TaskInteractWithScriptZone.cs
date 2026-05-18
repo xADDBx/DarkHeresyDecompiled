@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Linq;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.View.MapObjects.SriptZones;
+using Kingmaker.Mechanics.Entities;
 
 namespace Kingmaker.QA.Clockwork;
 
@@ -17,8 +17,8 @@ public class TaskInteractWithScriptZone : ClockworkRunnerTask
 
 	protected override IEnumerator Routine()
 	{
-		ScriptZone scriptZone = m_ZoneEntity.View as ScriptZone;
-		yield return new TaskMovePartyToPoint(Runner, scriptZone.Shapes.First().Center());
+		ScriptZoneEntity scriptZoneEntity = m_ZoneEntity as ScriptZoneEntity;
+		yield return new TaskMovePartyToPoint(Runner, scriptZoneEntity.Config.Shapes.First().Center());
 		Runner.MarkAsInteracted(m_ZoneEntity.UniqueId);
 	}
 

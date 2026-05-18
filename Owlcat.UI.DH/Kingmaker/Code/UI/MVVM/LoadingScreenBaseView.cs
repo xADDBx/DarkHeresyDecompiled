@@ -124,6 +124,9 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 	private Image ProgressImage;
 
 	[SerializeField]
+	private Scrollbar m_ProgressScrollbar;
+
+	[SerializeField]
 	private CanvasGroup m_ProgressPercentContainer;
 
 	[SerializeField]
@@ -245,9 +248,9 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 	protected override void OnBind()
 	{
 		base.ViewModel.AreaProperty.Subscribe(SetupLoadingArea).AddTo(this);
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Selector.SelectorLoopStop, isButton: false, playAnyway: true);
+		UISounds.Instance.Play(SystemSounds.Instance.Selector.LoopStop, isButton: false, playAnyway: true);
 		Show();
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Selector.SelectorLoopStop, isButton: false, playAnyway: true);
+		UISounds.Instance.Play(SystemSounds.Instance.Selector.LoopStop, isButton: false, playAnyway: true);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
 		{
 			UpdateThreshold();
@@ -553,6 +556,10 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 		m_Progress = Mathf.Max(progress, m_Progress);
 		m_VirtualProgress = ((m_Progress > m_VirtualProgress) ? m_Progress : (m_VirtualProgress + Time.unscaledDeltaTime / 300f));
 		ProgressImage.fillAmount = m_VirtualProgress;
+		if (m_ProgressScrollbar != null)
+		{
+			m_ProgressScrollbar.value = m_VirtualProgress;
+		}
 		float num = Mathf.Clamp(m_VirtualProgress * 100f, 0f, 100f);
 		ProgressPercent.text = UIUtilityText.AddPercentTo($"{num:0}");
 	}
@@ -564,7 +571,7 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 			KillWaitUserInputAnimation();
 			return;
 		}
-		UISounds.Instance.Play(UISounds.Instance.Sounds.LoadingScreen.WaitForUserInputShow, isButton: false, playAnyway: true);
+		UISounds.Instance.Play(FullScreenUniqueSounds.Instance.LoadingScreen.WaitForUserInputShow, isButton: false, playAnyway: true);
 		m_ProgressBarContainer.DOFade(0f, 1f).OnComplete(StartPressAnyKeyLoopAnimation).SetUpdate(isIndependentUpdate: true);
 		m_ProgressPercentContainer.DOFade(0f, 1f).OnComplete(StartPressAnyKeyLoopAnimation).SetUpdate(isIndependentUpdate: true);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
@@ -578,8 +585,8 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 
 	protected void CloseWait()
 	{
-		UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
-		UISounds.Instance.Play(UISounds.Instance.Sounds.LoadingScreen.WaitForUserInputHide, isButton: false, playAnyway: true);
+		ButtonsSounds.Instance.Default.Click.Play();
+		UISounds.Instance.Play(FullScreenUniqueSounds.Instance.LoadingScreen.WaitForUserInputHide, isButton: false, playAnyway: true);
 		if (PhotonManager.Lobby.IsLoading)
 		{
 			PhotonManager.Instance.ContinueLoading();

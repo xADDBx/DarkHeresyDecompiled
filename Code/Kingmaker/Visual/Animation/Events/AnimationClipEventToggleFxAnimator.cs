@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Events;
@@ -35,10 +34,9 @@ public class AnimationClipEventToggleFxAnimator : AnimationClipEvent
 		m_Name = name;
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override void Start(IAnimationManager animationManager)
 	{
 		animationManager.CallbackReceiver.FxAnimatorToggleAction(Name);
-		return null;
 	}
 
 	public override object Clone()

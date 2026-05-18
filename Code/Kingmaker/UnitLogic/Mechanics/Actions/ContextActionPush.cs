@@ -3,6 +3,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UnitLogic.Abilities;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using UnityEngine;
@@ -34,12 +35,12 @@ public class ContextActionPush : ContextAction
 			Element.LogError(this, "Target unit is missing");
 			return;
 		}
-		if (base.Context.MaybeCaster == null || (m_UseFactOwnerAsCaster && base.Context.MaybeOwner == null))
+		if (base.Context.Caster == null || (m_UseFactOwnerAsCaster && base.Context.Owner == null))
 		{
 			Element.LogError(this, "Caster is missing");
 			return;
 		}
-		MechanicEntity caster = (m_UseFactOwnerAsCaster ? base.Context.MaybeOwner : base.Context.MaybeCaster);
+		MechanicEntity caster = (m_UseFactOwnerAsCaster ? base.Context.Owner : base.Context.Caster);
 		Vector3 fromPoint = GetFromPoint();
 		int distance = Math.Min(Cells.Calculate(base.Context), 5);
 		EventBus.RaiseEvent(delegate(IUnitGetAbilityPush h)
@@ -50,14 +51,18 @@ public class ContextActionPush : ContextAction
 
 	private Vector3 GetFromPoint()
 	{
-		if (base.Projectile != null && (base.AbilityContext?.Ability?.Blueprint.IsGrenade).GetValueOrDefault())
+		if (base.Projectile != null)
 		{
-			return base.Projectile.GetTargetPoint();
+			AbilityData? ability = base.Context.Ability;
+			if ((object)ability != null && ability.Blueprint.IsGrenade)
+			{
+				return base.Projectile.GetTargetPoint();
+			}
 		}
 		if (!m_UseFactOwnerAsCaster)
 		{
 			return base.Caster.Position;
 		}
-		return base.Context.MaybeOwner.Position;
+		return base.Context.Owner.Position;
 	}
 }

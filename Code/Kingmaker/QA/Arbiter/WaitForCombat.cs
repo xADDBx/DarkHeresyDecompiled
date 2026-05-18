@@ -17,7 +17,7 @@ public class WaitForCombat : ArbiterTask
 		if (Game.Instance.Controllers.TurnController.InCombat)
 		{
 			Game.Instance.Controllers.TurnController.OnStart();
-			CheatsCombat.KillAll();
+			CheatsCombat.KillAll(null);
 		}
 		yield return null;
 	}

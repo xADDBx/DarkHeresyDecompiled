@@ -1,3 +1,5 @@
+using System;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Visual.Sound;
 using Owlcat.UI;
 
@@ -7,16 +9,21 @@ public class CharGenVoiceItemVM : SelectionGroupEntityVM
 {
 	public readonly string DisplayName;
 
-	public readonly bool IsEmptyVoice;
+	public readonly BlueprintUnitAsksList Asks;
 
-	public readonly BlueprintUnitAsksList Voice;
+	public readonly string VoGuid;
 
-	public CharGenVoiceItemVM(BlueprintUnitAsksList voice)
-		: base(allowSwitchOff: false)
+	public readonly MusicStateHandler.MusicChargenPCVoice MusicChargenVoice;
+
+	public Action OnClicked;
+
+	public CharGenVoiceItemVM(BlueprintUnitAsksList asks, BlueprintCharGenRoot.VoiceEntry settings = null)
+		: base(allowSwitchOff: true)
 	{
-		Voice = voice;
-		DisplayName = voice.DisplayName;
-		IsEmptyVoice = string.IsNullOrEmpty(voice?.PreviewSound);
+		Asks = asks;
+		VoGuid = settings?.VoId.Guid;
+		MusicChargenVoice = settings?.MusicChargenVoice ?? MusicStateHandler.MusicChargenPCVoice.None;
+		DisplayName = (asks.DisplayName.Empty ? asks.AssetName : ((string)asks.DisplayName));
 	}
 
 	protected override void DoSelectMe()

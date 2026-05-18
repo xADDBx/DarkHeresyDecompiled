@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI;
 using Kingmaker.UI.Sound;
@@ -25,6 +26,8 @@ public class ConclusionSelectionWindowVM : ViewModel
 
 	private readonly Action<bool> m_OnClose;
 
+	public bool IsInteractable => UtilityNet.IsControlMainCharacter();
+
 	public ConclusionSelectionWindowVM(BlueprintCaseItem caseItemFrom, Action<bool> onClose)
 	{
 		CaseItemFrom = caseItemFrom;
@@ -33,11 +36,14 @@ public class ConclusionSelectionWindowVM : ViewModel
 		List<ConclusionSelectionEntityVM> list = conclusionsFor.Select(GetSelectionEntity).ToList();
 		Sources = list.Select((ConclusionSelectionEntityVM c) => c.Source).Distinct().ToList();
 		SelectionVM = new ConclusionSelectionGroupVM(list, SelectedConclusion).AddTo(this);
-		SelectedConclusion.Value = SelectionVM.EntitiesCollection.FirstOrDefault((ConclusionSelectionEntityVM e) => UIUtilityDetective.Detective.HasConclusion(e.Conclusion));
+		SelectedConclusion.Value = SelectionVM.EntitiesCollection.FirstOrDefault((ConclusionSelectionEntityVM e) => UIUtilityDetective.Detective.HasConclusionExcludingHidden(e.Conclusion));
 		m_ConclusionOnEnter = SelectedConclusion.Value?.Conclusion;
-		SelectedConclusion?.Skip(1).Subscribe(delegate
+		SelectedConclusion?.Skip(1).Subscribe(delegate(ConclusionSelectionEntityVM value)
 		{
-			UISounds.Instance.Sounds.DetectiveSystem.ConclusionSelectionSelectConclusion.Play();
+			if (value != null)
+			{
+				ServiceWindowsSounds.Instance.DetectiveJournal.ConclusionSelectionSelectConclusion.Play();
+			}
 		}).AddTo(this);
 		conclusionsFor.ForEach(delegate(BlueprintConclusion c)
 		{
@@ -51,13 +57,13 @@ public class ConclusionSelectionWindowVM : ViewModel
 		{
 			if (SelectedConclusion.Value?.Conclusion != null)
 			{
-				UIUtilityDetective.Detective.AddConclusion(SelectedConclusion.Value.Conclusion);
+				Game.Instance.GameCommandQueue.AddConclusion(SelectedConclusion.Value.Conclusion);
 			}
 			else if ((bool)m_ConclusionOnEnter)
 			{
-				UIUtilityDetective.Detective.RemoveConclusion(m_ConclusionOnEnter);
+				Game.Instance.GameCommandQueue.RemoveConclusion(m_ConclusionOnEnter);
 			}
-			UISounds.Instance.Sounds.DetectiveSystem.ConclusionSelectionApplyConclusion.Play();
+			ServiceWindowsSounds.Instance.DetectiveJournal.ConclusionSelectionApplyConclusion.Play();
 		}
 		m_OnClose?.Invoke(applySelection);
 		EventBus.RaiseEvent(delegate(IConclusionsUpdateHandler h)

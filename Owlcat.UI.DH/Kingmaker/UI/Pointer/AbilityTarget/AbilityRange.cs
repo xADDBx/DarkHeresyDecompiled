@@ -53,14 +53,13 @@ public abstract class AbilityRange : MonoBehaviour, IAbilityTargetSelectionUIHan
 		{
 			SetFirstSpecs();
 			SetRangeToCasterPosition();
+			return;
 		}
-		else
+		ClearRange();
+		EventBus.RaiseEvent(delegate(IShowAoEAffectedUIHandler h)
 		{
-			EventBus.RaiseEvent(delegate(IShowAoEAffectedUIHandler h)
-			{
-				h.HandleAoECancel();
-			});
-		}
+			h.HandleAoECancel();
+		});
 	}
 
 	protected virtual void SetFirstSpecs()
@@ -78,6 +77,10 @@ public abstract class AbilityRange : MonoBehaviour, IAbilityTargetSelectionUIHan
 	}
 
 	protected virtual void SetRangeToWorldPosition(Vector3 castPosition, TargetWrapper targetWrapper)
+	{
+	}
+
+	protected virtual void ClearRange()
 	{
 	}
 

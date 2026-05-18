@@ -6,11 +6,14 @@ namespace Kingmaker.Code.View.Visual.CharacterSystem.EquipmentComponents;
 public enum EquipmentFeatureFlag
 {
 	None = 1,
-	IsHiddenWithHelmet = 2,
-	IgnoreLayer = 4,
-	IsHiddenInPeacefulMode = 8,
-	IsVisibleOnlyInDollRoom = 0x10,
-	IsBackpack = 0x20,
-	IsCloak = 0x40,
-	IsCloakSquashed = 0x80
+	IgnoreLayer = 2,
+	IsHiddenInPeacefulMode = 4,
+	IsVisibleOnlyInDollRoom = 8,
+	IsHelmet = 0x10,
+	IsArmor = 0x20,
+	IsBackpack = 0x40,
+	IsCloak = 0x80,
+	IsGloves = 0x100,
+	IsBoots = 0x200,
+	IsMechadendrites = 0x400
 }

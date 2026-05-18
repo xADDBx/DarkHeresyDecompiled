@@ -99,7 +99,7 @@ public class SaveInfo : IDisposable
 		}
 	}
 
-	public const int CurrentCompatibilityVersion = 1;
+	public const int CurrentCompatibilityVersion = 2;
 
 	private readonly ReaderWriterLockSlim m_FileAccessLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
@@ -194,7 +194,7 @@ public class SaveInfo : IDisposable
 
 
 	[JsonProperty]
-	public int CompatibilityVersion { get; set; } = 1;
+	public int CompatibilityVersion { get; set; } = 2;
 
 
 	public BlueprintCampaign Campaign

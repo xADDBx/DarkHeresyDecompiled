@@ -2,6 +2,7 @@ using System;
 using Kingmaker.AreaLogic.SummonPool;
 using Kingmaker.Blueprints;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;

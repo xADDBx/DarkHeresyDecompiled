@@ -23,6 +23,8 @@ public class PartProvidesCover : UnitPart, IDynamicCoverProvider, IHashable, IOw
 		Fields = new FieldInfo[0]
 	};
 
+	public bool IsActive => _sources.Count > 0;
+
 	public NodeList Nodes
 	{
 		get

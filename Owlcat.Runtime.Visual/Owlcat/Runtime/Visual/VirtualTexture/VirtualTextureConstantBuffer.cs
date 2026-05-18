@@ -1,10 +1,9 @@
 using Unity.Burst;
-using Unity.Mathematics;
 using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.VirtualTexture;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\VirtualTexture\\VirtualTextureConstantBuffer.cs", needAccessors = false, generateCBuffer = true)]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\VirtualTexture\\VirtualTextureConstantBuffer.cs", needAccessors = false, generateCBuffer = false)]
 [BurstCompile]
 public struct VirtualTextureConstantBuffer
 {
@@ -29,12 +28,4 @@ public struct VirtualTextureConstantBuffer
 	public const int kTileSizeInBytes = 25920;
 
 	public const int kTileMipCount = 2;
-
-	public float4 _VTPageParams;
-
-	public float4 _VTTileParams;
-
-	public float4 _VTPhysicalAtlasSize;
-
-	public float _VTFeedbackMipBias;
 }

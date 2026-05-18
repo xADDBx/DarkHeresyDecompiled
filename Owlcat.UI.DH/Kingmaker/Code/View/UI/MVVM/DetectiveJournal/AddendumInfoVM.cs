@@ -44,7 +44,7 @@ public class AddendumInfoVM : ViewModel
 	{
 		Info = new AddendumInfo(blueprintAddendum);
 		BlueprintScriptableObject source = Game.Instance.DetectiveSystem.GetSource(blueprintAddendum);
-		SourceVM = new CaseEntitySourceVM(blueprintAddendum.ParentClue, source);
+		SourceVM = new CaseEntitySourceVM(blueprintAddendum);
 		m_LinkedClue.Value = ((source is BlueprintClueStudy blueprintClueStudy && blueprintClueStudy.ParentClue != blueprintAddendum.ParentClue) ? blueprintClueStudy.ParentClue : null);
 		m_Description.Value = UIUtilityDetective.GetAddendumDescriptionWithOverride(blueprintAddendum);
 		UpdateAddendumState();
@@ -55,7 +55,7 @@ public class AddendumInfoVM : ViewModel
 		: this(goToLinkedClue)
 	{
 		Info = new StudyInfo(study);
-		SourceVM = new CaseEntitySourceVM(study.ParentClue, study);
+		SourceVM = new CaseEntitySourceVM(study);
 		m_LinkedClue.Value = UIUtilityDetective.GetStudyLink(study, out var studyType);
 		ReactiveProperty<LocalizedString> description = m_Description;
 		description.Value = studyType switch

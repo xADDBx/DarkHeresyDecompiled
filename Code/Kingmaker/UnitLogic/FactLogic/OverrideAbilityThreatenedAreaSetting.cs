@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Owlcat.Runtime.Core.Utility;
@@ -25,7 +26,10 @@ public class OverrideAbilityThreatenedAreaSetting : UnitFactComponentDelegate
 
 	public BlueprintAbility.UsingInThreateningAreaType? GetThreatenedAreaRule(AbilityData ability)
 	{
-		using AbilityExecutionContext context = ability.ClaimExecutionContext(base.Owner);
-		return Restriction.IsPassed(context) ? new BlueprintAbility.UsingInThreateningAreaType?(ThreatenedAreaRule) : null;
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(ability, base.Owner).Get(out ctx))
+		{
+			return Restriction.IsPassed(ctx) ? new BlueprintAbility.UsingInThreateningAreaType?(ThreatenedAreaRule) : null;
+		}
 	}
 }

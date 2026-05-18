@@ -47,7 +47,7 @@ public static class TooltipModifiersUtility
 				case ModifierType.ValAdd_Extra:
 					return UtilityText.AddSign(Sum).ToString(CultureInfo.InvariantCulture) ?? "";
 				case ModifierType.PctAdd:
-					return $"×{(1f + (float)Sum / 100f).ToString(CultureInfo.InvariantCulture)} (+{Sum}%)";
+					return "×" + (1f + (float)Sum / 100f).ToString(CultureInfo.InvariantCulture) + " (" + Sum.ToStringWithSign() + "%)";
 				case ModifierType.PctMul:
 				case ModifierType.PctMul_Extra:
 					return $"×{((float)Sum / 100f).ToString(CultureInfo.InvariantCulture)} ({Sum}%)";

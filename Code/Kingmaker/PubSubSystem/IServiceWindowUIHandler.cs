@@ -4,11 +4,9 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 
 namespace Kingmaker.PubSubSystem;
 
-public interface IServiceWindowUIHandler : IJournalUIHandler, ISubscriber, IDetectiveJournalUIHandler, IEncyclopediaHandler
+public interface IServiceWindowUIHandler : IInventoryUIHandler, ISubscriber, IJournalUIHandler, IDetectiveJournalUIHandler, IEncyclopediaHandler
 {
 	void HandleCloseAll();
-
-	void HandleOpenInventory();
 
 	void HandleOpenLocalMap();
 

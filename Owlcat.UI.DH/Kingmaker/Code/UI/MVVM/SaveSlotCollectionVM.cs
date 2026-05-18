@@ -71,14 +71,15 @@ public class SaveSlotCollectionVM : ViewModel
 				}
 				foreach (SaveSlotVM item in slotsInGroup)
 				{
-					saveSlotGroupVM.TryHandleDeleteSave(item);
+					saveSlotGroupVM.RemoveSlot(item);
 					AllTitlesAndSlots.Remove(item);
 					m_AllSlots.Remove(item);
 				}
 				AllTitlesAndSlots.Remove(saveSlotGroupVM.ExpandableTitleVM);
+				bool isFirst = saveSlotGroupVM.IsFirst;
 				saveSlotGroupVM.Dispose();
 				SaveSlotGroups.Remove(saveSlotGroupVM);
-				if (saveSlotGroupVM.IsFirst && SaveSlotGroups.Any())
+				if (isFirst && SaveSlotGroups.Any())
 				{
 					SaveSlotGroups.First().IsFirst = true;
 				}
@@ -90,14 +91,18 @@ public class SaveSlotCollectionVM : ViewModel
 	public void HandleDeleteSave(SaveSlotVM slot)
 	{
 		SaveSlotGroupVM saveSlotGroupVM = SaveSlotGroups.FirstOrDefault((SaveSlotGroupVM group) => group.GameId == slot.GameId.CurrentValue);
-		if (saveSlotGroupVM != null && saveSlotGroupVM.TryHandleDeleteSave(slot))
+		if (saveSlotGroupVM != null)
 		{
-			AllTitlesAndSlots.Remove(saveSlotGroupVM.ExpandableTitleVM);
-			saveSlotGroupVM.Dispose();
-			SaveSlotGroups.Remove(saveSlotGroupVM);
-			if (saveSlotGroupVM.IsFirst && SaveSlotGroups.Any())
+			saveSlotGroupVM.RemoveSlot(slot);
+			if (saveSlotGroupVM.SaveLoadSlots == null || saveSlotGroupVM.SaveLoadSlots.Count == 0)
 			{
-				SaveSlotGroups.First().IsFirst = true;
+				AllTitlesAndSlots.Remove(saveSlotGroupVM.ExpandableTitleVM);
+				if (saveSlotGroupVM.IsFirst && SaveSlotGroups.Any())
+				{
+					SaveSlotGroups.First().IsFirst = true;
+				}
+				saveSlotGroupVM.Dispose();
+				SaveSlotGroups.Remove(saveSlotGroupVM);
 			}
 		}
 		AllTitlesAndSlots.Remove(slot);

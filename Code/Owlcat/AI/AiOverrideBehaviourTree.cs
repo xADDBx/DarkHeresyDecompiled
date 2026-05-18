@@ -2,6 +2,7 @@ using Kingmaker;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Owlcat.BehaviourTrees;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -41,7 +42,7 @@ public class AiOverrideBehaviourTree : EntityFactComponentDelegate<MechanicEntit
 
 	protected override void OnDeactivate()
 	{
-		PFLog.AI.Log(base.Owner.View, $"Deactivate {BehaviourTree.Title} brain for unit {base.Owner}");
+		PFLog.AI.Log(base.Owner.View.AsMechanicEntityView(), $"Deactivate {BehaviourTree.Title} brain for unit {base.Owner}");
 		Game.Instance.Controllers.BehaviourTreeTickController.Storage.UnRegister(base.Owner, this);
 	}
 }

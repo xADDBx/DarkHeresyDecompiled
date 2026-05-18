@@ -20,16 +20,18 @@ public static class EntityLink
 		DialogExchange,
 		RelatedDetectiveItems,
 		UIProperty,
-		SoulMarkShiftDirection,
+		Alignment,
 		UnitStat,
 		Unknown,
 		Empty,
 		DialogConditions,
 		Highlight,
-		Detective
+		Detective,
+		AbilityTag,
+		CloseCase
 	}
 
-	private static Dictionary<Type, string> m_Tags = new Dictionary<Type, string>
+	private static readonly Dictionary<Type, string> Tags = new Dictionary<Type, string>
 	{
 		{
 			Type.Unit,
@@ -80,8 +82,8 @@ public static class EntityLink
 			"uip"
 		},
 		{
-			Type.SoulMarkShiftDirection,
-			"SoulMarkShiftDirection"
+			Type.Alignment,
+			"Alignment"
 		},
 		{
 			Type.UnitStat,
@@ -106,25 +108,33 @@ public static class EntityLink
 		{
 			Type.Detective,
 			"Detective"
+		},
+		{
+			Type.AbilityTag,
+			"AbilityTag"
+		},
+		{
+			Type.CloseCase,
+			"CloseCase"
 		}
 	};
 
 	public static string GetTag(Type type)
 	{
-		if (!m_Tags.ContainsKey(type))
+		if (!Tags.ContainsKey(type))
 		{
 			Debug.LogError("EntityLinkType " + type.ToString() + " does not have tag");
 			return "";
 		}
-		return m_Tags[type];
+		return Tags[type];
 	}
 
 	public static Type GetEntityType(string key)
 	{
 		Type result = Type.Empty;
-		if (m_Tags.Values.Contains(key))
+		if (Tags.Values.Contains(key))
 		{
-			result = m_Tags.FirstOrDefault((KeyValuePair<Type, string> d) => d.Value == key).Key;
+			result = Tags.FirstOrDefault((KeyValuePair<Type, string> d) => d.Value == key).Key;
 		}
 		return result;
 	}

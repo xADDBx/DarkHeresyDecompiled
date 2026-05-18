@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Owlcat.UI;
-using TMPro;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -20,15 +18,11 @@ public class TooltipTemplateCombatLogMessage : TooltipTemplateSimple
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(base.Header, TooltipTitleType.H4, TextAlignmentOptions.Center, TextAnchor.MiddleCenter, 4);
+		yield return new BrickTitleVM(base.Header, TooltipTitleType.H4);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		if (type == TooltipTemplateType.Tooltip)
-		{
-			return ExtraTooltipBricks.Concat(base.GetBody(type));
-		}
-		return ExtraInfoBricks.Concat(base.GetBody(type));
+		return ((type == TooltipTemplateType.Tooltip) ? ExtraTooltipBricks : ExtraInfoBricks).Select((ITooltipBrick brick) => (brick as TooltipBrickVM)?.Clone()).Concat(base.GetBody(type));
 	}
 }

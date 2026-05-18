@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.RuleSystem.Rules.RuleDOT;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -63,16 +64,17 @@ public abstract class DOTRankModifier : MechanicEntityFactComponentDelegate
 		{
 			rule.RankModifier.Add(ModifierType.ValAdd, FlatValue.Value, base.Fact, ModifierDescriptor);
 		}
-		using (base.Context.SetScope(null, rule))
+		IEvalContext ctx;
+		using (EvalContext.PushContext(base.Context, null, rule).Get(out ctx))
 		{
 			if (!PercentDamageModifier.Enabled)
 			{
 				return;
 			}
-			int num = PercentDamageModifier.Calculate(base.Context);
-			if (rule.Target == base.Owner && base.Context.MaybeCaster != null)
+			int num = PercentDamageModifier.Calculate(ctx);
+			if (rule.Target == base.Owner && ctx.Caster != null)
 			{
-				IEnumerable<MultiplyIncomingDamageBonus> components = base.Context.MaybeCaster.Facts.GetComponents<MultiplyIncomingDamageBonus>();
+				IEnumerable<MultiplyIncomingDamageBonus> components = ctx.Caster.Facts.GetComponents<MultiplyIncomingDamageBonus>();
 				float num2 = (components.Any() ? (components.Sum((MultiplyIncomingDamageBonus p) => p.PercentIncreaseMultiplier - 1f) + 1f) : 1f);
 				num = (int)((float)num * num2);
 			}

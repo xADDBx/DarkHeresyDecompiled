@@ -16,13 +16,13 @@ public class GlossaryColors
 
 	public Color32 GlossaryEmpty;
 
-	public string GlossaryGlossaryHTML => "#" + ColorUtility.ToHtmlStringRGB(GlossaryGlossary);
+	public string GlossaryGlossaryHTML => "#" + ColorUtility.ToHtmlStringRGB((Color)GlossaryGlossary);
 
-	public string GlossaryDecisionsHTML => "#" + ColorUtility.ToHtmlStringRGB(GlossaryDecisions);
+	public string GlossaryDecisionsHTML => "#" + ColorUtility.ToHtmlStringRGB((Color)GlossaryDecisions);
 
-	public string GlossaryMechanicsHTML => "#" + ColorUtility.ToHtmlStringRGB(GlossaryMechanics);
+	public string GlossaryMechanicsHTML => "#" + ColorUtility.ToHtmlStringRGB((Color)GlossaryMechanics);
 
-	public string GlossaryDefaultHTML => "#" + ColorUtility.ToHtmlStringRGB(GlossaryDefault);
+	public string GlossaryDefaultHTML => "#" + ColorUtility.ToHtmlStringRGB((Color)GlossaryDefault);
 
-	public string GlossaryEmptyHTML => "#" + ColorUtility.ToHtmlStringRGB(GlossaryEmpty);
+	public string GlossaryEmptyHTML => "#" + ColorUtility.ToHtmlStringRGB((Color)GlossaryEmpty);
 }

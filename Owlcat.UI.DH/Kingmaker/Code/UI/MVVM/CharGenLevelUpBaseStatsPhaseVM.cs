@@ -1,5 +1,5 @@
-using System;
 using System.Linq;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.PubSubSystem;
@@ -24,24 +24,41 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 
 	public SelectionStateStats SelectionStats { get; private set; }
 
-	private event Action m_OnPointsChanged;
+	public bool IsInChargen => m_CharGenContext.CharGenConfig.Mode != CharGenMode.LevelUp;
 
 	public CharGenLevelUpBaseStatsPhaseVM(CharGenContext charGenContext, SelectionStateStats selectionStats, CharGenPhaseType phaseType, InfoSectionVM infoSectionVM, int rank = 0)
 		: base(charGenContext, phaseType, infoSectionVM, rank)
 	{
-		this.m_OnPointsChanged = OnPointsChanged;
 		SelectionStats = selectionStats;
+		base.BlueprintSelectionWithUI = selectionStats.Blueprint;
 		CreateItemList();
+		m_PhaseName.Value = selectionStats.Blueprint.Title;
+		base.DisplayMode = ((charGenContext.CharGenConfig.Mode != CharGenMode.LevelUp) ? CharGenDisplayMode.DollOnly : CharGenDisplayMode.PortraitOnly);
+		m_RemainingPoints.Subscribe(delegate
+		{
+			UpdateHint();
+		}).AddTo(this);
 	}
 
-	private void OnPointsChanged()
+	private void OnPointsChanged(CharGenLevelUpCharacteristicsItemVM item, bool isAdding)
 	{
-		m_RemainingPoints.Value = SelectionStats.Blueprint.PointsTotal - SelectionStats.PointsSpentTotal;
-		EventBus.RaiseEvent(delegate(ILevelUpManagerUIHandler h)
+		if ((!isAdding || SelectionStats.PointsSpentTotal < SelectionStats.Blueprint.PointsTotal) && (isAdding || SelectionStats.GetPointsTotal(item.Stat) > 0))
 		{
-			h.HandleUISelectionChanged();
-		});
-		UpdateIsCompleted();
+			if (isAdding)
+			{
+				SelectionStats.AddPoints(item.Stat, POINT);
+			}
+			else
+			{
+				SelectionStats.RemovePoints(item.Stat, POINT);
+			}
+			m_RemainingPoints.Value = SelectionStats.Blueprint.PointsTotal - SelectionStats.PointsSpentTotal;
+			Items.ForEach(delegate(TSelectorItem i)
+			{
+				i.UpdatePointsState();
+			});
+			SaveSelection();
+		}
 	}
 
 	protected override void OnBeginDetailedView()
@@ -64,6 +81,21 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 
 	protected override void SaveSelection()
 	{
+		SelectionStateStats selectionStats = SelectionStats;
+		if (selectionStats != null && selectionStats.PointsTotal == 1)
+		{
+			SaveBySelection();
+		}
+		EventBus.RaiseEvent(delegate(ILevelUpManagerUIHandler h)
+		{
+			h.HandleUISelectionChanged();
+		});
+		UpdateIsCompleted();
+		UpdateTooltip();
+	}
+
+	private void SaveBySelection()
+	{
 		if (m_PrevSelectedItem != null)
 		{
 			SelectionStats.RemovePoints(m_PrevSelectedItem.Stat, POINT);
@@ -75,20 +107,34 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 			base.SelectedItem.CurrentValue.UpdatePointsState();
 		}
 		m_PrevSelectedItem = base.SelectedItem.CurrentValue;
-		UpdateIsCompleted();
-		UpdateTooltip();
+	}
+
+	private void UpdateHint()
+	{
+		if (IsInChargen)
+		{
+			if (RemainingPoints.CurrentValue == 0)
+			{
+				SetPhaseHint(string.Empty);
+			}
+			else
+			{
+				SetPhaseHint(UIStrings.Instance.CharGen.SpreadOutPointsHint.Text);
+			}
+		}
 	}
 
 	protected override void CreateItemList()
 	{
-		if (CareerPath == null || base.Unit == null)
+		if (base.Unit == null)
 		{
 			Debug.LogError("CareerPath or Unit is null");
 			return;
 		}
+		m_RemainingPoints.Value = SelectionStats.Blueprint.PointsTotal - SelectionStats.PointsSpentTotal;
 		SelectionStats.Blueprint.Advancements.OrderBy((BlueprintStatAdvancement a) => StatTypeHelper.DisplayOrder.IndexOf(a.Stat)).ForEach(delegate(BlueprintStatAdvancement f)
 		{
-			AddItem(new CharGenLevelUpCharacteristicsItemVM(f, SelectionStats, CharGenContext.LevelUpManager.CurrentValue, this.m_OnPointsChanged, OnItemHovered) as TSelectorItem);
+			AddItem(new CharGenLevelUpCharacteristicsItemVM(f, SelectionStats, m_CharGenContext.LevelUpManager.CurrentValue, OnPointsChanged, OnItemHovered) as TSelectorItem);
 		});
 	}
 }

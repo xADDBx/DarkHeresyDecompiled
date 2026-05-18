@@ -6,12 +6,12 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Camera;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Data;
+using Kingmaker.EntitySystem;
 using Kingmaker.GameModes;
 using Kingmaker.Localization;
 using Kingmaker.Settings;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.View.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using UnityEngine;
@@ -77,6 +77,27 @@ public class BlueprintArea : BlueprintAreaPart
 	[ShowIf("OverrideCorruption")]
 	public int CorruptionGrowth;
 
+	public bool HasInteractionGlobalCooldown;
+
+	public float InteractionGlobalCooldown = 15f;
+
+	[Tooltip("Cooldown will be set to OutOfRangeTimerResetTo, if you run farther than this distance from source of bark")]
+	[ShowIf("HasInteractionGlobalCooldown")]
+	public float DistanceFromCooldownSourceToReset = 15f;
+
+	[Tooltip("Cooldown will reset to this value, if you run farther than \nDistanceFromCooldownSourceToReset distance from source of bark")]
+	[ShowIf("ShouldShowOutOfRangeReset")]
+	public float OutOfRangeTimerResetTo = 1.5f;
+
+	[Tooltip("Rule of uniting interactions in Clusters.\n0 - interactions in same point, 1 - interactions touching each other by their Approach radius")]
+	[ShowIf("HasInteractionGlobalCooldown")]
+	[Range(0f, 1f)]
+	public float ClusterOverlap = 0.5f;
+
+	[Tooltip("Delay before one of the clustered barks will be selected and fired")]
+	[ShowIf("HasInteractionGlobalCooldown")]
+	public float ClusterInteractionInitialDelay = 1f;
+
 	[Tooltip("Areas, which scenes should be kept loaded when switching to this area")]
 	[SerializeField]
 	[FormerlySerializedAs("HotAreas")]
@@ -106,6 +127,18 @@ public class BlueprintArea : BlueprintAreaPart
 		set
 		{
 			m_DefaultPreset = value.ToReference<BlueprintAreaPresetReference>();
+		}
+	}
+
+	private bool ShouldShowOutOfRangeReset
+	{
+		get
+		{
+			if (HasInteractionGlobalCooldown)
+			{
+				return DistanceFromCooldownSourceToReset > 0f;
+			}
+			return false;
 		}
 	}
 
@@ -161,6 +194,15 @@ public class BlueprintArea : BlueprintAreaPart
 	public List<BlueprintAreaPartReference> Parts => m_Parts;
 
 	public IEnumerable<BlueprintAreaPart> PartsAndSelf => m_Parts.Where((BlueprintAreaPartReference p) => p?.Get() != null).Dereference().Append(this);
+
+	public float GetInteractionGlobalCooldown()
+	{
+		if (!HasInteractionGlobalCooldown)
+		{
+			return 0f;
+		}
+		return InteractionGlobalCooldown;
+	}
 
 	public IEnumerable<SceneReference> AllScenesWithParts()
 	{
@@ -235,11 +277,16 @@ public class BlueprintArea : BlueprintAreaPart
 
 	public int GetCR()
 	{
-		if (!BlueprintAreaHelper.OverridenCR.TryGetValue(AssetGuid, out var value))
+		AreaPersistentState areaPersistentState = Game.Instance?.State?.LoadedAreaState;
+		if (areaPersistentState != null && areaPersistentState.Blueprint == this)
 		{
-			return m_CR;
+			int? cROverride = areaPersistentState.Settings.CROverride;
+			if (cROverride.HasValue)
+			{
+				return cROverride.GetValueOrDefault();
+			}
 		}
-		return value;
+		return m_CR;
 	}
 
 	public IEnumerable<BlueprintAreaPart> GetParts()

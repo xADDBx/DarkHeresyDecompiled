@@ -58,11 +58,11 @@ public class DeductionOnScreenVM : ViewModel, IConclusionStatusChanged, ISubscri
 	{
 		DetectiveSystem detective = Game.Instance.DetectiveSystem;
 		List<BlueprintConclusion> conclusionsFor = UIUtilityDetective.GetConclusionsFor(Conclusion);
-		m_CanMakeDeduction.Value = conclusionsFor.Any((BlueprintConclusion c) => c.Sources.Any((BlueprintConclusion.Source s) => detective.HasItem(s.Item2))) && !conclusionsFor.Any((BlueprintConclusion c) => Game.Instance.DetectiveSystem.HasConclusion(c));
+		m_CanMakeDeduction.Value = conclusionsFor.Any((BlueprintConclusion c) => c.Sources.Any((BlueprintConclusion.Source s) => detective.HasItemExcludingHidden(s.Item2))) && !conclusionsFor.Any((BlueprintConclusion c) => Game.Instance.DetectiveSystem.HasConclusionExcludingHidden(c));
 		m_ConstructConclusionVM.Value = (CanMakeDeduction.CurrentValue ? new ConstructConclusionVM(Conclusion, MakeDeduction, null) : null);
 		List<BlueprintConclusion> conclusionsFor2 = UIUtilityDetective.GetConclusionsFor(SelectedSource.Item1);
 		m_IsNewConclusion.Value = UIUtilityDetective.ExaminedDetectiveData.SelectedConclusions.IsEntityNew(Conclusion) || conclusionsFor2.Any(UIUtilityDetective.ExaminedDetectiveData.ExaminedConclusions.IsEntityNew);
-		m_Refresh.Execute();
+		m_Refresh.Execute(Unit.Default);
 	}
 
 	public void OnConclusionClick()
@@ -95,6 +95,6 @@ public class DeductionOnScreenVM : ViewModel, IConclusionStatusChanged, ISubscri
 
 	public void UpdateConclusions()
 	{
-		m_Refresh.Execute();
+		m_Refresh.Execute(Unit.Default);
 	}
 }

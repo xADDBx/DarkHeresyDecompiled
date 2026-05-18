@@ -4,6 +4,7 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Buffs;
 using Owlcat.Runtime.Core.Utility;
 
@@ -11,7 +12,7 @@ namespace Kingmaker.Gameplay.Components;
 
 [Serializable]
 [TypeId("1d44512f77a7457fa4f76335dcbc5f6f")]
-public sealed class BuffTriggerTarget : BuffTrigger, IUnitBuffHandler<EntitySubscriber>, IEventTag<IUnitBuffHandler, EntitySubscriber>, IUnitBuffHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEntitySubscriber
+public sealed class BuffTriggerTarget : BuffTrigger, IUnitBuffHandler<EntitySubscriber>, IEventTag<IUnitBuffHandler, EntitySubscriber>, IUnitBuffHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEntitySubscriber, IInitiatorRulebookHandler<RuleCalculateCanApplyBuff>, IRulebookHandler<RuleCalculateCanApplyBuff>, IInitiatorRulebookSubscriber
 {
 	void IUnitBuffHandler.HandleBuffDidAdded(Buff buff, MechanicEntity caster)
 	{
@@ -31,5 +32,14 @@ public sealed class BuffTriggerTarget : BuffTrigger, IUnitBuffHandler<EntitySubs
 	void IUnitBuffHandler.HandleBuffRankDecreased(Buff buff, int delta, MechanicEntity caster)
 	{
 		HandleEvent(EventType.RankDecreased, buff, delta, caster);
+	}
+
+	void IRulebookHandler<RuleCalculateCanApplyBuff>.OnEventAboutToTrigger(RuleCalculateCanApplyBuff evt)
+	{
+	}
+
+	void IRulebookHandler<RuleCalculateCanApplyBuff>.OnEventDidTrigger(RuleCalculateCanApplyBuff evt)
+	{
+		HandleBeforeApply(evt);
 	}
 }

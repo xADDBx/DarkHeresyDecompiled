@@ -39,6 +39,9 @@ public class CombatTextColors
 
 	public Color BrokenPhaseColor = Color.white;
 
+	[Header("Concentration")]
+	public Color ConcentrationBrokenColor = Color.yellow;
+
 	public Color GetColor(CombatTextMessageColorType messageType)
 	{
 		return messageType switch

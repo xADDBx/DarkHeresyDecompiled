@@ -1,6 +1,7 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Controllers.Interfaces;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
@@ -39,9 +40,9 @@ public class UnitMoveController : IControllerEnable, IController, IControllerTic
 	{
 		foreach (AbstractUnitEntity allUnit in Game.Instance.EntityPools.AllUnits)
 		{
-			if (!(allUnit.View == null))
+			if (allUnit.View != null)
 			{
-				UnitMovementAgentBase movementAgent = allUnit.View.MovementAgent;
+				UnitMovementAgent movementAgent = allUnit.View.MovementAgent;
 				if (!(movementAgent == null))
 				{
 					ObstaclesHelper.ConnectToGroups(movementAgent);
@@ -70,18 +71,16 @@ public class UnitMoveController : IControllerEnable, IController, IControllerTic
 
 	private void TickUnit([NotNull] AbstractUnitEntity unit, float dt)
 	{
-		UnitMovementAgentBase unitMovementAgentBase = unit.View?.MovementAgent;
-		if (!(unitMovementAgentBase == null))
+		UnitMovementAgent unitMovementAgent = unit.View?.MovementAgent;
+		if (!(unitMovementAgent == null))
 		{
-			bool isReallyMoving = ApplyChangesByAgent(unit, unitMovementAgentBase, dt);
+			bool isReallyMoving = ApplyChangesByAgent(unit, unitMovementAgent, dt);
 			TryUpdateTransformPosition(unit, isReallyMoving);
 			TryUpdateTransformOrientation(unit);
-			LogTransform(unit);
-			UpdateAgentVelocity(unitMovementAgentBase);
 		}
 	}
 
-	private bool ApplyChangesByAgent(AbstractUnitEntity unit, UnitMovementAgentBase agent, float dt)
+	private bool ApplyChangesByAgent(AbstractUnitEntity unit, UnitMovementAgent agent, float dt)
 	{
 		if ((bool)unit.Features.OnElevator)
 		{
@@ -119,43 +118,44 @@ public class UnitMoveController : IControllerEnable, IController, IControllerTic
 
 	private static void TryUpdateTransformPosition(AbstractUnitEntity unit, bool isReallyMoving)
 	{
-		AbstractUnitEntityView view = unit.View;
+		AbstractUnitEntityView abstractUnitEntityView = unit.View.AsAbstractUnitEntityView();
 		float num = 0f;
 		if (unit.Movable.PreviousSimulationTick.HasMotion)
 		{
-			Vector3 viewPosition = view.InterpolationHelper.GetViewPosition(unit.Movable.PreviousPosition);
-			Transform transform = view.transform;
+			Vector3 viewPosition = abstractUnitEntityView.InterpolationHelper.GetViewPosition(unit.Movable.PreviousPosition);
+			Transform transform = abstractUnitEntityView.transform;
 			num = (transform.position - viewPosition).sqrMagnitude;
 			transform.position = viewPosition;
 		}
 		if (!isReallyMoving)
 		{
-			if (unit.Movable.PreviousSimulationTick.HasMotion || (view.AnimationManager != null && view.AnimationManager.IsGoingProne) || (bool)unit.Features.OnElevator)
+			if (!unit.Features.OnElevator && (unit.Movable.PreviousSimulationTick.HasMotion || (abstractUnitEntityView.AnimationManager != null && abstractUnitEntityView.AnimationManager.IsGoingProne)))
 			{
-				view.ForcePlaceAboveGround();
+				abstractUnitEntityView.ForcePlaceAboveGround();
 			}
 			if (num >= 1f)
 			{
-				view.IkController?.GrounderIk?.ResetPosition();
+				abstractUnitEntityView.IkController?.GrounderIk?.ResetPosition();
 			}
 		}
 	}
 
 	private static void TryUpdateTransformOrientation(AbstractUnitEntity unit)
 	{
-		if ((Mathf.Approximately(unit.Orientation, unit.Movable.PreviousOrientation) && !unit.Movable.PreviousSimulationTick.HasRotation) || unit.View.ForbidRotation)
+		AbstractUnitEntityView abstractUnitEntityView = unit.View.AsAbstractUnitEntityView();
+		if ((Mathf.Approximately(unit.Orientation, unit.Movable.PreviousOrientation) && !unit.Movable.PreviousSimulationTick.HasRotation) || abstractUnitEntityView.ForbidRotation)
 		{
 			return;
 		}
-		if (!unit.View.OverrideRotatablePart)
+		if (!abstractUnitEntityView.OverrideRotatablePart)
 		{
-			unit.View.transform.rotation = Quaternion.Euler(0f, unit.Movable.PreviousOrientation, 0f);
+			abstractUnitEntityView.transform.rotation = Quaternion.Euler(0f, unit.Movable.PreviousOrientation, 0f);
 		}
 		else
 		{
-			unit.View.OverrideRotatablePart.transform.rotation = Quaternion.Euler(0f, unit.Movable.PreviousOrientation, 0f);
+			abstractUnitEntityView.OverrideRotatablePart.transform.rotation = Quaternion.Euler(0f, unit.Movable.PreviousOrientation, 0f);
 		}
-		if ((bool)unit.View.OverrideRotatablePart && !s_IsStartRotate)
+		if ((bool)abstractUnitEntityView.OverrideRotatablePart && !s_IsStartRotate)
 		{
 			if (unit.View.gameObject != null && unit.Blueprint.VisualSettings?.TurettRotateStart != null)
 			{
@@ -167,7 +167,7 @@ public class UnitMoveController : IControllerEnable, IController, IControllerTic
 				PFLog.TechArt.Warning("unit.View.gameObject or unit.Blueprint.VisualSettings.TurettRotateStart is null");
 			}
 		}
-		if ((bool)unit.View.OverrideRotatablePart && Mathf.Approximately(unit.View.OverrideRotatablePart.transform.rotation.eulerAngles.y, unit.DesiredOrientation))
+		if ((bool)abstractUnitEntityView.OverrideRotatablePart && Mathf.Approximately(abstractUnitEntityView.OverrideRotatablePart.transform.rotation.eulerAngles.y, unit.DesiredOrientation))
 		{
 			if (unit.View.gameObject != null && unit.Blueprint.VisualSettings?.TurettRotateStop != null)
 			{
@@ -179,17 +179,5 @@ public class UnitMoveController : IControllerEnable, IController, IControllerTic
 				PFLog.TechArt.Warning("unit.View.gameObject or unit.Blueprint.VisualSettings.TurettRotateStop is null");
 			}
 		}
-	}
-
-	private static void UpdateAgentVelocity(UnitMovementAgentBase agent)
-	{
-		if (!Game.Instance.IsPaused)
-		{
-			agent.UpdateVelocity();
-		}
-	}
-
-	private static void LogTransform(AbstractUnitEntity unit)
-	{
 	}
 }

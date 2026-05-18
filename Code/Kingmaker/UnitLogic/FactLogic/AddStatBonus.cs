@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.EntitySystem.Stats.Components;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 
@@ -16,29 +19,30 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowedOn(typeof(BlueprintUnit))]
 [AllowMultipleComponents]
 [TypeId("a2844c135c0324e439072bd3cc2f9260")]
-public class AddStatBonus : UnitFactComponentDelegate
+public class AddStatBonus : UnitFactComponentDelegate, IStatModifier
 {
 	public ModifierDescriptor Descriptor;
 
+	[ModifiableStatsFilter]
 	public StatType Stat;
 
 	public int Value;
 
-	protected override void OnActivateOrPostLoad()
-	{
-		ModifiableValue stat = base.Owner.Stats.GetStat(Stat);
-		int value = Value * base.Fact.GetRank();
-		value = TryApplyArcanistPowerfulChange(base.Context, Stat, value);
-		stat?.AddModifier(value, base.Runtime, Descriptor);
-	}
-
-	protected override void OnDeactivate()
-	{
-		base.Owner.Stats.GetStat(Stat).RemoveModifiersFrom(base.Runtime);
-	}
-
 	public static int TryApplyArcanistPowerfulChange(MechanicsContext context, StatType stat, int value)
 	{
 		return value;
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		if (stat == Stat)
+		{
+			collector.Modifiers.Add(ModifierType.ValAdd, Value * base.Fact.GetRank(), base.Fact, null, BonusType.None, StatType.Unknown, Descriptor);
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		entries.Add(new AffectedStatEntry(Stat));
 	}
 }

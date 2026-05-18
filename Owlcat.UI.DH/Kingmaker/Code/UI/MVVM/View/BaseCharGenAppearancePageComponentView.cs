@@ -9,11 +9,7 @@ public abstract class BaseCharGenAppearancePageComponentView<TViewModel> : Virtu
 	[SerializeField]
 	private OwlcatMultiSelectable m_Selectable;
 
-	protected readonly ReactiveProperty<bool> IsFocused = new ReactiveProperty<bool>();
-
-	public virtual void AddInput(ref InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
-	{
-	}
+	protected readonly ReactiveProperty<bool> m_IsFocused = new ReactiveProperty<bool>();
 
 	public virtual void RemoveInput()
 	{
@@ -25,7 +21,7 @@ public abstract class BaseCharGenAppearancePageComponentView<TViewModel> : Virtu
 		{
 			m_Selectable.SetFocus(value);
 		}
-		IsFocused.Value = value;
+		m_IsFocused.Value = value;
 		if (value)
 		{
 			base.ViewModel.Focused();
@@ -43,7 +39,7 @@ public abstract class BaseCharGenAppearancePageComponentView<TViewModel> : Virtu
 
 	protected override void DestroyViewImplementation()
 	{
-		IsFocused.Value = false;
+		m_IsFocused.Value = false;
 	}
 
 	protected void Show()

@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Core.Cheats;
-using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.ElementsSystem;
@@ -14,12 +14,15 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Gameplay.Features.Experience;
-using Kingmaker.PubSubSystem.Core;
+using Kingmaker.Networking.Serialization;
+using Kingmaker.StateHasher.Hashers;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.Utility.UnityExtensions;
 using Owlcat.Fmw.Blueprints;
 using OwlPack.Runtime;
 using StateHasher.Core;
+using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Framework.DetectiveSystem;
@@ -27,412 +30,48 @@ namespace Kingmaker.Framework.DetectiveSystem;
 [OwlPackable(OwlPackableMode.Generate)]
 public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 {
-	[OwlPackable(OwlPackableMode.Generate)]
-	private sealed class CaseState : IOwlPackable, IOwlPackable<CaseState>
+	public readonly struct CaseDisplayData
 	{
-		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+		public readonly string Name;
+
+		public readonly string Description;
+
+		public readonly Sprite? Icon;
+
+		public CaseDisplayData(string name, string description, Sprite? icon)
 		{
-			Name = "CaseState",
-			OldNames = null,
-			Fields = new FieldInfo[5]
-			{
-				new FieldInfo("Status", typeof(CaseStatus)),
-				new FieldInfo("Question", typeof(BlueprintCaseQuestion)),
-				new FieldInfo("Answer", typeof(BlueprintCaseAnswer)),
-				new FieldInfo("CorrectConclusionsCount", typeof(int)),
-				new FieldInfo("Conclusions", typeof(BlueprintConclusion[]))
-			}
-		};
-
-		[OwlPackInclude]
-		public CaseStatus Status { get; set; }
-
-		[OwlPackInclude]
-		public BlueprintCaseQuestion? Question { get; set; }
-
-		[OwlPackInclude]
-		public BlueprintCaseAnswer? Answer { get; set; }
-
-		[Obsolete("New Question/Answer approach, WIP")]
-		[OwlPackInclude]
-		public int CorrectConclusionsCount { get; set; }
-
-		[Obsolete("New Question/Answer approach, WIP")]
-		[OwlPackInclude]
-		public BlueprintConclusion[]? Conclusions { get; set; }
-
-		public CaseState(BlueprintCase _)
-		{
-		}
-
-		[UsedImplicitly]
-		private CaseState(OwlPackConstructorParameter _)
-		{
-		}
-
-		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
-		{
-			CaseState source = new CaseState(default(OwlPackConstructorParameter));
-			result = Unsafe.As<CaseState, TPossiblyBase>(ref source);
-		}
-
-		public void Serialize<TFormatter>(TFormatter formatter, SerializerState state) where TFormatter : IOutputFormatter
-		{
-			(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
-			var (objectId, _) = orRegister;
-			if (orRegister.isRef)
-			{
-				formatter.ObjectRef(objectId);
-				return;
-			}
-			ushort type = state.TypeLibrary.RegisterType<CaseState>(OwlPackTypeInfo);
-			formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
-			CaseStatus value = Status;
-			formatter.EnumField(0, "Status", ref value, state);
-			BlueprintCaseQuestion value2 = Question;
-			formatter.Field(1, "Question", ref value2, state);
-			BlueprintCaseAnswer value3 = Answer;
-			formatter.Field(2, "Answer", ref value3, state);
-			int value4 = CorrectConclusionsCount;
-			formatter.UnmanagedField(3, "CorrectConclusionsCount", ref value4, state);
-			BlueprintConclusion[] value5 = Conclusions;
-			formatter.Field(4, "Conclusions", ref value5, state);
-			formatter.EndObject();
-		}
-
-		public void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state) where TFormatter : IInputFormatter
-		{
-			state.References.Register(objectId, this);
-			TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<CaseState>();
-			List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
-			formatter.EnterObject();
-			for (int i = 0; i < typeInfo.Fields.Length; i++)
-			{
-				formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
-				switch (mappingForType[fieldID])
-				{
-				case byte.MaxValue:
-					formatter.SkipField(size);
-					break;
-				case 0:
-					Status = formatter.ReadEnum<CaseStatus>(state);
-					break;
-				case 1:
-					Question = formatter.ReadPackable<BlueprintCaseQuestion>(state);
-					break;
-				case 2:
-					Answer = formatter.ReadPackable<BlueprintCaseAnswer>(state);
-					break;
-				case 3:
-					CorrectConclusionsCount = formatter.ReadUnmanaged<int>(state);
-					break;
-				case 4:
-					Conclusions = formatter.ReadPackable<BlueprintConclusion[]>(state);
-					break;
-				}
-			}
-			formatter.LeaveObject();
+			Name = name;
+			Description = description;
+			Icon = icon;
 		}
 	}
 
-	[OwlPackable(OwlPackableMode.Generate)]
-	private abstract class CaseItemState : IOwlPackable, IOwlPackable<CaseItemState>
-	{
-		[OwlPackInclude]
-		public bool Hidden { get; set; }
-
-		protected CaseItemState()
-		{
-		}
-
-		protected CaseItemState(OwlPackConstructorParameter _)
-		{
-		}
-
-		public abstract void Serialize<TFormatter>(TFormatter formatter, SerializerState state) where TFormatter : IOutputFormatter;
-
-		public abstract void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state) where TFormatter : IInputFormatter;
-	}
-
-	[OwlPackable(OwlPackableMode.Generate)]
-	private sealed class ClueState : CaseItemState, IOwlPackable<ClueState>
-	{
-		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-		{
-			Name = "ClueState",
-			OldNames = null,
-			Fields = new FieldInfo[4]
-			{
-				new FieldInfo("Hidden", typeof(bool)),
-				new FieldInfo("Source", typeof(BlueprintScriptableObject)),
-				new FieldInfo("Found", typeof(bool)),
-				new FieldInfo("Observed", typeof(bool))
-			}
-		};
-
-		[OwlPackInclude]
-		public BlueprintScriptableObject? Source { get; set; }
-
-		[OwlPackInclude]
-		public bool Found { get; set; }
-
-		[OwlPackInclude]
-		public bool Observed { get; set; }
-
-		public ClueState(BlueprintClue _)
-		{
-		}
-
-		[UsedImplicitly]
-		private ClueState(OwlPackConstructorParameter _)
-			: base(_)
-		{
-		}
-
-		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
-		{
-			ClueState source = new ClueState(default(OwlPackConstructorParameter));
-			result = Unsafe.As<ClueState, TPossiblyBase>(ref source);
-		}
-
-		public override void Serialize<TFormatter>(TFormatter formatter, SerializerState state)
-		{
-			(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
-			var (objectId, _) = orRegister;
-			if (orRegister.isRef)
-			{
-				formatter.ObjectRef(objectId);
-				return;
-			}
-			ushort type = state.TypeLibrary.RegisterType<ClueState>(OwlPackTypeInfo);
-			formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
-			bool value = base.Hidden;
-			formatter.UnmanagedField(0, "Hidden", ref value, state);
-			BlueprintScriptableObject value2 = Source;
-			formatter.Field(1, "Source", ref value2, state);
-			bool value3 = Found;
-			formatter.UnmanagedField(2, "Found", ref value3, state);
-			bool value4 = Observed;
-			formatter.UnmanagedField(3, "Observed", ref value4, state);
-			formatter.EndObject();
-		}
-
-		public override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state)
-		{
-			state.References.Register(objectId, this);
-			TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<ClueState>();
-			List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
-			formatter.EnterObject();
-			for (int i = 0; i < typeInfo.Fields.Length; i++)
-			{
-				formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
-				switch (mappingForType[fieldID])
-				{
-				case byte.MaxValue:
-					formatter.SkipField(size);
-					break;
-				case 0:
-					base.Hidden = formatter.ReadUnmanaged<bool>(state);
-					break;
-				case 1:
-					Source = formatter.ReadPackable<BlueprintScriptableObject>(state);
-					break;
-				case 2:
-					Found = formatter.ReadUnmanaged<bool>(state);
-					break;
-				case 3:
-					Observed = formatter.ReadUnmanaged<bool>(state);
-					break;
-				}
-			}
-			formatter.LeaveObject();
-		}
-	}
-
-	[OwlPackable(OwlPackableMode.Generate)]
-	private sealed class AddendumState : CaseItemState, IOwlPackable<AddendumState>
-	{
-		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-		{
-			Name = "AddendumState",
-			OldNames = null,
-			Fields = new FieldInfo[3]
-			{
-				new FieldInfo("Hidden", typeof(bool)),
-				new FieldInfo("Source", typeof(BlueprintScriptableObject)),
-				new FieldInfo("Found", typeof(bool))
-			}
-		};
-
-		[OwlPackInclude]
-		public BlueprintScriptableObject? Source { get; set; }
-
-		[OwlPackInclude]
-		public bool Found { get; set; }
-
-		public AddendumState(BlueprintClueAddendum _)
-		{
-		}
-
-		[UsedImplicitly]
-		private AddendumState(OwlPackConstructorParameter _)
-			: base(_)
-		{
-		}
-
-		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
-		{
-			AddendumState source = new AddendumState(default(OwlPackConstructorParameter));
-			result = Unsafe.As<AddendumState, TPossiblyBase>(ref source);
-		}
-
-		public override void Serialize<TFormatter>(TFormatter formatter, SerializerState state)
-		{
-			(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
-			var (objectId, _) = orRegister;
-			if (orRegister.isRef)
-			{
-				formatter.ObjectRef(objectId);
-				return;
-			}
-			ushort type = state.TypeLibrary.RegisterType<AddendumState>(OwlPackTypeInfo);
-			formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
-			bool value = base.Hidden;
-			formatter.UnmanagedField(0, "Hidden", ref value, state);
-			BlueprintScriptableObject value2 = Source;
-			formatter.Field(1, "Source", ref value2, state);
-			bool value3 = Found;
-			formatter.UnmanagedField(2, "Found", ref value3, state);
-			formatter.EndObject();
-		}
-
-		public override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state)
-		{
-			state.References.Register(objectId, this);
-			TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<AddendumState>();
-			List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
-			formatter.EnterObject();
-			for (int i = 0; i < typeInfo.Fields.Length; i++)
-			{
-				formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
-				switch (mappingForType[fieldID])
-				{
-				case byte.MaxValue:
-					formatter.SkipField(size);
-					break;
-				case 0:
-					base.Hidden = formatter.ReadUnmanaged<bool>(state);
-					break;
-				case 1:
-					Source = formatter.ReadPackable<BlueprintScriptableObject>(state);
-					break;
-				case 2:
-					Found = formatter.ReadUnmanaged<bool>(state);
-					break;
-				}
-			}
-			formatter.LeaveObject();
-		}
-	}
-
-	[OwlPackable(OwlPackableMode.Generate)]
-	private sealed class ConclusionState : CaseItemState, IOwlPackable<ConclusionState>
-	{
-		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-		{
-			Name = "ConclusionState",
-			OldNames = null,
-			Fields = new FieldInfo[2]
-			{
-				new FieldInfo("Hidden", typeof(bool)),
-				new FieldInfo("Made", typeof(bool))
-			}
-		};
-
-		[OwlPackInclude]
-		public bool Made { get; set; }
-
-		public ConclusionState(BlueprintConclusion _)
-		{
-		}
-
-		[UsedImplicitly]
-		private ConclusionState(OwlPackConstructorParameter _)
-			: base(_)
-		{
-		}
-
-		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
-		{
-			ConclusionState source = new ConclusionState(default(OwlPackConstructorParameter));
-			result = Unsafe.As<ConclusionState, TPossiblyBase>(ref source);
-		}
-
-		public override void Serialize<TFormatter>(TFormatter formatter, SerializerState state)
-		{
-			(uint id, bool isRef) orRegister = state.References.GetOrRegister(this);
-			var (objectId, _) = orRegister;
-			if (orRegister.isRef)
-			{
-				formatter.ObjectRef(objectId);
-				return;
-			}
-			ushort type = state.TypeLibrary.RegisterType<ConclusionState>(OwlPackTypeInfo);
-			formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
-			bool value = base.Hidden;
-			formatter.UnmanagedField(0, "Hidden", ref value, state);
-			bool value2 = Made;
-			formatter.UnmanagedField(1, "Made", ref value2, state);
-			formatter.EndObject();
-		}
-
-		public override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state)
-		{
-			state.References.Register(objectId, this);
-			TypeInfo typeInfo = state.TypeLibrary.GetTypeInfo<ConclusionState>();
-			List<byte> mappingForType = state.GetMappingForType(OwlPackTypeInfo, typeInfo);
-			formatter.EnterObject();
-			for (int i = 0; i < typeInfo.Fields.Length; i++)
-			{
-				formatter.ReadFieldHeader(typeInfo, out var fieldID, out var size);
-				switch (mappingForType[fieldID])
-				{
-				case byte.MaxValue:
-					formatter.SkipField(size);
-					break;
-				case 0:
-					base.Hidden = formatter.ReadUnmanaged<bool>(state);
-					break;
-				case 1:
-					Made = formatter.ReadUnmanaged<bool>(state);
-					break;
-				}
-			}
-			formatter.LeaveObject();
-		}
-	}
+	[OwlPackInclude]
+	private readonly HashSet<BlueprintClueStudy> m_CluesStudyWithUnlockedCondition = new HashSet<BlueprintClueStudy>();
 
 	public const string ID = "detective-system-id";
 
 	public new static readonly EntityRef<DetectiveSystem> Ref = new EntityRef<DetectiveSystem>("detective-system-id");
 
 	[OwlPackInclude]
+	[GameStateInclude]
 	private readonly Dictionary<BlueprintCase, CaseState> m_Cases = new Dictionary<BlueprintCase, CaseState>();
 
 	[OwlPackInclude]
+	[GameStateInclude]
 	private readonly Dictionary<BlueprintClue, ClueState> m_Clues = new Dictionary<BlueprintClue, ClueState>();
 
 	[OwlPackInclude]
+	[GameStateInclude]
 	private readonly Dictionary<BlueprintClueAddendum, AddendumState> m_Addendums = new Dictionary<BlueprintClueAddendum, AddendumState>();
 
 	[OwlPackInclude]
+	[GameStateInclude]
 	private readonly Dictionary<BlueprintConclusion, ConclusionState> m_Conclusions = new Dictionary<BlueprintConclusion, ConclusionState>();
 
 	[OwlPackInclude]
+	[GameStateInclude]
 	private readonly HashSet<BlueprintClueStudy> m_Studies = new HashSet<BlueprintClueStudy>();
-
-	[OwlPackInclude]
-	private readonly HashSet<BlueprintClueStudy> m_CluesStudyWithUnlockedCondition = new HashSet<BlueprintClueStudy>();
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -450,12 +89,12 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 			new FieldInfo("Parts", typeof(EntityPartsManager)),
 			new FieldInfo("m_IsRevealed", typeof(bool)),
 			new FieldInfo("m_ViewHandlingOnDisposePolicyOverride", typeof(ViewHandlingOnDisposePolicyType?)),
+			new FieldInfo("m_CluesStudyWithUnlockedCondition", typeof(HashSet<BlueprintClueStudy>)),
 			new FieldInfo("m_Cases", typeof(Dictionary<BlueprintCase, CaseState>)),
 			new FieldInfo("m_Clues", typeof(Dictionary<BlueprintClue, ClueState>)),
 			new FieldInfo("m_Addendums", typeof(Dictionary<BlueprintClueAddendum, AddendumState>)),
 			new FieldInfo("m_Conclusions", typeof(Dictionary<BlueprintConclusion, ConclusionState>)),
-			new FieldInfo("m_Studies", typeof(HashSet<BlueprintClueStudy>)),
-			new FieldInfo("m_CluesStudyWithUnlockedCondition", typeof(HashSet<BlueprintClueStudy>))
+			new FieldInfo("m_Studies", typeof(HashSet<BlueprintClueStudy>))
 		}
 	};
 
@@ -463,6 +102,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 	public static void Cheat_OpenCase(BlueprintCase blueprint)
 	{
 		Game.Instance.DetectiveSystem.OpenCase(blueprint);
+		Game.Instance.DetectiveSystem.GetState(blueprint).OpenedByCheats = true;
 	}
 
 	[Cheat(Name = "ds_open_case_whole")]
@@ -542,6 +182,53 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		UIConfig.Instance.DetectiveConfig.SetMoveToNewClue(shouldMove);
 	}
 
+	public IEnumerator WatchNewlyUnlockedClueStudies()
+	{
+		List<BlueprintClueStudy> _lockedStudiesBuffer = new List<BlueprintClueStudy>(128);
+		while (true)
+		{
+			_lockedStudiesBuffer.Clear();
+			CollectLockedStudies(_lockedStudiesBuffer);
+			foreach (BlueprintClueStudy study in _lockedStudiesBuffer)
+			{
+				using (ElementsDebugger.Disable())
+				{
+					if (study.UnlockCondition.Check())
+					{
+						m_CluesStudyWithUnlockedCondition.Add(study);
+						base.EventBus.RaiseEvent(delegate(IStudyConditionUnlocked h)
+						{
+							h.HandleStudyUnlockedCondition(study);
+						});
+					}
+				}
+				yield return null;
+			}
+			yield return null;
+		}
+	}
+
+	private void CollectLockedStudies(List<BlueprintClueStudy> studies)
+	{
+		foreach (BlueprintCase item in GetCasesWithStatus(CaseStatus.Opened))
+		{
+			foreach (BlueprintClue item2 in item.Clues.Dereference())
+			{
+				if (!HasClueExcludingHidden(item2))
+				{
+					continue;
+				}
+				foreach (BlueprintClueStudy item3 in item2.Studies.Dereference())
+				{
+					if (!m_Studies.Contains(item3) && !m_CluesStudyWithUnlockedCondition.Contains(item3))
+					{
+						studies.Add(item3);
+					}
+				}
+			}
+		}
+	}
+
 	public DetectiveSystem()
 		: base("detective-system-id", isInGame: true)
 	{
@@ -552,7 +239,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 	{
 	}
 
-	protected override IEntityViewBase? CreateViewForData()
+	protected override IEntityView? CreateViewForData()
 	{
 		return null;
 	}
@@ -568,9 +255,10 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 				throw new InvalidOperationException($"Can't open closed case {blueprint}");
 			}
 			orCreateState.Status = CaseStatus.Opened;
-			blueprint.OnOpen.Run();
+			PFLog.History.Detective.Log(blueprint, "case {0} opened", blueprint);
 			Metrics.DetectiveCase.Id(blueprint.AssetGuid).State(orCreateState.Status).Send();
-			EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
+			blueprint.OnOpen.Run();
+			base.EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
 			{
 				h.HandleCaseStatusChanged(blueprint);
 			});
@@ -592,8 +280,9 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		orCreateState.Status = CaseStatus.Opened;
 		orCreateState.Question = null;
 		orCreateState.Answer = null;
+		PFLog.History.Detective.Log(blueprint, "case {0} reopened", blueprint);
 		Metrics.DetectiveCase.Id(blueprint.AssetGuid).State(orCreateState.Status).Send();
-		EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
+		base.EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
 		{
 			h.HandleCaseStatusChanged(blueprint);
 		});
@@ -650,11 +339,12 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 			orCreateState.Status = CaseStatus.Closed;
 			orCreateState.Question = question;
 			orCreateState.Answer = answer;
+			PFLog.History.Detective.Log(blueprint, "case {0} closed, question: {1}, answer: {2}", blueprint, ((object)question) ?? ((object)"none"), ((object)answer) ?? ((object)"none"));
 			Metrics.DetectiveCase.Id(blueprint.AssetGuid).State(orCreateState.Status).Question(question?.AssetGuid)
 				.Answer(answer?.AssetGuid)
 				.Send();
 			blueprint.OnClose.Run();
-			EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
+			base.EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
 			{
 				h.HandleCaseStatusChanged(blueprint);
 			});
@@ -692,6 +382,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		if (caseItemState != null && caseItemState.Hidden)
 		{
 			caseItemState.Hidden = false;
+			PFLog.History.Detective.Log(blueprint, "case item {0} unhidden", blueprint);
 			NotifyCaseItemChanged(blueprint);
 		}
 	}
@@ -711,12 +402,15 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 			});
 			orCreateState.Found = true;
 			orCreateState.Source = source;
-			if (!HideIfReceivedWhileCaseClosed(blueprint, orCreateState))
+			orCreateState.PlaceOfIssue = Game.Instance.CurrentlyLoadedArea;
+			bool flag = HideIfReceivedWhileCaseClosed(blueprint, orCreateState);
+			PFLog.History.Detective.Log(blueprint, "clue {0} added{1}, source: {2}", blueprint, flag ? " (hidden, case is closed)" : "", ((object)source) ?? ((object)"none"));
+			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Clue).State(DetectivePieceMetricsEvent.PieceState.Added)
+				.Send();
+			if (!flag)
 			{
 				NotifyCaseItemChanged(blueprint);
 			}
-			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Clue).State(DetectivePieceMetricsEvent.PieceState.Added)
-				.Send();
 		}
 	}
 
@@ -726,13 +420,14 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		if (state != null && state.Found)
 		{
 			state.Found = false;
-			blueprint.PossibleConclusions.Dereference().ForEach(RemoveConclusion);
+			PFLog.History.Detective.Log(blueprint, "clue {0} removed", blueprint);
+			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Clue).State(DetectivePieceMetricsEvent.PieceState.Removed)
+				.Send();
 			if (!state.Hidden)
 			{
 				NotifyCaseItemChanged(blueprint);
 			}
-			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Clue).State(DetectivePieceMetricsEvent.PieceState.Removed)
-				.Send();
+			blueprint.PossibleConclusions.Dereference().ForEach(RemoveConclusion);
 		}
 	}
 
@@ -743,20 +438,23 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		AddendumState orCreateState = GetOrCreateState(blueprint);
 		if (!orCreateState.Found)
 		{
+			orCreateState.Found = true;
+			orCreateState.Source = source;
+			orCreateState.PlaceOfIssue = Game.Instance.CurrentlyLoadedArea;
 			(from i in blueprint.ParentClue.Blueprint.Addendums.Dereference()
 				where i.HasOverride(blueprint)
 				select i).ForEach(delegate(BlueprintClueAddendum i)
 			{
 				AddAddendum(i, source);
 			});
-			orCreateState.Found = true;
-			orCreateState.Source = source;
-			if (!HideIfReceivedWhileCaseClosed(blueprint, orCreateState))
+			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Addendum).State(DetectivePieceMetricsEvent.PieceState.Added)
+				.Send();
+			bool flag = HideIfReceivedWhileCaseClosed(blueprint, orCreateState);
+			PFLog.History.Detective.Log(blueprint, "addendum {0} added{1}, source: {2}", blueprint, flag ? " (hidden, case is closed)" : "", ((object)source) ?? ((object)"none"));
+			if (!flag)
 			{
 				NotifyCaseItemChanged(blueprint);
 			}
-			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Addendum).State(DetectivePieceMetricsEvent.PieceState.Added)
-				.Send();
 		}
 	}
 
@@ -766,13 +464,14 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		if (state != null && state.Found)
 		{
 			state.Found = false;
-			blueprint.PossibleConclusions.Dereference().ForEach(RemoveConclusion);
+			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Addendum).State(DetectivePieceMetricsEvent.PieceState.Removed)
+				.Send();
+			PFLog.History.Detective.Log(blueprint, "addendum {0} removed", blueprint);
 			if (!state.Hidden)
 			{
 				NotifyCaseItemChanged(blueprint);
 			}
-			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Addendum).State(DetectivePieceMetricsEvent.PieceState.Removed)
-				.Send();
+			blueprint.PossibleConclusions.Dereference().ForEach(RemoveConclusion);
 		}
 	}
 
@@ -782,13 +481,15 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		if (!orCreateState.Made)
 		{
 			orCreateState.Made = true;
-			GetConflictedConclusions(blueprint).ForEach(RemoveConclusion);
-			if (!HideIfReceivedWhileCaseClosed(blueprint, orCreateState))
+			bool flag = HideIfReceivedWhileCaseClosed(blueprint, orCreateState);
+			PFLog.History.Detective.Log(blueprint, "conclusion {0} added{1}", blueprint, flag ? " (hidden, case is closed)" : "");
+			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Conclusion).State(DetectivePieceMetricsEvent.PieceState.Added)
+				.Send();
+			if (!flag)
 			{
 				NotifyCaseItemChanged(blueprint);
 			}
-			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Conclusion).State(DetectivePieceMetricsEvent.PieceState.Added)
-				.Send();
+			GetConflictedConclusions(blueprint).ForEach(RemoveConclusion);
 		}
 	}
 
@@ -812,13 +513,14 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		if (state != null && state.Made)
 		{
 			state.Made = false;
-			blueprint.PossibleConclusions.Dereference().ForEach(RemoveConclusion);
+			PFLog.History.Detective.Log(blueprint, "conclusion {0} removed", blueprint);
+			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Conclusion).State(DetectivePieceMetricsEvent.PieceState.Removed)
+				.Send();
 			if (!state.Hidden)
 			{
 				NotifyCaseItemChanged(blueprint);
 			}
-			Metrics.DetectivePiece.Id(blueprint.AssetGuid).Type(DetectivePieceMetricsEvent.PieceType.Conclusion).State(DetectivePieceMetricsEvent.PieceState.Removed)
-				.Send();
+			blueprint.PossibleConclusions.Dereference().ForEach(RemoveConclusion);
 		}
 	}
 
@@ -835,14 +537,14 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 				{
 					throw new ArgumentOutOfRangeException("blueprint");
 				}
-				EventBus.RaiseEvent(delegate(IConclusionStatusChanged h)
+				base.EventBus.RaiseEvent(delegate(IConclusionStatusChanged h)
 				{
 					h.HandleConclusionStatusChanged(blueprintConclusion);
 				});
 			}
 			else
 			{
-				EventBus.RaiseEvent(delegate(IClueAddendumStatusChanged h)
+				base.EventBus.RaiseEvent(delegate(IClueAddendumStatusChanged h)
 				{
 					h.HandleClueAddendumStatusChanged(blueprintClueAddendum);
 				});
@@ -850,7 +552,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		}
 		else
 		{
-			EventBus.RaiseEvent(delegate(IClueStatusChanged h)
+			base.EventBus.RaiseEvent(delegate(IClueStatusChanged h)
 			{
 				h.HandleClueStatusChanged(blueprintClue);
 			});
@@ -865,7 +567,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		}
 		bool TryAddWithDependencies(BlueprintCaseItem caseItem, bool test)
 		{
-			if (HasItem(caseItem))
+			if (HasItemExcludingHidden(caseItem))
 			{
 				return true;
 			}
@@ -970,37 +672,49 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 			select i.Key;
 	}
 
-	public bool HasClue(BlueprintClue blueprint)
+	private bool HasClue(BlueprintClue blueprint, bool excludeHidden)
 	{
 		ClueState state = GetState(blueprint);
 		if (state != null && state.Found)
 		{
-			return !state.Hidden;
+			if (excludeHidden)
+			{
+				return !state.Hidden;
+			}
+			return true;
 		}
 		return false;
 	}
 
-	public bool HasClueAddendum(BlueprintClueAddendum blueprint)
+	private bool HasClueAddendum(BlueprintClueAddendum blueprint, bool excludeHidden)
 	{
 		AddendumState state = GetState(blueprint);
 		if (state != null && state.Found)
 		{
-			return !state.Hidden;
+			if (excludeHidden)
+			{
+				return !state.Hidden;
+			}
+			return true;
 		}
 		return false;
 	}
 
-	public bool HasConclusion(BlueprintConclusion conclusion)
+	private bool HasConclusion(BlueprintConclusion conclusion, bool excludeHidden)
 	{
 		ConclusionState state = GetState(conclusion);
 		if (state != null && state.Made)
 		{
-			return !state.Hidden;
+			if (excludeHidden)
+			{
+				return !state.Hidden;
+			}
+			return true;
 		}
 		return false;
 	}
 
-	public bool HasItem(BlueprintCaseItem item)
+	public bool HasItem(BlueprintCaseItem item, bool excludeHidden)
 	{
 		if (!(item is BlueprintClue blueprint))
 		{
@@ -1008,21 +722,73 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 			{
 				if (item is BlueprintConclusion conclusion)
 				{
-					return HasConclusion(conclusion);
+					return HasConclusion(conclusion, excludeHidden);
 				}
 				throw new ArgumentOutOfRangeException("item");
 			}
-			return HasClueAddendum(blueprint2);
+			return HasClueAddendum(blueprint2, excludeHidden);
 		}
-		return HasClue(blueprint);
+		return HasClue(blueprint, excludeHidden);
+	}
+
+	public bool HasClueExcludingHidden(BlueprintClue blueprint)
+	{
+		return HasClue(blueprint, excludeHidden: true);
+	}
+
+	public bool HasClueAddendumExcludingHidden(BlueprintClueAddendum blueprint)
+	{
+		return HasClueAddendum(blueprint, excludeHidden: true);
+	}
+
+	public bool HasConclusionExcludingHidden(BlueprintConclusion blueprint)
+	{
+		return HasConclusion(blueprint, excludeHidden: true);
+	}
+
+	public bool HasItemExcludingHidden(BlueprintCaseItem blueprint)
+	{
+		return HasItem(blueprint, excludeHidden: true);
+	}
+
+	public bool HasClueIncludingHidden(BlueprintClue blueprint)
+	{
+		return GetState(blueprint)?.Found ?? false;
+	}
+
+	public bool HasClueAddendumIncludingHidden(BlueprintClueAddendum blueprint)
+	{
+		return GetState(blueprint)?.Found ?? false;
+	}
+
+	public bool HasConclusionIncludingHidden(BlueprintConclusion conclusion)
+	{
+		return GetState(conclusion)?.Made ?? false;
+	}
+
+	public bool HasItemIncludingHidden(BlueprintCaseItem item)
+	{
+		if (!(item is BlueprintClue blueprint))
+		{
+			if (!(item is BlueprintClueAddendum blueprint2))
+			{
+				if (item is BlueprintConclusion conclusion)
+				{
+					return HasConclusionIncludingHidden(conclusion);
+				}
+				throw new ArgumentOutOfRangeException("item");
+			}
+			return HasClueAddendumIncludingHidden(blueprint2);
+		}
+		return HasClueIncludingHidden(blueprint);
 	}
 
 	public bool HasAvailableItem(BlueprintCaseItem item)
 	{
-		bool flag = HasItem(item);
+		bool flag = HasItemExcludingHidden(item);
 		if (flag)
 		{
-			bool flag2 = !(item is BlueprintClueAddendum blueprintClueAddendum) || HasClue(blueprintClueAddendum.ParentClue.Blueprint);
+			bool flag2 = !(item is BlueprintClueAddendum blueprintClueAddendum) || HasClueExcludingHidden(blueprintClueAddendum.ParentClue.Blueprint);
 			flag = flag2;
 		}
 		return flag;
@@ -1038,9 +804,19 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		return GetState(addendum)?.Source;
 	}
 
+	public BlueprintArea? GetIssuePlace(BlueprintClue clue)
+	{
+		return GetState(clue)?.PlaceOfIssue;
+	}
+
+	public BlueprintArea? GetIssuePlace(BlueprintClueAddendum addendum)
+	{
+		return GetState(addendum)?.PlaceOfIssue;
+	}
+
 	public IEnumerable<BlueprintClue> GetAvailableClues(BlueprintCase @case)
 	{
-		return @case.Clues.Dereference().Where(HasItem);
+		return @case.Clues.Dereference().Where(HasItemExcludingHidden);
 	}
 
 	public IEnumerable<BlueprintConclusion> GetAvailableConclusions(BlueprintCase @case)
@@ -1052,33 +828,50 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 
 	public BlueprintClue.Override? GetOverride(BlueprintClue clue)
 	{
-		return clue.Overrides.FirstOrDefault((BlueprintClue.Override i) => HasClue(i.Clue.Blueprint));
+		return clue.Overrides.FirstOrDefault((BlueprintClue.Override i) => HasClueExcludingHidden(i.Clue.Blueprint));
 	}
 
 	public BlueprintClueAddendum.Override? GetOverride(BlueprintClueAddendum addendum)
 	{
-		return addendum.Overrides.FirstOrDefault((BlueprintClueAddendum.Override i) => HasClueAddendum(i.Addendum.Blueprint));
+		return addendum.Overrides.FirstOrDefault((BlueprintClueAddendum.Override i) => HasClueAddendumExcludingHidden(i.Addendum.Blueprint));
 	}
 
 	public BlueprintCaseQuestion GetActualCaseQuestion(BlueprintCase @case)
 	{
+		CaseState state = GetState(@case);
+		if (state != null && state.OpenedByCheats)
+		{
+			return @case.Questions.Dereference().FirstOrDefault() ?? throw new InvalidOperationException($"Can't get actual question for case {@case}");
+		}
 		return @case.Questions.Dereference().FirstOrDefault((BlueprintCaseQuestion i) => i.Condition.Check()) ?? throw new InvalidOperationException($"Can't get actual question for case {@case}");
+	}
+
+	public CaseDisplayData GetCaseDisplay(BlueprintCase @case)
+	{
+		BlueprintCaseQuestion.CaseDisplayOverride displayOverride = GetActualCaseQuestion(@case).DisplayOverride;
+		string name = (string.IsNullOrEmpty(displayOverride.Name.Text) ? @case.Name.Text : displayOverride.Name.Text);
+		string description = (string.IsNullOrEmpty(displayOverride.Description.Text) ? @case.Description.Text : displayOverride.Description.Text);
+		Sprite icon = ((displayOverride.Icon != null) ? displayOverride.Icon : @case.Icon);
+		return new CaseDisplayData(name, description, icon);
 	}
 
 	public bool TryGetAnswerDegree(BlueprintCaseAnswer answer, out int degree)
 	{
-		if (!HasItem(answer.RelatedItem.Blueprint))
+		if (!HasItemExcludingHidden(answer.RelatedItem.Blueprint))
 		{
 			degree = -1;
 			return false;
 		}
 		for (int num = answer.DegreeProgression.Length - 1; num >= 0; num--)
 		{
-			IEnumerable<BlueprintCaseItem> source = answer.DegreeProgression[num].Items.Dereference();
-			if (!source.Any() || source.Any(HasItem))
+			List<BlueprintCaseItem> list;
+			using (answer.DegreeProgression[num].Items.Dereference().ToPooledList(out list))
 			{
-				degree = num;
-				return true;
+				if (!list.Any() || list.Any(HasItemExcludingHidden))
+				{
+					degree = num;
+					return true;
+				}
 			}
 		}
 		degree = -1;
@@ -1095,6 +888,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		if (!state.Observed)
 		{
 			state.Observed = true;
+			PFLog.History.Detective.Log(clue, "clue {0} observed", clue);
 			Experience.TryGain(clue);
 		}
 	}
@@ -1144,6 +938,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 			return;
 		}
 		m_Studies.Add(study);
+		PFLog.History.Detective.Log(study, "clue study {0} completed", study);
 		foreach (BlueprintCaseItem item in study.GiveItems.Dereference())
 		{
 			if (!(item is BlueprintClueAddendum blueprint))
@@ -1243,7 +1038,7 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 				orCreateState.Conclusions = conclusions;
 			}
 			blueprint.OnClose.Run();
-			EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
+			base.EventBus.RaiseEvent(delegate(ICaseStatusChanged h)
 			{
 				h.HandleCaseStatusChanged(blueprint);
 			});
@@ -1275,58 +1070,81 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		return GetState(@case)?.CorrectConclusionsCount ?? 0;
 	}
 
-	public IEnumerator WatchNewlyUnlockedClueStudies()
-	{
-		List<BlueprintClueStudy> _lockedStudiesBuffer = new List<BlueprintClueStudy>(128);
-		while (true)
-		{
-			_lockedStudiesBuffer.Clear();
-			CollectLockedStudies(_lockedStudiesBuffer);
-			foreach (BlueprintClueStudy study in _lockedStudiesBuffer)
-			{
-				using (ElementsDebugger.Disable())
-				{
-					if (study.UnlockCondition.Check())
-					{
-						m_CluesStudyWithUnlockedCondition.Add(study);
-						EventBus.RaiseEvent(delegate(IStudyConditionUnlocked h)
-						{
-							h.HandleStudyUnlockedCondition(study);
-						});
-					}
-				}
-				yield return null;
-			}
-			yield return null;
-		}
-	}
-
-	private void CollectLockedStudies(List<BlueprintClueStudy> studies)
-	{
-		foreach (BlueprintCase item in GetCasesWithStatus(CaseStatus.Opened))
-		{
-			foreach (BlueprintClue item2 in item.Clues.Dereference())
-			{
-				if (!HasClue(item2))
-				{
-					continue;
-				}
-				foreach (BlueprintClueStudy item3 in item2.Studies.Dereference())
-				{
-					if (!m_Studies.Contains(item3) && !m_CluesStudyWithUnlockedCondition.Contains(item3))
-					{
-						studies.Add(item3);
-					}
-				}
-			}
-		}
-	}
-
 	public override Hash128 GetHash128()
 	{
 		Hash128 result = default(Hash128);
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
+		Dictionary<BlueprintCase, CaseState> cases = m_Cases;
+		if (cases != null)
+		{
+			int val2 = 0;
+			foreach (KeyValuePair<BlueprintCase, CaseState> item in cases)
+			{
+				Hash128 hash = default(Hash128);
+				Hash128 val3 = SimpleBlueprintHasher.GetHash128(item.Key);
+				hash.Append(ref val3);
+				Hash128 val4 = ClassHasher<CaseState>.GetHash128(item.Value);
+				hash.Append(ref val4);
+				val2 ^= hash.GetHashCode();
+			}
+			result.Append(ref val2);
+		}
+		Dictionary<BlueprintClue, ClueState> clues = m_Clues;
+		if (clues != null)
+		{
+			int val5 = 0;
+			foreach (KeyValuePair<BlueprintClue, ClueState> item2 in clues)
+			{
+				Hash128 hash2 = default(Hash128);
+				Hash128 val6 = SimpleBlueprintHasher.GetHash128(item2.Key);
+				hash2.Append(ref val6);
+				Hash128 val7 = ClassHasher<ClueState>.GetHash128(item2.Value);
+				hash2.Append(ref val7);
+				val5 ^= hash2.GetHashCode();
+			}
+			result.Append(ref val5);
+		}
+		Dictionary<BlueprintClueAddendum, AddendumState> addendums = m_Addendums;
+		if (addendums != null)
+		{
+			int val8 = 0;
+			foreach (KeyValuePair<BlueprintClueAddendum, AddendumState> item3 in addendums)
+			{
+				Hash128 hash3 = default(Hash128);
+				Hash128 val9 = SimpleBlueprintHasher.GetHash128(item3.Key);
+				hash3.Append(ref val9);
+				Hash128 val10 = ClassHasher<AddendumState>.GetHash128(item3.Value);
+				hash3.Append(ref val10);
+				val8 ^= hash3.GetHashCode();
+			}
+			result.Append(ref val8);
+		}
+		Dictionary<BlueprintConclusion, ConclusionState> conclusions = m_Conclusions;
+		if (conclusions != null)
+		{
+			int val11 = 0;
+			foreach (KeyValuePair<BlueprintConclusion, ConclusionState> item4 in conclusions)
+			{
+				Hash128 hash4 = default(Hash128);
+				Hash128 val12 = SimpleBlueprintHasher.GetHash128(item4.Key);
+				hash4.Append(ref val12);
+				Hash128 val13 = ClassHasher<ConclusionState>.GetHash128(item4.Value);
+				hash4.Append(ref val13);
+				val11 ^= hash4.GetHashCode();
+			}
+			result.Append(ref val11);
+		}
+		HashSet<BlueprintClueStudy> studies = m_Studies;
+		if (studies != null)
+		{
+			int num = 0;
+			foreach (BlueprintClueStudy item5 in studies)
+			{
+				num ^= SimpleBlueprintHasher.GetHash128(item5).GetHashCode();
+			}
+			result.Append(num);
+		}
 		return result;
 	}
 
@@ -1358,18 +1176,18 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 		formatter.Field(7, "Parts", ref Parts, state);
 		formatter.UnmanagedField(8, "m_IsRevealed", ref m_IsRevealed, state);
 		formatter.EnumNullableField(9, "m_ViewHandlingOnDisposePolicyOverride", ref m_ViewHandlingOnDisposePolicyOverride, state);
-		Dictionary<BlueprintCase, CaseState> value2 = m_Cases;
-		formatter.Field(10, "m_Cases", ref value2, state);
-		Dictionary<BlueprintClue, ClueState> value3 = m_Clues;
-		formatter.Field(11, "m_Clues", ref value3, state);
-		Dictionary<BlueprintClueAddendum, AddendumState> value4 = m_Addendums;
-		formatter.Field(12, "m_Addendums", ref value4, state);
-		Dictionary<BlueprintConclusion, ConclusionState> value5 = m_Conclusions;
-		formatter.Field(13, "m_Conclusions", ref value5, state);
-		HashSet<BlueprintClueStudy> value6 = m_Studies;
-		formatter.Field(14, "m_Studies", ref value6, state);
-		HashSet<BlueprintClueStudy> value7 = m_CluesStudyWithUnlockedCondition;
-		formatter.Field(15, "m_CluesStudyWithUnlockedCondition", ref value7, state);
+		HashSet<BlueprintClueStudy> value2 = m_CluesStudyWithUnlockedCondition;
+		formatter.Field(10, "m_CluesStudyWithUnlockedCondition", ref value2, state);
+		Dictionary<BlueprintCase, CaseState> value3 = m_Cases;
+		formatter.Field(11, "m_Cases", ref value3, state);
+		Dictionary<BlueprintClue, ClueState> value4 = m_Clues;
+		formatter.Field(12, "m_Clues", ref value4, state);
+		Dictionary<BlueprintClueAddendum, AddendumState> value5 = m_Addendums;
+		formatter.Field(13, "m_Addendums", ref value5, state);
+		Dictionary<BlueprintConclusion, ConclusionState> value6 = m_Conclusions;
+		formatter.Field(14, "m_Conclusions", ref value6, state);
+		HashSet<BlueprintClueStudy> value7 = m_Studies;
+		formatter.Field(15, "m_Studies", ref value7, state);
 		formatter.EndObject();
 	}
 
@@ -1418,22 +1236,22 @@ public class DetectiveSystem : Entity, IHashable, IOwlPackable<DetectiveSystem>
 				m_ViewHandlingOnDisposePolicyOverride = formatter.ReadNullableEnum<ViewHandlingOnDisposePolicyType>(state);
 				break;
 			case 10:
-				Unsafe.AsRef(in m_Cases) = formatter.ReadPackable<Dictionary<BlueprintCase, CaseState>>(state);
+				Unsafe.AsRef(in m_CluesStudyWithUnlockedCondition) = formatter.ReadPackable<HashSet<BlueprintClueStudy>>(state);
 				break;
 			case 11:
-				Unsafe.AsRef(in m_Clues) = formatter.ReadPackable<Dictionary<BlueprintClue, ClueState>>(state);
+				Unsafe.AsRef(in m_Cases) = formatter.ReadPackable<Dictionary<BlueprintCase, CaseState>>(state);
 				break;
 			case 12:
-				Unsafe.AsRef(in m_Addendums) = formatter.ReadPackable<Dictionary<BlueprintClueAddendum, AddendumState>>(state);
+				Unsafe.AsRef(in m_Clues) = formatter.ReadPackable<Dictionary<BlueprintClue, ClueState>>(state);
 				break;
 			case 13:
-				Unsafe.AsRef(in m_Conclusions) = formatter.ReadPackable<Dictionary<BlueprintConclusion, ConclusionState>>(state);
+				Unsafe.AsRef(in m_Addendums) = formatter.ReadPackable<Dictionary<BlueprintClueAddendum, AddendumState>>(state);
 				break;
 			case 14:
-				Unsafe.AsRef(in m_Studies) = formatter.ReadPackable<HashSet<BlueprintClueStudy>>(state);
+				Unsafe.AsRef(in m_Conclusions) = formatter.ReadPackable<Dictionary<BlueprintConclusion, ConclusionState>>(state);
 				break;
 			case 15:
-				Unsafe.AsRef(in m_CluesStudyWithUnlockedCondition) = formatter.ReadPackable<HashSet<BlueprintClueStudy>>(state);
+				Unsafe.AsRef(in m_Studies) = formatter.ReadPackable<HashSet<BlueprintClueStudy>>(state);
 				break;
 			}
 		}

@@ -20,14 +20,14 @@ public class SetInteractableFromEntityNode : BehaviourTreeNode
 	public override NodeVisitResult ForwardVisit()
 	{
 		m_Variable.Value = GetInteractionActionFromEntity(m_Entity.Value);
-		if (!(m_Variable.Value != null))
+		if (m_Variable.Value == null)
 		{
 			return NodeVisitResult.Failure;
 		}
 		return NodeVisitResult.Success;
 	}
 
-	private static InteractionAction GetInteractionActionFromEntity(Entity entity)
+	private static InteractionActionPart GetInteractionActionFromEntity(Entity entity)
 	{
 		InteractionActionPart interactionActionPart = entity?.Parts.GetOptional<InteractionActionPart>();
 		if (interactionActionPart == null)
@@ -35,6 +35,6 @@ public class SetInteractableFromEntityNode : BehaviourTreeNode
 			PFLog.AI.Warning($"Entity {entity} doesn't have InteractionActionPart");
 			return null;
 		}
-		return (InteractionAction)interactionActionPart.Source;
+		return interactionActionPart;
 	}
 }

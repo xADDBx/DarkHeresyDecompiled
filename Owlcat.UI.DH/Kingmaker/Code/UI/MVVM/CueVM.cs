@@ -5,13 +5,17 @@ using Kingmaker.Blueprints;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.PubSubSystem;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
 using Kingmaker.UI.Common.DebugInformation;
 using Kingmaker.UnitLogic.Alignments;
 using Kingmaker.Utility.BuildModeUtils;
 using Owlcat.UI;
 using UnityEngine;
+using WebSocketSharp;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -71,6 +75,22 @@ public class CueVM : ViewModel, IHasBlueprintInfo
 		}
 	}
 
+	public bool IsOverrideSpeakerColor
+	{
+		get
+		{
+			if (!m_BlueprintCue.Speaker.ReplacedSpeakerWithErrorSpeaker && !DialogController.CurrentSpeakerName.IsNullOrEmpty())
+			{
+				if (DialogController.CurrentSpeaker != null)
+				{
+					return DialogController.CurrentSpeaker.Blueprint.OverrideColorInDialog;
+				}
+				return false;
+			}
+			return true;
+		}
+	}
+
 	public Color SpeakerColor
 	{
 		get
@@ -103,6 +123,13 @@ public class CueVM : ViewModel, IHasBlueprintInfo
 	{
 		m_Text = cueText;
 		SkillChecks = skillChecks.ToList();
+		if (SkillChecks.Any())
+		{
+			EventBus.RaiseEvent(delegate(IDialogCueWithSkillcheckSetupHandler h)
+			{
+				h.HandleDialogCueWithSkillcheckSetup();
+			});
+		}
 		SoulMarkShifts = soulMarkShifts.ToList();
 		IsSpecial = isSpecial;
 		IsNarratorText = DialogController.Dialog.IsNarratorText || (DialogController.CurrentCueShowData?.BlueprintCue?.IsNarratorText).GetValueOrDefault();

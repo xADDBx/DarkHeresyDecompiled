@@ -98,7 +98,7 @@ public class LosTypeDisplay : MonoBehaviour
 
 	private void UpdateAllMarkers()
 	{
-		if (Game.Instance.CurrentModeType == GameModeType.None || Game.Instance.CurrentModeType == GameModeType.GlobalMap || Game.Instance.CurrentModeType == GameModeType.SpaceCombat || Game.Instance.CurrentModeType == GameModeType.StarSystem || Game.Instance.CurrentModeType == GameModeType.CutsceneGlobalMap)
+		if (Game.Instance.CurrentModeType == GameModeType.None || Game.Instance.CurrentModeType == GameModeType.GlobalMap || Game.Instance.CurrentModeType == GameModeType.CutsceneGlobalMap)
 		{
 			ClearAllMarkers();
 			return;

@@ -1,3 +1,5 @@
+using Kingmaker.Code.Gameplay.Predictions.PredictionProviders;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Owlcat.Runtime.Core.Utility;
 
@@ -13,6 +15,6 @@ public class VeilStressGetter : IntPropertyGetter
 
 	protected override int GetBaseValue()
 	{
-		return Game.Instance.LoadedArea.Veil.Damage;
+		return Game.Instance.LoadedArea.Veil.Damage + ContextData<PredictionHackContext>.Current.GetVeilDelta();
 	}
 }

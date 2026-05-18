@@ -9,6 +9,6 @@ public class BoldEndTemplate : TextTemplate
 
 	public override string Generate(bool capitalized, List<string> parameters)
 	{
-		return "</b>";
+		return "</style>";
 	}
 }

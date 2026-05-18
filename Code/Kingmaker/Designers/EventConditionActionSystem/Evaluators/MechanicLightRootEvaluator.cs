@@ -5,7 +5,6 @@ using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.View.Mechanics.Entities;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
@@ -30,12 +29,7 @@ public class MechanicLightRootEvaluator : MechanicEntityEvaluator, IOwlPackable<
 
 	protected override Entity GetValueInternal()
 	{
-		MechanicLightRootView mechanicLightRootView = MechanicLightRoot.FindView() as MechanicLightRootView;
-		if (!(mechanicLightRootView != null))
-		{
-			return null;
-		}
-		return mechanicLightRootView.Data;
+		return MechanicLightRoot.FindData() as MechanicLightRoot;
 	}
 
 	public override string GetCaption()

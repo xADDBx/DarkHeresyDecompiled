@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -17,7 +18,7 @@ using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Controllers.Units;
 
-public class BuffsController : IControllerTick, IController, IControllerEnable, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, ITurnEndHandler, IInterruptTurnStartHandler, IRoundStartHandler, IRoundEndHandler, ITurnBasedModeHandler, IFactCollectionUpdatedHandler, IAreaHandler
+public class BuffsController : IControllerTick, IController, IControllerEnable, ITurnPreStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, ITurnStartHandler, ITurnEndHandler, IInterruptTurnStartHandler, IRoundStartHandler, IRoundEndHandler, ITurnBasedModeHandler, IFactCollectionUpdatedHandler, IAreaHandler
 {
 	[CanBeNull]
 	private EntityFactsManager m_CurrentManager;
@@ -122,10 +123,21 @@ public class BuffsController : IControllerTick, IController, IControllerEnable, 
 		}
 	}
 
+	void ITurnPreStartHandler.HandleUnitPreStartTurn(bool isTurnBased)
+	{
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current)
+		{
+			TickBuffs(isTurnBased, Initiative.Event.TurnPreStart, EventInvokerExtensions.MechanicEntity);
+		}
+	}
+
 	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
 	{
 		HandleBuffsWhichShouldBeDisabledOutOfCasterTurn();
-		TickBuffs(isTurnBased, Initiative.Event.TurnStart, EventInvokerExtensions.MechanicEntity);
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current)
+		{
+			TickBuffs(isTurnBased, Initiative.Event.TurnStart, EventInvokerExtensions.MechanicEntity);
+		}
 	}
 
 	void IInterruptTurnStartHandler.HandleUnitStartInterruptTurn(InterruptionData interruptionData)

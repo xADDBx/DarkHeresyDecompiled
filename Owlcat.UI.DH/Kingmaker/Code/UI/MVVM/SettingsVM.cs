@@ -24,14 +24,6 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber, ISettingsDescriptionUIHandler, IOptionsWindowUIHandler, ISaveSettingsHandler, ISettingsFontSizeUIHandler, ILocalizationHandler
 {
-	public readonly List<SettingsMenuEntityVM> MenuEntitiesList = new List<SettingsMenuEntityVM>();
-
-	public readonly SelectionGroupRadioVM<SettingsMenuEntityVM> SelectionGroup;
-
-	public readonly LensSelectorVM Selector;
-
-	public readonly InfoSectionVM InfoVM;
-
 	private readonly ReactiveProperty<TooltipBaseTemplate> m_ReactiveTooltipTemplate = new ReactiveProperty<TooltipBaseTemplate>();
 
 	private readonly ReactiveProperty<bool> m_IsDefaultButtonInteractable = new ReactiveProperty<bool>();
@@ -57,6 +49,14 @@ public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber,
 	private readonly Action m_CloseAction;
 
 	private SettingsMenuEntityVM m_PreviousSelectedMenuEntity;
+
+	public readonly List<SettingsMenuEntityVM> MenuEntitiesList = new List<SettingsMenuEntityVM>();
+
+	public readonly SelectionGroupRadioVM<SettingsMenuEntityVM> SelectionGroup;
+
+	public readonly LensSelectorVM Selector;
+
+	public readonly InfoSectionVM InfoVM;
 
 	public ReadOnlyReactiveProperty<TooltipBaseTemplate> ReactiveTooltipTemplate => m_ReactiveTooltipTemplate;
 
@@ -84,6 +84,7 @@ public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber,
 	{
 		UISettingsRoot.Instance.UIGraphicsSettings.UpdateInteractable(initialize: true);
 		UISettingsRoot.Instance.UIGameMainSettings.UpdateInteractable();
+		UISettingsRoot.Instance.UISwitchJoyConAsMouse.UpdateInteractable();
 		m_CloseAction = closeAction;
 		UITextSettingsUI settingsUI = UIStrings.Instance.SettingsUI;
 		CreateMenuEntity(settingsUI.SectionNameGame, UISettingsManager.SettingsScreen.Game);
@@ -113,6 +114,7 @@ public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber,
 		if (settingsScreen == UISettingsManager.SettingsScreen.Game)
 		{
 			UISettingsRoot.Instance.UIGameMainSettings.UpdateInteractable();
+			UISettingsRoot.Instance.UISwitchJoyConAsMouse.UpdateInteractable();
 		}
 		ReactiveTooltipTemplate.Subscribe(InfoVM.SetTemplate).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(LanguageChanged, delegate
@@ -185,10 +187,11 @@ public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber,
 				}
 			}
 		}
-		m_OnSwitchSettings.Execute();
+		m_OnSwitchSettings.Execute(Unit.Default);
 		if (settingsScreen == UISettingsManager.SettingsScreen.Game)
 		{
 			UISettingsRoot.Instance.UIGameMainSettings.UpdateInteractable();
+			UISettingsRoot.Instance.UISwitchJoyConAsMouse.UpdateInteractable();
 		}
 	}
 
@@ -350,14 +353,14 @@ public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber,
 			});
 		}
 		HandleItemChanged(string.Empty);
-		m_OnApplyWindowClose.Execute();
+		m_OnApplyWindowClose.Execute(Unit.Default);
 	}
 
 	private void RevertSettings()
 	{
 		SettingsController.Instance.RevertAllTempValues();
 		HandleItemChanged(string.Empty);
-		m_OnApplyWindowClose.Execute();
+		m_OnApplyWindowClose.Execute(Unit.Default);
 	}
 
 	public void OpenDefaultSettingsDialog()
@@ -436,7 +439,7 @@ public class SettingsVM : ViewModel, IKeyBindingSetupDialogHandler, ISubscriber,
 
 	public void HandleLanguageChanged()
 	{
-		m_LanguageChanged.Execute();
+		m_LanguageChanged.Execute(Unit.Default);
 		IEnumerable<VirtualListElementVMBase> source = m_SettingEntities.Where((VirtualListElementVMBase e) => e is SettingsEntityHeaderVM);
 		if (!source.Any())
 		{

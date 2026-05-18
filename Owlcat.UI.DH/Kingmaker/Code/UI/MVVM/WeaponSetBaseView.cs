@@ -19,9 +19,12 @@ public class WeaponSetBaseView : SelectionGroupEntityView<WeaponSetVM>
 	[SerializeField]
 	private TextMeshProUGUI[] m_WeaponSetIndexes;
 
-	protected override void BindViewImplementation()
+	[SerializeField]
+	private GameObject m_FrameForeground;
+
+	protected override void OnBind()
 	{
-		base.BindViewImplementation();
+		base.OnBind();
 		m_PrimaryHand.Bind(base.ViewModel.Primary);
 		m_SecondaryHand.Bind(base.ViewModel.Secondary);
 		UISounds.Instance.SetClickAndHoverSound(m_Button, ButtonSoundsEnum.PlastickSound);
@@ -30,10 +33,11 @@ public class WeaponSetBaseView : SelectionGroupEntityView<WeaponSetVM>
 		{
 			weaponSetIndexes[i].text = UIUtilityText.ArabicToRoman(base.ViewModel.Index + 1);
 		}
-		AddDisposable(base.ViewModel.IsEnabled.Subscribe(delegate(bool value)
+		base.ViewModel.IsEnabled.Subscribe(delegate(bool value)
 		{
+			m_FrameForeground.SetActive(value);
 			base.gameObject.SetActive(value);
-		}));
+		}).AddTo(this);
 	}
 
 	public void RefreshItems()

@@ -32,6 +32,8 @@ public class HUDTexts
 
 	public LocalizedString ConcentrationHint;
 
+	public LocalizedString SteadyConcentrationHint;
+
 	public LocalizedString SquadLeaderHint;
 
 	public LocalizedString SquadMemberHint;
@@ -57,4 +59,8 @@ public class HUDTexts
 	public LocalizedString MoraleBalanceVictoryDescription;
 
 	public LocalizedString SelectAllCharacters;
+
+	public LocalizedString EnemiesInCombat;
+
+	public LocalizedString AlliesInCombat;
 }

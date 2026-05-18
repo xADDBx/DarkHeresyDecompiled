@@ -69,6 +69,8 @@ public class AssetBundleNames
 
 	public const string BundleFolderXBoxSeries = "Bundles";
 
+	public const string BundleFolderSwitch2 = "Data/StreamingAssets/Bundles";
+
 	public const string BundleFolderOsx = "Bundles";
 
 	public const string BundleFolderEditor = "IntermediateBuild/Bundles";

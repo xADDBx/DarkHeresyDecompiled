@@ -146,7 +146,7 @@ public sealed class UnitMoveToProper : UnitCommand<UnitMoveToProperParams>
 			base.Executor.SnapToGrid();
 			ForceFinish(ResultType.Fail);
 		}
-		else if (!base.Executor.View.MovementAgent.IsReallyMoving)
+		else if (!base.Executor.IsReallyMoving)
 		{
 			ForceFinish(ResultType.Success);
 		}

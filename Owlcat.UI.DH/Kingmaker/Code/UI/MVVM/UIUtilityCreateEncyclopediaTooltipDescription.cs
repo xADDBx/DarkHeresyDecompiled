@@ -13,7 +13,7 @@ public static class UIUtilityCreateEncyclopediaTooltipDescription
 			string text2 = (blueprintPage.GlossaryEntry as BlueprintEncyclopediaGlossaryEntry)?.GetDescription();
 			if (!string.IsNullOrWhiteSpace(text2))
 			{
-				text = text + text2 + "<br><br>";
+				text = text + text2 + "\n";
 			}
 		}
 		foreach (IBlock block in blueprintPage.GetBlocks())
@@ -22,12 +22,12 @@ public static class UIUtilityCreateEncyclopediaTooltipDescription
 			{
 				if (!string.IsNullOrWhiteSpace(glossaryEntryBlock.Entry.GetDescription()))
 				{
-					text = string.Concat(text, glossaryEntryBlock.Entry.GetDescription(), "<br><br>");
+					text = string.Concat(text, glossaryEntryBlock.Entry.GetDescription(), "\n");
 				}
 			}
 			else if (block is BlueprintEncyclopediaBlockText blueprintEncyclopediaBlockText && !string.IsNullOrWhiteSpace(blueprintEncyclopediaBlockText.GetText()))
 			{
-				text = text + blueprintEncyclopediaBlockText.GetText() + "<br><br>";
+				text = text + blueprintEncyclopediaBlockText.GetText() + "\n";
 			}
 		}
 		if (string.IsNullOrWhiteSpace(text))

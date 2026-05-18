@@ -5,6 +5,8 @@ namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
 public class CaseViewsContext
 {
+	public readonly DetectiveOpenedCaseBaseView OpenedCaseView;
+
 	public readonly CaseCardScreenBaseView CaseCardScreenBaseView;
 
 	public readonly ObservableList<DetectiveJournalClueView> Clues;
@@ -15,8 +17,9 @@ public class CaseViewsContext
 
 	public readonly RectTransform CluesContainer;
 
-	public CaseViewsContext(CaseCardScreenBaseView caseCardScreenBaseView, ObservableList<DetectiveJournalClueView> clues, ObservableList<DeductionOnScreenView> conclusions, RectTransform linesContainer, RectTransform cluesContainer)
+	public CaseViewsContext(DetectiveOpenedCaseBaseView openedCaseView, CaseCardScreenBaseView caseCardScreenBaseView, ObservableList<DetectiveJournalClueView> clues, ObservableList<DeductionOnScreenView> conclusions, RectTransform linesContainer, RectTransform cluesContainer)
 	{
+		OpenedCaseView = openedCaseView;
 		CaseCardScreenBaseView = caseCardScreenBaseView;
 		Clues = clues;
 		Conclusions = conclusions;

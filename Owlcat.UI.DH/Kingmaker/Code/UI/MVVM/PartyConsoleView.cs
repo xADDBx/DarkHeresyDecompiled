@@ -8,7 +8,6 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Common;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -25,10 +24,10 @@ public class PartyConsoleView : View<PartyVM>, IGameModeHandler, ISubscriber, IF
 
 	[Header("ConsoleHints")]
 	[SerializeField]
-	private ConsoleHint m_PreviousHint;
+	private HintView m_PreviousHint;
 
 	[SerializeField]
-	private ConsoleHint m_NextHint;
+	private HintView m_NextHint;
 
 	[Header("Misc")]
 	[SerializeField]
@@ -88,17 +87,8 @@ public class PartyConsoleView : View<PartyVM>, IGameModeHandler, ISubscriber, IF
 		CheckVisible();
 	}
 
-	public void AddInput(InputLayer inputLayer, ReadOnlyReactiveProperty<bool> enable)
+	public void AddInput()
 	{
-		ReactiveProperty<bool> property = new ReactiveProperty<bool>(Game.Instance.Controllers.SelectionCharacter.ActualGroup.Count > 1);
-		m_PreviousHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.SelectNeighbour(next: false);
-		}, 14, property.And(enable).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased)).AddTo(this);
-		m_NextHint.Bind(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.SelectNeighbour(next: true);
-		}, 15, property.And(enable).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustReleased)).AddTo(this);
 	}
 
 	private void UpdateLayout()

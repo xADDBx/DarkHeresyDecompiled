@@ -15,6 +15,10 @@ using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.View;
+using Kingmaker.Visual.Animation.Kingmaker;
+using Kingmaker.Visual.Animation.Kingmaker.Actions;
+using Kingmaker.Visual.Animation.WeaponStyles;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -42,68 +46,116 @@ public class CommandMoveByPath : CommandBase
 
 	[AllowedEntityType(typeof(CutscenePath))]
 	[ValidateNotEmpty]
-	public EntityReference Path;
+	[SerializeField]
+	private EntityReference Path;
 
 	public WalkSpeedType Animation = WalkSpeedType.Walk;
 
 	public bool OverrideSpeed;
 
 	[ShowIf("OverrideSpeed")]
-	public float Speed = 5f;
+	public float SpeedMultiplier = 1f;
 
 	public float PointsPerMeter = 20f;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	private const float AngularSpeedDuringPath = 720f;
+
+	public override bool ShouldHaveControlledUnit => true;
+
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
-		commandData.Unit = Unit.GetValue();
-		commandData.CommandHandle = null;
-		IEntityViewBase entityViewBase = Path.FindView();
-		VectorSpline vectorSpline = (entityViewBase.GO ? entityViewBase.GO.GetComponent<VectorSpline>() : null);
-		if (commandData.Unit != null && (bool)vectorSpline)
+		if (!Unit.TryGetValue(out var value))
 		{
-			List<Vector3> list = new List<Vector3>();
-			int num = Mathf.Max(Mathf.CeilToInt(vectorSpline.Length * PointsPerMeter), 2);
-			for (int i = 0; i < num; i++)
-			{
-				list.Add(vectorSpline.EvaluatePosition((float)i / (float)(num - 1)));
-			}
-			commandData.EndPosition = list.LastItem();
-			if (skipping)
-			{
-				commandData.Unit.Translocate(commandData.EndPosition, null);
-				return;
-			}
-			UnitMoveToParams cmdParams = new UnitMoveToParams(ForcedPath.Construct(list), commandData.EndPosition)
-			{
-				MovementType = ((Animation == WalkSpeedType.Sprint) ? WalkSpeedType.Walk : Animation),
-				OverrideSpeed = (OverrideSpeed ? new float?(Speed) : null)
-			};
-			commandData.CommandHandle = commandData.Unit.Commands.Run(cmdParams);
-			commandData.Unit.View.MovementAgent.AvoidanceDisabled = true;
+			return CommandResult.Fail("Failed to find unit");
 		}
+		commandData.Unit = value;
+		commandData.CommandHandle = null;
+		IEntityView entityView = Path.FindView();
+		VectorSpline vectorSpline = (entityView.GO ? entityView.GO.GetComponent<VectorSpline>() : null);
+		if (vectorSpline == null)
+		{
+			return CommandResult.Fail("No spline path");
+		}
+		List<Vector3> list = new List<Vector3>();
+		int num = Mathf.Max(Mathf.CeilToInt(vectorSpline.Length * PointsPerMeter), 2);
+		for (int i = 0; i < num; i++)
+		{
+			list.Add(vectorSpline.EvaluatePosition((float)i / (float)(num - 1)));
+		}
+		commandData.EndPosition = list.LastItem();
+		if (skipping)
+		{
+			commandData.Unit.Translocate(commandData.EndPosition, null);
+			return CommandResult.Success;
+		}
+		UnitMoveToParams unitMoveToParams = new UnitMoveToParams(ForcedPath.Construct(list), commandData.EndPosition)
+		{
+			MovementType = ((Animation == WalkSpeedType.Sprint) ? WalkSpeedType.Walk : Animation)
+		};
+		commandData.CommandHandle = commandData.Unit.Commands.Run(unitMoveToParams);
+		UnitMovementAgent movementAgent = commandData.Unit.View.MovementAgent;
+		movementAgent.AvoidanceDisabled = true;
+		if (OverrideSpeed && !Mathf.Approximately(SpeedMultiplier, 1f))
+		{
+			float? num2 = ReadAnimsetSpeed(commandData.Unit, unitMoveToParams.MovementType);
+			if (num2.HasValue)
+			{
+				movementAgent.MaxSpeedOverride = num2.Value * SpeedMultiplier;
+			}
+		}
+		movementAgent.OverridenAngularSpeed = 720f;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	private static float? ReadAnimsetSpeed(AbstractUnitEntity unit, WalkSpeedType walkType)
 	{
-		AbstractUnitEntity value = Unit.GetValue();
-		IEntityViewBase entityViewBase = Path.FindView();
-		VectorSpline vectorSpline = (entityViewBase?.GO ? entityViewBase.GO.GetComponent<VectorSpline>() : null);
-		if (!(vectorSpline == null))
+		UnitAnimationManager unitAnimationManager = unit.View?.AnimationManager;
+		if (unitAnimationManager?.AnimationSet == null)
 		{
-			List<Vector3> list = new List<Vector3>();
-			int num = Mathf.Max(Mathf.CeilToInt(vectorSpline.Length * PointsPerMeter), 2);
-			for (int i = 0; i < num; i++)
-			{
-				list.Add(vectorSpline.EvaluatePosition((float)i / (float)(num - 1)));
-			}
-			value.Translocate(list.LastItem(), null);
+			return null;
 		}
+		if (!(unitAnimationManager.AnimationSet.GetAction(UnitAnimationType.LocoMotion) is UnitAnimationActionLocomotion unitAnimationActionLocomotion))
+		{
+			return null;
+		}
+		WeaponStyleLocomotionData locomotionData = unitAnimationActionLocomotion.GetLocomotionData(unitAnimationManager.ActiveWeaponStyle);
+		if (locomotionData == null)
+		{
+			return null;
+		}
+		return unitAnimationActionLocomotion.GetWalkingTypeData(locomotionData, walkType)?.Parameters?.Speed;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		if (!Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Failed to find unit");
+		}
+		IEntityView entityView = Path.FindView();
+		VectorSpline vectorSpline = (entityView?.GO ? entityView.GO.GetComponent<VectorSpline>() : null);
+		if (vectorSpline == null)
+		{
+			return CommandResult.Fail("No spline path");
+		}
+		List<Vector3> list = new List<Vector3>();
+		int num = Mathf.Max(Mathf.CeilToInt(vectorSpline.Length * PointsPerMeter), 2);
+		for (int i = 0; i < num; i++)
+		{
+			list.Add(vectorSpline.EvaluatePosition((float)i / (float)(num - 1)));
+		}
+		value.Translocate(list.LastItem(), null);
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
+		if (Game.Instance.Controllers.EntitySpawner.IsEntityInCreationQueue(commandData.Unit))
+		{
+			return false;
+		}
 		if (IsUnitDisabled(commandData.Unit))
 		{
 			return true;
@@ -116,40 +168,59 @@ public class CommandMoveByPath : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
-		UnitCommandHandle commandHandle = player.GetCommandData<Data>(this).CommandHandle;
+		Data commandData = player.GetCommandData<Data>(this);
+		UnitCommandHandle commandHandle = commandData.CommandHandle;
 		if (commandHandle != null && !commandHandle.IsFinished)
 		{
 			commandHandle.Interrupt();
 		}
+		if (commandData.Unit?.View != null)
+		{
+			commandData.Unit.View.MovementAgent.MaxSpeedOverride = null;
+			commandData.Unit.View.MovementAgent.OverridenAngularSpeed = null;
+		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		Data commandData = player.GetCommandData<Data>(this);
-		AbstractUnitEntity unit = commandData.Unit;
-		if (unit != null)
+		if (!Unit.TryGetValue(out var value))
 		{
-			if (commandData.CommandHandle != null && commandData.EndPosition != Vector3.zero && commandData.CommandHandle.Result != AbstractUnitCommand.ResultType.Success)
+			return CommandResult.Fail("Cant find unit");
+		}
+		Data commandData = player.GetCommandData<Data>(this);
+		if (commandData.CommandHandle != null && commandData.EndPosition != Vector3.zero)
+		{
+			switch (commandData.CommandHandle?.Result)
 			{
-				unit.Translocate(commandData.EndPosition, null);
-			}
-			if ((bool)unit.View)
-			{
-				unit.View.MovementAgent.AvoidanceDisabled = false;
-				commandData.Unit?.View.MovementAgent.Blocker.BlockAtCurrentPosition();
-			}
-			if (Game.Instance.Controllers.TurnController.TurnBasedModeActive)
-			{
-				(unit as UnitEntity)?.SnapToGrid();
+			case AbstractUnitCommand.ResultType.None:
+				commandData.CommandHandle.Interrupt();
+				break;
+			case AbstractUnitCommand.ResultType.Fail:
+			case AbstractUnitCommand.ResultType.Interrupt:
+				value.Translocate(commandData.EndPosition, null);
+				break;
 			}
 		}
+		if (value.View != null)
+		{
+			value.View.MovementAgent.AvoidanceDisabled = false;
+			value.View.MovementAgent.MaxSpeedOverride = null;
+			value.View.MovementAgent.OverridenAngularSpeed = null;
+			commandData.Unit?.View.MovementAgent.Blocker.BlockAtCurrentPosition();
+		}
+		if (Game.Instance.Controllers.TurnController.TurnBasedModeActive)
+		{
+			(value as UnitEntity)?.SnapToGrid();
+		}
+		return CommandResult.Success;
 	}
 
 	private bool IsUnitDisabled(AbstractUnitEntity unit)

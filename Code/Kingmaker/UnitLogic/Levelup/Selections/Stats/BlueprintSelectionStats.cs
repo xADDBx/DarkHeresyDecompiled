@@ -8,8 +8,9 @@ namespace Kingmaker.UnitLogic.Levelup.Selections.Stats;
 
 [Serializable]
 [TypeId("9e14ebe6ad644cf9a7083ac75316c469")]
-public abstract class BlueprintSelectionStats : BlueprintSelection
+public abstract class BlueprintSelectionStats : BlueprintSelectionWithUI
 {
+	[Header("Mechanics")]
 	[Tooltip("Сколько раз нужно прокачать статы")]
 	public int PointsTotal;
 

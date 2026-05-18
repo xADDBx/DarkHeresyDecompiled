@@ -21,6 +21,10 @@ public class NodeLinkVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, IInt
 	[SerializeField]
 	private NodeLinkVisual NodeLinkVisualPrefab;
 
+	private const int ArcSegments = 12;
+
+	private readonly Vector3[] m_ArcBuffer = new Vector3[13];
+
 	private GameModeType m_GameModeType;
 
 	private void OnEnable()
@@ -83,6 +87,7 @@ public class NodeLinkVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, IInt
 	private List<NodeLinkVisual> SetupNodeLinks(WarhammerNodeLink[] whNodeLinks)
 	{
 		List<NodeLinkVisual> list = new List<NodeLinkVisual>();
+		HashSet<GraphNode> hashSet = new HashSet<GraphNode>();
 		foreach (WarhammerNodeLink warhammerNodeLink in whNodeLinks)
 		{
 			if (warhammerNodeLink.StartNode == null || warhammerNodeLink.EndNode == null)
@@ -90,11 +95,21 @@ public class NodeLinkVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, IInt
 				PFLog.DesignerDebug.Error((Object)(object)warhammerNodeLink, "Null references in NodeLink traverse. Show this to level designer of this area.");
 				continue;
 			}
+			bool flag = hashSet.Add(warhammerNodeLink.StartNode);
+			bool num = hashSet.Add(warhammerNodeLink.EndNode);
 			NodeLinkVisual nodeLinkVisual = Object.Instantiate(NodeLinkVisualPrefab, ((Component)(object)warhammerNodeLink).transform.position, Quaternion.identity);
 			nodeLinkVisual.Init(warhammerNodeLink);
 			nodeLinkVisual.transform.SetParent(base.transform);
 			SetupLineRenderers(warhammerNodeLink.StartNode.Vector3Position(), warhammerNodeLink.EndNode.Vector3Position(), nodeLinkVisual);
 			SetupNodeDecals(warhammerNodeLink.StartNode.Vector3Position(), warhammerNodeLink.EndNode.Vector3Position(), nodeLinkVisual);
+			if (!flag)
+			{
+				nodeLinkVisual.FirstDecal.SetActive(value: false);
+			}
+			if (!num)
+			{
+				nodeLinkVisual.SecondDecal.SetActive(value: false);
+			}
 			nodeLinkVisual.gameObject.SetActive(value: false);
 			list.Add(nodeLinkVisual);
 		}
@@ -111,22 +126,28 @@ public class NodeLinkVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, IInt
 		vector2.y = 0f;
 		if (vector != Vector3.zero)
 		{
-			nodeLinkVisual.FirstDecal.transform.rotation = Quaternion.LookRotation(vector);
+			nodeLinkVisual.FirstDecal.transform.rotation = SnapRotationTo90(vector);
 		}
 		if (vector2 != Vector3.zero)
 		{
-			nodeLinkVisual.SecondDecal.transform.rotation = Quaternion.LookRotation(vector2);
+			nodeLinkVisual.SecondDecal.transform.rotation = SnapRotationTo90(vector2);
 		}
+	}
+
+	private Quaternion SnapRotationTo90(Vector3 flatDirection)
+	{
+		float y = Mathf.Round(Mathf.Atan2(flatDirection.x, flatDirection.z) * 57.29578f / 90f) * 90f;
+		return Quaternion.Euler(0f, y, 0f);
 	}
 
 	private void SetupLineRenderers(Vector3 a, Vector3 b, NodeLinkVisual nodeLinkVisual)
 	{
 		Vector3 rightAngleVerticalPoint = GetRightAngleVerticalPoint(a, b);
-		List<Vector3> quadraticBezierArc = GetQuadraticBezierArc(a, rightAngleVerticalPoint, b);
-		nodeLinkVisual.FirstLineRenderer.positionCount = quadraticBezierArc.Count;
-		nodeLinkVisual.FirstLineRenderer.SetPositions(quadraticBezierArc.ToArray());
-		nodeLinkVisual.SecondLineRenderer.positionCount = quadraticBezierArc.Count;
-		nodeLinkVisual.SecondLineRenderer.SetPositions(quadraticBezierArc.ToArray());
+		FillQuadraticBezierArc(a, rightAngleVerticalPoint, b);
+		nodeLinkVisual.FirstLineRenderer.positionCount = m_ArcBuffer.Length;
+		nodeLinkVisual.FirstLineRenderer.SetPositions(m_ArcBuffer);
+		nodeLinkVisual.SecondLineRenderer.positionCount = m_ArcBuffer.Length;
+		nodeLinkVisual.SecondLineRenderer.SetPositions(m_ArcBuffer);
 	}
 
 	private Vector3 GetRightAngleVerticalPoint(Vector3 a, Vector3 b)
@@ -136,16 +157,14 @@ public class NodeLinkVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, IInt
 		return new Vector3(vector.x, vector.y + num, vector.z);
 	}
 
-	private List<Vector3> GetQuadraticBezierArc(Vector3 a, Vector3 controlPoint, Vector3 b, int segments = 12)
+	private void FillQuadraticBezierArc(Vector3 a, Vector3 controlPoint, Vector3 b)
 	{
-		List<Vector3> list = new List<Vector3>();
-		for (int i = 0; i <= segments; i++)
+		for (int i = 0; i <= 12; i++)
 		{
-			float num = (float)i / (float)segments;
-			Vector3 item = Mathf.Pow(1f - num, 2f) * a + 2f * (1f - num) * num * controlPoint + Mathf.Pow(num, 2f) * b;
-			list.Add(item);
+			float num = (float)i / 12f;
+			float num2 = 1f - num;
+			m_ArcBuffer[i] = num2 * num2 * a + 2f * num2 * num * controlPoint + num * num * b;
 		}
-		return list;
 	}
 
 	private WarhammerNodeLink[] GetNodeLinks()
@@ -156,7 +175,7 @@ public class NodeLinkVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, IInt
 	private bool IsProperGameMode()
 	{
 		m_GameModeType = Game.Instance.CurrentModeType;
-		if (m_GameModeType != GameModeType.None && m_GameModeType != GameModeType.GlobalMap && m_GameModeType != GameModeType.SpaceCombat && m_GameModeType != GameModeType.StarSystem)
+		if (m_GameModeType != GameModeType.None && m_GameModeType != GameModeType.GlobalMap)
 		{
 			return m_GameModeType != GameModeType.CutsceneGlobalMap;
 		}

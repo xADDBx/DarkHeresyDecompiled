@@ -147,7 +147,7 @@ public sealed class WarhammerPathCostModifier
 		foreach (UnitGroupMemory.UnitInfo enemy in baseUnitEntity.CombatGroup.Memory.Enemies)
 		{
 			BaseUnitEntity unit = enemy.Unit;
-			if (unit.CanMakeAttackOfOpportunity(baseUnitEntity))
+			if ((!Game.IsTestRun || unit != null) && unit.CanMakeAttackOfOpportunity(baseUnitEntity))
 			{
 				unit.CollectThreateningAreaNodes(threateningArea);
 			}

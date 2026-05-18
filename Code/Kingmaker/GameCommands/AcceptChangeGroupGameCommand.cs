@@ -1,3 +1,5 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -8,45 +10,71 @@ using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Parts;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class AcceptChangeGroupGameCommand : GameCommand, IOwlPackable<AcceptChangeGroupGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class AcceptChangeGroupGameCommand : GameCommand, IMemoryPackable<AcceptChangeGroupGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<AcceptChangeGroupGameCommand>
 {
+	[Preserve]
+	private sealed class AcceptChangeGroupGameCommandFormatter : MemoryPackFormatter<AcceptChangeGroupGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref AcceptChangeGroupGameCommand value)
+		{
+			AcceptChangeGroupGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref AcceptChangeGroupGameCommand value)
+		{
+			AcceptChangeGroupGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref AcceptChangeGroupGameCommand value)
+		{
+			AcceptChangeGroupGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref AcceptChangeGroupGameCommand value)
+		{
+			AcceptChangeGroupGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private List<UnitReference> m_PartyCharacters;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private List<UnitReference> m_RemoteCharacters;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private List<BlueprintUnitReference> m_RequiredCharacters;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private bool m_ReInitPartyCharacters;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "AcceptChangeGroupGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[4]
-		{
-			new FieldInfo("m_PartyCharacters", typeof(List<UnitReference>)),
-			new FieldInfo("m_RemoteCharacters", typeof(List<UnitReference>)),
-			new FieldInfo("m_RequiredCharacters", typeof(List<BlueprintUnitReference>)),
-			new FieldInfo("m_ReInitPartyCharacters", typeof(bool))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
+	[MemoryPackConstructor]
 	private AcceptChangeGroupGameCommand()
 	{
 	}
@@ -116,6 +144,265 @@ public sealed class AcceptChangeGroupGameCommand : GameCommand, IOwlPackable<Acc
 			return PartPartyLock.IsLocked(character);
 		}
 		return true;
+	}
+
+	static AcceptChangeGroupGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "AcceptChangeGroupGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[4]
+			{
+				new FieldInfo("m_PartyCharacters", typeof(List<UnitReference>)),
+				new FieldInfo("m_RemoteCharacters", typeof(List<UnitReference>)),
+				new FieldInfo("m_RequiredCharacters", typeof(List<BlueprintUnitReference>)),
+				new FieldInfo("m_ReInitPartyCharacters", typeof(bool))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<AcceptChangeGroupGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new AcceptChangeGroupGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<AcceptChangeGroupGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<AcceptChangeGroupGameCommand>());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<List<UnitReference>>())
+		{
+			MemoryPackFormatterProvider.Register(new ListFormatter<UnitReference>());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<List<BlueprintUnitReference>>())
+		{
+			MemoryPackFormatterProvider.Register(new ListFormatter<BlueprintUnitReference>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref AcceptChangeGroupGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(4);
+		ListFormatter.SerializePackable(ref writer, value.m_PartyCharacters);
+		ListFormatter.SerializePackable(ref writer, value.m_RemoteCharacters);
+		ListFormatter.SerializePackable(ref writer, value.m_RequiredCharacters);
+		writer.WriteUnmanaged(in value.m_ReInitPartyCharacters);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref AcceptChangeGroupGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		List<UnitReference> value2;
+		List<UnitReference> value3;
+		List<BlueprintUnitReference> value4;
+		bool value5;
+		if (memberCount == 4)
+		{
+			if (value != null)
+			{
+				value2 = value.m_PartyCharacters;
+				value3 = value.m_RemoteCharacters;
+				value4 = value.m_RequiredCharacters;
+				value5 = value.m_ReInitPartyCharacters;
+				ListFormatter.DeserializePackable(ref reader, ref value2);
+				ListFormatter.DeserializePackable(ref reader, ref value3);
+				ListFormatter.DeserializePackable(ref reader, ref value4);
+				reader.ReadUnmanaged<bool>(out value5);
+				goto IL_00f8;
+			}
+			value2 = ListFormatter.DeserializePackable<UnitReference>(ref reader);
+			value3 = ListFormatter.DeserializePackable<UnitReference>(ref reader);
+			value4 = ListFormatter.DeserializePackable<BlueprintUnitReference>(ref reader);
+			reader.ReadUnmanaged<bool>(out value5);
+		}
+		else
+		{
+			if (memberCount > 4)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(AcceptChangeGroupGameCommand), 4, memberCount);
+				return;
+			}
+			if (value == null)
+			{
+				value2 = null;
+				value3 = null;
+				value4 = null;
+				value5 = false;
+			}
+			else
+			{
+				value2 = value.m_PartyCharacters;
+				value3 = value.m_RemoteCharacters;
+				value4 = value.m_RequiredCharacters;
+				value5 = value.m_ReInitPartyCharacters;
+			}
+			if (memberCount != 0)
+			{
+				ListFormatter.DeserializePackable(ref reader, ref value2);
+				if (memberCount != 1)
+				{
+					ListFormatter.DeserializePackable(ref reader, ref value3);
+					if (memberCount != 2)
+					{
+						ListFormatter.DeserializePackable(ref reader, ref value4);
+						if (memberCount != 3)
+						{
+							reader.ReadUnmanaged<bool>(out value5);
+							_ = 4;
+						}
+					}
+				}
+			}
+			if (value != null)
+			{
+				goto IL_00f8;
+			}
+		}
+		value = new AcceptChangeGroupGameCommand
+		{
+			m_PartyCharacters = value2,
+			m_RemoteCharacters = value3,
+			m_RequiredCharacters = value4,
+			m_ReInitPartyCharacters = value5
+		};
+		return;
+		IL_00f8:
+		value.m_PartyCharacters = value2;
+		value.m_RemoteCharacters = value3;
+		value.m_RequiredCharacters = value4;
+		value.m_ReInitPartyCharacters = value5;
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref AcceptChangeGroupGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_PartyCharacters");
+		ListFormatter.SerializePackableJson(ref writer, value.m_PartyCharacters);
+		writer.WriteProperty("m_RemoteCharacters");
+		ListFormatter.SerializePackableJson(ref writer, value.m_RemoteCharacters);
+		writer.WriteProperty("m_RequiredCharacters");
+		ListFormatter.SerializePackableJson(ref writer, value.m_RequiredCharacters);
+		writer.WriteProperty("m_ReInitPartyCharacters");
+		writer.WriteUnmanaged(value.m_ReInitPartyCharacters);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref AcceptChangeGroupGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		List<UnitReference> value2;
+		List<UnitReference> value3;
+		List<BlueprintUnitReference> value4;
+		bool v;
+		if (value == null)
+		{
+			value2 = null;
+			value3 = null;
+			value4 = null;
+			v = false;
+		}
+		else
+		{
+			value2 = value.m_PartyCharacters;
+			value3 = value.m_RemoteCharacters;
+			value4 = value.m_RequiredCharacters;
+			v = value.m_ReInitPartyCharacters;
+		}
+		bool[] array = new bool[4];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				switch (text)
+				{
+				case "m_PartyCharacters":
+					value2 = ListFormatter.DeserializePackableJson<UnitReference>(ref reader);
+					array[0] = true;
+					break;
+				case "m_RemoteCharacters":
+					value3 = ListFormatter.DeserializePackableJson<UnitReference>(ref reader);
+					array[1] = true;
+					break;
+				case "m_RequiredCharacters":
+					value4 = ListFormatter.DeserializePackableJson<BlueprintUnitReference>(ref reader);
+					array[2] = true;
+					break;
+				case "m_ReInitPartyCharacters":
+					reader.ReadUnmanaged<bool>(out v);
+					array[3] = true;
+					break;
+				}
+			}
+			else
+			{
+				switch (text)
+				{
+				case "m_PartyCharacters":
+					ListFormatter.DeserializePackableJson(ref reader, ref value2);
+					break;
+				case "m_RemoteCharacters":
+					ListFormatter.DeserializePackableJson(ref reader, ref value3);
+					break;
+				case "m_RequiredCharacters":
+					ListFormatter.DeserializePackableJson(ref reader, ref value4);
+					break;
+				case "m_ReInitPartyCharacters":
+					reader.ReadUnmanaged<bool>(out v);
+					break;
+				}
+			}
+		}
+		if (value != null)
+		{
+			value.m_PartyCharacters = value2;
+			value.m_RemoteCharacters = value3;
+			value.m_RequiredCharacters = value4;
+			value.m_ReInitPartyCharacters = v;
+		}
+		else
+		{
+			value = new AcceptChangeGroupGameCommand
+			{
+				m_PartyCharacters = value2,
+				m_RemoteCharacters = value3,
+				m_RequiredCharacters = value4,
+				m_ReInitPartyCharacters = v
+			};
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

@@ -23,11 +23,17 @@ public class TooltipHandler : IDisposable
 
 	private IEnumerable<TooltipData> m_TooltipDatas;
 
+	private IEnumerable<TooltipData> m_MainTooltipDatas;
+
+	private IEnumerable<TooltipData> m_CompareTooltipDatas;
+
 	private MonoBehaviour m_Component;
 
 	private TooltipConfig m_Config;
 
 	private bool m_Show;
+
+	private readonly Transform m_Source;
 
 	private IDisposable m_Enter;
 
@@ -72,9 +78,17 @@ public class TooltipHandler : IDisposable
 		m_TooltipDatas = tooltipDatas;
 	}
 
+	public TooltipHandler(MonoBehaviour component, IEnumerable<TooltipData> mainDatas, IEnumerable<TooltipData> compareDatas, TooltipConfig config)
+		: this(component, config)
+	{
+		m_MainTooltipDatas = mainDatas;
+		m_CompareTooltipDatas = compareDatas;
+	}
+
 	private TooltipHandler(MonoBehaviour component, TooltipConfig config)
 	{
 		m_Component = component;
+		m_Source = component.transform;
 		m_Config = TooltipHelper.EnsureTooltipPlace(component, config);
 		Subscribe(m_Config);
 	}
@@ -162,21 +176,25 @@ public class TooltipHandler : IDisposable
 			return;
 		}
 		m_Show = true;
-		if (m_TooltipDatas == null)
-		{
-			if (m_SingleTemplate != null)
-			{
-				EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
-				{
-					h.HandleTooltipRequest(TooltipData);
-				});
-			}
-		}
-		else
+		if (m_MainTooltipDatas != null || m_CompareTooltipDatas != null)
 		{
 			EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 			{
-				h.HandleComparativeTooltipRequest(m_TooltipDatas);
+				h.HandleComparativeTooltipRequest(m_Source, m_MainTooltipDatas, m_CompareTooltipDatas);
+			});
+		}
+		else if (m_TooltipDatas != null)
+		{
+			EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
+			{
+				h.HandleComparativeTooltipRequest(m_Source, m_TooltipDatas);
+			});
+		}
+		else if (m_SingleTemplate != null)
+		{
+			EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
+			{
+				h.HandleTooltipRequest(TooltipData);
 			});
 		}
 	}

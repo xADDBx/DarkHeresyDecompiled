@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.Utility.Attributes;
@@ -25,7 +26,7 @@ public class CheckAbilityAttackTypeGetter : BoolPropertyGetter, PropertyContextA
 
 	protected override bool GetBaseValue()
 	{
-		AbilityAttackDelivery abilityAttackDelivery = this.GetAbility()?.Blueprint.GetComponent<AbilityAttackDelivery>();
+		AbilityAttackDelivery abilityAttackDelivery = EvalContext.Current.Ability?.Blueprint.GetComponent<AbilityAttackDelivery>();
 		if (abilityAttackDelivery == null)
 		{
 			return false;

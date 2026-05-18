@@ -14,9 +14,9 @@ internal readonly struct SurfaceJobDataFactory
 	{
 		public NativeList<CellUnion> cells;
 
-		public NativeList<ushort> cellAreaMasks;
+		public NativeList<uint> cellAreaMasks;
 
-		public NativeList<ushort> chunkAreaMasks;
+		public NativeList<uint> chunkAreaMasks;
 
 		public NativeList<StratagemDescriptor> stratagemDescriptorList;
 
@@ -39,15 +39,15 @@ internal readonly struct SurfaceJobDataFactory
 
 		private NativeList<CellUnion> m_CellUnions;
 
-		private NativeList<ushort> m_CellAreaMasks;
+		private NativeList<uint> m_CellAreaMasks;
 
-		private NativeList<ushort> m_ChunkAreaMasks;
+		private NativeList<uint> m_ChunkAreaMasks;
 
 		private NativeList<StratagemDescriptor> m_StratagemDescriptorList;
 
 		private NativeList<int> m_StratagemCellIndexList;
 
-		private ushort m_AreaFlag;
+		private uint m_AreaFlag;
 
 		private int m_IntersectionFlagShift;
 
@@ -59,9 +59,9 @@ internal readonly struct SurfaceJobDataFactory
 
 		private unsafe CellUnion* m_CellUnionsPtr;
 
-		private unsafe ushort* m_CellAreaMasksPtr;
+		private unsafe uint* m_CellAreaMasksPtr;
 
-		private unsafe ushort* m_ChunkAreaMasksPtr;
+		private unsafe uint* m_ChunkAreaMasksPtr;
 
 		private int m_CellsCapacity;
 
@@ -75,7 +75,7 @@ internal readonly struct SurfaceJobDataFactory
 		{
 			m_Graph = graph;
 			m_AdditionalData = AdditionalGraphDataManager.Instance.GetGraphData(graph.graphIndex);
-			m_AreaFlag = 0;
+			m_AreaFlag = 0u;
 			m_IntersectionFlagShift = 0;
 			m_CollectStratagemArea = false;
 			m_StratagemAreaStartIndex = 0;
@@ -89,8 +89,8 @@ internal readonly struct SurfaceJobDataFactory
 			int initialCapacity = num / 2;
 			int initialCapacity2 = math.min(m_ChunksCountX * m_ChunksCountY * 64, math.max(1, estimatedCellsCount));
 			m_CellUnions = new NativeList<CellUnion>(initialCapacity2, allocator);
-			m_CellAreaMasks = new NativeList<ushort>(initialCapacity2, allocator);
-			m_ChunkAreaMasks = new NativeList<ushort>(initialCapacity, allocator);
+			m_CellAreaMasks = new NativeList<uint>(initialCapacity2, allocator);
+			m_ChunkAreaMasks = new NativeList<uint>(initialCapacity, allocator);
 			m_StratagemDescriptorList = new NativeList<StratagemDescriptor>(allocator);
 			m_StratagemCellIndexList = new NativeList<int>(allocator);
 			m_CellsCount = 0;
@@ -130,7 +130,7 @@ internal readonly struct SurfaceJobDataFactory
 			}
 		}
 
-		public void Setup(ushort flag, int intersectionFlagShift, bool collectStratagemArea)
+		public void Setup(uint flag, int intersectionFlagShift, bool collectStratagemArea)
 		{
 			m_AreaFlag = flag;
 			m_IntersectionFlagShift = intersectionFlagShift;
@@ -168,8 +168,8 @@ internal readonly struct SurfaceJobDataFactory
 			finally
 			{
 				m_CellUnions = default(NativeList<CellUnion>);
-				m_CellAreaMasks = default(NativeList<ushort>);
-				m_ChunkAreaMasks = default(NativeList<ushort>);
+				m_CellAreaMasks = default(NativeList<uint>);
+				m_ChunkAreaMasks = default(NativeList<uint>);
 				m_StratagemDescriptorList = default(NativeList<StratagemDescriptor>);
 				m_StratagemCellIndexList = default(NativeList<int>);
 			}
@@ -217,7 +217,7 @@ internal readonly struct SurfaceJobDataFactory
 					int j = num11;
 					for (int num14 = num11 + 8; j < num14; j++)
 					{
-						ushort num16;
+						uint num16;
 						if (j < m_GridDimensionX && i < m_GridDimensionY)
 						{
 							int num15 = j + m_GridDimensionX * i;
@@ -232,38 +232,38 @@ internal readonly struct SurfaceJobDataFactory
 							cellUnion.intermediateCell.flags = (IntermediateCellFlags)(gridNodeBase as GridNode).GetAllConnectionInternal();
 							if (gridNodeBase.Walkable)
 							{
-								num16 = 1;
+								num16 = 1u;
 								flag = true;
 							}
 							else
 							{
 								cellUnion.intermediateCell.flags = (IntermediateCellFlags)0;
-								num16 = 0;
+								num16 = 0u;
 							}
 						}
 						else
 						{
 							cellUnion.intermediateCell.indexInGrid = -1;
-							num16 = 0;
+							num16 = 0u;
 						}
 						m_CellUnionsPtr[m_CellsCount] = cellUnion;
 						m_CellAreaMasksPtr[m_CellsCount] = num16;
 						m_CellsCount++;
 					}
 				}
-				m_ChunkAreaMasksPtr[num9] = (ushort)(flag ? 1u : 0u);
+				m_ChunkAreaMasksPtr[num9] = (flag ? 1u : 0u);
 			}
 			int value = num9 * 64 + num8;
-			int num17 = m_CellAreaMasksPtr[value];
-			int num18 = m_AreaFlag | ((num17 & m_AreaFlag) << m_IntersectionFlagShift);
-			m_CellAreaMasksPtr[value] = (ushort)(num17 | num18);
+			uint num17 = m_CellAreaMasksPtr[value];
+			uint num18 = m_AreaFlag | ((num17 & m_AreaFlag) << m_IntersectionFlagShift);
+			m_CellAreaMasksPtr[value] = num17 | num18;
 			if (m_CollectStratagemArea)
 			{
 				m_StratagemCellIndexList.Add(in value);
 			}
-			int num19 = m_ChunkAreaMasksPtr[num9];
-			int num20 = m_AreaFlag | ((num19 & m_AreaFlag) << m_IntersectionFlagShift);
-			m_ChunkAreaMasksPtr[num9] = (ushort)(num19 | num20);
+			uint num19 = m_ChunkAreaMasksPtr[num9];
+			uint num20 = m_CellAreaMasksPtr[value] & (m_AreaFlag | (m_AreaFlag << m_IntersectionFlagShift));
+			m_ChunkAreaMasksPtr[num9] = num19 | num20;
 		}
 
 		private unsafe void GrowChunkContainers(int minCapacity)
@@ -286,7 +286,7 @@ internal readonly struct SurfaceJobDataFactory
 		}
 	}
 
-	private const ushort kWalkableAreaFlag = 1;
+	private const uint kWalkableAreaFlag = 1u;
 
 	private readonly GridGraph m_Graph;
 
@@ -313,7 +313,7 @@ internal readonly struct SurfaceJobDataFactory
 				Vector2Int gridDimensions = new Vector2Int(m_Graph.width, m_Graph.depth);
 				foreach (AreaData area2 in m_Areas)
 				{
-					container.Setup((ushort)area2.flag, area2.intersectionFlagShift, area2.isStratagem);
+					container.Setup(area2.flag, area2.intersectionFlagShift, area2.isStratagem);
 					area2.source.GetCellIdentifiers(gridDimensions, ref container);
 					container.Commit();
 				}

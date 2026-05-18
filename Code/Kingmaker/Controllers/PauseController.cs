@@ -8,19 +8,19 @@ namespace Kingmaker.Controllers;
 
 public class PauseController : IControllerTick, IController, IControllerReset
 {
-	private NetPlayerGroup m_PausedPlayer = NetPlayerGroup.Empty;
+	private NetPlayerGroup m_PausedPlayers = NetPlayerGroup.Empty;
 
 	private bool m_ManualPause;
 
-	private bool m_Update = true;
+	private bool m_UpdateRequired = true;
 
 	public bool IsManualPause => m_ManualPause;
 
 	private static NetPlayerGroup PlayersReadyMask => NetworkingManager.PlayersReadyMask;
 
-	public bool IsPausedByPlayers => m_PausedPlayer.Contains(PlayersReadyMask);
+	public bool IsPausedByPlayers => m_PausedPlayers.Contains(PlayersReadyMask);
 
-	public bool IsPausedByLocalPlayer => m_PausedPlayer.Contains(NetworkingManager.LocalNetPlayer);
+	public bool IsPausedByLocalPlayer => m_PausedPlayers.Contains(NetworkingManager.LocalNetPlayer);
 
 	TickType IControllerTick.GetTickType()
 	{
@@ -29,9 +29,9 @@ public class PauseController : IControllerTick, IController, IControllerReset
 
 	void IControllerTick.Tick()
 	{
-		if (m_Update && !LoadingProcess.Instance.IsAnyLoadingScreenActive)
+		if (m_UpdateRequired)
 		{
-			m_Update = false;
+			m_UpdateRequired = false;
 			Game.Instance.SetIsPauseForce(m_ManualPause || IsPausedByPlayers);
 			EventBus.RaiseEvent(delegate(IPauseHandler h)
 			{
@@ -42,14 +42,14 @@ public class PauseController : IControllerTick, IController, IControllerReset
 
 	void IControllerReset.OnReset()
 	{
-		m_PausedPlayer = NetPlayerGroup.Empty;
+		m_PausedPlayers = NetPlayerGroup.Empty;
 		m_ManualPause = false;
-		m_Update = true;
+		m_UpdateRequired = true;
 	}
 
 	public void RequestPauseUi(bool isPaused)
 	{
-		if (isPaused != IsPausedByLocalPlayer)
+		if (isPaused != IsPausedByLocalPlayer && !LoadingProcess.Instance.IsAnyLoadingScreenActive)
 		{
 			Game.Instance.GameCommandQueue.RequestPauseUi(isPaused);
 		}
@@ -57,9 +57,10 @@ public class PauseController : IControllerTick, IController, IControllerReset
 
 	public void SetPlayer(NetPlayer player, bool isPaused)
 	{
-		NetPlayerGroup netPlayerGroup = (isPaused ? m_PausedPlayer.Add(player) : m_PausedPlayer.Del(player));
-		m_Update = m_Update || !m_PausedPlayer.Equals(netPlayerGroup);
-		m_PausedPlayer = netPlayerGroup;
+		NetPlayerGroup netPlayerGroup = (isPaused ? m_PausedPlayers.Add(player) : m_PausedPlayers.Del(player));
+		bool flag = !m_PausedPlayers.Equals(netPlayerGroup);
+		m_UpdateRequired |= flag;
+		m_PausedPlayers = netPlayerGroup;
 	}
 
 	public void SetManualPause(bool isPaused)
@@ -67,12 +68,12 @@ public class PauseController : IControllerTick, IController, IControllerReset
 		if (!IsPausedByPlayers)
 		{
 			m_ManualPause = isPaused;
-			m_Update = true;
+			m_UpdateRequired = true;
 		}
 	}
 
 	public void OnPlayerLeftRoom()
 	{
-		m_Update = true;
+		m_UpdateRequired = true;
 	}
 }

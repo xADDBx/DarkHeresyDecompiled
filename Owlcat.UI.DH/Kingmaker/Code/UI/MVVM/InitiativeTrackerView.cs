@@ -6,6 +6,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Sound;
+using Kingmaker.UnitLogic.Squads;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -48,6 +49,8 @@ public abstract class InitiativeTrackerView : View<InitiativeTrackerVM>
 
 	private readonly Dictionary<ViewModel, int> m_ViewModelToVirtualItemIndex = new Dictionary<ViewModel, int>();
 
+	private readonly Dictionary<UnitSquad, ViewModel> m_SquadToViewModel = new Dictionary<UnitSquad, ViewModel>();
+
 	private readonly List<ITurnVirtualItemData> m_VirtualEntries = new List<ITurnVirtualItemData>();
 
 	protected IReadOnlyList<ITurnVirtualItemData> VirtualEntries => m_VirtualEntries;
@@ -56,29 +59,11 @@ public abstract class InitiativeTrackerView : View<InitiativeTrackerVM>
 	{
 		if (round > 1)
 		{
-			UISounds.Instance.Sounds.Combat.NewRound.Play();
+			CombatSounds.Instance.Combat.NewRound.Play();
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
 				h.HandleWarning($"{UIStrings.Instance.TurnBasedTexts.Round.Text} {round}", addToLog: false);
 			});
-		}
-	}
-
-	protected abstract void OnInitialize();
-
-	protected abstract void PrepareInitiativeTracker();
-
-	protected abstract void UpdateUnits();
-
-	protected abstract void Show();
-
-	protected abstract void Hide();
-
-	protected virtual void OnUnitHovered()
-	{
-		if (base.gameObject.activeInHierarchy)
-		{
-			ScrollToHoveredUnit(null);
 		}
 	}
 
@@ -88,10 +73,7 @@ public abstract class InitiativeTrackerView : View<InitiativeTrackerVM>
 		PrepareInitiativeTracker();
 		EventBus.Subscribe(this).AddTo(this);
 		base.ViewModel.RoundCounter.Subscribe(RoundChanged).AddTo(this);
-		base.ViewModel.HoveredEntity.Subscribe(delegate
-		{
-			OnUnitHovered();
-		}).AddTo(this);
+		base.ViewModel.HoveredEntity.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(OnUnitHovered).AddTo(this);
 		base.ViewModel.CurrentUnit.Subscribe(OnCurrentUnitChanged).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(base.ViewModel.EntitiesUpdated.DebounceFrame(1, UnityFrameProvider.PreLateUpdate), delegate
 		{
@@ -120,18 +102,41 @@ public abstract class InitiativeTrackerView : View<InitiativeTrackerVM>
 		Hide();
 	}
 
+	protected abstract void OnInitialize();
+
+	protected abstract void PrepareInitiativeTracker();
+
+	protected abstract void UpdateUnits();
+
+	protected abstract void Show();
+
+	protected abstract void Hide();
+
+	protected virtual void OnUnitHovered(CombatMechanicEntityVM hoveredEntity)
+	{
+		if (base.gameObject.activeInHierarchy)
+		{
+			ScrollToHoveredUnit(hoveredEntity, null);
+		}
+	}
+
 	protected void AddTurnVirtualItem(ITurnVirtualItemData itemData)
 	{
 		if (!m_ViewModelToVirtualItemIndex.ContainsKey(itemData.ViewModel))
 		{
 			m_ViewModelToVirtualItemIndex.Add(itemData.ViewModel, m_VirtualEntries.Count);
 			m_VirtualEntries.Add(itemData);
+			if (itemData.ViewModel is CombatMechanicEntityVM { Squad: not null, Squad: { } squad })
+			{
+				m_SquadToViewModel.TryAdd(squad, itemData.ViewModel);
+			}
 		}
 	}
 
 	protected void ClearTurnVirtualItems()
 	{
 		m_ViewModelToVirtualItemIndex.Clear();
+		m_SquadToViewModel.Clear();
 		m_VirtualEntries.Clear();
 	}
 
@@ -144,17 +149,42 @@ public abstract class InitiativeTrackerView : View<InitiativeTrackerVM>
 		return VirtualList.IsVisible(itemData);
 	}
 
-	protected void ScrollToHoveredUnit(Action onComplete)
+	protected void ScrollToHoveredUnit(CombatMechanicEntityVM hoveredEntity, Action onComplete)
 	{
-		InitiativeTrackerMechanicEntityVM currentValue = base.ViewModel.HoveredEntity.CurrentValue;
-		if (currentValue == null || !currentValue.MechanicEntity.IsPlayerFaction)
+		if (hoveredEntity == null || !hoveredEntity.MechanicEntity.IsPlayerFaction)
 		{
 			onComplete?.Invoke();
 		}
-		else if (!TryScrollTo(base.ViewModel.HoveredEntity.CurrentValue, onComplete) && !TryScrollTo(base.ViewModel.SquadLeaderUnit.CurrentValue, onComplete))
+		else if (!TryScrollTo(hoveredEntity, onComplete))
 		{
 			onComplete?.Invoke();
 		}
+	}
+
+	protected bool TryGetTurnVirtualItem(ViewModel viewModel, out ITurnVirtualItemData itemData)
+	{
+		if (m_ViewModelToVirtualItemIndex.TryGetValue(viewModel, out var value))
+		{
+			if (value < 0 || value >= m_VirtualEntries.Count)
+			{
+				itemData = null;
+				return false;
+			}
+			itemData = m_VirtualEntries[value];
+			return itemData != null;
+		}
+		if (!(viewModel is CombatMechanicEntityVM combatMechanicEntityVM) || !combatMechanicEntityVM.IsInSquad.CurrentValue)
+		{
+			itemData = null;
+			return false;
+		}
+		UnitSquad squad = combatMechanicEntityVM.Squad;
+		if (!m_SquadToViewModel.TryGetValue(squad, out var value2))
+		{
+			itemData = null;
+			return false;
+		}
+		return TryGetTurnVirtualItem(value2, out itemData);
 	}
 
 	private bool TryScrollTo(ViewModel unitModel, Action onComplete)
@@ -168,23 +198,7 @@ public abstract class InitiativeTrackerView : View<InitiativeTrackerVM>
 		return true;
 	}
 
-	private bool TryGetTurnVirtualItem(ViewModel viewModel, out ITurnVirtualItemData itemData)
-	{
-		if (!m_ViewModelToVirtualItemIndex.TryGetValue(viewModel, out var value))
-		{
-			itemData = null;
-			return false;
-		}
-		if (value < 0 || value >= m_VirtualEntries.Count)
-		{
-			itemData = null;
-			return false;
-		}
-		itemData = m_VirtualEntries[value];
-		return itemData != null;
-	}
-
-	private void OnCurrentUnitChanged(InitiativeTrackerMechanicEntityVM entity)
+	private void OnCurrentUnitChanged(CombatMechanicEntityVM entity)
 	{
 		BaseUnitEntity baseUnitEntity = entity?.UnitAsBaseUnitEntity;
 		if (baseUnitEntity != null && baseUnitEntity.IsInPlayerParty && UtilityNet.InLobbyAndPlaying && baseUnitEntity.IsMyNetRole())

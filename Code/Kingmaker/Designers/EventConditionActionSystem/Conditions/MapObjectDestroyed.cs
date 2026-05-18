@@ -1,13 +1,12 @@
 using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.View.MapObjects;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Conditions;
 
-[Obsolete]
+[Obsolete("Unused mechanic")]
 [TypeId("10d3102b1c93ce842add52534433ceba")]
 public class MapObjectDestroyed : Condition
 {
@@ -27,6 +26,6 @@ public class MapObjectDestroyed : Condition
 
 	protected override bool CheckCondition()
 	{
-		return MapObject.GetValue().GetOptional<DestructionPart>()?.AlreadyDestroyed ?? false;
+		return false;
 	}
 }

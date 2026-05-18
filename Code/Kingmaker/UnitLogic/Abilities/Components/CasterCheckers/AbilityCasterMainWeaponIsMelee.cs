@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework;
 using Kingmaker.Items;
@@ -33,5 +35,12 @@ public class AbilityCasterMainWeaponIsMelee : BlueprintComponent, IAbilityCaster
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		return LocalizedTexts.Instance.Reasons.MeleeWeaponRequired;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		bool flag = IsCasterRestrictionPassed(caster);
+		CasterRestrictionsStrings casterRestrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		yield return flag ? casterRestrictionsStrings.MeleeWeaponEquiped : casterRestrictionsStrings.MeleeWeaponNotEquiped;
 	}
 }

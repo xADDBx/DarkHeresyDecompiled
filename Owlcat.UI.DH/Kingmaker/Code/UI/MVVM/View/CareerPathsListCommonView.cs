@@ -45,8 +45,6 @@ public class CareerPathsListCommonView : View<CareerPathsListVM>
 	[SerializeField]
 	private WidgetList m_WidgetList;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	private ReactiveProperty<int> m_CurrentRank;
 
 	private AccessibilityTextHelper m_TextHelper;
@@ -77,7 +75,6 @@ public class CareerPathsListCommonView : View<CareerPathsListVM>
 			}
 			string activeLayer = ((base.ViewModel.SelectedCareer.CurrentValue == null) ? "Default" : "Career");
 			m_MainSelectable.SetActiveLayer(activeLayer);
-			UpdateNavigation();
 			UpdateSelectedCareerState();
 		}).AddTo(this);
 		SetupView();
@@ -121,57 +118,6 @@ public class CareerPathsListCommonView : View<CareerPathsListVM>
 	private void DrawEntries()
 	{
 		m_WidgetList.DrawEntries(base.ViewModel.CareerPathVMs, m_CareerPathListItemCommonView);
-		UpdateNavigation();
-	}
-
-	private void CreateNavigation()
-	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour();
-		UpdateNavigation();
-	}
-
-	private void UpdateNavigation()
-	{
-		if (m_NavigationBehaviour != null)
-		{
-			m_NavigationBehaviour.Clear();
-			if (base.ViewModel.SelectedCareer.CurrentValue != null)
-			{
-				m_NavigationBehaviour.AddEntityVertical(m_SelectedCareerCommonView);
-			}
-			else if (m_WidgetList.Entries != null && m_WidgetList.Entries.Any())
-			{
-				List<IConsoleEntity> entities = m_WidgetList.Entries.Cast<IConsoleEntity>().ToList();
-				m_NavigationBehaviour.AddRow(entities);
-			}
-			UpdateCurrentEntity();
-		}
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		if (m_NavigationBehaviour == null)
-		{
-			CreateNavigation();
-		}
-		return m_NavigationBehaviour;
-	}
-
-	public void UpdateCurrentEntity()
-	{
-		foreach (IConsoleEntity item in m_WidgetList.Entries.Cast<IConsoleEntity>())
-		{
-			CareerPathVM careerPathVM = (item as CareerPathListItemCommonView)?.ViewModel;
-			if (careerPathVM != null)
-			{
-				CareerPathVM careerPathVM2 = careerPathVM;
-				if (careerPathVM2.IsSelected.Value)
-				{
-					m_NavigationBehaviour.SetCurrentEntity(item);
-					break;
-				}
-			}
-		}
 	}
 
 	private void SetupView()

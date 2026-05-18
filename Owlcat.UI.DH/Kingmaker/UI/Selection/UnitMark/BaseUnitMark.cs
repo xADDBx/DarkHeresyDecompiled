@@ -1,10 +1,12 @@
 using System;
+using Kingmaker.Blueprints;
 using Kingmaker.Code.Enums.Helper;
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Interfaces;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -101,9 +103,17 @@ public abstract class BaseUnitMark : RegisteredBehaviour, IBaseUnitMark, IUnitCo
 	private void UpdateCombatState()
 	{
 		SetState(UnitMarkState.IsInCombat, Unit.IsInCombat);
-		if (Game.Instance.Controllers.TurnController.IsPreparationTurn && Unit is BaseUnitEntity unit)
+		if (Unit is BaseUnitEntity unit)
 		{
-			SetState(UnitMarkState.CurrentTurn, Game.Instance.Controllers.SelectionCharacter.IsSelected(unit));
+			if (!Game.Instance.Controllers.TurnController.InCombat)
+			{
+				SetState(UnitMarkState.CurrentTurn, active: false);
+			}
+			else if (Game.Instance.Controllers.TurnController.IsPreparationTurn)
+			{
+				bool active = Game.Instance.Controllers.SelectionCharacter.IsSelected(unit);
+				SetState(UnitMarkState.CurrentTurn, active);
+			}
 		}
 	}
 
@@ -240,11 +250,6 @@ public abstract class BaseUnitMark : RegisteredBehaviour, IBaseUnitMark, IUnitCo
 		base.transform.rotation = Quaternion.identity;
 	}
 
-	private void OnDestroy()
-	{
-		Dispose();
-	}
-
 	public void Dispose()
 	{
 		EventBus.Unsubscribe(this);
@@ -253,5 +258,19 @@ public abstract class BaseUnitMark : RegisteredBehaviour, IBaseUnitMark, IUnitCo
 	public void SetActive(bool active)
 	{
 		base.gameObject.SetActive(active);
+	}
+
+	protected bool IsHiddenBySettings()
+	{
+		if (Unit == null || Unit.IsDisposed || !Unit.IsVisibleForPlayer)
+		{
+			return true;
+		}
+		return Unit.Blueprint.GetComponent<UnitUISettings>()?.MarkSettings.HideUnitMark ?? false;
+	}
+
+	private void OnDestroy()
+	{
+		Dispose();
 	}
 }

@@ -79,7 +79,7 @@ public class GameCoreArbiterIntegration : IArbiterIntegration
 				return;
 			}
 			Game.Instance.Controllers.TurnController.OnStart();
-			CheatsCombat.KillAll();
+			CheatsCombat.KillAll(null);
 		}
 		else
 		{

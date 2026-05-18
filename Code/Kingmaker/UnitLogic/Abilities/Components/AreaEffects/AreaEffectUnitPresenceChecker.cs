@@ -1,14 +1,13 @@
 using Kingmaker.Controllers;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.Features.AreaEffects;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Groups;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -29,24 +28,24 @@ public class AreaEffectUnitPresenceChecker : AreaEffectLogic
 
 	public BlueprintAreaEffect NewAreaEffect => m_NewAreaEffect.Get();
 
-	protected override void OnEntityExit(MechanicsContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
+	protected override void OnEntityExit(IEvalContext context, AreaEffectEntity areaEffect, MechanicEntity entity)
 	{
-		MechanicEntity maybeCaster = context.MaybeCaster;
-		if (maybeCaster == null)
+		MechanicEntity caster = context.Caster;
+		if (caster == null)
 		{
 			return;
 		}
-		if (CheckTargetType(maybeCaster, entity, CheckForNoTargetsOfType))
+		if (CheckTargetType(caster, entity, CheckForNoTargetsOfType))
 		{
 			foreach (MechanicEntity item in areaEffect.InGameEntitiesInside)
 			{
-				if (CheckTargetType(maybeCaster, item, CheckForNoTargetsOfType) && !item.IsDead && item != entity)
+				if (CheckTargetType(caster, item, CheckForNoTargetsOfType) && !item.IsDead && item != entity)
 				{
 					return;
 				}
 				if (!item.IsDead)
 				{
-					using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(item))
+					using (EvalContext.Current.PushTarget(item))
 					{
 						ActionsOnAllUnitsInside.Run();
 					}
@@ -56,7 +55,7 @@ public class AreaEffectUnitPresenceChecker : AreaEffectLogic
 		if (NewAreaEffect != null)
 		{
 			TargetWrapper target = new TargetWrapper(areaEffect.Position);
-			AreaEffectEntity areaEffectEntity = AreaEffectsController.CreateSpawner(NewAreaEffect, context, target).Duration(5.Rounds().Seconds).Spawn();
+			AreaEffectEntity areaEffectEntity = AreaEffectsController.CreateSpawner(NewAreaEffect, areaEffect.Context, target).Duration(5.Rounds().Seconds).Spawn();
 			if (areaEffectEntity != null)
 			{
 				foreach (BaseUnitEntity u in Game.Instance.EntityPools.AllBaseUnits)
@@ -67,15 +66,15 @@ public class AreaEffectUnitPresenceChecker : AreaEffectLogic
 					}
 					if (!areaEffectEntity.AffectEnemies)
 					{
-						MechanicEntity maybeCaster2 = context.MaybeCaster;
-						if (maybeCaster2 == null || maybeCaster2.IsEnemy(u))
+						MechanicEntity? caster2 = context.Caster;
+						if (caster2 == null || caster2.IsEnemy(u))
 						{
 							continue;
 						}
 					}
 					EventBus.RaiseEvent(delegate(IApplyAbilityEffectHandler h)
 					{
-						h.OnTryToApplyAbilityEffect(context.AsAbilityContext, new AbilityDeliveryTarget(u));
+						h.OnTryToApplyAbilityEffect(areaEffect.Context.AsAbilityContext, new AbilityDeliveryTarget(u));
 					});
 				}
 			}
@@ -83,18 +82,18 @@ public class AreaEffectUnitPresenceChecker : AreaEffectLogic
 		areaEffect.ForceEnd();
 	}
 
-	protected override void OnEndForEachEntity(MechanicsContext context, AreaEffectEntity areaEffect)
+	protected override void OnEndForEachEntity(IEvalContext context, AreaEffectEntity areaEffect)
 	{
-		MechanicEntity maybeCaster = context.MaybeCaster;
-		if (maybeCaster == null)
+		MechanicEntity caster = context.Caster;
+		if (caster == null)
 		{
 			return;
 		}
 		foreach (MechanicEntity item in areaEffect.InGameEntitiesInside)
 		{
-			if (!CheckTargetType(maybeCaster, item, CheckForNoTargetsOfType) && !item.IsDead)
+			if (!CheckTargetType(caster, item, CheckForNoTargetsOfType) && !item.IsDead)
 			{
-				using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(item))
+				using (EvalContext.Current.PushTarget(item))
 				{
 					ActionsOnAllUnitsInsideIfFailed.Run();
 				}

@@ -25,7 +25,7 @@ public abstract class PsychicPhenomenaModifier : MechanicEntityFactComponentDele
 
 	protected void TryApply(RulePerformPsychicPhenomena rule)
 	{
-		if (Restriction.IsPassed(rule.AbilityContext, base.Owner, null, rule))
+		if (Restriction.IsPassed(base.Context, base.Owner, null, rule))
 		{
 			Chance.TryApply(rule.ChanceModifiers, base.Fact, Descriptor);
 			PerilsChance.TryApply(rule.PerilsChanceModifiers, base.Fact, Descriptor);

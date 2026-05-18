@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.ResourceLinks;
 using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.View;
+using Kingmaker.View.Spawners;
 using Kingmaker.Visual.Animation;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
@@ -17,15 +19,45 @@ public class UnitPartVisualChange : AbstractUnitPart, IHashable, IOwlPackable<Un
 	[OwlPackInclude]
 	private string m_AnimationSetAssetId;
 
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_HoldWeaponsWhenOutOfCombat;
+
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "UnitPartVisualChange",
 		OldNames = null,
-		Fields = new FieldInfo[1]
+		Fields = new FieldInfo[2]
 		{
-			new FieldInfo("m_AnimationSetAssetId", typeof(string))
+			new FieldInfo("m_AnimationSetAssetId", typeof(string)),
+			new FieldInfo("m_HoldWeaponsWhenOutOfCombat", typeof(bool))
 		}
 	};
+
+	public bool HoldWeaponsWhenOutOfCombat
+	{
+		get
+		{
+			return m_HoldWeaponsWhenOutOfCombat;
+		}
+		set
+		{
+			m_HoldWeaponsWhenOutOfCombat = value;
+			if (base.Owner.View is UnitEntityView unitEntityView)
+			{
+				unitEntityView.HandsEquipment?.ForceEndChangeEquipment();
+			}
+		}
+	}
+
+	public void Init(SpawnerVisualSettings.Part settings)
+	{
+		if (settings.Source.CustomAnimationSet != null)
+		{
+			SetAnimationSet(settings.Source.CustomAnimationSet);
+		}
+		HoldWeaponsWhenOutOfCombat = settings.Source.HoldWeaponsWhenOutOfCombat;
+	}
 
 	public void SetAnimationSet(AnimationSetLink animationSetLink)
 	{
@@ -57,6 +89,7 @@ public class UnitPartVisualChange : AbstractUnitPart, IHashable, IOwlPackable<Un
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
 		result.Append(m_AnimationSetAssetId);
+		result.Append(ref m_HoldWeaponsWhenOutOfCombat);
 		return result;
 	}
 
@@ -78,6 +111,7 @@ public class UnitPartVisualChange : AbstractUnitPart, IHashable, IOwlPackable<Un
 		ushort type = state.TypeLibrary.RegisterType<UnitPartVisualChange>(OwlPackTypeInfo);
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 		formatter.StringField(0, "m_AnimationSetAssetId", ref m_AnimationSetAssetId, state);
+		formatter.UnmanagedField(1, "m_HoldWeaponsWhenOutOfCombat", ref m_HoldWeaponsWhenOutOfCombat, state);
 		formatter.EndObject();
 	}
 
@@ -97,6 +131,9 @@ public class UnitPartVisualChange : AbstractUnitPart, IHashable, IOwlPackable<Un
 				break;
 			case 0:
 				m_AnimationSetAssetId = formatter.ReadString(state);
+				break;
+			case 1:
+				m_HoldWeaponsWhenOutOfCombat = formatter.ReadUnmanaged<bool>(state);
 				break;
 			}
 		}

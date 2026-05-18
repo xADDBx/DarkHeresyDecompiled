@@ -153,8 +153,6 @@ public readonly struct MechanicEntityUIWrapper
 
 	public bool IsInCombat => m_MechanicEntity.Entity?.IsInCombat ?? false;
 
-	public bool IsDisposed => m_MechanicEntity.Entity?.IsDisposed ?? false;
-
 	public bool IsVisibleForPlayer => m_MechanicEntity.Entity?.IsVisibleForPlayer ?? false;
 
 	public bool IsInCameraFrustum => m_MechanicEntity.Entity?.IsInCameraFrustum ?? false;
@@ -167,16 +165,10 @@ public readonly struct MechanicEntityUIWrapper
 	public Initiative Initiative => m_MechanicEntity.Entity?.Initiative ?? throw new NullReferenceException("MechanicEntityUIWrapper.Initiative can't be null!");
 
 	[CanBeNull]
-	public PartStatsAttributes Attributes => m_MechanicEntity.Entity?.GetAttributesOptional();
-
-	[CanBeNull]
 	public PartMechanicFeatures Features => m_MechanicEntity.Entity?.Features;
 
 	[CanBeNull]
 	public BuffCollection Buffs => m_MechanicEntity.Entity?.Buffs;
-
-	[CanBeNull]
-	public PartStatsContainer Stats => m_MechanicEntity.Entity?.GetStatsContainerOptional();
 
 	public bool IsDeadAndHasAttachedDroppedLoot
 	{
@@ -209,6 +201,19 @@ public readonly struct MechanicEntityUIWrapper
 	public IUIChanneling Channeling => m_MechanicEntity.Entity?.Parts.GetOptional<PartChanneling>();
 
 	public IUIUnitMoraleData Morale => m_MechanicEntity.Entity?.Parts.GetOptional<PartMorale>();
+
+	public bool HasSteadyConcentration
+	{
+		get
+		{
+			FeatureCountableFlag featureCountableFlag = m_MechanicEntity.Entity?.Features?.SteadyConcentration;
+			if (featureCountableFlag == null)
+			{
+				return false;
+			}
+			return featureCountableFlag;
+		}
+	}
 
 	public bool IsEnemy(MechanicEntity entity)
 	{

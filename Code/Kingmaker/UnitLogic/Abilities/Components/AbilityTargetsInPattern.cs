@@ -1,8 +1,11 @@
 using System.Collections.Generic;
+using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Abilities.Components.PatternAttack;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
@@ -16,7 +19,14 @@ using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Abilities.Components;
 
+[AllowedOn(typeof(BlueprintAbilityModifier))]
 [TypeId("f8f9261ab3994be68bd4c1d12459402d")]
+[ReadsContext(new ContextField[]
+{
+	ContextField.Caster,
+	ContextField.Ability,
+	ContextField.Pattern
+})]
 public class AbilityTargetsInPattern : AbilitySelectTarget, IAbilityAoEPatternProvider
 {
 	[SerializeField]
@@ -101,7 +111,7 @@ public class AbilityTargetsInPattern : AbilitySelectTarget, IAbilityAoEPatternPr
 			}
 			if (m_Condition.HasConditions)
 			{
-				using (context.SetScope(targetableEntity.ToITargetWrapper()))
+				using (EvalContext.PushContext(context, targetableEntity))
 				{
 					if (!m_Condition.Check())
 					{

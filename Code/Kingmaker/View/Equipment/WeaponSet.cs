@@ -1,6 +1,8 @@
 using System.Linq;
 using Kingmaker.Blueprints.Items.Equipment;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Items;
+using Kingmaker.View.Mechadendrites;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Kingmaker;
 
@@ -22,17 +24,18 @@ public class WeaponSet
 	{
 		get
 		{
+			bool num = MainHand.Owner.HasMechadendriteOfType(MechadendritesType.Ballistic);
 			ItemEntityWeapon maybeWeapon = MainHand.Slot.MaybeWeapon;
-			ItemEntityWeapon maybeWeapon2 = OffHand.Slot.MaybeWeapon;
-			if (m_WeaponStyleCached.HasValue && m_MainHandWeaponCached == maybeWeapon?.WeaponType && m_OffHandWeaponCached == maybeWeapon2?.WeaponType)
+			ItemEntityWeapon itemEntityWeapon = (num ? null : OffHand.Slot.MaybeWeapon);
+			if (m_WeaponStyleCached.HasValue && m_MainHandWeaponCached == maybeWeapon?.WeaponType && m_OffHandWeaponCached == itemEntityWeapon?.WeaponType)
 			{
 				return m_WeaponStyleCached.Value;
 			}
 			m_MainHandWeaponCached = maybeWeapon?.WeaponType;
-			m_OffHandWeaponCached = maybeWeapon2?.WeaponType;
+			m_OffHandWeaponCached = itemEntityWeapon?.WeaponType;
 			if (maybeWeapon == null)
 			{
-				m_WeaponStyleCached = ((maybeWeapon2 == null) ? WeaponAnimationStyle.MeleeMelee : WeaponAnimationStyleHelper.DetectDualWieldingStyle(WeaponType.Fist, maybeWeapon2.WeaponType));
+				m_WeaponStyleCached = ((itemEntityWeapon == null) ? WeaponAnimationStyle.MeleeMelee : WeaponAnimationStyleHelper.DetectDualWieldingStyle(WeaponType.Fist, itemEntityWeapon.WeaponType));
 				return m_WeaponStyleCached.Value;
 			}
 			m_WeaponStyleCached = (maybeWeapon.WeaponType.IsTwoHanded() ? WeaponAnimationStyleHelper.DetectTwoHandedWeaponStyle(m_MainHandWeaponCached.Value) : WeaponAnimationStyleHelper.DetectDualWieldingStyle(m_MainHandWeaponCached.Value, m_OffHandWeaponCached.GetValueOrDefault()));
@@ -59,7 +62,7 @@ public class WeaponSet
 		}
 		if (!WeaponStyle.IsTwoHanded())
 		{
-			return HandEquipmentHelper.StartEquipDualWielding(animationManager, animationSlot, unitEquipmentAnimationSlotType, WeaponStyle, OnEquipComplete);
+			return HandEquipmentHelper.StartEquipDualWielding(animationManager, animationSlot, WeaponStyle, OnEquipComplete);
 		}
 		return HandEquipmentHelper.StartEquipTwoHanded(animationManager, animationSlot, WeaponStyle, OnEquipComplete);
 	}
@@ -70,6 +73,10 @@ public class WeaponSet
 		{
 			return null;
 		}
+		if (!MainHand.IsInHand && !OffHand.IsInHand)
+		{
+			return null;
+		}
 		if (MainHand.EquipmentSlotType == UnitEquipmentAnimationSlotType.None && OffHand.EquipmentSlotType == UnitEquipmentAnimationSlotType.None)
 		{
 			HideWeaponModels();
@@ -77,7 +84,7 @@ public class WeaponSet
 		}
 		if (!WeaponStyle.IsTwoHanded())
 		{
-			return HandEquipmentHelper.StartUnequipDualWielding(animationManager, MainHand.EquipmentSlotType, OffHand.EquipmentSlotType, WeaponStyle, HideWeaponModels);
+			return HandEquipmentHelper.StartUnequipDualWielding(animationManager, MainHand.EquipmentSlotType, WeaponStyle, HideWeaponModels);
 		}
 		return HandEquipmentHelper.StartUnequipTwoHanded(animationManager, MainHand.EquipmentSlotType, WeaponStyle, HideWeaponModels);
 	}
@@ -104,7 +111,7 @@ public class WeaponSet
 		{
 			OffHand.AttachModel(toHand: true);
 		}
-		PFLog.Animations.Log(MainHand.Owner.View, $"{MainHand.Owner.View.gameObject.name} current weapon style is {WeaponStyle}");
+		PFLog.Animations.Log(MainHand.Owner.View.AsUnitEntityView(), $"{MainHand.Owner.View.gameObject.name} current weapon style is {WeaponStyle}");
 	}
 
 	public void HideWeaponModels()

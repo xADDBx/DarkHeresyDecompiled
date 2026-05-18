@@ -210,6 +210,8 @@ public class GpuSolverImpl : ISolverImpl
 
 	private JobCombiner<JobGroup> m_Jobs;
 
+	private bool m_RenderBuffersInitialized;
+
 	public Solver Solver => m_Solver;
 
 	public IGizmosImpl GizmosImpl => m_GizmosImpl;
@@ -277,6 +279,18 @@ public class GpuSolverImpl : ISolverImpl
 			replicator.Dispose();
 		}
 		m_Replicators.Clear();
+	}
+
+	public void EnsureRenderBuffersInitialized(ScriptableRenderContext context)
+	{
+		if (!m_RenderBuffersInitialized)
+		{
+			m_RenderBuffersInitialized = true;
+			CommandBuffer commandBuffer = CommandBufferPool.Get("XPBD InitRenderBuffers");
+			PushToGpu(commandBuffer);
+			context.ExecuteCommandBuffer(commandBuffer);
+			CommandBufferPool.Release(commandBuffer);
+		}
 	}
 
 	public void BeginStep(in UpdateContext context)

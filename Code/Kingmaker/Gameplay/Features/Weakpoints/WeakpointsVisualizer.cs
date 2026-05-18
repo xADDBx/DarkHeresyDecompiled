@@ -56,26 +56,26 @@ public sealed class WeakpointsVisualizer : MonoBehaviour, IWeakpointAdded, ISubs
 		Entry entry2 = _entries.Get(view) ?? (_entries[view] = new Entry());
 		if (!entry2.Marks.Get(side))
 		{
-			GameObject gameObject2 = (entry2.Marks[side] = UnityEngine.Object.Instantiate(GetWeakpointMarkPrefab(side), view.ViewTransform, worldPositionStays: true));
+			GameObject gameObject2 = (entry2.Marks[side] = UnityEngine.Object.Instantiate(GetWeakpointMarkPrefab(side), view.transform, worldPositionStays: true));
 			GameObject gameObject3 = gameObject2;
-			gameObject3.transform.position = view.ViewTransform.position;
-			gameObject3.transform.rotation = view.ViewTransform.rotation;
+			gameObject3.transform.position = view.transform.position;
+			gameObject3.transform.rotation = view.transform.rotation;
 			switch (side)
 			{
 			case WeakpointSide.Front:
-				gameObject3.transform.position += view.ViewTransform.forward * view.Corpulence;
+				gameObject3.transform.position += view.transform.forward * view.Corpulence;
 				break;
 			case WeakpointSide.Left:
-				gameObject3.transform.rotation = Quaternion.LookRotation(-view.ViewTransform.right, view.ViewTransform.up);
-				gameObject3.transform.position -= view.ViewTransform.right * view.Corpulence;
+				gameObject3.transform.rotation = Quaternion.LookRotation(-view.transform.right, view.transform.up);
+				gameObject3.transform.position -= view.transform.right * view.Corpulence;
 				break;
 			case WeakpointSide.Right:
-				gameObject3.transform.rotation = Quaternion.LookRotation(view.ViewTransform.right, view.ViewTransform.up);
-				gameObject3.transform.position += view.ViewTransform.right * view.Corpulence;
+				gameObject3.transform.rotation = Quaternion.LookRotation(view.transform.right, view.transform.up);
+				gameObject3.transform.position += view.transform.right * view.Corpulence;
 				break;
 			case WeakpointSide.Back:
-				gameObject3.transform.rotation = Quaternion.LookRotation(-view.ViewTransform.forward, view.ViewTransform.up);
-				gameObject3.transform.position -= view.ViewTransform.forward * view.Corpulence;
+				gameObject3.transform.rotation = Quaternion.LookRotation(-view.transform.forward, view.transform.up);
+				gameObject3.transform.position -= view.transform.forward * view.Corpulence;
 				break;
 			default:
 				throw new ArgumentOutOfRangeException("side", side, null);
@@ -107,10 +107,10 @@ public sealed class WeakpointsVisualizer : MonoBehaviour, IWeakpointAdded, ISubs
 		BaseUnitEntity baseUnitEntity = EventInvokerExtensions.BaseUnitEntity;
 		if (baseUnitEntity != null)
 		{
-			UnitEntityView view = baseUnitEntity.View;
-			if ((object)view != null)
+			IUnitEntityView view = baseUnitEntity.View;
+			if (view != null)
 			{
-				UpdateWeakpoints(view);
+				UpdateWeakpoints(view.AsUnitEntityView());
 			}
 		}
 	}
@@ -120,15 +120,15 @@ public sealed class WeakpointsVisualizer : MonoBehaviour, IWeakpointAdded, ISubs
 		BaseUnitEntity baseUnitEntity = EventInvokerExtensions.BaseUnitEntity;
 		if (baseUnitEntity != null)
 		{
-			UnitEntityView view = baseUnitEntity.View;
-			if ((object)view != null)
+			IUnitEntityView view = baseUnitEntity.View;
+			if (view != null)
 			{
-				UpdateWeakpoints(view);
+				UpdateWeakpoints(view.AsUnitEntityView());
 			}
 		}
 	}
 
-	void IViewAttachedHandler.OnViewAttached(IEntityViewBase view)
+	void IViewAttachedHandler.OnViewAttached(IEntityView view)
 	{
 		if (view is UnitEntityView view2)
 		{

@@ -37,7 +37,7 @@ public abstract class SkillCheckModifier : MechanicEntityFactComponentDelegate
 
 	private bool IsForceResult => ForceResult != ForceResultType.None;
 
-	protected void TryApply(RulePerformSkillCheck rule)
+	protected void TryApply(RuleCalculateSkillCheck rule)
 	{
 		if (Restrictions.IsPassed(base.Context, null, null, rule))
 		{

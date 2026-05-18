@@ -21,7 +21,7 @@ public class BookEventSkillsBlockVM : ViewModel
 		Skills = new List<CharInfoStatVM>();
 		foreach (BaseUnitEntity unit in units)
 		{
-			CharInfoStatVM item = new CharInfoStatVM(unit.Stats.GetStat(statType), showPermanentValue: false).AddTo(this);
+			CharInfoStatVM item = new CharInfoStatVM(unit, statType, showPermanentValue: false).AddTo(this);
 			Skills.Add(item);
 		}
 	}

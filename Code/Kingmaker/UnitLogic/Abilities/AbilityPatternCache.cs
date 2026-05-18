@@ -8,7 +8,7 @@ namespace Kingmaker.UnitLogic.Abilities;
 
 public class AbilityPatternCache
 {
-	private List<MechanicEntity> m_UnitsInPattern = new List<MechanicEntity>();
+	private readonly List<MechanicEntity> m_UnitsInPattern = new List<MechanicEntity>();
 
 	private AbilityData m_Ability;
 

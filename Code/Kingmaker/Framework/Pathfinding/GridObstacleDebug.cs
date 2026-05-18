@@ -8,7 +8,9 @@ using Kingmaker.Settings;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.GeometryExtensions;
+using Kingmaker.View;
 using Kingmaker.View.Covers;
+using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -38,13 +40,17 @@ public static class GridObstacleDebug
 
 	private static readonly List<BoundsEntry> _Bounds = new List<BoundsEntry>();
 
-	private static int _CacheVersion = -1;
+	private static long _CacheVersion = -1L;
 
 	public static Matrix4x4[] ObstaclesBuffer = new Matrix4x4[4096];
 
 	public static Matrix4x4[] CoversBuffer = new Matrix4x4[4096];
 
+	public static Matrix4x4[] InvisibleCoversBuffer = new Matrix4x4[4096];
+
 	public static Matrix4x4[] LosBlockersBuffer = new Matrix4x4[4096];
+
+	public static Matrix4x4[] InvisibleLosBlockersBuffer = new Matrix4x4[4096];
 
 	public static Matrix4x4[] InactiveObstaclesBuffer = new Matrix4x4[4096];
 
@@ -62,7 +68,11 @@ public static class GridObstacleDebug
 
 	public static int CoversCount { get; private set; }
 
+	public static int InvisibleCoversCount { get; private set; }
+
 	public static int LosBlockersCount { get; private set; }
+
+	public static int InvisibleLosBlockersCount { get; private set; }
 
 	public static int InactiveObstaclesCount { get; private set; }
 
@@ -103,6 +113,8 @@ public static class GridObstacleDebug
 		int index4 = 0;
 		int index5 = 0;
 		int index6 = 0;
+		int index7 = 0;
+		int index8 = 0;
 		foreach (GridObstacleCache.Entry item in instance)
 		{
 			if (item.Direction.IsDiagonal())
@@ -133,7 +145,17 @@ public static class GridObstacleDebug
 				vector2 += ((!item.ZAligned) ? (item.Backward ? new Vector3(0f, 0f, -0.01f) : new Vector3(0f, 0f, 0.01f)) : (item.Backward ? new Vector3(-0.01f, 0f, 0f) : new Vector3(0.01f, 0f, 0f)));
 				Matrix4x4 matrix = Matrix4x4.TRS(vector2, q, s);
 				LosCalculations.CoverType coverType = (item.Backward ? source.TypeBackward : source.Type);
-				if (source == item.Source)
+				bool flag = source == item.Source;
+				bool hideArVisual = source._hideArVisual;
+				if (hideArVisual && coverType == LosCalculations.CoverType.Cover)
+				{
+					Add(ref InvisibleCoversBuffer, ref index3, matrix);
+				}
+				else if (hideArVisual && coverType == LosCalculations.CoverType.LosBlocker)
+				{
+					Add(ref InvisibleLosBlockersBuffer, ref index5, matrix);
+				}
+				else if (flag)
 				{
 					switch (coverType)
 					{
@@ -144,7 +166,7 @@ public static class GridObstacleDebug
 						Add(ref CoversBuffer, ref index2, matrix);
 						break;
 					case LosCalculations.CoverType.LosBlocker:
-						Add(ref LosBlockersBuffer, ref index3, matrix);
+						Add(ref LosBlockersBuffer, ref index4, matrix);
 						break;
 					default:
 						throw new ArgumentOutOfRangeException();
@@ -155,13 +177,13 @@ public static class GridObstacleDebug
 					switch (coverType)
 					{
 					case LosCalculations.CoverType.Obstacle:
-						Add(ref InactiveObstaclesBuffer, ref index4, matrix);
+						Add(ref InactiveObstaclesBuffer, ref index6, matrix);
 						break;
 					case LosCalculations.CoverType.Cover:
-						Add(ref InactiveCoversBuffer, ref index5, matrix);
+						Add(ref InactiveCoversBuffer, ref index7, matrix);
 						break;
 					case LosCalculations.CoverType.LosBlocker:
-						Add(ref InactiveLosBlockersBuffer, ref index6, matrix);
+						Add(ref InactiveLosBlockersBuffer, ref index8, matrix);
 						break;
 					default:
 						throw new ArgumentOutOfRangeException();
@@ -174,10 +196,12 @@ public static class GridObstacleDebug
 		}
 		ObstaclesCount = index;
 		CoversCount = index2;
-		LosBlockersCount = index3;
-		InactiveObstaclesCount = index4;
-		InactiveCoversCount = index5;
-		InactiveLosBlockersCount = index6;
+		InvisibleCoversCount = index3;
+		LosBlockersCount = index4;
+		InvisibleLosBlockersCount = index5;
+		InactiveObstaclesCount = index6;
+		InactiveCoversCount = index7;
+		InactiveLosBlockersCount = index8;
 	}
 
 	private static void Add(ref Matrix4x4[] buffer, ref int index, Matrix4x4 matrix)
@@ -202,10 +226,11 @@ public static class GridObstacleDebug
 
 	private static void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
 	{
+		Camera camera2 = CameraRig.Instance.Or(null)?.Camera;
 		if (camera.cameraType switch
 		{
 			CameraType.SceneView => ShouldDrawInSceneView(), 
-			CameraType.Game => SettingsRoot.Development.DrawObstaclesGizmo, 
+			CameraType.Game => camera == camera2 && SettingsRoot.Initialized && (bool)SettingsRoot.Development.DrawObstaclesGizmo, 
 			_ => false, 
 		})
 		{
@@ -219,23 +244,28 @@ public static class GridObstacleDebug
 		using (ProfileScope.New("RenderMeshInstanced"))
 		{
 			BlueprintCoverRoot cover = ConfigRoot.Instance.Cover;
-			RenderMeshInstanced(context, cover.ObstacleMaterial, ObstaclesBuffer, ObstaclesCount);
-			RenderMeshInstanced(context, cover.CoverMaterial, CoversBuffer, CoversCount);
-			RenderMeshInstanced(context, cover.LosBlockerMaterial, LosBlockersBuffer, LosBlockersCount);
-			RenderMeshInstanced(context, cover.InactiveObstacleMaterial, InactiveObstaclesBuffer, InactiveObstaclesCount);
-			RenderMeshInstanced(context, cover.InactiveCoverMaterial, InactiveCoversBuffer, InactiveCoversCount);
-			RenderMeshInstanced(context, cover.InactiveLosBlockerMaterial, InactiveLosBlockersBuffer, InactiveLosBlockersCount);
+			CommandBuffer commandBuffer = CommandBufferPool.Get();
+			commandBuffer.BeginSample("GridObstacleDebug");
+			DrawMeshInstanced(commandBuffer, cover.ObstacleMaterial, ObstaclesBuffer, ObstaclesCount);
+			DrawMeshInstanced(commandBuffer, cover.CoverMaterial, CoversBuffer, CoversCount);
+			DrawMeshInstanced(commandBuffer, cover.InvisibleCoverMaterial, InvisibleCoversBuffer, InvisibleCoversCount);
+			DrawMeshInstanced(commandBuffer, cover.LosBlockerMaterial, LosBlockersBuffer, LosBlockersCount);
+			DrawMeshInstanced(commandBuffer, cover.InvisibleLosBlockerMaterial, InvisibleLosBlockersBuffer, InvisibleLosBlockersCount);
+			DrawMeshInstanced(commandBuffer, cover.InactiveObstacleMaterial, InactiveObstaclesBuffer, InactiveObstaclesCount);
+			DrawMeshInstanced(commandBuffer, cover.InactiveCoverMaterial, InactiveCoversBuffer, InactiveCoversCount);
+			DrawMeshInstanced(commandBuffer, cover.InactiveLosBlockerMaterial, InactiveLosBlockersBuffer, InactiveLosBlockersCount);
+			commandBuffer.EndSample("GridObstacleDebug");
+			context.ExecuteCommandBuffer(commandBuffer);
+			CommandBufferPool.Release(commandBuffer);
+			context.Submit();
 		}
 	}
 
-	private static void RenderMeshInstanced(ScriptableRenderContext context, Material material, Matrix4x4[] buffer, int length)
+	private static void DrawMeshInstanced(CommandBuffer cmd, Material material, Matrix4x4[] buffer, int length)
 	{
 		if (length > 0)
 		{
-			CommandBuffer commandBuffer = CommandBufferPool.Get();
-			commandBuffer.DrawMeshInstanced(QuadMesh, 0, material, material.FindPass("Waaagh Forward"), buffer, length);
-			context.ExecuteCommandBuffer(commandBuffer);
-			CommandBufferPool.Release(commandBuffer);
+			cmd.DrawMeshInstanced(QuadMesh, 0, material, material.FindPass("Waaagh Forward"), buffer, length);
 		}
 	}
 

@@ -5,9 +5,11 @@ using Kingmaker.Blueprints;
 using Kingmaker.Controllers.Net;
 using Kingmaker.GameCommands;
 using Kingmaker.MemoryPack.Formatters;
+using Kingmaker.Networking.Settings;
 using Kingmaker.Pathfinding;
 using Kingmaker.QA.Overlays;
 using Kingmaker.UnitLogic.Commands.Base;
+using MemoryPack;
 using OwlPack.Runtime;
 using OwlPack.Unity;
 
@@ -22,10 +24,19 @@ public class CommandNetManager
 
 	private static void RegisterCustomFormatters()
 	{
+		CodeDynamicUnionFormatters.Register();
+		BlueprintFormatterRegistrations.Register();
+		BaseSettingNetDataFormatterInitializer.RegisterFormatter();
 		ExternalTypeLibrary.Instance.RegisterType(typeof(ForcedPath), typeof(ForcedPathSerializer));
 		ExternalTypeLibrary.Instance.RegisterTypeForAllDerived(typeof(SimpleBlueprint), typeof(BlueprintSerializer<>));
 		ExternalTypeLibrary.Instance.RegisterTypeForAllDerived(typeof(BlueprintReferenceBase), typeof(BlueprintReferenceSerializer<>));
 		UnityTypesSerializers.Register();
+		ForcedPath.RegisterFormatter();
+		MemoryPackFormatterProvider.Register(new TimeSpanFormatter());
+		MemoryPackFormatterProvider.Register(new DateTimeFormatter());
+		MemoryPackFormatterProvider.Register(new Vector2Formatter());
+		MemoryPackFormatterProvider.Register(new Vector3Formatter());
+		MemoryPackFormatterProvider.Register(new Vector2IntFormatter());
 	}
 
 	public void SendAllCommands(int tickIndex, List<GameCommand> gameCommands, List<UnitCommandParams> unitCommands, List<SynchronizedData> synchronizedData)

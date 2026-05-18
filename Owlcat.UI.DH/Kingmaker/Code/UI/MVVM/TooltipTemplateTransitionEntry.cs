@@ -18,7 +18,7 @@ public class TooltipTemplateTransitionEntry : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_Entry.Name);
+		yield return new BrickTitleVM(m_Entry.Name);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -28,10 +28,10 @@ public class TooltipTemplateTransitionEntry : TooltipBaseTemplate
 		{
 			yield break;
 		}
-		yield return new TooltipBrickTitle(UIStrings.Instance.Transition.AvailableObjectives, TooltipTitleType.H3);
+		yield return new BrickTitleVM(UIStrings.Instance.Transition.AvailableObjectives, TooltipTitleType.H3);
 		foreach (BlueprintQuestObjective item in objectives)
 		{
-			yield return new TooltipBrickIconAndName(ConfigRoot.Instance.UIConfig.UIIcons.QuestTypesIcons.GetQuestPaperTypeIcon(item.Quest.Type), item.Quest.Title, TooltipBrickElementType.Medium, frame: false);
+			yield return new BrickIconAndNameVM(item.Quest.Title, ConfigRoot.Instance.UIConfig.UIIcons.QuestTypesIcons.GetQuestPaperTypeIcon(item.Quest.Type), frame: false);
 		}
 	}
 }

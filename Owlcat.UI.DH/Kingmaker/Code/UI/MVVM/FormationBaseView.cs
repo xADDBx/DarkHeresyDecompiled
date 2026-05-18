@@ -37,7 +37,7 @@ public class FormationBaseView : View<FormationVM>
 	protected override void OnBind()
 	{
 		m_FadeAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.Formation.FormationOpen.Play();
+		FullScreenSounds.Instance.Formation.Open.Play();
 		m_FormationSelectorPCView.Bind(base.ViewModel.FormationSelector);
 		base.ViewModel.SelectedFormationPresetIndex.Subscribe(OnFormationPresetIndexChanged).AddTo(this);
 		m_FormationLabel.text = UIStrings.Instance.FormationTexts.FormationLabel;
@@ -48,7 +48,7 @@ public class FormationBaseView : View<FormationVM>
 	protected override void OnUnbind()
 	{
 		m_FadeAnimator.DisappearAnimation();
-		UISounds.Instance.Sounds.Formation.FormationClose.Play();
+		FullScreenSounds.Instance.Formation.Close.Play();
 		Game.Instance.RequestPauseUi(isPaused: false);
 		m_FormationSelectorPCView.Unbind();
 	}

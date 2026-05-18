@@ -42,7 +42,7 @@ public class SettingsEntityDropdownGameDifficultyItemConsoleView : View<Settings
 		}
 		if (value)
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 		}
 		if (value)
 		{

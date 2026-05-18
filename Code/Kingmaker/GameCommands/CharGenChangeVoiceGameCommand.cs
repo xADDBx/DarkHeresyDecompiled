@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
@@ -6,31 +7,57 @@ using Kingmaker.Blueprints;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Visual.Sound;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class CharGenChangeVoiceGameCommand : GameCommand, IOwlPackable<CharGenChangeVoiceGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class CharGenChangeVoiceGameCommand : GameCommand, IMemoryPackable<CharGenChangeVoiceGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<CharGenChangeVoiceGameCommand>
 {
+	[Preserve]
+	private sealed class CharGenChangeVoiceGameCommandFormatter : MemoryPackFormatter<CharGenChangeVoiceGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CharGenChangeVoiceGameCommand value)
+		{
+			CharGenChangeVoiceGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref CharGenChangeVoiceGameCommand value)
+		{
+			CharGenChangeVoiceGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref CharGenChangeVoiceGameCommand value)
+		{
+			CharGenChangeVoiceGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref CharGenChangeVoiceGameCommand value)
+		{
+			CharGenChangeVoiceGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly BlueprintUnitAsksListReference m_Blueprint;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "CharGenChangeVoiceGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_Blueprint", typeof(BlueprintUnitAsksListReference))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	private CharGenChangeVoiceGameCommand([NotNull] BlueprintUnitAsksListReference m_blueprint)
 	{
 		if (m_blueprint == null)
@@ -65,6 +92,135 @@ public sealed class CharGenChangeVoiceGameCommand : GameCommand, IOwlPackable<Ch
 		{
 			h.HandleChangeVoice(blueprint);
 		});
+	}
+
+	static CharGenChangeVoiceGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "CharGenChangeVoiceGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_Blueprint", typeof(BlueprintUnitAsksListReference))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<CharGenChangeVoiceGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new CharGenChangeVoiceGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<CharGenChangeVoiceGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<CharGenChangeVoiceGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CharGenChangeVoiceGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(1);
+		writer.WritePackable(in value.m_Blueprint);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref CharGenChangeVoiceGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		BlueprintUnitAsksListReference value2;
+		if (memberCount == 1)
+		{
+			if (value == null)
+			{
+				value2 = reader.ReadPackable<BlueprintUnitAsksListReference>();
+			}
+			else
+			{
+				value2 = value.m_Blueprint;
+				reader.ReadPackable(ref value2);
+			}
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(CharGenChangeVoiceGameCommand), 1, memberCount);
+				return;
+			}
+			value2 = ((value != null) ? value.m_Blueprint : null);
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				_ = 1;
+			}
+			_ = value;
+		}
+		value = new CharGenChangeVoiceGameCommand(value2);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref CharGenChangeVoiceGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Blueprint");
+		writer.WritePackable(value.m_Blueprint);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref CharGenChangeVoiceGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		BlueprintUnitAsksListReference val = ((value != null) ? value.m_Blueprint : null);
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_Blueprint")
+				{
+					val = reader.ReadPackable<BlueprintUnitAsksListReference>();
+					array[0] = true;
+				}
+			}
+			else if (text == "m_Blueprint")
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		_ = value;
+		value = new CharGenChangeVoiceGameCommand(val);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

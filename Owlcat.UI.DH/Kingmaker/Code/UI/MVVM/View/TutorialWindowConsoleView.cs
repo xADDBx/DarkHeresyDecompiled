@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Sound;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
@@ -12,16 +9,16 @@ namespace Kingmaker.Code.UI.MVVM.View;
 public abstract class TutorialWindowConsoleView<TViewModel> : TutorialWindowBaseView<TViewModel> where TViewModel : TutorialWindowVM
 {
 	[SerializeField]
-	protected ConsoleHint m_ToggleHint;
+	protected HintView m_ToggleHint;
 
 	[SerializeField]
-	protected ConsoleHint m_GlossaryHint;
+	protected HintView m_GlossaryHint;
 
 	[SerializeField]
-	protected ConsoleHint m_CloseGlossaryHint;
+	protected HintView m_CloseGlossaryHint;
 
 	[SerializeField]
-	protected ConsoleHint m_EncyclopediaHint;
+	protected HintView m_EncyclopediaHint;
 
 	[SerializeField]
 	protected OwlcatMultiButton m_FirstGlossaryFocus;
@@ -37,12 +34,6 @@ public abstract class TutorialWindowConsoleView<TViewModel> : TutorialWindowBase
 
 	[SerializeField]
 	private float m_MainTextsDefaultConsoleFontSize = 24f;
-
-	protected InputLayer GlossaryInputLayer;
-
-	protected FloatConsoleNavigationBehaviour NavigationBehaviour;
-
-	protected InputLayer InputLayer;
 
 	private IConsoleEntity m_FirstEnt;
 
@@ -71,9 +62,9 @@ public abstract class TutorialWindowConsoleView<TViewModel> : TutorialWindowBase
 		base.ViewModel?.TemporarilyHide();
 	}
 
-	protected void SelectDeselectToggle(InputActionEventData eventData)
+	protected void SelectDeselectToggle()
 	{
-		UISounds.Instance.Sounds.Tutorial.BanTutorialType.Play();
+		ModalWindowsSounds.Instance.Tutorial.BanTutorialType.Play();
 		m_DontShowToggle.Set(!m_DontShowToggle.IsOn.CurrentValue);
 	}
 
@@ -84,47 +75,17 @@ public abstract class TutorialWindowConsoleView<TViewModel> : TutorialWindowBase
 
 	private void CalculateGlossary()
 	{
-		m_Entities.Clear();
-		NavigationBehaviour.Clear();
-		List<IFloatConsoleNavigationEntity> list = new List<IFloatConsoleNavigationEntity>();
-		List<IFloatConsoleNavigationEntity> list2 = new List<IFloatConsoleNavigationEntity>();
-		list = TMPLinkNavigationGenerator.GenerateEntityList(m_TutorialText, m_FirstGlossaryFocus, m_SecondGlossaryFocus, null, OnFocusLink, TooltipHelper.GetLinkTooltipTemplate);
-		if (m_SolutionText.text != null)
-		{
-			list2 = TMPLinkNavigationGenerator.GenerateEntityList(m_SolutionText, m_FirstGlossaryFocus, m_SecondGlossaryFocus, null, OnFocusLink, TooltipHelper.GetLinkTooltipTemplate);
-		}
-		m_FirstEnt = list.FirstOrDefault();
-		foreach (IFloatConsoleNavigationEntity item in list)
-		{
-			m_Entities.Add(item);
-		}
-		if (!list2.Empty())
-		{
-			foreach (IFloatConsoleNavigationEntity item2 in list2)
-			{
-				m_Entities.Add(item2);
-			}
-		}
-		NavigationBehaviour.AddEntities(m_Entities);
-		HasGlossaryPoints.Value = m_Entities.Any();
 	}
 
 	protected void ShowGlossary()
 	{
-		GamePad.Instance.PushLayer(GlossaryInputLayer).AddTo(this);
 		IsGlossaryMode.Value = true;
-		NavigationBehaviour.FocusOnEntityManual(m_FirstEnt);
 	}
 
 	protected void CloseGlossary()
 	{
-		if (GlossaryInputLayer != null)
-		{
-			GamePad.Instance.PopLayer(GlossaryInputLayer);
-		}
 		IsGlossaryMode.Value = false;
 		TooltipHelper.HideTooltip();
-		NavigationBehaviour?.UnFocusCurrentEntity();
 	}
 
 	public override void Show()

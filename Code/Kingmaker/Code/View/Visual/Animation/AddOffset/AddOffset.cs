@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Mechanics.Entities;
+using Kingmaker.View;
 using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.Kingmaker;
@@ -38,19 +39,19 @@ public class AddOffset : MonoBehaviour
 		}
 		if (m_CurrentUnit != null)
 		{
-			m_Obj = m_CurrentUnit.View.ViewTransform.GetComponentInChildren<UnitAnimationManager>().transform;
+			m_Obj = m_CurrentUnit.GetView().transform.GetComponentInChildren<UnitAnimationManager>().transform;
 		}
 		DeterminateRace();
 	}
 
 	private void Update()
 	{
-		if ((bool)m_Obj && (bool)m_CurrentUnit.View)
+		if ((bool)m_Obj && m_CurrentUnit.View != null)
 		{
 			m_Actions = m_CurrentUnit.AnimationManager.ActiveActions;
 			if (m_Actions != null && m_Actions.Count > 0)
 			{
-				m_ActiveAnimationWeight = m_CurrentUnit.AnimationManager.CurrentAction.ActiveAnimation?.GetWeight() ?? 1f;
+				m_ActiveAnimationWeight = m_CurrentUnit.AnimationManager.CurrentAction?.ActiveAnimation?.GetWeight() ?? 1f;
 				DeterminateRaceOfCurrentAnimationClip();
 				AddOffsetMethod();
 			}

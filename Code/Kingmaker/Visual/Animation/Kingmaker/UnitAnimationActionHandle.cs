@@ -49,7 +49,7 @@ public class UnitAnimationActionHandle : AnimationActionHandle, ICloneable
 
 	public WeaponType AttackWeaponType { get; set; }
 
-	public bool IsMainHandAttack { get; set; }
+	public AttackingLimb AttackingLimb { get; set; }
 
 	public AttackAnimationType AttackType { get; set; }
 
@@ -59,15 +59,9 @@ public class UnitAnimationActionHandle : AnimationActionHandle, ICloneable
 
 	public int CustomRpm { get; set; }
 
-	public float BurstAnimationDelay { get; set; }
-
 	public float AttackTargetDistance { get; set; }
 
 	public bool DeathFromProne { get; set; }
-
-	public bool NeedPreparingForShooting { get; set; }
-
-	public bool IsPreparingForShooting { get; set; }
 
 	public bool DoesNotPreventMovement { get; set; }
 

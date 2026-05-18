@@ -1,3 +1,5 @@
+using Kingmaker.Code.View.Bridge.Enums;
+
 namespace Kingmaker.Code.Middleware.Metrics;
 
 public class InterfaceMetricsEvent : MetricsEvent
@@ -11,33 +13,14 @@ public class InterfaceMetricsEvent : MetricsEvent
 	public enum InterfaceTypes
 	{
 		Dialogue,
-		CharScreen,
-		CharGen,
-		LevelUp,
 		Respec,
-		Inventory,
 		BugReport,
-		Detective,
 		LoadingScreen,
 		Tutorial,
-		Encyclopedia
+		CombatLog
 	}
 
 	protected override string Name => "interface";
-
-	public InterfaceMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
-	protected override void AddSpecificEventDefaultParameters()
-	{
-		base.AddSpecificEventDefaultParameters();
-		if (Game.Instance?.LoadedArea?.Blueprint.AssetGuid != null)
-		{
-			AddParam("location_id", Game.Instance?.LoadedArea?.Blueprint.AssetGuid);
-		}
-	}
 
 	public InterfaceMetricsEvent Id(string id)
 	{
@@ -45,33 +28,58 @@ public class InterfaceMetricsEvent : MetricsEvent
 		return this;
 	}
 
-	public InterfaceMetricsEvent InterfaceState(InterfaceStates state)
+	public InterfaceMetricsEvent State(InterfaceStates state)
 	{
 		AddParam("state", state switch
 		{
 			InterfaceStates.Open => "open", 
 			InterfaceStates.Close => "close", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}
 
-	public InterfaceMetricsEvent InterfaceType(InterfaceTypes type)
+	public InterfaceMetricsEvent FullScreenType(FullScreenUIType type)
+	{
+		AddParam("type", type switch
+		{
+			FullScreenUIType.LevelUp => "level_up", 
+			FullScreenUIType.EscapeMenu => "escape_menu", 
+			FullScreenUIType.SaveLoad => "save_load", 
+			FullScreenUIType.Inventory => "inventory", 
+			FullScreenUIType.CharacterScreen => "character_screen", 
+			FullScreenUIType.Journal => "journal", 
+			FullScreenUIType.Reputation => "reputation", 
+			FullScreenUIType.LocalMap => "local_map", 
+			FullScreenUIType.DetectiveJournal => "detective_journal", 
+			FullScreenUIType.Vendor => "vendor", 
+			FullScreenUIType.Settings => "settings", 
+			FullScreenUIType.Credits => "credits", 
+			FullScreenUIType.Encyclopedia => "encyclopedia", 
+			FullScreenUIType.Chargen => "chargen", 
+			FullScreenUIType.TransitionMap => "transition_map", 
+			FullScreenUIType.NewGame => "new_game", 
+			FullScreenUIType.FirstLaunchSettings => "first_launch_settings", 
+			FullScreenUIType.GroupChanger => "group_changer", 
+			FullScreenUIType.Loot => "loot", 
+			FullScreenUIType.OneSlotLoot => "one_slot_loot", 
+			FullScreenUIType.PlayerChest => "player_chest", 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
+		});
+		return this;
+	}
+
+	public InterfaceMetricsEvent Type(InterfaceTypes type)
 	{
 		AddParam("type", type switch
 		{
 			InterfaceTypes.Dialogue => "dialogue", 
-			InterfaceTypes.CharScreen => "char_screen", 
-			InterfaceTypes.CharGen => "char_gen", 
-			InterfaceTypes.LevelUp => "level_up", 
 			InterfaceTypes.Respec => "respec", 
-			InterfaceTypes.Inventory => "inventory", 
 			InterfaceTypes.BugReport => "bug_report", 
-			InterfaceTypes.Detective => "detective", 
 			InterfaceTypes.LoadingScreen => "loading_screen", 
 			InterfaceTypes.Tutorial => "tutorial", 
-			InterfaceTypes.Encyclopedia => "encyclopedia", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			InterfaceTypes.CombatLog => "combat_log", 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
 		return this;
 	}

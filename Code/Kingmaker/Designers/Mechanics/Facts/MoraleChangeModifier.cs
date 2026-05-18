@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -51,6 +52,15 @@ public abstract class MoraleChangeModifier : MechanicEntityFactComponentDelegate
 	public ContextValueModifierWithType AutoRegenModifier = new ContextValueModifierWithType();
 
 	public ModifierDescriptor Descriptor;
+
+	public bool IsRestrictionPassed(IEvalContext factContext, RuleCalculateMoraleChange evt)
+	{
+		if (evt.EventType.HasAnyFlag(EventFilter))
+		{
+			return Restrictions.IsPassed(factContext, evt.Target, null, evt);
+		}
+		return false;
+	}
 
 	protected void TryApply(RuleCalculateMoraleChange evt)
 	{

@@ -116,6 +116,6 @@ public class MainMenuButtonsVM : ViewModel, ISavesUpdatedHandler, ISubscriber, I
 		{
 			e.UpdateTitle();
 		});
-		m_LanguageChanged.Execute();
+		m_LanguageChanged.Execute(Unit.Default);
 	}
 }

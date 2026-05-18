@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.Pathfinding;
 using Kingmaker.Gameplay.Parts;
 using Kingmaker.Pathfinding;
 using Kingmaker.Utility.CodeTimer;
@@ -43,7 +44,7 @@ public static class LosCalculations
 
 		public override string ToString()
 		{
-			return $"{Node} H={Height} ({Factor * 100f}%)";
+			return $"{Node.AsString()} H={Height} ({Factor * 100f}%)";
 		}
 	}
 
@@ -161,6 +162,8 @@ public static class LosCalculations
 
 	private const float HeightThreshold = 1f;
 
+	private const float EffectiveCoverAngleCosine = 0.9659258f;
+
 	private static readonly ThreadLocal<List<DistanceHeight>> DstHeights = new ThreadLocal<List<DistanceHeight>>(() => new List<DistanceHeight>(128));
 
 	public static LosDescription GetCellCoverStatus(GridNodeBase node, int direction)
@@ -218,49 +221,52 @@ public static class LosCalculations
 	{
 		int2 @int = new int2(start.XCoordinateInGrid, start.ZCoordinateInGrid);
 		int2 int2 = new int2(end.XCoordinateInGrid, end.ZCoordinateInGrid);
-		var (num, num2) = GetTangentNeighboursIdx(@int, int2);
-		if (LosCoverPrototype.EnableDiagonalCovers && num >= 0 && num2 >= 0)
+		(int x, int y) tangentNeighboursIdx = GetTangentNeighboursIdx(@int, int2);
+		int item = tangentNeighboursIdx.x;
+		int item2 = tangentNeighboursIdx.y;
+		bool flag = end.Vector3Position().y - start.Vector3Position().y < 1f.Cells().Meters;
+		if (item >= 0 && item2 >= 0)
 		{
-			int direction = ((num != 1) ? ((num2 == 0) ? 7 : 6) : ((num2 == 0) ? 4 : 5));
+			int direction = ((item != 1) ? ((item2 == 0) ? 7 : 6) : ((item2 == 0) ? 4 : 5));
 			LosDescription cellCoverStatus = GetCellCoverStatus(end, direction);
-			int num3 = Math.Max(Math.Abs(int2.y - @int.y), Math.Abs(int2.x - @int.x));
+			int num = Math.Max(Math.Abs(int2.y - @int.y), Math.Abs(int2.x - @int.x));
 			if ((CoverType)cellCoverStatus == CoverType.Cover)
 			{
-				cellCoverStatus = ((num3 < 3) ? cellCoverStatus.WithNewCoverType(CoverType.Obstacle) : GetEffectiveCoverWithRespectToAngle(@int, end, cellCoverStatus, int2));
+				cellCoverStatus = ((num < 3 && flag) ? cellCoverStatus.WithNewCoverType(CoverType.Obstacle) : GetEffectiveCoverWithRespectToAngle(@int, end, cellCoverStatus, int2));
 				if (cellCoverStatus.OriginalCoverType == CoverType.Cover)
 				{
 					return cellCoverStatus;
 				}
 			}
 		}
-		GridNodeBase gridNodeBase = ((num >= 0) ? end.GetNeighbourAlongDirection(num, checkConnectivity: false) : null);
-		GridNodeBase gridNodeBase2 = ((num2 >= 0) ? end.GetNeighbourAlongDirection(num2, checkConnectivity: false) : null);
-		float num4 = ((gridNodeBase != null) ? (gridNodeBase.Vector3Position() - start.Vector3Position()).ToXZ().sqrMagnitude : float.MaxValue);
-		float num5 = ((gridNodeBase2 != null) ? (gridNodeBase2.Vector3Position() - start.Vector3Position()).ToXZ().sqrMagnitude : float.MaxValue);
+		GridNodeBase gridNodeBase = ((item >= 0) ? end.GetNeighbourAlongDirection(item, checkConnectivity: false) : null);
+		GridNodeBase gridNodeBase2 = ((item2 >= 0) ? end.GetNeighbourAlongDirection(item2, checkConnectivity: false) : null);
+		float num2 = ((gridNodeBase != null) ? (gridNodeBase.Vector3Position() - start.Vector3Position()).ToXZ().sqrMagnitude : float.MaxValue);
+		float num3 = ((gridNodeBase2 != null) ? (gridNodeBase2.Vector3Position() - start.Vector3Position()).ToXZ().sqrMagnitude : float.MaxValue);
 		LosDescription coverX = new LosDescription(CoverType.Obstacle);
 		LosDescription coverY = new LosDescription(CoverType.Obstacle);
-		bool flag = Math.Abs(num4 - num5) < 0.1f;
-		if (num >= 0)
+		bool flag2 = Math.Abs(num2 - num3) < 0.1f;
+		if (item >= 0)
 		{
-			LosDescription losDescription = GetCellCoverStatus(end, num);
-			int num6 = Math.Abs(int2.x - @int.x);
-			if ((num6 < 3 && (CoverType)losDescription == CoverType.Cover) || (num6 < 2 && flag))
+			LosDescription losDescription = GetCellCoverStatus(end, item);
+			int num4 = Math.Abs(int2.x - @int.x);
+			if ((flag && num4 < 3 && (CoverType)losDescription == CoverType.Cover) || (num4 < 2 && flag2))
 			{
 				losDescription = losDescription.WithNewCoverType(CoverType.Obstacle);
 			}
 			coverX = losDescription;
 		}
-		if (num2 >= 0)
+		if (item2 >= 0)
 		{
-			LosDescription losDescription2 = GetCellCoverStatus(end, num2);
-			int num7 = Math.Abs(int2.y - @int.y);
-			if ((num7 < 3 && (CoverType)losDescription2 == CoverType.Cover) || (num7 < 2 && flag))
+			LosDescription losDescription2 = GetCellCoverStatus(end, item2);
+			int num5 = Math.Abs(int2.y - @int.y);
+			if ((flag && num5 < 3 && (CoverType)losDescription2 == CoverType.Cover) || (num5 < 2 && flag2))
 			{
 				losDescription2 = losDescription2.WithNewCoverType(CoverType.Obstacle);
 			}
 			coverY = losDescription2;
 		}
-		return SelectCover(coverX, num4, coverY, num5);
+		return SelectCover(coverX, num2, coverY, num3);
 	}
 
 	private static LosDescription SelectCover(LosDescription coverX, float distanceX, LosDescription coverY, float distanceY)
@@ -271,14 +277,11 @@ public static class LosCalculations
 		CoverType originalCoverType2 = coverY.OriginalCoverType;
 		if (Math.Abs(distanceX - distanceY) > 0.1f)
 		{
-			if (coverType == CoverType.Obstacle && distanceX < distanceY)
+			if (distanceX < distanceY)
 			{
 				return coverX;
 			}
-			if (coverType2 == CoverType.Obstacle && distanceY < distanceX)
-			{
-				return coverY;
-			}
+			return coverY;
 		}
 		if (coverType > coverType2)
 		{
@@ -293,10 +296,7 @@ public static class LosCalculations
 
 	private static LosDescription GetEffectiveCoverWithRespectToAngle(int2 originPos, GridNodeBase end, LosDescription coverStatus, int2 endPos)
 	{
-		float num = Mathf.Cos(LosCoverPrototype.CoverHalfAngleInRad);
-		float num2 = Mathf.Cos(LosCoverPrototype.DiminishedCoverHalfAngleInRad);
-		float num3 = Vector2.Dot((coverStatus.ObstacleNode.Vector3Position() - end.Vector3Position()).To2D().normalized, new Vector2(originPos.x - endPos.x, originPos.y - endPos.y).normalized);
-		if (num3 <= num && num3 <= num2)
+		if (Vector2.Dot((coverStatus.ObstacleNode.Vector3Position() - end.Vector3Position()).To2D().normalized, new Vector2(originPos.x - endPos.x, originPos.y - endPos.y).normalized) <= 0.9659258f)
 		{
 			coverStatus = new LosDescription(CoverType.Obstacle);
 		}
@@ -387,10 +387,6 @@ public static class LosCalculations
 				break;
 			}
 		}
-		if (!flag2)
-		{
-			los = GetEffectiveCover(from.First(), to.First());
-		}
 		if (flag)
 		{
 			obstacle = los.Obstacle;
@@ -422,6 +418,33 @@ public static class LosCalculations
 		return false;
 	}
 
+	private static bool HasAdjacentDiagonalMeleeLos([NotNull] GridNodeBase from, [NotNull] GridNodeBase to, out ObstacleInfo obstacle)
+	{
+		obstacle = default(ObstacleInfo);
+		if (!from.GetDirection(to).IsDiagonal())
+		{
+			return false;
+		}
+		int num = to.XCoordinateInGrid - from.XCoordinateInGrid;
+		int num2 = to.ZCoordinateInGrid - from.ZCoordinateInGrid;
+		if (Math.Abs(num) != 1 || Math.Abs(num2) != 1)
+		{
+			return false;
+		}
+		GridNodeDirection direction = ((num > 0) ? GridNodeDirection.E : GridNodeDirection.W);
+		GridNodeDirection direction2 = ((num2 > 0) ? GridNodeDirection.N : GridNodeDirection.S);
+		GridObstacleCache obstacles = AdditionalGraphDataManager.Instance.GetGraphData(from.GraphIndex).Obstacles;
+		GridObstacleCache.Entry obstacle2 = obstacles.GetObstacle(from, direction);
+		GridObstacleCache.Entry obstacle3 = obstacles.GetObstacle(from, direction2);
+		bool num3 = obstacle2.Exists && obstacle2.Type >= CoverType.LosBlocker;
+		bool flag = obstacle3.Exists && obstacle3.Type >= CoverType.LosBlocker;
+		if (num3 && flag)
+		{
+			return false;
+		}
+		return true;
+	}
+
 	private static bool GetDirectLoSInternal([NotNull] GridNodeBase from, [NotNull] GridNodeBase to, bool isMelee, out ObstacleInfo obstacle)
 	{
 		GridGraph obj = (GridGraph)from.Graph;
@@ -435,6 +458,10 @@ public static class LosCalculations
 		{
 			obstacle = default(ObstacleInfo);
 			return false;
+		}
+		if (isMelee && HasAdjacentDiagonalMeleeLos(from, to, out obstacle))
+		{
+			return true;
 		}
 		return GetOneLineDirectLoSInternal(from, to, out obstacle);
 	}
@@ -477,7 +504,7 @@ public static class LosCalculations
 		float gridCellSize = GraphParamsMechanicsCache.GridCellSize;
 		Bounds bounds = new Bounds(vector, new Vector3(gridCellSize, 0f, gridCellSize));
 		Ray ray = new Ray(vector, normalized);
-		if (bounds.IntersectRay(ray, out var distance))
+		if (bounds.IntersectRay(ray, out float distance))
 		{
 			return node.Vector3Position() + normalized * Math.Abs(distance) * 0.99f;
 		}

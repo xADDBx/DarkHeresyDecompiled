@@ -28,10 +28,6 @@ public class InventorySelectorWindowConsoleView : SelectorWindowConsoleView<Equi
 		{
 			CanEquip.Value = !value && TakeControllableCharacter();
 		}).AddTo(this);
-		m_ConsoleHintsWidget.BindHint(m_InputLayer.AddButton(delegate
-		{
-			Unequip();
-		}, 11, m_SelectedEquipped), UIStrings.Instance.ContextMenu.TakeOff).AddTo(this);
 	}
 
 	protected override void OnUnbind()
@@ -44,23 +40,9 @@ public class InventorySelectorWindowConsoleView : SelectorWindowConsoleView<Equi
 		}
 	}
 
-	protected override void EntityFocused(IConsoleEntity entity)
-	{
-		base.EntityFocused(entity);
-		RefreshSelectedState(entity);
-		if (m_UnequippedItemTooltipCo != null)
-		{
-			StopCoroutine(m_UnequippedItemTooltipCo);
-		}
-	}
-
 	protected void Unequip()
 	{
 		InventorySelectorWindowVM?.Unequip();
-		if (m_NavigationBehaviour.DeepestNestedFocus is EquipSelectionSlotConsoleView equipSelectionSlotConsoleView)
-		{
-			m_UnequippedItemTooltipCo = StartCoroutine(UpdateUnequippedItemTooltipCo(equipSelectionSlotConsoleView.EquipVM.Item));
-		}
 	}
 
 	private void RefreshSelectedState(IConsoleEntity entity)
@@ -81,11 +63,6 @@ public class InventorySelectorWindowConsoleView : SelectorWindowConsoleView<Equi
 		while (item.Owner != null)
 		{
 			yield return null;
-		}
-		if (m_NavigationBehaviour.DeepestNestedFocus is EquipSelectionSlotConsoleView equipSelectionSlotConsoleView && equipSelectionSlotConsoleView.EquipVM.Item == item)
-		{
-			equipSelectionSlotConsoleView.EquipVM.RefreshTooltip(forceUpdate: true);
-			EntityFocused(equipSelectionSlotConsoleView);
 		}
 	}
 }

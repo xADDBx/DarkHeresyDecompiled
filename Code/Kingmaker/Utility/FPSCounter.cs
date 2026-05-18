@@ -1,6 +1,6 @@
 using System;
 using Kingmaker.Controllers.Clicks;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Pathfinding;
 using Kingmaker.Utility.BuildModeUtils;
 using Owlcat.Core.Overlays;
@@ -46,11 +46,21 @@ public class FPSCounter : MonoBehaviour
 
 	private float m_MSMedian;
 
-	private int m_TotalUnits;
-
-	private int m_CombatUnits;
-
 	private long m_MaxSystemMemory;
+
+	private double m_StatAvgFrameMs;
+
+	private double m_StatPeakFrameMs;
+
+	private double m_StatAvgPerCallMs;
+
+	private int m_StatFrameCount;
+
+	private double m_StatTotalFrameMs;
+
+	private long m_StatTotalCalls;
+
+	private double m_StatTotalTimeMs;
 
 	private void Start()
 	{
@@ -72,7 +82,10 @@ public class FPSCounter : MonoBehaviour
 		{
 			MemoryUsageHelper.MemoryStatsProvider stats = MemoryUsageHelper.Stats;
 			return (Current: stats.SystemMemoryUsed, Max: stats.SystemMemoryLimit, Peak: stats.SystemMemoryUsedPeak);
-		}, systemMemoryWarnOffsetMb * 1024 * 1024), new Label("NODE INDEX", GetNodeUnderPointerInfo));
+		}, systemMemoryWarnOffsetMb * 1024 * 1024), new Label("NODE INDEX", GetNodeUnderPointerInfo)
+		{
+			AddSeparator = true
+		}, new Label("STAT AVG", () => $"{m_StatAvgFrameMs:F3} ms/frame"), new Label("STAT PEAK", () => $"{m_StatPeakFrameMs:F3} ms/frame"), new Label("STAT AVG/CALL", () => $"{m_StatAvgPerCallMs:F4} ms/call"));
 		OverlayService.Instance?.RegisterOverlay(o);
 		m_MaxSystemMemory = MemoryUsageHelper.Stats.SystemMemoryLimit;
 	}
@@ -92,25 +105,6 @@ public class FPSCounter : MonoBehaviour
 			}
 			return (num >= num2 - warnOffset) ? Label.Severity.Warning : Label.Severity.Info;
 		});
-	}
-
-	private string GetSystemUsedMemoryText()
-	{
-		return MemString(MemoryUsageHelper.Stats.SystemMemoryUsed) + " / " + MemString(m_MaxSystemMemory);
-	}
-
-	private Label.Severity GetSystemUsedMemorySeverity()
-	{
-		long systemMemoryUsed = MemoryUsageHelper.Stats.SystemMemoryUsed;
-		if (systemMemoryUsed >= m_MaxSystemMemory)
-		{
-			return Label.Severity.Error;
-		}
-		if (systemMemoryUsed < m_MaxSystemMemory - systemMemoryWarnOffsetMb * 1024 * 1024)
-		{
-			return Label.Severity.Info;
-		}
-		return Label.Severity.Warning;
 	}
 
 	private string GetNodeUnderPointerInfo()
@@ -135,6 +129,20 @@ public class FPSCounter : MonoBehaviour
 
 	private void Update()
 	{
+		MechanicActor.FlushFrameCounters(out var callCount, out var totalMs);
+		if (callCount > 0)
+		{
+			m_StatFrameCount++;
+			m_StatTotalFrameMs += totalMs;
+			m_StatTotalCalls += callCount;
+			m_StatTotalTimeMs += totalMs;
+			m_StatAvgFrameMs = m_StatTotalFrameMs / (double)m_StatFrameCount;
+			if (totalMs > m_StatPeakFrameMs)
+			{
+				m_StatPeakFrameMs = totalMs;
+			}
+			m_StatAvgPerCallMs = ((m_StatTotalCalls > 0) ? (m_StatTotalTimeMs / (double)m_StatTotalCalls) : 0.0);
+		}
 		m_TickCount++;
 		m_DeltaTimeAccumulator += Time.unscaledDeltaTime;
 		if (m_DeltaTimeAccumulator > 1f / (float)updatesPerSecond)
@@ -175,19 +183,16 @@ public class FPSCounter : MonoBehaviour
 				m_FPSChecksCount = 0;
 				m_FPSTotal = 0f;
 				m_MSTotal = 0f;
+				m_StatAvgFrameMs = 0.0;
+				m_StatPeakFrameMs = 0.0;
+				m_StatAvgPerCallMs = 0.0;
+				m_StatFrameCount = 0;
+				m_StatTotalFrameMs = 0.0;
+				m_StatTotalCalls = 0L;
+				m_StatTotalTimeMs = 0.0;
 				Clear = false;
 			}
 			m_FPSChecksCount++;
-			m_TotalUnits = 0;
-			m_CombatUnits = 0;
-			foreach (AbstractUnitEntity allUnit in Game.Instance.EntityPools.AllUnits)
-			{
-				m_TotalUnits++;
-				if (allUnit.IsInCombat)
-				{
-					m_CombatUnits++;
-				}
-			}
 		}
 		if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.R))
 		{
@@ -195,7 +200,14 @@ public class FPSCounter : MonoBehaviour
 		}
 		if (Input.GetKeyDown(KeyCode.F11))
 		{
-			OverlayService.Instance?.Next();
+			if (Input.GetKey(KeyCode.LeftControl) && Input.GetKey(KeyCode.LeftShift))
+			{
+				Clear = true;
+			}
+			else
+			{
+				OverlayService.Instance?.Next();
+			}
 		}
 	}
 }

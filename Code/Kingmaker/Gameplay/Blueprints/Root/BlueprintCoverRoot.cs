@@ -26,8 +26,14 @@ public sealed class BlueprintCoverRoot : BlueprintScriptableObject
 	public Material InactiveCoverMaterial;
 
 	[ValidateNotNull]
+	public Material InvisibleCoverMaterial;
+
+	[ValidateNotNull]
 	public Material LosBlockerMaterial;
 
 	[ValidateNotNull]
 	public Material InactiveLosBlockerMaterial;
+
+	[ValidateNotNull]
+	public Material InvisibleLosBlockerMaterial;
 }

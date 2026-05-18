@@ -1,5 +1,4 @@
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Buffs;
 using Owlcat.Runtime.Core.Utility;
@@ -16,17 +15,17 @@ public class ContextActionRemoveSelf : ContextAction
 
 	protected override void RunAction()
 	{
-		if (SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.Fact is Buff buff && buff.Blueprint == base.Owner)
+		if (base.Context.Fact is Buff buff && buff.Blueprint == base.Owner)
 		{
 			buff.Remove();
 			return;
 		}
-		AreaEffectEntity current = SimpleContextData<AreaEffectEntity, MechanicsContext.Scope.AreaEffect>.Current;
-		if (current != null && current.Blueprint == base.Owner)
+		AreaEffectEntity areaEffect = base.Context.AreaEffect;
+		if (areaEffect != null && areaEffect.Blueprint == base.Owner)
 		{
-			current.ForceEnd();
+			areaEffect.ForceEnd();
 			return;
 		}
-		Element.LogError(this, "RemoveSelf can only apply to buffs or area effects! Context.AssociatedBlueprint = {0}", base.Context?.Blueprint);
+		Element.LogError(this, "RemoveSelf can only apply to buffs or area effects! Context.AssociatedBlueprint = {0}", base.Context.Blueprint);
 	}
 }

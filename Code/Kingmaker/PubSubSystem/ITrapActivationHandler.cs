@@ -7,5 +7,5 @@ namespace Kingmaker.PubSubSystem;
 
 public interface ITrapActivationHandler : ISubscriber<IBaseUnitEntity>, ISubscriber
 {
-	void HandleTrapActivation(TrapObjectView trap);
+	void HandleTrapActivation(TrapObjectData trap);
 }

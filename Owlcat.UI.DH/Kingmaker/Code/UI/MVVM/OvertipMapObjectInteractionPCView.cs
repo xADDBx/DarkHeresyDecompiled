@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -71,7 +72,7 @@ public class OvertipMapObjectInteractionPCView : OvertipMapObjectInteractionView
 		{
 			base.ViewModel.MapObjectEntity.View.SetGlobalHighlight(value: true);
 			base.ViewModel.SetMouseOverUI(isOverUI: true);
-			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View, isHighlighted: true);
+			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View.AsMapObjectView(), isHighlighted: true);
 			EventBus.RaiseEvent((IMapObjectEntity)base.ViewModel.MapObjectEntity, (Action<IDirectInteractionObjectUIHandler>)delegate(IDirectInteractionObjectUIHandler h)
 			{
 				h.HandleObjectInteract(isOn: true);
@@ -85,7 +86,7 @@ public class OvertipMapObjectInteractionPCView : OvertipMapObjectInteractionView
 		{
 			base.ViewModel.MapObjectEntity.View.SetGlobalHighlight(value: false);
 			base.ViewModel.SetMouseOverUI(isOverUI: false);
-			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View, isHighlighted: false);
+			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View.AsMapObjectView(), isHighlighted: false);
 			EventBus.RaiseEvent((IMapObjectEntity)base.ViewModel.MapObjectEntity, (Action<IDirectInteractionObjectUIHandler>)delegate(IDirectInteractionObjectUIHandler h)
 			{
 				h.HandleObjectInteract(isOn: false);

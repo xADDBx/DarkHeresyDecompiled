@@ -1,10 +1,15 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.ContextContract;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
+using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
 
@@ -13,7 +18,8 @@ namespace Kingmaker.Gameplay.Components;
 [Serializable]
 [TypeId("1c8015cd817446dfafe7f9b1421512e6")]
 [ClassInfoBox("Модифицирует шанс атаки, защиты и скилл чеков")]
-public abstract class RollDifficultyModifier : MechanicEntityFactComponentDelegate
+[SetsContextScope(ContextEntryPointKind.BuffComponentRulebookHandler)]
+public abstract class RollDifficultyModifier : MechanicEntityFactComponentDelegate, IStatModifier
 {
 	public RestrictionCalculator Restrictions = new RestrictionCalculator();
 
@@ -24,6 +30,34 @@ public abstract class RollDifficultyModifier : MechanicEntityFactComponentDelega
 		Enabled = true
 	};
 
+	[InfoBox("Тип зависимостей модификатора, должен соответствовать рестрикшенам. None - рестрикшенов нет, OwnerStat - рестрикшен на стат юнита получающего модификатор, External - любые другие рестрикшены.")]
+	public StatRestrictionDependency DependencyType;
+
+	[InfoBox("От каких статов юнита получающего модификатор зависит этот модификатор. Нужен для DependencyType = OwnerStat.")]
+	[ShowIf("ShowStatDependencies")]
+	public StatType[] StatDependencies = new StatType[0];
+
+	protected abstract StatModifierScope Scope { get; }
+
+	StatModifierScope IStatModifier.Scope => Scope;
+
+	private bool ShowStatDependencies
+	{
+		get
+		{
+			if (DependencyType != StatRestrictionDependency.OwnerStat)
+			{
+				StatType[] statDependencies = StatDependencies;
+				if (statDependencies != null)
+				{
+					return statDependencies.Length > 0;
+				}
+				return false;
+			}
+			return true;
+		}
+	}
+
 	protected void TryApply(RulebookEvent rule)
 	{
 		if (!Restrictions.IsPassed(base.Context, null, null, rule))
@@ -32,22 +66,32 @@ public abstract class RollDifficultyModifier : MechanicEntityFactComponentDelega
 		}
 		if (!(rule is RuleCalculateHitChances ruleCalculateHitChances))
 		{
-			if (!(rule is RuleCalculateDefence ruleCalculateDefence))
+			if (!(rule is RuleCalculateSkillCheck ruleCalculateSkillCheck))
 			{
-				if (!(rule is RulePerformSkillCheck rulePerformSkillCheck))
-				{
-					throw new ArgumentOutOfRangeException();
-				}
-				Modifier.TryApply(rulePerformSkillCheck.DifficultyModifiers, base.Fact, Descriptor);
+				throw new ArgumentOutOfRangeException();
 			}
-			else
-			{
-				Modifier.TryApply(ruleCalculateDefence.DefenceValueModifiers, base.Fact, Descriptor);
-			}
+			Modifier.TryApply(ruleCalculateSkillCheck.DifficultyModifiers, base.Fact, Descriptor);
 		}
 		else
 		{
 			Modifier.TryApply(ruleCalculateHitChances.Modifiers, base.Fact, Descriptor);
+		}
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		if (stat == StatType.Defence && Restrictions.IsPassed(base.Context, in context))
+		{
+			Modifier.TryApply(collector.Modifiers, base.Fact, Descriptor);
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		if (Modifier.Enabled)
+		{
+			StatType[] dependsOnStats = ((DependencyType == StatRestrictionDependency.OwnerStat) ? StatDependencies : null);
+			entries.Add(AffectedStatEntry.Create(StatType.Defence, Restrictions.Empty, dependsOnStats));
 		}
 	}
 }

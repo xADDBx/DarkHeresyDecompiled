@@ -1,4 +1,3 @@
-using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Designers;
 using Kingmaker.View.Spawners;
@@ -16,12 +15,7 @@ internal class RespawnNewUnit : PlayerUpgraderOnlyAction
 
 	protected override void RunActionOverride()
 	{
-		UnitSpawnerBase unitSpawner = GameHelper.GetUnitSpawner(Spawner);
-		if (unitSpawner is CompanionSpawner)
-		{
-			throw new Exception("CompanionSpawner is not allowed in RespawnNewUnit action");
-		}
-		unitSpawner.ForceReSpawn();
+		GameHelper.GetUnitSpawner(Spawner).ForceReSpawn();
 	}
 
 	public override string GetCaption()

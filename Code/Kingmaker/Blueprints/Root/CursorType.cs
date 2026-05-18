@@ -24,5 +24,6 @@ public enum CursorType
 	DiagonalLeft,
 	DiagonalRight,
 	Detective,
-	LootTrashMode
+	LootTrashMode,
+	Invisible
 }

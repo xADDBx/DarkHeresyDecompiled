@@ -93,7 +93,7 @@ public class UnitAsksComponent : BlueprintComponent, IUnlockableFlagReference
 	public Bark WeAreLostByMorale = new Bark();
 
 	[Tooltip("Реакция юнита на то, что ему уроном сбили броню")]
-	public Bark ArmorBroken = new Bark();
+	public Bark BrokenArmour = new Bark();
 
 	[Tooltip("Реакция члена пати на то, что для него стала доступна Study в улике")]
 	public Bark DetectiveCanStudyClue = new Bark();
@@ -127,30 +127,29 @@ public class UnitAsksComponent : BlueprintComponent, IUnlockableFlagReference
 	{
 		ask = type switch
 		{
-			AskType.Aggro => Aggro, 
+			AskType.AggroBattleCry => Aggro, 
 			AskType.Pain => Pain, 
 			AskType.Death => Death, 
 			AskType.Unconscious => Unconscious, 
 			AskType.CriticalHit => CriticalHit, 
 			AskType.TraumaApplied => TraumaApplied, 
 			AskType.Order => Order, 
-			AskType.Selected => Selected, 
+			AskType.Select => Selected, 
 			AskType.CantDo => CantDo, 
-			AskType.CheckSuccess => CheckSuccess, 
-			AskType.CheckFail => CheckFail, 
+			AskType.CheckSuccessful => CheckSuccess, 
+			AskType.CheckFailed => CheckFail, 
 			AskType.Discovery => Discovery, 
-			AskType.OrderMove => OrderMove, 
-			AskType.OrderMoveExploration => OrderMoveExploration, 
+			AskType.MoveInCombat => OrderMove, 
+			AskType.MoveInExploration => OrderMoveExploration, 
 			AskType.EnemyDeath => EnemyDeath, 
-			AskType.PartyMemberUnconscious => PartyMemberUnconscious, 
+			AskType.PartyMemberUnconsciousGeneral => PartyMemberUnconscious, 
 			AskType.PsychicPhenomena => PsychicPhenomena, 
-			AskType.PerilsOfTheWarp => PerilsOfTheWarp, 
-			AskType.HealingAlly => HealingAlly, 
-			AskType.BeingHealed => BeingHealed, 
+			AskType.SupportAnAlly => HealingAlly, 
+			AskType.BeingSupported => BeingHealed, 
 			AskType.EnemyMassDeath => EnemyMassDeath, 
 			AskType.FriendlyFire => FriendlyFire, 
-			AskType.MoraleBroken => MoraleBroken, 
-			AskType.MoraleHeroic => MoraleHeroic, 
+			AskType.BrokenMorale => MoraleBroken, 
+			AskType.HeroicMorale => MoraleHeroic, 
 			AskType.ChannellingOn => ChannellingOn, 
 			AskType.ChannellingOff => ChannellingOff, 
 			AskType.ChannellingReaction => ChannellingReaction, 
@@ -158,15 +157,15 @@ public class UnitAsksComponent : BlueprintComponent, IUnlockableFlagReference
 			AskType.WeAreLoosing => WeAreLoosing, 
 			AskType.WeAreWinning => WeAreWinning, 
 			AskType.WeAreLostByMorale => WeAreLostByMorale, 
-			AskType.ArmorBroken => ArmorBroken, 
-			AskType.DetectiveCanStudyClue => DetectiveCanStudyClue, 
-			AskType.DetectiveNewConclusionAvailable => DetectiveNewConclusionAvailable, 
+			AskType.BrokenArmour => BrokenArmour, 
+			AskType.ClueCanBeProcessed => DetectiveCanStudyClue, 
+			AskType.ConclusionAvailable => DetectiveNewConclusionAvailable, 
 			AskType.DetectiveSearch => DetectiveSearch, 
-			AskType.DetectiveTracesFound => DetectiveTracesFound, 
+			AskType.TracesFound => DetectiveTracesFound, 
 			AskType.DetectiveReminder => DetectiveReminder, 
-			AskType.DetectiveReconstructionFind => DetectiveReconstructionFind, 
+			AskType.DetectiveReconstructionFound => DetectiveReconstructionFind, 
 			AskType.DetectiveReconstructionReady => DetectiveReconstructionReady, 
-			AskType.DetectiveSignalFound => DetectiveSignalFound, 
+			AskType.SignalFound => DetectiveSignalFound, 
 			_ => null, 
 		};
 		return ask != null;
@@ -212,7 +211,7 @@ public class UnitAsksComponent : BlueprintComponent, IUnlockableFlagReference
 		list.Add(WeAreLoosing);
 		list.Add(WeAreWinning);
 		list.Add(WeAreLostByMorale);
-		list.Add(ArmorBroken);
+		list.Add(BrokenArmour);
 		list.Add(DetectiveCanStudyClue);
 		list.Add(DetectiveNewConclusionAvailable);
 		list.Add(DetectiveSearch);

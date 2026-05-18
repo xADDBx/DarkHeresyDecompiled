@@ -7,38 +7,25 @@ namespace Kingmaker.Blueprints.Root.Strings;
 [Serializable]
 public class UITextAlignment
 {
-	[Header("Alignments")]
-	public LocalizedString Xenophilia;
-
-	public LocalizedString Xanthite;
-
-	public LocalizedString Monodominance;
-
-	public LocalizedString Torian;
-
 	[Header("Alignment Ranks")]
-	public LocalizedString SoulMarkRankTierNone;
+	public LocalizedString AlignmentRankTierNone;
 
-	public LocalizedString AlignmentMarkRankTier1;
+	public LocalizedString AlignmentRankTier1;
 
-	public LocalizedString AlignmentMarkRankTier2;
+	public LocalizedString AlignmentRankTier2;
 
-	public LocalizedString AlignmentMarkRankTier3;
+	public LocalizedString AlignmentRankTier3;
 
-	public LocalizedString AlignmentMarkRankTier4;
+	public LocalizedString AlignmentRankTier4;
 
-	public LocalizedString AlignmentMarkRankTier5;
+	public LocalizedString AlignmentRankTier5;
 
-	[Header("Conviction")]
-	public LocalizedString RadicalTitle;
+	[Header("Tooltip")]
+	public LocalizedString AlignmentRankTitle;
 
-	public LocalizedString RadicalDescription;
+	public LocalizedString AlignmentMayBeLocked;
 
-	public LocalizedString PuritanTitle;
+	public LocalizedString AlignmentIsLockedOpposite;
 
-	public LocalizedString PuritanDescription;
-
-	public LocalizedString CurrentConvictionTitle;
-
-	public LocalizedString CurrentConvictionDescription;
+	public LocalizedString AlignmentIsLockedMainChoosed;
 }

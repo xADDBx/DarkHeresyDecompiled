@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Controllers.Units;
@@ -17,14 +19,12 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Newtonsoft.Json;
 using Owlcat.UI;
 using OwlPack.Runtime;
-using StateHasher.Core;
-using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MechanicActionBarSlotItem : MechanicActionBarSlot, IHashable, IOwlPackable<MechanicActionBarSlotItem>
+public class MechanicActionBarSlotItem : MechanicActionBarSlot, IOwlPackable<MechanicActionBarSlotItem>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -195,6 +195,11 @@ public class MechanicActionBarSlotItem : MechanicActionBarSlot, IHashable, IOwlP
 		return Item;
 	}
 
+	public override TooltipBaseTemplate GetTooltipTemplate()
+	{
+		return CombatLogTooltipService.CreateTooltipTemplateItem(Item);
+	}
+
 	protected override bool CanUseIfTurnBased()
 	{
 		if (!base.CanUseIfTurnBased())
@@ -204,19 +209,22 @@ public class MechanicActionBarSlotItem : MechanicActionBarSlot, IHashable, IOwlP
 		return Ability.Data != null;
 	}
 
-	public override TooltipBaseTemplate GetTooltipTemplate()
+	protected override string WarningMessage(Vector3 castPosition)
 	{
-		return CombatLogTooltipService.CreateTooltipTemplateItem(Item);
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		Hash128 val2 = ClassHasher<ItemEntityUsable>.GetHash128(Item);
-		result.Append(ref val2);
-		return result;
+		if (Ability?.Data == null)
+		{
+			return LocalizedTexts.Instance.Reasons.UnavailableGeneric;
+		}
+		if (!Ability.Data.HasEnoughActionPoint)
+		{
+			return UIStrings.Instance.TurnBasedTexts.NotEnoughActionsMessage;
+		}
+		string unavailableReason = Ability.Data.GetUnavailableReason(castPosition);
+		if (string.IsNullOrEmpty(unavailableReason))
+		{
+			return LocalizedTexts.Instance.Reasons.UnavailableGeneric;
+		}
+		return unavailableReason;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

@@ -16,6 +16,8 @@ public class ModificationSlotBaseView : View<ModificationSlotVM>, IBeginDragHand
 
 	private const string EQUIPPED = "Equipped";
 
+	private const string SUITED = "Suited";
+
 	[SerializeField]
 	protected TextMeshProUGUI m_ModificationName;
 
@@ -50,8 +52,12 @@ public class ModificationSlotBaseView : View<ModificationSlotVM>, IBeginDragHand
 		{
 			UpdateSlotVisual();
 		}).AddTo(this);
+		base.ViewModel.IsSuitedAbilityHover.Subscribe(delegate
+		{
+			UpdateSlotVisual();
+		}).AddTo(this);
 		base.ViewModel.IsSuitable.Subscribe(base.gameObject.SetActive).AddTo(this);
-		m_ModificationButton.SetTooltip(base.ViewModel.Tooltip);
+		m_ModificationButton.SetTooltip(base.ViewModel.Tooltip).AddTo(this);
 	}
 
 	public void OnBeginDrag(PointerEventData eventData)
@@ -76,6 +82,6 @@ public class ModificationSlotBaseView : View<ModificationSlotVM>, IBeginDragHand
 
 	private void UpdateSlotVisual()
 	{
-		m_ModificationButton.SetActiveLayer(base.ViewModel.IsSelected.CurrentValue ? "Selected" : (base.ViewModel.IsEquipped.CurrentValue ? "Equipped" : "Normal"));
+		m_ModificationButton.SetActiveLayer(base.ViewModel.IsSuitedAbilityHover.CurrentValue ? "Suited" : (base.ViewModel.IsSelected.CurrentValue ? "Selected" : (base.ViewModel.IsEquipped.CurrentValue ? "Equipped" : "Normal")));
 	}
 }

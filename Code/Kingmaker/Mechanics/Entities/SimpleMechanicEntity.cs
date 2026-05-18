@@ -5,7 +5,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.View.Mechanics.Entities;
@@ -41,21 +40,17 @@ public class SimpleMechanicEntity : MechanicEntity, IHashable, IOwlPackable<Simp
 		}
 	};
 
-	public SimpleMechanicEntity(JsonConstructorMark _)
-		: base(_)
-	{
-	}
-
 	public SimpleMechanicEntity(string uniqueId, bool isInGame, BlueprintMechanicEntityFact blueprint)
 		: base(uniqueId, isInGame, blueprint)
 	{
 	}
 
-	protected SimpleMechanicEntity()
+	public SimpleMechanicEntity(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return new GameObject("simple-entity-" + base.UniqueId).AddComponent<SimpleMechanicEntityView>();
 	}
@@ -70,7 +65,7 @@ public class SimpleMechanicEntity : MechanicEntity, IHashable, IOwlPackable<Simp
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		SimpleMechanicEntity source = new SimpleMechanicEntity();
+		SimpleMechanicEntity source = new SimpleMechanicEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<SimpleMechanicEntity, TPossiblyBase>(ref source);
 	}
 

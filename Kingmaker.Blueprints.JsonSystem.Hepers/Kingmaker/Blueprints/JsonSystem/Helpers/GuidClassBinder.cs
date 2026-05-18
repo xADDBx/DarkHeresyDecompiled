@@ -41,6 +41,11 @@ public class GuidClassBinder : ISerializationBinder
 		throw new ArgumentException("Type " + serializedType.FullName + " cannot be resolved as GUID", "serializedType");
 	}
 
+	public bool TryBindToName(Type serializedType, out string typeName)
+	{
+		return TypeToGuidCache.TryGetValue(serializedType, out typeName);
+	}
+
 	private static string GetGuidOfType(Type type)
 	{
 		if (!type.CustomAttributes.Any((CustomAttributeData v) => v.AttributeType == typeof(TypeIdAttribute)))

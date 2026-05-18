@@ -6,7 +6,7 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -21,7 +21,7 @@ using UnityEngine;
 namespace Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISubscriber, IHashable, IOwlPackable<DetectiveTraceEntity>
+public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISubscriber, ITurnBasedModeHandler, IHashable, IOwlPackable<DetectiveTraceEntity>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -76,58 +76,71 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 
 	public InteractionPartDetectiveTrace? Interaction => GetOptional<InteractionPartDetectiveTrace>();
 
-	public new DetectiveTraceView View => (DetectiveTraceView)base.View;
+	public string DebugName => base.View?.gameObject?.name ?? base.UniqueId;
+
+	public new IDetectiveTraceView View => (IDetectiveTraceView)base.View;
+
+	public new IDetectiveTraceConfig Config => (IDetectiveTraceConfig)base.Config;
 
 	public override float2 FoWPosition
 	{
 		get
 		{
-			Vector3 position = View.PointsData.Last().Position;
+			Vector3 position = Config.PointsData.Last().Position;
 			return new float2(position.x, position.z);
 		}
 	}
 
-	public DetectiveTraceEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
+	public string DebugDump()
+	{
+		return $"trace {DebugName} status={m_Status} interactionEnabled={Interaction?.Enabled}" + $" hideInteract={m_HideInteract} hideIfFollowed={m_HideInteractionIfFollowed}" + $" hideIfDeadEnd={m_HideInteractionIfFollowedToDeadEnd} trueEnd={m_TrueEnd}" + " continuationStatuses=[" + string.Join(",", m_Continuations.Select((EntityRef<DetectiveTraceEntity> c) => c.Entity?.Status.ToString() ?? "null")) + "] parentStatuses=[" + string.Join(",", m_Parents.Select<EntityRef<DetectiveTraceEntity>, string>((EntityRef<DetectiveTraceEntity> p) => p.Entity?.Status.ToString() ?? "null")) + "] root=" + ((m_Root.Entity != null) ? "yes" : "no");
+	}
+
+	public DetectiveTraceEntity(IDetectiveTraceConfig config)
+		: base(config)
 	{
 	}
 
-	[JsonConstructor]
-	public DetectiveTraceEntity(JsonConstructorMark _)
+	public DetectiveTraceEntity(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	protected DetectiveTraceEntity()
-	{
-	}
-
-	protected override IEntityViewBase? CreateViewForData()
+	protected override IEntityView? CreateViewForData()
 	{
 		return null;
 	}
 
+	protected override void OnViewDidAttach()
+	{
+		base.OnViewDidAttach();
+		if (Config != null)
+		{
+			FirstStepPosition = Config.PointsData[0].Position;
+			IReadOnlyList<DetectiveTracePoint> pointsData = Config.PointsData;
+			Vector3 position2 = (LastStepPosition = pointsData[pointsData.Count - 1].Position);
+			base.Position = position2;
+			m_TrueEnd = Config.TrueEnd;
+			m_HideInteract = Config.HideInteract;
+			m_HideInteractionIfFollowed = Config.HideInteractionIfFollowed;
+			m_HideInteractionIfFollowedToDeadEnd = Config.HideInteractionIfFollowedToDeadEnd;
+			if (Config.Found && m_Status == DetectiveTraceStatus.None)
+			{
+				Found(initial: true);
+			}
+			SetInteractionEnabled(m_Status == DetectiveTraceStatus.Found);
+		}
+	}
+
 	void IAreaActivationHandler.OnAreaActivated()
 	{
-		FirstStepPosition = View.PointsData[0].Position;
-		List<DetectiveTraceView.DetectiveTracePoint> pointsData = View.PointsData;
-		Vector3 position2 = (LastStepPosition = pointsData[pointsData.Count - 1].Position);
-		base.Position = position2;
-		m_TrueEnd = View.TrueEnd;
-		m_HideInteract = View.HideInteract;
-		m_HideInteractionIfFollowed = View.HideInteractionIfFollowed;
-		m_HideInteractionIfFollowedToDeadEnd = View.HideInteractionIfFollowedToDeadEnd;
-		foreach (DetectiveTraceView continuation in View.Continuations)
+		foreach (DetectiveTraceEntity item in Config.Continuations.Dereference().NotNull())
 		{
-			continuation.Data.m_Parents.Add(new EntityRef<DetectiveTraceEntity>(this));
+			item.m_Parents.Add(new EntityRef<DetectiveTraceEntity>(this));
 		}
-		m_Continuations = View.Continuations.Select((DetectiveTraceView i) => new EntityRef<DetectiveTraceEntity>(i.Data)).ToArray();
-		if (View.Found && m_Status == DetectiveTraceStatus.None)
-		{
-			Found(initial: true);
-		}
-		SetInteractionEnabled(m_Status == DetectiveTraceStatus.Found);
-		View.OnStatusLoad();
+		m_Continuations = Config.Continuations.ToArray();
+		View.OnStatusLoad(Game.Instance.Controllers.TurnController.InCombat);
+		PFLog.UI.Log("trace {0} OnAreaActivated: status={1} interactionEnabled={2} hideInteract={3} hideIfFollowed={4} hideIfDeadEnd={5} trueEnd={6} configFound={7} continuations={8} parents={9}", DebugName, m_Status, Interaction?.Enabled, m_HideInteract, m_HideInteractionIfFollowed, m_HideInteractionIfFollowedToDeadEnd, m_TrueEnd, Config.Found, m_Continuations.Length, m_Parents.Count);
 	}
 
 	public void Found(bool initial = false)
@@ -136,9 +149,10 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 		{
 			m_Status = DetectiveTraceStatus.Found;
 			SetInteractionEnabled(enabled: true);
+			PFLog.UI.Log("trace {0} -> Found (initial={1})", DebugName, initial);
 			if (!initial)
 			{
-				View.OnStatusChanged();
+				View.OnStatusChanged(Game.Instance.Controllers.TurnController.InCombat);
 			}
 		}
 	}
@@ -157,7 +171,8 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 			{
 				SetInteractionEnabled(enabled: false);
 			}
-			View.OnStatusChanged();
+			PFLog.UI.Log("trace {0} -> Followed: hideIfFollowed={1} continuations={2}", DebugName, m_HideInteractionIfFollowed, m_Continuations.Length);
+			View.OnStatusChanged(Game.Instance.Controllers.TurnController.InCombat);
 			EntityRef<DetectiveTraceEntity>[] continuations = m_Continuations;
 			for (int i = 0; i < continuations.Length; i++)
 			{
@@ -172,11 +187,13 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 		{
 			return true;
 		}
-		if (!m_Continuations.Empty() && !m_Continuations.AllItems(delegate(EntityRef<DetectiveTraceEntity> i)
+		bool flag = m_Continuations.Empty() || m_Continuations.AllItems(delegate(EntityRef<DetectiveTraceEntity> i)
 		{
 			DetectiveTraceEntity entity = i.Entity;
 			return entity != null && entity.Status >= DetectiveTraceStatus.FollowedToDeadEnd;
-		}))
+		});
+		PFLog.UI.Log("trace {0} MaybeFollowedToDeadEnd: result={1} trueEnd={2} continuationStatuses=[{3}]", DebugName, flag, m_TrueEnd, string.Join(",", m_Continuations.Select((EntityRef<DetectiveTraceEntity> c) => c.Entity?.Status.ToString() ?? "null")));
+		if (!flag)
 		{
 			return false;
 		}
@@ -190,7 +207,7 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 		{
 			SetInteractionEnabled(enabled: false);
 		}
-		View.OnStatusChanged();
+		View.OnStatusChanged(Game.Instance.Controllers.TurnController.InCombat);
 		foreach (EntityRef<DetectiveTraceEntity> parent in m_Parents)
 		{
 			((DetectiveTraceEntity)parent).MaybeFollowedToDeadEnd();
@@ -198,8 +215,9 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 		return true;
 	}
 
-	public void ForceFollowedToTrueEndAll()
+	public void ForceFollowedToTrueEndAll(string source = "self")
 	{
+		PFLog.UI.Log("trace {0} ForceFollowedToTrueEndAll: source={1} prevStatus={2}", DebugName, source, m_Status);
 		if (m_Status >= DetectiveTraceStatus.FollowedToTrueEnd)
 		{
 			return;
@@ -209,15 +227,15 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 		{
 			SetInteractionEnabled(enabled: false);
 		}
-		View.OnStatusChanged();
+		View.OnStatusChanged(Game.Instance.Controllers.TurnController.InCombat);
 		EntityRef<DetectiveTraceEntity>[] continuations = m_Continuations;
 		for (int i = 0; i < continuations.Length; i++)
 		{
-			((DetectiveTraceEntity)continuations[i]).ForceFollowedToTrueEndAll();
+			((DetectiveTraceEntity)continuations[i]).ForceFollowedToTrueEndAll("parent:" + DebugName);
 		}
 		foreach (EntityRef<DetectiveTraceEntity> parent in m_Parents)
 		{
-			((DetectiveTraceEntity)parent).ForceFollowedToTrueEndAll();
+			((DetectiveTraceEntity)parent).ForceFollowedToTrueEndAll("child:" + DebugName);
 		}
 		if (m_Root.Entity != null)
 		{
@@ -230,8 +248,15 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 		InteractionPartDetectiveTrace interaction = Interaction;
 		if (interaction != null)
 		{
-			interaction.Enabled = enabled && !m_HideInteract;
+			bool flag = enabled && !m_HideInteract;
+			PFLog.UI.Log("trace {0} SetInteractionEnabled: requested={1} hideInteract={2} effective={3} status={4}", DebugName, enabled, m_HideInteract, flag, m_Status);
+			interaction.Enabled = flag;
 		}
+	}
+
+	public void HandleTurnBasedModeSwitched(bool isTurnBased)
+	{
+		View.OnStatusChanged(Game.Instance.Controllers.TurnController.InCombat);
 	}
 
 	public override Hash128 GetHash128()
@@ -245,7 +270,7 @@ public class DetectiveTraceEntity : MapObjectEntity, IAreaActivationHandler, ISu
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		DetectiveTraceEntity source = new DetectiveTraceEntity();
+		DetectiveTraceEntity source = new DetectiveTraceEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<DetectiveTraceEntity, TPossiblyBase>(ref source);
 	}
 

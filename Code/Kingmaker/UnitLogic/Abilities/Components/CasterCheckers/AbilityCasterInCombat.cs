@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
@@ -31,5 +33,11 @@ public class AbilityCasterInCombat : BlueprintComponent, IAbilityCasterRestricti
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		return LocalizedTexts.Instance.Reasons.CombatRequired;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		CasterRestrictionsStrings casterRestrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		yield return caster.IsInCombat ? casterRestrictionsStrings.InCombat : casterRestrictionsStrings.NotInCombat;
 	}
 }

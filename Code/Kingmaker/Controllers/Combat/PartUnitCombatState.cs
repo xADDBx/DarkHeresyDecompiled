@@ -7,11 +7,14 @@ using Kingmaker.AreaLogic.Cutscenes;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Enums.Helper;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.Designers.EventConditionActionSystem.Actions;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Items;
 using Kingmaker.Pathfinding;
@@ -26,7 +29,6 @@ using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.CodeTimer;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
@@ -231,7 +233,7 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 			m_LastTarget = value;
 			using (ProfileScope.New("LastTarget change"))
 			{
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<ICombatTargetChangeHandler>)delegate(ICombatTargetChangeHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<ICombatTargetChangeHandler>)delegate(ICombatTargetChangeHandler h)
 				{
 					h.HandleTargetChange(prevTarget);
 				}, isCheckRuntime: true);
@@ -252,7 +254,7 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 			{
 				EntityRef<ItemEntityWeapon> prevWeapon = m_LastAbilityWeapon;
 				m_LastAbilityWeapon = value;
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<ILastAbilityWeaponChangeHandler>)delegate(ILastAbilityWeaponChangeHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<ILastAbilityWeaponChangeHandler>)delegate(ILastAbilityWeaponChangeHandler h)
 				{
 					h.HandleLastAbilityWeaponChange(prevWeapon, value);
 				}, isCheckRuntime: true);
@@ -308,33 +310,23 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 
 	private int MaxAttacksOfOpportunityPerRound => int.MaxValue;
 
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
-
-	private ModifiableValue MovementPointsStat => StatsContainer.GetStat(StatType.MovementPoints);
-
 	public int MovementPointsMax
 	{
 		get
 		{
 			if (!base.Owner.Features.ImmuneToMovementPointReduction)
 			{
-				return MovementPointsStat;
+				return base.Owner.Actor.GetStat(StatType.MovementPoints, null, default(StatContext), "MovementPointsMax");
 			}
-			return MovementPointsStat.CalculateFilteredModifiedValue(Modifier.IsPositive);
+			return base.Owner.Actor.GetStatFiltered(StatType.MovementPoints, Modifier.IsPositive);
 		}
 	}
 
-	public int ActionPointsMax => StatsContainer.GetStat(StatType.ActionPoints);
+	public int ActionPointsMax => base.Owner.Actor.GetStat(StatType.ActionPoints, null, default(StatContext), "ActionPointsMax");
 
-	public int InitiativeBonus => StatsContainer.GetStat(StatType.Initiative);
+	public int InitiativeBonus => base.Owner.Actor.GetStat(StatType.Initiative, null, default(StatContext), "InitiativeBonus");
 
-	protected override void OnAttachOrPrePostLoad()
-	{
-		StatsContainer.Register<ModifiableValueMovementPoints>(StatType.MovementPoints);
-		StatsContainer.Register(StatType.ActionPoints);
-		StatsContainer.Register(StatType.Initiative);
-		StatsContainer.Register<ModifiableValueAttributeBonusDependent>(StatType.Defence);
-	}
+	public MechanicActorStat Defence => base.Owner.Actor.Stats.GetStat(StatType.Defence);
 
 	public void JoinCombat(bool surprised = false)
 	{
@@ -365,7 +357,16 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 			else
 			{
 				ReturnPosition = SizePathfindingHelper.FromViewToMechanicsPosition(base.Owner, base.Owner.Position, inBattle: true).GetNearestNodeXZUnwalkable()?.Vector3Position() ?? base.Owner.CurrentNode.position;
-				base.Owner.Position = ReturnPosition.Value;
+				PartPreventSnapToGrid optional = base.Owner.GetOptional<PartPreventSnapToGrid>();
+				if (optional != null && optional.ShouldPreventSnapToGrid)
+				{
+					PFLog.Default.Log("[JoinCombat] Skipped position change for " + base.Owner.View?.name + " (PreventSnapToGrid flag set)");
+					ReturnPosition = base.Owner.Position;
+				}
+				else
+				{
+					base.Owner.Position = ReturnPosition.Value;
+				}
 				ReturnOrientation = base.Owner.DesiredOrientation;
 			}
 		}
@@ -376,7 +377,7 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 		}
 		Surprised = surprised;
 		CutsceneControlledUnit.UpdateActiveCutscene(base.Owner);
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitCombatHandler>)delegate(IUnitCombatHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitCombatHandler>)delegate(IUnitCombatHandler h)
 		{
 			h.HandleUnitJoinCombat();
 		}, isCheckRuntime: true);
@@ -389,8 +390,8 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 			}
 		}
 		base.Owner.Wake();
-		PFLog.Default.Log(base.Owner.View, "Unit join combat: {0}", base.Owner);
-		EventBus.RaiseEvent(delegate(IAnyUnitCombatHandler h)
+		PFLog.Default.Log(base.Owner.View.AsUnitEntityView(), "Unit join combat: {0}", base.Owner);
+		base.EventBus.RaiseEvent(delegate(IAnyUnitCombatHandler h)
 		{
 			h.HandleUnitJoinCombat(base.Owner);
 		});
@@ -419,15 +420,15 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 				}
 			}
 		}
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitCombatHandler>)delegate(IUnitCombatHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitCombatHandler>)delegate(IUnitCombatHandler h)
 		{
 			h.HandleUnitLeaveCombat();
 		}, isCheckRuntime: true);
-		EventBus.RaiseEvent(delegate(IAnyUnitCombatHandler h)
+		base.EventBus.RaiseEvent(delegate(IAnyUnitCombatHandler h)
 		{
 			h.HandleUnitLeaveCombat(base.Owner);
 		});
-		PFLog.Default.Log(base.Owner.View, "Unit leave combat: {0}", base.Owner);
+		PFLog.Default.Log(base.Owner.View.AsUnitEntityView(), "Unit leave combat: {0}", base.Owner);
 		if (RecheckEquipmentRestrictionsAfterCombatEnd)
 		{
 			base.Owner.UnequipItemsWithFailedRestrictions();
@@ -560,7 +561,7 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 
 	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (isTurnBased)
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current && isTurnBased)
 		{
 			TurnStartPosition = base.Owner.Position;
 		}
@@ -589,7 +590,7 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 		if (value > 0)
 		{
 			ActionPoints = Math.Max(0, ActionPoints - value);
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitSpentActionPoints>)delegate(IUnitSpentActionPoints h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitSpentActionPoints>)delegate(IUnitSpentActionPoints h)
 			{
 				h.HandleUnitSpentActionPoints(value);
 			}, isCheckRuntime: true);
@@ -603,7 +604,7 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 			MovementPoints = Math.Max(0f, MovementPoints - value);
 			MovementPointsSpentThisTurn += value;
 			RegisterMoveCells(value);
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitSpentMovementPoints>)delegate(IUnitSpentMovementPoints h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitSpentMovementPoints>)delegate(IUnitSpentMovementPoints h)
 			{
 				h.HandleUnitSpentMovementPoints(value);
 			}, isCheckRuntime: true);
@@ -613,40 +614,40 @@ public class PartUnitCombatState : BaseUnitPart, IRoundStartHandler, ISubscriber
 	public void SpendMovementsPointsAll()
 	{
 		MovementPoints = 0f;
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitSpentMovementPoints>)delegate(IUnitSpentMovementPoints h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitSpentMovementPoints>)delegate(IUnitSpentMovementPoints h)
 		{
 			h.HandleUnitSpentMovementPoints(-1f);
 		}, isCheckRuntime: true);
 	}
 
-	public void GainActionPoints(int value, [CanBeNull] MechanicsContext context)
+	public void GainActionPoints(int value, [CanBeNull] IEvalContext context)
 	{
 		SetActionPoints(ActionPoints + Mathf.Max(0, value), context);
 	}
 
-	public void SetActionPoints(int value, [CanBeNull] MechanicsContext context)
+	public void SetActionPoints(int value, [CanBeNull] IEvalContext context)
 	{
 		if (value != ActionPoints && value >= 0)
 		{
 			ActionPoints = value;
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitGainActionPoints>)delegate(IUnitGainActionPoints h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitGainActionPoints>)delegate(IUnitGainActionPoints h)
 			{
 				h.HandleUnitGainActionPoints(ActionPoints, context);
 			}, isCheckRuntime: true);
 		}
 	}
 
-	public void GainMovementPoints(float value, [CanBeNull] MechanicsContext context)
+	public void GainMovementPoints(float value, [CanBeNull] IEvalContext context)
 	{
 		SetMovementPoints(MovementPoints + Mathf.Max(0f, value), context);
 	}
 
-	public void SetMovementPoints(float value, [CanBeNull] MechanicsContext context)
+	public void SetMovementPoints(float value, [CanBeNull] IEvalContext context)
 	{
 		if (!(Math.Abs(value - MovementPoints) < float.Epsilon) && !(value < 0f))
 		{
 			MovementPoints = value;
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitGainMovementPoints>)delegate(IUnitGainMovementPoints h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IUnitGainMovementPoints>)delegate(IUnitGainMovementPoints h)
 			{
 				h.HandleUnitGainMovementPoints(MovementPoints, context);
 			}, isCheckRuntime: true);

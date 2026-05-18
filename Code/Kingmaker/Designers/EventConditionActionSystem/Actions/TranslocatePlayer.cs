@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Formations;
 using Kingmaker.QA;
 using Kingmaker.View;
@@ -30,9 +31,10 @@ public class TranslocatePlayer : GameAction
 
 	protected override void RunAction()
 	{
-		Vector3 position = transolcatePosition.FindView().ViewTransform.position;
-		Quaternion rotation = transolcatePosition.FindView().ViewTransform.rotation;
-		GameHelper.GetPlayerCharacter().View.StopMoving();
+		IEntity entity = transolcatePosition.FindData();
+		Vector3 position = entity.Position;
+		Quaternion targetRotation = Quaternion.Euler(0f, entity.Orientation, 0f);
+		GameHelper.GetPlayerCharacter().StopMoving();
 		if (AreaService.FindMechanicBoundsContainsPoint(position) != Game.Instance.CurrentlyLoadedAreaPart)
 		{
 			if (!Game.Instance.LoadedAreaState.Settings.CapitalPartyMode)
@@ -42,7 +44,7 @@ public class TranslocatePlayer : GameAction
 			}
 			if (ByFormationAndWithPets)
 			{
-				PositionCharactersByFormation(position, rotation);
+				PositionCharactersByFormation(position, targetRotation);
 			}
 			else
 			{
@@ -56,7 +58,7 @@ public class TranslocatePlayer : GameAction
 		{
 			if (ByFormationAndWithPets)
 			{
-				PositionCharactersByFormation(position, rotation);
+				PositionCharactersByFormation(position, targetRotation);
 			}
 			else
 			{
@@ -90,7 +92,7 @@ public class TranslocatePlayer : GameAction
 	private static void PositionCharacter(BaseUnitEntity character, Vector3 p, Quaternion rot)
 	{
 		character.Commands.InterruptAllInterruptible();
-		ObjectExtensions.Or(character.View, null)?.StopMoving();
+		character.StopMoving();
 		character.Position = p;
 		character.SetOrientation(rot.eulerAngles.y);
 	}

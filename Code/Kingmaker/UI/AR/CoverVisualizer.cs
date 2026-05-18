@@ -216,6 +216,11 @@ public class CoverVisualizer : MonoBehaviour, IUnitMovableAreaHandler, ISubscrib
 
 	public void HandleTurnBasedModeResumed()
 	{
+		TurnController turnController = Game.Instance.Controllers.TurnController;
+		if (turnController.IsPreparationTurn)
+		{
+			HandleBeginPreparationTurn(turnController.IsDeploymentAllowed);
+		}
 		UpdatePlayerTurn();
 	}
 

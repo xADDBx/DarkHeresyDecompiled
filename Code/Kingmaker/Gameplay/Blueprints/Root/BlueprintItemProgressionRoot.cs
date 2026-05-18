@@ -1,6 +1,7 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Gameplay.Features.Items.Utility;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
@@ -40,6 +41,10 @@ public sealed class BlueprintItemProgressionRoot : BlueprintScriptableObject
 		public int BrutalDamage;
 
 		public int DestructiveDamage;
+
+		public int RateOfFire;
+
+		public int Recoil;
 	}
 
 	[Serializable]
@@ -60,6 +65,14 @@ public sealed class BlueprintItemProgressionRoot : BlueprintScriptableObject
 		public int Durability;
 	}
 
+	[Serializable]
+	public sealed class DifficultyEquipmentCROffsetEntry
+	{
+		public UnitDifficultyType DifficultyType;
+
+		public int Offset;
+	}
+
 	public static ImportDelegate OnImportWeapons;
 
 	public static ImportDelegate OnImportArmors;
@@ -71,6 +84,15 @@ public sealed class BlueprintItemProgressionRoot : BlueprintScriptableObject
 	public bool EnableForArmor;
 
 	public ArmorProgressionEntry[] Armor = new ArmorProgressionEntry[0];
+
+	public DifficultyEquipmentCROffsetEntry[] DifficultyEquipmentCROffsets = new DifficultyEquipmentCROffsetEntry[0];
+
+	public CRToPowerLevelEntry[] CRToPowerLevel = Array.Empty<CRToPowerLevelEntry>();
+
+	public ItemPowerLevel GetPowerLevelForCR(int cr)
+	{
+		return CRToPowerLevelTable.Lookup(CRToPowerLevel, cr);
+	}
 
 	[NotNull]
 	public WeaponStatsEntry Get(WeaponProgressionType type, ItemPowerLevel powerLevel)
@@ -106,6 +128,19 @@ public sealed class BlueprintItemProgressionRoot : BlueprintScriptableObject
 			}
 		}
 		return ArmorStatsEntry.Empty;
+	}
+
+	public int GetDifficultyEquipmentCROffset(UnitDifficultyType type)
+	{
+		DifficultyEquipmentCROffsetEntry[] difficultyEquipmentCROffsets = DifficultyEquipmentCROffsets;
+		foreach (DifficultyEquipmentCROffsetEntry difficultyEquipmentCROffsetEntry in difficultyEquipmentCROffsets)
+		{
+			if (difficultyEquipmentCROffsetEntry.DifficultyType == type)
+			{
+				return difficultyEquipmentCROffsetEntry.Offset;
+			}
+		}
+		return 0;
 	}
 
 	[BlueprintButton(Name = "Import Weapons")]

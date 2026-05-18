@@ -25,15 +25,11 @@ public class UnitFromSpawnerIsDead : Condition
 
 	protected override bool CheckCondition()
 	{
-		UnitSpawner unitSpawner = Target.FindView() as UnitSpawner;
-		if (unitSpawner == null)
+		UnitSpawnerEntity unitSpawnerEntity = Target.FindData() as UnitSpawnerEntity;
+		if (unitSpawnerEntity == null)
 		{
 			Element.LogError("Cannot find spawner {0} in {1} ({2})", Target, name, base.Owner);
 		}
-		if (!unitSpawner)
-		{
-			return false;
-		}
-		return unitSpawner.SpawnedUnitHasDied;
+		return unitSpawnerEntity?.SpawnedUnitHasDied ?? false;
 	}
 }

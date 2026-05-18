@@ -42,7 +42,7 @@ public class DirectorCameraLink : MonoBehaviour
 
 	private bool NeedListenerRoot => ControlAudioListenerType == ListenerControlType.TimelineAnimated;
 
-	protected CinemachineBrain CinemachineBrain => m_CinemachineBrain ?? (m_CinemachineBrain = GetComponent<CinemachineBrain>());
+	public CinemachineBrain CinemachineBrain => m_CinemachineBrain ?? (m_CinemachineBrain = GetComponent<CinemachineBrain>());
 
 	private void Awake()
 	{
@@ -88,9 +88,12 @@ public class DirectorCameraLink : MonoBehaviour
 		{
 			Logger.Error("Cant init cutscene camera. No predefined camera exists and no Camera rig");
 		}
-		if (instance.ListenerUpdater.GetComponent<AudioListenerPositionController>() != null)
+		AudioListenerPositionController component = instance.ListenerUpdater.GetComponent<AudioListenerPositionController>();
+		if (component != null)
 		{
-			instance.ListenerUpdater.GetComponent<AudioListenerPositionController>().FreezeXRotation = false;
+			component.FreezeXRotation = false;
+			component.UseGroundRelativePosition = false;
+			component.ApplySceneOffset = false;
 		}
 		switch (ControlAudioListenerType)
 		{
@@ -102,9 +105,9 @@ public class DirectorCameraLink : MonoBehaviour
 			m_ListenerInitialPosition = instance.ListenerUpdater.localPosition;
 			instance.ListenerUpdater.localPosition = Vector3.zero;
 			instance.ListenerUpdater.GetComponent<ListenerZoom>().enabled = false;
-			if (instance.ListenerUpdater.GetComponent<AudioListenerPositionController>() != null)
+			if (component != null)
 			{
-				instance.ListenerUpdater.GetComponent<AudioListenerPositionController>().FreezeXRotation = true;
+				component.FreezeXRotation = true;
 			}
 			break;
 		case ListenerControlType.TimelineAnimated:
@@ -145,6 +148,12 @@ public class DirectorCameraLink : MonoBehaviour
 			return;
 		}
 		instance.ChangeListenerParent();
+		AudioListenerPositionController component = instance.ListenerUpdater.GetComponent<AudioListenerPositionController>();
+		if (component != null)
+		{
+			component.UseGroundRelativePosition = true;
+			component.ApplySceneOffset = true;
+		}
 		if (ControlAudioListenerType == ListenerControlType.TimelineAnimated)
 		{
 			instance.ListenerUpdater.localPosition = m_ListenerInitialPosition;
@@ -155,9 +164,9 @@ public class DirectorCameraLink : MonoBehaviour
 		{
 			instance.ListenerUpdater.localPosition = m_ListenerInitialPosition;
 			instance.ListenerUpdater.GetComponent<ListenerZoom>().enabled = true;
-			if (instance.ListenerUpdater.GetComponent<AudioListenerPositionController>() != null)
+			if (component != null)
 			{
-				instance.ListenerUpdater.GetComponent<AudioListenerPositionController>().FreezeXRotation = false;
+				component.FreezeXRotation = false;
 			}
 		}
 	}

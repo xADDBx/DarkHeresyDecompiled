@@ -52,11 +52,6 @@ public class CharGenPCView : CharGenView
 
 	private bool m_IsShowed;
 
-	public override void Initialize()
-	{
-		base.Initialize();
-	}
-
 	protected override void OnBind()
 	{
 		base.OnBind();
@@ -95,8 +90,8 @@ public class CharGenPCView : CharGenView
 				m_NextButtonHint.Value = value;
 			}));
 		}).AddTo(this);
-		CanGoNext.Subscribe(SetActiveNextPhaseButton).AddTo(this);
-		CanGoBack.Subscribe(SetActiveBackPhaseButton).AddTo(this);
+		m_CanGoNext.Subscribe(SetActiveNextPhaseButton).AddTo(this);
+		m_CanGoBack.Subscribe(SetActiveBackPhaseButton).AddTo(this);
 		m_NextButton.SetHint(m_NextButtonHint).AddTo(this);
 		m_NextButtonLabel.text = UIStrings.Instance.CharGen.Next;
 		m_BackButtonLabel.text = UIStrings.Instance.CharGen.Back;
@@ -137,10 +132,5 @@ public class CharGenPCView : CharGenView
 		UISounds.Instance.SetClickAndHoverSound(m_NextButton, ButtonSoundsEnum.PlastickSound);
 		UISounds.Instance.SetClickAndHoverSound(m_BackButton, ButtonSoundsEnum.PlastickSound);
 		UISounds.Instance.SetClickAndHoverSound(m_CloseButton, ButtonSoundsEnum.PlastickSound);
-	}
-
-	protected override void CloseCharGen()
-	{
-		base.CloseCharGen();
 	}
 }

@@ -29,7 +29,7 @@ public class CommandTranslocateParty : CommandBase
 	[ValidateNoNullEntries]
 	public EntityReference[] Targets;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		BlueprintAreaPart blueprintAreaPart = null;
 		foreach (var item3 in Game.Instance.Player.GetCharactersList(m_UnitsList).Select((BaseUnitEntity v, int i) => (v: v, i: i)))
@@ -38,8 +38,8 @@ public class CommandTranslocateParty : CommandBase
 			int item2 = item3.i;
 			int num = item2 % Targets.Length;
 			EntityReference entityReference = Targets[num];
-			IEntityViewBase entityViewBase = entityReference.FindView();
-			if (entityViewBase == null)
+			IEntity entity = entityReference.FindData();
+			if (entity == null)
 			{
 				Logger.Error($"{this}: Can't find locator #{num}, {entityReference} for teleport unit");
 				continue;
@@ -50,8 +50,8 @@ public class CommandTranslocateParty : CommandBase
 				item.Parts.GetOptional<UnitPartCompanion>()?.SetState(CompanionState.InParty);
 			}
 			item.MovementAgent.Stop();
-			item.Position = entityViewBase.ViewTransform.position;
-			item.SetOrientation(entityViewBase.ViewTransform.rotation.eulerAngles.y);
+			item.Position = entity.Position;
+			item.SetOrientation(entity.Orientation);
 			blueprintAreaPart = AreaService.FindMechanicBoundsContainsPoint(item.Position);
 		}
 		if (blueprintAreaPart != null && blueprintAreaPart != Game.Instance.CurrentlyLoadedAreaPart)
@@ -59,11 +59,17 @@ public class CommandTranslocateParty : CommandBase
 			Logger.Warning($"{this}: translocating party from {Game.Instance.CurrentlyLoadedAreaPart} to {blueprintAreaPart}. Starting fix process.");
 			LoadingProcess.Instance.StartLoadingProcess("SwitchToAreaPartCoroutine", Game.Instance.SceneLoader.SwitchToAreaPartCoroutine(blueprintAreaPart));
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -71,12 +77,14 @@ public class CommandTranslocateParty : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

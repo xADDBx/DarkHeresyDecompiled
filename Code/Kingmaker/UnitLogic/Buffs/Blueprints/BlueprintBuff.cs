@@ -5,12 +5,12 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Localization;
 using Kingmaker.ResourceLinks;
 using Kingmaker.ResourceLinks.BaseInterfaces;
-using Kingmaker.Sound;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Components;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
@@ -48,14 +48,15 @@ public class BlueprintBuff : BlueprintUnitFact, IResourcesHolder, IResourceIdsHo
 	}
 
 	[SerializeField]
+	private bool m_ShowFlavorText;
+
+	[SerializeField]
+	[ShowIf("m_ShowFlavorText")]
+	private LocalizedString m_FlavorText;
+
+	[SerializeField]
 	[EnumFlagsAsButtons]
 	private Flags m_Flags;
-
-	[SerializeField]
-	private AkSwitchReference m_SoundTypeSwitch;
-
-	[SerializeField]
-	private AkSwitchReference m_MuffledTypeSwitch;
 
 	public StackingType Stacking;
 
@@ -65,7 +66,7 @@ public class BlueprintBuff : BlueprintUnitFact, IResourcesHolder, IResourceIdsHo
 	[ShowIf("IsHighestByPriority")]
 	public ContextPropertyName PriorityProperty;
 
-	public InitiativeType Initiative;
+	public InitiativeType Initiative = InitiativeType.Current;
 
 	[SerializeField]
 	[ShowIf("HasRanks")]
@@ -84,6 +85,18 @@ public class BlueprintBuff : BlueprintUnitFact, IResourcesHolder, IResourceIdsHo
 	[SerializeField]
 	private bool m_Cyclical;
 
+	public string FlavorText
+	{
+		get
+		{
+			if (!m_ShowFlavorText)
+			{
+				return string.Empty;
+			}
+			return m_FlavorText.Text;
+		}
+	}
+
 	public int MaxRank
 	{
 		get
@@ -95,10 +108,6 @@ public class BlueprintBuff : BlueprintUnitFact, IResourcesHolder, IResourceIdsHo
 			return Math.Max(1, Ranks);
 		}
 	}
-
-	public AkSwitchReference SoundTypeSwitch => m_SoundTypeSwitch;
-
-	public AkSwitchReference MuffledTypeSwitch => m_MuffledTypeSwitch;
 
 	public bool HasRanks
 	{
@@ -160,7 +169,7 @@ public class BlueprintBuff : BlueprintUnitFact, IResourcesHolder, IResourceIdsHo
 		return typeof(Buff);
 	}
 
-	public override MechanicEntityFact CreateFact(MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public override MechanicEntityFact CreateFact(IEvalContext parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new Buff(this, parentContext, duration, rank);
 	}

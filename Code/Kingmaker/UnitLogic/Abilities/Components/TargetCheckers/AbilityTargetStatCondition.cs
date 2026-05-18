@@ -2,8 +2,6 @@ using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -29,21 +27,7 @@ public class AbilityTargetStatCondition : BlueprintComponent, IAbilityTargetRest
 
 	public bool IsTargetRestrictionPassed(AbilityData ability, TargetWrapper target, Vector3 casterPosition)
 	{
-		MechanicEntity entity = target.Entity;
-		if (entity == null)
-		{
-			return false;
-		}
-		ModifiableValue statOptional = entity.GetStatOptional(Stat);
-		if (statOptional == null)
-		{
-			return false;
-		}
-		if (statOptional.BaseValue > GreaterThan)
-		{
-			return !Inverted;
-		}
-		return Inverted;
+		return !Inverted;
 	}
 
 	public string GetAbilityTargetRestrictionUIText(AbilityData ability, TargetWrapper target, Vector3 casterPosition)

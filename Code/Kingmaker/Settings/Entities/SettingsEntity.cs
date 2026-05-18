@@ -213,6 +213,11 @@ public abstract class SettingsEntity<TSettingsValue> : IReadOnlySettingEntity<TS
 		return GetValue().ToString();
 	}
 
+	public string GetTempStringValue()
+	{
+		return GetTempValue().ToString();
+	}
+
 	public string GetStringDefaultValue()
 	{
 		return DefaultValue.ToString();

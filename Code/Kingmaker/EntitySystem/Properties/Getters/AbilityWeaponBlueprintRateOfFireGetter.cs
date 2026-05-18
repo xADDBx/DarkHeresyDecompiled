@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -10,11 +11,11 @@ public class AbilityWeaponBlueprintRateOfFireGetter : IntPropertyGetter, Propert
 {
 	protected override int GetBaseValue()
 	{
-		return this.GetAbilityWeapon()?.Blueprint.RateOfFire ?? 0;
+		return EvalContext.Current.AbilityWeapon?.RateOfFire ?? 0;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)
 	{
-		return "Unmodified Rate of Fire (from blueprint)";
+		return "Unmodified Rate of Fire (entity, PL-aware)";
 	}
 }

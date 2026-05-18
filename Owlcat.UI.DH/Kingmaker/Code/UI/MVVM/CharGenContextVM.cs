@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
@@ -10,20 +11,21 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
 using Owlcat.UI;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenContextVM : ViewModel, ICharGenInitiateUIHandler, ISubscriber, ICharacterSelectorHandler
 {
-	private readonly ReactiveProperty<CharGenVM> m_CharGenVM = new ReactiveProperty<CharGenVM>();
+	private readonly ReactiveProperty<CharGenVM> m_CharGenVM;
 
-	private readonly ReactiveProperty<RespecVM> m_RespecVM = new ReactiveProperty<RespecVM>();
+	private readonly ReactiveProperty<RespecVM> m_RespecVM;
 
 	private Action m_EnterNewGameAction;
 
 	private Action m_CloseWithoutCompleteAction;
 
-	private Action m_CloseSoundAction;
+	private CharGenSoundActions m_SoundActions;
 
 	private Action m_ShowNewGameAction;
 
@@ -42,6 +44,9 @@ public class CharGenContextVM : ViewModel, ICharGenInitiateUIHandler, ISubscribe
 
 	public void HandleStartCharGen(CharGenConfig config, bool isCustomCompanionChargen)
 	{
+		Stopwatch stopwatch = new Stopwatch();
+		stopwatch.Start();
+		string arg = $"[{Time.frameCount}] | {Time.realtimeSinceStartup}";
 		EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
 		{
 			h.HandleCloseAll();
@@ -49,14 +54,18 @@ public class CharGenContextVM : ViewModel, ICharGenInitiateUIHandler, ISubscribe
 		DisposeChargen();
 		m_CloseWithoutCompleteAction = config.OnClose;
 		m_CompleteAction = config.OnComplete;
-		m_CloseSoundAction = config.OnCloseSoundAction;
+		m_SoundActions = config.SoundActions;
 		m_ShowNewGameAction = config.OnShowNewGameAction;
-		if (config.Mode == CharGenMode.NewGame && !config.Unit.IsCustomCompanion() && !config.Unit.IsPet)
+		m_SoundActions.OnOpen?.Invoke();
+		bool flag = config.Mode == CharGenMode.NewGame && !config.Unit.IsCustomCompanion() && !config.Unit.IsPet;
+		if (flag)
 		{
-			m_EnterNewGameAction = config.EnterNewGameAction;
 			Game.Instance.Player.SetMainCharacter(config.Unit);
 		}
+		m_EnterNewGameAction = (flag ? config.EnterNewGameAction : null);
 		m_CharGenVM.Value = new CharGenVM(config, CloseWithoutComplete, CompleteCharGen, isCustomCompanionChargen).AddTo(this);
+		stopwatch.Stop();
+		PFLog.UI.Log($"Elapsed ms for HandleStartCharGen {stopwatch.ElapsedMilliseconds} started at {arg}");
 	}
 
 	public void HandleSelectCharacter(List<BaseUnitEntity> characters, Action<BaseUnitEntity> successAction)
@@ -71,15 +80,15 @@ public class CharGenContextVM : ViewModel, ICharGenInitiateUIHandler, ISubscribe
 	{
 		m_ShowNewGameAction?.Invoke();
 		m_CloseWithoutCompleteAction?.Invoke();
-		CloseCharGen();
+		CloseCharGen(wasCompleted: false);
 	}
 
 	private void CompleteCharGen(BaseUnitEntity resultUnit)
 	{
-		bool num = m_CharGenVM.Value.PhasesCollection.Any((CharGenPhaseBaseVM p) => p.PhaseType == CharGenPhaseType.LevelUpModification);
+		bool num = m_CharGenVM.Value.PhasesCollection.Any((CharGenPhaseBaseVM p) => p.PhaseType == CharGenPhaseType.LevelUpModification || p.PhaseType == CharGenPhaseType.LevelUpAbility || p.PhaseType == CharGenPhaseType.LevelUpUpgrade);
 		m_CompleteAction?.Invoke(resultUnit);
 		m_EnterNewGameAction?.Invoke();
-		CloseCharGen();
+		CloseCharGen(wasCompleted: true);
 		if (num)
 		{
 			EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
@@ -89,10 +98,10 @@ public class CharGenContextVM : ViewModel, ICharGenInitiateUIHandler, ISubscribe
 		}
 	}
 
-	private void CloseCharGen()
+	private void CloseCharGen(bool wasCompleted)
 	{
 		DisposeChargen();
-		m_CloseSoundAction?.Invoke();
+		(wasCompleted ? m_SoundActions.OnComplete : m_SoundActions.OnClose)?.Invoke();
 	}
 
 	private void DisposeChargen()

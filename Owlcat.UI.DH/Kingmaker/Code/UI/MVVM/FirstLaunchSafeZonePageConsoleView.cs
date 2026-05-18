@@ -1,5 +1,4 @@
 using Kingmaker.UI.Canvases;
-using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -24,11 +23,5 @@ public class FirstLaunchSafeZonePageConsoleView : FirstLaunchSettingsPageBaseVie
 			m_Frame.offsetMax = new Vector2((0f - rect.width) * num, (0f - rect.height) * num);
 		}).AddTo(this);
 		base.OnBind();
-	}
-
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		navigationBehaviour.SetEntitiesVertical<SettingsEntitySliderConsoleView>(m_OffsetSlider);
-		navigationBehaviour.FocusOnFirstValidEntity();
 	}
 }

@@ -28,12 +28,12 @@ public class HealingLogThread : LogThreadBase, IGameLogRuleHandler<RuleHealDamag
 
 	private static IEnumerable<ITooltipBrick> CollectExtraBricks(RuleHealDamage rule)
 	{
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> iconTextTemplate = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
+		Func<BrickIconTextValueArgs, ITooltipBrick> iconTextTemplate = CombatLogTooltipService.CreateBrickIconTextValue;
 		if (iconTextTemplate != null)
 		{
-			yield return iconTextTemplate(new TooltipBrickIconTextValueArgs(LogThreadBase.Strings.TooltipBrickStrings.Initiator.Text, rule.ConcreteInitiator.Name, 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return iconTextTemplate(new BrickIconTextValueArgs(LogThreadBase.Strings.TooltipBrickStrings.Initiator.Text, rule.ConcreteInitiator.Name, 1));
 			LocalizedString localizedString = ((rule.CalculateHealRule.Strategy == DamageStrategy.ArmorOnly) ? LogThreadBase.Strings.TooltipBrickStrings.RestoresArmor : LogThreadBase.Strings.TooltipBrickStrings.HealsWounds);
-			yield return iconTextTemplate(new TooltipBrickIconTextValueArgs(localizedString.Text, rule.Value.ToString(), 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return iconTextTemplate(new BrickIconTextValueArgs(localizedString.Text, rule.Value.ToString(), 1));
 		}
 	}
 }

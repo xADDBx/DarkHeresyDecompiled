@@ -12,6 +12,6 @@ public class ContextConditionIsMainTarget : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		return base.Context.ClickedTarget.Equals(base.Target);
+		return base.Eval.ClickedTarget?.Equals(base.Target) ?? false;
 	}
 }

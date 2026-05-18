@@ -80,10 +80,6 @@ public class JournalQuestObjectiveBaseView : View<JournalQuestObjectiveVM>
 			m_EtudeCounter.text = $"{base.ViewModel.CurrentEtudeCounter}/{base.ViewModel.MinEtudeCounter} {base.ViewModel.EtudeCounterDescription}";
 		}
 		m_Destination.text = (flag2 ? base.ViewModel.Destination : string.Empty);
-		if (flag2)
-		{
-			m_Destination.SetTooltip(new TooltipTemplateGlobalMapPosition(), new TooltipConfig(InfoCallPCMethod.None, InfoCallConsoleMethod.None)).AddTo(this);
-		}
 		ObservableSubscribeExtensions.Subscribe(base.ViewModel.UpdateStatus, delegate
 		{
 			SetupState();

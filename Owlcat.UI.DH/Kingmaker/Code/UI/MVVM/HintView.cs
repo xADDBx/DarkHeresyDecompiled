@@ -4,6 +4,7 @@ using System.Text;
 using DG.Tweening;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI;
+using Kingmaker.UI.Pointer;
 using Kingmaker.UI.Sound;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
@@ -63,7 +64,7 @@ public class HintView : View<HintVM>
 				UpdateHintPosition();
 				m_ShowTween = m_CanvasGroup.DOFade(1f, 0.2f).OnComplete(delegate
 				{
-					UISounds.Instance.Sounds.Hint.HintShow.Play();
+					SystemSounds.Instance.Hint.Show.Play();
 				}).SetUpdate(isIndependentUpdate: true);
 			}
 		}).AddTo(this);
@@ -95,7 +96,7 @@ public class HintView : View<HintVM>
 		{
 			m_ParentRectTransform = (RectTransform)base.transform.parent;
 		}
-		Vector2 cursorPosition = Game.Instance.CursorController.CursorPosition;
+		Vector2 cursorPosition = CursorController.CursorPosition;
 		RectTransformUtility.ScreenPointToLocalPointInRectangle(m_ParentRectTransform, cursorPosition, UICamera.Instance, out var localPoint);
 		m_RectTransform.localPosition = UIUtilityRect.LimitPositionRectInRect(localPoint, m_ParentRectTransform, m_RectTransform);
 	}
@@ -105,7 +106,7 @@ public class HintView : View<HintVM>
 		base.OnUnbind();
 		if (Mathf.Approximately(m_CanvasGroup.alpha, 1f))
 		{
-			UISounds.Instance.Sounds.Hint.HintHide.Play();
+			SystemSounds.Instance.Hint.Hide.Play();
 		}
 		m_CanvasGroup.alpha = 0f;
 		base.gameObject.SetActive(value: false);

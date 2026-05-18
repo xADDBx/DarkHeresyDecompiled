@@ -149,7 +149,7 @@ public class SelectionBox : MonoBehaviour
 			else
 			{
 				float magnitude = boxSelectable.transform.GetComponent<Renderer>().bounds.extents.magnitude;
-				if (Vector2.Distance(GetScreenPointOfSelectable(boxSelectable), Input.mousePosition) <= magnitude)
+				if (Vector2.Distance(GetScreenPointOfSelectable(boxSelectable), (Vector2)Input.mousePosition) <= magnitude)
 				{
 					return boxSelectable;
 				}

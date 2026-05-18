@@ -1,10 +1,9 @@
 using Owlcat.Runtime.Visual.Waaagh.Shadows;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.FrameData;
 
-public class WaaaghShadowData : ContextItem
+public class WaaaghShadowData
 {
 	public ShadowUpdateDistances ShadowUpdateDistances;
 
@@ -38,7 +37,7 @@ public class WaaaghShadowData : ContextItem
 
 	public float PointSlopeBias;
 
-	public override void Reset()
+	public void Reset()
 	{
 		ShadowUpdateDistances = null;
 		StaticShadowsCacheEnabled = false;

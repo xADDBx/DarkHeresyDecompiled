@@ -5,7 +5,9 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.Gameplay.Controllers;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -50,19 +52,24 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 	[OwlPackInclude]
 	private EntityFactRef<Buff> m_PhaseBuff;
 
+	[JsonProperty]
+	[OwlPackInclude]
+	private int m_LastMoraleRound;
+
 	public readonly CompositeModifiersManager PowerFactorModifiers = new CompositeModifiersManager();
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartMorale",
 		OldNames = null,
-		Fields = new FieldInfo[5]
+		Fields = new FieldInfo[6]
 		{
 			new FieldInfo("m_Morale", typeof(int)),
 			new FieldInfo("m_JustJoinedInCombat", typeof(bool)),
 			new FieldInfo("m_MoralePhase", typeof(MoralePhaseType)),
 			new FieldInfo("m_PhaseBuff", typeof(EntityFactRef<Buff>)),
-			new FieldInfo("PhaseLockRoundsLeft", typeof(int))
+			new FieldInfo("PhaseLockRoundsLeft", typeof(int)),
+			new FieldInfo("m_LastMoraleRound", typeof(int))
 		}
 	};
 
@@ -99,14 +106,21 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		m_MoralePhase = MoralePhaseType.Regular;
 		PhaseLockRoundsLeft = 0;
 		m_JustJoinedInCombat = false;
+		m_LastMoraleRound = 0;
 	}
 
 	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (base.Owner.HasMechanicFeature(MechanicsFeatureType.DoNotUseMorale) || !isTurnBased)
+		if (base.Owner.HasMechanicFeature(MechanicsFeatureType.DoNotUseMorale) || !isTurnBased || (bool)ContextData<TurnController.InterruptTurnEndMark>.Current)
 		{
 			return;
 		}
+		int gameRound = Game.Instance.Controllers.TurnController.GameRound;
+		if (m_LastMoraleRound == gameRound)
+		{
+			return;
+		}
+		m_LastMoraleRound = gameRound;
 		PhaseLockRoundsLeft = Math.Max(0, PhaseLockRoundsLeft - 1);
 		if (m_MoralePhase == MoralePhaseType.Regular)
 		{
@@ -155,7 +169,7 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 			};
 			PhaseLockRoundsLeft = ((newPhase == MoralePhaseType.Heroic || newPhase == MoralePhaseType.Broken) ? GetPhaseLockDuration(initiator) : 0);
 			UpdatePhaseBuff();
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoralePhaseHandler>)delegate(IMoralePhaseHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoralePhaseHandler>)delegate(IMoralePhaseHandler h)
 			{
 				h.HandleMoralePhaseChanged(newPhase);
 			}, isCheckRuntime: true);
@@ -178,7 +192,7 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		}
 		int prevValue = m_Morale;
 		m_Morale = value;
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoraleValueHandler>)delegate(IMoraleValueHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoraleValueHandler>)delegate(IMoraleValueHandler h)
 		{
 			h.HandleMoraleValueChanged(m_Morale - prevValue, becauseOfCriticalEffect);
 		}, isCheckRuntime: true);
@@ -186,6 +200,7 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		if (Phase != phaseForValue)
 		{
 			SwitchPhase(phaseForValue, initiator);
+			Metrics.Morale.Id(base.Owner.Blueprint.AssetGuid).Phase(phaseForValue).Send();
 		}
 	}
 
@@ -199,14 +214,14 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		ClearPhaseBuff();
 		if (m_Morale != prevValue)
 		{
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoraleValueHandler>)delegate(IMoraleValueHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoraleValueHandler>)delegate(IMoraleValueHandler h)
 			{
 				h.HandleMoraleValueChanged(m_Morale - prevValue, hasCriticalEffect: false);
 			}, isCheckRuntime: true);
 		}
 		if (m_MoralePhase != moralePhase)
 		{
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoralePhaseHandler>)delegate(IMoralePhaseHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoralePhaseHandler>)delegate(IMoralePhaseHandler h)
 			{
 				h.HandleMoralePhaseChanged(m_MoralePhase);
 			}, isCheckRuntime: true);
@@ -219,7 +234,7 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		m_Morale = 0;
 		if (m_Morale != prevValue)
 		{
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoraleValueHandler>)delegate(IMoraleValueHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IMoraleValueHandler>)delegate(IMoraleValueHandler h)
 			{
 				h.HandleMoraleValueChanged(m_Morale - prevValue, hasCriticalEffect: false);
 			}, isCheckRuntime: true);
@@ -247,6 +262,11 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 			MoralePhaseType.Broken => GetBrokenBuffBlueprint(), 
 			_ => null, 
 		};
+		if (blueprintBuff == null)
+		{
+			ClearPhaseBuff();
+			return;
+		}
 		BuffEndCondition buffEndCondition = ((blueprintBuff.GetComponent<MoralePhaseBuffRemainAfterCombat>() == null) ? BuffEndCondition.CombatEnd : BuffEndCondition.RemainAfterCombat);
 		Buff fact = m_PhaseBuff.Fact;
 		if (fact?.Blueprint != blueprintBuff)
@@ -312,6 +332,7 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		result.Append(ref val2);
 		int val3 = PhaseLockRoundsLeft;
 		result.Append(ref val3);
+		result.Append(ref m_LastMoraleRound);
 		return result;
 	}
 
@@ -338,6 +359,7 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 		formatter.Field(3, "m_PhaseBuff", ref m_PhaseBuff, state);
 		int value = PhaseLockRoundsLeft;
 		formatter.UnmanagedField(4, "PhaseLockRoundsLeft", ref value, state);
+		formatter.UnmanagedField(5, "m_LastMoraleRound", ref m_LastMoraleRound, state);
 		formatter.EndObject();
 	}
 
@@ -369,6 +391,9 @@ public class PartMorale : BaseUnitPart, IUIUnitMoraleData, ITurnStartHandler<Ent
 				break;
 			case 4:
 				PhaseLockRoundsLeft = formatter.ReadUnmanaged<int>(state);
+				break;
+			case 5:
+				m_LastMoraleRound = formatter.ReadUnmanaged<int>(state);
 				break;
 			}
 		}

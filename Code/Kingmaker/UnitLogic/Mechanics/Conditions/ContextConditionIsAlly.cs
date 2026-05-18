@@ -19,8 +19,8 @@ public class ContextConditionIsAlly : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		if (maybeCaster == null)
+		MechanicEntity caster = base.Eval.Caster;
+		if (caster == null)
 		{
 			PFLog.Default.Error("Caster is missing");
 			return false;
@@ -31,10 +31,10 @@ public class ContextConditionIsAlly : ContextCondition
 			PFLog.Default.Error("Target unit is missing");
 			return false;
 		}
-		if (ExcludeUnitItself && entity == maybeCaster)
+		if (ExcludeUnitItself && entity == caster)
 		{
 			return false;
 		}
-		return maybeCaster.IsAlly(entity);
+		return caster.IsAlly(entity);
 	}
 }

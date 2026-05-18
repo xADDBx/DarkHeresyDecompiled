@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -29,13 +30,13 @@ public class BuffCollection : MechanicEntityFactsCollection<Buff>
 	}
 
 	[CanBeNull]
-	public Buff Add(BlueprintBuff blueprint, MechanicsContext parentContext, BuffDuration duration = default(BuffDuration), int rank = 1)
+	public Buff Add(BlueprintBuff blueprint, IEvalContext parentContext, BuffDuration duration = default(BuffDuration), int rank = 1)
 	{
-		return Add(blueprint, parentContext?.MaybeCaster, parentContext, duration, rank);
+		return Add(blueprint, parentContext?.Caster, parentContext, duration, rank);
 	}
 
 	[CanBeNull]
-	public Buff Add([CanBeNull] BlueprintBuff blueprint, [CanBeNull] MechanicEntity caster = null, MechanicsContext parentContext = null, BuffDuration duration = default(BuffDuration), int rank = 1)
+	public Buff Add([CanBeNull] BlueprintBuff blueprint, [CanBeNull] MechanicEntity caster = null, IEvalContext parentContext = null, BuffDuration duration = default(BuffDuration), int rank = 1)
 	{
 		if (blueprint == null)
 		{
@@ -48,11 +49,11 @@ public class BuffCollection : MechanicEntityFactsCollection<Buff>
 		}
 		if (caster == null)
 		{
-			caster = parentContext?.MaybeCaster ?? Owner;
+			caster = parentContext?.Caster ?? Owner;
 		}
-		if (parentContext == null || (caster != null && caster != parentContext.MaybeCaster))
+		if (parentContext == null || (caster != null && caster != parentContext.Caster))
 		{
-			parentContext = MechanicsContext.Claim(parentContext?.Blueprint ?? blueprint, caster, parentContext?.MaybeOwner ?? Owner, parentContext, parentContext?.ClickedTarget, parentContext?.Fact);
+			parentContext = MechanicsContext.Claim(parentContext?.Blueprint ?? blueprint, caster, parentContext?.Owner ?? Owner, parentContext, parentContext?.ClickedTarget, parentContext?.Fact);
 		}
 		using (SimpleContextData<MechanicEntity, Buff.Scope.Caster>.SetIfNotNull(caster))
 		{
@@ -133,7 +134,7 @@ public class BuffCollection : MechanicEntityFactsCollection<Buff>
 	{
 		base.OnFactDidAttach(fact);
 		MechanicEntity caster = SimpleContextData<MechanicEntity, Buff.Scope.Caster>.Current ?? fact.Caster;
-		EventBus.RaiseEvent((IBaseUnitEntity)fact.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)fact.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
 		{
 			h.HandleBuffDidAdded(fact, caster);
 		}, isCheckRuntime: true);
@@ -143,7 +144,7 @@ public class BuffCollection : MechanicEntityFactsCollection<Buff>
 	{
 		base.OnFactWillDetach(fact);
 		MechanicEntity caster = SimpleContextData<MechanicEntity, Buff.Scope.Caster>.Current ?? fact.Caster;
-		EventBus.RaiseEvent((IBaseUnitEntity)fact.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)fact.Owner, (Action<IUnitBuffHandler>)delegate(IUnitBuffHandler h)
 		{
 			h.HandleBuffDidRemoved(fact, caster);
 		}, isCheckRuntime: true);

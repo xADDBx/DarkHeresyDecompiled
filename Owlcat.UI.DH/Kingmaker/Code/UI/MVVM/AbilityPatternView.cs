@@ -11,9 +11,14 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class AbilityPatternView : MonoBehaviour
 {
+	[Header("Elements")]
 	[SerializeField]
 	private RectTransform m_PatternContainer;
 
+	[SerializeField]
+	private AbilityPatternCell m_AbilityPatternCellPrefab;
+
+	[Header("Values")]
 	[SerializeField]
 	private float m_PatternContainerSize;
 
@@ -24,17 +29,14 @@ public class AbilityPatternView : MonoBehaviour
 	private int m_MinSizeInCells = 3;
 
 	[SerializeField]
-	private AbilityPatternCell m_AbilityPatternCellPrefab;
-
-	private UIUtilityItem.UIPatternData m_PatternData;
-
-	private readonly List<AbilityPatternCell> m_AbilityPatternCells = new List<AbilityPatternCell>();
-
-	[SerializeField]
 	private int m_ScaleMaxSize = 12;
 
 	[SerializeField]
 	private int m_ScaleThreshold = 20;
+
+	private UIUtilityItem.UIPatternData m_PatternData;
+
+	private readonly List<AbilityPatternCell> m_AbilityPatternCells = new List<AbilityPatternCell>();
 
 	public void Initialize(UIUtilityItem.UIPatternData patternData)
 	{
@@ -67,21 +69,6 @@ public class AbilityPatternView : MonoBehaviour
 	{
 		m_AbilityPatternCells.ForEach(WidgetFactory.DisposeWidget);
 		m_AbilityPatternCells.Clear();
-	}
-
-	[ContextMenu("TestMe")]
-	public void TestMe()
-	{
-		ClearCells();
-		UIUtilityItem.UIPatternData patternData = m_PatternData;
-		if (patternData != null)
-		{
-			PatternGridData patternCells = patternData.PatternCells;
-			if (patternCells.Count > 1)
-			{
-				DrawCells();
-			}
-		}
 	}
 
 	private void DrawCells()

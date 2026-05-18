@@ -8,6 +8,8 @@ public class SelectionStateDoll : SelectionState
 {
 	private DollState m_State;
 
+	private DollData m_DirectData;
+
 	private bool m_Selected;
 
 	public SelectionStateDoll([NotNull] LevelUpManager manager, [NotNull] BlueprintSelection blueprint, [NotNull] BlueprintPath path, int pathRank)
@@ -36,9 +38,20 @@ public class SelectionStateDoll : SelectionState
 		m_Selected = true;
 	}
 
+	public void Select(DollData data)
+	{
+		m_DirectData = data;
+		m_Selected = true;
+	}
+
+	public DollData CreateData()
+	{
+		return m_State?.CreateData();
+	}
+
 	protected override void ApplyInternal(BaseUnitEntity unit)
 	{
-		unit.ViewSettings.SetDoll(m_State.CreateData());
+		unit.ViewSettings.SetDoll(m_DirectData ?? m_State.CreateData());
 	}
 
 	protected override void InvalidateInternal()

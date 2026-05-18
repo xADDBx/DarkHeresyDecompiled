@@ -4,6 +4,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -37,7 +38,7 @@ public class PartyGreatestPropertyGetter : IntPropertyGetter, PropertyContextAcc
 		{
 			foreach (UnitReference item in list)
 			{
-				num = ((num < Property.GetValue(item.ToBaseUnitEntity(), this.GetMechanicContext())) ? Property.GetValue(item.ToBaseUnitEntity(), this.GetMechanicContext()) : num);
+				num = ((num < Property.GetValue(item.ToBaseUnitEntity(), EvalContext.Current)) ? Property.GetValue(item.ToBaseUnitEntity(), EvalContext.Current) : num);
 			}
 			return num;
 		}

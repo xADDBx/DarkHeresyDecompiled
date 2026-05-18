@@ -4,6 +4,7 @@ using System.Linq;
 using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.UI;
 using ObservableCollections;
+using Owlcat.Fmw.Blueprints;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -56,6 +57,8 @@ public class DeductionOnScreenView : View<DeductionOnScreenVM>, ILineTarget, INe
 
 	private RectTransform m_LinesContainer;
 
+	private DetectiveOpenedCaseBaseView m_OpenedCaseView;
+
 	private ObservableList<DetectiveJournalClueView> m_Views = new ObservableList<DetectiveJournalClueView>();
 
 	private ObservableList<DeductionOnScreenView> m_Conclusions;
@@ -89,6 +92,7 @@ public class DeductionOnScreenView : View<DeductionOnScreenVM>, ILineTarget, INe
 		m_Conclusions = viewsContext.Conclusions;
 		m_LinesContainer = viewsContext.LinesContainer;
 		m_CluesContainer = viewsContext.CluesContainer;
+		m_OpenedCaseView = viewsContext.OpenedCaseView;
 	}
 
 	protected override void OnBind()
@@ -156,6 +160,26 @@ public class DeductionOnScreenView : View<DeductionOnScreenVM>, ILineTarget, INe
 		m_NewStraightLines.Clear();
 		m_CaseItemFrom.DotsPositions.DestroyDotsFor(base.ViewModel.Conclusion);
 		m_CaseItemTo.DotsPositions.DestroyDotsFor(base.ViewModel.Conclusion);
+		ForgetSharedPositionIfSlotEmpty();
+	}
+
+	private void ForgetSharedPositionIfSlotEmpty()
+	{
+		BlueprintCaseItem blueprintCaseItem = base.ViewModel?.SelectedSource?.Item1;
+		if (blueprintCaseItem == null)
+		{
+			return;
+		}
+		List<BlueprintConclusion> list = EnumerateSlotSiblings(blueprintCaseItem).ToList();
+		DetectiveSystem detective = Game.Instance.DetectiveSystem;
+		if (list.Any((BlueprintConclusion c) => detective.HasConclusionExcludingHidden(c)))
+		{
+			return;
+		}
+		foreach (BlueprintConclusion item in list)
+		{
+			Positions.TryRemovePositionFor(item);
+		}
 	}
 
 	private void DrawPagination()
@@ -164,16 +188,69 @@ public class DeductionOnScreenView : View<DeductionOnScreenVM>, ILineTarget, INe
 
 	private void SetPosition()
 	{
-		List<BlueprintConclusion> list = Game.Instance.DetectiveSystem.GetConclusionsFrom(base.ViewModel.SelectedSource.Item1).ToList();
-		list.Remove(base.ViewModel.Conclusion);
-		list.Add(base.ViewModel.Conclusion);
-		foreach (BlueprintConclusion item in list)
+		foreach (BlueprintConclusion item in (from c in EnumerateSlotSiblings(base.ViewModel.SelectedSource?.Item1)
+			where c != base.ViewModel.Conclusion
+			select c).Concat(new BlueprintConclusion[1] { base.ViewModel.Conclusion }).ToList())
 		{
 			if (Positions.TryGetPositionsFor(item, out var position))
 			{
 				RectTransform.anchoredPosition = position;
-				Positions.UpdatePositionFor(base.ViewModel.Conclusion, position);
-				break;
+				SaveSharedPosition(position);
+				return;
+			}
+		}
+		RectTransform.anchoredPosition = new Vector2(-10000f, -10000f);
+		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
+		{
+			PlaceWithHeuristic();
+		}).AddTo(this);
+	}
+
+	private void PlaceWithHeuristic()
+	{
+		if (!(m_OpenedCaseView == null) && !(RectTransform == null) && !Positions.HasPositionFor(base.ViewModel.Conclusion))
+		{
+			Vector2 fromPos = ((m_CaseItemFrom?.RectTransform != null) ? m_CaseItemFrom.RectTransform.anchoredPosition : Vector2.zero);
+			Vector2 toPos = ((m_CaseItemTo?.RectTransform != null) ? m_CaseItemTo.RectTransform.anchoredPosition : Vector2.zero);
+			Vector2 suitablePositionForConclusion = m_OpenedCaseView.GetSuitablePositionForConclusion(this, fromPos, toPos);
+			RectTransform.anchoredPosition = suitablePositionForConclusion;
+			SaveSharedPosition(suitablePositionForConclusion);
+			m_PointerHandler.SetupPosition(suitablePositionForConclusion);
+		}
+	}
+
+	public void SaveSharedPosition(Vector2 position)
+	{
+		if (base.ViewModel?.Conclusion != null)
+		{
+			Positions.UpdatePositionFor(base.ViewModel.Conclusion, position);
+		}
+		BlueprintCaseItem blueprintCaseItem = base.ViewModel?.SelectedSource?.Item1;
+		if (blueprintCaseItem == null)
+		{
+			return;
+		}
+		foreach (BlueprintConclusion item in EnumerateSlotSiblings(blueprintCaseItem))
+		{
+			if (item != base.ViewModel.Conclusion)
+			{
+				Positions.UpdatePositionFor(item, position);
+			}
+		}
+	}
+
+	private static IEnumerable<BlueprintConclusion> EnumerateSlotSiblings(BlueprintCaseItem item1)
+	{
+		if (item1?.PossibleConclusions == null)
+		{
+			yield break;
+		}
+		BpRef<BlueprintConclusion>[] possibleConclusions = item1.PossibleConclusions;
+		foreach (BlueprintConclusion blueprintConclusion in possibleConclusions)
+		{
+			if (blueprintConclusion != null && blueprintConclusion.Sources != null && blueprintConclusion.Sources.Any((BlueprintConclusion.Source s) => s.Item1 == item1))
+			{
+				yield return blueprintConclusion;
 			}
 		}
 	}

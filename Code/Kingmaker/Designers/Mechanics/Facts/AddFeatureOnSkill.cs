@@ -2,7 +2,6 @@ using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.PubSubSystem;
@@ -58,16 +57,5 @@ public class AddFeatureOnSkill : UnitFactComponentDelegate, IUnitGainPathRankHan
 
 	private void TryApply()
 	{
-		if (base.Owner.Stats.GetStat(StatType).PermanentValue < MinimalStat)
-		{
-			return;
-		}
-		foreach (BlueprintUnitFact fact in Facts)
-		{
-			if (base.Owner.Facts.FindBySource(fact, base.Fact, this) == null)
-			{
-				base.Owner.AddFact(fact).AddSource(base.Fact, this);
-			}
-		}
 	}
 }

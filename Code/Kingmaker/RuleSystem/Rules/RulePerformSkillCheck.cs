@@ -1,12 +1,12 @@
 using System;
 using JetBrains.Annotations;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
-using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.RuleSystem.Rules.Utility;
-using Kingmaker.Settings;
 
 namespace Kingmaker.RuleSystem.Rules;
 
@@ -21,35 +21,43 @@ public class RulePerformSkillCheck : RulebookTargetEvent<MechanicEntity, Mechani
 		All = 3
 	}
 
-	public readonly CompositeModifiersManager DifficultyModifiers = new CompositeModifiersManager();
-
-	public readonly ValueModifiersManager ForceResultModifiers = new ValueModifiersManager();
-
-	public SkillCheckType Type { get; }
-
-	public int BaseDifficulty { get; }
-
-	public StatType StatType { get; }
-
-	public bool IsSaveFromMaxCritStage { get; }
-
 	public bool Silent { get; set; }
 
 	public VoicingType Voice { get; set; }
 
 	public bool ShowAnyway { get; set; }
 
-	public RuleRollChance ResultChanceRule { get; private set; }
+	public RuleCalculateSkillCheck ChanceRule { get; }
 
-	public int Difficulty => BaseDifficulty + DifficultyModifiers.Value;
+	public RuleRollChance RollRule { get; private set; }
 
-	public int StatValue => base.Initiator.GetStatOptional(StatType);
+	public StatType StatType => ChanceRule.StatType;
+
+	public int BaseDifficulty => ChanceRule.BaseDifficulty;
+
+	public SkillCheckType Type => ChanceRule.Type;
+
+	public int Difficulty => ChanceRule.Difficulty;
+
+	public int StatValue => base.Initiator.Actor.GetStat(StatType, null, default(StatContext), "StatValue");
+
+	public IReadonlyModifiersComposite Modifiers => ChanceRule.Modifiers;
 
 	public int EffectiveSkill => StatValue + Difficulty;
 
-	public int RollResult => ResultChanceRule;
+	public int RollResult => RollRule;
 
-	public bool ResultIsSuccess => ResultChanceRule.Success;
+	public bool ResultIsSuccess
+	{
+		get
+		{
+			if (!RollRule.Success || AutoFailure)
+			{
+				return AutoSuccess;
+			}
+			return true;
+		}
+	}
 
 	public bool ResultIsCriticalFail
 	{
@@ -57,7 +65,7 @@ public class RulePerformSkillCheck : RulebookTargetEvent<MechanicEntity, Mechani
 		{
 			if (!ResultIsSuccess)
 			{
-				return (int)ResultChanceRule - EffectiveSkill > 30;
+				return (int)RollRule - EffectiveSkill > 30;
 			}
 			return false;
 		}
@@ -65,13 +73,13 @@ public class RulePerformSkillCheck : RulebookTargetEvent<MechanicEntity, Mechani
 
 	public int ResultDegreeOfSuccess => GetDegreeOfSuccess();
 
-	public bool AutoSuccess => ForceResultModifiers.Value > 0;
+	public bool AutoSuccess => ChanceRule.ForceResultModifiers.Value > 0;
 
-	public bool AutoFailure => ForceResultModifiers.Value < 0;
+	public bool AutoFailure => ChanceRule.ForceResultModifiers.Value < 0;
 
-	int IRuleWithChanceRoll.Chance => GetSuccessChance();
+	int IRuleWithChanceRoll.Chance => ChanceRule.ResultChance;
 
-	StatType? IRuleWithChanceRoll.Stat => StatType;
+	StatType? IRuleWithChanceRoll.Stat => ChanceRule.StatType;
 
 	MechanicEntity IRuleWithChanceRoll.AttackInitiator => base.TargetUnit;
 
@@ -80,20 +88,10 @@ public class RulePerformSkillCheck : RulebookTargetEvent<MechanicEntity, Mechani
 	public RulePerformSkillCheck([NotNull] MechanicEntity unit, RulePerformSkillCheck sourceCheck)
 		: base(unit, sourceCheck.TargetUnit ?? unit)
 	{
-		Type = sourceCheck.Type;
-		StatType = sourceCheck.StatType;
-		BaseDifficulty = sourceCheck.BaseDifficulty;
-		IsSaveFromMaxCritStage = sourceCheck.IsSaveFromMaxCritStage;
+		ChanceRule = sourceCheck.ChanceRule;
 		Silent = sourceCheck.Silent;
 		Voice = sourceCheck.Voice;
 		ShowAnyway = sourceCheck.ShowAnyway;
-		DifficultyModifiers.CopyFrom(sourceCheck.DifficultyModifiers);
-		ForceResultModifiers.CopyFrom(sourceCheck.ForceResultModifiers);
-	}
-
-	public RulePerformSkillCheck([NotNull] MechanicEntity unit, StatType statType, int difficulty, [CanBeNull] MechanicEntity attacker = null, SkillCheckType type = SkillCheckType.Default, bool isSaveFromMaxCritStage = false)
-		: this(type, unit, statType, difficulty, attacker, isSaveFromMaxCritStage)
-	{
 	}
 
 	public RulePerformSkillCheck([NotNull] MechanicEntity unit, SkillType skillType, int difficulty, SkillCheckType type = SkillCheckType.Default)
@@ -101,52 +99,38 @@ public class RulePerformSkillCheck : RulebookTargetEvent<MechanicEntity, Mechani
 	{
 	}
 
+	public RulePerformSkillCheck([NotNull] MechanicEntity unit, StatType statType, int difficulty, [CanBeNull] MechanicEntity attacker = null, SkillCheckType type = SkillCheckType.Default, bool isSaveFromMaxCritStage = false)
+		: this(type, unit, statType, difficulty, attacker, isSaveFromMaxCritStage)
+	{
+	}
+
 	private RulePerformSkillCheck(SkillCheckType type, [NotNull] MechanicEntity unit, StatType statType, int difficulty, [CanBeNull] MechanicEntity attacker, bool isSaveFromMaxCritStage)
 		: base(unit, attacker ?? unit)
 	{
-		Type = type;
-		StatType = statType;
-		BaseDifficulty = difficulty;
-		IsSaveFromMaxCritStage = isSaveFromMaxCritStage;
-		if (Type != SkillCheckType.Inspect && base.Initiator.IsPlayerFaction)
-		{
-			DifficultyModifiers.Add(ModifierType.ValAdd, SettingsRoot.Difficulty.SkillCheckModifier, this, ModifierDescriptor.Difficulty);
-		}
+		ChanceRule = new RuleCalculateSkillCheck(unit, statType, difficulty, type, attacker, isSaveFromMaxCritStage);
 	}
 
 	public override void OnTrigger(RulebookEventContext context)
 	{
-		if (base.Initiator.GetStatOptional(StatType) == null)
-		{
-			PFLog.Default.Error($"Invalid stat {StatType}");
-		}
-		else
-		{
-			Roll();
-		}
+		Roll();
+		Metrics.SkillCheck.Initiator(ChanceRule.Initiator.Blueprint.AssetGuid).Target(ChanceRule.Target.Blueprint.AssetGuid).Type(ChanceRule.Type)
+			.Result(ResultIsSuccess)
+			.Send();
 	}
 
 	public void Roll()
 	{
-		if (ResultChanceRule == null)
+		if (RollRule == null)
 		{
-			int value = ForceResultModifiers.Value;
-			ResultChanceRule = ((value != 0) ? RuleRollChance.FromInt(this, (value > 0) ? 1 : 100) : RuleRollChance.Roll(this));
+			Rulebook.Trigger(ChanceRule);
+			int value = ChanceRule.ForceResultModifiers.Value;
+			RollRule = ((value != 0) ? RuleRollChance.FromInt(this, (value > 0) ? 1 : 100) : RuleRollChance.Roll(this));
 		}
 	}
 
 	private int GetDegreeOfSuccess()
 	{
-		int num = EffectiveSkill - (int)ResultChanceRule;
+		int num = EffectiveSkill - (int)RollRule;
 		return num / 10 + ((num >= 0) ? 1 : (-1));
-	}
-
-	private int GetSuccessChance(int successBonus = 0)
-	{
-		if (StatType != 0)
-		{
-			return EffectiveSkill + successBonus;
-		}
-		return 100;
 	}
 }

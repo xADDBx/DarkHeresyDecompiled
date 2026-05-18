@@ -2,10 +2,10 @@ using System;
 using JetBrains.Annotations;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 
 namespace Kingmaker.RuleSystem.Rules;
 
@@ -16,7 +16,7 @@ public class RulePerformMoraleChange : RulebookTargetEvent
 	public readonly RuleCalculateMoraleChange RuleCalculateMoraleChange;
 
 	[CanBeNull]
-	public MechanicsContext SourceContext { get; set; }
+	public IEvalContext SourceContext { get; set; }
 
 	public int MoraleAfterEvent { get; private set; }
 
@@ -64,10 +64,13 @@ public class RulePerformMoraleChange : RulebookTargetEvent
 
 	public override void OnTrigger(RulebookEventContext context)
 	{
-		Rulebook.Trigger(RuleCalculateMoraleChange);
-		MoraleBeforeEvent = TargetUnit.Morale.Value;
-		TargetUnit.Morale.SetValue(RuleCalculateMoraleChange.Result, base.Initiator, FromCriticalEffect);
-		MoraleAfterEvent = TargetUnit.Morale.Value;
-		ResultMoralePhase = TargetUnit.Morale.Phase;
+		if (TargetUnit.IsInCombat)
+		{
+			Rulebook.Trigger(RuleCalculateMoraleChange);
+			MoraleBeforeEvent = TargetUnit.Morale.Value;
+			TargetUnit.Morale.SetValue(RuleCalculateMoraleChange.Result, base.Initiator, FromCriticalEffect);
+			MoraleAfterEvent = TargetUnit.Morale.Value;
+			ResultMoralePhase = TargetUnit.Morale.Phase;
+		}
 	}
 }

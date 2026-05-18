@@ -202,6 +202,13 @@ public class WaaaghDebugData : ScriptableObject, IDebugData
 		foreach (RenderGraph registeredRenderGraph in RenderGraph.GetRegisteredRenderGraphs())
 		{
 			registeredRenderGraph.UnRegisterDebug();
+			for (int num = panel.children.Count - 1; num >= 0; num--)
+			{
+				if (panel.children[num] is DebugUI.Foldout foldout && foldout.displayName == registeredRenderGraph.name)
+				{
+					panel.children.RemoveAt(num);
+				}
+			}
 		}
 	}
 

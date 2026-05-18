@@ -126,7 +126,7 @@ public static class GPUDrivenInstanceCommandQueue
 			{
 				GPUDrivenBatchRendererGroup.ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
 				AllocatorManager.AllocatorHandle allocator = Allocator.TempJob;
-				NativeList<int> nativeList = new NativeList<int>(PendingCommands.Count, allocator);
+				NativeList<EntityId> nativeList = new NativeList<EntityId>(PendingCommands.Count, allocator);
 				NativeList<float4x4> nativeList2 = new NativeList<float4x4>(PendingCommands.Count, allocator);
 				foreach (Command pendingCommand2 in PendingCommands)
 				{
@@ -142,7 +142,8 @@ public static class GPUDrivenInstanceCommandQueue
 						}
 						if ((rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.Added || rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.UpdatedRegistered || rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.DidNotUpdateRegistered) && (rendererUpdateStatus == GPUDrivenBatchRendererGroup.RendererUpdateStatus.Added || current.UpdateFlags != GPUDrivenRendererGroupPool.RendererUpdateFlags.CustomPerInstanceData))
 						{
-							nativeList.Add(in current.RendererDesc.InstanceID.RawInstanceID);
+							EntityId value = current.RendererDesc.InstanceID.RawInstanceID;
+							nativeList.Add(in value);
 							nativeList2.Add(in current.RendererParams.LocalToWorldMatrix);
 						}
 						break;

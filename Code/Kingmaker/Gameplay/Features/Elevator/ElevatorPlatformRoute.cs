@@ -1,4 +1,5 @@
 using System.Linq;
+using UnityEngine;
 
 namespace Kingmaker.Gameplay.Features.Elevator;
 
@@ -20,11 +21,30 @@ public sealed class ElevatorPlatformRoute
 		Transitions = (invert ? settings.Transitions.Reverse().ToArray() : settings.Transitions.ToArray());
 		if (invert)
 		{
-			ElevatorPlatformTransitionSettings[] transitions = Transitions;
-			foreach (ElevatorPlatformTransitionSettings elevatorPlatformTransitionSettings in transitions)
+			for (int i = 0; i < Transitions.Length; i++)
 			{
-				elevatorPlatformTransitionSettings.MovementSpeedCurve.keys = elevatorPlatformTransitionSettings.MovementSpeedCurve.keys.Reverse().ToArray();
+				ElevatorPlatformTransitionSettings elevatorPlatformTransitionSettings = Transitions[i];
+				Transitions[i] = new ElevatorPlatformTransitionSettings
+				{
+					MovementSpeed = elevatorPlatformTransitionSettings.MovementSpeed,
+					MovementSpeedCurve = ReverseCurve(elevatorPlatformTransitionSettings.MovementSpeedCurve),
+					Rotation = elevatorPlatformTransitionSettings.Rotation,
+					RotationCurve = new AnimationCurve(elevatorPlatformTransitionSettings.RotationCurve.keys),
+					RotationDuration = elevatorPlatformTransitionSettings.RotationDuration
+				};
 			}
 		}
+	}
+
+	private static AnimationCurve ReverseCurve(AnimationCurve source)
+	{
+		Keyframe[] keys = source.keys;
+		Keyframe[] array = new Keyframe[keys.Length];
+		for (int i = 0; i < keys.Length; i++)
+		{
+			Keyframe keyframe = keys[keys.Length - 1 - i];
+			array[i] = new Keyframe(1f - keyframe.time, keyframe.value, 0f - keyframe.outTangent, 0f - keyframe.inTangent);
+		}
+		return new AnimationCurve(array);
 	}
 }

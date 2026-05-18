@@ -1,3 +1,4 @@
+using Kingmaker.UI.Pointer;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -46,7 +47,7 @@ public class UITexturePointerWatcher : MonoBehaviour
 	{
 		if (!(material == null))
 		{
-			float x = Input.mousePosition.x;
+			float x = CursorController.CursorPosition.x;
 			float t = Mathf.InverseLerp(screenMinX, screenMaxX, x);
 			float num = Mathf.Lerp(shiftMinX, shiftMaxX, t);
 			float num2 = Mathf.Lerp(shiftUVMinX, shiftUVMaxX, t);

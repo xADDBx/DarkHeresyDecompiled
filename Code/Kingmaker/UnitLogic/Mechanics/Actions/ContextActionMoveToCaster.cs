@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
+using Kingmaker.ResourceLinks;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Visual.Animation;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
@@ -30,7 +30,7 @@ public class ContextActionMoveToCaster : ContextAction
 
 	[SerializeField]
 	[ShowIf("IsJumpTransition")]
-	private AnimationClipWrapper m_JumpAnimation;
+	private AnimationClipWrapperLink m_JumpAnimationLink;
 
 	private bool IsJumpTransition => m_TransitionType == TransitionType.Jump;
 
@@ -45,15 +45,16 @@ public class ContextActionMoveToCaster : ContextAction
 
 	protected override void RunAction()
 	{
-		if (base.Caster is BaseUnitEntity baseUnitEntity && base.Target?.Entity is BaseUnitEntity baseUnitEntity2 && !(baseUnitEntity2.View == null) && baseUnitEntity2.CanMove && base.AbilityContext != null && baseUnitEntity2.DistanceToInCells(baseUnitEntity) > m_StopAtDistanceInCells)
+		AbilityExecutionContext abilityContext = base.AbilityContext;
+		if (base.Caster is BaseUnitEntity baseUnitEntity && base.Target?.Entity is BaseUnitEntity { View: not null, CanMove: not false } baseUnitEntity2 && abilityContext != null && baseUnitEntity2.DistanceToInCells(baseUnitEntity) > m_StopAtDistanceInCells)
 		{
 			if (m_TransitionType == TransitionType.Jump)
 			{
-				MakeUnitJump(baseUnitEntity2, baseUnitEntity, m_StopAtDistanceInCells, base.AbilityContext, m_JumpAnimation);
+				MakeUnitJump(baseUnitEntity2, baseUnitEntity, m_StopAtDistanceInCells, abilityContext, m_JumpAnimationLink);
 			}
 			else
 			{
-				MakeUnitMove(baseUnitEntity2, baseUnitEntity, m_StopAtDistanceInCells, base.AbilityContext);
+				MakeUnitMove(baseUnitEntity2, baseUnitEntity, m_StopAtDistanceInCells, abilityContext);
 			}
 		}
 	}
@@ -81,7 +82,7 @@ public class ContextActionMoveToCaster : ContextAction
 		}
 	}
 
-	private static void MakeUnitJump(BaseUnitEntity unit, BaseUnitEntity target, int stopAtDistanceInCells, AbilityExecutionContext abilityContext, AnimationClipWrapper jumpAnimation)
+	private static void MakeUnitJump(BaseUnitEntity unit, BaseUnitEntity target, int stopAtDistanceInCells, AbilityExecutionContext abilityContext, AnimationClipWrapperLink jumpAnimation)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = PathfindingService.Instance.FindPathTB_Blocking(unit.MovementAgent, target, limitRangeByActionPoints: false);
 		using (PathDisposable<WarhammerPathPlayer>.Get(warhammerPathPlayer, target))

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -19,6 +20,7 @@ using Kingmaker.Framework.Mechanics.Utility.Damage;
 using Kingmaker.GameModes;
 using Kingmaker.Items;
 using Kingmaker.Items.Slots;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -49,7 +51,7 @@ namespace Kingmaker.View;
 
 [DisallowMultipleComponent]
 [KnowledgeDatabaseID("bbf398b7d73be774299f8a932569287e")]
-public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<EntitySubscriber>, IUnitEquipmentHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IUnitEquipmentHandler, EntitySubscriber>, IUnitActiveEquipmentSetHandler<EntitySubscriber>, IUnitActiveEquipmentSetHandler, ISubscriber<IBaseUnitEntity>, IEventTag<IUnitActiveEquipmentSetHandler, EntitySubscriber>, IUnitLifeStateChanged<EntitySubscriber>, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IEventTag<IUnitLifeStateChanged, EntitySubscriber>, ILootDroppedAsAttachedHandler<EntitySubscriber>, ILootDroppedAsAttachedHandler, IEventTag<ILootDroppedAsAttachedHandler, EntitySubscriber>, ICellAbilityHandler<EntitySubscriber>, ICellAbilityHandler, IEntitySubscriber, IEventTag<ICellAbilityHandler, EntitySubscriber>, IShowAoEAffectedUIHandler
+public class UnitEntityView : AbstractUnitEntityView, IUnitEntityView, IAbstractUnitEntityView, IMechanicEntityView, IEntityView, IUnitEquipmentHandler<EntitySubscriber>, IUnitEquipmentHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IUnitEquipmentHandler, EntitySubscriber>, IUnitActiveEquipmentSetHandler<EntitySubscriber>, IUnitActiveEquipmentSetHandler, ISubscriber<IBaseUnitEntity>, IEventTag<IUnitActiveEquipmentSetHandler, EntitySubscriber>, IUnitLifeStateChanged<EntitySubscriber>, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IEventTag<IUnitLifeStateChanged, EntitySubscriber>, ILootDroppedAsAttachedHandler<EntitySubscriber>, ILootDroppedAsAttachedHandler, IEventTag<ILootDroppedAsAttachedHandler, EntitySubscriber>, ICellAbilityHandler<EntitySubscriber>, ICellAbilityHandler, IEntitySubscriber, IEventTag<ICellAbilityHandler, EntitySubscriber>, IShowAoEAffectedUIHandler
 {
 	private const string FogOfWarKeyword = "FOG_OF_WAR_AFFECTED";
 
@@ -100,6 +102,10 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 	private OcclusionGeometryClipTarget m_OcclusionGeometryClipTarget;
 
 	private bool m_IsInAoePattern;
+
+	private bool m_IsAimHoverTarget;
+
+	private GameObject m_AbilityTargetFx;
 
 	private UnitViewHandsEquipment m_HandsEquipment;
 
@@ -175,7 +181,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 			Bounds valueOrDefault = bounds.GetValueOrDefault();
 			if (!bounds.HasValue)
 			{
-				valueOrDefault = new Bounds(base.ViewTransform.position, Vector3.one);
+				valueOrDefault = new Bounds(base.transform.position, Vector3.one);
 				bounds = valueOrDefault;
 			}
 			m_OvertipPosition = bounds.Value.center + new Vector3(0f, bounds.Value.extents.y, 0f);
@@ -186,7 +192,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 	protected override void Awake()
 	{
 		base.Awake();
-		m_OriginalScale = base.ViewTransform.localScale;
+		m_OriginalScale = base.transform.localScale;
 		m_Scale = 1f;
 	}
 
@@ -195,7 +201,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		CharacterController componentInChildren = GetComponentInChildren<CharacterController>();
 		if ((bool)componentInChildren)
 		{
-			float num = Mathf.Max(base.ViewTransform.localScale.x, base.ViewTransform.localScale.z);
+			float num = Mathf.Max(base.transform.localScale.x, base.transform.localScale.z);
 			m_Corpulence = Mathf.RoundToInt(Mathf.Max(num * componentInChildren.radius, 0.5f));
 			UnityEngine.Object.DestroyImmediate(componentInChildren, allowDestroyingAssets: true);
 		}
@@ -244,11 +250,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		HitFxManager = GetComponentInChildren<UnitHitFxManager>();
 		HitFxManager = (HitFxManager ? HitFxManager : base.gameObject.AddComponent<UnitHitFxManager>());
 		HitFxManager.SetView(this);
-		foreach (WeaponSlot item in EntityData.Body.AllSlots.OfType<WeaponSlot>())
-		{
-			item.FindSnapMapForNaturalWeapon();
-		}
-		base.ViewTransform.localScale = m_OriginalScale * (m_Scale = GetSizeScale());
+		base.transform.localScale = m_OriginalScale * (m_Scale = GetSizeScale());
 		m_HandsEquipment?.Dispose();
 		m_HandsEquipment = new UnitViewHandsEquipment(this, base.CharacterAvatar);
 		base.MechadendritesEquipment = new UnitViewMechadendritesEquipment(this, base.CharacterAvatar);
@@ -301,15 +303,15 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 	private BaseUnitEntity CreateEntityData()
 	{
 		BaseUnitEntity baseUnitEntity = base.Blueprint.CreateEntity(UniqueId, base.IsInGameBySettings);
-		float y = base.ViewTransform.rotation.eulerAngles.y;
+		float y = base.transform.rotation.eulerAngles.y;
 		baseUnitEntity.SetOrientation(y);
-		baseUnitEntity.Position = SizePathfindingHelper.FromViewToMechanicsPosition(baseUnitEntity, base.ViewTransform.position);
+		baseUnitEntity.Position = SizePathfindingHelper.FromViewToMechanicsPosition(baseUnitEntity, base.transform.position);
 		base.InterpolationHelper.ForceUpdatePosition(base.transform.position, y);
 		baseUnitEntity.AttachView(this);
 		return baseUnitEntity;
 	}
 
-	internal override void OnMovementStarted(Vector3 pathDestination, bool preview = false)
+	public override void OnMovementStarted(Vector3 pathDestination, bool preview = false)
 	{
 		base.OnMovementStarted(pathDestination, preview);
 		UnitMoveTo currentOrQueued = EntityData.Commands.GetCurrentOrQueued<UnitMoveTo>();
@@ -321,14 +323,21 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		}
 	}
 
-	internal void TryShowPointer(Vector3 pathDestination, bool preview = false)
+	public void TryShowPointer(Vector3 pathDestination, bool preview = false)
 	{
-		if (EntityData.IsDirectlyControllable && Game.Instance.CurrentModeType != GameModeType.Cutscene && Game.Instance.CurrentModeType != GameModeType.SpaceCombat)
+		using (ProfileScope.New(preview ? "UnitEntityView.TryShowPointer.Preview" : "UnitEntityView.TryShowPointer"))
 		{
-			Vector3 vector = SizePathfindingHelper.FromMechanicsToViewPosition(Data, pathDestination);
-			if (Physics.Raycast(new UnityEngine.Ray(vector + 500f * Vector3.up, Vector3.down), out var hitInfo, 1000f, 2359553))
+			if (!EntityData.IsDirectlyControllable || !(Game.Instance.CurrentModeType != GameModeType.Cutscene) || !(Game.Instance.CurrentModeType != GameModeType.SpaceCombat))
 			{
-				vector = hitInfo.point;
+				return;
+			}
+			Vector3 vector = SizePathfindingHelper.FromMechanicsToViewPosition(Data, pathDestination);
+			using (ProfileScope.New("UnitEntityView.TryShowPointer.GroundSnap"))
+			{
+				if (Physics.Raycast(new UnityEngine.Ray(vector + 50f * Vector3.up, Vector3.down), out var hitInfo, 100f, 2359553))
+				{
+					vector = hitInfo.point;
+				}
 			}
 			if (preview)
 			{
@@ -609,11 +618,11 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 			float deltaTime = Game.Instance.Controllers.TimeController.DeltaTime;
 			float num2 = num * deltaTime * 2f;
 			m_Scale = ((num > 0f) ? Math.Min(sizeScale, m_Scale + num2) : Math.Max(sizeScale, m_Scale + num2));
-			base.ViewTransform.localScale = m_OriginalScale * m_Scale;
+			base.transform.localScale = m_OriginalScale * m_Scale;
 		}
 		if ((bool)ParticlesSnapMap)
 		{
-			ParticlesSnapMap.AdditionalScale = base.ViewTransform.localScale.x / m_OriginalScale.x;
+			ParticlesSnapMap.AdditionalScale = base.transform.localScale.x / m_OriginalScale.x;
 		}
 		bool isInLockControlCutscene = EntityData.IsInLockControlCutscene;
 		if (isInLockControlCutscene == m_ParticipateInLockControlCutscene)
@@ -659,7 +668,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		if (EntityData != null)
 		{
 			Gizmos.color = Color.gray;
-			DebugDraw.DrawCircle(base.ViewTransform.position, Vector3.up, EntityData.Vision.RangeMeters);
+			DebugDraw.DrawCircle(base.transform.position, Vector3.up, EntityData.Vision.RangeMeters);
 		}
 	}
 
@@ -811,6 +820,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		if (!m_IsInAoePattern)
 		{
 			m_IsInAoePattern = true;
+			UpdateAbilityTargetFx();
 			UpdateHighlight();
 		}
 	}
@@ -820,6 +830,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		if (m_IsInAoePattern)
 		{
 			m_IsInAoePattern = false;
+			UpdateAbilityTargetFx();
 			UpdateHighlight();
 		}
 	}
@@ -834,7 +845,32 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 		m_IsInAoePattern = false;
 		if (isInAoePattern != m_IsInAoePattern)
 		{
+			UpdateAbilityTargetFx();
 			UpdateHighlight();
+		}
+	}
+
+	public void SetAimHoverTarget(bool value)
+	{
+		if (m_IsAimHoverTarget != value)
+		{
+			m_IsAimHoverTarget = value;
+			UpdateAbilityTargetFx();
+		}
+	}
+
+	private void UpdateAbilityTargetFx()
+	{
+		bool flag = m_IsInAoePattern || m_IsAimHoverTarget;
+		if (flag && m_AbilityTargetFx == null)
+		{
+			GameObject prefab = ConfigRoot.Instance.FxRoot.AbilityTargetHighlightFx.Load();
+			m_AbilityTargetFx = FxHelper.SpawnFxOnEntity(prefab, this);
+		}
+		else if (!flag && m_AbilityTargetFx != null)
+		{
+			FxHelper.Destroy(m_AbilityTargetFx);
+			m_AbilityTargetFx = null;
 		}
 	}
 
@@ -850,7 +886,7 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 			{
 				RigidbodyController.EnsureComponent<HighlighterBlockerHierarchy>();
 			}
-			m_AttachedDroppedLoot.transform.SetParent(base.ViewTransform);
+			m_AttachedDroppedLoot.transform.SetParent(base.transform);
 			RefreshHighlighters();
 		}
 	}
@@ -858,5 +894,40 @@ public class UnitEntityView : AbstractUnitEntityView, IUnitEquipmentHandler<Enti
 	public void HandleLootDroppedAsAttached()
 	{
 		SpawnAttachedDroppedLoot();
+	}
+
+	T IUnitEntityView.GetComponent<T>()
+	{
+		return GetComponent<T>();
+	}
+
+	T IUnitEntityView.GetComponentInChildren<T>()
+	{
+		return GetComponentInChildren<T>();
+	}
+
+	Coroutine IAbstractUnitEntityView.StartCoroutine(IEnumerator routine)
+	{
+		return StartCoroutine(routine);
+	}
+
+	void IAbstractUnitEntityView.StopCoroutine(Coroutine routine)
+	{
+		StopCoroutine(routine);
+	}
+
+	GameObject IMechanicEntityView.get_gameObject()
+	{
+		return base.gameObject;
+	}
+
+	T[] IMechanicEntityView.GetComponentsInChildren<T>()
+	{
+		return GetComponentsInChildren<T>();
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

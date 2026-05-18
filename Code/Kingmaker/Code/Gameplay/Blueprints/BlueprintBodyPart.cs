@@ -26,6 +26,8 @@ public class BlueprintBodyPart : BlueprintScriptableObject
 
 	public LocalizedString Name;
 
+	public LocalizedString Description;
+
 	public Sprite Icon;
 
 	[Range(0f, 100f)]

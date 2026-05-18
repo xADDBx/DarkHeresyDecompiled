@@ -5,6 +5,8 @@ using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Blueprints.Root.Strings.GameLog;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Localization;
+using Kingmaker.Predictions;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
@@ -64,7 +66,12 @@ public class UnitInfoPartDamage : UnitInfoPart
 	[SerializeField]
 	private MonoBehaviour m_VitalDamageStrategyHintSource;
 
-	private List<UnitInfoPartElementView> m_PooledElements = new List<UnitInfoPartElementView>();
+	[SerializeField]
+	private Sprite m_DefaultBuffIcon;
+
+	private List<UnitInfoPartElementView> m_PooledBuffElements = new List<UnitInfoPartElementView>();
+
+	private List<UnitInfoPartElementView> m_PooledModifierElements = new List<UnitInfoPartElementView>();
 
 	private IDisposable m_ProtectedByArmorHintDisposable;
 
@@ -93,9 +100,9 @@ public class UnitInfoPartDamage : UnitInfoPart
 			m_Damage.SetValue($"{baseMinDamage}–{baseMaxDamage}");
 			int value2 = (evt.isVitalBodyPart ? evt.damage.Prediction.VitalDamage : 0);
 			SetElementValue(m_VitalDamage, value2, UIUtilityText.GetModifierString);
-			SetElementValue(m_DamageModifiers, evt.damage.Prediction.BaseDamageModifiers, UIUtilityText.GetModifierString);
-			m_VitalDamageLockedByArmor.SetActive(evt.damage.Prediction.VitalDamageLockedByArmor);
-			m_VitalDamageLockedByStrategy.SetActive(evt.damage.Prediction.VitalDamageLockedByStrategy);
+			SetModifiers(evt.damage.Prediction.DamageModifiers);
+			m_VitalDamageLockedByArmor.SetActive(evt.damage.Prediction.VitalDamageResult == VitalDamageResult.LockedByArmor);
+			m_VitalDamageLockedByStrategy.SetActive(evt.damage.Prediction.VitalDamageResult == VitalDamageResult.LockedByStrategy);
 		})
 			.AddTo(this);
 		base.ViewModel.Data.HPDamageBonus.CombineLatest(base.ViewModel.Data.ArmorDamageBonus, base.ViewModel.Data.ArmorMax, (int hpDamageBonus, int armorDamageBonus, int armorMax) => new { hpDamageBonus, armorDamageBonus, armorMax }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(value =>
@@ -171,33 +178,51 @@ public class UnitInfoPartDamage : UnitInfoPart
 		m_Burst.SetActive(!value.isPreciseAttack);
 	}
 
+	private void SetModifiers(IReadOnlyList<Modifier> modifiers)
+	{
+	}
+
 	private void AddBuff(CollectionAddEvent<UnitBuffUIInfo> evt)
 	{
-		UnitInfoPartElementView widget = WidgetFactory.GetWidget(m_ElementPrefab, activate: false, strictMatching: true);
-		Transform obj = widget.transform;
-		obj.SetParent(m_ElementsRoot, worldPositionStays: false);
-		obj.SetSiblingIndex(m_PooledElementFirstIndex + m_PooledElements.Count);
-		UnitBuffUIInfo value = evt.Value;
-		widget.SetName(value.Name);
-		widget.SetIcon(value.Icon);
-		string value2 = UIUtilityText.FormatModifier(value.Value, value.ModifierType);
-		widget.SetValue(value2);
-		widget.gameObject.SetActive(value: true);
-		m_PooledElements.Add(widget);
+		if (evt.Value.Value > 0)
+		{
+			UnitInfoPartElementView widget = WidgetFactory.GetWidget(m_ElementPrefab, activate: false, strictMatching: true);
+			Transform obj = widget.transform;
+			obj.SetParent(m_ElementsRoot, worldPositionStays: false);
+			obj.SetSiblingIndex(m_PooledElementFirstIndex + m_PooledBuffElements.Count);
+			UnitBuffUIInfo value = evt.Value;
+			widget.SetName(value.Name);
+			Sprite icon = (value.Icon ? value.Icon : m_DefaultBuffIcon);
+			widget.SetIcon(icon);
+			string value2 = UIUtilityText.FormatModifier(value.Value, value.ModifierType);
+			widget.SetValue(value2);
+			widget.gameObject.SetActive(value: true);
+			m_PooledBuffElements.Add(widget);
+		}
 	}
 
 	private void ClearBuffs()
 	{
-		foreach (UnitInfoPartElementView pooledElement in m_PooledElements)
+		foreach (UnitInfoPartElementView pooledBuffElement in m_PooledBuffElements)
 		{
-			WidgetFactory.DisposeWidget(pooledElement);
+			WidgetFactory.DisposeWidget(pooledBuffElement);
 		}
-		m_PooledElements.Clear();
+		m_PooledBuffElements.Clear();
+	}
+
+	private void ClearModifiers()
+	{
+		foreach (UnitInfoPartElementView pooledModifierElement in m_PooledModifierElements)
+		{
+			WidgetFactory.DisposeWidget(pooledModifierElement);
+		}
+		m_PooledModifierElements.Clear();
 	}
 
 	protected override void OnDestroy()
 	{
 		ClearBuffs();
+		ClearModifiers();
 	}
 
 	private void Awake()

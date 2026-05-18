@@ -1,3 +1,4 @@
+using System;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic;
@@ -16,23 +17,29 @@ public sealed class CharInfoAlignmentAbilitySlotVM : CharInfoComponentVM
 		Locked
 	}
 
+	private readonly ReactiveProperty<TooltipBaseTemplate> m_Tooltip = new ReactiveProperty<TooltipBaseTemplate>();
+
+	private readonly ReactiveProperty<SlotState> m_CurrentSlotState = new ReactiveProperty<SlotState>();
+
+	private readonly ReactiveProperty<float> m_Progress = new ReactiveProperty<float>();
+
 	private readonly AlignmentAxis m_Direction;
 
-	private readonly int m_ConvictionMark;
+	private readonly int m_AlignmentTier;
 
 	private readonly PartUnitAlignment m_PartUnitAlignment;
 
-	public TooltipBaseTemplate Tooltip { get; private set; }
+	public ReadOnlyReactiveProperty<TooltipBaseTemplate> Tooltip => m_Tooltip;
 
-	public SlotState CurrentSlotState { get; private set; }
+	public ReadOnlyReactiveProperty<SlotState> CurrentSlotState => m_CurrentSlotState;
 
-	public float Progress { get; private set; }
+	public ReadOnlyReactiveProperty<float> Progress => m_Progress;
 
 	public CharInfoAlignmentAbilitySlotVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit, AlignmentAxis direction, int mark, PartUnitAlignment partUnitAlignment)
 		: base(unit)
 	{
 		m_Direction = direction;
-		m_ConvictionMark = mark;
+		m_AlignmentTier = mark;
 		m_PartUnitAlignment = partUnitAlignment;
 		RefreshData();
 	}
@@ -42,19 +49,23 @@ public sealed class CharInfoAlignmentAbilitySlotVM : CharInfoComponentVM
 		if (m_PartUnitAlignment != null && m_Direction != 0)
 		{
 			base.RefreshData();
-			bool num = !m_PartUnitAlignment.CanHaveMarkInAxis(m_Direction, m_ConvictionMark);
-			bool flag = m_ConvictionMark <= m_PartUnitAlignment.GetAlignmentMark(m_Direction);
+			BlueprintAlignmentMarksRoot alignmentMarksRoot = ConfigRoot.Instance.AlignmentMarksRoot;
+			ReasonCannotHaveMark reason;
+			bool num = !m_PartUnitAlignment.CanHaveMarkInAxis(m_Direction, m_AlignmentTier, out reason);
+			bool flag = m_AlignmentTier <= m_PartUnitAlignment.GetAlignmentMark(m_Direction);
 			int alignmentRank = m_PartUnitAlignment.GetAlignmentRank(m_Direction);
-			Tooltip = new TooltipTemplateSoulMarkFeature(Unit.CurrentValue, m_Direction, m_ConvictionMark, null);
+			m_Tooltip.Value = new TooltipTemplateAlignmentFeature(Unit.CurrentValue, m_Direction, m_AlignmentTier);
 			if (num)
 			{
-				CurrentSlotState = SlotState.Locked;
+				m_CurrentSlotState.Value = SlotState.Locked;
 				return;
 			}
-			CurrentSlotState = ((!flag) ? SlotState.Inactive : SlotState.Active);
-			int rankForMark = ConfigRoot.Instance.AlignmentMarksRoot.GetRankForMark(m_Direction, m_ConvictionMark);
-			int num2 = ((m_ConvictionMark != 0) ? ConfigRoot.Instance.AlignmentMarksRoot.GetRankForMark(m_Direction, m_ConvictionMark - 1) : 0);
-			Progress = ((m_ConvictionMark == ConfigRoot.Instance.AlignmentMarksRoot.GetMarksAmount(m_Direction) - 1) ? 1f : (1f * (float)(alignmentRank - num2) / (float)(rankForMark - num2)));
+			m_CurrentSlotState.Value = ((!flag) ? SlotState.Inactive : SlotState.Active);
+			int mark = Math.Min(m_AlignmentTier + 1, alignmentMarksRoot.GetMarksAmount(m_Direction));
+			int mark2 = Math.Max(m_AlignmentTier, 0);
+			int rankForMark = alignmentMarksRoot.GetRankForMark(m_Direction, mark);
+			int rankForMark2 = alignmentMarksRoot.GetRankForMark(m_Direction, mark2);
+			m_Progress.Value = 1f * (float)(alignmentRank - rankForMark2) / (float)(rankForMark - rankForMark2);
 		}
 	}
 }

@@ -58,6 +58,7 @@ public class UnitAsksService : IService, IDisposable
 		Register(new DetectiveReminderAskController());
 		Register(new DetectiveReconstructionAsksController());
 		Register(new DetectiveSignalFoundAskController());
+		Register(new WithinPariahAuraAsksController());
 		foreach (IUnitAsksController controller in m_Controllers)
 		{
 			if (controller is ITickUnitAsksController item)

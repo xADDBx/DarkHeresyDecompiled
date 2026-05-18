@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Kingmaker;
+using Kingmaker.Code.Framework.Networking.Sync;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.RuleSystem;
@@ -77,18 +78,22 @@ public class MoveToInteractableNode : TaskNode
 		return NodeResult.Success;
 	}
 
-	private async Task<bool> ProcessMovementAsync(BaseUnitEntity agent, InteractionAction interactable, AiAgentRuntimeInternalData runtimeData, AiThreatsHandlingStrategy threatsHandlingStrategy)
+	private async Task<bool> ProcessMovementAsync(BaseUnitEntity agent, InteractionActionPart interactable, AiAgentRuntimeInternalData runtimeData, AiThreatsHandlingStrategy threatsHandlingStrategy)
 	{
 		if (interactable == null)
 		{
 			PFLog.AI.Error("Interactable is null");
 			return false;
 		}
-		if (threatsHandlingStrategy != 0)
+		UnitMoveToProperParams commandParams;
+		await using (AsyncSimulationScope.Get())
 		{
-			await runtimeData.UpdateMoveVariants(agent, threatsHandlingStrategy);
+			if (threatsHandlingStrategy == AiThreatsHandlingStrategy.Ignore)
+			{
+				await runtimeData.UpdateMoveVariants(agent, threatsHandlingStrategy);
+			}
+			commandParams = await TryCreateMoveCommandAsync(agent, interactable, runtimeData.AgentMoveVariants, threatsHandlingStrategy);
 		}
-		UnitMoveToProperParams commandParams = await TryCreateMoveCommandAsync(agent, interactable, runtimeData.AgentMoveVariants, threatsHandlingStrategy);
 		if (commandParams == null)
 		{
 			PFLog.AI.Log("Move command was not set up -> already moved");
@@ -100,24 +105,27 @@ public class MoveToInteractableNode : TaskNode
 		}
 		while (!agent.Commands.Empty)
 		{
-			await Task.Delay(100);
+			await NextTickAwaiter.New();
 		}
-		PFLog.AI.Log($"Try move to {commandParams.ForcedPath.path.Last()}");
+		PFLog.AI.Log("Try move to " + commandParams.ForcedPath.path.Last().AsString());
 		UnitCommandHandle commandHandle = agent.Commands.RunImmediate(commandParams);
 		if (commandHandle == null)
 		{
 			return false;
 		}
-		while (!commandHandle.IsFinished)
+		await using (AsyncSimulationScope.Get())
 		{
-			runtimeData.ResetIdleTime();
-			await Task.Delay(100);
+			while (!commandHandle.IsFinished)
+			{
+				runtimeData.ResetIdleTime();
+				await NextTickAwaiter.New();
+			}
 		}
 		runtimeData.Invalidate();
 		return true;
 	}
 
-	private async Task<UnitMoveToProperParams> TryCreateMoveCommandAsync(BaseUnitEntity agent, InteractionAction interactable, AiAreaScanner.PathData moveVariants, AiThreatsHandlingStrategy threatsHandlingStrategy)
+	private async Task<UnitMoveToProperParams> TryCreateMoveCommandAsync(BaseUnitEntity agent, InteractionActionPart interactable, AiAreaScanner.PathData moveVariants, AiThreatsHandlingStrategy threatsHandlingStrategy)
 	{
 		ForcedPath forcedPath = await CreatePathToInteractableAsync(agent, interactable, moveVariants, threatsHandlingStrategy);
 		if (forcedPath == null)
@@ -128,13 +136,13 @@ public class MoveToInteractableNode : TaskNode
 		int num = ruleCalculateMovementCost.ResultPointCount;
 		while (num > 0)
 		{
-			GraphNode graphNode = forcedPath.path[num - 1];
-			if (CanStopAtNode(agent, graphNode, moveVariants))
+			GraphNode node = forcedPath.path[num - 1];
+			if (CanStopAtNode(agent, node, moveVariants))
 			{
 				break;
 			}
 			num--;
-			PFLog.AI.Log($"{graphNode} is unreachable, trim path");
+			PFLog.AI.Log(node.AsString() + " is unreachable, trim path");
 		}
 		if (num < 2)
 		{
@@ -147,7 +155,7 @@ public class MoveToInteractableNode : TaskNode
 		return new UnitMoveToProperParams(path, agent.Blueprint.WarhammerMovementApPerCell, resultAPCostPerPoint);
 	}
 
-	private async Task<ForcedPath> CreatePathToInteractableAsync(BaseUnitEntity agent, InteractionAction interactable, AiAreaScanner.PathData moveVariants, AiThreatsHandlingStrategy threatsHandlingStrategy)
+	private async Task<ForcedPath> CreatePathToInteractableAsync(BaseUnitEntity agent, InteractionActionPart interactable, AiAreaScanner.PathData moveVariants, AiThreatsHandlingStrategy threatsHandlingStrategy)
 	{
 		List<PathData> paths = new List<PathData>();
 		ForcedPath path = null;
@@ -250,8 +258,8 @@ public class MoveToInteractableNode : TaskNode
 	}
 
 	[NotNull]
-	private HashSet<GridNodeBase> GetInteractableArea(InteractionAction interactable)
+	private HashSet<GridNodeBase> GetInteractableArea(InteractionActionPart interactable)
 	{
-		return new HashSet<GridNodeBase> { ObstacleAnalyzer.GetNearestNodeXZUnwalkable(interactable.transform.position) };
+		return new HashSet<GridNodeBase> { ObstacleAnalyzer.GetNearestNodeXZUnwalkable(interactable.Owner.Position) };
 	}
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Code.Gameplay.Controllers;
 using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Controllers.TurnBased;
@@ -12,10 +13,17 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Gameplay.Features.Encounter.Components;
 using Kingmaker.Gameplay.Features.Encounter.Events;
 using Kingmaker.Gameplay.Features.Experience;
+using Kingmaker.Gameplay.Parts;
+using Kingmaker.Items.Slots;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.Settings;
+using Kingmaker.UnitLogic;
+using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -194,34 +202,9 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 			Current?.Dispose();
 			ActiveEncounter activeEncounter = Entity.Initialize(new ActiveEncounter(blueprint, isPartyAmbushed));
 			Game.Instance.Player.CrossSceneState.AddEntityData(activeEncounter);
-			activeEncounter.SetupParticipants();
-			foreach (BaseUnitEntity item in value)
-			{
-				activeEncounter.AddParticipant(item);
-			}
-			Metrics.Encounter.EncounterState(EncounterMetricsEvent.EncounterStates.Start).Id(blueprint.AssetGuid).Send();
-			EventBus.RaiseEvent((IMechanicEntity)activeEncounter, (Action<IStartEncounterHandler>)delegate(IStartEncounterHandler h)
-			{
-				h.HandleStartEncounter();
-			}, isCheckRuntime: true);
-			EventBus.RaiseEvent(delegate(IPartyCombatHandler h)
-			{
-				h.HandlePartyCombatStateChanged(inCombat: true);
-			});
+			activeEncounter.Setup(value);
 			return activeEncounter;
 		}
-	}
-
-	protected override void OnCreateParts()
-	{
-		base.OnCreateParts();
-		GetOrCreate<PartEncounterMoraleVictoryWatcher>();
-	}
-
-	protected override void OnPostLoad()
-	{
-		base.OnPostLoad();
-		Metrics.Encounter.Id(base.Blueprint?.AssetGuid).EncounterState(EncounterMetricsEvent.EncounterStates.Load).Send();
 	}
 
 	private ActiveEncounter(BlueprintEncounter blueprint, bool isPartyAmbushed)
@@ -235,15 +218,136 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 	{
 	}
 
-	protected override IEntityViewBase? CreateViewForData()
+	protected override IEntityView? CreateViewForData()
 	{
 		return null;
+	}
+
+	protected override void OnCreateParts()
+	{
+		base.OnCreateParts();
+		GetOrCreate<PartEncounterMoraleVictoryWatcher>();
+		GetOrCreate<PartEncounterMetrics>();
+		if (base.Blueprint.HasComponent<EncounterObjectivesComponent>())
+		{
+			GetOrCreate<PartEncounterObjectives>();
+		}
 	}
 
 	protected override void OnInitialize()
 	{
 		base.OnInitialize();
 		SetupBlackboard();
+	}
+
+	protected override void OnPostLoad()
+	{
+		base.OnPostLoad();
+		SendStartMetrics(isLoaded: true);
+	}
+
+	private void Setup(IEnumerable<BaseUnitEntity> previousEncounterParticipants)
+	{
+		SetupParticipants();
+		foreach (BaseUnitEntity previousEncounterParticipant in previousEncounterParticipants)
+		{
+			AddParticipant(previousEncounterParticipant);
+		}
+		SendStartMetrics(isLoaded: false);
+		base.EventBus.RaiseEvent((IMechanicEntity)this, (Action<IStartEncounterHandler>)delegate(IStartEncounterHandler h)
+		{
+			h.HandleStartEncounter();
+		}, isCheckRuntime: true);
+		base.EventBus.RaiseEvent(delegate(IPartyCombatHandler h)
+		{
+			h.HandlePartyCombatStateChanged(inCombat: true);
+		});
+	}
+
+	private void SendStartMetrics(bool isLoaded)
+	{
+		List<BaseUnitEntity> list = Participants.Where((BaseUnitEntity p) => p.IsPlayerFaction).ToList();
+		PartEncounterMetrics optional = GetOptional<PartEncounterMetrics>();
+		Metrics.EncounterStart.IsLoaded(isLoaded).PartyCount(list.Count).EnemiesCount(Participants.Count((BaseUnitEntity p) => p.IsPlayerEnemy))
+			.ExperienceLevel(Game.Instance.Player.MainCharacterEntity.GetProgressionOptional()?.ExperienceLevel ?? (-1))
+			.PartyHealth(list.Select((BaseUnitEntity p) => p.Health.HitPointsLeft).Sum())
+			.PartyArmour(list.Select((BaseUnitEntity p) => p.Armor.DurabilityLeft).Sum())
+			.DamageToParty(optional?.DamageToParty ?? 0)
+			.DamageToEnemies(optional?.DamageToEnemies ?? 0)
+			.Difficulty(MetricsUtils.GameDifficultyToString(SettingsRoot.Difficulty.GameDifficulty.GetValue()))
+			.CombatLog(Game.Instance.Player.UISettings.LogIsPinned)
+			.Send();
+		if (isLoaded)
+		{
+			return;
+		}
+		List<string> value;
+		using (CollectionPool<List<string>, string>.Get(out value))
+		{
+			List<string> value2;
+			using (CollectionPool<List<string>, string>.Get(out value2))
+			{
+				foreach (BaseUnitEntity item in list)
+				{
+					PartAbilityModifiers optional2 = item.GetOptional<PartAbilityModifiers>();
+					if (optional2 != null)
+					{
+						foreach (Ability ability in item.Abilities)
+						{
+							BlueprintAbilityModifier manuallyAddedModifier = optional2.GetManuallyAddedModifier(ability);
+							if (manuallyAddedModifier != null)
+							{
+								value.Add(manuallyAddedModifier.AssetGuid);
+								value2.Add(ability.Blueprint.AssetGuid);
+							}
+						}
+					}
+					Metrics.EncounterCompanionStart.Id(item.Blueprint.AssetGuid).Abilities(item.Abilities.Enumerable.Select((Ability a) => a.Blueprint.AssetGuid)).Equipment(from s in item.Body.AllSlots
+						where s.HasItem
+						select s.Item.Blueprint.AssetGuid)
+						.ModifiersTargetsId(value)
+						.ModifiersTargetsAbility(value2)
+						.Send();
+					value.Clear();
+					value2.Clear();
+				}
+			}
+		}
+	}
+
+	private void SendFinishMetrics(EncounterCompletionType completionType)
+	{
+		List<BaseUnitEntity> list = Participants.Where((BaseUnitEntity p) => p.IsPlayerFaction).ToList();
+		Metrics.EncounterFinish.PartyHealth(list.Select((BaseUnitEntity p) => p.Health.HitPointsLeft).Sum()).PartyArmour(list.Select((BaseUnitEntity p) => p.Armor.DurabilityLeft).Sum()).Reason(completionType)
+			.PowerBalance(Game.Instance.Controllers.MoraleController.GetPlayerPowerBalanceRatio())
+			.Difficulty(MetricsUtils.GameDifficultyToString(SettingsRoot.Difficulty.GameDifficulty.GetValue()))
+			.Send();
+		PartEncounterMetrics optional = GetOptional<PartEncounterMetrics>();
+		if (optional == null)
+		{
+			return;
+		}
+		List<string> value;
+		using (CollectionPool<List<string>, string>.Get(out value))
+		{
+			List<string> value2;
+			using (CollectionPool<List<string>, string>.Get(out value2))
+			{
+				foreach (BaseUnitEntity item in list)
+				{
+					foreach (Ability ability in item.Abilities)
+					{
+						string assetGuid = ability.Blueprint.AssetGuid;
+						value.Add(assetGuid);
+						value2.Add(optional.GetAbilityCastCount(item.Blueprint.AssetGuid, assetGuid).ToString());
+					}
+					Metrics.EncounterCompanionFinish.Id(item.Blueprint.AssetGuid).AbilitiesUsagesId(value).AbilitiesUsagesCount(value2)
+						.Send();
+					value.Clear();
+					value2.Clear();
+				}
+			}
+		}
 	}
 
 	private void SetupBlackboard()
@@ -286,7 +390,7 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 		return true;
 	}
 
-	private bool IsMoraleVictoryConditionMet()
+	public bool IsMoraleVictoryConditionMet()
 	{
 		if (!base.Blueprint.AllowVictoryByMorale || _moraleVictoryRejected)
 		{
@@ -337,14 +441,17 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 			allCharacter.Buffs.OnCombatEnded();
 			allCharacter.Abilities.OnCombatEnd();
 		}
-		Metrics.Encounter.EncounterState(EncounterMetricsEvent.EncounterStates.Finish).Id(base.Blueprint?.AssetGuid).WinReason(completionType)
-			.PowerBalance(Game.Instance.Controllers.MoraleController.MoraleGroups.FirstOrDefault((MoraleGroup g) => g.IsPlayerGroup)?.PowerValue ?? 0f)
-			.Send();
+		SendFinishMetrics(completionType);
+		GetOptional<PartEncounterMetrics>()?.Reset();
 		Game.Instance.Controllers.TurnController.ExitTb();
 		CleanupParticipantsOnComplete();
 		Facts.Dispose();
 		Dispose();
-		EventBus.RaiseEvent(delegate(IPartyCombatHandler h)
+		base.EventBus.RaiseEvent(delegate(ICombatEndHandler h)
+		{
+			h.HandleCombatEnd(completionType);
+		});
+		base.EventBus.RaiseEvent(delegate(IPartyCombatHandler h)
 		{
 			h.HandlePartyCombatStateChanged(inCombat: false);
 		});
@@ -444,6 +551,11 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 		return false;
 	}
 
+	public void SetVictoryByMoraleConfirmed(bool confirmed)
+	{
+		((_completionConfirmation as EncounterCompletionByMoraleConfirmation) ?? throw new Exception("Encounter completion confirmation was not set by morale")).Callback(confirmed);
+	}
+
 	public void StoreParticipantRuntimeState(EntityRef<MechanicEntity> participant, IRuntimeEntityBlackboard runtimeState)
 	{
 		RuntimeEntityBlackboardRecord runtimeEntityBlackboardRecord = _participantBlackboards.FindOrDefault<RuntimeEntityBlackboardRecord>((RuntimeEntityBlackboardRecord r) => r.EntityRef == (MechanicEntity)participant);
@@ -470,7 +582,7 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 
 	void IAreaActivationHandler.OnAreaActivated()
 	{
-		EventBus.RaiseEvent(delegate(IPartyCombatHandler h)
+		base.EventBus.RaiseEvent(delegate(IPartyCombatHandler h)
 		{
 			h.HandlePartyCombatStateChanged(inCombat: true);
 		});

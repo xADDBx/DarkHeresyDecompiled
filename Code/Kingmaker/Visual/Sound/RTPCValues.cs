@@ -11,4 +11,6 @@ public static class RTPCValues
 	public const string MuteEntity = "MuteEntity";
 
 	public const string SignalsDevice = "SignalsDevice";
+
+	public const string WindowZoom = "rtpc_DetectiveZoomLevel";
 }

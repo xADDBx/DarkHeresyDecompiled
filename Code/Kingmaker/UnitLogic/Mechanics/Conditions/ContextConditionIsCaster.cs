@@ -14,7 +14,7 @@ public class ContextConditionIsCaster : ContextCondition
 	{
 		if (base.Target.Entity != null)
 		{
-			return base.Target == base.Context.MaybeCaster;
+			return base.Target == base.Eval.Caster;
 		}
 		return false;
 	}

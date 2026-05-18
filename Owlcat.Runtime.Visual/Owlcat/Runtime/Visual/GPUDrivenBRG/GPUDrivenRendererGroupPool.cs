@@ -1130,7 +1130,7 @@ public class GPUDrivenRendererGroupPool : IDisposable, IGPUDrivenMemoryProfiling
 		Debug.LogError("Failed to allocate a renderer group index. Out of memory.");
 	}
 
-	public void UploadGroupsToGPU(CommandBuffer cmd)
+	public void UploadGroupsToGPU(UnsafeCommandBuffer cmd)
 	{
 		using (new ProfilingScope(Profiling.UploadGroups))
 		{

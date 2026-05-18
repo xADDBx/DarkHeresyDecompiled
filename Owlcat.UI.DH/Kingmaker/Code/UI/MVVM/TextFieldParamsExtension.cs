@@ -1,43 +1,23 @@
 using TMPro;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public static class TextFieldParamsExtension
 {
-	public static void ApplyTextFieldParams(this TextMeshProUGUI textField, TextFieldParams textFieldParams, TextFieldParams defaultParams = null)
+	public static void ApplyTextFieldParams(this TMP_Text textField, TextFieldParams textFieldParams)
 	{
-		if (!(textField == null) && (textFieldParams != null || defaultParams != null))
+		if (!(textField == null))
 		{
-			FontStyles? fontStyles = textFieldParams?.FontStyles ?? defaultParams?.FontStyles;
-			if (fontStyles.HasValue)
-			{
-				textField.fontStyle = fontStyles.Value;
-			}
-			Color? color = textFieldParams?.FontColor ?? defaultParams?.FontColor;
-			if (color.HasValue)
-			{
-				textField.color = color.Value;
-			}
-			float? num = textFieldParams?.FontSize ?? defaultParams?.FontSize;
-			if (num.HasValue)
-			{
-				textField.fontSize = num.Value;
-			}
+			textField.fontStyle = textFieldParams.FontStyle;
 		}
 	}
 
-	public static TextFieldParams GetTextFieldParams(this TextMeshProUGUI textField)
+	public static TextFieldParams GetTextFieldParams(this TMP_Text textField)
 	{
-		if (textField == null)
+		if (!(textField == null))
 		{
-			return null;
+			return new TextFieldParams(textField.fontStyle);
 		}
-		return new TextFieldParams
-		{
-			FontStyles = textField.fontStyle,
-			FontColor = textField.color,
-			FontSize = textField.fontSize
-		};
+		return TextFieldParams.Default;
 	}
 }

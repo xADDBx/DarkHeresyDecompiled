@@ -14,7 +14,7 @@ public class UnitInterruptTurn : UnitCommand<UnitInterruptTurnParams>
 
 	protected override ResultType OnAction()
 	{
-		Game.Instance.Controllers.TurnController.InterruptCurrentTurnImmediate(base.Params.EntityToGetTheTurn, base.Params.InterruptionSource, base.Params.InterruptionData);
+		Game.Instance.Controllers.TurnController.ScheduleInterruptTurn(base.Params);
 		return ResultType.Success;
 	}
 }

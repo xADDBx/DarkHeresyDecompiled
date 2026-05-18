@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace Owlcat.UI;
@@ -20,9 +21,10 @@ public class CommandHintIconSet
 
 	public Sprite GetIcon(string binding)
 	{
+		string text = Regex.Replace(binding, "#.+$", string.Empty);
 		foreach (Entry icon in m_Icons)
 		{
-			if (icon.Binding == binding)
+			if (icon.Binding == text)
 			{
 				return icon.Sprite;
 			}

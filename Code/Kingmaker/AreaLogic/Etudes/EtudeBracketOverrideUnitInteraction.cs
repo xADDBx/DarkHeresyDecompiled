@@ -1,4 +1,6 @@
+using System;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Interaction;
@@ -6,12 +8,15 @@ using Newtonsoft.Json;
 
 namespace Kingmaker.AreaLogic.Etudes;
 
+[Obsolete]
 public class EtudeBracketOverrideUnitInteraction : IUnitInteraction
 {
 	[JsonProperty]
 	public readonly IEtudeBracketOverrideInteraction Source;
 
 	public int Distance => Source.Distance;
+
+	public int ActionCost => 0;
 
 	public bool IsApproach => false;
 
@@ -22,6 +27,10 @@ public class EtudeBracketOverrideUnitInteraction : IUnitInteraction
 	public bool IsDialog => Source.IsDialog;
 
 	public bool AllowInCombat => Source.AllowInCombat;
+
+	public bool AllowWithHelpless => false;
+
+	public LocalizedString DisplayName => null;
 
 	[JsonConstructor]
 	protected EtudeBracketOverrideUnitInteraction()

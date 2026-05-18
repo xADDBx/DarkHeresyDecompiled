@@ -15,7 +15,6 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Logging;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -155,7 +154,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 			if (m_IsViewed != value)
 			{
 				m_IsViewed = value;
-				EventBus.RaiseEvent(delegate(ISetQuestObjectiveViewedHandler l)
+				base.EventBus.RaiseEvent(delegate(ISetQuestObjectiveViewedHandler l)
 				{
 					l.HandleSetQuestObjectiveViewed(this);
 				});
@@ -214,7 +213,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 			logic.OnStarted();
 		});
 		Quest.OnObjectiveStateChange(this);
-		EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
+		base.EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
 		{
 			l.HandleQuestObjectiveStarted(this);
 		});
@@ -246,7 +245,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 				logic.OnCompleted();
 			});
 			Deactivate();
-			EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
 			{
 				l.HandleQuestObjectiveCompleted(this);
 			});
@@ -268,7 +267,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 				logic.OnFailed();
 			});
 			Deactivate();
-			EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
 			{
 				l.HandleQuestObjectiveFailed(this);
 			});
@@ -305,7 +304,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 				logic.OnFailed();
 			});
 			Deactivate();
-			EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
 			{
 				l.HandleQuestObjectiveFailed(this);
 			});
@@ -323,7 +322,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 			QuestObjective questObjective = Quest.TryGetObjective(addendum);
 			if (questObjective == null)
 			{
-				UberDebug.LogError("Error: Quest Objective " + Blueprint.name + " has a null addendum");
+				PFLog.Quests.Error("Error: Quest Objective " + Blueprint.name + " has a null addendum");
 			}
 			else
 			{
@@ -342,7 +341,7 @@ public class QuestObjective : EntityFact<QuestBook>, ITimedEvent, ISubscriber, I
 			{
 				logic.OnBecameVisible();
 			});
-			EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
+			base.EventBus.RaiseEvent(delegate(IQuestObjectiveHandler l)
 			{
 				l.HandleQuestObjectiveBecameVisible(this);
 			});

@@ -1,11 +1,9 @@
 using System.Collections.Generic;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
 using Kingmaker.Items;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -35,7 +33,7 @@ public class CharInfoWeaponSetAbilityVM : ViewModel
 	public CharInfoWeaponSetAbilityVM(BlueprintAbility ability, ItemEntityWeapon weapon, MechanicEntity caster)
 	{
 		m_Caster = caster;
-		m_Icon.Value = ability.Icon.Or(UIConfig.Instance.UIIcons.DefaultAbilityIcon);
+		m_Icon.Value = ability.Icon.GetDefaultIfNull(DefaultImageType.Ability);
 		Tooltip = new TooltipTemplateAbility(ability, weapon.Blueprint, caster);
 		m_Ability.Value = ability;
 		m_ItemWeapon.Value = weapon;

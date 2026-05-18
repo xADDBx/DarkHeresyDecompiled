@@ -37,6 +37,8 @@ public class PFLog : LogChannelFactory
 
 		public static readonly LogChannel Colonization = GetOrCreateHistoryChannel("History.Colonization");
 
+		public static readonly LogChannel Detective = GetOrCreateHistoryChannel("History.Detective");
+
 		private static LogChannel GetOrCreateHistoryChannel(string name)
 		{
 			return LogChannelFactory.GetOrCreate(name, 1);
@@ -74,6 +76,12 @@ public class PFLog : LogChannelFactory
 	public static readonly LogChannel Pathfinding = LogChannelFactory.GetOrCreate("Pathfinding");
 
 	public static readonly LogChannel Animations = LogChannelFactory.GetOrCreate("Animations");
+
+	public static readonly LogChannel Dialog = LogChannelFactory.GetOrCreate("Dialog");
+
+	public static readonly LogChannel Quests = LogChannelFactory.GetOrCreate("Quests");
+
+	public static readonly LogChannel Mechanics = LogChannelFactory.GetOrCreate("Mechanics");
 
 	public static readonly LogChannel OGL = LogChannelFactory.GetOrCreate("OGL");
 
@@ -141,11 +149,17 @@ public class PFLog : LogChannelFactory
 
 	public static readonly LogChannel VO = LogChannelFactory.GetOrCreate("VO");
 
+	public static readonly LogChannel GlobalCooldown = LogChannelFactory.GetOrCreate("GlobalCooldown");
+
 	public static readonly LogChannel Alignment = LogChannelFactory.GetOrCreate("Alignment");
 
 	public static readonly LogChannel Metrics = LogChannelFactory.GetOrCreate("Metrics");
 
 	public static readonly LogChannel Camera = LogChannelFactory.GetOrCreate("Camera");
+
+	public static readonly LogChannel SoundRagdoll = LogChannelFactory.GetOrCreate("SoundRagdoll");
+
+	public static readonly LogChannel SceneControllables = LogChannelFactory.GetOrCreate("SceneControllables");
 
 	public static LogChannel Unity => LogChannel.Unity;
 

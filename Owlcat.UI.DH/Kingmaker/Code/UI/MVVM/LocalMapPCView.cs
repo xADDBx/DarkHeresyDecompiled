@@ -51,11 +51,11 @@ public class LocalMapPCView : LocalMapBaseView
 		Vector3 localScale = m_Image.rectTransform.localScale;
 		OwlcatMultiButton centerOnRogueTraderButton = m_CenterOnRogueTraderButton;
 		OwlcatMultiButton zoomMinusButton = m_ZoomMinusButton;
-		bool flag2 = (MinZoom.Value = localScale.x > m_ZoomMinSize && localScale.y > m_ZoomMinSize);
+		bool flag2 = (m_MinZoom.Value = localScale.x > base.ZoomMin && localScale.y > base.ZoomMin);
 		bool interactable = (zoomMinusButton.Interactable = flag2);
 		centerOnRogueTraderButton.Interactable = interactable;
 		OwlcatMultiButton zoomPlusButton = m_ZoomPlusButton;
-		interactable = (MaxZoom.Value = localScale.x < m_ZoomMaxSize && localScale.y < m_ZoomMaxSize);
+		interactable = (m_MaxZoom.Value = localScale.x < base.ZoomMax && localScale.y < base.ZoomMax);
 		zoomPlusButton.Interactable = interactable;
 	}
 

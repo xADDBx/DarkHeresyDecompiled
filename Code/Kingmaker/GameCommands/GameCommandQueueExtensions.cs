@@ -1,16 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.AreaLogic.QuestSystem;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.Designers.EventConditionActionSystem.Events;
+using Kingmaker.DialogSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.EntitySystem.Persistence.SavesStorage;
+using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.Globalmap.Blueprints;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
@@ -151,6 +153,16 @@ public static class GameCommandQueueExtensions
 		gameCommandQueue.AddCommand(new AddForSellVendorGameCommand(item, count, makeDeal));
 	}
 
+	public static void AddItemToTrash([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] ItemEntity item)
+	{
+		gameCommandQueue.AddCommand(new AddItemToTrashGameCommand(item));
+	}
+
+	public static void RemoveItemFromTrash([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] ItemEntity item)
+	{
+		gameCommandQueue.AddCommand(new RemoveItemFromTrashGameCommand(item));
+	}
+
 	public static void TransferItem([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] ItemEntity item, [NotNull] ItemsCollectionRef to, int count)
 	{
 		gameCommandQueue.AddCommand(new TransferItemGameCommand(to, item, count));
@@ -207,6 +219,16 @@ public static class GameCommandQueueExtensions
 	public static void AcceptChangeGroup([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] List<UnitReference> partyCharacters, [NotNull] List<UnitReference> remoteCharacters, [NotNull] List<BlueprintUnitReference> requiredCharacters, bool reInitPartyCharacters)
 	{
 		gameCommandQueue.AddCommand(new AcceptChangeGroupGameCommand(partyCharacters, remoteCharacters, requiredCharacters, reInitPartyCharacters));
+	}
+
+	public static void ConfirmCombatVictoryByMorale(this GameCommandQueue gameCommandQueue, bool confirm)
+	{
+		gameCommandQueue.AddCommand(new ConfirmCombatVictoryByMoraleGameCommand(confirm));
+	}
+
+	public static void MarkHighlightedAndNoticed(this GameCommandQueue gameCommandQueue, EntityRef<MapObjectEntity> mapObjectEntityRef)
+	{
+		gameCommandQueue.AddCommand(new MarkHighlightedAndNoticedGameCommand(mapObjectEntityRef));
 	}
 
 	public static void LoadArea([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] BlueprintAreaEnterPoint enterPoint, AutoSaveMode autoSaveMode)
@@ -274,9 +296,9 @@ public static class GameCommandQueueExtensions
 		gameCommandQueue.AddCommand(new SetQuestObjectiveViewedGameCommand(questObjective));
 	}
 
-	public static void PartyFormationIndex([NotNull] this GameCommandQueue gameCommandQueue, int formationIndex)
+	public static void PartyFormationIndex([NotNull] this GameCommandQueue gameCommandQueue, int formationIndex, bool fromUi = false)
 	{
-		gameCommandQueue.AddCommand(new PartyFormationIndexGameCommand(formationIndex));
+		gameCommandQueue.AddCommand(new PartyFormationIndexGameCommand(formationIndex, fromUi));
 	}
 
 	public static void PartyFormationResetGameCommand([NotNull] this GameCommandQueue gameCommandQueue)
@@ -360,5 +382,30 @@ public static class GameCommandQueueExtensions
 	public static void InterruptMoveUnit([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] AbstractUnitEntity unit)
 	{
 		gameCommandQueue.AddCommand(new InterruptMoveUnitGameCommand(unit));
+	}
+
+	public static void StudyClues([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] List<BlueprintClueStudy> cluesToStudy)
+	{
+		gameCommandQueue.AddCommand(new StudyCluesGameCommand(cluesToStudy.Select((BlueprintClueStudy s) => s.ToReference<BlueprintClueStudyReference>()).ToList()));
+	}
+
+	public static void AddConclusion([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] BlueprintConclusion conclusion)
+	{
+		gameCommandQueue.AddCommand(new AddConclusionGameCommand(conclusion.ToReference<BlueprintConclusionReference>()));
+	}
+
+	public static void RemoveConclusion([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] BlueprintConclusion conclusion)
+	{
+		gameCommandQueue.AddCommand(new RemoveConclusionGameCommand(conclusion.ToReference<BlueprintConclusionReference>()));
+	}
+
+	public static void CloseCase([NotNull] this GameCommandQueue gameCommandQueue, [NotNull] BlueprintCase @case, [NotNull] BlueprintCaseAnswer answer)
+	{
+		gameCommandQueue.AddCommand(new CloseCaseGameCommand(@case.ToReference<BlueprintCaseReference>(), answer.ToReference<BlueprintCaseAnswerReference>()));
+	}
+
+	public static void SetFlashlightTarget(this GameCommandQueue gameCommandQueue, Vector3 point)
+	{
+		gameCommandQueue.AddCommand(new SetFlashlightTargetGameCommand(point));
 	}
 }

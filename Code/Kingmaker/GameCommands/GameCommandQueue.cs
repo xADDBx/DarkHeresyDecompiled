@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.GameCommands.Contexts;
 using Kingmaker.Networking;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Replay;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
@@ -92,6 +93,7 @@ public class GameCommandQueue
 		return m_CommandQueue.GetMaxReadyTick();
 	}
 
+	[ValidCommitPoint]
 	public void AddCommand([NotNull] GameCommand cmd)
 	{
 		if (((bool)ContextData<GameCommandContext>.Current || (bool)ContextData<UnitCommandContext>.Current) && cmd.IsSynchronized && !cmd.IsForcedSynced)

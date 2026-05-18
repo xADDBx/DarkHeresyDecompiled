@@ -4,7 +4,6 @@ using JetBrains.Annotations;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.UI;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -192,12 +191,7 @@ public class EncyclopediaPageBaseView : View<EncyclopediaPageVM>
 		m_ScrollRect.ScrollToTop();
 	}
 
-	public void Scroll(InputActionEventData arg1, float x)
-	{
-		Scroll(x);
-	}
-
-	private void Scroll(float x)
+	public void Scroll(float x)
 	{
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * m_ScrollRect.scrollSensitivity);

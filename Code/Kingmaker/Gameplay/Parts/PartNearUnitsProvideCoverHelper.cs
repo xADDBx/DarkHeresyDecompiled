@@ -7,6 +7,7 @@ public static class PartNearUnitsProvideCoverHelper
 {
 	public static bool IsNodeCoveredByEntity(this GridNodeBase node, int direction, out MechanicEntity coverEntity)
 	{
+		coverEntity = null;
 		GridNodeBase neighbourAlongDirection = node.GetNeighbourAlongDirection(direction, checkConnectivity: false);
 		BaseUnitEntity firstUnit = node.GetFirstUnit();
 		if (firstUnit != null)
@@ -22,7 +23,6 @@ public static class PartNearUnitsProvideCoverHelper
 				}
 			}
 		}
-		coverEntity = null;
 		return false;
 	}
 }

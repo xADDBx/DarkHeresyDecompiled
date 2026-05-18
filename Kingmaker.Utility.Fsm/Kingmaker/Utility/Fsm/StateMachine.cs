@@ -8,19 +8,6 @@ namespace Kingmaker.Utility.Fsm;
 
 public class StateMachine<TState, TTrigger> where TState : Enum where TTrigger : Enum
 {
-	private readonly struct QueuedTrigger
-	{
-		public readonly TTrigger Trigger;
-
-		public readonly object Payload;
-
-		public QueuedTrigger(TTrigger trigger, object payload)
-		{
-			Trigger = trigger;
-			Payload = payload;
-		}
-	}
-
 	public class StateConfiguration
 	{
 		public readonly struct TransitionInfo
@@ -182,6 +169,19 @@ public class StateMachine<TState, TTrigger> where TState : Enum where TTrigger :
 				}
 			}
 			taskCompletionSource.TrySetCanceled();
+		}
+	}
+
+	private readonly struct QueuedTrigger
+	{
+		public readonly TTrigger Trigger;
+
+		public readonly object Payload;
+
+		public QueuedTrigger(TTrigger trigger, object payload)
+		{
+			Trigger = trigger;
+			Payload = payload;
 		}
 	}
 

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Code.View.UI.MVVM;
 using Kingmaker.Code.Gameplay.Components.Features;
+using Kingmaker.Code.View.Bridge.Enums;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -109,6 +111,10 @@ public class FeatureTagsConfig
 	public List<ArmourTagProperty> UniqueArmourProperties { get; private set; } = new List<ArmourTagProperty>();
 
 
+	[Header("Special Weapon Damage Icons")]
+	[field: SerializeField]
+	public EnumToObjectSelector<SpecialWeaponDamageType, Sprite> SpecialWeaponDamageTypeIcons { get; private set; }
+
 	public Color GetWeaponTagColor(WeaponTagUISettings settings)
 	{
 		return m_WeaponTagCustomColors.FirstOrDefault((TagCustomColor<WeaponTagProperty> c) => c.Tag == settings.Tag)?.Color ?? GetRarityColorIn(m_WeaponTagColors, settings.Type);
@@ -129,9 +135,24 @@ public class FeatureTagsConfig
 		return GetRarityColorIn(m_ArmourMountColors, settings.Type);
 	}
 
+	public Sprite GetWeaponTagIcon(WeaponTagProperty tag)
+	{
+		TagIcon<WeaponTagProperty> tagIcon = m_WeaponTagIcons.FirstOrDefault((TagIcon<WeaponTagProperty> i) => i.Tag == tag);
+		if (!(tagIcon?.Icon))
+		{
+			return m_FallbackIcon;
+		}
+		return tagIcon.Icon;
+	}
+
+	public Sprite GetSpecialWeaponTagIcon(SpecialWeaponDamageType tag)
+	{
+		return SpecialWeaponDamageTypeIcons.GetEntity(tag) ?? m_FallbackIcon;
+	}
+
 	public Sprite GetWeaponTagIcon(WeaponTagUISettings settings)
 	{
-		return m_WeaponTagIcons.FirstOrDefault((TagIcon<WeaponTagProperty> i) => i.Tag == settings.Tag)?.Icon ?? m_FallbackIcon;
+		return GetWeaponTagIcon(settings.Tag);
 	}
 
 	public Sprite GetArmourTagIcon(ArmourTagUISettings settings)

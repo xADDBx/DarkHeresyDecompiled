@@ -7,9 +7,9 @@ namespace Kingmaker.UnitLogic.Levelup.Selections.Portrait;
 
 public class SelectionStatePortrait : SelectionState
 {
-	private BlueprintPortrait m_Portrait;
-
 	private bool m_Selected;
+
+	public BlueprintPortrait Portrait { get; private set; }
 
 	public SelectionStatePortrait([NotNull] LevelUpManager manager, [NotNull] BlueprintSelection blueprint, [NotNull] BlueprintPath path, int pathRank)
 		: base(manager, blueprint, path, pathRank)
@@ -33,14 +33,14 @@ public class SelectionStatePortrait : SelectionState
 
 	public void SelectPortrait(BlueprintPortrait portrait)
 	{
-		m_Portrait = portrait;
+		Portrait = portrait;
 		m_Selected = true;
 		NotifySelectionChanged();
 	}
 
 	protected override void ApplyInternal(BaseUnitEntity unit)
 	{
-		unit.UISettings.SetPortrait(m_Portrait);
+		unit.UISettings.SetPortrait(Portrait);
 	}
 
 	protected override void InvalidateInternal()

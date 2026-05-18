@@ -10,6 +10,7 @@ namespace Kingmaker.Designers.EventConditionActionSystem.Evaluators;
 [TypeId("877e32af072546a5a3815c22a2fbd0e7")]
 public class EntityPosition : PositionEvaluator
 {
+	[SerializeReference]
 	[ValidateNotNull]
 	public MechanicEntityEvaluator Entity;
 

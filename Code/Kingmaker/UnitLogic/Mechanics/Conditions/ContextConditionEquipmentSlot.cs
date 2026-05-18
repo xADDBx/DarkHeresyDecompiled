@@ -24,7 +24,7 @@ public class ContextConditionEquipmentSlot : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		PartUnitBody partUnitBody = ((!IsCaster) ? base.Target.Entity?.GetBodyOptional() : base.Context.MaybeOwner?.GetBodyOptional());
+		PartUnitBody partUnitBody = ((!IsCaster) ? base.Target.Entity?.GetBodyOptional() : base.Eval.Owner?.GetBodyOptional());
 		if (partUnitBody == null)
 		{
 			return false;

@@ -5,9 +5,9 @@ using System.Runtime.CompilerServices;
 using Code.GameCore.ElementsSystem;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
@@ -22,7 +22,7 @@ using UnityEngine;
 namespace Kingmaker.EntitySystem;
 
 [TypeId("7fee73fef2544a278ec147707330d9a7")]
-public abstract class EntityFactComponentDelegate<TEntity> : BlueprintComponent, IRuntimeEntityFactComponentProvider, ISubscriber, IOverrideOnActivateMethod where TEntity : Entity
+public abstract class EntityFactComponentDelegate<TEntity> : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider, ISubscriber, IOverrideOnActivateMethod where TEntity : Entity
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class ComponentRuntime : EntityFactComponent<TEntity>, ISubscriptionProxy, IHashable, IOwlPackable<ComponentRuntime>
@@ -215,6 +215,22 @@ public abstract class EntityFactComponentDelegate<TEntity> : BlueprintComponent,
 			}
 		}
 
+		protected override void OnDidActivate()
+		{
+			if (Delegate == null)
+			{
+				return;
+			}
+			try
+			{
+				Delegate.OnDidActivate();
+			}
+			catch (Exception ex)
+			{
+				LogChannel.Default.Exception(ex);
+			}
+		}
+
 		protected override void OnAreaLoadingComplete()
 		{
 			if (Delegate == null)
@@ -322,7 +338,7 @@ public abstract class EntityFactComponentDelegate<TEntity> : BlueprintComponent,
 
 	protected int ExecutesCount { get; set; }
 
-	public ComponentRuntime Runtime => (SimpleContextData<EntityFactComponent, EntityFactComponent.Scope>.Current as ComponentRuntime) ?? throw new InvalidOperationException();
+	public ComponentRuntime Runtime => (EvalContext.Current.FactComponent as ComponentRuntime) ?? throw new InvalidOperationException();
 
 	[NotNull]
 	protected TEntity Owner => Runtime.Owner;
@@ -396,6 +412,10 @@ public abstract class EntityFactComponentDelegate<TEntity> : BlueprintComponent,
 	}
 
 	protected virtual void OnViewWillDetach()
+	{
+	}
+
+	protected virtual void OnDidActivate()
 	{
 	}
 

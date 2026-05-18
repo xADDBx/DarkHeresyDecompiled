@@ -9,7 +9,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Camera;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.Framework.Settings.UISettings;
+using Kingmaker.Code.Framework.PubSubSystem;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Facades;
 using Kingmaker.Controllers.Clicks;
@@ -24,7 +24,7 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Settings;
 using Kingmaker.Sound;
 using Kingmaker.UI;
-using Kingmaker.UI.InputSystems;
+using Kingmaker.UI.Pointer;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.CountingGuard;
 using Kingmaker.Utility.UnityExtensions;
@@ -34,6 +34,7 @@ using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Visual.Waaagh;
 using Owlcat.Runtime.Visual.Waaagh.Data;
 using UnityEngine;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Kingmaker.View;
 
@@ -210,6 +211,8 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 	private float m_RotateOffset;
 
 	private bool m_ReportedNaNPos;
+
+	private Bounds? m_CameraBoundsOverride;
 
 	private bool m_ReportedNaNBasis;
 
@@ -502,13 +505,6 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 
 	public void RenewKeyboardBindings()
 	{
-		if (base.isActiveAndEnabled)
-		{
-			ApplyBindAction(delegate(string s, Action action)
-			{
-				Game.Instance.Keyboard.Bind(s, action);
-			});
-		}
 	}
 
 	private void OnEnable()
@@ -538,8 +534,6 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 	{
 		EventBus.Unsubscribe(this);
 		m_HandRotationLock = false;
-		KeyboardAccess keyboard = Game.Instance.Keyboard;
-		ApplyBindAction(keyboard.Unbind);
 		m_ShadowDistanceOverride.SetEnabled(value: false);
 		CinemachineCore.CameraUpdatedEvent.RemoveListener(OnCinemachineUpdate);
 	}
@@ -551,64 +545,24 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 		m_AudioListener.gameObject.SetActive(value: true);
 	}
 
-	private void ApplyBindAction(Action<string, Action> bindAction)
+	public void Scroll(Vector2 offset)
 	{
-		UIKeybindGeneralSettings uIKeybindGeneralSettings = UISettingsRoot.Instance.UIKeybindGeneralSettings;
-		if (uIKeybindGeneralSettings != null && !(uIKeybindGeneralSettings.CameraLeft == null) && !(uIKeybindGeneralSettings.CameraRight == null) && !(uIKeybindGeneralSettings.CameraUp == null) && !(uIKeybindGeneralSettings.CameraDown == null) && !(uIKeybindGeneralSettings.CameraRotateLeft == null) && !(uIKeybindGeneralSettings.CameraRotateRight == null))
-		{
-			bindAction(uIKeybindGeneralSettings.CameraLeft.name, AddLeft);
-			bindAction(uIKeybindGeneralSettings.CameraRight.name, AddRight);
-			bindAction(uIKeybindGeneralSettings.CameraUp.name, AddUp);
-			bindAction(uIKeybindGeneralSettings.CameraDown.name, AddDown);
-			bindAction(uIKeybindGeneralSettings.CameraRotateLeft.name, RotateLeft);
-			bindAction(uIKeybindGeneralSettings.CameraRotateRight.name, RotateRight);
-		}
-	}
-
-	private void AddLeft()
-	{
-		float num = (float)SettingsRoot.Controls.CameraScrollSpeedKeyboard * 0.02f;
-		m_ScrollOffset += new Vector2(0f - num, 0f);
-	}
-
-	private void AddRight()
-	{
-		float x = (float)SettingsRoot.Controls.CameraScrollSpeedKeyboard * 0.02f;
-		m_ScrollOffset += new Vector2(x, 0f);
-	}
-
-	private void AddUp()
-	{
-		float y = (float)SettingsRoot.Controls.CameraScrollSpeedKeyboard * 0.02f;
-		m_ScrollOffset += new Vector2(0f, y);
-	}
-
-	private void AddDown()
-	{
-		float num = (float)SettingsRoot.Controls.CameraScrollSpeedKeyboard * 0.02f;
-		m_ScrollOffset += new Vector2(0f, 0f - num);
+		m_ScrollOffset = offset * SettingsRoot.Controls.CameraScrollSpeedKeyboard * 0.02f;
 	}
 
 	public void RotateLeft()
 	{
-		if (!m_RotationByMouse && !m_RotationByKeyboard)
-		{
-			if (IsSpaceGameMode)
-			{
-				m_RotationByKeyboard = false;
-				m_RotateOffset = 0f;
-			}
-			else
-			{
-				m_RotateOffset = m_RotationRatio * (float)SettingsRoot.Controls.CameraRotationSpeedKeyboard * 0.05f;
-				m_RotationByKeyboard = true;
-			}
-		}
+		Rotate(1f);
 	}
 
 	public void RotateRight()
 	{
-		if (!m_RotationByMouse && !m_RotationByKeyboard)
+		Rotate(-1f);
+	}
+
+	public void Rotate(float multiplier)
+	{
+		if (!Mathf.Approximately(multiplier, 0f) && !m_RotationByMouse && !m_RotationByKeyboard)
 		{
 			if (IsSpaceGameMode)
 			{
@@ -617,7 +571,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 			}
 			else
 			{
-				m_RotateOffset = (0f - m_RotationRatio) * (float)SettingsRoot.Controls.CameraRotationSpeedKeyboard * 0.05f;
+				m_RotateOffset = multiplier * m_RotationRatio * (float)SettingsRoot.Controls.CameraRotationSpeedKeyboard * 0.05f;
 				m_RotationByKeyboard = true;
 			}
 		}
@@ -658,7 +612,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 	{
 		if (m_DisableCounter <= 0)
 		{
-			PFLog.Default.Warning("Trying to switch on camera rig when it's not off");
+			PFLog.Camera.Warning("Trying to switch on camera rig when it's not off");
 			return;
 		}
 		m_DisableCounter--;
@@ -691,7 +645,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 			if (!m_ReportedNaNPos)
 			{
 				m_ReportedNaNPos = true;
-				PFLog.Default.Error("Camera position is NaN");
+				PFLog.Camera.Error("Camera position is NaN");
 			}
 		}
 		m_WorldToClipMatrixCached = Camera.projectionMatrix * Camera.worldToCameraMatrix;
@@ -708,9 +662,20 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 		return base.transform.rotation * Quaternion.Inverse(identity) * m_WorldOffset;
 	}
 
+	public void SetCameraBoundsOverride(Bounds bounds)
+	{
+		m_CameraBoundsOverride = bounds;
+	}
+
+	public void ResetCameraBoundsOverride()
+	{
+		m_CameraBoundsOverride = null;
+	}
+
 	public Vector3 ClampByLevelBounds(Vector3 point)
 	{
-		Bounds bounds = Game.Instance.CurrentlyLoadedAreaPart?.Bounds.CameraBounds ?? m_LevelBounds;
+		BlueprintAreaPart currentlyLoadedAreaPart = Game.Instance.CurrentlyLoadedAreaPart;
+		Bounds bounds = m_CameraBoundsOverride ?? currentlyLoadedAreaPart?.Bounds.CameraBounds ?? m_LevelBounds;
 		OnLevelBound = point.x > bounds.max.x || point.x < bounds.min.x || point.z > bounds.max.z || point.z < bounds.min.z;
 		point.x = Mathf.Min(Mathf.Max(point.x, bounds.min.x), bounds.max.x);
 		point.z = Mathf.Min(Mathf.Max(point.z, bounds.min.z), bounds.max.z);
@@ -719,30 +684,30 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 
 	private Vector2 GetCameraScrollShiftByMouse()
 	{
-		Vector2 vector = Input.mousePosition;
+		Vector2 cursorPosition = CursorController.CursorPosition;
 		float num = (float)SettingsRoot.Controls.CameraScrollSpeedEdge * 0.02f;
 		bool flag = (bool)SettingsRoot.Controls.CameraScrollOutOfScreenEnabled && m_FullScreenUIType == FullScreenUIType.Unknown;
-		Vector2 vector2 = vector;
+		Vector2 vector = cursorPosition;
 		int num2;
-		if (vector2.x < ScrollScreenThreshold && (flag || vector2.x >= 0f))
+		if (vector.x < ScrollScreenThreshold && (flag || vector.x >= 0f))
 		{
 			num2 = -1;
 		}
 		else
 		{
-			Vector2 vector3 = vector2;
-			num2 = ((vector3.x > (float)Screen.width - ScrollScreenThreshold && (flag || vector3.x <= (float)Screen.width)) ? 1 : 0);
+			Vector2 vector2 = vector;
+			num2 = ((vector2.x > (float)Screen.width - ScrollScreenThreshold && (flag || vector2.x <= (float)Screen.width)) ? 1 : 0);
 		}
 		int num3 = num2;
-		Vector2 vector4 = vector;
-		if (vector4.y < ScrollScreenThreshold && (flag || vector4.y >= 0f))
+		Vector2 vector3 = cursorPosition;
+		if (vector3.y < ScrollScreenThreshold && (flag || vector3.y >= 0f))
 		{
 			num2 = -1;
 		}
 		else
 		{
-			Vector2 vector5 = vector4;
-			num2 = ((vector5.y > (float)Screen.height - ScrollScreenThreshold && (flag || vector5.y <= (float)Screen.height)) ? 1 : 0);
+			Vector2 vector4 = vector3;
+			num2 = ((vector4.y > (float)Screen.height - ScrollScreenThreshold && (flag || vector4.y <= (float)Screen.height)) ? 1 : 0);
 		}
 		int num4 = num2;
 		if (num3 != 0 || num4 != 0)
@@ -807,11 +772,17 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 		m_ScrollOffset = Vector2.zero;
 	}
 
+	public void ResetInput()
+	{
+		m_ScrollOffset = Vector2.zero;
+		m_RotateOffset = 0f;
+	}
+
 	private void FigureOutScreenBasis()
 	{
-		Right = Vector3.ProjectOnPlane(Camera.transform.right, Vector2.up).normalized;
-		Vector3 vector = ((Mathf.Abs(Vector3.Dot(Camera.transform.up, Vector2.up)) < Mathf.Epsilon) ? Camera.transform.forward : Camera.transform.up);
-		Up = Vector3.ProjectOnPlane(vector, Vector2.up).normalized;
+		Right = Vector3.ProjectOnPlane(Camera.transform.right, (Vector3)Vector2.up).normalized;
+		Vector3 vector = ((Mathf.Abs(Vector3.Dot(Camera.transform.up, (Vector3)Vector2.up)) < Mathf.Epsilon) ? Camera.transform.forward : Camera.transform.up);
+		Up = Vector3.ProjectOnPlane(vector, (Vector3)Vector2.up).normalized;
 		bool flag = false;
 		if (float.IsNaN(Right.sqrMagnitude))
 		{
@@ -826,7 +797,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 		if (flag && !m_ReportedNaNBasis)
 		{
 			m_ReportedNaNBasis = true;
-			PFLog.Default.Error($"Up or Right vector are NaN in CameraRig. Camera.transform.position={Camera.transform.position}");
+			PFLog.Camera.Error($"Up or Right vector are NaN in CameraRig. Camera.transform.position={Camera.transform.position}");
 		}
 	}
 
@@ -834,15 +805,15 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 	{
 		if (MainCanvasFacade.Instance == null)
 		{
-			return Input.mousePosition;
+			return CursorController.CursorPosition;
 		}
-		RectTransformUtility.ScreenPointToLocalPointInRectangle(MainCanvasFacade.Instance.RectTransform, Input.mousePosition, UICamera.Instance, out var localPoint);
+		RectTransformUtility.ScreenPointToLocalPointInRectangle(MainCanvasFacade.Instance.RectTransform, CursorController.CursorPosition, UICamera.Instance, out var localPoint);
 		return localPoint;
 	}
 
 	private void RotateByMiddleButton()
 	{
-		if (!PointerController.InGui && Input.GetMouseButtonDown(2) && !m_RotationByMouse && !m_RotationByKeyboard)
+		if (!PointerController.InGui && Game.Instance.CursorController.GetMouseButton(MouseButton.Middle) && !m_RotationByMouse && !m_RotationByKeyboard)
 		{
 			m_RotationByMouse = true;
 			Game.Instance.CursorController.SetRotateCameraCursor(state: true);
@@ -854,7 +825,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 
 	private void CheckRotate()
 	{
-		if (!Input.GetMouseButton(2) && m_RotationByMouse)
+		if (!Game.Instance.CursorController.GetMouseButton(MouseButton.Middle) && m_RotationByMouse)
 		{
 			Game.Instance.CursorController.SetRotateCameraCursor(state: false);
 			m_BaseMousePoint = null;
@@ -971,15 +942,28 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 
 	public void ScrollTo(Vector3 position)
 	{
-		if (!m_RecordLock)
+		if (m_RecordLock)
 		{
-			if (m_ScrollRoutine != null)
-			{
-				StopCoroutine(m_ScrollRoutine);
-			}
-			m_TargetPosition = position;
-			m_SkipClampOneFrame = true;
+			return;
 		}
+		if (m_ScrollRoutine != null)
+		{
+			StopCoroutine(m_ScrollRoutine);
+		}
+		Vector3 targetPosition = PlaceOnGround2(position);
+		float num = targetPosition.y - position.y;
+		if (num > 0.01f)
+		{
+			Vector3 vector = base.transform.TransformDirection(CameraAttachPoint.localPosition);
+			if (Mathf.Abs(vector.y) > 0.01f)
+			{
+				float num2 = num / vector.y;
+				targetPosition.x = position.x + vector.x * num2;
+				targetPosition.z = position.z + vector.z * num2;
+			}
+		}
+		m_TargetPosition = targetPosition;
+		m_SkipClampOneFrame = true;
 	}
 
 	public float CalculateScrollTime(Vector3 sourcePos, Vector3 targetPos, float maxTime, float maxSpeed, float speed)
@@ -1272,7 +1256,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 		{
 			if (m_LastHighGroundPos.HasValue)
 			{
-				UberDebug.Log("Lost high ground");
+				PFLog.Camera.Log("Lost high ground");
 			}
 			m_LastHighGroundPos = null;
 			m_Lowering = false;
@@ -1280,7 +1264,7 @@ public class CameraRig : MonoBehaviour, IAreaHandler, ISubscriber, IAdditiveArea
 		}
 		if (!m_LastHighGroundPos.HasValue)
 		{
-			UberDebug.Log($"New high ground {prevPos}");
+			PFLog.Camera.Log($"New high ground {prevPos}");
 			m_LastHighGroundPos = prevPos;
 			m_LastDistToHighGroundPos = 0f;
 			m_Lowering = false;

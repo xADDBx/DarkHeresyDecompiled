@@ -106,7 +106,7 @@ public class PartyMembersDetach : GameAction
 		}
 		else
 		{
-			int count = (m_RestrictPartySize ? Mathf.Clamp(m_PartySize, 1, 6) : 6);
+			int count = (m_RestrictPartySize ? Mathf.Clamp(m_PartySize, 1, Game.Instance.Player.MaxPartySize) : Game.Instance.Player.MaxPartySize);
 			EventBus.RaiseEvent(delegate(IDetachUnitsUIHandler h)
 			{
 				h.HandleDetachUnits(count, AfterDetach);

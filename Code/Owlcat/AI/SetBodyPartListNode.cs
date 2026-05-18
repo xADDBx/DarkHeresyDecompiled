@@ -59,7 +59,7 @@ public class SetBodyPartListNode : BehaviourTreeNode
 		{
 			using (ContextData<AiBodyPartsContextData>.Request().Setup(item))
 			{
-				if (filter.GetBoolValue(new PropertyContext(agent, null, target)))
+				if (filter.GetBoolValue(agent, null, target))
 				{
 					result.Add(item.Reference());
 				}

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.DLC;
@@ -29,33 +28,34 @@ public class CharGenPortraitsSelectorVM : BaseCharGenAppearancePageComponentVM, 
 
 	private readonly ReactiveProperty<CharGenCustomPortraitCreatorVM> m_CustomPortraitCreatorVM = new ReactiveProperty<CharGenCustomPortraitCreatorVM>();
 
-	public readonly CharGenPortraitGroupVM CustomPortraitGroup = new CharGenPortraitGroupVM();
-
 	private readonly ObservableList<CharGenPortraitSelectorItemVM> m_AllPortraitsCollection = new ObservableList<CharGenPortraitSelectorItemVM>();
 
-	private readonly CharGenContext m_CharGenContext;
+	public readonly SelectionGroupRadioVM<CharGenPortraitTabVM> TabSelector;
 
 	private readonly ReactiveProperty<CharGenPortraitSelectorItemVM> m_SelectedPortrait = new ReactiveProperty<CharGenPortraitSelectorItemVM>();
 
-	private SelectionStatePortrait m_SelectionStatePortrait;
-
 	private readonly SelectionGroupRadioVM<CharGenPortraitSelectorItemVM> m_SelectorGroupVM;
 
-	public readonly Dictionary<PortraitCategory, CharGenPortraitGroupVM> PortraitGroupVms = new Dictionary<PortraitCategory, CharGenPortraitGroupVM>();
+	private readonly CharGenContext m_CharGenContext;
+
+	private SelectionStatePortrait m_SelectionStatePortrait;
 
 	public readonly ReadOnlyReactiveProperty<PortraitVM> PortraitVM;
 
-	public readonly SelectionGroupRadioVM<CharGenPortraitTabVM> TabSelector;
+	public readonly Dictionary<PortraitCategory, CharGenPortraitGroupVM> PortraitGroupVms = new Dictionary<PortraitCategory, CharGenPortraitGroupVM>();
+
+	public readonly CharGenPortraitGroupVM CustomPortraitGroup = new CharGenPortraitGroupVM();
 
 	public ReadOnlyReactiveProperty<CharGenPortraitTabVM> CurrentTab => m_CurrentTab;
 
 	public ReadOnlyReactiveProperty<CharGenCustomPortraitCreatorVM> CustomPortraitCreatorVM => m_CustomPortraitCreatorVM;
 
-	public CharGenPortraitSelectorItemVM SelectedPortrait => m_SelectedPortrait.Value;
+	public ReadOnlyReactiveProperty<CharGenPortraitSelectorItemVM> SelectedPortrait => m_SelectedPortrait;
 
-	public CharGenPortraitsSelectorVM(CharGenContext ctx)
+	public CharGenPortraitsSelectorVM(CharGenContext ctx, SelectionStatePortrait selectionStatePortrait)
 	{
 		m_CharGenContext = ctx;
+		m_SelectionStatePortrait = selectionStatePortrait;
 		AddDisposable(EventBus.Subscribe(this));
 		List<CharGenPortraitTabVM> visibleCollection = (from CharGenPortraitTab tab in Enum.GetValues(typeof(CharGenPortraitTab))
 			select AddDisposableAndReturn(new CharGenPortraitTabVM(tab))).ToList();
@@ -73,9 +73,9 @@ public class CharGenPortraitsSelectorVM : BaseCharGenAppearancePageComponentVM, 
 		CollectCustomPortraits();
 		AddDisposable(m_SelectorGroupVM = new SelectionGroupRadioVM<CharGenPortraitSelectorItemVM>(m_AllPortraitsCollection, m_SelectedPortrait));
 		AddDisposable(m_CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager));
-		PortraitVM = m_SelectedPortrait.Where((CharGenPortraitSelectorItemVM x) => x != null).Select(delegate(CharGenPortraitSelectorItemVM itemVM)
+		PortraitVM = m_SelectedPortrait.Select(delegate(CharGenPortraitSelectorItemVM itemVM)
 		{
-			PortraitVM portraitVM2 = new PortraitVM(itemVM.PortraitData);
+			PortraitVM portraitVM2 = new PortraitVM(itemVM?.PortraitData ?? m_CharGenContext.Doll.Portrait?.Data ?? ConfigRoot.Instance.CharGenRoot.CustomPortrait.Data);
 			AddDisposable(portraitVM2);
 			return portraitVM2;
 		}).ToReadOnlyReactiveProperty();
@@ -120,7 +120,7 @@ public class CharGenPortraitsSelectorVM : BaseCharGenAppearancePageComponentVM, 
 		TrySelectPortrait();
 	}
 
-	protected virtual void CollectCharacterPortraits()
+	protected void CollectCharacterPortraits()
 	{
 		foreach (BlueprintPortrait portrait in ConfigRoot.Instance.CharGenRoot.Portraits)
 		{
@@ -145,12 +145,7 @@ public class CharGenPortraitsSelectorVM : BaseCharGenAppearancePageComponentVM, 
 		{
 			return false;
 		}
-		CharGenConfig charGenConfig = m_CharGenContext.CharGenConfig;
-		if (charGenConfig.Mode == CharGenMode.NewCompanion && charGenConfig.CompanionType == CharGenCompanionType.Navigator)
-		{
-			return portrait.Data.PortraitCategory == PortraitCategory.Navigator;
-		}
-		return portrait.Data.PortraitCategory != PortraitCategory.Navigator;
+		return true;
 	}
 
 	private void CollectCustomPortraits()
@@ -187,23 +182,7 @@ public class CharGenPortraitsSelectorVM : BaseCharGenAppearancePageComponentVM, 
 
 	private void TrySelectPortrait()
 	{
-		if (TryUpdatePortraitFromState())
-		{
-			return;
-		}
-		foreach (PortraitCategory category in new List<PortraitCategory>
-		{
-			PortraitCategory.None,
-			PortraitCategory.Navigator
-		})
-		{
-			if (PortraitGroupVms.ContainsKey(category))
-			{
-				m_SelectedPortrait.Value = m_AllPortraitsCollection.FirstOrDefault((CharGenPortraitSelectorItemVM p) => PortraitGroupVms[category].PortraitCollection.Contains(p));
-				m_SelectedPortrait.ForceNotify();
-				break;
-			}
-		}
+		TryUpdatePortraitFromState();
 	}
 
 	private void OnCustomPortraitCreate(BlueprintPortrait blueprintPortrait = null)
@@ -277,6 +256,7 @@ public class CharGenPortraitsSelectorVM : BaseCharGenAppearancePageComponentVM, 
 			{
 				m_SelectionStatePortrait = manager.GetSelectionState(manager.Path, selectionByType, 0) as SelectionStatePortrait;
 				m_SelectedPortrait.Value = null;
+				TrySelectPortrait();
 			}
 		}
 	}

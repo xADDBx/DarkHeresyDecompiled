@@ -500,7 +500,7 @@ public class Util : MonoBehaviour
 
 	public static string ConvertFromTransform(Transform t)
 	{
-		return t.position.ToString() + "|" + t.rotation.ToString();
+		return t.position.ToString() + "|" + t.rotation;
 	}
 
 	private static long Fix(float Number)
@@ -705,7 +705,7 @@ public class Util : MonoBehaviour
 	public static float Distance2D(Vector3 v1, Vector2 v2)
 	{
 		v1.y = (v2.y = 0f);
-		return Vector3.Distance(v1, v2);
+		return Vector3.Distance(v1, (Vector3)v2);
 	}
 
 	public static Vector3 MakeUniformScale(float scale)

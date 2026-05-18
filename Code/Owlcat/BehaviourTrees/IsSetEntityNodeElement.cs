@@ -2,7 +2,7 @@ using Owlcat.Runtime.Core.Utility;
 
 namespace Owlcat.BehaviourTrees;
 
-[NodeMenuItem("Add Node/Variables/Entity/Is Set Entity Leaf", "Is Set Entity")]
+[NodeMenuItem("Add Node/Variables/MechanicEntity/Is Set Entity Leaf", "Is Set Entity")]
 [TypeId("f66598aaadc54db7b55c9db8daa937f7")]
 public class IsSetEntityNodeElement : ConditionNodeElement<IsSetEntityNode>
 {

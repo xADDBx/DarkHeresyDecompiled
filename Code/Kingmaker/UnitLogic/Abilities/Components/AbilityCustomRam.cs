@@ -75,9 +75,7 @@ public class AbilityCustomRam : AbilityCustomLogic, IAbilityTargetRestriction, I
 
 	public override void Cleanup(AbilityExecutionContext context)
 	{
-		BaseUnitEntity obj = context.Caster as BaseUnitEntity;
-		obj.MovementAgent.IsCharging = false;
-		obj.MovementAgent.MaxSpeedOverride = null;
+		(context.Caster as BaseUnitEntity).MovementAgent.MaxSpeedOverride = null;
 	}
 
 	public string GetAbilityTargetRestrictionUIText(AbilityData ability, TargetWrapper target, Vector3 casterPosition)
@@ -169,7 +167,7 @@ public class AbilityCustomRam : AbilityCustomLogic, IAbilityTargetRestriction, I
 		int num = casterNode.CellDistanceTo(list.Last());
 		foreach (BaseUnitEntity allBaseAwakeUnit in Game.Instance.EntityPools.AllBaseAwakeUnits)
 		{
-			if (allBaseAwakeUnit == caster || !allBaseAwakeUnit.View || allBaseAwakeUnit.View.MovementAgent.AvoidanceDisabled)
+			if (allBaseAwakeUnit == caster || allBaseAwakeUnit.View == null || allBaseAwakeUnit.View.MovementAgent.AvoidanceDisabled)
 			{
 				continue;
 			}

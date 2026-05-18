@@ -1,9 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using Code.Enums;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
+using Kingmaker.RuleSystem;
+using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
@@ -13,7 +14,7 @@ namespace Kingmaker.EntitySystem.Properties.Getters;
 
 [Serializable]
 [TypeId("5fb4a7ae99fd47f99ef012e9f4700ba0")]
-public class CheckIsDOTGetter : BoolPropertyGetter, PropertyContextAccessor.IOptionalRule, PropertyContextAccessor.IOptional, PropertyContextAccessor.IBase, PropertyContextAccessor.IOptionalMechanicContext, PropertyContextAccessor.IOptionalAbility
+public sealed class CheckIsDOTGetter : BoolPropertyGetter, PropertyContextAccessor.IOptionalRule, PropertyContextAccessor.IOptional, PropertyContextAccessor.IBase
 {
 	[FormerlySerializedAs("ByType")]
 	public bool CheckType;
@@ -25,20 +26,31 @@ public class CheckIsDOTGetter : BoolPropertyGetter, PropertyContextAccessor.IOpt
 	{
 		if (!CheckType)
 		{
-			return "Is DOT";
+			return "Damage is DOT";
 		}
-		return $"Is {Type} DOT";
+		return $"Damage is {Type} DOT";
 	}
 
 	protected override bool GetBaseValue()
 	{
-		IEnumerable<BlueprintComponent> enumerable = this.GetRule()?.Reason.Fact?.Blueprint.ComponentsArray;
-		object obj = enumerable;
-		if (obj == null)
+		DOTLogic dOTLogic = GetDOTLogic(EvalContext.Current.Rule);
+		if (dOTLogic == null)
 		{
-			enumerable = this.GetMechanicContext()?.Blueprint.ComponentsArray;
-			obj = enumerable ?? this.GetAbility()?.Blueprint.ComponentsArray;
+			return false;
 		}
-		return ((IEnumerable<BlueprintComponent>)obj)?.Any((BlueprintComponent c) => c is DOTLogic dOTLogic && (!CheckType || dOTLogic.Type == Type)) ?? false;
+		if (CheckType)
+		{
+			return dOTLogic.Type == Type;
+		}
+		return true;
+	}
+
+	private static DOTLogic? GetDOTLogic(RulebookEvent? rule)
+	{
+		if (!(rule is RuleCalculateDamage) && !(rule is RuleRollDamage) && !(rule is RuleDealDamage))
+		{
+			return null;
+		}
+		return rule.Reason.Fact?.Blueprint.GetComponent<DOTLogic>();
 	}
 }

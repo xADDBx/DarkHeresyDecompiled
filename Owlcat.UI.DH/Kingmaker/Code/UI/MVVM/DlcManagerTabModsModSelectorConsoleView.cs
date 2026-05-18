@@ -21,16 +21,8 @@ public class DlcManagerTabModsModSelectorConsoleView : DlcManagerTabModsModSelec
 		m_WidgetList.DrawEntries(base.ViewModel.EntitiesCollection, m_ItemPrefab).AddTo(this);
 	}
 
-	public void CreateInputImpl(InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
+	public void CreateInputImpl()
 	{
-		if (m_WidgetList.Entries == null || !m_WidgetList.Entries.Any())
-		{
-			return;
-		}
-		foreach (DlcManagerModEntityConsoleView item in m_WidgetList.Entries.OfType<DlcManagerModEntityConsoleView>())
-		{
-			item.CreateInputImpl(inputLayer, hintsWidget);
-		}
 	}
 
 	public List<IConsoleEntity> GetNavigationEntities()

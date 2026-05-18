@@ -1,8 +1,6 @@
 using Code.View.UI.UIUtils;
 using Kingmaker.Code.Gameplay.Parts;
-using Kingmaker.EntitySystem.Entities;
-using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.Utility;
+using Kingmaker.Predictions;
 using Owlcat.UI;
 using R3;
 
@@ -25,8 +23,6 @@ public class UnitMoraleVM : ViewModel
 	private readonly ReadOnlyReactiveProperty<bool> m_HasMorale;
 
 	public readonly MechanicEntityUIState MechanicEntityUIState;
-
-	private MechanicEntity Unit => MechanicEntityUIState.MechanicEntity.MechanicEntity;
 
 	public ReadOnlyReactiveProperty<int> MoraleValue => m_MoraleValue;
 
@@ -115,15 +111,14 @@ public class UnitMoraleVM : ViewModel
 
 	private void UpdateMoraleValuePrediction()
 	{
-		if (MechanicEntityUIState.Ability.CurrentValue == null)
+		AbilityTargetUIData currentValue = MechanicEntityUIState.AbilityTargetUIData.CurrentValue;
+		bool flag = MechanicEntityUIState.IsTarget.CurrentValue || currentValue.CanTargetFromDesiredPosition;
+		if (currentValue.Equals(default(AbilityTargetUIData)) || !flag)
 		{
 			ClearMoraleValuePrediction();
-			return;
 		}
-		TargetWrapper targetForDesiredPosition = Game.Instance.Controllers.SelectedAbilityHandler.GetTargetForDesiredPosition(Unit.View.gameObject, Game.Instance.Controllers.ClickEventsController.WorldPosition);
-		if (targetForDesiredPosition != null && MechanicEntityUIState.Ability.CurrentValue.CanTargetFromDesiredPosition(targetForDesiredPosition))
+		else
 		{
-			AbilityTargetUIData currentValue = MechanicEntityUIState.AbilityTargetUIData.CurrentValue;
 			m_MoraleDeltaValue.Value = currentValue.Morale;
 		}
 	}

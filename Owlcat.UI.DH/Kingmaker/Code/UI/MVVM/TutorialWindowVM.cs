@@ -52,14 +52,14 @@ public abstract class TutorialWindowVM : ViewModel, IGameModeHandler, ISubscribe
 		m_CallbackHide = callbackHide;
 		m_EncyclopediaLinkExist.Value = data.Blueprint.EncyclopediaReference.Get() != null;
 		EventBus.Subscribe(this).AddTo(this);
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Tutorial).Id(data.Blueprint.AssetGuid)
+		Metrics.Interface.State(InterfaceMetricsEvent.InterfaceStates.Open).Type(InterfaceMetricsEvent.InterfaceTypes.Tutorial).Id(data.Blueprint.AssetGuid)
 			.Send();
 	}
 
 	protected override void OnDispose()
 	{
 		Hide();
-		Metrics.Interface.InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Tutorial).Id(Data.Blueprint.AssetGuid)
+		Metrics.Interface.State(InterfaceMetricsEvent.InterfaceStates.Close).Type(InterfaceMetricsEvent.InterfaceTypes.Tutorial).Id(Data.Blueprint.AssetGuid)
 			.Send();
 	}
 
@@ -78,11 +78,16 @@ public abstract class TutorialWindowVM : ViewModel, IGameModeHandler, ISubscribe
 	public void Hide()
 	{
 		m_CallbackHide?.Invoke();
-		EventBus.RaiseEvent(delegate(ITutorialWindowClosedHandler i)
+		TutorialSystem tutorialSystem = Game.Instance.TutorialSystem;
+		if (tutorialSystem.ShowingData != null)
 		{
-			i.HandleHideTutorial(Game.Instance.TutorialSystem.ShowingData);
-		});
-		Game.Instance.TutorialSystem.ShowingData = null;
+			EventBus.RaiseEvent(delegate(ITutorialWindowClosedHandler i)
+			{
+				i.HandleHideTutorial(tutorialSystem.ShowingData);
+			});
+			tutorialSystem.ShowingData.Blueprint.ActionsOnClose?.Run();
+			tutorialSystem.ShowingData = null;
+		}
 	}
 
 	public void TemporarilyHide()

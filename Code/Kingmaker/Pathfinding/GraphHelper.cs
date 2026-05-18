@@ -40,7 +40,7 @@ public static class GraphHelper
 
 	public static Vector3 GetVector3Direction(int dir)
 	{
-		return Quaternion.AngleAxis(GetOrientationFromDirection(dir), Vector3.up) * Vector3.forward;
+		return Quaternion.AngleAxis((float)GetOrientationFromDirection(dir), Vector3.up) * Vector3.forward;
 	}
 
 	public static WeakpointSide GetWarhammerAttackSide(Vector3 targetFwd, Vector3 casterAttack, Size targetSize)

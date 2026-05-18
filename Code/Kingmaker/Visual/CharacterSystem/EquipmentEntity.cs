@@ -1,16 +1,19 @@
 using System;
 using System.Collections.Generic;
+using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Code.View.Visual.CharacterSystem;
+using Kingmaker.Code.View.Visual.CharacterSystem.EquipmentComponents;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ResourceLinks.BaseInterfaces;
 using Kingmaker.Utility.DotNetExtensions;
+using Owlcat.Runtime.Visual.XPBD.Layouts.MeshSkinning;
 using UnityEngine;
 
 namespace Kingmaker.Visual.CharacterSystem;
 
 [KnowledgeDatabaseID("05125081574a9a44a83bc14d990e8f1a")]
-public class EquipmentEntity : ScriptableObject, IResource
+public class EquipmentEntity : ScriptableObject, IEquipmentFeatureProvider, IResource
 {
 	public class PaintedTextures
 	{
@@ -128,16 +131,18 @@ public class EquipmentEntity : ScriptableObject, IResource
 	[SerializeField]
 	private List<OutfitPart> m_OutfitParts = new List<OutfitPart>();
 
-	[HideInInspector]
-	public int ForcedPrimaryIndex = -1;
+	[KDB("Геймплейные особенности предмета")]
+	[SerializeField]
+	private BlueprintEquipmentFeatureReference[] m_Features;
 
-	[HideInInspector]
-	public int ForcedSecondaryIndex = -1;
+	private IEquipmentFeatureProvider m_EquipmentFeatureProvider;
 
 	private bool m_IsDirty;
 
 	[HideInInspector]
 	public bool IsExportEnabled;
+
+	private IEquipmentFeatureProvider Features => m_EquipmentFeatureProvider ?? (m_EquipmentFeatureProvider = new EquipmentFeatureProvider(m_Features));
 
 	public int Layer => m_Layer;
 
@@ -151,6 +156,8 @@ public class EquipmentEntity : ScriptableObject, IResource
 
 	public CharacterColorsProfile PrimaryColorsProfile => m_PrimaryColorsProfile;
 
+	public CharacterColorsProfile SecondaryColorsProfile => m_SecondaryColorsProfile;
+
 	public bool HasPrimaryRamps
 	{
 		get
@@ -162,8 +169,6 @@ public class EquipmentEntity : ScriptableObject, IResource
 			return false;
 		}
 	}
-
-	public CharacterColorsProfile SecondaryColorsProfile => m_SecondaryColorsProfile;
 
 	public bool HasSecondaryRamps
 	{
@@ -200,25 +205,66 @@ public class EquipmentEntity : ScriptableObject, IResource
 		}
 	}
 
-	public static void CreateAsset()
+	public bool HasFeature(EquipmentFeatureFlag feature)
 	{
-		CustomAssetUtility.CreateAsset<EquipmentEntity>();
+		if (Features.HasFeature(feature))
+		{
+			return true;
+		}
+		foreach (BodyPart bodyPart in BodyParts)
+		{
+			if (bodyPart.HasFeature(feature))
+			{
+				return true;
+			}
+		}
+		foreach (OutfitPart outfitPart in OutfitParts)
+		{
+			if (outfitPart.HasFeature(feature))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
-	public EquipmentEntity GetCopy(int layer)
+	public bool TryGetPhysicsDeformerLayout(out TriangleSkinmap triangleSkinmap, out GameObject prefabMesh)
 	{
-		EquipmentEntity equipmentEntity = ScriptableObject.CreateInstance<EquipmentEntity>();
-		equipmentEntity.m_Layer = layer;
-		equipmentEntity.m_KeepTexturesOfPrevLayers = KeepTexturesOfPrevLayers;
-		equipmentEntity.m_Material = Material;
-		equipmentEntity.m_SkeletonModifiers = SkeletonModifiers;
-		equipmentEntity.m_PrimaryColorsProfile = PrimaryColorsProfile;
-		equipmentEntity.m_SecondaryColorsProfile = SecondaryColorsProfile;
-		equipmentEntity.m_ColorPresets = ColorPresets;
-		equipmentEntity.m_BodyParts = BodyParts;
-		equipmentEntity.m_OutfitParts = OutfitParts;
-		equipmentEntity.ForcedPrimaryIndex = ForcedPrimaryIndex;
-		equipmentEntity.ForcedSecondaryIndex = ForcedSecondaryIndex;
-		return equipmentEntity;
+		return Features.TryGetPhysicsDeformerLayout(out triangleSkinmap, out prefabMesh);
+	}
+
+	public bool IsHiddenByVisibilityFeatures(CharacterDisplayOptions displayOptions)
+	{
+		return Features.IsHiddenByVisibilityFeatures(displayOptions);
+	}
+
+	public IEnumerable<T> GetFeatureComponents<T>()
+	{
+		if (m_Features == null)
+		{
+			yield break;
+		}
+		BlueprintEquipmentFeatureReference[] features = m_Features;
+		foreach (BlueprintEquipmentFeatureReference blueprintEquipmentFeatureReference in features)
+		{
+			foreach (T component in blueprintEquipmentFeatureReference.Blueprint.GetComponents<T>())
+			{
+				yield return component;
+			}
+		}
+		foreach (BodyPart bodyPart in BodyParts)
+		{
+			foreach (T featureComponent in bodyPart.GetFeatureComponents<T>())
+			{
+				yield return featureComponent;
+			}
+		}
+		foreach (OutfitPart outfitPart in OutfitParts)
+		{
+			foreach (T featureComponent2 in outfitPart.GetFeatureComponents<T>())
+			{
+				yield return featureComponent2;
+			}
+		}
 	}
 }

@@ -436,6 +436,8 @@ public class DirectorAdapter : EntityViewBase, IUpdatable, IInterpolatable
 		}
 		if (CameraLink != null)
 		{
+			m_PlayableDirector.Evaluate();
+			CameraLink.CinemachineBrain.ManualUpdate();
 			CameraLink.UnLink();
 		}
 		Game.Instance.Controllers.DirectorAdapterController.Remove(this);

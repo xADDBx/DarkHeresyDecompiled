@@ -1,4 +1,5 @@
 using System.Linq;
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.Gameplay.Features.DetectiveClues.View;
 using Kingmaker.Code.Gameplay.Features.VariableInteractions;
 using Kingmaker.EntitySystem.Entities;
@@ -30,11 +31,15 @@ public static class OvertipUtils
 			InteractionPartDetectiveTrace optional2 = mapObject.GetOptional<InteractionPartDetectiveTrace>();
 			if (optional2 == null || optional2.Type != InteractionType.Variant)
 			{
-				if (mapObject.View.GetComponent<AreaTransition>() != null)
+				InteractionActionPart optional3 = mapObject.GetOptional<InteractionActionPart>();
+				if (optional3 == null || optional3.Type != InteractionType.Variant)
 				{
-					return false;
+					if (mapObject.View.GetComponent<AreaTransition>() != null)
+					{
+						return false;
+					}
+					return !(mapObject is DestructibleEntity);
 				}
-				return !(mapObject is DestructibleEntity);
 			}
 		}
 		return false;
@@ -62,25 +67,26 @@ public static class OvertipUtils
 		{
 			return interactionVariativePart.AlreadyVisited;
 		}
-		if (interaction is InteractionSkillCheckPart interactionSkillCheckPart && interactionSkillCheckPart?.Settings.AdditionalCombatObjective != null)
+		if (interaction is InteractionSkillCheckPart interactionSkillCheckPart && interactionSkillCheckPart.Settings.AdditionalCombatObjective != null)
 		{
 			return interactionSkillCheckPart.AlreadyUsed;
 		}
 		return interaction.AlreadyVisited;
 	}
 
-	public static bool IsDetectiveInteract(UIInteractionType uiInteractionType)
+	public static InteractionCategory GetInteractionCategory(UIInteractionType uiInteractionType)
 	{
 		return uiInteractionType switch
 		{
-			UIInteractionType.None => false, 
-			UIInteractionType.Action => false, 
-			UIInteractionType.Move => false, 
-			UIInteractionType.Info => false, 
-			UIInteractionType.Credits => false, 
-			UIInteractionType.DetectiveTrace => true, 
-			UIInteractionType.DetectiveClue => true, 
-			_ => false, 
+			UIInteractionType.DetectiveTrace => InteractionCategory.Detective, 
+			UIInteractionType.DetectiveClue => InteractionCategory.Detective, 
+			UIInteractionType.AreaTransition => InteractionCategory.AreaTransition, 
+			_ => InteractionCategory.Default, 
 		};
+	}
+
+	public static bool IsOvertipPartHiddenBySettings(this MechanicEntityUIState entityState, UnitOvertipUIPart overtipPart)
+	{
+		return entityState.GetBlueprintComponent<UnitUISettings>()?.OvertipSettings.HidePart(overtipPart) ?? false;
 	}
 }

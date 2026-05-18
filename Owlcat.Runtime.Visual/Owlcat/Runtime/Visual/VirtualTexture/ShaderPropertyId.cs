@@ -4,8 +4,6 @@ namespace Owlcat.Runtime.Visual.VirtualTexture;
 
 public static class ShaderPropertyId
 {
-	public static readonly int VirtualTextureConstantBuffer = Shader.PropertyToID("VirtualTextureConstantBuffer");
-
 	public static readonly int _VTAtlas = Shader.PropertyToID("_VTAtlas");
 
 	public static readonly int _VTIndirectTex = Shader.PropertyToID("_VTIndirectTex");

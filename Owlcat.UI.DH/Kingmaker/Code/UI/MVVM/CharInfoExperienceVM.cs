@@ -1,4 +1,5 @@
 using System;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
@@ -77,20 +78,23 @@ public class CharInfoExperienceVM : CharInfoComponentVM, IUnitGainExperienceHand
 
 	private void UpdateExp()
 	{
-		BlueprintStatProgression experienceTable = ConfigRoot.Instance.Progression.ExperienceTable;
-		m_NextLevelExp.Value = experienceTable.GetBonus(Unit.CurrentValue.Progression.CharacterLevel + 1);
-		m_CurrentLevelExp.Value = experienceTable.GetBonus(Unit.CurrentValue.Progression.CharacterLevel);
-		m_CurrentExp.Value = (Unit.CurrentValue.IsPet ? Unit.CurrentValue.Master.Progression.Experience : Unit.CurrentValue.Progression.Experience);
-		int num = CurrentExp.CurrentValue - CurrentLevelExp.CurrentValue;
-		int num2 = NextLevelExp.CurrentValue - CurrentLevelExp.CurrentValue;
-		m_CurrentLevelExpRatio.Value = ((num2 > 0) ? ((float)num / (float)num2) : 0f);
+		if (Unit.CurrentValue != null && !Unit.CurrentValue.IsDisposed)
+		{
+			BlueprintStatProgression experienceTable = ConfigRoot.Instance.Progression.ExperienceTable;
+			m_NextLevelExp.Value = experienceTable.GetBonus(Unit.CurrentValue.Progression.CharacterLevel + 1);
+			m_CurrentLevelExp.Value = experienceTable.GetBonus(Unit.CurrentValue.Progression.CharacterLevel);
+			m_CurrentExp.Value = (Unit.CurrentValue.IsPet ? Unit.CurrentValue.Master.Progression.Experience : Unit.CurrentValue.Progression.Experience);
+			int num = CurrentExp.CurrentValue - CurrentLevelExp.CurrentValue;
+			int num2 = NextLevelExp.CurrentValue - CurrentLevelExp.CurrentValue;
+			m_CurrentLevelExpRatio.Value = ((num2 > 0) ? ((float)num / (float)num2) : 0f);
+		}
 	}
 
 	private void UpdateLevel()
 	{
 		int characterLevel = Unit.CurrentValue.Progression.CharacterLevel;
 		m_Level.Value = characterLevel;
-		m_CanLevelup.Value = Unit.CurrentValue.Progression.CanLevelUp && !GameUIState.Instance.IsInCombat.Value && !RootUIContext.Instance.IsChargenShown;
+		m_CanLevelup.Value = Unit.CurrentValue.Progression.CanLevelUp && !UIUtilityCombat.IsCombatLockActive() && !RootUIContext.Instance.IsChargenShown;
 		int experienceLevel = Unit.CurrentValue.Progression.ExperienceLevel;
 		int value = Math.Max(0, experienceLevel - characterLevel);
 		m_NewRanksCount.Value = value;

@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
@@ -38,7 +37,7 @@ public class PartFadeOutAndDestroy : EntityPart, IGameTimeChangedHandler, ISubsc
 	{
 		base.ConcreteOwner.WillBeDestroyed = true;
 		DestroyTime = Game.Instance.Controllers.TimeController.GameTime + destroyDelay.Seconds();
-		EventBus.RaiseEvent(base.Owner, delegate(IFadeOutAndDestroyHandler h)
+		base.EventBus.RaiseEvent(base.Owner, delegate(IFadeOutAndDestroyHandler h)
 		{
 			h.HandleFadeOutAndDestroy();
 		});

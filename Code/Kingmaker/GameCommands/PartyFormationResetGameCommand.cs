@@ -1,26 +1,53 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PartyFormationResetGameCommand : GameCommand, IOwlPackable<PartyFormationResetGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class PartyFormationResetGameCommand : GameCommand, IMemoryPackable<PartyFormationResetGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<PartyFormationResetGameCommand>
 {
+	[Preserve]
+	private sealed class PartyFormationResetGameCommandFormatter : MemoryPackFormatter<PartyFormationResetGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref PartyFormationResetGameCommand value)
+		{
+			PartyFormationResetGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref PartyFormationResetGameCommand value)
+		{
+			PartyFormationResetGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref PartyFormationResetGameCommand value)
+		{
+			PartyFormationResetGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref PartyFormationResetGameCommand value)
+		{
+			PartyFormationResetGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly int m_FormationIndex;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "PartyFormationResetGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_FormationIndex", typeof(int))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
@@ -29,6 +56,7 @@ public sealed class PartyFormationResetGameCommand : GameCommand, IOwlPackable<P
 	{
 	}
 
+	[MemoryPackConstructor]
 	public PartyFormationResetGameCommand(int m_formationIndex)
 	{
 		m_FormationIndex = m_formationIndex;
@@ -37,6 +65,136 @@ public sealed class PartyFormationResetGameCommand : GameCommand, IOwlPackable<P
 	protected override void ExecuteInternal()
 	{
 		Game.Instance.Player.FormationManager.ResetCustomFormation(m_FormationIndex);
+	}
+
+	static PartyFormationResetGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "PartyFormationResetGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_FormationIndex", typeof(int))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<PartyFormationResetGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new PartyFormationResetGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<PartyFormationResetGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<PartyFormationResetGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref PartyFormationResetGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteUnmanagedWithObjectHeader(1, in value.m_FormationIndex);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref PartyFormationResetGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		int value2;
+		if (memberCount == 1)
+		{
+			if (value == null)
+			{
+				reader.ReadUnmanaged<int>(out value2);
+			}
+			else
+			{
+				value2 = value.m_FormationIndex;
+				reader.ReadUnmanaged<int>(out value2);
+			}
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(PartyFormationResetGameCommand), 1, memberCount);
+				return;
+			}
+			value2 = ((value != null) ? value.m_FormationIndex : 0);
+			if (memberCount != 0)
+			{
+				reader.ReadUnmanaged<int>(out value2);
+				_ = 1;
+			}
+			_ = value;
+		}
+		value = new PartyFormationResetGameCommand(value2);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref PartyFormationResetGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_FormationIndex");
+		writer.WriteUnmanaged(value.m_FormationIndex);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref PartyFormationResetGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		int v = ((value != null) ? value.m_FormationIndex : 0);
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_FormationIndex")
+				{
+					reader.ReadUnmanaged<int>(out v);
+					array[0] = true;
+				}
+			}
+			else if (text == "m_FormationIndex")
+			{
+				reader.ReadUnmanaged<int>(out v);
+			}
+		}
+		_ = value;
+		value = new PartyFormationResetGameCommand(v);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

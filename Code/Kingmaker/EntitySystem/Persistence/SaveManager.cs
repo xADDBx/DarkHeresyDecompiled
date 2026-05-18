@@ -20,7 +20,6 @@ using Kingmaker.Cheats;
 using Kingmaker.Code.Framework.GameLog;
 using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
@@ -32,10 +31,11 @@ using Kingmaker.GameCommands;
 using Kingmaker.GameInfo;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
-using Kingmaker.Gameplay.Features.Encounter;
+using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
 using Kingmaker.Networking.Settings;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
@@ -169,7 +169,6 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 
 	public void UpdateSaveListAsync()
 	{
-		MainThreadDispatcher.Initialize();
 		SteamSavesReplicator.Initialize();
 		_ = SaveScreenshotManager.Instance;
 		Task updateTask = m_UpdateTask;
@@ -329,7 +328,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 				return null;
 			}
 			SaveInfo saveInfo = serializer.DeserializeObject<SaveInfo>(text);
-			if (!Application.isEditor && !BuildModeUtility.IsDevelopment && saveInfo.CompatibilityVersion < 1)
+			if (!Application.isEditor && !BuildModeUtility.IsDevelopment && saveInfo.CompatibilityVersion < 2)
 			{
 				return null;
 			}
@@ -894,6 +893,10 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 		{
 			return true;
 		}
+		if (VendorHelper.TradeLogic.IsTrading)
+		{
+			return false;
+		}
 		if (!Game.Instance.Player.Party.HasItem((BaseUnitEntity i) => i.HasActiveInteraction()))
 		{
 			PartDetectiveServoSkull? partDetectiveServoSkull = PartDetectiveServoSkull.Find();
@@ -910,7 +913,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 						return true;
 					}
 					PartUnitCommands partUnitCommands = Game.Instance.Controllers.TurnController.CurrentUnit?.GetCommandsOptional();
-					if (partUnitCommands == null || !partUnitCommands.Empty)
+					if (partUnitCommands != null && (partUnitCommands == null || !partUnitCommands.Empty))
 					{
 						return false;
 					}
@@ -925,6 +928,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 		return false;
 	}
 
+	[SkipAnalysis]
 	public IEnumerator<object> SaveRoutine([NotNull] SaveInfo saveInfo, bool forceAuto = false, bool showNotification = false)
 	{
 		if (!IsSaveAllowed(saveInfo.Type) && saveInfo.Type != SaveInfo.SaveType.ForImport)
@@ -984,7 +988,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 			{
 				Type = originalSave.Type,
 				Name = originalSave.Name,
-				SaveId = originalSave.SaveId
+				SaveId = Guid.NewGuid().ToString("N")
 			};
 			GenerateTempFolderName(saveInfo);
 			SetUpSaver(saveInfo);
@@ -1032,7 +1036,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 			Logger.Exception(ex);
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.SavingFailed, addToLog: false, WarningNotificationFormat.Warning);
+				h.HandleWarning(WarningNotificationType.SavingFailed, null, addToLog: false, WarningNotificationFormat.Warning);
 			});
 			CurrentState = State.None;
 			yield break;
@@ -1070,14 +1074,13 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 			Logger.Exception(ex2);
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
-				h.HandleWarning(WarningNotificationType.SavingFailed, addToLog: false, WarningNotificationFormat.Warning);
+				h.HandleWarning(WarningNotificationType.SavingFailed, null, addToLog: false, WarningNotificationFormat.Warning);
 			});
 			CurrentState = State.None;
 			yield break;
 		}
 		Logger.Log("Finished wait for threaded save");
-		Metrics.Save.Type(saveInfo.Type).Location(Game.Instance.SceneLoader.CurrentlyLoadedArea?.AssetGuid).Encounter(ActiveEncounter.Current?.Blueprint.AssetGuid)
-			.Send();
+		Metrics.Save.Id(saveInfo.SaveId).Type(saveInfo.Type).Send();
 		CurrentState = State.None;
 	}
 
@@ -1116,6 +1119,8 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 				GameStatistic.AppStatus appStatus = new GameStatistic.AppStatus();
 				Game.Instance.State.Statistic.PreSave(appStatus);
 				Task<string> statTask2 = SerializeStatistics(saveInfo, appStatus);
+				Task<string> serializationTask = SerializeJson(Game.Instance.State.SavedAreaStates.Select((AreaPersistentState v) => v.AreaGuid).ToArray());
+				Task<string> serializationTask2 = SerializeJson(SavedFogMasks.AllMasks);
 				Task<string> settingsTask2 = SerializeInGameSettings(Game.Instance.State.InGameSettings);
 				Game.Instance.CoopData.PreSave();
 				Task<string> coopTask2 = SerializeCoopData(Game.Instance.CoopData);
@@ -1133,7 +1138,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 				string fileName2 = SaveConsts.PlayerFileName((!useJson) ? SaveInfo.SaveFormat.OwlPack : SaveInfo.SaveFormat.JSON);
 				string fileName3 = SaveConsts.PartyFileName((!useJson) ? SaveInfo.SaveFormat.OwlPack : SaveInfo.SaveFormat.JSON);
 				Logger.Log("await Task.WhenAll");
-				await Task.WhenAll(SaveSceneState(saveInfo, task2, checksumStringBuilder, fileName2), SaveArea(saveInfo, areaTask2, checksumStringBuilder), SaveSceneState(saveInfo, task3, checksumStringBuilder, fileName3), SaveStatistics(saveInfo, statTask2), SaveSettings(saveInfo, settingsTask2), SaveCoop(saveInfo, coopTask2));
+				await Task.WhenAll(SaveSceneState(saveInfo, task2, checksumStringBuilder, fileName2), SaveArea(saveInfo, areaTask2, checksumStringBuilder), SaveSceneState(saveInfo, task3, checksumStringBuilder, fileName3), SaveStatistics(saveInfo, statTask2), SaveSettings(saveInfo, settingsTask2), SaveCoop(saveInfo, coopTask2), Save(saveInfo, "knownAreas", serializationTask), Save(saveInfo, "fogIndex", serializationTask2));
 				Logger.Log("Task.WhenAll Done");
 				if (ReportingCheats.IsDebugSaveFileChecksumEnabled)
 				{
@@ -1149,8 +1154,8 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 					saveInfo.Saver.Save();
 				}
 				Logger.Log("Commit done");
-				AreaDataStash.ClearDataForArea("player", "", useJson);
-				AreaDataStash.ClearDataForArea("party", "", useJson);
+				AreaDataStash.ClearDataForArea("player", "", useJson, doNotEncode: true);
+				AreaDataStash.ClearDataForArea("party", "", useJson, doNotEncode: true);
 				originalSave.Saver.Clear();
 				saveInfo.Saver.MoveTo(originalSave.FolderName);
 				saveInfo.FolderName = originalSave.FolderName;
@@ -1270,37 +1275,20 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 		}
 	}
 
-	private static async Task SerializePlayer(Player player)
-	{
-		await EditorSafeThreading.Awaitable;
-		using (CodeTimer.New("Serializing player state"))
-		{
-			GCCollect();
-			if (CheatsSaves.ForceJsonSaves)
-			{
-				StandardSerializer.SerializeToJson(ref player).Write(AreaDataStash.Path("player", "", useJson: true));
-			}
-			else
-			{
-				StandardSerializer.SerializeToBinary(ref player).Write(AreaDataStash.Path("player", "", useJson: false));
-			}
-			GCCollect();
-		}
-	}
-
 	private static async Task SerializeSceneState(SceneEntitiesState css, string name)
 	{
+		bool doNotEncodeName = name == "player" || name == "party";
 		await EditorSafeThreading.Awaitable;
 		using (CodeTimer.New("Serializing scene state"))
 		{
 			GCCollect();
 			if (CheatsSaves.ForceJsonSaves)
 			{
-				StandardSerializer.SerializeToJson(ref css).Write(AreaDataStash.Path(name, "", useJson: true));
+				StandardSerializer.SerializeToJson(ref css).Write(AreaDataStash.Path(name, "", useJson: true, doNotEncodeName));
 			}
 			else
 			{
-				StandardSerializer.SerializeToBinary(ref css).Write(AreaDataStash.Path(name, "", useJson: false));
+				StandardSerializer.SerializeToBinary(ref css).Write(AreaDataStash.Path(name, "", useJson: false, doNotEncodeName));
 			}
 			GCCollect();
 		}
@@ -1321,6 +1309,12 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 	{
 		await EditorSafeThreading.Awaitable;
 		return GameStatistic.Serialize(saveInfo, appStatus);
+	}
+
+	private static async Task<string> SerializeJson<T>(T obj)
+	{
+		await EditorSafeThreading.Awaitable;
+		return SaveSystemJsonSerializer.Serializer.SerializeObject(obj);
 	}
 
 	private static async Task<string> SerializeInGameSettings(InGameSettings stateInGameSettings)
@@ -1367,10 +1361,24 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 				AppendSaveFilesMd5(checksum, AreaDataStash.FileName(assetGuidThreadSafe, additionalSceneState.SceneName, forceJsonSaves));
 			}
 		}
-		foreach (string item in AreaDataStash.EnumerateFogMasks(assetGuidThreadSafe))
+		foreach (string item in SavedFogMasks.Get(assetGuidThreadSafe).EnumerateFogMasks())
 		{
 			saveInfo.Saver.CopyFromStash(Path.GetFileName(item));
 		}
+	}
+
+	private static async Task Save(SaveInfo saveInfo, string fileName, Task<string> serializationTask)
+	{
+		Logger.Log("Save.await serialization Task");
+		string data = await serializationTask;
+		Logger.Log("Save.await StartNew");
+		await ExclusiveScheduler.StartNew(delegate
+		{
+			Logger.Log("Save SaveJson");
+			saveInfo.Saver.SaveJson(fileName, data);
+			Logger.Log("Save StartNew Done");
+		});
+		Logger.Log("Save Done");
 	}
 
 	public IEnumerator<object> LoadRoutine(SaveInfo saveInfo, bool isSmokeTest = false)
@@ -1475,6 +1483,7 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 			state.PlayerState.Subscribe();
 			Player.Ref.Entity.GameId = saveInfo.GameId;
 		}
+		Metrics.Load.Id(saveInfo.SaveId).Type(saveInfo.Type).Send();
 		if (saveInfo.Type == SaveInfo.SaveType.Quick)
 		{
 			m_QuickSaveCount = saveInfo.QuickSaveNumber;
@@ -1569,13 +1578,13 @@ public class SaveManager : IEnumerable<SaveInfo>, IEnumerable, ISaveManagerPostS
 				{
 					continue;
 				}
-				string name = BlueprintCharGenRoot.Instance.PregenCharacterNames.ReplaceCharacterNameIfCustom(Race.Human, description2.CustomGender.GetValueOrDefault(), CharGenMode.NewGame, description2.CustomName);
-				description2.SetName(name);
+				string customName = BlueprintCharGenRoot.Instance.PregenCharacterNames.ReplaceCharacterNameIfCustom(Race.Human, description2.CustomGender.GetValueOrDefault(), CharGenMode.NewGame, description2.CustomName);
+				description2.SetCustomName(customName);
 			}
 			if ((baseUnitEntity.IsCustomCompanion() || baseUnitEntity.IsPregenCustomCompanion()) && GetDescription(allEntityDatum, out var description3))
 			{
-				string name2 = BlueprintCharGenRoot.Instance.PregenCharacterNames.ReplaceCharacterNameIfCustom(Race.Human, description3.CustomGender.GetValueOrDefault(), CharGenMode.NewCompanion, description3.CustomName);
-				description3.SetName(name2);
+				string customName2 = BlueprintCharGenRoot.Instance.PregenCharacterNames.ReplaceCharacterNameIfCustom(Race.Human, description3.CustomGender.GetValueOrDefault(), CharGenMode.NewCompanion, description3.CustomName);
+				description3.SetCustomName(customName2);
 			}
 		}
 		static bool GetDescription(Entity character, out PartUnitDescription description)

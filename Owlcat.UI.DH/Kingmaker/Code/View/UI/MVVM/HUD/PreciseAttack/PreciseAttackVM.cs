@@ -30,6 +30,8 @@ public class PreciseAttackVM : ViewModel, IAbilityTargetSelectionUIHandler, ISub
 
 	public Observable<Unit> PointsUpdated => m_PointsUpdated;
 
+	public Observable<MechanicEntity> TargetChanged => m_PreciseAttackController.Target;
+
 	public PreciseAttackController.BodyPartUIData SelectedBodyPart => m_PreciseAttackController.SelectedBodyPart.CurrentValue;
 
 	public MechanicEntity Unit => m_TargetUIWrapper.MechanicEntity;
@@ -40,6 +42,15 @@ public class PreciseAttackVM : ViewModel, IAbilityTargetSelectionUIHandler, ISub
 		m_PreciseAttackController.Target.Subscribe(UpdateTarget).AddTo(this);
 		OvertipVM = new PreciseAttackOvertipVM(m_PreciseAttackController.Target).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
+		MechanicEntity unit = Unit;
+		BaseUnitEntity targetUnit = unit as BaseUnitEntity;
+		if (targetUnit != null)
+		{
+			EventBus.RaiseEvent(delegate(IPreciseAttackUIHandler h)
+			{
+				h.HandleOpenPreciseAttackInterface(targetUnit, preciseAttackController.IsTargetCovered());
+			});
+		}
 	}
 
 	public void Close()

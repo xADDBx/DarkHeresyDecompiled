@@ -21,7 +21,7 @@ public class ActionBarWeaponSetConsoleView : View<ActionBarPartWeaponSetVM>
 	{
 		base.ViewModel.MainHandWeapon.CombineLatest(base.ViewModel.OffHandWeapon, (ItemSlotVM _, ItemSlotVM _) => true).Subscribe(delegate
 		{
-			if (base.ViewModel.IsTwoHanded)
+			if (base.ViewModel.IsTwoHanded && !base.ViewModel.IsDoubleHanded)
 			{
 				m_MainHandWeapon.Bind(base.ViewModel.MainHandWeapon.CurrentValue);
 				m_OffHandWeapon.Bind(base.ViewModel.MainHandWeapon.CurrentValue);
@@ -31,7 +31,7 @@ public class ActionBarWeaponSetConsoleView : View<ActionBarPartWeaponSetVM>
 				m_MainHandWeapon.Bind(base.ViewModel.MainHandWeapon.CurrentValue);
 				m_OffHandWeapon.Bind(base.ViewModel.OffHandWeapon.CurrentValue);
 			}
-			m_OffHandWeapon.SetFakeMode(base.ViewModel.IsTwoHanded);
+			m_OffHandWeapon.SetFakeMode(base.ViewModel.IsTwoHanded && !base.ViewModel.IsDoubleHanded);
 		}).AddTo(this);
 		TextMeshProUGUI[] weaponSetIndexes = m_WeaponSetIndexes;
 		for (int i = 0; i < weaponSetIndexes.Length; i++)

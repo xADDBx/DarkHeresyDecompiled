@@ -12,24 +12,6 @@ namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.VertexPaint;
 public sealed class VertexColorContainer : MonoBehaviour
 {
 	[Flags]
-	public enum ColorChannels
-	{
-		None = 0,
-		R = 1,
-		G = 2,
-		B = 4,
-		A = 8,
-		All = 0xF
-	}
-
-	public struct RawColorsData
-	{
-		public byte[] Colors;
-
-		public int SourceInstanceID;
-	}
-
-	[Flags]
 	private enum ExternalDataFetchFlags
 	{
 		None = 0,
@@ -91,6 +73,24 @@ public sealed class VertexColorContainer : MonoBehaviour
 		}
 	}
 
+	[Flags]
+	public enum ColorChannels
+	{
+		None = 0,
+		R = 1,
+		G = 2,
+		B = 4,
+		A = 8,
+		All = 0xF
+	}
+
+	public struct RawColorsData
+	{
+		public byte[] Colors;
+
+		public int SourceInstanceID;
+	}
+
 	private const int kBufferStride = 4;
 
 	[SerializeField]
@@ -134,6 +134,54 @@ public sealed class VertexColorContainer : MonoBehaviour
 	public Color LODFadeColor => m_LODFadeColor;
 
 	public event Action<VertexColorContainer> ColorsChanged;
+
+	private ref byte[] GetRawColors(ExternalDataFetchFlags fetchFlags)
+	{
+		VertexColorDataAsset colorDataAssetOrDefault = GetColorDataAssetOrDefault(fetchFlags);
+		if (colorDataAssetOrDefault != null)
+		{
+			return ref colorDataAssetOrDefault.RawColors;
+		}
+		return ref m_RawColors;
+	}
+
+	private int GetRawColorsSourceInstanceID(ExternalDataFetchFlags fetchFlags)
+	{
+		VertexColorDataAsset colorDataAssetOrDefault = GetColorDataAssetOrDefault(fetchFlags);
+		if (colorDataAssetOrDefault != null)
+		{
+			return colorDataAssetOrDefault.GetInstanceID();
+		}
+		return GetInstanceID();
+	}
+
+	private bool IsPrefab(out string assetPath)
+	{
+		assetPath = null;
+		return false;
+	}
+
+	[CanBeNull]
+	private VertexColorDataAsset GetColorDataAssetOrDefault(ExternalDataFetchFlags fetchFlags)
+	{
+		if (m_InlineAsset != null)
+		{
+			return m_InlineAsset;
+		}
+		if (m_ExternalAsset != null)
+		{
+			return m_ExternalAsset;
+		}
+		return null;
+	}
+
+	private void ClearInternalRawColorsIfNotUsed()
+	{
+		if (m_ExternalAsset != null || m_InlineAsset != null)
+		{
+			m_RawColors = Array.Empty<byte>();
+		}
+	}
 
 	private void OnEnable()
 	{
@@ -319,53 +367,5 @@ public sealed class VertexColorContainer : MonoBehaviour
 			num++;
 		}
 		return num;
-	}
-
-	private ref byte[] GetRawColors(ExternalDataFetchFlags fetchFlags)
-	{
-		VertexColorDataAsset colorDataAssetOrDefault = GetColorDataAssetOrDefault(fetchFlags);
-		if (colorDataAssetOrDefault != null)
-		{
-			return ref colorDataAssetOrDefault.RawColors;
-		}
-		return ref m_RawColors;
-	}
-
-	private int GetRawColorsSourceInstanceID(ExternalDataFetchFlags fetchFlags)
-	{
-		VertexColorDataAsset colorDataAssetOrDefault = GetColorDataAssetOrDefault(fetchFlags);
-		if (colorDataAssetOrDefault != null)
-		{
-			return colorDataAssetOrDefault.GetInstanceID();
-		}
-		return GetInstanceID();
-	}
-
-	private bool IsPrefab(out string assetPath)
-	{
-		assetPath = null;
-		return false;
-	}
-
-	[CanBeNull]
-	private VertexColorDataAsset GetColorDataAssetOrDefault(ExternalDataFetchFlags fetchFlags)
-	{
-		if (m_InlineAsset != null)
-		{
-			return m_InlineAsset;
-		}
-		if (m_ExternalAsset != null)
-		{
-			return m_ExternalAsset;
-		}
-		return null;
-	}
-
-	private void ClearInternalRawColorsIfNotUsed()
-	{
-		if (m_ExternalAsset != null || m_InlineAsset != null)
-		{
-			m_RawColors = Array.Empty<byte>();
-		}
 	}
 }

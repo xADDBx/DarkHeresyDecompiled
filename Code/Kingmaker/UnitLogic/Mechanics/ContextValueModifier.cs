@@ -1,8 +1,7 @@
 using System;
 using JetBrains.Annotations;
-using Kingmaker.EntitySystem;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using UnityEngine;
@@ -30,7 +29,7 @@ public class ContextValueModifier : ContextValue
 	{
 		if (Enabled)
 		{
-			int value = Calculate(sourceFact.MaybeContext);
+			int value = Calculate(EvalContext.Current);
 			manager.Add(value, sourceFact, descriptor);
 		}
 	}
@@ -39,17 +38,8 @@ public class ContextValueModifier : ContextValue
 	{
 		if (Enabled)
 		{
-			int value = Calculate(sourceFact.MaybeContext);
+			int value = Calculate(EvalContext.Current);
 			target.Add(Type, value, sourceFact, descriptor);
-		}
-	}
-
-	public void TryApply([NotNull] ModifiableValue target, [NotNull] EntityFactComponent source, ModifierDescriptor descriptor)
-	{
-		if (Enabled)
-		{
-			int value = Calculate(source.Fact.MaybeContext);
-			target.AddModifier(Type, value, source, descriptor);
 		}
 	}
 

@@ -15,7 +15,7 @@ public static class GPUDrivenVirtualTextureIntegration
 			{
 				PropertyIndex = -1,
 				PerInstance = false,
-				PropertyData = GPUDrivenRenderer.PropertyData.Matrix(ShaderPropertyId._VTStackIndices, Matrix4x4.zero)
+				PropertyData = GPUDrivenRenderer.PropertyData.Matrix(ShaderPropertyId._VTStackIndices, VirtualTextureUtils.VTStackIndicesSentinel)
 			});
 		}
 	}

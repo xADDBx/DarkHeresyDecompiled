@@ -1,6 +1,7 @@
 using System;
 using Core.Cheats;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Settings.ConstructionHelpers.KeyPrefix;
 using Kingmaker.Settings.Interfaces;
 using Kingmaker.Utility.DisposableExtension;
@@ -126,6 +127,7 @@ public static class SettingsRoot
 		Initialize(ConfigRoot.Instance.SettingsValues);
 	}
 
+	[SkipAnalysis]
 	public static void Initialize(SettingsValues settingsValues)
 	{
 		if (s_Initialized || (bool)Initializing)

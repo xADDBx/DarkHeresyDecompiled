@@ -68,7 +68,7 @@ public class ContextActionJumpToTarget : ContextActionMove
 				return;
 			}
 			PartUnitCommands commandsOptional = caster.GetCommandsOptional();
-			UnitUseAbilityParams cmdParams = new UnitUseAbilityParams(CreateAbility(m_Spell, base.Context.AsAbilityContext), base.Context.ClickedTarget)
+			UnitUseAbilityParams cmdParams = new UnitUseAbilityParams(CreateAbility(context: base.AbilityContext, ability: m_Spell), base.Context.ClickedTarget)
 			{
 				FreeAction = true
 			};

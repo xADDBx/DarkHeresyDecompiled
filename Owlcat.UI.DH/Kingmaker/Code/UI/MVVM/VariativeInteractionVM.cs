@@ -30,7 +30,7 @@ public class VariativeInteractionVM : ViewModel, ITurnEndHandler, ISubscriber<IM
 	{
 		public static int GetPriority(IInteractionVariantActor actor)
 		{
-			if (!(actor is InteractionSkillCheckPart))
+			if (!(actor is InteractionSkillCheckPart) && !(actor is InteractionActionPart))
 			{
 				if (!(actor is SleightOfHandRestrictionPart) && !(actor is SkillUseWithoutToolRestrictionPart) && !(actor is LoreXenosRestrictionPart))
 				{
@@ -65,7 +65,7 @@ public class VariativeInteractionVM : ViewModel, ITurnEndHandler, ISubscriber<IM
 
 	private readonly Action m_CloseCallback;
 
-	public string Title => InteractionPart?.InteractionSettings.DisplayName?.String.Text;
+	public string Title => InteractionPart?.InteractionSettings.DisplayName?.Text;
 
 	public VariativeType VariativeType => InteractionPart?.InteractionSettings.VariativeType ?? VariativeType.Default;
 
@@ -81,7 +81,7 @@ public class VariativeInteractionVM : ViewModel, ITurnEndHandler, ISubscriber<IM
 			{
 				return Vector3.zero;
 			}
-			return MechanicEntity.View.transform.position;
+			return MechanicEntity.ViewPosition;
 		}
 	}
 
@@ -103,7 +103,7 @@ public class VariativeInteractionVM : ViewModel, ITurnEndHandler, ISubscriber<IM
 		InteractionPart?.SetVisited();
 		if (actorData == null)
 		{
-			actorData = InteractionPart?.InteractionSettings.InteractionsWithConditions?.Select((InteractionWithConditions v) => v.ToActorWithConditions()) ?? (from a in UtilityInteracts.GetIHasInteractionVariants(MechanicEntity).GetInteractionVariantActors()
+			actorData = InteractionPart?.InteractionSettings.Interactions?.Select((InteractionWithConditions v) => v.ToActorWithConditions()) ?? (from a in UtilityInteracts.GetIHasInteractionVariants(MechanicEntity).GetInteractionVariantActors()
 				select new InteractionActorWithConditions(a));
 		}
 		actorData = actorData.OrderBy((InteractionActorWithConditions c) => InteractionPriority.GetPriority(c.VariantActor));
@@ -111,7 +111,7 @@ public class VariativeInteractionVM : ViewModel, ITurnEndHandler, ISubscriber<IM
 		foreach (InteractionActorWithConditions actorDatum in actorData)
 		{
 			IInteractionVariantActor actor = actorDatum.VariantActor;
-			if (actor is UnlockRestrictionPart || (actorDatum.ShowReasons.Count > 0 && !actorDatum.ShowReasons.Any((InteractionWithConditions.ShowReason r) => r.Conditions.Get().Check())) || !actor.CanUse)
+			if (actor is UnlockRestrictionPart || (actorDatum.ShowReasons.Count > 0 && !actorDatum.ShowReasons.Any((InteractionWithConditions.ShowReason r) => r.Conditions.Get()?.Check() ?? false)) || !actor.CanUse)
 			{
 				continue;
 			}

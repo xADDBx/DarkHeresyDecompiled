@@ -35,16 +35,6 @@ internal struct ReflectionProbeManager : IDisposable
 
 	private static class ShaderProperties
 	{
-		public static readonly int BoxMin = Shader.PropertyToID("waaagh_ReflProbes_BoxMin");
-
-		public static readonly int BoxMax = Shader.PropertyToID("waaagh_ReflProbes_BoxMax");
-
-		public static readonly int ProbePosition = Shader.PropertyToID("waaagh_ReflProbes_ProbePosition");
-
-		public static readonly int MipScaleOffset = Shader.PropertyToID("waaagh_ReflProbes_MipScaleOffset");
-
-		public static readonly int Count = Shader.PropertyToID("waaagh_ReflProbes_Count");
-
 		public static readonly int Atlas = Shader.PropertyToID("waaagh_ReflProbes_Atlas");
 	}
 
@@ -54,8 +44,6 @@ internal struct ReflectionProbeManager : IDisposable
 	}
 
 	private int2 m_Resolution;
-
-	private RenderTexture m_AtlasTexture1;
 
 	private BuddyAllocator m_AtlasAllocator;
 
@@ -80,6 +68,10 @@ internal struct ReflectionProbeManager : IDisposable
 	private const int kMaxMipCount = 7;
 
 	private const string kReflectionProbeAtlasName = "Waaagh Reflection Probe Atlas";
+
+	private int m_ProbeCount;
+
+	private int m_SkipCount;
 
 	public RenderTexture atlasRT { get; private set; }
 
@@ -116,10 +108,6 @@ internal struct ReflectionProbeManager : IDisposable
 		atlasRT.hideFlags = HideFlags.HideAndDontSave;
 		atlasRT.Create();
 		atlasRTHandle = RTHandles.Alloc(atlasRT, transferOwnership: true);
-		m_AtlasTexture1 = new RenderTexture(atlasRT.descriptor);
-		m_AtlasTexture1.name = "Waaagh Reflection Probe Atlas";
-		m_AtlasTexture1.filterMode = FilterMode.Bilinear;
-		m_AtlasTexture1.hideFlags = HideFlags.HideAndDontSave;
 		m_AtlasAllocator = new BuddyAllocator(math.floorlog2(SystemInfo.maxTextureSize) - 2, 2);
 		m_Cache = new Dictionary<int, CachedProbe>(maxVisibleReflectionProbes);
 		m_WarningCache = new Dictionary<int, int>(maxVisibleReflectionProbes);
@@ -137,10 +125,10 @@ internal struct ReflectionProbeManager : IDisposable
 		return m_VisibleProbeToGpuDataIndex.TryGetValue(visibleProbeIndex, out dataIndex);
 	}
 
-	public unsafe void UpdateGpuData(CommandBuffer cmd, ref CullingResults cullResults)
+	public unsafe void PrepareCpuData(ref CullingResults cullResults)
 	{
 		NativeArray<VisibleReflectionProbe> visibleReflectionProbes = cullResults.visibleReflectionProbes;
-		int num = math.min(visibleReflectionProbes.Length, WaaaghPipeline.MaxVisibleReflectionProbes);
+		m_ProbeCount = math.min(visibleReflectionProbes.Length, WaaaghPipeline.MaxVisibleReflectionProbes);
 		int renderedFrameCount = Time.renderedFrameCount;
 		int key;
 		foreach (KeyValuePair<int, CachedProbe> item3 in m_Cache)
@@ -182,7 +170,7 @@ internal struct ReflectionProbeManager : IDisposable
 		m_NeedsRemove.Clear();
 		bool flag = false;
 		int2 @int = math.int2(0, 0);
-		for (int j = 0; j < num; j++)
+		for (int j = 0; j < m_ProbeCount; j++)
 		{
 			VisibleReflectionProbe visibleReflectionProbe = visibleReflectionProbes[j];
 			ReflectionProbe reflectionProbe = visibleReflectionProbe.reflectionProbe;
@@ -201,21 +189,21 @@ internal struct ReflectionProbeManager : IDisposable
 			if (!flag2)
 			{
 				value3.Size = texture.width;
-				int num2 = math.ceillog2(value3.Size * 4) + 1;
-				int num3 = m_AtlasAllocator.levelCount + 2 - num2;
-				value3.MipCount = math.min(num2, 7);
+				int num = math.ceillog2(value3.Size * 4) + 1;
+				int num2 = m_AtlasAllocator.levelCount + 2 - num;
+				value3.MipCount = math.min(num, 7);
 				value3.Texture = texture;
 				int k;
 				for (k = 0; k < value3.MipCount; k++)
 				{
-					int num4 = math.min(num3 + k, m_AtlasAllocator.levelCount - 1);
-					if (!m_AtlasAllocator.TryAllocate(num4, out var allocation))
+					int num3 = math.min(num2 + k, m_AtlasAllocator.levelCount - 1);
+					if (!m_AtlasAllocator.TryAllocate(num3, out var allocation))
 					{
 						break;
 					}
 					value3.Levels[k] = allocation.Level;
 					value3.DataIndices[k] = allocation.Index;
-					int4 int2 = (int4)(GetScaleOffset(num4, allocation.Index, includePadding: true, yflip: false) * m_Resolution.xyxy);
+					int4 int2 = (int4)(GetScaleOffset(num3, allocation.Index, includePadding: true, yflip: false) * m_Resolution.xyxy);
 					@int = math.max(@int, int2.zw + int2.xy);
 				}
 				if (k < value3.MipCount)
@@ -262,81 +250,111 @@ internal struct ReflectionProbeManager : IDisposable
 			RenderTextureDescriptor descriptor = atlasRT.descriptor;
 			descriptor.width = @int.x;
 			descriptor.height = @int.y;
-			m_AtlasTexture1.width = @int.x;
-			m_AtlasTexture1.height = @int.y;
-			m_AtlasTexture1.Create();
+			RenderTexture renderTexture = new RenderTexture(descriptor);
+			renderTexture.name = "Waaagh Reflection Probe Atlas";
+			renderTexture.filterMode = FilterMode.Bilinear;
+			renderTexture.hideFlags = HideFlags.HideAndDontSave;
+			renderTexture.Create();
 			if (atlasRT.width != 1)
 			{
 				if (SystemInfo.copyTextureSupport != 0)
 				{
-					Graphics.CopyTexture(atlasRT, 0, 0, 0, 0, m_Resolution.x, m_Resolution.y, m_AtlasTexture1, 0, 0, 0, 0);
+					Graphics.CopyTexture(atlasRT, 0, 0, 0, 0, m_Resolution.x, m_Resolution.y, renderTexture, 0, 0, 0, 0);
 				}
 				else
 				{
-					Graphics.Blit(atlasRT, m_AtlasTexture1, (float2)m_Resolution / (float2)@int, Vector2.zero);
+					Graphics.Blit(atlasRT, renderTexture, (float2)m_Resolution / (float2)@int, Vector2.zero);
 				}
 			}
-			atlasRT.Release();
-			RenderTexture atlasTexture = m_AtlasTexture1;
-			RenderTexture atlasTexture2 = atlasRT;
-			RenderTexture renderTexture2 = (atlasRT = atlasTexture);
-			m_AtlasTexture1 = atlasTexture2;
+			atlasRTHandle.Release();
+			atlasRT = renderTexture;
+			atlasRTHandle = RTHandles.Alloc(atlasRT, transferOwnership: true);
 			m_Resolution = @int;
 		}
 		m_VisibleProbeToGpuDataIndex.Clear();
-		int num5 = 0;
-		for (int n = 0; n < num; n++)
+		m_SkipCount = 0;
+		for (int n = 0; n < m_ProbeCount; n++)
 		{
 			VisibleReflectionProbe visibleReflectionProbe2 = visibleReflectionProbes[n];
 			ReflectionProbe reflectionProbe2 = visibleReflectionProbe2.reflectionProbe;
 			if (!reflectionProbe2)
 			{
-				num5++;
+				m_SkipCount++;
 				continue;
 			}
 			int instanceID2 = reflectionProbe2.GetInstanceID();
-			int num6 = n - num5;
+			int num4 = n - m_SkipCount;
 			if (!m_Cache.TryGetValue(instanceID2, out var value4) || !visibleReflectionProbe2.texture)
 			{
-				num5++;
+				m_SkipCount++;
 				continue;
 			}
-			m_BoxMax[num6] = new Vector4(visibleReflectionProbe2.bounds.max.x, visibleReflectionProbe2.bounds.max.y, visibleReflectionProbe2.bounds.max.z, visibleReflectionProbe2.blendDistance);
-			m_BoxMin[num6] = new Vector4(visibleReflectionProbe2.bounds.min.x, visibleReflectionProbe2.bounds.min.y, visibleReflectionProbe2.bounds.min.z, visibleReflectionProbe2.importance);
-			m_ProbePosition[num6] = new Vector4(visibleReflectionProbe2.localToWorldMatrix.m03, visibleReflectionProbe2.localToWorldMatrix.m13, visibleReflectionProbe2.localToWorldMatrix.m23, (visibleReflectionProbe2.isBoxProjection ? 1 : (-1)) * value4.MipCount);
-			for (int num7 = 0; num7 < value4.MipCount; num7++)
+			m_BoxMax[num4] = new Vector4(visibleReflectionProbe2.bounds.max.x, visibleReflectionProbe2.bounds.max.y, visibleReflectionProbe2.bounds.max.z, visibleReflectionProbe2.blendDistance);
+			m_BoxMin[num4] = new Vector4(visibleReflectionProbe2.bounds.min.x, visibleReflectionProbe2.bounds.min.y, visibleReflectionProbe2.bounds.min.z, visibleReflectionProbe2.importance);
+			m_ProbePosition[num4] = new Vector4(visibleReflectionProbe2.localToWorldMatrix.m03, visibleReflectionProbe2.localToWorldMatrix.m13, visibleReflectionProbe2.localToWorldMatrix.m23, (visibleReflectionProbe2.isBoxProjection ? 1 : (-1)) * value4.MipCount);
+			for (int num5 = 0; num5 < value4.MipCount; num5++)
 			{
-				m_MipScaleOffset[num6 * 7 + num7] = GetScaleOffset(value4.Levels[num7], value4.DataIndices[num7], includePadding: false, yflip: false);
+				m_MipScaleOffset[num4 * 7 + num5] = GetScaleOffset(value4.Levels[num5], value4.DataIndices[num5], includePadding: false, yflip: false);
 			}
-			m_VisibleProbeToGpuDataIndex.Add(n, num6);
+			m_VisibleProbeToGpuDataIndex.Add(n, num4);
 		}
 		if (flag)
 		{
 			Debug.LogWarning("A number of reflection probes have been skipped due to the reflection probe atlas being full.\nTo fix this, you can decrease the number or resolution of probes.");
 		}
+	}
+
+	public unsafe void BlitAndSetGlobals(CommandBuffer cmd)
+	{
 		using (new ProfilingScope(cmd, Profiling.UpdateReflectionProbeAtlas))
 		{
 			cmd.SetRenderTarget(atlasRT);
-			foreach (int item7 in m_NeedsUpdate)
+			foreach (int item in m_NeedsUpdate)
 			{
-				CachedProbe cachedProbe2 = m_Cache[item7];
-				for (int num8 = 0; num8 < cachedProbe2.MipCount; num8++)
+				CachedProbe cachedProbe = m_Cache[item];
+				for (int i = 0; i < cachedProbe.MipCount; i++)
 				{
-					int num9 = cachedProbe2.Levels[num8];
-					int dataIndex = cachedProbe2.DataIndices[num8];
-					float4 scaleOffset = GetScaleOffset(num9, dataIndex, includePadding: true, !SystemInfo.graphicsUVStartsAtTop);
-					int num10 = (1 << m_AtlasAllocator.levelCount + 1 - num9) - 2;
-					Blitter.BlitCubeToOctahedral2DQuadWithPadding(cmd, cachedProbe2.Texture, new Vector2(num10, num10), scaleOffset, num8, bilinear: true, 2, cachedProbe2.HDRData);
+					int num = cachedProbe.Levels[i];
+					int dataIndex = cachedProbe.DataIndices[i];
+					float4 scaleOffset = GetScaleOffset(num, dataIndex, includePadding: true, !SystemInfo.graphicsUVStartsAtTop);
+					int num2 = (1 << m_AtlasAllocator.levelCount + 1 - num) - 2;
+					Blitter.BlitCubeToOctahedral2DQuadWithPadding(cmd, cachedProbe.Texture, new Vector2(num2, num2), scaleOffset, i, bilinear: true, 2, cachedProbe.HDRData);
 				}
 			}
-			cmd.SetGlobalVectorArray(ShaderProperties.BoxMin, m_BoxMin);
-			cmd.SetGlobalVectorArray(ShaderProperties.BoxMax, m_BoxMax);
-			cmd.SetGlobalVectorArray(ShaderProperties.ProbePosition, m_ProbePosition);
-			cmd.SetGlobalVectorArray(ShaderProperties.MipScaleOffset, m_MipScaleOffset);
-			cmd.SetGlobalFloat(ShaderProperties.Count, num - num5);
-			cmd.SetGlobalTexture(ShaderProperties.Atlas, atlasRT);
 		}
 		m_NeedsUpdate.Clear();
+	}
+
+	public unsafe void FillGlobalShaderVariables(ref WaaaghShaderVariablesGlobal g)
+	{
+		g.waaagh_ReflProbes_Count = m_ProbeCount - m_SkipCount;
+		fixed (float* dst = g.waaagh_ReflProbes_BoxMax)
+		{
+			CopyVec4Array(m_BoxMax, dst, 64);
+		}
+		fixed (float* dst2 = g.waaagh_ReflProbes_BoxMin)
+		{
+			CopyVec4Array(m_BoxMin, dst2, 64);
+		}
+		fixed (float* dst3 = g.waaagh_ReflProbes_ProbePosition)
+		{
+			CopyVec4Array(m_ProbePosition, dst3, 64);
+		}
+		fixed (float* dst4 = g.waaagh_ReflProbes_MipScaleOffset)
+		{
+			CopyVec4Array(m_MipScaleOffset, dst4, 448);
+		}
+	}
+
+	private unsafe static void CopyVec4Array(Vector4[] src, float* dst, int count)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			dst[i * 4] = src[i].x;
+			dst[i * 4 + 1] = src[i].y;
+			dst[i * 4 + 2] = src[i].z;
+			dst[i * 4 + 3] = src[i].w;
+		}
 	}
 
 	private float4 GetScaleOffset(int level, int dataIndex, bool includePadding, bool yflip)
@@ -360,7 +378,6 @@ internal struct ReflectionProbeManager : IDisposable
 			atlasRTHandle.Release();
 		}
 		UnityEngine.Object.DestroyImmediate(atlasRT);
-		UnityEngine.Object.DestroyImmediate(m_AtlasTexture1);
 		this = default(ReflectionProbeManager);
 	}
 }

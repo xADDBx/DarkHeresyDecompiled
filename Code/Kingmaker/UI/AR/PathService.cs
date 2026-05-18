@@ -19,6 +19,12 @@ public sealed class PathService : IDisposable
 
 	private static readonly int _SpatialDistanceTraveled = Shader.PropertyToID("_SpatialDistanceTraveled");
 
+	private static readonly int _FadeStartOffset = Shader.PropertyToID("_FadeStartOffset");
+
+	private static readonly int _FadeEndOffset = Shader.PropertyToID("_FadeEndOffset");
+
+	private static readonly int _FadeSharpness = Shader.PropertyToID("_FadeSharpness");
+
 	private readonly ProceduralMeshObject<LineVertex, uint> m_ProceduralMeshObject;
 
 	private readonly PathServiceRequestPool m_RequestPool;
@@ -32,6 +38,8 @@ public sealed class PathService : IDisposable
 	private Renderer m_Renderer;
 
 	private MaterialPropertyBlock m_PropertyBlock;
+
+	private CombatHudPathRenderer.LineMaterialSettingsPerCreatureSize? m_CurrentFadeSettings;
 
 	private JobHandle m_ScheduledJobHandle;
 
@@ -124,6 +132,7 @@ public sealed class PathService : IDisposable
 				value2.Add(new MaterialData(value.request.material, default(MaterialOverrides)));
 				m_ProceduralMeshObject.Update(value.proceduralMesh, value2, applyMaterialPropertyOverrides: false);
 			}
+			m_CurrentFadeSettings = value.request.FadeSettings;
 		}
 		finally
 		{
@@ -141,7 +150,15 @@ public sealed class PathService : IDisposable
 	{
 		if (!(m_Renderer == null))
 		{
+			m_PropertyBlock.Clear();
 			m_PropertyBlock.SetFloat(_SpatialDistanceTraveled, m_PathProgressTracker.GetTraveledDistance());
+			if (m_CurrentFadeSettings.HasValue)
+			{
+				CombatHudPathRenderer.LineMaterialSettingsPerCreatureSize value = m_CurrentFadeSettings.Value;
+				m_PropertyBlock.SetFloat(_FadeStartOffset, value.fadeStartOffset);
+				m_PropertyBlock.SetFloat(_FadeEndOffset, value.fadeEndOffset);
+				m_PropertyBlock.SetFloat(_FadeSharpness, value.fadeSharpness);
+			}
 			m_Renderer.SetPropertyBlock(m_PropertyBlock);
 		}
 	}

@@ -24,10 +24,10 @@ public class ContextConditionHasBuffFromCaster : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
+		MechanicEntity caster = base.Eval.Caster;
 		foreach (Buff buff in base.Target.Entity.Buffs)
 		{
-			if (buff.Blueprint == Buff && buff.Context.MaybeCaster == maybeCaster)
+			if (buff.Blueprint == Buff && buff.Context.MaybeCaster == caster)
 			{
 				return true;
 			}

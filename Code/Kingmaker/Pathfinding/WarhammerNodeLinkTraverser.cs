@@ -31,7 +31,7 @@ public class WarhammerNodeLinkTraverser : ILinkTraversalProvider
 
 	private static readonly float MinSpeed = 30.Feet().Meters / 2.5f;
 
-	private readonly UnitMovementAgentBase m_MovementAgent;
+	private readonly UnitMovementAgent m_MovementAgent;
 
 	[CanBeNull]
 	private IWarhammerNodeLink m_LastTraversedPathLink;
@@ -169,7 +169,7 @@ public class WarhammerNodeLinkTraverser : ILinkTraversalProvider
 		}
 	}
 
-	public WarhammerNodeLinkTraverser(UnitMovementAgentBase movementAgent)
+	public WarhammerNodeLinkTraverser(UnitMovementAgent movementAgent)
 	{
 		m_MovementAgent = movementAgent;
 	}

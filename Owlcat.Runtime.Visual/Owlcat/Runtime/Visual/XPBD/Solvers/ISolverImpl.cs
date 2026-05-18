@@ -4,6 +4,7 @@ using Owlcat.Runtime.Visual.XPBD.Debug;
 using Owlcat.Runtime.Visual.XPBD.Stats;
 using UnityEngine;
 using UnityEngine.Jobs;
+using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.XPBD.Solvers;
 
@@ -14,6 +15,8 @@ public interface ISolverImpl
 	IGizmosImpl GizmosImpl { get; }
 
 	void Dispose();
+
+	void EnsureRenderBuffersInitialized(ScriptableRenderContext context);
 
 	void BeginStep(in UpdateContext context);
 

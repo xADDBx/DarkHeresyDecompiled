@@ -5,13 +5,12 @@ using JetBrains.Annotations;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.Controllers.Units;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.View;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.CharacterSystem.Dismemberment;
 using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Utility;
@@ -68,10 +67,7 @@ public class PartLifeState : AbstractUnitPart, IHashable, IOwlPackable<PartLifeS
 			if (m_IsDeathRevealed != value)
 			{
 				m_IsDeathRevealed = value;
-				if ((bool)base.Owner.View)
-				{
-					base.Owner.View.UpdateViewActive();
-				}
+				base.Owner.View?.UpdateViewActive();
 			}
 		}
 	}
@@ -182,42 +178,16 @@ public class PartLifeState : AbstractUnitPart, IHashable, IOwlPackable<PartLifeS
 			{
 				Health.SetHitPointsLeft(resultHealth);
 			}
-			PartStatsAttributes optional = base.Owner.GetOptional<PartStatsAttributes>();
-			if (optional != null)
-			{
-				UpdateAttributesDamageAndDrainOnResurrect(optional, fullRestore);
-			}
 			UpdateUnitViewOnResurrect(base.Owner.View);
 			m_isRessurecting = false;
-			EventBus.RaiseEvent((IAbstractUnitEntity)(IBaseUnitEntity)base.Owner, (Action<IUnitResurrectedHandler>)delegate(IUnitResurrectedHandler h)
+			base.EventBus.RaiseEvent((IAbstractUnitEntity)(IBaseUnitEntity)base.Owner, (Action<IUnitResurrectedHandler>)delegate(IUnitResurrectedHandler h)
 			{
 				h.HandleUnitResurrected();
 			}, isCheckRuntime: true);
 		}
 	}
 
-	private static void UpdateAttributesDamageAndDrainOnResurrect([NotNull] PartStatsAttributes attributes, bool fullRestore)
-	{
-		foreach (ModifiableValueAttributeStat attribute in attributes)
-		{
-			if (fullRestore)
-			{
-				attribute.Damage = 0;
-				attribute.Drain = 0;
-			}
-			if (attribute.ModifiedValueRaw < 1)
-			{
-				int num = -attribute.ModifiedValueRaw + 1;
-				int num2 = Math.Min(attribute.Damage, num);
-				attribute.Damage -= num2;
-				num -= num2;
-				int num3 = Math.Min(attribute.Drain, num);
-				attribute.Drain -= num3;
-			}
-		}
-	}
-
-	private static void UpdateUnitViewOnResurrect([NotNull] AbstractUnitEntityView view)
+	private static void UpdateUnitViewOnResurrect([NotNull] IAbstractUnitEntityView view)
 	{
 		UnitEntityView unitEntityView = view as UnitEntityView;
 		if (unitEntityView != null)
@@ -229,7 +199,7 @@ public class PartLifeState : AbstractUnitPart, IHashable, IOwlPackable<PartLifeS
 		{
 			Game.Instance.Controllers.HandsEquipmentController.ScheduleUpdate(unitEntityView.HandsEquipment);
 		}
-		view.ResetMouseHighlighted();
+		view.ResetHoverHighlighted();
 	}
 
 	public void HideIfDead()

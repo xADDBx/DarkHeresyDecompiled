@@ -6,6 +6,7 @@ using Kingmaker.Designers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Gameplay.Features.Encounter;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.Parts;
@@ -131,7 +132,7 @@ public class ReplaceUnitTransition : UnitBuffComponentDelegate
 	private void KillOriginalAndTransitToTarget(ReplaceUnitTransition settings, BaseUnitEntity original, UnitEntity target)
 	{
 		GameHelper.KillUnit(original, original, 1, UnitDismemberType.InPower);
-		IEnumerator routine = Polymorph.Transition(settings.VisualSettings, original.View, target.View);
+		IEnumerator routine = Polymorph.Transition(settings.VisualSettings, original.View.AsUnitEntityView(), target.View.AsUnitEntityView());
 		MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(routine);
 		base.Owner.Facts.Remove(base.Fact);
 	}
@@ -146,7 +147,7 @@ public class ReplaceUnitTransition : UnitBuffComponentDelegate
 
 	private static void StartTransition(ReplaceUnitTransition settings, BaseUnitEntity original, UnitEntity target)
 	{
-		IEnumerator routine = Polymorph.Transition(settings.VisualSettings, original.View, target.View);
+		IEnumerator routine = Polymorph.Transition(settings.VisualSettings, original.View.AsUnitEntityView(), target.View.AsUnitEntityView());
 		MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(routine);
 	}
 }

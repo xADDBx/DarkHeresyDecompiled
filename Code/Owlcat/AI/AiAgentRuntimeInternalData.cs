@@ -92,7 +92,11 @@ public class AiAgentRuntimeInternalData
 		m_RuntimeBridge.SetUnitsInCombatVariable(unitsInCombat.ToList());
 		m_RuntimeBridge.SetAlliesInCombatVariable(unitsInCombat.Where((MechanicEntity u) => u != m_Agent && m_Agent.IsAlly(u)).ToList());
 		m_RuntimeBridge.SetEnemiesInCombatVariable(unitsInCombat.Where((MechanicEntity u) => u != m_Agent && m_Agent.IsEnemy(u)).ToList());
-		m_RuntimeBridge.SetReachableNodesVariable(AgentMoveVariants.cells.Keys.OfType<GridNodeBase>());
+		m_RuntimeBridge.SetReachableNodesVariable(AgentMoveVariants.cells.Keys.OfType<GridNodeBase>().Where(delegate(GridNodeBase node)
+		{
+			BaseUnitEntity firstUnit = node.GetFirstUnit();
+			return firstUnit == null || firstUnit == m_Agent;
+		}));
 		return true;
 	}
 }

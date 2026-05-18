@@ -1,11 +1,10 @@
 using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.EntitySystem.Properties;
+using Kingmaker.Framework;
 using Kingmaker.QA;
-using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Conditions;
@@ -24,16 +23,12 @@ public class CheckPropertySimple : Condition
 
 	protected override bool CheckCondition()
 	{
-		if (!SimpleContextData<PropertyContext, PropertyContext.Scope>.TryGetCurrent(out var result))
+		MechanicEntity caster = EvalContext.Current.Caster;
+		if (caster == null)
 		{
-			MechanicEntity mechanicEntity = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.MaybeCaster;
-			if (mechanicEntity == null)
-			{
-				PFLog.Default.ErrorWithReport("CurrentEntity is missing");
-				return false;
-			}
-			result = new PropertyContext(mechanicEntity);
+			PFLog.Default.ErrorWithReport("CurrentEntity is missing");
+			return false;
 		}
-		return Value.GetBoolValue(result);
+		return Value.GetBoolValue(caster);
 	}
 }

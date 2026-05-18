@@ -13,6 +13,11 @@ public static class DetectiveCaseDialogInfoUtility
 		return GetRelatedCaseItems(answer.ShowConditions, visibleOnly);
 	}
 
+	public static IEnumerable<DialogDetectiveCloseCaseData> GetCloseCaseData(this BlueprintAnswer answer)
+	{
+		return GetCloseCaseItems(answer.OnSelect);
+	}
+
 	private static IEnumerable<DialogDetectiveCaseLink> GetRelatedCaseItems(ConditionsChecker conditions, bool visibleOnly = true)
 	{
 		DetectiveSystem detectiveSystem = Game.Instance.DetectiveSystem;
@@ -24,7 +29,7 @@ public static class DetectiveCaseDialogInfoUtility
 				BlueprintCaseItem caseItem = hasDetectiveCaseItemCondition.CaseItem;
 				if (caseItem != null)
 				{
-					if (!visibleOnly || detectiveSystem.HasItem(caseItem))
+					if (!visibleOnly || detectiveSystem.HasItemExcludingHidden(caseItem))
 					{
 						yield return new DialogDetectiveCaseLink(caseItem);
 					}
@@ -47,6 +52,18 @@ public static class DetectiveCaseDialogInfoUtility
 			foreach (DialogDetectiveCaseLink relatedCaseItem in GetRelatedCaseItems(orAndLogic.ConditionsChecker, visibleOnly))
 			{
 				yield return relatedCaseItem;
+			}
+		}
+	}
+
+	private static IEnumerable<DialogDetectiveCloseCaseData> GetCloseCaseItems(ActionList onSelect)
+	{
+		GameAction[] actions = onSelect.Actions;
+		for (int i = 0; i < actions.Length; i++)
+		{
+			if (actions[i] is CloseCase { WithAnswer: not false } closeCase && closeCase.Case != null && closeCase.Answer != null && Game.Instance.DetectiveSystem.GetCaseStatus(closeCase.Case.Blueprint) == CaseStatus.Opened)
+			{
+				yield return new DialogDetectiveCloseCaseData(closeCase.Case.Blueprint, closeCase.Answer.Blueprint);
 			}
 		}
 	}

@@ -13,6 +13,8 @@ public abstract class EntityFactsProcessor : EntityFactsManager.IFactProcessor
 {
 	public EntityFactsManager Manager { get; private set; }
 
+	protected IEntityEventBus EventBus => Manager.ConcreteOwner.EventBus;
+
 	public bool IsActive { get; protected set; } = true;
 
 
@@ -158,7 +160,7 @@ public abstract class EntityFactsProcessor<TFact> : EntityFactsProcessor where T
 		{
 			OnFactDidAttach(fact2);
 		}
-		EventBus.RaiseEvent(delegate(IFactCollectionUpdatedHandler h)
+		base.EventBus.RaiseEvent(delegate(IFactCollectionUpdatedHandler h)
 		{
 			h.HandleFactCollectionUpdated(this);
 		});
@@ -178,7 +180,7 @@ public abstract class EntityFactsProcessor<TFact> : EntityFactsProcessor where T
 		{
 			OnFactDidDetached(fact2);
 		}
-		EventBus.RaiseEvent(delegate(IFactCollectionUpdatedHandler h)
+		base.EventBus.RaiseEvent(delegate(IFactCollectionUpdatedHandler h)
 		{
 			h.HandleFactCollectionUpdated(this);
 		});

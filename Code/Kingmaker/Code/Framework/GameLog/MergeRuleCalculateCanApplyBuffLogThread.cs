@@ -48,7 +48,7 @@ public class MergeRuleCalculateCanApplyBuffLogThread : LogThreadBase, IGameLogEv
 
 	private static IEnumerable<ITooltipBrick> CollectExtraBricks(IEnumerable<GameLogRuleEvent<RuleCalculateCanApplyBuff>> events)
 	{
-		Func<CombatLogMessage, bool, ITooltipBrick> nestedMessageTemplate = CombatLogTooltipService.CreateTooltipBrickNestedMessage;
+		Func<CombatLogMessage, bool, ITooltipBrick> nestedMessageTemplate = CombatLogTooltipService.CreateBrickNestedMessage;
 		if (nestedMessageTemplate == null)
 		{
 			yield break;

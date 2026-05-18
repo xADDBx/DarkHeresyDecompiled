@@ -1,4 +1,4 @@
-using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.DialogSystem;
 using Kingmaker.EntitySystem.Entities;
 
 namespace Kingmaker.UnitLogic.Parts;

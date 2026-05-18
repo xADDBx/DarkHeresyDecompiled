@@ -23,7 +23,7 @@ public static class GizmoExtensions
 		Matrix4x4 matrix = Gizmos.matrix;
 		Color color = Gizmos.color;
 		float num = (object.Equals(origin, null) ? 0f : GeometryMath.SignedDistance(in plane, in origin));
-		Gizmos.matrix = Matrix4x4.TRS(origin + plane.normal * (0f - num), Quaternion.LookRotation(plane.normal), Vector3.one);
+		Gizmos.matrix = Matrix4x4.TRS((Vector3)(origin + plane.normal * (0f - num)), Quaternion.LookRotation((Vector3)plane.normal), Vector3.one);
 		Gizmos.DrawCube(Vector3.zero, Vector3.one * 0.1f);
 		Gizmos.DrawWireCube(Vector3.zero, new Vector3(size, size));
 		Gizmos.color = new Color(color.r, color.g, color.b, color.a / 2f);

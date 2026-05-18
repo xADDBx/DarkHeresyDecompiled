@@ -5,6 +5,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -45,7 +46,7 @@ public static class UtilitySkillcheck
 		{
 			return null;
 		}
-		string arg = ColorUtility.ToHtmlStringRGB(skillCheck.Passed ? colors.Success : colors.Failure);
+		string arg = ColorUtility.ToHtmlStringRGB((Color)(skillCheck.Passed ? colors.Success : colors.Failure));
 		UIDialog dialog = ConfigRoot.Instance.LocalizedTexts.UserInterfacesText.Dialog;
 		string text = (skillCheck.Passed ? dialog.Succeeded : dialog.Failed);
 		string text2 = EntityLink.Type.UnitStat.GetTag() + ":" + skillCheck.StatType.ToString() + ":" + skillCheck.ActingUnit.UniqueId;

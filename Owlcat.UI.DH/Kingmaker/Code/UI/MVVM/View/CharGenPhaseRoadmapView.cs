@@ -1,5 +1,4 @@
 using Code.View.UI.Helpers;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
@@ -11,17 +10,17 @@ namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TViewModel>, ICharGenPhaseRoadmapView, IInitializable where TViewModel : CharGenPhaseBaseVM
 {
-	private const string BUTTON_STATE_ACTIVE = "Active";
+	private const string ButtonStateActive = "Active";
 
-	private const string BUTTON_STATE_AVAILABLE = "Available";
+	private const string ButtonStateAvailable = "Available";
 
-	private const string BUTTON_STATE_NOT_AVAILABLE = "NotAvailable";
+	private const string ButtonStateNotAvailable = "NotAvailable";
 
-	private const string BUTTON_STATE_DONE = "Done";
+	private const string ButtonStateDone = "Done";
 
-	private const string BUTTON_STATE_WARNING = "Warning";
+	private const string ButtonStateWarning = "Warning";
 
-	private const string BUTTON_STATE_WARNING_ACTIVE = "WarningActive";
+	private const string ButtonStateWarningActive = "WarningActive";
 
 	[SerializeField]
 	protected TextMeshProUGUI m_Label;
@@ -64,7 +63,7 @@ public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TVie
 		{
 			UpdateSelectableState();
 		}));
-		m_Label.text = UIStrings.Instance.CharGen.GetPhaseName(base.ViewModel.PhaseType);
+		m_Label.text = base.ViewModel.PhaseName.CurrentValue;
 		m_AccessibilityTextHelper.UpdateTextSize();
 		m_LevelSeparator.SetActive(base.ViewModel.Rank > 0);
 		m_LevelLabel.text = base.ViewModel.Rank.ToString();
@@ -96,19 +95,19 @@ public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TVie
 
 	private string GetButtonState()
 	{
-		if (!base.ViewModel.IsSelected.Value)
+		if (base.ViewModel.IsSelected.Value)
 		{
-			if (!base.ViewModel.IsCompletedAndAvailable.CurrentValue)
-			{
-				if (!base.ViewModel.IsAvailable.CurrentValue)
-				{
-					return "NotAvailable";
-				}
-				return "Available";
-			}
+			return "Active";
+		}
+		if (base.ViewModel.IsCompletedAndAvailable.CurrentValue)
+		{
 			return "Done";
 		}
-		return "Active";
+		if (!base.ViewModel.IsAvailable.CurrentValue)
+		{
+			return "NotAvailable";
+		}
+		return "Available";
 	}
 
 	private void ClearState()

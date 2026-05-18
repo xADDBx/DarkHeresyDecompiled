@@ -6,7 +6,10 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.ContextContract;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -17,6 +20,7 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using UnityEngine;
 
 namespace Kingmaker.Designers.Mechanics.Facts.Damage;
@@ -29,7 +33,8 @@ namespace Kingmaker.Designers.Mechanics.Facts.Damage;
 [AllowedOn(typeof(BlueprintUnit))]
 [AllowedOn(typeof(BlueprintAbilityModifier))]
 [TypeId("b05381e4f203a76418913b0f6b5323f8")]
-public abstract class DamageModifier : MechanicEntityFactComponentDelegate
+[SetsContextScope(ContextEntryPointKind.BuffComponentRulebookHandler)]
+public abstract class DamageModifier : MechanicEntityFactComponentDelegate, IStatModifier
 {
 	[Flags]
 	public enum FilterFlags
@@ -57,6 +62,13 @@ public abstract class DamageModifier : MechanicEntityFactComponentDelegate
 	public ContextValueModifierWithType CritsCount = new ContextValueModifierWithType();
 
 	public ContextValueModifierWithType DamageReduction = new ContextValueModifierWithType();
+
+	[InfoBox("Тип зависимостей модификатора, должен соответствовать рестрикшенам. None - рестрикшенов нет, OwnerStat - рестрикшен на стат юнита получающего модификатор, External - любые другие рестрикшены.")]
+	public StatRestrictionDependency DependencyType;
+
+	[InfoBox("От каких статов юнита получающего модификатор зависит этот модификатор. Нужен для DependencyType = OwnerStat.")]
+	[ShowIf("ShowStatDependencies")]
+	public StatType[] StatDependencies = new StatType[0];
 
 	public DamageStrategy ApplyDamageStrategy;
 
@@ -87,6 +99,27 @@ public abstract class DamageModifier : MechanicEntityFactComponentDelegate
 	[InspectorReadOnly]
 	public ContextValueModifier UnmodifiablePercentDamageModifier = new ContextValueModifier();
 
+	protected abstract StatModifierScope Scope { get; }
+
+	StatModifierScope IStatModifier.Scope => Scope;
+
+	private bool ShowStatDependencies
+	{
+		get
+		{
+			if (DependencyType != StatRestrictionDependency.OwnerStat)
+			{
+				StatType[] statDependencies = StatDependencies;
+				if (statDependencies != null)
+				{
+					return statDependencies.Length > 0;
+				}
+				return false;
+			}
+			return true;
+		}
+	}
+
 	protected void TryApply(RuleCalculateDamage rule)
 	{
 		if (IsSuitable(rule) && Restrictions.IsPassed(base.Context, null, null, rule))
@@ -96,7 +129,6 @@ public abstract class DamageModifier : MechanicEntityFactComponentDelegate
 			ArmorDamage.TryApply(rule.ArmorDamageModifiers, base.Fact, ModifierDescriptor);
 			HealthDamage.TryApply(rule.HealthDamageModifiers, base.Fact, ModifierDescriptor);
 			CritsCount.TryApply(rule.CritsCountModifiers, base.Fact, ModifierDescriptor);
-			DamageReduction.TryApply(rule.DamageReduction, base.Fact, ModifierDescriptor);
 			if (ApplyDamageStrategy != 0)
 			{
 				rule.PushApplyStrategy(ApplyDamageStrategy, base.Runtime, ModifierDescriptor);
@@ -153,6 +185,33 @@ public abstract class DamageModifier : MechanicEntityFactComponentDelegate
 		if (UnmodifiablePercentDamageModifier.Enabled)
 		{
 			rule.Modifiers.Add(ModifierType.PctMul_Extra, UnmodifiablePercentDamageModifier.Calculate(base.Context), base.Fact, ModifierDescriptor);
+		}
+	}
+
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		if (stat == StatType.ArmorDamageReduction && Restrictions.IsPassed(base.Context, in context))
+		{
+			DamageReduction.TryApply(collector.Modifiers, base.Fact, ModifierDescriptor);
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		if (DamageReduction.Enabled)
+		{
+			if (Restrictions.Empty)
+			{
+				entries.Add(new AffectedStatEntry(StatType.ArmorDamageReduction));
+			}
+			else if (DependencyType == StatRestrictionDependency.OwnerStat)
+			{
+				entries.Add(new AffectedStatEntry(StatType.ArmorDamageReduction, StatDependencies));
+			}
+			else
+			{
+				entries.Add(new AffectedStatEntry(StatType.ArmorDamageReduction, isConditional: true));
+			}
 		}
 	}
 }

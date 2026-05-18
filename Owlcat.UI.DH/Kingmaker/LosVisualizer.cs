@@ -3,18 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Code.Enums.Helper;
 using Kingmaker.Code.UI.MVVM;
+using Kingmaker.Controllers;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
 using Kingmaker.Framework.Pathfinding;
 using Kingmaker.GameModes;
+using Kingmaker.Gameplay.Parts;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.UI.Pointer;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
+using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.View;
@@ -29,8 +33,15 @@ using UnityEngine.Serialization;
 
 namespace Kingmaker;
 
-public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBasedModeHandler, IInteractionHighlightUIHandler, IUnitDirectHoverUIHandler, IAbilityTargetSelectionUIHandler, IHologramPositionChangedHandler, IHologramClearHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, ITurnEndHandler, IPreparationTurnBeginHandler, IUnitMovementHandler, ISubscriber<IBaseUnitEntity>, IEntityPositionChangedHandler, ISubscriber<IEntity>, IGridObstacleCacheHandler, IGridObstacleEnabledHandler, IGridObstacleAwakeHandler, IAbilityTargetPossibilityCheck
+public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBasedModeHandler, ITurnBasedModeResumeHandler, IInteractionHighlightUIHandler, IUnitDirectHoverUIHandler, IAbilityTargetSelectionUIHandler, IHologramPositionChangedHandler, IHologramClearHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, ITurnEndHandler, IPreparationTurnBeginHandler, IUnitMovementHandler, ISubscriber<IBaseUnitEntity>, IEntityPositionChangedHandler, ISubscriber<IEntity>, IGridObstacleCacheHandler, IGridObstacleEnabledHandler, IGridObstacleAwakeHandler, IAbilityTargetPossibilityCheck, IDynamicCoverProviderChangedHandler, INearUnitsCoverChangedHandler
 {
+	private struct EndpointEntry
+	{
+		public ObstacleMarker Marker;
+
+		public bool IsLeft;
+	}
+
 	[FormerlySerializedAs("LayerMaskToShowFx")]
 	[Tooltip("Collider masks which we will use to find obstacle points in static assets in the scene")]
 	public string[] layerMaskToShowFx;
@@ -45,13 +56,20 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 	[Tooltip("If true, the markers will be shown even if the player is not in combat.")]
 	public bool showOutsideCombat;
 
-	[FormerlySerializedAs("CoverMarker")]
-	[Tooltip("Prefab of cover marker")]
-	public ObstacleMarker coverMarker;
+	[Tooltip("Material assigned to cover markers at instantiation")]
+	public Material coverMarkerMaterial;
 
-	[FormerlySerializedAs("LosBlockerMarker")]
-	[Tooltip("Prefab of LOS blocker marker")]
-	public ObstacleMarker losBlockerMarker;
+	[Tooltip("Material assigned to LOS blocker markers at instantiation")]
+	public Material losBlockerMarkerMaterial;
+
+	[Tooltip("Visual height of the marker quad in meters (base to top)")]
+	public float markerHeight = 1.35f;
+
+	[Tooltip("Y threshold for corner welding: neighbour vertices farther apart than this are NOT welded together")]
+	public float weldYThreshold = 1f;
+
+	[Tooltip("Unity layer assigned to procedurally created marker GameObjects")]
+	public int markerLayer = 10;
 
 	[FormerlySerializedAs("LosLine")]
 	[Tooltip("Prefab of LOS line")]
@@ -64,13 +82,16 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 	[Tooltip("Prefab of grayscale and brightness FX for characters who's not seen by player")]
 	public GameObject grayscaleFxPrefab;
 
+	[Tooltip("Speed of marker fade in/out (higher = faster)")]
+	public float markerFadeSpeed = 10f;
+
 	private List<ObstacleMarker> m_obstaclesMarkers = new List<ObstacleMarker>();
 
 	private List<GridObstacle> m_obstacles = new List<GridObstacle>();
 
 	private CameraRig m_cameraRig;
 
-	private Vector3 m_lastMousePos = Vector3.zero;
+	private Vector2 m_lastMousePos = Vector2.zero;
 
 	private Vector3 m_lastCameraPos = Vector3.zero;
 
@@ -84,6 +105,16 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private Dictionary<MechanicEntity, GameObject> m_UnitAndFx = new Dictionary<MechanicEntity, GameObject>();
 
+	private Dictionary<IDynamicCoverProvider, List<ObstacleMarker>> m_DynamicCoverMarkers = new Dictionary<IDynamicCoverProvider, List<ObstacleMarker>>();
+
+	private Dictionary<IDynamicCoverProvider, HashSet<GridNodeBase>> m_DynamicCoverNodeSnapshot = new Dictionary<IDynamicCoverProvider, HashSet<GridNodeBase>>();
+
+	private HashSet<BaseUnitEntity> m_NearUnitsCoverTrackedUnits = new HashSet<BaseUnitEntity>();
+
+	private Dictionary<BaseUnitEntity, List<ObstacleMarker>> m_NearUnitsCoverMarkers = new Dictionary<BaseUnitEntity, List<ObstacleMarker>>();
+
+	private Dictionary<BaseUnitEntity, HashSet<GridNodeBase>> m_NearUnitsCoverNodeSnapshot = new Dictionary<BaseUnitEntity, HashSet<GridNodeBase>>();
+
 	private TurnController m_TurnController;
 
 	private int? m_CachedLayerMaskToShowFx;
@@ -95,6 +126,8 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 	private bool m_isGlobalTabHighlight;
 
 	private Vector3 m_eyeHeightMod = Vector3.one;
+
+	private const float CornerQuantizeStep = 0.05f;
 
 	private int LayerMaskToShowFx
 	{
@@ -122,24 +155,56 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private void Init()
 	{
-		m_isInited = false;
-		ClearAll();
-		if (!InitCheckData())
+		using (ProfileScope.New("LosVisualizer.Markers.Init"))
 		{
-			PFLog.TechArt.Error(this, "Fields in LosVisualizer has null values, disabling component");
-			base.enabled = false;
+			m_isInited = false;
+			ClearAll();
+			if (!InitCheckData())
+			{
+				PFLog.TechArt.Error(this, "Fields in LosVisualizer has null values, disabling component");
+				base.enabled = false;
+			}
+			if (IsProperGameMode())
+			{
+				m_TurnController = Game.Instance.Controllers.TurnController;
+				m_cameraRig = CameraRig.Instance;
+				m_obstacles = GetObstacles();
+				m_obstaclesMarkers = SetupMarkers(m_obstacles);
+				m_LosLineInstance = UnityEngine.Object.Instantiate(losLine, base.transform);
+				m_LosLineInstance.enabled = false;
+				m_LosInterruptedFxInstance = UnityEngine.Object.Instantiate(losInterruptedFx, base.transform);
+				m_LosInterruptedFxInstance.SetActive(value: false);
+				m_isInited = true;
+				RescanExistingCoverProviders();
+				RefreshMarkerGeometry();
+			}
 		}
-		if (IsProperGameMode())
+	}
+
+	private void RescanExistingCoverProviders()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.RescanProviders"))
 		{
-			m_TurnController = Game.Instance.Controllers.TurnController;
-			m_cameraRig = CameraRig.Instance;
-			m_obstacles = GetObstacles();
-			m_obstaclesMarkers = SetupMarkers(m_obstacles);
-			m_LosLineInstance = UnityEngine.Object.Instantiate(losLine, base.transform);
-			m_LosLineInstance.enabled = false;
-			m_LosInterruptedFxInstance = UnityEngine.Object.Instantiate(losInterruptedFx, base.transform);
-			m_LosInterruptedFxInstance.SetActive(value: false);
-			m_isInited = true;
+			foreach (MechanicEntity item in Game.Instance.Controllers.TurnController.EntitiesInCombat)
+			{
+				if (item is BaseUnitEntity baseUnitEntity)
+				{
+					if (baseUnitEntity.IsPlayerFaction && baseUnitEntity.GetOptional<PartNearUnitsProvideCover>() != null)
+					{
+						m_NearUnitsCoverTrackedUnits.Add(baseUnitEntity);
+					}
+					PartProvidesCover optional = baseUnitEntity.GetOptional<PartProvidesCover>();
+					if (optional != null && optional.IsActive && !m_DynamicCoverMarkers.ContainsKey(optional))
+					{
+						m_DynamicCoverMarkers[optional] = CreateDynamicCoverMarkers(optional);
+						m_DynamicCoverNodeSnapshot[optional] = ToNodeSet(optional.Nodes);
+					}
+				}
+			}
+			if (m_NearUnitsCoverTrackedUnits.Count > 0)
+			{
+				RebuildAllNearUnitsCoverMarkers();
+			}
 		}
 	}
 
@@ -150,14 +215,14 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 			PFLog.TechArt.Error(this, "No grayscale fx prefab in LosVisualizer");
 			return false;
 		}
-		if (coverMarker == null)
+		if (coverMarkerMaterial == null)
 		{
-			PFLog.TechArt.Error(this, "No cover marker prefab in LosVisualizer");
+			PFLog.TechArt.Error(this, "No cover marker material in LosVisualizer");
 			return false;
 		}
-		if (losBlockerMarker == null)
+		if (losBlockerMarkerMaterial == null)
 		{
-			PFLog.TechArt.Error(this, "No los blocker marker prefab in LosVisualizer");
+			PFLog.TechArt.Error(this, "No los blocker marker material in LosVisualizer");
 			return false;
 		}
 		if (losLine == null)
@@ -175,24 +240,32 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private void Update()
 	{
-		if (!m_isInited || GameUIState.Instance.IsLoadingProcess.Value)
+		if (!m_isInited)
 		{
 			return;
 		}
-		Player player = Game.Instance.Player;
-		if (player == null || player.IsInCombat)
+		Game instance = Game.Instance;
+		if (instance == null || GameUIState.Instance.IsLoadingProcess.Value)
 		{
-			m_SelectedUnit = Game.Instance.Controllers.TurnController.CurrentUnit;
-			if (m_lastMousePos != Input.mousePosition)
-			{
-				UpdateMarkers(m_SelectedUnit);
-				m_lastMousePos = Input.mousePosition;
-			}
-			else if (m_lastCameraPos != m_cameraRig.transform.position)
-			{
-				UpdateMarkers(m_SelectedUnit);
-				m_lastCameraPos = m_cameraRig.transform.position;
-			}
+			return;
+		}
+		Player player = instance.Player;
+		if (player == null || !player.IsInCombat)
+		{
+			return;
+		}
+		MechanicEntity currentUnit = instance.Controllers.TurnController.CurrentUnit;
+		if (m_lastMousePos != CursorController.CursorPosition)
+		{
+			UpdateMarkers(currentUnit);
+			m_lastMousePos = CursorController.CursorPosition;
+			return;
+		}
+		Vector3 position = m_cameraRig.transform.position;
+		if (m_lastCameraPos != position)
+		{
+			UpdateMarkers(currentUnit);
+			m_lastCameraPos = position;
 		}
 	}
 
@@ -208,53 +281,110 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private List<ObstacleMarker> SetupMarkers(List<GridObstacle> obstacles)
 	{
-		List<ObstacleMarker> list = new List<ObstacleMarker>();
-		foreach (GridObstacle obstacle in obstacles)
+		using (ProfileScope.New("LosVisualizer.Markers.SetupStatic"))
 		{
-			if (obstacle.Type != 0)
+			List<ObstacleMarker> list = new List<ObstacleMarker>();
+			foreach (GridObstacle obstacle in obstacles)
 			{
-				list.Add(SetupObstacleMarker(obstacle));
+				if (obstacle.Type != 0 && !obstacle._hideArVisual)
+				{
+					list.Add(SetupObstacleMarker(obstacle));
+				}
 			}
+			return list;
 		}
-		return list;
 	}
 
 	private ObstacleMarker SetupObstacleMarker(GridObstacle obstacle)
 	{
-		ObstacleMarker original = ((obstacle.Type == LosCalculations.CoverType.Cover) ? coverMarker : losBlockerMarker);
-		Quaternion inputRotation = (obstacle._Rotate ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity) * ((Component)(object)obstacle).transform.rotation;
-		ObstacleMarker obj = UnityEngine.Object.Instantiate(rotation: GetStepRotation(inputRotation, 90f), original: original, position: ((Component)(object)obstacle).transform.position);
-		obj.Type = obstacle.Type;
-		obj.OwnerObstacle = obstacle;
-		obj.ObstacleRenderer = obj.GetComponentInChildren<Renderer>();
-		obj.RaycastCollider = obj.GetComponentInChildren<Collider>();
-		obj.gameObject.transform.SetParent(base.transform);
-		return obj;
+		Quaternion quaternion = (obstacle._Rotate ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity);
+		Quaternion inputRotation = Quaternion.Euler(0f, ((Component)(object)obstacle).transform.eulerAngles.y, 0f) * quaternion;
+		inputRotation = GetStepRotation(inputRotation, 90f);
+		ObstacleMarker obstacleMarker = CreateMarkerGameObject($"ObstacleMarker_{obstacle.Type}", ((Component)(object)obstacle).transform.position, inputRotation, obstacle.Type);
+		obstacleMarker.OwnerObstacle = obstacle;
+		return obstacleMarker;
+	}
+
+	private ObstacleMarker CreateMarkerGameObject(string name, Vector3 position, Quaternion rotation, LosCalculations.CoverType type)
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.CreateOne"))
+		{
+			float num = 1.Cells().Meters * 0.5f;
+			Material sharedMaterial = ((type == LosCalculations.CoverType.Cover) ? coverMarkerMaterial : losBlockerMarkerMaterial);
+			GameObject obj = new GameObject(name);
+			obj.layer = markerLayer;
+			obj.transform.SetParent(base.transform);
+			obj.transform.SetPositionAndRotation(position, rotation);
+			MeshFilter meshFilter = obj.AddComponent<MeshFilter>();
+			MeshRenderer meshRenderer = obj.AddComponent<MeshRenderer>();
+			meshRenderer.sharedMaterial = sharedMaterial;
+			BoxCollider boxCollider = obj.AddComponent<BoxCollider>();
+			boxCollider.size = new Vector3(2f * num, markerHeight, 0.01f);
+			boxCollider.center = new Vector3(0f, markerHeight * 0.5f, 0f);
+			ObstacleMarker obstacleMarker = obj.AddComponent<ObstacleMarker>();
+			Vector3 vector = rotation * Vector3.right;
+			Vector3 leftEndpoint = position - vector * num;
+			Vector3 rightEndpoint = position + vector * num;
+			obstacleMarker.Initialize(meshFilter, meshRenderer, boxCollider, leftEndpoint, rightEndpoint, num, markerHeight, type);
+			return obstacleMarker;
+		}
 	}
 
 	public void HandleGridObstacleEnabled(GridObstacle gridObstacle, bool enabled)
 	{
-		AddDynamicObstacle(gridObstacle);
-		foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+		using (ProfileScope.New("LosVisualizer.Markers.HandleEnabled"))
 		{
-			if ((UnityEngine.Object)(object)obstaclesMarker.OwnerObstacle == (UnityEngine.Object)(object)gridObstacle)
+			AddDynamicObstacle(gridObstacle);
+			foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
 			{
-				obstaclesMarker.gameObject.SetActive(enabled);
+				if (!((UnityEngine.Object)(object)obstaclesMarker.OwnerObstacle != (UnityEngine.Object)(object)gridObstacle))
+				{
+					obstaclesMarker.gameObject.SetActive(enabled);
+					if (m_isInited)
+					{
+						RefreshMarkerGeometry();
+					}
+					break;
+				}
 			}
 		}
 	}
 
 	private void UpdateMarkersState()
 	{
-		using (ProfileScope.New("LosVisualizer.UpdateMarkersState"))
+		using (ProfileScope.New("LosVisualizer.Markers.UpdateMovement"))
 		{
+			RemoveDestroyedMarkers();
 			foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
 			{
 				Quaternion quaternion = (obstaclesMarker.OwnerObstacle._Rotate ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity);
-				Quaternion inputRotation = ((Component)(object)obstaclesMarker.OwnerObstacle).transform.rotation * quaternion;
-				obstaclesMarker.transform.rotation = GetStepRotation(inputRotation, 90f);
+				Quaternion quaternion2 = Quaternion.Euler(0f, ((Component)(object)obstaclesMarker.OwnerObstacle).transform.eulerAngles.y, 0f);
+				Quaternion stepRotation = GetStepRotation(quaternion2 * quaternion, 90f);
+				obstaclesMarker.transform.rotation = stepRotation;
 				obstaclesMarker.transform.position = ((Component)(object)obstaclesMarker.OwnerObstacle).transform.position;
+				obstaclesMarker.UpdateEndpoints(stepRotation);
 			}
+			RefreshMarkerGeometry();
+		}
+	}
+
+	private void RemoveDestroyedMarkers()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.RemoveDestroyed"))
+		{
+			for (int num = m_obstaclesMarkers.Count - 1; num >= 0; num--)
+			{
+				ObstacleMarker obstacleMarker = m_obstaclesMarkers[num];
+				if (obstacleMarker == null || (UnityEngine.Object)(object)obstacleMarker.OwnerObstacle == null)
+				{
+					if (obstacleMarker != null)
+					{
+						UnityEngine.Object.Destroy(obstacleMarker.gameObject);
+					}
+					m_obstaclesMarkers.RemoveAt(num);
+				}
+			}
+			m_obstacles.RemoveAll((GridObstacle o) => (UnityEngine.Object)(object)o == null);
 		}
 	}
 
@@ -265,23 +395,10 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 		return Quaternion.Euler(eulerAngles);
 	}
 
-	private List<GameObject> GetObstaclesMarkersInDistance(List<ObstacleMarker> obstaclesMarkers, Vector3 position, float distance)
-	{
-		List<GameObject> list = new List<GameObject>();
-		foreach (ObstacleMarker obstaclesMarker in obstaclesMarkers)
-		{
-			if (obstaclesMarker.Type != 0 && Vector3.Distance(obstaclesMarker.gameObject.transform.position, position) <= distance)
-			{
-				list.Add(obstaclesMarker.gameObject);
-			}
-		}
-		return list;
-	}
-
 	private Vector3 GetMouseWorldPosition()
 	{
 		Vector3 zero = Vector3.zero;
-		if (Physics.Raycast(m_cameraRig.Camera.ScreenPointToRay(Input.mousePosition), out var hitInfo, float.PositiveInfinity))
+		if (Physics.Raycast(m_cameraRig.Camera.ScreenPointToRay(CursorController.CursorPosition), out var hitInfo, 1000f))
 		{
 			return hitInfo.point;
 		}
@@ -291,7 +408,7 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 	private bool IsProperGameMode()
 	{
 		m_GameModeType = Game.Instance.CurrentModeType;
-		if (m_GameModeType != GameModeType.None && m_GameModeType != GameModeType.GlobalMap && m_GameModeType != GameModeType.SpaceCombat && m_GameModeType != GameModeType.StarSystem)
+		if (m_GameModeType != GameModeType.None && m_GameModeType != GameModeType.GlobalMap)
 		{
 			return m_GameModeType != GameModeType.CutsceneGlobalMap;
 		}
@@ -300,46 +417,90 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private void UpdateMarkers(MechanicEntity selectedUnit)
 	{
-		if (m_isGlobalTabHighlight || m_obstaclesMarkers.Count == 0 || (!m_TurnController.IsPlayerTurn && !m_TurnController.IsPreparationTurn))
+		using (ProfileScope.New("LosVisualizer.Markers.UpdateFade"))
 		{
-			return;
-		}
-		Vector3 mouseWorldPosition = GetMouseWorldPosition();
-		List<GameObject> obstaclesMarkersInDistance = GetObstaclesMarkersInDistance(m_obstaclesMarkers, mouseWorldPosition, mouseDistanceToShowMarkers);
-		foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
-		{
-			if (obstaclesMarker.Type != 0)
+			if (m_isGlobalTabHighlight || (m_obstaclesMarkers.Count == 0 && m_DynamicCoverMarkers.Count == 0 && m_NearUnitsCoverMarkers.Count == 0) || (!m_TurnController.IsPlayerTurn && !m_TurnController.IsPreparationTurn))
 			{
-				if (selectedUnit != null && selectedUnit.Size >= Size.Large && obstaclesMarker.Type == LosCalculations.CoverType.Cover)
+				return;
+			}
+			Vector3 mouseWorldPosition = GetMouseWorldPosition();
+			float num = mouseDistanceToShowMarkers * mouseDistanceToShowMarkers;
+			bool flag = selectedUnit != null && selectedUnit.Size >= Size.Large;
+			for (int i = 0; i < m_obstaclesMarkers.Count; i++)
+			{
+				ObstacleMarker obstacleMarker = m_obstaclesMarkers[i];
+				if (obstacleMarker.Type != 0)
 				{
-					obstaclesMarker.EnableMarker(enable: false);
+					if (flag && obstacleMarker.Type == LosCalculations.CoverType.Cover)
+					{
+						obstacleMarker.EnableMarker(enable: false, markerFadeSpeed);
+						continue;
+					}
+					bool enable = (obstacleMarker.transform.position - mouseWorldPosition).sqrMagnitude <= num;
+					obstacleMarker.EnableMarker(enable, markerFadeSpeed);
 				}
-				else
+			}
+			UpdateDynamicMarkers(m_DynamicCoverMarkers, mouseWorldPosition, num, flag);
+			UpdateDynamicMarkers(m_NearUnitsCoverMarkers, mouseWorldPosition, num, flag);
+		}
+	}
+
+	private void UpdateDynamicMarkers<TKey>(Dictionary<TKey, List<ObstacleMarker>> markers, Vector3 mouseWorldPosition, float distSqr, bool isLargeUnit)
+	{
+		foreach (KeyValuePair<TKey, List<ObstacleMarker>> marker in markers)
+		{
+			foreach (ObstacleMarker item in marker.Value)
+			{
+				if (isLargeUnit && item.Type == LosCalculations.CoverType.Cover)
 				{
-					obstaclesMarker.EnableMarker(obstaclesMarkersInDistance.Contains(obstaclesMarker.gameObject));
+					item.EnableMarker(enable: false, markerFadeSpeed);
+					continue;
 				}
+				bool enable = (item.transform.position - mouseWorldPosition).sqrMagnitude <= distSqr;
+				item.EnableMarker(enable, markerFadeSpeed);
 			}
 		}
 	}
 
 	private void ToggleAllMarkers(bool state)
 	{
-		foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+		using (ProfileScope.New("LosVisualizer.Markers.ToggleAll"))
 		{
-			obstaclesMarker.EnableMarker(state);
+			foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+			{
+				obstaclesMarker.EnableMarker(state, markerFadeSpeed);
+			}
+			ToggleDynamicMarkers(m_DynamicCoverMarkers, state);
+			ToggleDynamicMarkers(m_NearUnitsCoverMarkers, state);
+		}
+	}
+
+	private void ToggleDynamicMarkers<TKey>(Dictionary<TKey, List<ObstacleMarker>> markers, bool state)
+	{
+		foreach (KeyValuePair<TKey, List<ObstacleMarker>> marker in markers)
+		{
+			foreach (ObstacleMarker item in marker.Value)
+			{
+				item.EnableMarker(state, markerFadeSpeed);
+			}
 		}
 	}
 
 	private void ClearAll()
 	{
-		foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+		using (ProfileScope.New("LosVisualizer.Markers.ClearAll"))
 		{
-			UnityEngine.Object.Destroy(obstaclesMarker.gameObject);
+			foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+			{
+				UnityEngine.Object.Destroy(obstaclesMarker.gameObject);
+			}
+			ClearLosVisual();
+			m_obstaclesMarkers.Clear();
+			m_obstacles = null;
+			ClearAllDynamicCoverMarkers();
+			ClearAllNearUnitsCoverMarkers();
+			ClearGrayscaleFxs();
 		}
-		ClearLosVisual();
-		m_obstaclesMarkers.Clear();
-		m_obstacles = null;
-		ClearGrayscaleFxs();
 	}
 
 	private void ClearLosVisual()
@@ -356,14 +517,21 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private void DisableAllMarkers()
 	{
-		foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+		using (ProfileScope.New("LosVisualizer.Markers.DisableAll"))
 		{
-			obstaclesMarker.EnableMarker(enable: false);
+			foreach (ObstacleMarker obstaclesMarker in m_obstaclesMarkers)
+			{
+				obstaclesMarker.EnableMarker(enable: false, markerFadeSpeed);
+			}
+			ToggleDynamicMarkers(m_DynamicCoverMarkers, state: false);
+			ToggleDynamicMarkers(m_NearUnitsCoverMarkers, state: false);
 		}
 	}
 
 	public void OnAreaBeginUnloading()
 	{
+		m_isInited = false;
+		ClearAll();
 	}
 
 	public void OnAreaDidLoad()
@@ -376,6 +544,8 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 		DisableAllMarkers();
 		if (!isTurnBased)
 		{
+			ClearAllDynamicCoverMarkers();
+			ClearAllNearUnitsCoverMarkers();
 			ClearGrayscaleFxs();
 			DisableLosVisual();
 		}
@@ -424,29 +594,31 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 		{
 			if ((LosCalculations.CoverType)losDescription == LosCalculations.CoverType.LosBlocker)
 			{
+				float num = sphereCastRadius;
+				m_RaycastHits = new RaycastHit[10];
 				m_LosLineInstance.enabled = true;
 				m_LosLineInstance.SetPosition(0, playerEyePosition);
 				Vector3 vector = targetEyePosition;
 				Vector3 normalized = (targetEyePosition - playerEyePosition).normalized;
 				float maxDistance = Vector3.Distance(playerEyePosition, targetEyePosition);
-				int num = Physics.RaycastNonAlloc(playerEyePosition, normalized, m_RaycastHits, maxDistance, LayerMaskToShowFx);
-				if (num == 0)
+				int num2 = Physics.RaycastNonAlloc(playerEyePosition, normalized, m_RaycastHits, maxDistance, LayerMaskToShowFx);
+				if (num2 == 0)
 				{
-					for (float num2 = 0.05f; num2 <= 2f; num2 += 0.05f)
+					for (float num3 = 0.05f; num3 <= 2f; num3 += 0.05f)
 					{
-						sphereCastRadius += num2;
-						num = Physics.SphereCastNonAlloc(playerEyePosition, sphereCastRadius, normalized, m_RaycastHits, maxDistance, LayerMaskToShowFx);
-						if (num > 0)
+						num += num3;
+						num2 = Physics.SphereCastNonAlloc(playerEyePosition, num, normalized, m_RaycastHits, maxDistance, LayerMaskToShowFx);
+						if (num2 > 0)
 						{
 							break;
 						}
 					}
 				}
-				bool active = num > 0;
+				bool active = num2 > 0;
 				vector = m_RaycastHits[0].point;
-				float num3 = Vector3.Dot(vector - playerEyePosition, normalized);
-				Vector3 b = playerEyePosition + normalized * num3;
-				vector = Vector3.Lerp(vector, b, 0.5f * sphereCastRadius);
+				float num4 = Vector3.Dot(vector - playerEyePosition, normalized);
+				Vector3 b = playerEyePosition + normalized * num4;
+				vector = Vector3.Lerp(vector, b, 0.5f * num);
 				m_LosInterruptedFxInstance.transform.position = vector;
 				m_LosInterruptedFxInstance.SetActive(active);
 				m_LosLineInstance.SetPosition(1, vector);
@@ -478,7 +650,7 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 			warhammerLos = LosCalculations.GetWarhammerLos(unitHologram.HologramEntityView.transform.position, rectForSize, targetPoint.Value, rectForSize);
 		}
 		m_eyeHeightMod = LosCalculations.EyeShift;
-		Vector3 vector = ((unitHologram?.HologramEntityView != null) ? unitHologram.HologramEntityView.transform.position : Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Value.View.transform.position);
+		Vector3 vector = ((unitHologram?.HologramEntityView != null) ? unitHologram.HologramEntityView.transform.position : Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Value.ViewPosition);
 		Vector3 playerEyePosition = vector + m_eyeHeightMod;
 		Vector3 targetEyePosition = targetPoint.Value + m_eyeHeightMod;
 		playerEyePosition += CalculateEyeShiftToCellBorder(vector, targetPoint.Value);
@@ -532,13 +704,13 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 	private void ApplyGrayscaleFx(Vector3 losCalculateFrom)
 	{
 		IntRect rectForSize = SizePathfindingHelper.GetRectForSize(Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Value.Size);
-		foreach (MechanicEntity item in Game.Instance.Controllers.TurnController.UnitsInCombat)
+		foreach (MechanicEntity item in Game.Instance.Controllers.TurnController.EntitiesInCombat)
 		{
 			if (!item.IsPlayerEnemy)
 			{
 				continue;
 			}
-			LosDescription warhammerLos = LosCalculations.GetWarhammerLos(losCalculateFrom, rectForSize, item.View.transform.position, rectForSize);
+			LosDescription warhammerLos = LosCalculations.GetWarhammerLos(losCalculateFrom, rectForSize, item.ViewPosition, rectForSize);
 			if (!m_UnitAndFx.ContainsKey(item) || (LosCalculations.CoverType)warhammerLos != LosCalculations.CoverType.LosBlocker)
 			{
 				if (!m_UnitAndFx.ContainsKey(item) && (LosCalculations.CoverType)warhammerLos == LosCalculations.CoverType.LosBlocker)
@@ -599,6 +771,15 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 	{
 	}
 
+	public void HandleTurnBasedModeResumed()
+	{
+		TurnController turnController = Game.Instance.Controllers.TurnController;
+		if (turnController.IsPreparationTurn)
+		{
+			HandleBeginPreparationTurn(turnController.IsDeploymentAllowed);
+		}
+	}
+
 	public void HandleBeginPreparationTurn(bool canDeploy)
 	{
 		if (IsValidUnit())
@@ -613,6 +794,21 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	public void HandleEntityPositionChanged()
 	{
+		if (m_isInited)
+		{
+			MechanicEntity mechanicEntity = EventInvokerExtensions.MechanicEntity;
+			if (mechanicEntity != null && mechanicEntity.IsInCombat)
+			{
+				if (m_DynamicCoverMarkers.Count > 0)
+				{
+					RebuildAllDynamicCoverMarkers();
+				}
+				if (m_NearUnitsCoverTrackedUnits.Count > 0)
+				{
+					RebuildAllNearUnitsCoverMarkers();
+				}
+			}
+		}
 		if (IsValidUnit())
 		{
 			ApplyGrayscaleFx(Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Value.Position);
@@ -625,7 +821,10 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	public void HandleGridObstacleCacheUpdated()
 	{
-		UpdateMarkersState();
+		if (m_isInited)
+		{
+			UpdateMarkersState();
+		}
 	}
 
 	public void HandleGridObstacleAwake(GridObstacle gridObstacle)
@@ -635,12 +834,490 @@ public class LosVisualizer : MonoBehaviour, IAreaHandler, ISubscriber, ITurnBase
 
 	private void AddDynamicObstacle(GridObstacle gridObstacle)
 	{
-		using (ProfileScope.New("LosVisualizer.AddNewObstacleVisual"))
+		using (ProfileScope.New("LosVisualizer.Markers.AddDynamicObstacle"))
 		{
 			if (m_isInited && !m_obstacles.Contains(gridObstacle))
 			{
 				m_obstacles.Add(gridObstacle);
-				m_obstaclesMarkers.Add(SetupObstacleMarker(gridObstacle));
+				if (!gridObstacle._hideArVisual)
+				{
+					m_obstaclesMarkers.Add(SetupObstacleMarker(gridObstacle));
+					RefreshMarkerGeometry();
+				}
+			}
+		}
+	}
+
+	private List<ObstacleMarker> CreateBoundaryEdgeMarkers(NodeList nodes, LosCalculations.CoverType coverType)
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.CreateBoundary"))
+		{
+			List<ObstacleMarker> list = new List<ObstacleMarker>();
+			if (nodes.IsEmpty)
+			{
+				return list;
+			}
+			HashSet<GridNodeBase> hashSet = new HashSet<GridNodeBase>();
+			foreach (GridNodeBase item in nodes)
+			{
+				hashSet.Add(item);
+			}
+			foreach (GridNodeBase item2 in nodes)
+			{
+				for (int i = 0; i < 4; i++)
+				{
+					GridNodeBase neighbourAlongDirection = item2.GetNeighbourAlongDirection(i, checkConnectivity: false);
+					if (neighbourAlongDirection != null && !hashSet.Contains(neighbourAlongDirection))
+					{
+						Vector3 vector = item2.Vector3Position();
+						Vector3 vector2 = neighbourAlongDirection.Vector3Position();
+						Vector3 position = (vector + vector2) * 0.5f;
+						Quaternion rotation = ((i == 1 || i == 3) ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity);
+						list.Add(CreateMarkerGameObject($"BoundaryMarker_{coverType}", position, rotation, coverType));
+					}
+				}
+			}
+			return list;
+		}
+	}
+
+	private void RefreshMarkerGeometry()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.Refresh"))
+		{
+			DeduplicateMarkers();
+			WeldAllCorners();
+		}
+	}
+
+	private void DeduplicateMarkers()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.Deduplicate"))
+		{
+			Dictionary<Vector3Int, List<ObstacleMarker>> dictionary = new Dictionary<Vector3Int, List<ObstacleMarker>>();
+			CollectMarkersByEdge(m_obstaclesMarkers, dictionary);
+			foreach (KeyValuePair<IDynamicCoverProvider, List<ObstacleMarker>> dynamicCoverMarker in m_DynamicCoverMarkers)
+			{
+				CollectMarkersByEdge(dynamicCoverMarker.Value, dictionary);
+			}
+			foreach (KeyValuePair<BaseUnitEntity, List<ObstacleMarker>> nearUnitsCoverMarker in m_NearUnitsCoverMarkers)
+			{
+				CollectMarkersByEdge(nearUnitsCoverMarker.Value, dictionary);
+			}
+			HashSet<ObstacleMarker> hashSet = new HashSet<ObstacleMarker>();
+			foreach (KeyValuePair<Vector3Int, List<ObstacleMarker>> item in dictionary)
+			{
+				List<ObstacleMarker> value = item.Value;
+				if (value.Count < 2)
+				{
+					continue;
+				}
+				ObstacleMarker obstacleMarker = value[0];
+				for (int i = 1; i < value.Count; i++)
+				{
+					if (GetMarkerPriority(value[i].Type) > GetMarkerPriority(obstacleMarker.Type))
+					{
+						obstacleMarker = value[i];
+					}
+				}
+				foreach (ObstacleMarker item2 in value)
+				{
+					if (item2 != obstacleMarker)
+					{
+						hashSet.Add(item2);
+					}
+				}
+			}
+			if (hashSet.Count == 0)
+			{
+				return;
+			}
+			RemoveDeduplicated(m_obstaclesMarkers, hashSet);
+			foreach (KeyValuePair<IDynamicCoverProvider, List<ObstacleMarker>> dynamicCoverMarker2 in m_DynamicCoverMarkers)
+			{
+				RemoveDeduplicated(dynamicCoverMarker2.Value, hashSet);
+			}
+			foreach (KeyValuePair<BaseUnitEntity, List<ObstacleMarker>> nearUnitsCoverMarker2 in m_NearUnitsCoverMarkers)
+			{
+				RemoveDeduplicated(nearUnitsCoverMarker2.Value, hashSet);
+			}
+		}
+	}
+
+	private static void CollectMarkersByEdge(List<ObstacleMarker> source, Dictionary<Vector3Int, List<ObstacleMarker>> byEdge)
+	{
+		foreach (ObstacleMarker item in source)
+		{
+			if (!(item == null))
+			{
+				Vector3Int key = QuantizeCornerXZ(item.transform.position);
+				if (!byEdge.TryGetValue(key, out var value))
+				{
+					value = (byEdge[key] = new List<ObstacleMarker>());
+				}
+				value.Add(item);
+			}
+		}
+	}
+
+	private static int GetMarkerPriority(LosCalculations.CoverType type)
+	{
+		return type switch
+		{
+			LosCalculations.CoverType.LosBlocker => 2, 
+			LosCalculations.CoverType.Cover => 1, 
+			LosCalculations.CoverType.Obstacle => 0, 
+			_ => -1, 
+		};
+	}
+
+	private void RemoveDeduplicated(List<ObstacleMarker> list, HashSet<ObstacleMarker> toDestroy)
+	{
+		for (int num = list.Count - 1; num >= 0; num--)
+		{
+			if (toDestroy.Contains(list[num]))
+			{
+				UnityEngine.Object.Destroy(list[num].gameObject);
+				list.RemoveAt(num);
+			}
+		}
+	}
+
+	private void WeldAllCorners()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.Weld"))
+		{
+			Dictionary<Vector3Int, List<EndpointEntry>> dictionary = new Dictionary<Vector3Int, List<EndpointEntry>>();
+			List<ObstacleMarker> list = new List<ObstacleMarker>();
+			CollectMarkersForWelding(m_obstaclesMarkers, list, dictionary);
+			foreach (KeyValuePair<IDynamicCoverProvider, List<ObstacleMarker>> dynamicCoverMarker in m_DynamicCoverMarkers)
+			{
+				CollectMarkersForWelding(dynamicCoverMarker.Value, list, dictionary);
+			}
+			foreach (KeyValuePair<BaseUnitEntity, List<ObstacleMarker>> nearUnitsCoverMarker in m_NearUnitsCoverMarkers)
+			{
+				CollectMarkersForWelding(nearUnitsCoverMarker.Value, list, dictionary);
+			}
+			Dictionary<ObstacleMarker, Vector4> dictionary2 = new Dictionary<ObstacleMarker, Vector4>(list.Count);
+			foreach (ObstacleMarker item in list)
+			{
+				dictionary2[item] = new Vector4(item.BaseY, item.TopY, item.BaseY, item.TopY);
+			}
+			foreach (KeyValuePair<Vector3Int, List<EndpointEntry>> item2 in dictionary)
+			{
+				List<EndpointEntry> value = item2.Value;
+				if (value.Count >= 2)
+				{
+					value.Sort(CompareByBaseY);
+					ApplyClusterWelding(value, dictionary2, isBot: true);
+					value.Sort(CompareByTopY);
+					ApplyClusterWelding(value, dictionary2, isBot: false);
+				}
+			}
+			foreach (ObstacleMarker item3 in list)
+			{
+				Vector4 vector = dictionary2[item3];
+				item3.SetCornerYs(vector.x, vector.y, vector.z, vector.w);
+			}
+		}
+	}
+
+	private static int CompareByBaseY(EndpointEntry a, EndpointEntry b)
+	{
+		return a.Marker.BaseY.CompareTo(b.Marker.BaseY);
+	}
+
+	private static int CompareByTopY(EndpointEntry a, EndpointEntry b)
+	{
+		return a.Marker.TopY.CompareTo(b.Marker.TopY);
+	}
+
+	private static void CollectMarkersForWelding(List<ObstacleMarker> source, List<ObstacleMarker> allMarkers, Dictionary<Vector3Int, List<EndpointEntry>> bucket)
+	{
+		foreach (ObstacleMarker item in source)
+		{
+			if (!(item == null) && item.gameObject.activeSelf)
+			{
+				allMarkers.Add(item);
+				AddEndpointToBucket(bucket, item, isLeft: true);
+				AddEndpointToBucket(bucket, item, isLeft: false);
+			}
+		}
+	}
+
+	private static void AddEndpointToBucket(Dictionary<Vector3Int, List<EndpointEntry>> bucket, ObstacleMarker m, bool isLeft)
+	{
+		Vector3Int key = QuantizeCornerXZ(isLeft ? m.LeftEndpoint : m.RightEndpoint);
+		if (!bucket.TryGetValue(key, out var value))
+		{
+			value = (bucket[key] = new List<EndpointEntry>());
+		}
+		value.Add(new EndpointEntry
+		{
+			Marker = m,
+			IsLeft = isLeft
+		});
+	}
+
+	private static Vector3Int QuantizeCornerXZ(Vector3 worldPos)
+	{
+		return new Vector3Int(Mathf.RoundToInt(worldPos.x / 0.05f), 0, Mathf.RoundToInt(worldPos.z / 0.05f));
+	}
+
+	private void ApplyClusterWelding(List<EndpointEntry> entries, Dictionary<ObstacleMarker, Vector4> resolved, bool isBot)
+	{
+		int num = 0;
+		while (num < entries.Count)
+		{
+			int i;
+			for (i = num + 1; i < entries.Count; i++)
+			{
+				float clusterY = GetClusterY(entries[i - 1].Marker, isBot);
+				if (GetClusterY(entries[i].Marker, isBot) - clusterY > weldYThreshold)
+				{
+					break;
+				}
+			}
+			if (i - num >= 2)
+			{
+				float num2 = 0f;
+				for (int j = num; j < i; j++)
+				{
+					num2 += GetClusterY(entries[j].Marker, isBot);
+				}
+				float num3 = num2 / (float)(i - num);
+				for (int k = num; k < i; k++)
+				{
+					EndpointEntry endpointEntry = entries[k];
+					Vector4 value = resolved[endpointEntry.Marker];
+					if (isBot)
+					{
+						if (endpointEntry.IsLeft)
+						{
+							value.x = num3;
+						}
+						else
+						{
+							value.z = num3;
+						}
+					}
+					else if (endpointEntry.IsLeft)
+					{
+						value.y = num3;
+					}
+					else
+					{
+						value.w = num3;
+					}
+					resolved[endpointEntry.Marker] = value;
+				}
+			}
+			num = i;
+		}
+	}
+
+	private static float GetClusterY(ObstacleMarker m, bool isBot)
+	{
+		if (!isBot)
+		{
+			return m.TopY;
+		}
+		return m.BaseY;
+	}
+
+	public void HandleDynamicCoverProviderRegistered(IDynamicCoverProvider provider)
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.RegisterDynamicCover"))
+		{
+			if (m_isInited && !m_DynamicCoverMarkers.ContainsKey(provider))
+			{
+				m_DynamicCoverMarkers[provider] = CreateDynamicCoverMarkers(provider);
+				m_DynamicCoverNodeSnapshot[provider] = ToNodeSet(provider.Nodes);
+				RefreshMarkerGeometry();
+			}
+		}
+	}
+
+	public void HandleDynamicCoverProviderUnregistered(IDynamicCoverProvider provider)
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.UnregisterDynamicCover"))
+		{
+			if (m_DynamicCoverMarkers.TryGetValue(provider, out var value))
+			{
+				DestroyMarkers(value);
+				m_DynamicCoverMarkers.Remove(provider);
+				m_DynamicCoverNodeSnapshot.Remove(provider);
+				if (m_isInited)
+				{
+					RefreshMarkerGeometry();
+				}
+			}
+		}
+	}
+
+	private List<ObstacleMarker> CreateDynamicCoverMarkers(IDynamicCoverProvider provider)
+	{
+		return CreateBoundaryEdgeMarkers(provider.Nodes, provider.CoverType);
+	}
+
+	private void RebuildAllDynamicCoverMarkers()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.RebuildDynamic"))
+		{
+			List<IDynamicCoverProvider> list = new List<IDynamicCoverProvider>(m_DynamicCoverMarkers.Count);
+			foreach (KeyValuePair<IDynamicCoverProvider, List<ObstacleMarker>> dynamicCoverMarker in m_DynamicCoverMarkers)
+			{
+				list.Add(dynamicCoverMarker.Key);
+			}
+			bool flag = false;
+			foreach (IDynamicCoverProvider item in list)
+			{
+				HashSet<GridNodeBase> hashSet = ToNodeSet(item.Nodes);
+				if (!m_DynamicCoverNodeSnapshot.TryGetValue(item, out var value) || !value.SetEquals(hashSet))
+				{
+					if (m_DynamicCoverMarkers.TryGetValue(item, out var value2))
+					{
+						DestroyMarkers(value2);
+					}
+					m_DynamicCoverMarkers[item] = CreateDynamicCoverMarkers(item);
+					m_DynamicCoverNodeSnapshot[item] = hashSet;
+					flag = true;
+				}
+			}
+			if (flag)
+			{
+				RefreshMarkerGeometry();
+			}
+		}
+	}
+
+	private void ClearAllDynamicCoverMarkers()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.ClearDynamic"))
+		{
+			foreach (KeyValuePair<IDynamicCoverProvider, List<ObstacleMarker>> dynamicCoverMarker in m_DynamicCoverMarkers)
+			{
+				DestroyMarkers(dynamicCoverMarker.Value);
+			}
+			m_DynamicCoverMarkers.Clear();
+			m_DynamicCoverNodeSnapshot.Clear();
+		}
+	}
+
+	public void HandleNearUnitsCoverProviderRegistered(BaseUnitEntity unit)
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.RegisterNearUnits"))
+		{
+			if (m_isInited && unit.IsPlayerFaction && m_NearUnitsCoverTrackedUnits.Add(unit))
+			{
+				RebuildAllNearUnitsCoverMarkers();
+			}
+		}
+	}
+
+	public void HandleNearUnitsCoverProviderUnregistered(BaseUnitEntity unit)
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.UnregisterNearUnits"))
+		{
+			if (m_NearUnitsCoverTrackedUnits.Remove(unit))
+			{
+				RebuildAllNearUnitsCoverMarkers();
+			}
+		}
+	}
+
+	private void RebuildAllNearUnitsCoverMarkers()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.RebuildNearUnits"))
+		{
+			HashSet<BaseUnitEntity> hashSet = new HashSet<BaseUnitEntity>();
+			foreach (BaseUnitEntity nearUnitsCoverTrackedUnit in m_NearUnitsCoverTrackedUnits)
+			{
+				PartNearUnitsProvideCover optional = nearUnitsCoverTrackedUnit.GetOptional<PartNearUnitsProvideCover>();
+				if (optional == null)
+				{
+					continue;
+				}
+				foreach (MechanicEntity item in Game.Instance.Controllers.TurnController.EntitiesInCombat)
+				{
+					if (item != nearUnitsCoverTrackedUnit && item is BaseUnitEntity baseUnitEntity && optional.IsSuitableCover(baseUnitEntity))
+					{
+						hashSet.Add(baseUnitEntity);
+					}
+				}
+			}
+			List<BaseUnitEntity> list = new List<BaseUnitEntity>();
+			foreach (BaseUnitEntity key in m_NearUnitsCoverMarkers.Keys)
+			{
+				if (!hashSet.Contains(key))
+				{
+					list.Add(key);
+				}
+			}
+			foreach (BaseUnitEntity item2 in list)
+			{
+				DestroyMarkers(m_NearUnitsCoverMarkers[item2]);
+				m_NearUnitsCoverMarkers.Remove(item2);
+				m_NearUnitsCoverNodeSnapshot.Remove(item2);
+			}
+			bool flag = list.Count > 0;
+			foreach (BaseUnitEntity item3 in hashSet)
+			{
+				HashSet<GridNodeBase> hashSet2 = ToNodeSet(item3.GetOccupiedNodes());
+				if (!m_NearUnitsCoverNodeSnapshot.TryGetValue(item3, out var value) || !value.SetEquals(hashSet2))
+				{
+					if (m_NearUnitsCoverMarkers.TryGetValue(item3, out var value2))
+					{
+						DestroyMarkers(value2);
+					}
+					m_NearUnitsCoverMarkers[item3] = CreatePerimeterCoverMarkers(item3);
+					m_NearUnitsCoverNodeSnapshot[item3] = hashSet2;
+					flag = true;
+				}
+			}
+			if (flag)
+			{
+				RefreshMarkerGeometry();
+			}
+		}
+	}
+
+	private List<ObstacleMarker> CreatePerimeterCoverMarkers(BaseUnitEntity provider)
+	{
+		return CreateBoundaryEdgeMarkers(provider.GetOccupiedNodes(), LosCalculations.CoverType.Cover);
+	}
+
+	private void ClearAllNearUnitsCoverMarkers()
+	{
+		using (ProfileScope.New("LosVisualizer.Markers.ClearNearUnits"))
+		{
+			foreach (KeyValuePair<BaseUnitEntity, List<ObstacleMarker>> nearUnitsCoverMarker in m_NearUnitsCoverMarkers)
+			{
+				DestroyMarkers(nearUnitsCoverMarker.Value);
+			}
+			m_NearUnitsCoverMarkers.Clear();
+			m_NearUnitsCoverNodeSnapshot.Clear();
+			m_NearUnitsCoverTrackedUnits.Clear();
+		}
+	}
+
+	private static HashSet<GridNodeBase> ToNodeSet(NodeList nodes)
+	{
+		HashSet<GridNodeBase> hashSet = new HashSet<GridNodeBase>();
+		foreach (GridNodeBase item in nodes)
+		{
+			hashSet.Add(item);
+		}
+		return hashSet;
+	}
+
+	private void DestroyMarkers(List<ObstacleMarker> markers)
+	{
+		foreach (ObstacleMarker marker in markers)
+		{
+			if (marker != null)
+			{
+				UnityEngine.Object.Destroy(marker.gameObject);
 			}
 		}
 	}

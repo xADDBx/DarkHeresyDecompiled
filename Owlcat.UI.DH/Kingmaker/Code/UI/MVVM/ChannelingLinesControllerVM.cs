@@ -6,22 +6,28 @@ using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.Utility.DotNetExtensions;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISubscriber, ITurnBasedModeResumeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, IInterruptTurnStartHandler, IUnitCommandEndHandler, IUnitCommandStartHandler, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IAreaHandler, IUnitCommandActHandler<EntitySubscriber>, IUnitCommandActHandler, IEventTag<IUnitCommandActHandler, EntitySubscriber>
+public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISubscriber, ITurnBasedModeResumeHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, IInterruptTurnStartHandler, IUnitCommandEndHandler, IUnitCommandStartHandler, IUnitLifeStateChanged, ISubscriber<IAbstractUnitEntity>, IAreaHandler, IUnitCommandActHandler<EntitySubscriber>, IUnitCommandActHandler, IEventTag<IUnitCommandActHandler, EntitySubscriber>, IHologramPositionChangedHandler, IHologramClearHandler
 {
 	private bool m_IsDirty = true;
 
 	private readonly ObservableList<ChannelingLineVM> m_LinesVMs = new ObservableList<ChannelingLineVM>();
 
+	private readonly ObservableList<ChannelingLineVM> m_HologramLinesVMs = new ObservableList<ChannelingLineVM>();
+
 	public IEnumerable<ChannelingLineVM> LinesVMs => m_LinesVMs;
+
+	public IEnumerable<ChannelingLineVM> HologramLinesVMs => m_HologramLinesVMs;
 
 	public ChannelingLinesControllerVM()
 	{
@@ -37,6 +43,16 @@ public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISu
 	public Observable<CollectionRemoveEvent<ChannelingLineVM>> ObserveLineRemoved()
 	{
 		return m_LinesVMs.ObserveRemove();
+	}
+
+	public Observable<CollectionAddEvent<ChannelingLineVM>> ObserveHologramLineAdded()
+	{
+		return m_HologramLinesVMs.ObserveAdd();
+	}
+
+	public Observable<CollectionRemoveEvent<ChannelingLineVM>> ObserveHologramLineRemoved()
+	{
+		return m_HologramLinesVMs.ObserveRemove();
 	}
 
 	public void HandleUnitCommandDidEnd(AbstractUnitCommand command)
@@ -115,6 +131,16 @@ public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISu
 		SetDirty(isDirty: true);
 	}
 
+	public void HandleHologramPositionChanged()
+	{
+		SyncHologramLines();
+	}
+
+	public void HandleHologramClear()
+	{
+		ClearHologramLines();
+	}
+
 	protected override void OnDispose()
 	{
 		Clear();
@@ -141,6 +167,7 @@ public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISu
 			l.Dispose();
 		});
 		m_LinesVMs.Clear();
+		ClearHologramLines();
 	}
 
 	private void SetupUnits()
@@ -149,6 +176,7 @@ public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISu
 		{
 			SetUnitList(Game.Instance.Controllers.TurnController.CurrentRoundUnitsOrder);
 			SetUnitList(Game.Instance.Controllers.TurnController.NextRoundUnitsOrder);
+			SyncHologramLines();
 		}
 	}
 
@@ -194,6 +222,74 @@ public class ChannelingLinesControllerVM : ViewModel, ITurnBasedModeHandler, ISu
 		{
 			return false;
 		}
+		TryClearHologramLine(unitState);
 		return m_LinesVMs.Remove(channelingLineVM);
+	}
+
+	private void SyncHologramLines()
+	{
+		BaseUnitEntity baseUnitEntity = UnitPredictionManager.Instance?.GetHologram()?.Parent;
+		if (baseUnitEntity == null)
+		{
+			ClearHologramLines();
+			return;
+		}
+		foreach (ChannelingLineVM main in m_LinesVMs)
+		{
+			if (!main.IsHologramLine && main.UnitState.Channeling.CurrentValue?.Target?.Entity == baseUnitEntity && !m_HologramLinesVMs.Any((ChannelingLineVM h) => h.UnitState == main.UnitState))
+			{
+				MechanicEntityUIState unitState = main.UnitState;
+				ChannelingLineVM item = new ChannelingLineVM(unitState, GetHologramPosition, delegate
+				{
+					TryClearHologramLine(unitState);
+				}).AddTo(this);
+				m_HologramLinesVMs.Add(item);
+			}
+		}
+		List<ChannelingLineVM> list = null;
+		foreach (ChannelingLineVM holo in m_HologramLinesVMs)
+		{
+			ChannelingLineVM channelingLineVM = m_LinesVMs.FirstOrDefault((ChannelingLineVM l) => l.UnitState == holo.UnitState);
+			if (channelingLineVM == null || channelingLineVM.UnitState.Channeling.CurrentValue?.Target?.Entity != baseUnitEntity)
+			{
+				if (list == null)
+				{
+					list = new List<ChannelingLineVM>();
+				}
+				list.Add(holo);
+			}
+		}
+		if (list == null)
+		{
+			return;
+		}
+		foreach (ChannelingLineVM item2 in list)
+		{
+			m_HologramLinesVMs.Remove(item2);
+		}
+	}
+
+	private void ClearHologramLines()
+	{
+		m_HologramLinesVMs.ForEach(delegate(ChannelingLineVM h)
+		{
+			h.Dispose();
+		});
+		m_HologramLinesVMs.Clear();
+	}
+
+	private bool TryClearHologramLine(MechanicEntityUIState unitState)
+	{
+		ChannelingLineVM channelingLineVM = m_HologramLinesVMs.FirstOrDefault((ChannelingLineVM vm) => vm.UnitState == unitState);
+		if (channelingLineVM == null)
+		{
+			return false;
+		}
+		return m_HologramLinesVMs.Remove(channelingLineVM);
+	}
+
+	private static Vector3? GetHologramPosition()
+	{
+		return UnitPredictionManager.RealHologramPosition;
 	}
 }

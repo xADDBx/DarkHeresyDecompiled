@@ -12,7 +12,7 @@ public class DetectiveRadarSignalSettings
 
 	public float Power = 1f;
 
-	public SharedStringAsset SourceName;
+	public LocalizedString SourceName;
 
 	public bool IsJammer => SignalType == DetectiveRadarSignalType.Jammer;
 }

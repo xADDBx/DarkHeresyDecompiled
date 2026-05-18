@@ -1,17 +1,19 @@
+using System.Collections.Generic;
 using JetBrains.Annotations;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.AreaLogic;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Localization;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
@@ -22,13 +24,12 @@ using UnityEngine;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "warp-channeling unit", Target = "warp-channeling unit (self)")]
 public class RulePerformPsychicPhenomena : RulebookEvent
 {
 	public readonly CompositeModifiersManager ChanceModifiers = new CompositeModifiersManager(0, 100);
 
 	public readonly CompositeModifiersManager PerilsChanceModifiers = new CompositeModifiersManager(0, 100);
-
-	private static BlueprintPsykerRoot PsykerRoot => ConfigRoot.Instance.PsykerRoot;
 
 	public AbilityExecutionContext AbilityContext { get; }
 
@@ -96,17 +97,20 @@ public class RulePerformPsychicPhenomena : RulebookEvent
 			{
 				veil.PhenomenaStreak++;
 			}
-			BlueprintPsykerRoot.PhenomenaData[] array = (ResultIsPerils ? PsykerRoot.PerilsOfTheWarp : PsykerRoot.PsychicPhenomena);
-			if (array.Length != 0)
+			List<BlueprintPsykerRoot.PhenomenaData> list = (ResultIsPerils ? veil.GetResolvedPerils() : veil.GetResolvedPhenomena());
+			if (list.Count > 0)
 			{
-				int num = PFStatefulRandom.RuleSystem.Range(0, array.Length);
-				ResultPhenomena = array[num];
+				ResultPhenomena = PhenomenaListResolver.SelectWeighted(list, PFStatefulRandom.RuleSystem);
 			}
-			RunPsychicPhenomenaEffectOnTarget(base.ConcreteInitiator, AbilityContext, ResultPhenomena, ResultIsPerils);
+			RunPsychicPhenomenaEffectOnTarget(base.ConcreteInitiator, EvalContext.Current, ResultPhenomena, ResultIsPerils);
+			EventBus.RaiseEvent(delegate(IPsychicPerilHandler h)
+			{
+				h.HandlePsychicPeril(this);
+			});
 		}
 	}
 
-	public static void RunPsychicPhenomenaEffectOnTarget(MechanicEntity target, MechanicsContext context, BlueprintPsykerRoot.PhenomenaData phenomenaData, bool isPerils)
+	public static void RunPsychicPhenomenaEffectOnTarget(MechanicEntity target, IEvalContext context, BlueprintPsykerRoot.PhenomenaData phenomenaData, bool isPerils)
 	{
 		if (target == null || phenomenaData == null)
 		{
@@ -143,11 +147,11 @@ public class RulePerformPsychicPhenomena : RulebookEvent
 		AskEntry askEntry = bark.Entries.FirstItem();
 		if (askEntry != null)
 		{
-			SharedStringAsset text = askEntry.Text;
-			if ((object)text != null)
+			LocalizedString text = askEntry.Text;
+			if (text != null)
 			{
 				target.TryGetVoGuid(out var voGuid);
-				BarkPlayer.Bark(target, text.String, VoiceOverType.Bark, voGuid);
+				BarkPlayer.Bark(target, text, VoiceOverType.Bark, voGuid);
 			}
 		}
 	}

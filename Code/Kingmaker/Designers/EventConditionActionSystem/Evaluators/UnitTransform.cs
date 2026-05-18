@@ -1,5 +1,6 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Interfaces;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -17,7 +18,7 @@ public class UnitTransform : TransformEvaluator
 
 	protected override Transform GetValueInternal()
 	{
-		return Unit.GetValue().View.transform;
+		return Unit.GetValue().View.AsEntityView().transform;
 	}
 
 	public override string GetCaption()

@@ -99,11 +99,6 @@ public class UnitAnimationActionAbility : UnitAnimationAction
 				handle.Release();
 			}
 		}
-		else if (handle.Manager.StepOutDirectionAnimationType != 0)
-		{
-			handle.ActEventsCounter++;
-			handle.Release();
-		}
 		else if (!data.IsStarted)
 		{
 			handle.StartClip(data.Clip, ClipDurationType.Oneshot);

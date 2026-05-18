@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DG.Tweening;
+using Kingmaker.Code.UI.MVVM.Interfaces;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.UI.Sound;
@@ -11,7 +12,7 @@ using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class VendorSlotView : VendorGenericSlotView<ItemSlotBaseView>, IHasTooltipTemplates
+public class VendorSlotView : VendorGenericSlotView<ItemSlotBaseView>, IHasTooltipTemplates, IHasCompareTooltipTemplates
 {
 	[SerializeField]
 	private TextMeshProUGUI m_DisplayNameText;
@@ -42,6 +43,10 @@ public class VendorSlotView : VendorGenericSlotView<ItemSlotBaseView>, IHasToolt
 
 	[SerializeField]
 	private Color m_LockHintTextColor = Color.red;
+
+	public IReadOnlyList<TooltipBaseTemplate> MainTemplates => base.ViewModel.MainTooltips.CurrentValue;
+
+	public IReadOnlyList<TooltipBaseTemplate> CompareTemplates => base.ViewModel.CompareTooltips.CurrentValue;
 
 	protected override void BindViewImplementation()
 	{
@@ -133,7 +138,7 @@ public class VendorSlotView : VendorGenericSlotView<ItemSlotBaseView>, IHasToolt
 	{
 		if ((bool)m_LockButtonImage)
 		{
-			UISounds.Instance.Sounds.Systems.BlinkAttentionMark.Play();
+			SystemSounds.Instance.Systems.BlinkAttentionMark.Play();
 			m_LockButtonImage.alpha = 1f;
 			m_LockButtonImage.DOFade(0f, 0.65f).SetLoops(2).SetEase(Ease.OutSine)
 				.OnComplete(delegate

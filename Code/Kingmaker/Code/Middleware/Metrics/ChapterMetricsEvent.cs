@@ -10,11 +10,6 @@ public class ChapterMetricsEvent : MetricsEvent
 
 	protected override string Name => "chapter";
 
-	public ChapterMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public ChapterMetricsEvent Number(string number)
 	{
 		AddParam("number", number);
@@ -27,7 +22,7 @@ public class ChapterMetricsEvent : MetricsEvent
 		{
 			ChapterStates.Start => "start", 
 			ChapterStates.Finish => "finish", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}

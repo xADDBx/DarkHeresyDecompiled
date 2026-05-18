@@ -12,7 +12,12 @@ public class TutorialTriggerAttackMiss : TutorialTrigger, IWarhammerAttackHandle
 	public void HandleAttack(RulePerformAttack withWeaponAttackHit)
 	{
 		BaseUnitEntity initiatorUnit = withWeaponAttackHit.InitiatorUnit;
-		if (initiatorUnit != null && initiatorUnit.IsInPlayerParty && !withWeaponAttackHit.ResultIsHit)
+		if (initiatorUnit == null || !initiatorUnit.IsInPlayerParty || withWeaponAttackHit.ResultIsHit)
+		{
+			return;
+		}
+		RulePerformDefenceRoll rollPerformDefenceRule = withWeaponAttackHit.RollPerformDefenceRule;
+		if (rollPerformDefenceRule == null || !rollPerformDefenceRule.IsDefended)
 		{
 			TryToTrigger(withWeaponAttackHit, delegate(TutorialContext context)
 			{

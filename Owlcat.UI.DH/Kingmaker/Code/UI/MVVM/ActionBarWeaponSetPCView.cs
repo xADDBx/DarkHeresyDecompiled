@@ -76,7 +76,7 @@ public class ActionBarWeaponSetPCView : View<ActionBarPartWeaponSetVM>
 		}).AddTo(this);
 		base.ViewModel.MainHandWeapon.CombineLatest(base.ViewModel.OffHandWeapon, (ItemSlotVM _, ItemSlotVM _) => true).Subscribe(delegate
 		{
-			if (base.ViewModel.IsTwoHanded)
+			if (base.ViewModel.IsTwoHanded && !base.ViewModel.IsDoubleHanded)
 			{
 				m_MainHandWeapon.Bind(base.ViewModel.MainHandWeapon.CurrentValue);
 				m_OffHandWeapon.Bind(base.ViewModel.MainHandWeapon.CurrentValue);
@@ -86,7 +86,7 @@ public class ActionBarWeaponSetPCView : View<ActionBarPartWeaponSetVM>
 				m_MainHandWeapon.Bind(base.ViewModel.MainHandWeapon.CurrentValue);
 				m_OffHandWeapon.Bind(base.ViewModel.OffHandWeapon.CurrentValue);
 			}
-			m_OffHandWeapon.SetFakeMode(base.ViewModel.IsTwoHanded);
+			m_OffHandWeapon.SetFakeMode(base.ViewModel.IsTwoHanded && !base.ViewModel.IsDoubleHanded);
 		}).AddTo(this);
 		OwlcatR3UnitExtensions.Subscribe(base.ViewModel.SlotsUpdated, delegate
 		{

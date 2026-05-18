@@ -1,9 +1,11 @@
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
+using UnityEngine;
 
 namespace Kingmaker.Code.Gameplay.Features.VariableInteractions;
 
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("cf2390e88089478486a7c28baa681b3b")]
 public class InteractionVariative : NewInteractionComponent<InteractionVariativePart, InteractionVariativeSettings>
 {

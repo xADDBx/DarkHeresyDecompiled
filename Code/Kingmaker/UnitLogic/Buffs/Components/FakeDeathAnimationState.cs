@@ -82,7 +82,7 @@ public class FakeDeathAnimationState : UnitBuffComponentDelegate, IUnitSpawnHand
 	private void TryFake()
 	{
 		TransientData transientData = RequestTransientData<TransientData>();
-		if (!transientData.IsFakingDeath && !(base.Owner.View.Or(null)?.AnimationManager == null))
+		if (!transientData.IsFakingDeath && !(base.Owner.View?.AnimationManager == null))
 		{
 			TryApplyProne();
 			if (!base.Owner.View.AnimationManager.IsProne || base.Owner.View.AnimationManager.IsGoingProne)

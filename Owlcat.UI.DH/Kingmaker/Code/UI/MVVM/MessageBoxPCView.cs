@@ -38,6 +38,14 @@ public class MessageBoxPCView : MessageBoxBaseView
 		{
 			base.ViewModel.OnAcceptPressed();
 		}).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_DeclineButton.OnConfirmClickAsObservable(), delegate
+		{
+			base.ViewModel.OnDeclinePressed();
+		}).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_AcceptButton.OnConfirmClickAsObservable(), delegate
+		{
+			base.ViewModel.OnAcceptPressed();
+		}).AddTo(this);
 	}
 
 	protected override void SetAcceptInteractable(bool interactable)

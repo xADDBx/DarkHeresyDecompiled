@@ -11,7 +11,7 @@ namespace Kingmaker.Code.UI.MVVM;
 public class PCInputField : MonoBehaviour, IDisposable
 {
 	[SerializeField]
-	protected OwlcatButton m_InputButton;
+	protected OwlcatMultiButton m_InputButton;
 
 	[Header("Before focus")]
 	[SerializeField]
@@ -27,15 +27,22 @@ public class PCInputField : MonoBehaviour, IDisposable
 	[SerializeField]
 	private TextMeshProUGUI m_InputFieldWhenEmpty;
 
+	[Header("Values")]
+	[SerializeField]
+	private bool m_CanSetEmptyText;
+
 	private readonly ReactiveCommand<bool> m_OnStateChanged = new ReactiveCommand<bool>();
-
-	protected string InputFieldResultText = string.Empty;
-
-	private Action<string> m_OnEndEditAction;
 
 	private readonly List<IDisposable> m_Disposables = new List<IDisposable>();
 
+	private string m_InputFieldResultText = string.Empty;
+
+	private Action<string> m_OnEndEditAction;
+
 	public Observable<bool> OnStateChanged => m_OnStateChanged;
+
+	public ReactiveProperty<string> CurrentText { get; } = new ReactiveProperty<string>(string.Empty);
+
 
 	public void Initialize(string clickToEditText, string fieldPlaceHoldertext)
 	{
@@ -46,23 +53,32 @@ public class PCInputField : MonoBehaviour, IDisposable
 	public IDisposable Bind(string defaultText, Action<string> onEndEditAction)
 	{
 		m_OnEndEditAction = onEndEditAction;
-		m_InputField.text = (InputFieldResultText = defaultText);
-		m_FieldResult.text = InputFieldResultText;
-		AddDisposable(m_InputField.OnEndEditAsObservable().Subscribe(OnEndEdit));
+		m_InputField.text = (m_InputFieldResultText = defaultText);
+		m_FieldResult.text = m_InputFieldResultText;
+		m_InputField.OnEndEditAsObservable().Subscribe(OnEndEdit).AddTo(this);
+		m_InputField.OnValueChangedAsObservable().Subscribe(delegate(string text)
+		{
+			CurrentText.Value = text;
+		}).AddTo(this);
 		UpdatePlaceholder();
-		AddDisposable(ObservableSubscribeExtensions.Subscribe(m_InputButton.OnLeftClickAsObservable(), delegate
+		ObservableSubscribeExtensions.Subscribe(m_InputButton.OnLeftClickAsObservable(), delegate
 		{
 			OnEdit();
-		}));
+		}).AddTo(this);
 		SetInputActive(state: false);
 		return this;
 	}
 
+	public void SetText(string text)
+	{
+		m_InputField.text = text;
+	}
+
 	private void UpdatePlaceholder()
 	{
-		m_OnEndEditAction(InputFieldResultText);
-		m_InputField.text = InputFieldResultText;
-		m_FieldResult.text = InputFieldResultText;
+		m_OnEndEditAction(m_InputFieldResultText);
+		m_InputField.text = m_InputFieldResultText;
+		m_FieldResult.text = m_InputFieldResultText;
 	}
 
 	public void OnEdit()
@@ -75,9 +91,9 @@ public class PCInputField : MonoBehaviour, IDisposable
 	private void OnEndEdit(string text)
 	{
 		SetInputActive(state: false);
-		if (!string.IsNullOrEmpty(text))
+		if (!string.IsNullOrEmpty(text) || m_CanSetEmptyText)
 		{
-			InputFieldResultText = text;
+			m_InputFieldResultText = text;
 		}
 		UpdatePlaceholder();
 	}

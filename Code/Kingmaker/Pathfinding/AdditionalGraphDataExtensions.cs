@@ -10,7 +10,7 @@ public static class AdditionalGraphDataExtensions
 		AdditionalGraphData graphData = AdditionalGraphDataManager.Instance.GetGraphData(thisNode.GraphIndex);
 		GridNodeDirection direction = thisNode.GetDirection(otherNode);
 		GridObstacleCache.Entry obstacle = graphData.Obstacles.GetObstacle(thisNode, direction);
-		if (obstacle == null)
+		if (!obstacle.Exists)
 		{
 			return null;
 		}

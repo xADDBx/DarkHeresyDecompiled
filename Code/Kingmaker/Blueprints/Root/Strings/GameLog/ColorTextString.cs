@@ -13,6 +13,6 @@ public class ColorTextString
 
 	public string GetColorText()
 	{
-		return "<color=#" + ColorUtility.ToHtmlStringRGB(Color) + ">" + String.Text + "</color>";
+		return "<color=#" + ColorUtility.ToHtmlStringRGB((Color)Color) + ">" + String.Text + "</color>";
 	}
 }

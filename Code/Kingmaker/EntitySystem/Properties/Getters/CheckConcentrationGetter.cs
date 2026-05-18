@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.Features.Concentration;
 using Owlcat.Runtime.Core.Utility;
 
@@ -13,7 +14,7 @@ public class CheckConcentrationGetter : BoolPropertyGetter, PropertyContextAcces
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetTargetByType(Target)?.GetOptional<PartConcentration>() != null;
+		return EvalContext.Current.GetEntityByType(Target)?.GetOptional<PartConcentration>() != null;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

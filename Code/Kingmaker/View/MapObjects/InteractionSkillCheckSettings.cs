@@ -86,10 +86,10 @@ public class InteractionSkillCheckSettings : InteractionSettings, IBarkSource
 
 	[Space(10f)]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset DisplayName;
+	public LocalizedString DisplayName;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset ShortDescription;
+	public LocalizedString ShortDescription;
 
 	[HideIf("DisableAfterUse")]
 	public bool OnlyCheckOnce;
@@ -101,13 +101,13 @@ public class InteractionSkillCheckSettings : InteractionSettings, IBarkSource
 	public bool TriggerActionsEveryClick;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset DisplayNameAfterUse;
+	public LocalizedString DisplayNameAfterUse;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset ShortDescriptionPassed;
+	public LocalizedString ShortDescriptionPassed;
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Name)]
-	public SharedStringAsset ShortDescriptionFailed;
+	public LocalizedString ShortDescriptionFailed;
 
 	public bool ForceVoId;
 
@@ -131,7 +131,7 @@ public class InteractionSkillCheckSettings : InteractionSettings, IBarkSource
 	[Space(10f)]
 	[CanBeNull]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	public SharedStringAsset CheckPassedBark;
+	public LocalizedString CheckPassedBark;
 
 	[CanBeNull]
 	[ShowCreator]
@@ -148,7 +148,7 @@ public class InteractionSkillCheckSettings : InteractionSettings, IBarkSource
 	[Space(10f)]
 	[CanBeNull]
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
-	public SharedStringAsset CheckFailBark;
+	public LocalizedString CheckFailBark;
 
 	[CanBeNull]
 	[ShowCreator]
@@ -179,7 +179,7 @@ public class InteractionSkillCheckSettings : InteractionSettings, IBarkSource
 
 	private bool DifficultyIsCustom => Difficulty == SkillCheckDifficulty.Custom;
 
-	public IEnumerable<LocalizedString> Barks => new LocalizedString[2] { ShortDescriptionPassed.String, ShortDescriptionFailed.String };
+	public IEnumerable<LocalizedString> Barks => new LocalizedString[2] { CheckPassedBark, CheckFailBark };
 
 	public bool IsVoIdForced => ForceVoId;
 

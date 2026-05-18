@@ -40,7 +40,7 @@ public class GreaterThan : Condition
 
 	protected override string GetConditionCaption()
 	{
-		return ((!FloatValues) ? Value?.ToString() : FloatValue?.ToString()) + " greater than (or equal) " + ((!FloatValues) ? MinValue?.ToString() : FloatMinValue?.ToString());
+		return ((!FloatValues) ? Value?.ToString() : FloatValue?.ToString()) + " greater than " + (OrEqualTo ? "(or equal) " : "") + ((!FloatValues) ? MinValue?.ToString() : FloatMinValue?.ToString());
 	}
 
 	protected override bool CheckCondition()

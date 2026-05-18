@@ -1,5 +1,6 @@
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.View;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -41,7 +42,7 @@ public class CopyAnotherView : GameAction
 			return;
 		}
 		UnitEntityView unitEntityView = baseUnitEntity2.CreateView();
-		UnitEntityView view = baseUnitEntity.View;
+		IUnitEntityView view = baseUnitEntity.View;
 		Scene scene = view.gameObject.scene;
 		if (CopyPortrait)
 		{

@@ -17,11 +17,6 @@ public class DetectivePieceMetricsEvent : MetricsEvent
 
 	protected override string Name => "detective_piece";
 
-	public DetectivePieceMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public DetectivePieceMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -35,7 +30,7 @@ public class DetectivePieceMetricsEvent : MetricsEvent
 			PieceType.Clue => "clue", 
 			PieceType.Addendum => "addendum", 
 			PieceType.Conclusion => "conclusion", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
 		return this;
 	}
@@ -46,7 +41,7 @@ public class DetectivePieceMetricsEvent : MetricsEvent
 		{
 			PieceState.Added => "added", 
 			PieceState.Removed => "removed", 
-			_ => MetricsEvent.EnumToSnakeCase(state), 
+			_ => MetricsUtils.EnumToSnakeCase(state), 
 		});
 		return this;
 	}

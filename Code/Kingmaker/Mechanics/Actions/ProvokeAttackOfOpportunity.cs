@@ -6,7 +6,6 @@ using Kingmaker.Controllers.Combat;
 using Kingmaker.Designers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.Utility.Attributes;
@@ -95,7 +94,7 @@ public class ProvokeAttackOfOpportunity : ContextAction
 					where p != casterUnit && p.IsAlly(casterUnit) && targetUnit.GetEngagedByUnits().Contains(p)
 					select p)
 				{
-					using (base.Context.SetScope(item.ToITargetWrapper()))
+					using (base.Context.PushTarget(item))
 					{
 						if (ConditionsOnOpportunityAttacker.Check())
 						{
@@ -116,7 +115,7 @@ public class ProvokeAttackOfOpportunity : ContextAction
 					where p != targetUnit && p != casterUnit && p.IsAlly(casterUnit) && targetUnit.GetEngagedByUnits().Contains(p)
 					select p)
 				{
-					using (base.Context.SetScope(item2.ToITargetWrapper()))
+					using (base.Context.PushTarget(item2))
 					{
 						if (ConditionsOnOpportunityAttacker.Check())
 						{

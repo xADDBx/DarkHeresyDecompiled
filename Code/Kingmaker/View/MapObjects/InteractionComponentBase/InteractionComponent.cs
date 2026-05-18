@@ -1,4 +1,5 @@
 using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.View.MapObjects.Traps;
 using UnityEngine;
 
 namespace Kingmaker.View.MapObjects.InteractionComponentBase;
@@ -15,5 +16,15 @@ public abstract class InteractionComponent<TPart, TSettings> : EntityPartCompone
 			return DialogReferenceType.None;
 		}
 		return DialogReferenceType.Start;
+	}
+
+	protected override void Awake()
+	{
+		base.Awake();
+		TrapObjectView trapObjectView = Settings?.Trap;
+		if ((object)trapObjectView != null)
+		{
+			trapObjectView.TrappedObject = base.EntityView as MapObjectView;
+		}
 	}
 }

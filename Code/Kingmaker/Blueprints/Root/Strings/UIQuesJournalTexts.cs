@@ -7,10 +7,6 @@ namespace Kingmaker.Blueprints.Root.Strings;
 [Serializable]
 public class UIQuesJournalTexts
 {
-	public LocalizedString AllRumoursTitle;
-
-	public LocalizedString RumoursAboutUsTitle;
-
 	public LocalizedString NoData;
 
 	public LocalizedString ShowCompletedQuests;
@@ -18,12 +14,6 @@ public class UIQuesJournalTexts
 	public LocalizedString HideCompletedQuests;
 
 	public LocalizedString Quests;
-
-	public LocalizedString Rumours;
-
-	public LocalizedString Orders;
-
-	public LocalizedString NoNameOfTheListObjectsAvailable;
 
 	public LocalizedString OpenCase;
 

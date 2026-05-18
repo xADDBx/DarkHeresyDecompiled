@@ -5,10 +5,10 @@ namespace Code.GameCore.EntitySystem.Entities.Base;
 
 public class EntityViewBaseCache
 {
-	public static readonly HashSet<IEntityViewBase> All;
+	public static readonly HashSet<IEntityView> All;
 
 	static EntityViewBaseCache()
 	{
-		All = new HashSet<IEntityViewBase>();
+		All = new HashSet<IEntityView>();
 	}
 }

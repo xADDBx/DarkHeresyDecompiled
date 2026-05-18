@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components.PatternAttack;
@@ -30,7 +31,10 @@ public class OverrideAbilityPatternSettings : UnitFactComponentDelegate
 	[CanBeNull]
 	public AbilityAoEPatternSettings GetPatternSettings(AbilityData ability)
 	{
-		using AbilityExecutionContext context = ability.ClaimExecutionContext(base.Owner);
-		return Restriction.IsPassed(context, base.Owner) ? PatternSettings : null;
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(ability, base.Owner).Get(out ctx))
+		{
+			return Restriction.IsPassed(ctx, base.Owner) ? PatternSettings : null;
+		}
 	}
 }

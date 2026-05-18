@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Levelup.Obsolete.Blueprints.Selection;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Progression.Features;
@@ -41,7 +42,7 @@ public class AlignmentMark : Feature, IHashable, IOwlPackable<AlignmentMark>
 		}
 	};
 
-	public AlignmentMark(BlueprintFeature blueprint, MechanicsContext context)
+	public AlignmentMark(BlueprintFeature blueprint, IEvalContext context)
 		: base(blueprint, context)
 	{
 	}

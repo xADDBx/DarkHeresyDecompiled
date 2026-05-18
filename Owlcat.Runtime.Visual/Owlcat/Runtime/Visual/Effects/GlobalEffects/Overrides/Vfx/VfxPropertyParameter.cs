@@ -285,7 +285,7 @@ public class VfxPropertyParameter
 		{
 			Matrix4x4 matrix4x = (Matrix4x4)m_CurrentValue;
 			Matrix4x4 matrixValue = toParam.Value.MatrixValue;
-			m_CurrentValue = new Matrix4x4(math.lerp(matrix4x.GetColumn(0), matrixValue.GetColumn(0), t), math.lerp(matrix4x.GetColumn(1), matrixValue.GetColumn(1), t), math.lerp(matrix4x.GetColumn(2), matrixValue.GetColumn(2), t), math.lerp(matrix4x.GetColumn(3), matrixValue.GetColumn(3), t));
+			m_CurrentValue = new Matrix4x4((Vector4)math.lerp(matrix4x.GetColumn(0), matrixValue.GetColumn(0), t), (Vector4)math.lerp(matrix4x.GetColumn(1), matrixValue.GetColumn(1), t), (Vector4)math.lerp(matrix4x.GetColumn(2), matrixValue.GetColumn(2), t), (Vector4)math.lerp(matrix4x.GetColumn(3), matrixValue.GetColumn(3), t));
 			break;
 		}
 		}

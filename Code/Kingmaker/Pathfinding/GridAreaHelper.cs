@@ -105,8 +105,10 @@ public static class GridAreaHelper
 	public static GridNodeBase GetOuterNodeNearestToTarget(this MechanicEntity unit, GridNodeBase origin, Vector3 targetPosition)
 	{
 		GridNodeBase innerNodeNearestToTarget = GetInnerNodeNearestToTarget(GetNodes(origin, unit.SizeRect), targetPosition);
-		Vector3 normalized = (targetPosition - innerNodeNearestToTarget.Vector3Position()).normalized;
-		return (innerNodeNearestToTarget.Vector3Position() + normalized * 1.Cells().Meters).GetNearestNodeXZUnwalkable();
+		Vector3 vector = targetPosition - innerNodeNearestToTarget.Vector3Position();
+		vector.y = 0f;
+		vector = vector.normalized;
+		return (innerNodeNearestToTarget.Vector3Position() + vector * 1.Cells().Meters).GetNearestNodeXZUnwalkable();
 	}
 
 	public static IEnumerable<GridNodeBase> GetSortedNodesByDistanceToTarget(this MechanicEntity unit, GridNodeBase origin, Vector3 targetPosition)

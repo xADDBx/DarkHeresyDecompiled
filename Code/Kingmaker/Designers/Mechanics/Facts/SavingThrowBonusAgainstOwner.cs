@@ -28,14 +28,6 @@ public class SavingThrowBonusAgainstOwner : UnitFactComponentDelegate, IGlobalRu
 
 	public void OnEventAboutToTrigger(RulePerformSavingThrow evt)
 	{
-		if (evt.Reason.Ability?.Caster == base.Owner && Restrictions.IsPassed(base.Context, null, null, evt))
-		{
-			int value = Bonus.Calculate(base.Context) + Value * base.Fact.GetRank();
-			if (evt.Reason.Context != null && evt.Reason.Ability != null)
-			{
-				evt.ValueModifiers.Add(value, base.Fact, ModifierDescriptor);
-			}
-		}
 	}
 
 	public void OnEventDidTrigger(RulePerformSavingThrow evt)

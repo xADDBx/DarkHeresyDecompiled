@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.UI.MVVM;
+using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 using Kingmaker.Framework.DetectiveSystem;
 using Kingmaker.Localization;
@@ -26,13 +27,13 @@ public static class UIUtilityDetective
 
 	public static List<BlueprintClue> GetOpenedCluesFor(BlueprintCase blueprintCase)
 	{
-		return blueprintCase.Clues.Where((BpRef<BlueprintClue> caseClue) => Game.Instance.DetectiveSystem.HasClue(caseClue)).Dereference().ToList();
+		return blueprintCase.Clues.Where((BpRef<BlueprintClue> caseClue) => Game.Instance.DetectiveSystem.HasClueExcludingHidden(caseClue)).Dereference().ToList();
 	}
 
 	public static List<T> GetOpenedCaseItemsFor<T>(BlueprintCase blueprintCase) where T : BlueprintCaseItem
 	{
 		return (from item in blueprintCase.AllItems.OfType<T>()
-			where Game.Instance.DetectiveSystem.HasItem(item)
+			where Game.Instance.DetectiveSystem.HasItemExcludingHidden(item)
 			select item).ToList();
 	}
 
@@ -47,7 +48,7 @@ public static class UIUtilityDetective
 			}
 			foreach (T overriddenBlueprint in GetOverriddenBlueprints(caseItem))
 			{
-				if (Detective.HasItem(overriddenBlueprint))
+				if (Detective.HasItemExcludingHidden(overriddenBlueprint))
 				{
 					return overriddenBlueprint.GetOverride();
 				}
@@ -116,7 +117,7 @@ public static class UIUtilityDetective
 		{
 			return DeductionState.None;
 		}
-		if (!source.Any((BlueprintConclusion d) => Detective.HasConclusion(d)))
+		if (!source.Any((BlueprintConclusion d) => Detective.HasConclusionExcludingHidden(d)))
 		{
 			return DeductionState.NewDeduction;
 		}
@@ -133,6 +134,88 @@ public static class UIUtilityDetective
 		return (from s in Detective.GetAvailableConclusions(caseItem.ParentCase).Intersect<BlueprintConclusion>(second)
 			where Enumerable.Any(s.Sources, (BlueprintConclusion.Source s2) => s2.Item1 == caseItem)
 			select s).ToList();
+	}
+
+	public static HashSet<BlueprintClue> CollectCluesAffectedByAddendum(BlueprintClueAddendum addendum)
+	{
+		HashSet<BlueprintClue> hashSet = new HashSet<BlueprintClue>();
+		if (addendum == null)
+		{
+			return hashSet;
+		}
+		BlueprintClue maybeBlueprint = addendum.ParentClue.MaybeBlueprint;
+		if (maybeBlueprint != null)
+		{
+			hashSet.Add(maybeBlueprint);
+		}
+		CollectAffectedClues(addendum, hashSet);
+		return hashSet;
+	}
+
+	public static HashSet<BlueprintClue> CollectCluesAffectedByStudy(BlueprintClueStudy study)
+	{
+		HashSet<BlueprintClue> hashSet = new HashSet<BlueprintClue>();
+		if (study == null)
+		{
+			return hashSet;
+		}
+		BlueprintClue maybeBlueprint = study.ParentClue.MaybeBlueprint;
+		if (maybeBlueprint != null)
+		{
+			hashSet.Add(maybeBlueprint);
+		}
+		BpRef<BlueprintCaseItem>[] giveItems = study.GiveItems;
+		for (int i = 0; i < giveItems.Length; i++)
+		{
+			BlueprintCaseItem maybeBlueprint2 = giveItems[i].MaybeBlueprint;
+			if (maybeBlueprint2 != null)
+			{
+				AddParentClue(maybeBlueprint2, hashSet);
+				CollectAffectedClues(maybeBlueprint2, hashSet);
+			}
+		}
+		return hashSet;
+	}
+
+	private static void CollectAffectedClues(BlueprintCaseItem item, HashSet<BlueprintClue> set)
+	{
+		if (item == null)
+		{
+			return;
+		}
+		BpRef<BlueprintConclusion>[] possibleConclusions = item.PossibleConclusions;
+		for (int i = 0; i < possibleConclusions.Length; i++)
+		{
+			BlueprintConclusion maybeBlueprint = possibleConclusions[i].MaybeBlueprint;
+			if (maybeBlueprint != null)
+			{
+				BlueprintConclusion.Source[] sources = maybeBlueprint.Sources;
+				foreach (BlueprintConclusion.Source obj in sources)
+				{
+					AddParentClue(obj.Item1.MaybeBlueprint, set);
+					AddParentClue(obj.Item2.MaybeBlueprint, set);
+				}
+			}
+		}
+	}
+
+	private static void AddParentClue(BlueprintCaseItem item, HashSet<BlueprintClue> set)
+	{
+		if (!(item is BlueprintClue item2))
+		{
+			if (item is BlueprintClueAddendum blueprintClueAddendum)
+			{
+				BlueprintClue maybeBlueprint = blueprintClueAddendum.ParentClue.MaybeBlueprint;
+				if (maybeBlueprint != null)
+				{
+					set.Add(maybeBlueprint);
+				}
+			}
+		}
+		else
+		{
+			set.Add(item2);
+		}
 	}
 
 	public static string GetRefutedText(BlueprintConclusion conclusion)
@@ -171,7 +254,7 @@ public static class UIUtilityDetective
 	public static Queue<StudyGroup> CreateStudyGroups(BlueprintClue clue)
 	{
 		Queue<StudyGroup> queue = new Queue<StudyGroup>();
-		foreach (BpRef<BlueprintClueStudy> study in clue.Studies.Where((BpRef<BlueprintClueStudy> s) => Detective.IsAvailableForStudy(s) && s.Blueprint.GiveItems.Dereference().Any((BlueprintCaseItem a) => !Game.Instance.DetectiveSystem.HasItem(a))))
+		foreach (BpRef<BlueprintClueStudy> study in clue.Studies.Where((BpRef<BlueprintClueStudy> s) => Detective.IsAvailableForStudy(s) && s.Blueprint.GiveItems.Dereference().Any((BlueprintCaseItem a) => !Game.Instance.DetectiveSystem.HasItemExcludingHidden(a))))
 		{
 			StudyGroup studyGroup = queue.FirstOrDefault((StudyGroup g) => g.StudyName == study.MaybeBlueprint?.Name.Text && g.BarkText == study.MaybeBlueprint?.StudyBark.Text);
 			if (studyGroup != null)
@@ -219,11 +302,24 @@ public static class UIUtilityDetective
 
 	public static BlueprintConclusion.Source GetSuitableConclusionSource(BlueprintConclusion conclusion)
 	{
-		return conclusion.Sources.OrderBy(HasItem).FirstOrDefault((BlueprintConclusion.Source s) => Detective.HasItem(s.Item2.Blueprint) && (!(s.Item2.Blueprint is BlueprintClueAddendum blueprintClueAddendum) || Detective.HasItem((BlueprintClue?)blueprintClueAddendum.ParentClue)));
+		return conclusion.Sources.OrderBy(HasItem).FirstOrDefault((BlueprintConclusion.Source s) => Detective.HasItemExcludingHidden(s.Item2.Blueprint) && (!(s.Item2.Blueprint is BlueprintClueAddendum blueprintClueAddendum) || Detective.HasItemExcludingHidden((BlueprintClue?)blueprintClueAddendum.ParentClue)));
 		static bool HasItem(BlueprintConclusion.Source source)
 		{
 			return Enumerable.FirstOrDefault(ExaminedDetectiveData.SelectedConclusionSource.GetEntities(), (ConclusionSourceWrapper cs) => cs.Is(source)) != null;
 		}
+	}
+
+	public static bool HasConclusionSource(BlueprintConclusion.Source source)
+	{
+		if (Detective.HasItemExcludingHidden(source.Item1) && Detective.HasItemExcludingHidden(source.Item2))
+		{
+			if (source.Item2.Blueprint is BlueprintClueAddendum blueprintClueAddendum)
+			{
+				return Detective.HasItemExcludingHidden((BlueprintClue?)blueprintClueAddendum.ParentClue);
+			}
+			return true;
+		}
+		return false;
 	}
 
 	public static ClueUIData GetUIData(this BlueprintClue clue)
@@ -272,7 +368,7 @@ public static class UIUtilityDetective
 	public static IEnumerable<BlueprintClue> GetCluesWithNewAddendums(BlueprintCase blueprintCase)
 	{
 		return (from a in GetOpenedCluesFor(blueprintCase).SelectMany((BlueprintClue c) => c.Addendums)
-			where Game.Instance.DetectiveSystem.HasClueAddendum(a)
+			where Game.Instance.DetectiveSystem.HasClueAddendumExcludingHidden(a)
 			select a into c
 			where ExaminedDetectiveData.ExaminedAddendums.IsEntityNew(c)
 			select c into a
@@ -281,9 +377,9 @@ public static class UIUtilityDetective
 
 	public static bool HasNewConclusions(BlueprintCase blueprintCase)
 	{
-		if (!GetNewConclusions(blueprintCase).Any())
+		if (!GetNewConclusions(blueprintCase).Any() && !GetConclusionsWithNewConclusions(blueprintCase).Any())
 		{
-			return GetConclusionsWithNewConclusions(blueprintCase).Any();
+			return GetCluesWithNewConclusions(blueprintCase).Any();
 		}
 		return true;
 	}
@@ -348,7 +444,7 @@ public static class UIUtilityDetective
 		return list;
 		static bool CanBeStudied(BlueprintClue clue)
 		{
-			return clue.Studies.Dereference().Any((BlueprintClueStudy s) => Game.Instance.DetectiveSystem.IsAvailableForStudy(s) && !s.GiveItems.Dereference().All((BlueprintCaseItem i) => Game.Instance.DetectiveSystem.HasItem(i)));
+			return clue.Studies.Dereference().Any((BlueprintClueStudy s) => Game.Instance.DetectiveSystem.IsAvailableForStudy(s) && !s.GiveItems.Dereference().All((BlueprintCaseItem i) => Game.Instance.DetectiveSystem.HasItemExcludingHidden(i)));
 		}
 	}
 
@@ -385,10 +481,6 @@ public static class UIUtilityDetective
 
 	public static LocalizedString GetAnswerDegreeDescription(BlueprintCaseAnswer answer)
 	{
-		if (!Game.Instance.DetectiveSystem.TryGetAnswerDegree(answer, out var degree))
-		{
-			return null;
-		}
-		return answer.DegreeProgression.ElementAt(degree).Description;
+		return UtilityDetective.GetAnswerDegreeDescription(answer);
 	}
 }

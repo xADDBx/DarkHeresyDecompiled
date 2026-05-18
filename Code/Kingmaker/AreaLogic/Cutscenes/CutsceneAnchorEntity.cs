@@ -3,8 +3,7 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Controllers.Optimization;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
-using Kingmaker.View;
+using Kingmaker.EntitySystem.Interfaces;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -37,22 +36,13 @@ public class CutsceneAnchorEntity : SimpleEntity, IHashable, IOwlPackable<Cutsce
 
 	public override bool IsAffectedByFogOfWar => true;
 
-	public CutsceneAnchorEntity(EntityViewBase view)
-		: base(view)
+	public CutsceneAnchorEntity(IEntityConfig config)
+		: base(config)
 	{
 	}
 
-	public CutsceneAnchorEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
-	{
-	}
-
-	protected CutsceneAnchorEntity(JsonConstructorMark _)
+	protected CutsceneAnchorEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected CutsceneAnchorEntity()
 	{
 	}
 
@@ -72,7 +62,7 @@ public class CutsceneAnchorEntity : SimpleEntity, IHashable, IOwlPackable<Cutsce
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		CutsceneAnchorEntity source = new CutsceneAnchorEntity();
+		CutsceneAnchorEntity source = new CutsceneAnchorEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<CutsceneAnchorEntity, TPossiblyBase>(ref source);
 	}
 

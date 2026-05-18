@@ -19,7 +19,7 @@ public class TooltipTemplateRankEntryAbility : TooltipTemplateAbility
 
 	private readonly RankEntrySelectionVM m_Owner;
 
-	private CalculatedPrerequisite Prerequisite => m_SelectionState.CurrentValue?.GetCalculatedPrerequisite(m_SelectionItem) ?? CalculatedPrerequisite.Calculate(null, m_SelectionItem, (BaseUnitEntity)Caster);
+	private CalculatedPrerequisite Prerequisite => m_SelectionState.CurrentValue?.GetCalculatedPrerequisite(m_SelectionItem) ?? CalculatedPrerequisite.Calculate(null, m_SelectionItem, (BaseUnitEntity)m_Caster);
 
 	public TooltipTemplateRankEntryAbility(BlueprintAbility blueprintAbility, FeatureSelectionItem featureSelectionItem, ReadOnlyReactiveProperty<SelectionStateFeature> selectionState, RankEntrySelectionVM owner, MechanicEntity caster)
 		: base(blueprintAbility, null, caster)
@@ -34,8 +34,8 @@ public class TooltipTemplateRankEntryAbility : TooltipTemplateAbility
 		List<ITooltipBrick> list = base.GetBody(type).ToList();
 		if (Prerequisite != null)
 		{
-			list.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.Prerequisites, TooltipTitleType.H2));
-			list.Add(new TooltipBrickPrerequisite(UIUtilityAbilities.GetPrerequisiteEntries(Prerequisite)));
+			list.Add(new BrickTitleVM(UIStrings.Instance.Tooltips.Prerequisites, TooltipTitleType.H2));
+			list.Add(new BrickPrerequisiteVM(UIUtilityAbilities.GetPrerequisiteEntries(Prerequisite)));
 		}
 		return list;
 	}
@@ -44,7 +44,7 @@ public class TooltipTemplateRankEntryAbility : TooltipTemplateAbility
 	{
 		if (type != 0 && Game.Instance.IsControllerMouse && RankEntrySelectionFeaturesUtils.HasPrerequisiteFooter(Prerequisite, m_Owner))
 		{
-			yield return new TooltipBrickTitle(UIStrings.Instance.Tooltips.PrerequisitesFooter, TooltipTitleType.H6);
+			yield return new BrickTitleVM(UIStrings.Instance.Tooltips.PrerequisitesFooter, TooltipTitleType.H6);
 		}
 	}
 }

@@ -14,9 +14,9 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TransitionContext : ViewModel, IUIMultiEntranceHandler, ISubscriber
 {
-	private readonly ReactiveProperty<TransitionVM> m_TransitionVM;
+	private readonly ReactiveProperty<TransitionMapVM> m_TransitionVM;
 
-	public TransitionContext(ReactiveProperty<TransitionVM> transitionVM)
+	public TransitionContext(ReactiveProperty<TransitionMapVM> transitionVM)
 	{
 		m_TransitionVM = transitionVM;
 		EventBus.Subscribe(this).AddTo(this);
@@ -25,14 +25,14 @@ public class TransitionContext : ViewModel, IUIMultiEntranceHandler, ISubscriber
 	public void HandleMultiEntranceUI(BlueprintMultiEntrance multiEntrance)
 	{
 		bool flag = true;
-		if ((bool)ContextData<AreaTransitionPartGameCommand.TransitionExecutorEntity>.Current)
+		if (ContextData<AreaTransitionPartGameCommand.TransitionExecutorEntity>.Current != null)
 		{
 			EntityRef<BaseUnitEntity> entityRef = ContextData<AreaTransitionPartGameCommand.TransitionExecutorEntity>.Current.EntityRef;
 			flag = entityRef.IsNull || (!entityRef.IsNull && ((BaseUnitEntity)entityRef).IsDirectlyControllable());
 		}
 		if (flag)
 		{
-			m_TransitionVM.Value = new TransitionVM(multiEntrance, DisposeTransition).AddTo(this);
+			m_TransitionVM.Value = new TransitionMapVM(multiEntrance, DisposeTransition).AddTo(this);
 		}
 	}
 

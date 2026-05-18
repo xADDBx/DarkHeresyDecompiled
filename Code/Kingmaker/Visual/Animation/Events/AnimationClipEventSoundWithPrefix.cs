@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.View.Mechanics;
 
 namespace Kingmaker.Visual.Animation.Events;
 
@@ -19,16 +20,16 @@ public class AnimationClipEventSoundWithPrefix : AnimationClipEventSound
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override Action PostSoundEvent(MechanicEntityView view)
 	{
-		uint uniqueId = animationManager.CallbackReceiver.PostEventWithPrefix(base.Name, base.Volume);
+		uint uniqueId = view.PostSoundEventWithPrefix(base.Name, base.Volume);
 		if (!base.IsLooped)
 		{
 			return null;
 		}
 		return delegate
 		{
-			animationManager.CallbackReceiver.StopPlayingById(uniqueId);
+			view.StopPlayingSoundById(uniqueId);
 		};
 	}
 

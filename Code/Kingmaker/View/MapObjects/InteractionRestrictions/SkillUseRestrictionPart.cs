@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Root;
@@ -6,8 +7,8 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Interaction;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -61,8 +62,6 @@ public abstract class SkillUseRestrictionPart<T> : InteractionRestrictionPart<T>
 
 	public bool InteractOnlyByNotInteractedUnit => ConfigRoot.Instance.Interaction.GlobalSkillCheckRestrictionSettings.CheckInteractOnlyByNotInteractedUnit(base.Settings.GetSkill());
 
-	public new MapObjectView View => (MapObjectView)base.View;
-
 	public new MapObjectEntity Owner => (MapObjectEntity)base.Owner;
 
 	public int? InteractionDC => base.Settings?.GetDC();
@@ -103,11 +102,11 @@ public abstract class SkillUseRestrictionPart<T> : InteractionRestrictionPart<T>
 		{
 			return -1;
 		}
-		if ((user.Stats.GetStat(base.Settings.GetSkill())?.ModifiedValue ?? 0) <= 0 && !Game.Instance.Player.CapitalPartyMode)
+		if ((int)user.Actor.GetStat(base.Settings.GetSkill(), null, default(StatContext), "GetUserPriority") <= 0 && !Game.Instance.Player.CapitalPartyMode)
 		{
 			return -1;
 		}
-		return user.Stats.GetStat(base.Settings.GetSkill());
+		return user.Actor.GetStat(base.Settings.GetSkill(), null, default(StatContext), "GetUserPriority");
 	}
 
 	public override bool CheckRestriction(BaseUnitEntity user)
@@ -157,16 +156,16 @@ public abstract class SkillUseRestrictionPart<T> : InteractionRestrictionPart<T>
 		});
 		if (rulePerformSkillCheck.ResultIsSuccess)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IPickLockHandler>)delegate(IPickLockHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IPickLockHandler>)delegate(IPickLockHandler h)
 			{
-				h.HandlePickLockSuccess(View);
+				h.HandlePickLockSuccess(Owner);
 			}, isCheckRuntime: true);
 		}
 		else
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IPickLockHandler>)delegate(IPickLockHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IPickLockHandler>)delegate(IPickLockHandler h)
 			{
-				h.HandlePickLockFail(View, critical: false);
+				h.HandlePickLockFail(Owner, critical: false);
 			}, isCheckRuntime: true);
 		}
 		return rulePerformSkillCheck.ResultIsSuccess;
@@ -197,10 +196,9 @@ public abstract class SkillUseRestrictionPart<T> : InteractionRestrictionPart<T>
 		{
 			return PerformSkillCheck(user);
 		}
-		foreach (BaseUnitEntity item in Game.Instance.Player.Party.OrderByDescending((BaseUnitEntity x) => x.Stats.GetStatOptional(base.Settings.GetSkill())?.ModifiedValue ?? 0))
+		foreach (BaseUnitEntity item in ((IEnumerable<BaseUnitEntity>)Game.Instance.Player.Party).OrderByDescending((Func<BaseUnitEntity, int>)((BaseUnitEntity x) => x.Actor.GetStat(base.Settings.GetSkill(), null, default(StatContext), "TryInteract"))))
 		{
-			ModifiableValue stat = item.Stats.GetStat(base.Settings.GetSkill());
-			if (stat != null && stat.ModifiedValue <= 0)
+			if ((int)item.Actor.GetStat(base.Settings.GetSkill(), null, default(StatContext), "TryInteract") <= 0)
 			{
 				break;
 			}

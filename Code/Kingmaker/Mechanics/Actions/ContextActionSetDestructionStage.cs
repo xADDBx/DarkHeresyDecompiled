@@ -25,10 +25,10 @@ public class ContextActionSetDestructionStage : ContextAction
 			return;
 		}
 		PartHealth required = base.Target.Entity.GetRequired<PartHealth>();
-		int num = required.HitPoints;
+		int maxHitPoints = required.MaxHitPoints;
 		required.SetHitPointsLeft(Stage switch
 		{
-			DestructionStage.Whole => num, 
+			DestructionStage.Whole => maxHitPoints, 
 			DestructionStage.Destroyed => 0, 
 			_ => throw new ArgumentException(string.Format("Invalid value {0} of {1}", Stage, "Stage")), 
 		});

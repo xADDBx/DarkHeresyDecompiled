@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Sound;
 using Kingmaker.View.Equipment;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Sound;
@@ -14,9 +13,6 @@ public class WeaponVisualParameters
 {
 	[SerializeField]
 	private WeaponType m_WeaponType;
-
-	[SerializeField]
-	private float m_BurstAnimationDelay;
 
 	[SerializeField]
 	[ValidateIsPrefab]
@@ -35,24 +31,6 @@ public class WeaponVisualParameters
 	private WeaponEquipLinks m_CachedEquipLinks;
 
 	private bool m_CachedEquipLinksUpToDate;
-
-	[SerializeField]
-	private WeaponSoundSizeType m_SoundSize;
-
-	[SerializeField]
-	private WeaponSoundType m_SoundType;
-
-	[SerializeField]
-	private AkSwitchReference m_SoundSizeSwitch;
-
-	[SerializeField]
-	private AkSwitchReference m_SoundTypeSwitch;
-
-	[SerializeField]
-	private AkSwitchReference m_MuffledTypeSwitch;
-
-	[SerializeField]
-	private WeaponMissSoundType m_MissSoundType;
 
 	[SerializeField]
 	[AkEventReference]
@@ -90,35 +68,24 @@ public class WeaponVisualParameters
 
 	private static readonly UnitEquipmentVisualSlotType[] s_ShieldSlots = new UnitEquipmentVisualSlotType[1] { UnitEquipmentVisualSlotType.Shield };
 
-	public WeaponVisualParameters Prototype { get; set; }
-
-	public float BurstAnimationDelay => m_BurstAnimationDelay;
-
 	public WeaponType WeaponType => m_WeaponType;
 
-	public GameObject Model
-	{
-		get
-		{
-			if (Prototype == null || !(m_WeaponModel == null))
-			{
-				return m_WeaponModel;
-			}
-			return Prototype.Model;
-		}
-	}
+	public GameObject Model => m_WeaponModel;
 
 	public GameObject BeltModel
 	{
 		get
 		{
-			GameObject gameObject = ((Prototype != null && m_WeaponBeltModelOverride == null) ? Prototype.BeltModel : m_WeaponBeltModelOverride);
 			if (!m_CachedEquipLinksUpToDate)
 			{
 				m_CachedEquipLinks = ObjectExtensions.Or(ObjectExtensions.Or(Model, null)?.GetComponent<WeaponEquipLinks>(), null);
 				m_CachedEquipLinksUpToDate = true;
 			}
-			return m_CachedEquipLinks?.BeltModel ?? gameObject;
+			if (!(m_CachedEquipLinks != null))
+			{
+				return m_WeaponBeltModelOverride;
+			}
+			return ObjectExtensions.Or(m_CachedEquipLinks.BeltModel, m_WeaponBeltModelOverride);
 		}
 	}
 
@@ -126,85 +93,16 @@ public class WeaponVisualParameters
 	{
 		get
 		{
-			GameObject gameObject = ((Prototype != null && m_WeaponSheathModelOverride == null) ? Prototype.SheathModel : m_WeaponSheathModelOverride);
 			if (!m_CachedEquipLinksUpToDate)
 			{
 				m_CachedEquipLinks = ObjectExtensions.Or(ObjectExtensions.Or(Model, null)?.GetComponent<WeaponEquipLinks>(), null);
 				m_CachedEquipLinksUpToDate = true;
 			}
-			return m_CachedEquipLinks?.SheathModel ?? gameObject;
-		}
-	}
-
-	public WeaponSoundSizeType SoundSize
-	{
-		get
-		{
-			if (Prototype == null || m_SoundSize != 0)
+			if (!(m_CachedEquipLinks != null))
 			{
-				return m_SoundSize;
+				return m_WeaponSheathModelOverride;
 			}
-			return Prototype.SoundSize;
-		}
-	}
-
-	public WeaponSoundType SoundType
-	{
-		get
-		{
-			if (Prototype == null || m_SoundType != 0)
-			{
-				return m_SoundType;
-			}
-			return Prototype.SoundType;
-		}
-	}
-
-	public AkSwitchReference SoundSizeSwitch
-	{
-		get
-		{
-			if (Prototype == null || !(m_SoundSizeSwitch.Value == ""))
-			{
-				return m_SoundSizeSwitch;
-			}
-			return Prototype.SoundSizeSwitch;
-		}
-	}
-
-	public AkSwitchReference SoundTypeSwitch
-	{
-		get
-		{
-			if (Prototype == null || !(m_SoundTypeSwitch.Value == ""))
-			{
-				return m_SoundTypeSwitch;
-			}
-			return Prototype.SoundTypeSwitch;
-		}
-	}
-
-	public AkSwitchReference MuffledTypeSwitch
-	{
-		get
-		{
-			if (Prototype == null || !(m_MuffledTypeSwitch.Value == ""))
-			{
-				return m_MuffledTypeSwitch;
-			}
-			return Prototype.MuffledTypeSwitch;
-		}
-	}
-
-	public WeaponMissSoundType MissSoundType
-	{
-		get
-		{
-			if (Prototype == null || m_MissSoundType != 0)
-			{
-				return m_MissSoundType;
-			}
-			return Prototype.MissSoundType;
+			return ObjectExtensions.Or(m_CachedEquipLinks.SheathModel, m_WeaponSheathModelOverride);
 		}
 	}
 
@@ -212,11 +110,11 @@ public class WeaponVisualParameters
 	{
 		get
 		{
-			if (Prototype == null || !string.IsNullOrEmpty(m_EquipSound))
-			{
-				return m_EquipSound;
-			}
-			return Prototype.EquipSound;
+			return m_EquipSound;
+		}
+		set
+		{
+			m_EquipSound = value;
 		}
 	}
 
@@ -224,11 +122,11 @@ public class WeaponVisualParameters
 	{
 		get
 		{
-			if (Prototype == null || !string.IsNullOrEmpty(m_UnequipSound))
-			{
-				return m_UnequipSound;
-			}
-			return Prototype.UnequipSound;
+			return m_UnequipSound;
+		}
+		set
+		{
+			m_UnequipSound = value;
 		}
 	}
 
@@ -236,11 +134,7 @@ public class WeaponVisualParameters
 	{
 		get
 		{
-			if (Prototype == null || !string.IsNullOrEmpty(m_InventoryEquipSound))
-			{
-				return m_InventoryEquipSound;
-			}
-			return Prototype.InventoryEquipSound;
+			return m_InventoryEquipSound;
 		}
 		set
 		{
@@ -252,11 +146,7 @@ public class WeaponVisualParameters
 	{
 		get
 		{
-			if (Prototype == null || !string.IsNullOrEmpty(m_InventoryPutSound))
-			{
-				return m_InventoryPutSound;
-			}
-			return Prototype.InventoryPutSound;
+			return m_InventoryPutSound;
 		}
 		set
 		{
@@ -268,23 +158,13 @@ public class WeaponVisualParameters
 	{
 		get
 		{
-			if (Prototype == null || !string.IsNullOrEmpty(m_InventoryTakeSound))
-			{
-				return m_InventoryTakeSound;
-			}
-			return Prototype.InventoryTakeSound;
+			return m_InventoryTakeSound;
 		}
 		set
 		{
 			m_InventoryTakeSound = value;
 		}
 	}
-
-	public bool IsBow => false;
-
-	public bool IsTorch => false;
-
-	public bool HasQuiver => false;
 
 	public bool IsTwoHanded => WeaponType.IsTwoHanded();
 
@@ -314,7 +194,8 @@ public class WeaponVisualParameters
 			case WeaponType.EldarRifleHipLaser:
 			case WeaponType.EldarRifleShoulderBase:
 			case WeaponType.EldarRifleShoulderLaser:
-			case WeaponType.EldarHeavyHip:
+			case WeaponType.EldarHeavyHipBase:
+			case WeaponType.EldarHeavyHipLaser:
 			case WeaponType.EldarHeavyShoulder:
 				return s_BackSlots;
 			default:

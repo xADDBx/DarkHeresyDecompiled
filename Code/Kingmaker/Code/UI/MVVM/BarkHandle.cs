@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
@@ -7,25 +6,14 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Signals;
 using Kingmaker.UI.Sound.Base;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class BarkHandle : IBarkHandle, IUpdatable
+public class BarkHandle : BarkHandleBase
 {
 	private readonly Entity m_Entity;
 
-	private VoiceOverStatus m_VoiceOverStatus;
-
-	private float m_RemainingTime;
-
-	private bool m_IsActive = true;
-
 	private SignalWrapper m_StopPlaySignal;
-
-	public VoiceOverStatus VoiceOverStatus => m_VoiceOverStatus;
-
-	public event Action BarkEndCallbackActions;
 
 	private BarkHandle(Entity entity, float duration = -1f, VoiceOverStatus voiceOverStatus = null, bool synced = true)
 	{
@@ -34,19 +22,10 @@ public class BarkHandle : IBarkHandle, IUpdatable
 			((IBarkHandle)result).InterruptBark();
 		}
 		m_Entity = entity;
-		m_VoiceOverStatus = voiceOverStatus;
-		m_RemainingTime = ((duration > 0f) ? duration : UtilityBark.DefaultBarkTime);
 		m_StopPlaySignal = (synced ? SignalService.Instance.RegisterNext() : SignalWrapper.Empty);
-		if (m_VoiceOverStatus != null)
-		{
-			m_VoiceOverStatus.Ended += OnBarkEnded;
-		}
-		Game.Instance.Controllers.CustomUpdateController.Add(this);
-	}
-
-	private void OnBarkEnded()
-	{
-		this.BarkEndCallbackActions?.Invoke();
+		Init(duration, voiceOverStatus);
+		Game.Instance.Controllers.BarkController.Add(m_Entity, this);
+		Game.Instance.Controllers.BarkController.TrackHandle(this);
 	}
 
 	public BarkHandle(Entity entity, string text, float duration = -1f, VoiceOverStatus voiceOverStatus = null, bool synced = true)
@@ -67,59 +46,31 @@ public class BarkHandle : IBarkHandle, IUpdatable
 		}, isCheckRuntime: true);
 	}
 
-	void IUpdatable.Tick(float delta)
+	protected override void OnTick(float delta)
 	{
-		if (!IsPlayingBark())
-		{
-			InterruptBark();
-			return;
-		}
-		m_RemainingTime -= Game.Instance.Controllers.TimeController.DeltaTime;
+		base.OnTick(delta);
 		if (!m_Entity.IsInGame)
 		{
 			InterruptBark();
 		}
 	}
 
-	public bool IsPlayingBark()
+	protected override bool IsPlayingBarkCore()
 	{
-		if (!m_IsActive)
-		{
-			return false;
-		}
-		if ((m_VoiceOverStatus == null) ? (m_RemainingTime > 0f) : (Mathf.Max(m_VoiceOverStatus.RemainingTime, m_RemainingTime) > 0f))
+		if ((m_VoiceOverStatus == null) ? (m_RemainingTime > 0f) : (!m_VoiceOverStatus.IsEnded))
 		{
 			return true;
 		}
 		return !SignalService.Instance.CheckReadyOrSend(ref m_StopPlaySignal, emptyIsOk: true);
 	}
 
-	public void InterruptBark()
+	public override void InterruptBark()
 	{
-		if (m_IsActive)
+		base.InterruptBark();
+		EventBus.RaiseEvent((IEntity)m_Entity, (Action<IBarkHandler>)delegate(IBarkHandler h)
 		{
-			m_IsActive = false;
-			EventBus.RaiseEvent((IEntity)m_Entity, (Action<IBarkHandler>)delegate(IBarkHandler h)
-			{
-				h.HandleOnHideBark();
-			}, isCheckRuntime: true);
-			Game.Instance.Controllers.CustomUpdateController.Remove(this);
-			if (m_VoiceOverStatus != null)
-			{
-				m_VoiceOverStatus.Stop();
-			}
-			else
-			{
-				OnBarkEnded();
-			}
-			m_VoiceOverStatus = null;
-			m_RemainingTime = -1f;
-			m_StopPlaySignal = SignalWrapper.Empty;
-		}
-	}
-
-	public void AddCallback(Action callback)
-	{
-		BarkEndCallbackActions += callback;
+			h.HandleOnHideBark();
+		}, isCheckRuntime: true);
+		m_StopPlaySignal = SignalWrapper.Empty;
 	}
 }

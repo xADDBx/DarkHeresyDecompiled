@@ -43,5 +43,8 @@ public enum ModifierDescriptor
 	Mechanism = 89,
 	Weakpoint = 90,
 	DestructibleObject = 91,
-	Vital = 92
+	Vital = 92,
+	Brutal = 93,
+	Faction = 94,
+	EnemyCombatVeterancy = 95
 }

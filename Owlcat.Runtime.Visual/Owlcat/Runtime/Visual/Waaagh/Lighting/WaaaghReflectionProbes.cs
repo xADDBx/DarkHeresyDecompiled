@@ -8,14 +8,26 @@ public sealed class WaaaghReflectionProbes : IDisposable
 {
 	private ReflectionProbeManager m_ReflectionProbeManager = ReflectionProbeManager.Create();
 
+	public RTHandle AtlasRTHandle => m_ReflectionProbeManager.atlasRTHandle;
+
 	public void Dispose()
 	{
 		m_ReflectionProbeManager.Dispose();
 	}
 
-	public void UpdateGpuData(CommandBuffer cmd, ref CullingResults cullingResults)
+	public void PrepareCpuData(ref CullingResults cullingResults)
 	{
-		m_ReflectionProbeManager.UpdateGpuData(cmd, ref cullingResults);
+		m_ReflectionProbeManager.PrepareCpuData(ref cullingResults);
+	}
+
+	public void BlitAndSetGlobals(CommandBuffer cmd)
+	{
+		m_ReflectionProbeManager.BlitAndSetGlobals(cmd);
+	}
+
+	public void FillGlobalShaderVariables(ref WaaaghShaderVariablesGlobal g)
+	{
+		m_ReflectionProbeManager.FillGlobalShaderVariables(ref g);
 	}
 
 	public bool TryMapVisibleProbeToGpuDataIndex(int visibleProbeIndex, out int dataIndex)

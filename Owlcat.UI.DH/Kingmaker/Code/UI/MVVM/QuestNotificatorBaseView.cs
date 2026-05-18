@@ -84,7 +84,7 @@ public class QuestNotificatorBaseView : View<QuestNotificatorVM>
 			}
 			else
 			{
-				UISounds.Instance.Sounds.Notifications.NewQuest.Play();
+				NotificationsSounds.Instance.Notifications.NewQuest.Play();
 			}
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(base.ViewModel.ClearCommand, delegate
@@ -149,7 +149,7 @@ public class QuestNotificatorBaseView : View<QuestNotificatorVM>
 		m_Title.gameObject.SetActive(value: true);
 		m_Title.text = quest.Title;
 		m_QuestView.Bind(quest);
-		UISounds.Instance.Sounds.Notifications.NewQuest.Play();
+		NotificationsSounds.Instance.Notifications.NewQuest.Play();
 	}
 
 	private void AddObjectiveShowEvent(QuestNotificationEntityVM objective)

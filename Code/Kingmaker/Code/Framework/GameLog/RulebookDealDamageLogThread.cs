@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Code.Framework.Utility.UnityExtensions;
 using Kingmaker.Blueprints.Root.Strings.GameLog;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.EntitySystem.Entities;
@@ -13,6 +14,7 @@ using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.TextTools;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Facts.Interfaces;
 using Owlcat.UI;
 
 namespace Kingmaker.Code.Framework.GameLog;
@@ -38,6 +40,7 @@ public class RulebookDealDamageLogThread : LogThreadBase, IGameLogRuleHandler<Ru
 	{
 		GameLogContext.Text = rule.Reason.Name;
 		GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)(rule.Reason.Name.IsNullOrEmpty() ? rule.ConcreteInitiator : null);
+		GameLogContext.SourceFact = (GameLogContext.Property<IMechanicEntityFact>)(IMechanicEntityFact)null;
 		GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.ConcreteTarget;
 		GameLogContext.Description = null;
 		GameLogContext.ResultDamage = rule.ResultValue;
@@ -54,11 +57,11 @@ public class RulebookDealDamageLogThread : LogThreadBase, IGameLogRuleHandler<Ru
 
 	private static IEnumerable<ITooltipBrick> CollectExtraBricks(RuleDealDamage rule, bool isInfotip = false)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> tooltipBrickTextValue = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
-		Func<TooltipBrickDamageRangeArgs, ITooltipBrick> tooltipBrickDamageRange = CombatLogTooltipService.CreateTooltipBrickDamageRange;
-		Func<int, string, ITooltipBrick> createTooltipBrickMinimalAdmissibleDamage = CombatLogTooltipService.CreateTooltipBrickMinimalAdmissibleDamage;
-		if (tooltipBrickTextValue == null || tooltipBrickIconTextValue == null || tooltipBrickDamageRange == null || createTooltipBrickMinimalAdmissibleDamage == null)
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> tooltipBrickTextValue = CombatLogTooltipService.CreateBrickTextValue;
+		Func<BrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
+		Func<BrickDamageRangeArgs, ITooltipBrick> tooltipBrickDamageRange = CombatLogTooltipService.CreateBrickDamageRange;
+		Func<int, string, ITooltipBrick> createBrickMinimalAdmissibleDamage = CombatLogTooltipService.CreateBrickMinimalAdmissibleDamage;
+		if (tooltipBrickTextValue == null || tooltipBrickIconTextValue == null || tooltipBrickDamageRange == null || createBrickMinimalAdmissibleDamage == null)
 		{
 			yield break;
 		}
@@ -68,13 +71,13 @@ public class RulebookDealDamageLogThread : LogThreadBase, IGameLogRuleHandler<Ru
 		{
 			GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.Reason.SourceEntity;
 			string value = TextTemplateEngine.Instance.Process("{source}");
-			yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.DamageSource.Text, value, 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: true, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.DamageSource.Text, value, 1, isResultValue: false, null, CombatLogIcon.TargetHit));
 		}
 		if (!rule.Reason.Name.IsNullOrEmpty())
 		{
-			yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.DamageReason.Text, "<b>" + rule.Reason.Name + "</b>", 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.DamageReason.Text, "<b>" + rule.Reason.Name + "</b>", 1));
 		}
-		yield return tooltipBrickDamageRange(new TooltipBrickDamageRangeArgs(s.BaseDamage.Text, damage.BaseDamageValue, damage.BaseDamageMinValue, damage.BaseDamageMaxValue, 1, isResultValue: true, $"={damage.BaseDamageValue}", isProtectionIcon: false, isTargetHitIcon: true, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return tooltipBrickDamageRange(new BrickDamageRangeArgs(s.BaseDamage.Text, damage.BaseDamageValue, damage.BaseDamageMinValue, damage.BaseDamageMaxValue, 1, isResultValue: true, $"={damage.BaseDamageValue}", CombatLogIcon.TargetHit));
 		if (isInfotip)
 		{
 			int baseDamageMinValue = damage.BaseDamageMinValue;
@@ -87,9 +90,31 @@ public class RulebookDealDamageLogThread : LogThreadBase, IGameLogRuleHandler<Ru
 			{
 				yield return item;
 			}
+			if (damage.ResultDamageToArmorValue > 0)
+			{
+				yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs("<b>Damage to Armor</b>", $"<b>{damage.ResultDamageToArmorValue}</b>", 0, isResultValue: true, ""));
+				if (damage.ResultPlainDamageToArmor > 0)
+				{
+					yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs("Plain Damage", $"{damage.ResultPlainDamageToArmor}", 1, isResultValue: true));
+				}
+				if (damage.ResultBonusDamageToArmor > 0)
+				{
+					yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs("Bonus Damage", $"{damage.ResultBonusDamageToArmor}", 1, isResultValue: true));
+					int value3 = damage.BonusArmorDamage.Value;
+					if (value3 > damage.ResultTargetArmorBeforeDamageValue)
+					{
+						yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs("Target Armor", $"{s.MaxValue.Text} {damage.ResultTargetArmorBeforeDamageValue} ({value3})", 2, isResultValue: true));
+					}
+					IEnumerable<ITooltipBrick> modifiersSummary = LogThreadBase.GetModifiersSummary(damage.BonusArmorDamage, 2, damage.BonusArmorBaseDamage);
+					foreach (ITooltipBrick item2 in modifiersSummary)
+					{
+						yield return item2;
+					}
+				}
+			}
 		}
 		string attackResultText = LogThreadBase.Strings.AttackResultStrings.GetAttackResultText(AttackResult.Hit);
-		yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.Result.Text, attackResultText, 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.Result.Text, attackResultText, 1));
 	}
 
 	private static GameLogMessage GetMessage(RuleDealDamage rule)

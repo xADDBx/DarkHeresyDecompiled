@@ -5,25 +5,32 @@ using Code.Framework.Utility.UnityExtensions;
 using Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Encyclopedia;
+using Kingmaker.Code.Framework.Abilities.Blueprints;
+using Kingmaker.Code.View.UI.Components.Text;
 using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework;
+using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.Gameplay.Features.Scaling.Components;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Events;
 using Kingmaker.UI.MVVM.VM.Tooltip.Templates;
+using Kingmaker.UI.Pointer;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Alignments;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Progression.Features;
+using Kingmaker.UnitLogic.UI;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
@@ -115,6 +122,33 @@ public static class TooltipHelper
 		return new TooltipHandler(component, list, mainConfig);
 	}
 
+	private static TooltipHandler SetTooltip(this MonoBehaviour component, List<TooltipBaseTemplate> mainTemplates, List<TooltipBaseTemplate> compareTemplates, TooltipConfig mainConfig, TooltipConfig compareConfig)
+	{
+		if (component == null)
+		{
+			return null;
+		}
+		if (mainTemplates.Empty() && compareTemplates.Empty())
+		{
+			return null;
+		}
+		if (mainConfig.TooltipPlace == null)
+		{
+			mainConfig.TooltipPlace = component.transform as RectTransform;
+		}
+		if (compareConfig.TooltipPlace == null)
+		{
+			compareConfig.TooltipPlace = component.transform as RectTransform;
+		}
+		List<TooltipData> mainDatas = (from t in mainTemplates
+			where t != null
+			select new TooltipData(t, mainConfig)).ToList();
+		List<TooltipData> compareDatas = (from t in compareTemplates
+			where t != null
+			select new TooltipData(t, compareConfig)).ToList();
+		return new TooltipHandler(component, mainDatas, compareDatas, mainConfig);
+	}
+
 	public static TooltipConfig EnsureTooltipPlace(MonoBehaviour component, TooltipConfig config)
 	{
 		if (config.TooltipPlace == null)
@@ -160,6 +194,27 @@ public static class TooltipHelper
 		});
 	}
 
+	public static IDisposable SetTooltip(this MonoBehaviour component, ReadOnlyReactiveProperty<List<TooltipBaseTemplate>> mainReactive, ReadOnlyReactiveProperty<List<TooltipBaseTemplate>> compareReactive, TooltipConfig mainConfig, TooltipConfig compareConfig)
+	{
+		IDisposable tooltipSubscription = null;
+		IDisposable d1 = mainReactive.Subscribe(Update);
+		IDisposable d2 = compareReactive.Subscribe(Update);
+		return Disposable.Create(delegate
+		{
+			tooltipSubscription?.Dispose();
+			d1.Dispose();
+			d2.Dispose();
+		});
+		void Update(List<TooltipBaseTemplate> _)
+		{
+			tooltipSubscription?.Dispose();
+			if (component != null)
+			{
+				tooltipSubscription = component.SetTooltip(mainReactive.CurrentValue ?? new List<TooltipBaseTemplate>(), compareReactive.CurrentValue ?? new List<TooltipBaseTemplate>(), mainConfig, compareConfig);
+			}
+		}
+	}
+
 	public static IDisposable SetTooltip(this MonoBehaviour component, ReadOnlyReactiveProperty<TooltipBaseTemplate> reactiveTemplate, TooltipConfig config = default(TooltipConfig))
 	{
 		IDisposable tooltipSubscription = null;
@@ -180,7 +235,7 @@ public static class TooltipHelper
 		return component.SetTooltip(new TooltipTemplateGlossary(key, config.IsGlossary), config);
 	}
 
-	public static void ShowTooltip(this MonoBehaviour component, TooltipBaseTemplate template, TooltipConfig config = default(TooltipConfig), ReactiveCommand<Unit> closeCommand = null, ConsoleNavigationBehaviour ownerNavigationBehaviour = null, bool shouldNotHideLittleTooltip = false)
+	public static void ShowTooltip(this MonoBehaviour component, TooltipBaseTemplate template, TooltipConfig config = default(TooltipConfig), ReactiveCommand<Unit> closeCommand = null, bool shouldNotHideLittleTooltip = false)
 	{
 		if (template == null)
 		{
@@ -191,14 +246,14 @@ public static class TooltipHelper
 		{
 			config.TooltipPlace = component.transform as RectTransform;
 		}
-		TooltipData tooltipData = new TooltipData(template, config, closeCommand, ownerNavigationBehaviour);
+		TooltipData tooltipData = new TooltipData(template, config, closeCommand);
 		EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 		{
 			h.HandleTooltipRequest(tooltipData, shouldNotHideLittleTooltip);
 		});
 	}
 
-	public static void ShowConsoleTooltip(this MonoBehaviour component, TooltipBaseTemplate template, ConsoleNavigationBehaviour navigationBehaviour, TooltipConfig config = default(TooltipConfig), bool shouldNotHideLittleTooltip = false, bool showScrollbar = false)
+	public static void ShowConsoleTooltip(this MonoBehaviour component, TooltipBaseTemplate template, TooltipConfig config = default(TooltipConfig), bool shouldNotHideLittleTooltip = false, bool showScrollbar = false)
 	{
 		if (template == null)
 		{
@@ -209,14 +264,14 @@ public static class TooltipHelper
 		{
 			config.TooltipPlace = component.transform as RectTransform;
 		}
-		TooltipData tooltipData = new TooltipData(template, config, null, navigationBehaviour);
+		TooltipData tooltipData = new TooltipData(template, config);
 		EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 		{
 			h.HandleTooltipRequest(tooltipData, shouldNotHideLittleTooltip, showScrollbar);
 		});
 	}
 
-	public static void ShowConsoleTooltip(this MonoBehaviour component, List<TooltipBaseTemplate> templates, ConsoleNavigationBehaviour navigationBehaviour, TooltipConfig config = default(TooltipConfig))
+	public static void ShowConsoleTooltip(this MonoBehaviour component, List<TooltipBaseTemplate> templates, TooltipConfig config = default(TooltipConfig))
 	{
 		if (templates == null || templates.Count == 0)
 		{
@@ -227,7 +282,7 @@ public static class TooltipHelper
 		{
 			config.TooltipPlace = component.transform as RectTransform;
 		}
-		CombinedTooltipData tooltipData = new CombinedTooltipData(templates, config, null, navigationBehaviour);
+		CombinedTooltipData tooltipData = new CombinedTooltipData(templates, config);
 		EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 		{
 			h.HandleTooltipRequest(tooltipData);
@@ -253,9 +308,37 @@ public static class TooltipHelper
 		List<TooltipData> tooltipData = (from t in templates
 			where t != null
 			select new TooltipData(t, (t == lastTemplate) ? mainConfig : comparativeConfig)).ToList();
+		RectTransform source = component.transform as RectTransform;
 		EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 		{
-			h.HandleComparativeTooltipRequest(tooltipData, showScrollbar);
+			h.HandleComparativeTooltipRequest(source, tooltipData, showScrollbar);
+		});
+	}
+
+	public static void ShowComparativeTooltip(this MonoBehaviour component, IReadOnlyList<TooltipBaseTemplate> mainTemplates, IReadOnlyList<TooltipBaseTemplate> compareTemplates, TooltipConfig mainConfig, TooltipConfig comparativeConfig, bool showScrollbar)
+	{
+		if (mainTemplates.Empty() && compareTemplates.Empty())
+		{
+			HideTooltip();
+			return;
+		}
+		if (mainConfig.TooltipPlace == null)
+		{
+			mainConfig.TooltipPlace = component.transform as RectTransform;
+		}
+		if (comparativeConfig.TooltipPlace == null)
+		{
+			comparativeConfig.TooltipPlace = component.transform as RectTransform;
+		}
+		List<TooltipData> mainData = (from t in mainTemplates
+			where t != null
+			select new TooltipData(t, mainConfig)).ToList();
+		List<TooltipData> compareData = (from t in compareTemplates
+			where t != null
+			select new TooltipData(t, comparativeConfig)).ToList();
+		EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
+		{
+			h.HandleComparativeTooltipRequest(component.transform, mainData, compareData, showScrollbar);
 		});
 	}
 
@@ -267,34 +350,34 @@ public static class TooltipHelper
 		});
 		EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 		{
-			h.HandleComparativeTooltipRequest(null);
+			h.HandleComparativeTooltipRequest(null, null);
 		});
 	}
 
-	public static void ShowInfo(TooltipBaseTemplate template, ConsoleNavigationBehaviour ownerNavigationBehaviour = null, bool shouldNotHideLittleTooltip = false)
+	public static void ShowInfo(TooltipBaseTemplate template, bool shouldNotHideLittleTooltip = false)
 	{
 		HideTooltip();
 		EventBus.RaiseEvent(delegate(ITooltipHandler h)
 		{
-			h.HandleInfoRequest(template, ownerNavigationBehaviour, shouldNotHideLittleTooltip);
+			h.HandleInfoRequest(template, shouldNotHideLittleTooltip);
 		});
 	}
 
-	public static void ShowInfo(IEnumerable<TooltipBaseTemplate> templates, ConsoleNavigationBehaviour ownerNavigationBehaviour = null)
+	public static void ShowInfo(IEnumerable<TooltipBaseTemplate> templates)
 	{
 		HideTooltip();
 		EventBus.RaiseEvent(delegate(ITooltipHandler h)
 		{
-			h.HandleMultipleInfoRequest(templates, ownerNavigationBehaviour);
+			h.HandleMultipleInfoRequest(templates);
 		});
 	}
 
-	public static void ShowGlossaryInfo(TooltipTemplateGlossary template, ConsoleNavigationBehaviour ownerNavigationBehaviour = null)
+	public static void ShowGlossaryInfo(TooltipTemplateGlossary template)
 	{
 		HideTooltip();
 		EventBus.RaiseEvent(delegate(ITooltipHandler h)
 		{
-			h.HandleGlossaryInfoRequest(template, ownerNavigationBehaviour);
+			h.HandleGlossaryInfoRequest(template);
 		});
 	}
 
@@ -321,14 +404,14 @@ public static class TooltipHelper
 		component.ShowLinkTooltip(UtilityLink.GetKeysFromLink(key), skillCheckDcs, skillCheckResults, config);
 	}
 
-	public static IDisposable SetLinkTooltip(this TextMeshProUGUI text, List<SkillCheckDC> skillCheckDcs = null, List<SkillCheckResult> skillCheckResults = null, TooltipConfig config = default(TooltipConfig))
+	public static IDisposable SetLinkTooltip(this TMP_Text text, List<SkillCheckDC> skillCheckDcs = null, List<SkillCheckResult> skillCheckResults = null, TooltipConfig config = default(TooltipConfig), MechanicEntity owner = null)
 	{
 		if (text == null)
 		{
 			return Disposable.Empty;
 		}
-		bool entered = TMP_TextUtilities.IsIntersectingRectTransform(text.rectTransform, Input.mousePosition, UICamera.Claim());
-		int? linkIndex = null;
+		bool entered = TMP_TextUtilities.IsIntersectingRectTransform(text.rectTransform, CursorController.CursorPosition, UICamera.Claim());
+		string currentLinkId = null;
 		string[] linkKeys = null;
 		IDisposable enter = text.OnPointerEnterAsObservable().Subscribe(delegate
 		{
@@ -340,33 +423,59 @@ public static class TooltipHelper
 		});
 		IDisposable update = ObservableSubscribeExtensions.Subscribe(text.UpdateAsObservable(), delegate
 		{
-			int num2;
-			if (!entered || (num2 = TMP_TextUtilities.FindIntersectingLink(text, Input.mousePosition, UICamera.Claim())) == -1)
+			if (!entered)
 			{
-				if (linkIndex.HasValue)
+				if (currentLinkId != null)
 				{
 					EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
 					{
 						h.HandleTooltipRequest(null);
 					});
-					linkIndex = null;
+					currentLinkId = null;
 					linkKeys = null;
 				}
 			}
-			else if (num2 != linkIndex)
+			else
 			{
-				linkIndex = num2;
-				linkKeys = UtilityLink.GetKeysFromLink(text.textInfo.linkInfo[linkIndex.Value].GetLinkID());
-				TooltipBaseTemplate template = GetLinkTooltipTemplate(linkKeys, skillCheckDcs, skillCheckResults, config.IsEncyclopedia);
-				ref RectTransform tooltipPlace = ref config.TooltipPlace;
-				if ((object)tooltipPlace == null)
+				Vector2 cursorPosition = CursorController.CursorPosition;
+				Camera camera = UICamera.Claim();
+				string text2 = null;
+				int num2 = TMP_TextUtilities.FindIntersectingLink(text, cursorPosition, camera);
+				if (num2 != -1)
 				{
-					tooltipPlace = text.transform as RectTransform;
+					text2 = text.textInfo.linkInfo[num2].GetLinkID();
 				}
-				EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
+				else if (text.isTextTruncated)
 				{
-					h.HandleTooltipRequest(new TooltipData(template, config));
-				});
+					text2 = text.FindTruncatedLinkId(cursorPosition, camera);
+				}
+				if (text2 == null)
+				{
+					if (currentLinkId != null)
+					{
+						EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
+						{
+							h.HandleTooltipRequest(null);
+						});
+						currentLinkId = null;
+						linkKeys = null;
+					}
+				}
+				else if (!(text2 == currentLinkId))
+				{
+					currentLinkId = text2;
+					linkKeys = UtilityLink.GetKeysFromLink(currentLinkId);
+					TooltipBaseTemplate template = GetLinkTooltipTemplate(linkKeys, skillCheckDcs, skillCheckResults, config.IsEncyclopedia, owner);
+					ref RectTransform tooltipPlace = ref config.TooltipPlace;
+					if ((object)tooltipPlace == null)
+					{
+						tooltipPlace = text.transform as RectTransform;
+					}
+					EventBus.RaiseEvent(delegate(ITooltipBaseHandler h)
+					{
+						h.HandleTooltipRequest(new TooltipData(template, config));
+					});
+				}
 			}
 		});
 		IDisposable click = null;
@@ -377,7 +486,7 @@ public static class TooltipHelper
 		{
 			click = text.OnPointerClickAsObservable().Subscribe(delegate(PointerEventData data)
 			{
-				if (linkIndex.HasValue)
+				if (currentLinkId != null)
 				{
 					bool num = data.button == PointerEventData.InputButton.Left && isEncyclopedia;
 					bool flag = data.button == PointerEventData.InputButton.Right && needInfo && !isEncyclopedia;
@@ -398,7 +507,7 @@ public static class TooltipHelper
 					}
 					else if (flag)
 					{
-						TooltipBaseTemplate linkTooltipTemplate = GetLinkTooltipTemplate(linkKeys, skillCheckDcs, skillCheckResults);
+						TooltipBaseTemplate linkTooltipTemplate = GetLinkTooltipTemplate(linkKeys, skillCheckDcs, skillCheckResults, isEncyclopedia: false, owner);
 						if (linkTooltipTemplate is TooltipTemplateGlossary template)
 						{
 							ShowGlossaryInfo(template);
@@ -443,8 +552,9 @@ public static class TooltipHelper
 		return GetLinkTooltipTemplate(UtilityLink.GetKeysFromLink(key));
 	}
 
-	private static TooltipBaseTemplate GetLinkTooltipTemplate(string[] keys, List<SkillCheckDC> skillCheckDcs = null, List<SkillCheckResult> skillCheckResults = null, bool isEncyclopedia = false)
+	private static TooltipBaseTemplate GetLinkTooltipTemplate(string[] keys, List<SkillCheckDC> skillCheckDcs = null, List<SkillCheckResult> skillCheckResults = null, bool isEncyclopedia = false, MechanicEntity owner = null)
 	{
+		owner = ((owner != null && !owner.IsDisposed) ? owner : null);
 		if (keys.Empty())
 		{
 			return null;
@@ -457,34 +567,38 @@ public static class TooltipHelper
 			return new TooltipTemplateItem(LinksHelper.GetItem(keys[1]));
 		case EntityLink.Type.ItemBlueprint:
 			return new TooltipTemplateItem(LinksHelper.GetBlueprintItem(keys[1]));
-		case EntityLink.Type.SoulMarkShiftDirection:
+		case EntityLink.Type.Alignment:
 		{
 			if (!Enum.TryParse<AlignmentAxis>(keys[1], out var result))
 			{
 				return null;
 			}
-			return new TooltipTemplateSoulMarkHeader(Game.Instance.Player.MainCharacterEntity, result);
+			return new TooltipTemplateAlignmentHeader(Game.Instance.Player.MainCharacterEntity, result);
 		}
 		case EntityLink.Type.UnitFact:
 		{
-			BlueprintMechanicEntityFact mechanicFact2 = LinksHelper.GetMechanicFact(keys[1]);
-			if (!(mechanicFact2 is BlueprintFeature feature))
+			BlueprintMechanicEntityFact mechanicFact = LinksHelper.GetMechanicFact(keys[1]);
+			if (!(mechanicFact is BlueprintFeature feature))
 			{
-				if (!(mechanicFact2 is BlueprintAbility blueprintAbility))
+				if (!(mechanicFact is BlueprintAbility blueprintAbility))
 				{
-					if (!(mechanicFact2 is BlueprintToggleAbility ability2))
+					if (!(mechanicFact is BlueprintToggleAbility ability))
 					{
-						if (mechanicFact2 is BlueprintBuff blueprintBuff)
+						if (!(mechanicFact is BlueprintBuff blueprintBuff))
 						{
-							return new TooltipTemplateBuff(blueprintBuff);
+							if (mechanicFact is BlueprintAbilityModifier modifier)
+							{
+								return new TooltipTemplateLevelUpModifier(modifier, null, owner);
+							}
+							return null;
 						}
-						return null;
+						return new TooltipTemplateBuff(blueprintBuff, owner);
 					}
-					return new TooltipTemplateToggleAbility(ability2);
+					return new TooltipTemplateToggleAbility(ability, owner);
 				}
-				return new TooltipTemplateAbility(blueprintAbility);
+				return new TooltipTemplateAbility(blueprintAbility, null, owner);
 			}
-			return new TooltipTemplateFeature(feature);
+			return new TooltipTemplateFeature(feature, withVariants: false, owner);
 		}
 		case EntityLink.Type.GroupAbility:
 			return new TooltipTemplateAbility(LinksHelper.GetPartyAbility(keys[1]));
@@ -506,10 +620,21 @@ public static class TooltipHelper
 			return new TooltipTemplateSkillCheckDC(skillCheckDcs);
 		case EntityLink.Type.UIProperty:
 		{
-			BlueprintMechanicEntityFact mechanicFact = LinksHelper.GetMechanicFact(keys[1]);
+			BlueprintMechanicEntityFact mechanicFact2 = LinksHelper.GetMechanicFact(keys[1]);
 			MechanicEntity entity = EntityService.Instance.GetEntity<MechanicEntity>(keys[3]);
-			AbilityData ability = entity?.Facts.Get<Ability>(mechanicFact)?.Data;
-			return new TooltipTemplateUIProperty(LinksHelper.GetUISettings(keys), entity, mechanicFact, ability);
+			AbilityData ability2 = entity?.Facts.Get<Ability>(mechanicFact2)?.Data;
+			UIPropertySettings uISettings = LinksHelper.GetUISettings(keys);
+			if (uISettings != null)
+			{
+				return new TooltipTemplateUIProperty(uISettings, entity, mechanicFact2, ability2);
+			}
+			AbilityPropertyEntry abilityPropertyEntry = AbilityPropertyComponent.FindEntryByLinkKey(mechanicFact2, keys[2]);
+			if (abilityPropertyEntry?.UISettings != null)
+			{
+				return new TooltipTemplateUIProperty(abilityPropertyEntry.UISettings, entity, mechanicFact2, ability2);
+			}
+			PFLog.UI.Error("UIProperty tooltip: no settings found for link '" + keys[2] + "' on blueprint '" + mechanicFact2?.name + "'");
+			return null;
 		}
 		case EntityLink.Type.Unknown:
 			return new TooltipTemplateGlossary(keys);
@@ -525,6 +650,17 @@ public static class TooltipHelper
 			return new TooltipTemplateAnswerConditions(LinksHelper.GetAnswer(keys[1]));
 		case EntityLink.Type.Detective:
 			return new TooltipTemplateDetective(ResourcesLibrary.TryGetBlueprint(keys[1]), useHeader: true, keys.ElementAtOrDefault(2));
+		case EntityLink.Type.AbilityTag:
+		{
+			BlueprintAbilityTag abilityTag = LinksHelper.GetAbilityTag(keys[1]);
+			if (abilityTag == null)
+			{
+				return null;
+			}
+			return new TooltipTemplateAbilityTag(abilityTag);
+		}
+		case EntityLink.Type.CloseCase:
+			return new TooltipTemplateCloseCase(LinksHelper.GetAnswer(keys[1])?.GetCloseCaseData());
 		default:
 			return null;
 		}
@@ -561,26 +697,26 @@ public static class TooltipHelper
 		HistoryPointer = History.Last;
 	}
 
-	public static void GlossaryHistoryNext(GridConsoleNavigationBehaviour ownerBehaviour)
+	public static void GlossaryHistoryNext()
 	{
 		if (HistoryPointer.Next != null)
 		{
 			HistoryPointer = HistoryPointer.Next;
 			EventBus.RaiseEvent(delegate(ITooltipHandler h)
 			{
-				h.HandleGlossaryInfoRequest(new TooltipTemplateGlossary(HistoryPointer.Value, isHistory: true), ownerBehaviour);
+				h.HandleGlossaryInfoRequest(new TooltipTemplateGlossary(HistoryPointer.Value, isHistory: true));
 			});
 		}
 	}
 
-	public static void GlossaryHistoryPrevious(GridConsoleNavigationBehaviour ownerBehaviour)
+	public static void GlossaryHistoryPrevious()
 	{
 		if (HistoryPointer.Previous != null)
 		{
 			HistoryPointer = HistoryPointer.Previous;
 			EventBus.RaiseEvent(delegate(ITooltipHandler h)
 			{
-				h.HandleGlossaryInfoRequest(new TooltipTemplateGlossary(HistoryPointer.Value, isHistory: true), ownerBehaviour);
+				h.HandleGlossaryInfoRequest(new TooltipTemplateGlossary(HistoryPointer.Value, isHistory: true));
 			});
 		}
 	}

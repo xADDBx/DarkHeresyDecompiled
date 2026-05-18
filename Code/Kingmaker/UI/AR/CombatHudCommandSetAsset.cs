@@ -10,7 +10,7 @@ public sealed class CombatHudCommandSetAsset : ScriptableObject
 
 	public CombatHudAreas GetUsedAreas()
 	{
-		CombatHudAreas combatHudAreas = (CombatHudAreas)0;
+		CombatHudAreas combatHudAreas = (CombatHudAreas)0u;
 		if (Commands != null)
 		{
 			CombatHudCommand[] commands = Commands;

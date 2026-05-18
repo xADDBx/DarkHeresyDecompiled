@@ -21,7 +21,7 @@ public class ContextActionOnOathOfVengeanceEnemies : ContextAction
 	{
 		foreach (MechanicEntity item in GetTargetsInternal())
 		{
-			using (base.Context.SetScope(item))
+			using (base.Context.PushTarget(item))
 			{
 				Actions.Run();
 			}
@@ -30,10 +30,10 @@ public class ContextActionOnOathOfVengeanceEnemies : ContextAction
 
 	private IEnumerable<MechanicEntity> GetTargetsInternal()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		UnitEntity unitEntity = base.Context.ClickedTarget.Entity as UnitEntity;
-		UnitPartOathOfVengeance unitPartOathOfVengeance = maybeCaster?.GetOptional<UnitPartOathOfVengeance>();
-		if (maybeCaster == null || unitEntity == null || !unitEntity.IsAlly(maybeCaster) || unitPartOathOfVengeance == null || !unitPartOathOfVengeance.HasEntries(unitEntity))
+		MechanicEntity caster = base.Context.Caster;
+		UnitEntity unitEntity = base.Context.ClickedTarget?.Entity as UnitEntity;
+		UnitPartOathOfVengeance unitPartOathOfVengeance = caster?.GetOptional<UnitPartOathOfVengeance>();
+		if (caster == null || unitEntity == null || !unitEntity.IsAlly(caster) || unitPartOathOfVengeance == null || !unitPartOathOfVengeance.HasEntries(unitEntity))
 		{
 			yield break;
 		}

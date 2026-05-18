@@ -6,12 +6,14 @@ using Kingmaker.Blueprints.Area;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Interaction;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
-using Kingmaker.View.MapObjects.SriptZones;
 using Pathfinding;
 using UnityEngine;
 
@@ -70,7 +72,7 @@ public class AreaTaskSelector
 		{
 			return new TaskLevelup(runner, unitForLevelUp);
 		}
-		if (Game.Instance.Player.Party.Any((BaseUnitEntity u) => u.Health.Damage > u.Health.HitPoints.ModifiedValue / 2 || u.LifeState.IsDead))
+		if (Game.Instance.Player.Party.Any((BaseUnitEntity u) => u.Health.Damage > (int)u.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "SelectNewTask") / 2 || u.LifeState.IsDead))
 		{
 			return new TaskHeal(runner);
 		}
@@ -148,12 +150,12 @@ public class AreaTaskSelector
 		}
 		if (mapObjectEntity != null)
 		{
-			AreaTransitionPart optional = mapObjectEntity.View.Data.GetOptional<AreaTransitionPart>();
+			AreaTransitionPart optional = mapObjectEntity.GetOptional<AreaTransitionPart>();
 			if ((bool)optional)
 			{
 				return new TaskUseAreaTransition(runner, optional);
 			}
-			if ((bool)(mapObjectEntity.View as ScriptZone))
+			if (!(mapObjectEntity is ScriptZoneEntity))
 			{
 				return new TaskInteractWithScriptZone(runner, bestObject);
 			}
@@ -269,10 +271,10 @@ public class AreaTaskSelector
 				return 18;
 			}
 		}
-		AreaTransition component = mo.View.GetComponent<AreaTransition>();
-		if ((bool)component)
+		AreaTransitionPart optional = mo.GetOptional<AreaTransitionPart>();
+		if (optional != null)
 		{
-			BlueprintAreaEnterPoint areaEnterPoint = component.Settings.AreaEnterPoint;
+			BlueprintAreaEnterPoint areaEnterPoint = optional.Settings.AreaEnterPoint;
 			PlayData.AreaEntry areaData = m_Runner.Data.GetAreaData(areaEnterPoint.Area);
 			if (areaEnterPoint.Area == Game.Instance.CurrentlyLoadedArea)
 			{
@@ -286,8 +288,7 @@ public class AreaTaskSelector
 			_ = m_Runner.Data.GetAreaData(Game.Instance.CurrentlyLoadedArea).Depth;
 			return 5;
 		}
-		ScriptZone scriptZone = mo.View as ScriptZone;
-		if ((bool)scriptZone && scriptZone.IsActive && !scriptZone.name.Contains("Trap") && !m_Runner.Data.InteractedObjects.Contains(scriptZone.UniqueId))
+		if (mo is ScriptZoneEntity { IsActive: not false } scriptZoneEntity && !scriptZoneEntity.Config.name.Contains("TriggerZone") && !scriptZoneEntity.Config.name.Contains("Trap") && !m_Runner.Data.InteractedObjects.Contains(scriptZoneEntity.UniqueId))
 		{
 			return 3;
 		}
@@ -309,15 +310,15 @@ public class AreaTaskSelector
 
 	private float GetDistanceToObject(ClockworkRunner runner, Entity obj, bool checkNavMesh = false)
 	{
-		Vector3 position = obj.View.ViewTransform.position;
-		if (checkNavMesh && !IsTransition(obj) && !CheckNavmeshes(runner.Player.Position, position))
+		Vector3 viewPosition = obj.ViewPosition;
+		if (checkNavMesh && !IsTransition(obj) && !CheckNavmeshes(runner.Player.Position, viewPosition))
 		{
 			return -1f;
 		}
 		ABPath aBPath;
 		try
 		{
-			aBPath = ABPath.Construct(runner.Player.Position, position);
+			aBPath = ABPath.Construct(runner.Player.Position, viewPosition);
 			aBPath.nnConstraint.graphMask = 1;
 			aBPath.Claim(this);
 			AstarPath.StartPath(aBPath, pushToFront: true);
@@ -332,9 +333,9 @@ public class AreaTaskSelector
 		{
 			return -1f;
 		}
-		if (Vector3.Distance(aBPath.endPoint, position) > 3f)
+		if (Vector3.Distance(aBPath.endPoint, viewPosition) > 3f)
 		{
-			return 0f - Vector3.Distance(aBPath.endPoint, position);
+			return 0f - Vector3.Distance(aBPath.endPoint, viewPosition);
 		}
 		float pathLength = GetPathLength(aBPath.vectorPath);
 		aBPath.Release(this);
@@ -347,7 +348,7 @@ public class AreaTaskSelector
 		{
 			return false;
 		}
-		if (mapObjectEntity.View.GetComponent<AreaTransition>() != null)
+		if (mapObjectEntity.GetOptional<AreaTransitionPart>() != null)
 		{
 			return true;
 		}

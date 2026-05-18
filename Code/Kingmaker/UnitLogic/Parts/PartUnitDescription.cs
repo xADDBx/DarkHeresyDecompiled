@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.View.Spawners;
 using Newtonsoft.Json;
@@ -26,10 +27,11 @@ public class PartUnitDescription : BaseUnitPart, IHashable, IOwlPackable<PartUni
 	{
 		Name = "PartUnitDescription",
 		OldNames = null,
-		Fields = new FieldInfo[2]
+		Fields = new FieldInfo[3]
 		{
 			new FieldInfo("CustomGender", typeof(Gender?)),
-			new FieldInfo("CustomName", typeof(string))
+			new FieldInfo("CustomName", typeof(string)),
+			new FieldInfo("CustomNameKey", typeof(string))
 		}
 	};
 
@@ -43,10 +45,44 @@ public class PartUnitDescription : BaseUnitPart, IHashable, IOwlPackable<PartUni
 	[OwlPackInclude]
 	public string CustomName { get; private set; }
 
+	[JsonProperty]
+	[CanBeNull]
+	[OwlPackInclude]
+	public string CustomNameKey { get; private set; }
+
 	public Gender Gender => CustomGender ?? base.Owner.Blueprint.Gender;
 
 	[NotNull]
-	public string Name => base.Owner.GetOptional<PartPolymorphed>()?.ReplaceBlueprintForInspection?.CharacterName ?? CustomName ?? base.Owner.Blueprint.CharacterName ?? "";
+	public string Name
+	{
+		get
+		{
+			string text = base.Owner.GetOptional<PartPolymorphed>()?.ReplaceBlueprintForInspection?.CharacterName;
+			if (text != null)
+			{
+				return text;
+			}
+			string text2 = ((CustomNameKey != null) ? new LocalizedString
+			{
+				Key = CustomNameKey
+			}.Text : null);
+			if (!string.IsNullOrEmpty(text2))
+			{
+				return text2;
+			}
+			string customName = CustomName;
+			if (customName != null)
+			{
+				return customName;
+			}
+			string characterName = base.Owner.Blueprint.CharacterName;
+			if (characterName != null)
+			{
+				return characterName;
+			}
+			return string.Empty;
+		}
+	}
 
 	protected override void OnAttach()
 	{
@@ -62,7 +98,12 @@ public class PartUnitDescription : BaseUnitPart, IHashable, IOwlPackable<PartUni
 		CustomGender = gender;
 	}
 
-	public void SetName([CanBeNull] string name)
+	public void SetCustomNameLocalizedString([CanBeNull] string key)
+	{
+		CustomNameKey = (key.IsNullOrEmpty() ? null : key);
+	}
+
+	public void SetCustomName([CanBeNull] string name)
 	{
 		CustomName = (name.IsNullOrEmpty() ? null : name);
 	}
@@ -78,6 +119,7 @@ public class PartUnitDescription : BaseUnitPart, IHashable, IOwlPackable<PartUni
 			result.Append(ref val2);
 		}
 		result.Append(CustomName);
+		result.Append(CustomNameKey);
 		return result;
 	}
 
@@ -102,6 +144,8 @@ public class PartUnitDescription : BaseUnitPart, IHashable, IOwlPackable<PartUni
 		formatter.EnumNullableField(0, "CustomGender", ref value, state);
 		string value2 = CustomName;
 		formatter.StringField(1, "CustomName", ref value2, state);
+		string value3 = CustomNameKey;
+		formatter.StringField(2, "CustomNameKey", ref value3, state);
 		formatter.EndObject();
 	}
 
@@ -124,6 +168,9 @@ public class PartUnitDescription : BaseUnitPart, IHashable, IOwlPackable<PartUni
 				break;
 			case 1:
 				CustomName = formatter.ReadString(state);
+				break;
+			case 2:
+				CustomNameKey = formatter.ReadString(state);
 				break;
 			}
 		}

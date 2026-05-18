@@ -54,17 +54,9 @@ internal class DisplayOrderComparer : IComparer<Transform>
 
 	private static int CompareCanvas(Canvas canvas1, Canvas canvas2)
 	{
-		if (canvas1 == null && canvas2 == null)
+		if (canvas1 == null || canvas2 == null)
 		{
 			return 0;
-		}
-		if (canvas1 == null)
-		{
-			return 1;
-		}
-		if (canvas2 == null)
-		{
-			return -1;
 		}
 		return canvas1.sortingOrder.CompareTo(canvas2.sortingOrder);
 	}

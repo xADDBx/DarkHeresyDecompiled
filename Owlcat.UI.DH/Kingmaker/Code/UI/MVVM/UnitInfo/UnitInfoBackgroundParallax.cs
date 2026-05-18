@@ -27,6 +27,6 @@ public class UnitInfoBackgroundParallax : MonoBehaviour
 	{
 		Vector3 vector = new Vector3(offset * m_ParallaxStrength, 0f, 0f);
 		vector.x = Mathf.Clamp(vector.x, m_ParallaxClampMin, m_ParallaxClampMax);
-		m_RectTransform.anchoredPosition = Vector3.Lerp(m_RectTransform.anchoredPosition, m_InitialPosition + vector, Time.deltaTime * 5f);
+		m_RectTransform.anchoredPosition = Vector3.Lerp((Vector3)m_RectTransform.anchoredPosition, m_InitialPosition + vector, Time.deltaTime * 5f);
 	}
 }

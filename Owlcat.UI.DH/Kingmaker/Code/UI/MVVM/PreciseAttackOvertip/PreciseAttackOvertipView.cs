@@ -25,7 +25,7 @@ public class PreciseAttackOvertipView : View<PreciseAttackOvertipVM>
 			return;
 		}
 		m_HealthBar.SetHealthValue(data.HealthLeft, data.HealthMax, data.HealthDamage);
-		m_HealthBar.SetHasArmor(data.HasArmor);
+		m_HealthBar.SetElementsVisibility(data.HasArmor, !base.ViewModel.IsCountHpAsArmor);
 		if (data.HasArmor)
 		{
 			m_HealthBar.SetArmorValue(data.ArmorLeft, data.ArmorMax, data.ArmorDamage);

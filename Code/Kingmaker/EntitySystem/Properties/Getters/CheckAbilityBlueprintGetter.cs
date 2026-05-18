@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Owlcat.Runtime.Core.Utility;
@@ -27,7 +28,7 @@ public class CheckAbilityBlueprintGetter : BoolPropertyGetter, PropertyContextAc
 
 	protected override bool GetBaseValue()
 	{
-		AbilityData ability = this.GetAbility();
+		AbilityData ability = EvalContext.Current.Ability;
 		if (ability != null)
 		{
 			return Abilities.ContainsAbility(ability.Blueprint);

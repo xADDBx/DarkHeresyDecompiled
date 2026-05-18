@@ -36,6 +36,47 @@ public abstract class CombinedSelectorBaseVM<TFirstVM, TSecondVM> : BaseCharGenA
 
 	public ReadOnlyReactiveProperty<string> Title => m_Title;
 
+	public override void CaptureDefaults()
+	{
+		m_DefaultIndex = m_CurrentIndex.Value;
+		m_SlideSequentialSelectorVms.ForEach(delegate(TFirstVM vm)
+		{
+			vm.CaptureDefaults();
+		});
+		m_TextureSelectorVms.ForEach(delegate(TSecondVM vm)
+		{
+			vm.CaptureDefaults();
+		});
+	}
+
+	public override void Randomize()
+	{
+		m_SlideSequentialSelectorVms.ForEach(delegate(TFirstVM vm)
+		{
+			vm.Randomize();
+		});
+		m_TextureSelectorVms.ForEach(delegate(TSecondVM vm)
+		{
+			vm.Randomize();
+		});
+	}
+
+	public override void ResetToDefault()
+	{
+		if (m_DefaultIndex >= 0 && m_DefaultIndex < m_SlideSequentialSelectorVms.Count && m_DefaultIndex < m_TextureSelectorVms.Count)
+		{
+			SetIndex(m_DefaultIndex);
+		}
+		m_SlideSequentialSelectorVms.ForEach(delegate(TFirstVM vm)
+		{
+			vm.ResetToDefault();
+		});
+		m_TextureSelectorVms.ForEach(delegate(TSecondVM vm)
+		{
+			vm.ResetToDefault();
+		});
+	}
+
 	protected override void DisposeImplementation()
 	{
 		Clear();
@@ -80,7 +121,7 @@ public abstract class CombinedSelectorBaseVM<TFirstVM, TSecondVM> : BaseCharGenA
 		}
 		m_TotalItems.Value = m_SlideSequentialSelectorVms.Count;
 		SetIndex((CurrentIndex.CurrentValue < TotalItems.CurrentValue) ? CurrentIndex.CurrentValue : 0);
-		m_OnSetValues.Execute();
+		m_OnSetValues.Execute(Unit.Default);
 	}
 
 	public void SetIndex(int index)

@@ -1,11 +1,12 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Utility.DotNetExtensions;
 
 namespace Kingmaker.RuleSystem.Rules.Modifiers;
 
-public abstract class AbstractModifiersManager : IReadonlyModifiers
+public abstract class AbstractModifiersManager : IReadonlyModifiers, IEnumerable<Modifier>, IEnumerable
 {
 	protected delegate void Visitor(Modifier modifier, Status status);
 
@@ -211,6 +212,11 @@ public abstract class AbstractModifiersManager : IReadonlyModifiers
 		Visit(out valAdd, out pctAdd, out pctMul, out valAddExtra, out pctMulExtra, null, filter);
 	}
 
+	public void Clear()
+	{
+		_list?.Clear();
+	}
+
 	protected void Sort()
 	{
 		_list?.Sort(Modifier.ValueComparer);
@@ -237,5 +243,20 @@ public abstract class AbstractModifiersManager : IReadonlyModifiers
 
 	protected virtual void OnRemoved(Modifier modifier)
 	{
+	}
+
+	public IEnumerator<Modifier> GetEnumerator()
+	{
+		List<Modifier>.Enumerator? enumerator = _list?.GetEnumerator();
+		if (!enumerator.HasValue)
+		{
+			return Enumerable.Empty<Modifier>().GetEnumerator();
+		}
+		return enumerator.GetValueOrDefault();
+	}
+
+	IEnumerator IEnumerable.GetEnumerator()
+	{
+		return GetEnumerator();
 	}
 }

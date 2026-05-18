@@ -35,12 +35,4 @@ public class BlueprintItemArsenal : BlueprintStarshipItem
 	public BlueprintStarshipAmmo VariantAmmo => m_VariantAmmo?.Get();
 
 	public override ItemsItemType ItemType => ItemsItemType.StarshipArsenal;
-
-	public override string InventoryEquipSound
-	{
-		get
-		{
-			throw new NotImplementedException();
-		}
-	}
 }

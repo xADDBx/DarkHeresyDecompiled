@@ -6,7 +6,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -36,8 +35,6 @@ public class GamepadDisconnectedInGamepadModeWindowView : View<GamepadConnectDis
 	[SerializeField]
 	private TextMeshProUGUI m_HintLabel;
 
-	private InputLayer m_InputLayer;
-
 	private readonly ReactiveProperty<bool> m_IsGamepadConnected = new ReactiveProperty<bool>(value: true);
 
 	private bool m_IsOpened;
@@ -61,13 +58,7 @@ public class GamepadDisconnectedInGamepadModeWindowView : View<GamepadConnectDis
 		{
 			m_BodyLabel.text = UIStrings.Instance.ControllerModeTexts.GamepadDisconnectedHeaderText;
 			m_HintLabel.text = UIStrings.Instance.ControllerModeTexts.GamepadDisconnectedText;
-			base.ViewModel.GamepadConnected.Subscribe(GamepadConnected).AddTo(this);
-			base.ViewModel.GamepadDisconnected.Subscribe(GamepadDisconnected).AddTo(this);
 			m_KeyboardInput = Observable.EveryUpdate(UnityFrameProvider.PreLateUpdate).Subscribe(OnLateUpdate).AddTo(this);
-			m_InputLayer = new InputLayer
-			{
-				ContextName = "Gamepad Disconnected Layer"
-			};
 			m_ConfirmButton.OnLeftClickAsObservable().Subscribe(SwitchControlMode).AddTo(this);
 			m_DeclineButton.OnLeftClickAsObservable().Subscribe(GamepadConnected).AddTo(this);
 			m_IsGamepadConnected.Subscribe(delegate(bool value)
@@ -120,20 +111,9 @@ public class GamepadDisconnectedInGamepadModeWindowView : View<GamepadConnectDis
 		base.gameObject.SetActive(value: true);
 		m_WindowAnimator.AppearAnimation();
 		m_IsOpened = true;
-		SetupHint();
 		HandleCurrentState(value: true);
 		m_CursorVisible = Cursor.visible;
 		Cursor.visible = true;
-	}
-
-	private void SetupHint()
-	{
-		m_IsGamepadConnected.Value = ReInput.controllers.joystickCount > 0;
-		m_EscSubscription.Add(m_InputLayer.AddButton(delegate
-		{
-			GamepadConnected();
-		}, 9, m_IsGamepadConnected, InputActionEventType.ButtonJustReleased));
-		GamePad.Instance.PushLayer(m_InputLayer);
 	}
 
 	private void OnLateUpdate()
@@ -162,7 +142,6 @@ public class GamepadDisconnectedInGamepadModeWindowView : View<GamepadConnectDis
 			m_storedGamepadModeEventSystem = null;
 		});
 		m_IsOpened = false;
-		GamePad.Instance.PopLayer(m_InputLayer);
 		HandleCurrentState(value: false);
 		m_EscSubscription.Clear();
 		Cursor.visible = m_CursorVisible;

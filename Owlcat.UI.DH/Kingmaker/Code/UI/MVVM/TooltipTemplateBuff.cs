@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
@@ -20,6 +19,7 @@ using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Components;
+using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.UnitLogic.Parts;
 using Owlcat.UI;
@@ -29,17 +29,17 @@ using UnityEngine.TextCore.Text;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class TooltipTemplateBuff : TooltipBaseTemplate
+public sealed class TooltipTemplateBuff : TooltipBaseTemplate
 {
 	private EntityRef m_OverrideCaster;
-
-	private bool m_IsConcentration;
 
 	private string m_Name;
 
 	private string m_OverrideName;
 
 	private string m_Desc;
+
+	private string m_FlavorText;
 
 	private Sprite m_Icon;
 
@@ -59,19 +59,55 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 
 	public BlueprintBuff BlueprintBuff => m_Buff?.Blueprint ?? m_BlueprintBuff;
 
-	public TooltipTemplateBuff(Buff buff, IEntity overrideCaster = null, bool isConcentration = false, Sprite overrideIcon = null, string overrideName = null, string overrideSecondary = null)
+	private bool HasBuffWithContext
+	{
+		get
+		{
+			Buff buff = m_Buff;
+			if (buff != null)
+			{
+				return buff.MaybeContext != null;
+			}
+			return false;
+		}
+	}
+
+	private MechanicEntity Caster
+	{
+		get
+		{
+			object obj = m_OverrideCaster.Entity as MechanicEntity;
+			if (obj == null)
+			{
+				Buff buff = m_Buff;
+				if (buff == null)
+				{
+					return null;
+				}
+				MechanicsContext maybeContext = buff.MaybeContext;
+				if (maybeContext == null)
+				{
+					return null;
+				}
+				obj = maybeContext.MaybeCaster;
+			}
+			return (MechanicEntity)obj;
+		}
+	}
+
+	public TooltipTemplateBuff(Buff buff, IEntity overrideCaster = null, Sprite overrideIcon = null, string overrideName = null, string overrideSecondary = null)
 	{
 		m_Buff = buff;
-		m_IsConcentration = isConcentration;
 		m_OverrideCaster = new EntityRef(overrideCaster);
 		m_OverrideIcon = overrideIcon;
 		m_OverrideName = overrideName;
 		m_OverrideSecondary = overrideSecondary;
 	}
 
-	public TooltipTemplateBuff(BlueprintBuff blueprintBuff)
+	public TooltipTemplateBuff(BlueprintBuff blueprintBuff, MechanicEntity caster = null)
 	{
 		m_BlueprintBuff = blueprintBuff;
+		m_OverrideCaster = new EntityRef(caster);
 	}
 
 	public override void Prepare(TooltipTemplateType type)
@@ -89,11 +125,6 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
-		if (m_IsConcentration)
-		{
-			list.Add(new TooltipBrickTitle(UIStrings.Instance.HUDTexts.ConcentrationHint, TooltipTitleType.H3));
-			return list;
-		}
 		AddBuffHeader(list);
 		return list;
 	}
@@ -101,22 +132,17 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
-		if (m_IsConcentration)
-		{
-			AddConcentration(list);
-			list.Add(new TooltipBrickSeparator());
-			AddBuffHeader(list);
-		}
 		AddDOT(list);
 		AddSource(list);
 		AddDuration(list);
 		AddStacking(list);
+		AddFlavorText(list);
 		AddDescription(list);
 		AddNonStackBonus(list);
 		if (BlueprintBuff.IsCriticalEffect)
 		{
-			list.Add(new TooltipBrickSeparator());
-			TooltipBrickText item = new TooltipBrickText(UIStrings.Instance.Tooltips.CriticalEffectHint, TooltipTextType.Italic | TooltipTextType.BrightColor);
+			list.Add(new BrickSeparatorVM());
+			BrickTextVM item = new BrickTextVM(UIStrings.Instance.Tooltips.CriticalEffectHint, TooltipTextType.Italic | TooltipTextType.BrightColor);
 			list.Add(item);
 		}
 		return list;
@@ -126,11 +152,17 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 	{
 		try
 		{
-			if (blueprintBuff != null)
+			if (blueprintBuff == null)
 			{
+				return;
+			}
+			using (GameLogContext.Scope)
+			{
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
 				m_Name = blueprintBuff.Name;
 				m_Desc = blueprintBuff.Description;
 				m_Icon = blueprintBuff.Icon;
+				m_FlavorText = blueprintBuff.FlavorText;
 			}
 		}
 		catch (Exception arg)
@@ -149,10 +181,15 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 			}
 			using (GameLogContext.Scope)
 			{
-				GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)((IBuff)m_Buff).Caster;
+				if (HasBuffWithContext)
+				{
+					GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)((IBuff)m_Buff).Caster;
+					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
+				}
 				m_Name = buff.Name;
 				m_Desc = buff.Description;
 				m_Icon = buff.Icon;
+				m_FlavorText = buff.FlavorText;
 			}
 		}
 		catch (Exception arg)
@@ -163,59 +200,29 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 
 	private void AddBuffHeader(List<ITooltipBrick> bricks)
 	{
-		TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
-		{
-			Text = Name,
-			TextParams = new TextFieldParams
-			{
-				FontStyles = TMPro.FontStyles.Bold
-			}
-		};
-		TooltipBrickIconPattern.TextFieldValues secondaryValues = null;
+		TextEntity title = new TextEntity(Name, new TextFieldParams(TMPro.FontStyles.Bold));
+		TextValueElement secondaryValuesElement = null;
 		if (!string.IsNullOrEmpty(m_OverrideSecondary))
 		{
-			secondaryValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = m_OverrideSecondary,
-				TextParams = new TextFieldParams
-				{
-					FontStyles = TMPro.FontStyles.Italic
-				}
-			};
+			secondaryValuesElement = new TextValueElement(new TextEntity(m_OverrideSecondary, TextFieldParams.Italic));
 		}
 		else if (m_Buff != null && m_Buff.Blueprint.HasRanks && m_Buff.Rank > 0)
 		{
-			secondaryValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = string.Format(UIStrings.Instance.CommonTexts.BuffStacks, m_Buff.Rank, m_Buff.Blueprint.MaxRank),
-				TextParams = new TextFieldParams()
-			};
+			secondaryValuesElement = new TextValueElement(string.Format(UIStrings.Instance.CommonTexts.BuffStacks, m_Buff.Rank, m_Buff.Blueprint.MaxRank));
 		}
-		bricks.Add(new TooltipBrickIconPattern(Icon, null, titleValues, secondaryValues));
-	}
-
-	private void AddConcentration(List<ITooltipBrick> bricks)
-	{
-		bricks.Add(new TooltipBrickText(UIUtilityEncyclopedy.GetGlossaryEntry("Concentration").GetDescription()));
-		bricks.Add(new TooltipBrickSeparator(TooltipBrickElementType.Medium));
+		bricks.Add(new BrickIconPatternVM(Icon, null, title, secondaryValuesElement));
 	}
 
 	private void AddDuration(List<ITooltipBrick> bricks)
 	{
 		if (m_Buff != null)
 		{
-			string duration = BuffTooltipUtils.GetDuration(m_Buff);
-			if (!string.IsNullOrEmpty(duration))
+			string durationText = m_Buff.GetDurationText();
+			if (!string.IsNullOrEmpty(durationText))
 			{
-				TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
-				{
-					Text = UIStrings.Instance.TooltipsElementLabels.GetLabel(TooltipElement.Duration)
-				};
-				TooltipBrickIconPattern.TextFieldValues secondaryValues = new TooltipBrickIconPattern.TextFieldValues
-				{
-					Text = UIUtilityText.WrapWithWeight(duration, TextFontWeight.SemiBold)
-				};
-				bricks.Add(new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.Duration, null, titleValues, secondaryValues));
+				TextEntity title = new TextEntity(UIStrings.Instance.TooltipsElementLabels.GetLabel(TooltipElement.Duration));
+				TextValueElement secondaryValuesElement = new TextValueElement(UIUtilityText.WrapWithWeight(durationText, TextFontWeight.SemiBold));
+				bricks.Add(new BrickIconPatternVM(UIConfig.Instance.UIIcons.TooltipIcons.Duration, null, title, secondaryValuesElement));
 			}
 		}
 	}
@@ -224,20 +231,21 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 	{
 		if (m_Buff != null && m_Stacking != null)
 		{
-			bricks.Add(new TooltipBrickText(m_Stacking));
+			bricks.Add(new BrickTextVM(m_Stacking));
+		}
+	}
+
+	private void AddFlavorText(List<ITooltipBrick> bricks)
+	{
+		if (!string.IsNullOrEmpty(m_FlavorText))
+		{
+			bricks.Add(new BrickTextVM(m_FlavorText, TooltipTextType.Italic | TooltipTextType.BrightColor));
 		}
 	}
 
 	private void AddDescription(List<ITooltipBrick> bricks)
 	{
-		if (m_Buff == null)
-		{
-			bricks.Add(new TooltipBrickText(UIUtilityText.UpdateDescriptionWithUIProperties(m_Desc, null), TooltipTextType.Paragraph));
-		}
-		else
-		{
-			bricks.Add(new TooltipBrickText(UIUtilityText.UpdateDescriptionWithUIProperties(m_Desc, ((IBuff)m_Buff).Caster), TooltipTextType.Paragraph));
-		}
+		bricks.Add(new BrickTextVM(m_Desc, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, Caster));
 	}
 
 	private void AddNonStackBonus(List<ITooltipBrick> bricks)
@@ -245,7 +253,7 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 		UnitPartNonStackBonuses unitPartNonStackBonuses = m_Buff?.Owner?.GetOptional<UnitPartNonStackBonuses>();
 		if (unitPartNonStackBonuses != null && unitPartNonStackBonuses.ShouldShowWarning(m_Buff))
 		{
-			bricks.Add(new TooltipBrickNonStack(unitPartNonStackBonuses));
+			bricks.Add(new BrickNonStackVM(unitPartNonStackBonuses));
 		}
 	}
 
@@ -256,23 +264,23 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 			ITooltipBrick tooltipBrick = null;
 			if (m_Buff?.SourceAbilityBlueprint != null)
 			{
-				tooltipBrick = new TooltipBrickIconPattern(m_Buff.SourceAbilityBlueprint.Icon, null, UIStrings.Instance.Tooltips.Source, m_Buff.SourceAbilityBlueprint.Name);
+				tooltipBrick = new BrickIconPatternVM(m_Buff.SourceAbilityBlueprint.Icon, null, UIStrings.Instance.Tooltips.Source, m_Buff.SourceAbilityBlueprint.Name);
 			}
 			if (m_Buff?.SourceFact != null && m_Buff.SourceFact.Blueprint is BlueprintBuff { IsHiddenInUI: false })
 			{
-				tooltipBrick = new TooltipBrickIconPattern(m_Buff.SourceFact.Icon, null, UIStrings.Instance.Tooltips.Source, m_Buff.SourceFact.Name);
+				tooltipBrick = new BrickIconPatternVM(m_Buff.SourceFact.Icon, null, UIStrings.Instance.Tooltips.Source, m_Buff.SourceFact.Name);
 			}
 			if (m_Buff?.SourceItem != null)
 			{
-				tooltipBrick = new TooltipBrickIconPattern(m_Buff.SourceItem.ToItemEntity().Icon, null, UIStrings.Instance.Tooltips.Source, m_Buff.SourceItem.ToItemEntity().Name);
+				tooltipBrick = new BrickIconPatternVM(m_Buff.SourceItem.ToItemEntity().Icon, null, UIStrings.Instance.Tooltips.Source, m_Buff.SourceItem.ToItemEntity().Name);
 			}
 			if (tooltipBrick == null && m_OverrideCaster.Entity is BaseUnitEntity baseUnitEntity)
 			{
-				tooltipBrick = new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.Source, null, UIStrings.Instance.Tooltips.Source, baseUnitEntity.CharacterName);
+				tooltipBrick = new BrickIconPatternVM(UIConfig.Instance.UIIcons.TooltipIcons.Source, null, UIStrings.Instance.Tooltips.Source, baseUnitEntity.CharacterName);
 			}
 			if (tooltipBrick == null && m_Buff?.MaybeContext?.MaybeCaster is BaseUnitEntity baseUnitEntity2)
 			{
-				tooltipBrick = new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.Source, null, UIStrings.Instance.Tooltips.Source, baseUnitEntity2.CharacterName);
+				tooltipBrick = new BrickIconPatternVM(UIConfig.Instance.UIIcons.TooltipIcons.Source, null, UIStrings.Instance.Tooltips.Source, baseUnitEntity2.CharacterName);
 			}
 			if (tooltipBrick != null)
 			{
@@ -310,9 +318,9 @@ public class TooltipTemplateBuff : TooltipBaseTemplate
 		{
 			Reason = buff
 		}).ResultDamage;
-		bricks.Add(new TooltipBrickDamageRange(tooltipBrickStrings.Damage.Text, resultDamage.AverageValue, resultDamage.MinValue, resultDamage.MaxValue, 1, isResultValue: false, null, isProtectionIcon: false, isTargetHitIcon: true, isBorderChanceIcon: false, isGrayBackground: false, isBeigeBackground: false, isRedBackground: true));
+		bricks.Add(new BrickDamageRangeVM(tooltipBrickStrings.Damage.Text, resultDamage.AverageValue, resultDamage.MinValue, resultDamage.MaxValue, 1, isResultValue: false, null, CombatLogIcon.TargetHit, BrickElementPalette.Negative));
 		string value = resultDamage.MinValueBase + " — " + resultDamage.MaxValueBase;
-		TooltipBrickTextValue item = new TooltipBrickTextValue(tooltipBrickStrings.BaseModifier.Text, value, 2, isResultValue: true);
+		BrickTextValueVM item = new BrickTextValueVM(tooltipBrickStrings.BaseModifier.Text, value, 2, isResultValue: true);
 		bricks.Add(item);
 		foreach (ITooltipBrick minMaxDamageModifier in LogThreadBase.GetMinMaxDamageModifiers(resultDamage.MinValueModifiers, resultDamage.MaxValueModifiers, 2))
 		{

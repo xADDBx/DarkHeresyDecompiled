@@ -1,5 +1,4 @@
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Sound;
 using R3;
@@ -26,16 +25,16 @@ public class TooltipPCView : TooltipBaseView
 
 	protected override void Show()
 	{
+		SetWidth();
 		DelayedInvoker.InvokeInTime(delegate
 		{
 			SetHeight();
-			SetWidth();
 			if (!base.ViewModel.IsComparative)
 			{
 				UIUtilityRect.SetPopupWindowPosition((RectTransform)base.transform, base.ViewModel.OwnerTransform, Vector2.zero, base.ViewModel.PriorityPivots);
 				m_ShowTween = base.CanvasGroup.DOFade(1f, 0.2f).OnComplete(delegate
 				{
-					UISounds.Instance.Sounds.Tooltip.TooltipShow.Play();
+					ModalWindowsSounds.Instance.Tooltip.Show.Play();
 					m_IsShowed = true;
 				}).SetUpdate(isIndependentUpdate: true);
 				base.ViewModel.SetLastWorldPosition(UIUtilityRect.GetWorldCenter((RectTransform)base.transform));
@@ -47,7 +46,7 @@ public class TooltipPCView : TooltipBaseView
 	{
 		if (m_IsShowed)
 		{
-			UISounds.Instance.Sounds.Tooltip.TooltipHide.Play();
+			ModalWindowsSounds.Instance.Tooltip.Hide.Play();
 		}
 		m_IsShowed = false;
 		base.OnUnbind();

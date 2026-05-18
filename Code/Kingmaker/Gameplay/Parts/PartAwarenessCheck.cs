@@ -4,14 +4,14 @@ using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.StateHasher.Hashers;
-using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Kingmaker.View.MapObjects.Traps;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using StateHasher.Core.Hashers;
@@ -20,13 +20,13 @@ using UnityEngine;
 namespace Kingmaker.Gameplay.Parts;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PartAwarenessCheck : ViewBasedPart<AwarenessCheckSettings>, IHashable, IOwlPackable<PartAwarenessCheck>
+public sealed class PartAwarenessCheck : EntityPartWithConfig<AwarenessCheckSettings>, IHashable, IOwlPackable<PartAwarenessCheck>
 {
 	[JsonProperty]
 	[OwlPackInclude]
 	public Dictionary<UnitReference, int> LastAwarenessValue = new Dictionary<UnitReference, int>();
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartAwarenessCheck",
 		OldNames = null,
@@ -43,7 +43,9 @@ public sealed class PartAwarenessCheck : ViewBasedPart<AwarenessCheckSettings>, 
 
 	[JsonProperty]
 	[OwlPackInclude]
-	public bool IsPassed { get; set; }
+	private bool IsPassed { get; set; }
+
+	public bool GetIsPassed => IsPassed;
 
 	[JsonProperty]
 	[OwlPackInclude]
@@ -51,17 +53,13 @@ public sealed class PartAwarenessCheck : ViewBasedPart<AwarenessCheckSettings>, 
 
 	public bool IsCheckAllowedFor([NotNull] BaseUnitEntity unit)
 	{
-		if (Owner is TrapObjectData trapObjectData && !trapObjectData.Settings.ScriptZoneTrigger)
+		if ((Owner is TrapObjectData { ScriptZone: not null, TrappedObject: { } trappedObject } && (!trappedObject.IsInGame || !trappedObject.IsAwarenessCheckPassed)) ? true : false)
 		{
-			AbstractInteractionPart abstractInteractionPart = trapObjectData.View?.Or(null).TrappedObject;
-			if (abstractInteractionPart != null && (!abstractInteractionPart.Owner.IsInGame || !abstractInteractionPart.Owner.IsAwarenessCheckPassed))
-			{
-				return false;
-			}
+			return false;
 		}
 		if (LastAwarenessValue.TryGetValue(unit.FromBaseUnitEntity(), out var value))
 		{
-			return value < (int)unit.Skills.SkillAwareness;
+			return value < (int)unit.Actor.GetStat(StatType.SkillAwareness, null, default(StatContext), "IsCheckAllowedFor");
 		}
 		return true;
 	}
@@ -72,10 +70,15 @@ public sealed class PartAwarenessCheck : ViewBasedPart<AwarenessCheckSettings>, 
 		IsRevealedByFlashlight = false;
 		LastAwarenessValue.Clear();
 		Owner.IsRevealed = false;
-		EventBus.RaiseEvent((IMapObjectEntity)Owner, (Action<IResetAwarenessHandler>)delegate(IResetAwarenessHandler h)
+		base.EventBus.RaiseEvent((IMapObjectEntity)Owner, (Action<IResetAwarenessHandler>)delegate(IResetAwarenessHandler h)
 		{
 			h.HandleAwarenessCheckReset();
 		}, isCheckRuntime: true);
+	}
+
+	public void SetIsPassed(bool isPassed)
+	{
+		IsPassed = isPassed;
 	}
 
 	public override Hash128 GetHash128()
@@ -107,7 +110,7 @@ public sealed class PartAwarenessCheck : ViewBasedPart<AwarenessCheckSettings>, 
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		PartAwarenessCheck source = new PartAwarenessCheck();
 		result = Unsafe.As<PartAwarenessCheck, TPossiblyBase>(ref source);

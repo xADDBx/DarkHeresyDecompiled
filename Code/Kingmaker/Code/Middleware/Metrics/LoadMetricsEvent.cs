@@ -6,11 +6,6 @@ public class LoadMetricsEvent : MetricsEvent
 {
 	protected override string Name => "load";
 
-	public LoadMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
-	{
-	}
-
 	public LoadMetricsEvent Id(string id)
 	{
 		AddParam("id", id);
@@ -29,14 +24,8 @@ public class LoadMetricsEvent : MetricsEvent
 			SaveInfo.SaveType.Remote => "remote", 
 			SaveInfo.SaveType.ForImport => "for_import", 
 			SaveInfo.SaveType.IronMan => "iron_man", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
-		return this;
-	}
-
-	public LoadMetricsEvent GameId(string game_Id)
-	{
-		AddParam("game_Id", game_Id);
 		return this;
 	}
 }

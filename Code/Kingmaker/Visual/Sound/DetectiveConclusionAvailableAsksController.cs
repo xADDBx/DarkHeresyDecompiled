@@ -59,6 +59,6 @@ public class DetectiveConclusionAvailableAsksController : BaseAsksController, IC
 
 	private void ScheduleAsk()
 	{
-		PartDetectiveServoSkull.Find()?.Owner.View.Asks?.DetectiveNewConclusionAvailable.Schedule();
+		PartDetectiveServoSkull.Find()?.Owner.View.Asks?.ConclusionAvailable.Schedule();
 	}
 }

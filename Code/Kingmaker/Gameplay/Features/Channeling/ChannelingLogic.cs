@@ -115,7 +115,7 @@ public class ChannelingLogic : UnitBuffComponentDelegate, IInterruptTurnStartHan
 	}
 
 	[OwlPackable(OwlPackableMode.Generate)]
-	public class InitiativeHolder : MechanicEntity, ICombatParticipant, ITurnStartHandler<EntitySubscriber>, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEntitySubscriber, IEventTag<ITurnStartHandler, EntitySubscriber>, IHashable, IOwlPackable<InitiativeHolder>
+	public class InitiativeHolder : MechanicEntity, ICombatParticipant, IHashable, IOwlPackable<InitiativeHolder>
 	{
 		[JsonProperty]
 		[OwlPackInclude]
@@ -150,16 +150,13 @@ public class ChannelingLogic : UnitBuffComponentDelegate, IInterruptTurnStartHan
 		[NotNull]
 		public MechanicEntity Unit => ((MechanicEntity)m_Buff.Entity) ?? throw new NullReferenceException();
 
+		public MechanicEntity MaybeUnit => (MechanicEntity)m_Buff.Entity;
+
 		public override bool NeedsView => false;
 
 		public override bool IsInCombat => (m_Buff.Entity?.GetOptional<PartUnitCombatState>())?.IsInCombat ?? false;
 
 		public override bool IsVisibleForPlayer => m_Buff.Entity?.IsVisibleForPlayer ?? false;
-
-		private InitiativeHolder(OwlPackConstructorParameter _)
-			: base(_)
-		{
-		}
 
 		public InitiativeHolder(Buff buff)
 			: base("channeling_" + buff.UniqueId, isInGame: true, buff.Blueprint)
@@ -167,23 +164,19 @@ public class ChannelingLogic : UnitBuffComponentDelegate, IInterruptTurnStartHan
 			m_Buff = buff;
 		}
 
+		private InitiativeHolder(OwlPackConstructorParameter _)
+			: base(_)
+		{
+		}
+
 		protected override MechanicEntityFact CreateMainFact(BlueprintMechanicEntityFact blueprint)
 		{
 			return null;
 		}
 
-		protected override IEntityViewBase CreateViewForData()
+		protected override IEntityView CreateViewForData()
 		{
 			return null;
-		}
-
-		void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
-		{
-			if (isTurnBased && m_Buff.Entity is MechanicEntity unit)
-			{
-				Game.Instance.Controllers.TurnController.InterruptCurrentTurnImmediate(unit, this, new InterruptionData());
-				Game.Instance.Controllers.EntityDestroyer.Destroy(this);
-			}
 		}
 
 		public override Hash128 GetHash128()
@@ -364,7 +357,7 @@ public class ChannelingLogic : UnitBuffComponentDelegate, IInterruptTurnStartHan
 		}, isCheckRuntime: true);
 		base.Buff.MarkExpired();
 		AbilityData abilityData = new AbilityData(Ability, base.Owner);
-		TargetWrapper target = ((abilityData.Blueprint.Range == AbilityRange.Personal) ? ((TargetWrapper)base.Owner) : base.Context.ClickedTarget);
+		TargetWrapper target = ((abilityData.Blueprint.Range == AbilityRange.Personal) ? ((TargetWrapper)base.Owner) : base.Context.SourceClickedTarget);
 		if (abilityData.IsPrecise)
 		{
 			AbilityData sourceAbility = base.Context.SourceAbility;

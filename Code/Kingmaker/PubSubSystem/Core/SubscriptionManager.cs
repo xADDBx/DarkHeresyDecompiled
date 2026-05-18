@@ -5,11 +5,13 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.ElementsSystem.Interfaces;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Pathfinding.Pooling;
 
 namespace Kingmaker.PubSubSystem.Core;
 
+[SkipAnalysis]
 public class SubscriptionManager<TSubscriber> : IAstarPooledObject where TSubscriber : class
 {
 	public readonly struct DebugEntry
@@ -99,6 +101,10 @@ public class SubscriptionManager<TSubscriber> : IAstarPooledObject where TSubscr
 						}
 						try
 						{
+							if ((object)(obj as ISubscriptionProxy)?.GetSubscriber()?.GetType() == null)
+							{
+								obj.GetType();
+							}
 							ExecuteAction(action, obj);
 						}
 						catch (Exception ex)

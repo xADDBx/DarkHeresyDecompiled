@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
@@ -49,5 +51,11 @@ public class WarhammerAbilityHasPriorityTarget : BlueprintComponent, IAbilityCas
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		return ConfigRoot.Instance.LocalizedTexts.Reasons.HasNoPriorityTarget;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		CasterRestrictionsStrings casterRestrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		yield return IsCasterRestrictionPassed(caster) ? casterRestrictionsStrings.HasPriorityTarget : casterRestrictionsStrings.NoPriorityTarget;
 	}
 }

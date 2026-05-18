@@ -1,12 +1,10 @@
 using System;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
-using Kingmaker.Items;
 using Kingmaker.Networking;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -20,9 +18,9 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class LootContext : ViewModel, ILootInteractionHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IGameModeHandler
+public class LootContext : ViewModel, ILootInteractionHandler, ISubscriber<IBaseUnitEntity>, ISubscriber
 {
-	private readonly ReactiveProperty<LootVM> m_LootVM = new ReactiveProperty<LootVM>();
+	private readonly ReactiveProperty<LootVM> m_LootVM;
 
 	private bool m_IsInitializing;
 
@@ -33,78 +31,65 @@ public class LootContext : ViewModel, ILootInteractionHandler, ISubscriber<IBase
 	public LootContext(ReactiveProperty<LootVM> lootVM)
 	{
 		m_LootVM = lootVM;
+		GameUIState.Instance.GameMode.Subscribe(OnGameModeStart).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
 	public void HandleLootInteraction(EntityViewBase[] objects, LootContainerType containerType, Action closeCallback)
 	{
-		if (EventInvokerExtensions.BaseUnitEntity.IsMyNetRole())
+		if (CanHandleLoot())
 		{
-			if (IsShown)
-			{
-				DisposeLoot();
-			}
+			DisposeLoot();
 			LootWindowMode mode = containerType switch
 			{
 				LootContainerType.OneSlot => LootWindowMode.OneSlot, 
 				LootContainerType.PlayerChest => LootWindowMode.PlayerChest, 
 				LootContainerType.Unit => LootWindowMode.ShortUnit, 
-				_ => (objects.Length <= 1 && containerType != LootContainerType.Environment && containerType != 0) ? LootWindowMode.StandardChest : LootWindowMode.Short, 
+				_ => GetLootMode(containerType, objects), 
 			};
 			closeCallback = (Action)Delegate.Combine(closeCallback, new Action(DisposeLoot));
 			m_LootVM.Value = new LootVM(mode, objects, closeCallback);
 		}
 	}
 
-	public void HandleSpaceLootInteraction(ILootable[] objects, LootContainerType containerType, Action closeCallback, SkillCheckResult skillCheckResult = null)
+	public void HandleZoneLootInteraction(AreaTransitionPart areaTransition)
 	{
-		if (EventInvokerExtensions.BaseUnitEntity.IsMyNetRole())
+		if (CanHandleLoot() && (!IsShown || LootVM.CurrentValue.Mode != LootWindowMode.ZoneExit))
 		{
-			if (IsShown)
+			DisposeLoot();
+			BaseUnitEntity invokerEntity = EventInvokerExtensions.BaseUnitEntity;
+			m_LootVM.Value = new LootVM(LootWindowMode.ZoneExit, MassLootHelper.GetMassLootFromCurrentArea(), delegate
 			{
-				DisposeLoot();
-			}
-			if (containerType == LootContainerType.StarSystemObject)
-			{
-				LootWindowMode mode = LootWindowMode.ShortUnit;
-				closeCallback = (Action)Delegate.Combine(closeCallback, new Action(DisposeLoot));
-				m_LootVM.Value = new LootVM(mode, objects, containerType, closeCallback, skillCheckResult);
-			}
+				bool isPlayerCommand = !ContextData<GameCommandContext>.Current && !ContextData<UnitCommandContext>.Current;
+				AreaTransitionGroupCommand.ExecuteTransition(areaTransition, isPlayerCommand, invokerEntity);
+			}, DisposeLoot);
 		}
 	}
 
-	public void HandleZoneLootInteraction(AreaTransitionPart areaTransition)
+	private static LootWindowMode GetLootMode(LootContainerType containerType, EntityViewBase[] objects)
+	{
+		if (objects.Length <= 1 && containerType != LootContainerType.Environment && containerType != 0)
+		{
+			return LootWindowMode.StandardChest;
+		}
+		return LootWindowMode.Short;
+	}
+
+	private bool CanHandleLoot()
 	{
 		if (!EventInvokerExtensions.BaseUnitEntity.IsMyNetRole())
 		{
-			return;
+			return false;
 		}
-		if (IsShown)
-		{
-			if (LootVM.CurrentValue.Mode == LootWindowMode.ZoneExit)
-			{
-				return;
-			}
-			DisposeLoot();
-		}
-		BaseUnitEntity invokerEntity = EventInvokerExtensions.BaseUnitEntity;
-		m_LootVM.Value = new LootVM(LootWindowMode.ZoneExit, MassLootHelper.GetMassLootFromCurrentArea(), delegate
-		{
-			bool isPlayerCommand = !ContextData<GameCommandContext>.Current && !ContextData<UnitCommandContext>.Current;
-			AreaTransitionGroupCommand.ExecuteTransition(areaTransition, isPlayerCommand, invokerEntity);
-		}, DisposeLoot);
+		return true;
 	}
 
 	public void OnGameModeStart(GameModeType gameMode)
 	{
-		if (IsShown && (gameMode == GameModeType.Cutscene || gameMode == GameModeType.GameOver || gameMode == GameModeType.Dialog))
+		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.GameOver || gameMode == GameModeType.Dialog)
 		{
 			DisposeLoot();
 		}
-	}
-
-	public void OnGameModeStop(GameModeType gameMode)
-	{
 	}
 
 	private void DisposeLoot()

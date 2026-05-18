@@ -1,4 +1,5 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -8,7 +9,7 @@ public class CheckIsOwnerAbilityGetter : BoolPropertyGetter, PropertyContextAcce
 {
 	protected override bool GetBaseValue()
 	{
-		if (this.GetAbility().Blueprint.OriginalBlueprint == base.Owner)
+		if (EvalContext.Current.Ability.Blueprint.OriginalBlueprint == base.Owner)
 		{
 			return true;
 		}

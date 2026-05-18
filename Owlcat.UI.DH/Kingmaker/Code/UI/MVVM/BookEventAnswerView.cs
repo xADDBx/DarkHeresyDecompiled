@@ -1,8 +1,10 @@
 using System;
 using System.Text;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.UI.MVVM.Dialog;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Dialog;
@@ -38,12 +40,20 @@ public class BookEventAnswerView : View<AnswerVM>, IConsoleNavigationEntity, ICo
 	[SerializeField]
 	private DialogAnswerGraphicConfig m_DialogAnswerGraphicConfig;
 
+	[SerializeField]
+	private TextStyle m_AlignmentShiftStyle;
+
 	public OwlcatMultiButton Button => m_OwlcatButton;
 
 	public BlueprintScriptableObject Blueprint => base.ViewModel?.Blueprint;
 
 	protected override void OnBind()
 	{
+		TextMeshProUGUI answerText = m_AnswerText;
+		if ((object)answerText.styleSheet == null)
+		{
+			TMP_StyleSheet tMP_StyleSheet = (answerText.styleSheet = m_AlignmentShiftStyle.StyleSheet);
+		}
 		EventBus.Subscribe(this).AddTo(this);
 		base.gameObject.SetActive(value: true);
 		base.gameObject.name = $"AnswerView_{base.ViewModel.Index}";
@@ -67,7 +77,7 @@ public class BookEventAnswerView : View<AnswerVM>, IConsoleNavigationEntity, ICo
 
 	private void SetupAnswerText()
 	{
-		m_AnswerText.text = GetBindingText() + TryGetConditionText() + TryGetSkillCheckRequirementText() + TryGetSkillCheckText() + TryGetExchangeText() + TryGetConvictionRequirementsText() + TryGetConvictionShiftText() + (base.ViewModel.IsRequirementSatisfied ? base.ViewModel.AnswerRawText : m_SpoilerText);
+		m_AnswerText.text = GetBindingText() + TryGetConditionText() + TryGetSkillCheckRequirementText() + TryGetSkillCheckText() + TryGetExchangeText() + TryGetConvictionRequirementsText() + TryGetConvictionShiftText() + (base.ViewModel.ShowSpoiler ? m_SpoilerText : base.ViewModel.AnswerRawText);
 	}
 
 	private string GetBindingText()
@@ -85,7 +95,7 @@ public class BookEventAnswerView : View<AnswerVM>, IConsoleNavigationEntity, ICo
 		{
 			return string.Empty;
 		}
-		return base.ViewModel.ConvictionShiftText;
+		return UIUtilityAlignment.GetAlignmentText(base.ViewModel.Answer.AlignmentShifts).ApplyStyle(m_AlignmentShiftStyle);
 	}
 
 	private string TryGetConvictionRequirementsText()
@@ -94,7 +104,7 @@ public class BookEventAnswerView : View<AnswerVM>, IConsoleNavigationEntity, ICo
 		{
 			return string.Empty;
 		}
-		return string.Format(UIDialog.Instance.AlignmentRequirementLabel, base.ViewModel.ConvictionDirection, base.ViewModel.ConvictionRankText);
+		return string.Format(UIStrings.Instance.Dialog.AlignmentRequirementFormat, UIUtilityAlignment.GetAlignmentRequirementText(base.ViewModel.Answer));
 	}
 
 	private string TryGetConditionText()
@@ -180,7 +190,7 @@ public class BookEventAnswerView : View<AnswerVM>, IConsoleNavigationEntity, ICo
 
 	public void Confirm()
 	{
-		UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+		ButtonsSounds.Instance.Default.Click.Play();
 		ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
 		{
 			base.ViewModel?.OnChooseAnswer();

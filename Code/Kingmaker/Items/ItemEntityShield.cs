@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Area;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Shields;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -27,7 +27,7 @@ public class ItemEntityShield : ItemEntity<BlueprintItemShield>, IHashable, IOwl
 	{
 		Name = "ItemEntityShield",
 		OldNames = null,
-		Fields = new FieldInfo[30]
+		Fields = new FieldInfo[31]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -55,6 +55,7 @@ public class ItemEntityShield : ItemEntity<BlueprintItemShield>, IHashable, IOwl
 			new FieldInfo("IsIdentified", typeof(bool)),
 			new FieldInfo("SellTime", typeof(TimeSpan?)),
 			new FieldInfo("OriginArea", typeof(BlueprintArea)),
+			new FieldInfo("SourceContainer", typeof(BlueprintItem)),
 			new FieldInfo("VendorBlueprint", typeof(BlueprintMechanicEntityFact)),
 			new FieldInfo("IsNonRemovable", typeof(bool)),
 			new FieldInfo("ArmorComponent", typeof(ItemEntityArmor)),
@@ -81,12 +82,8 @@ public class ItemEntityShield : ItemEntity<BlueprintItemShield>, IHashable, IOwl
 		}
 	}
 
-	protected ItemEntityShield(JsonConstructorMark _)
+	protected ItemEntityShield(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntityShield()
 	{
 	}
 
@@ -205,7 +202,7 @@ public class ItemEntityShield : ItemEntity<BlueprintItemShield>, IHashable, IOwl
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ItemEntityShield source = new ItemEntityShield();
+		ItemEntityShield source = new ItemEntityShield(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ItemEntityShield, TPossiblyBase>(ref source);
 	}
 
@@ -254,14 +251,15 @@ public class ItemEntityShield : ItemEntity<BlueprintItemShield>, IHashable, IOwl
 		formatter.NullableField(24, "SellTime", ref value7, state);
 		BlueprintArea value8 = base.OriginArea;
 		formatter.Field(25, "OriginArea", ref value8, state);
+		formatter.Field(26, "SourceContainer", ref SourceContainer, state);
 		BlueprintMechanicEntityFact value9 = base.VendorBlueprint;
-		formatter.Field(26, "VendorBlueprint", ref value9, state);
+		formatter.Field(27, "VendorBlueprint", ref value9, state);
 		bool value10 = base.IsNonRemovable;
-		formatter.UnmanagedField(27, "IsNonRemovable", ref value10, state);
+		formatter.UnmanagedField(28, "IsNonRemovable", ref value10, state);
 		ItemEntityArmor value11 = ArmorComponent;
-		formatter.Field(28, "ArmorComponent", ref value11, state);
+		formatter.Field(29, "ArmorComponent", ref value11, state);
 		ItemEntityWeapon value12 = WeaponComponent;
-		formatter.Field(29, "WeaponComponent", ref value12, state);
+		formatter.Field(30, "WeaponComponent", ref value12, state);
 		formatter.EndObject();
 	}
 
@@ -358,15 +356,18 @@ public class ItemEntityShield : ItemEntity<BlueprintItemShield>, IHashable, IOwl
 				base.OriginArea = formatter.ReadPackable<BlueprintArea>(state);
 				break;
 			case 26:
-				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
+				SourceContainer = formatter.ReadPackable<BlueprintItem>(state);
 				break;
 			case 27:
-				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
+				base.VendorBlueprint = formatter.ReadPackable<BlueprintMechanicEntityFact>(state);
 				break;
 			case 28:
-				ArmorComponent = formatter.ReadPackable<ItemEntityArmor>(state);
+				base.IsNonRemovable = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 29:
+				ArmorComponent = formatter.ReadPackable<ItemEntityArmor>(state);
+				break;
+			case 30:
 				WeaponComponent = formatter.ReadPackable<ItemEntityWeapon>(state);
 				break;
 			}

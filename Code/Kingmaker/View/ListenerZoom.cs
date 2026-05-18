@@ -16,18 +16,18 @@ public class ListenerZoom : MonoBehaviour
 	[SerializeField]
 	protected float m_Max = 1f;
 
-	protected Vector3 m_Orgin;
+	protected Vector3 m_Origin;
 
 	protected void Start()
 	{
-		m_Orgin = base.transform.localPosition;
+		m_Origin = base.transform.localPosition;
 	}
 
 	protected void Update()
 	{
 		if ((bool)m_Input)
 		{
-			base.transform.localPosition = m_Orgin + m_DirectionZoom * Mathf.Lerp(m_Min, m_Max, m_Input.CurrentNormalizePosition);
+			base.transform.localPosition = m_Origin + m_DirectionZoom * Mathf.Lerp(m_Min, m_Max, m_Input.CurrentNormalizePosition);
 		}
 	}
 }

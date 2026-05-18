@@ -18,6 +18,8 @@ public class UIInspect
 
 	public LocalizedString MovePoints;
 
+	public LocalizedString Morale;
+
 	public LocalizedString CharacterStatsTitle;
 
 	public LocalizedString StatusEffectsTitle;
@@ -26,12 +28,6 @@ public class UIInspect
 
 	public LocalizedString HasStatusEffects;
 
-	[Obsolete("EffectsPositive")]
-	public LocalizedString EffectsAlly;
-
-	[Obsolete("EffectsNegative")]
-	public LocalizedString EffectsEnemy;
-
 	public LocalizedString EffectsPositive;
 
 	public LocalizedString EffectsNegative;
@@ -39,6 +35,8 @@ public class UIInspect
 	public LocalizedString EffectsDOT;
 
 	public LocalizedString EffectsCritical;
+
+	public LocalizedString EffectsStatus;
 
 	public LocalizedString WeaponsTitle;
 
@@ -54,13 +52,7 @@ public class UIInspect
 
 	public LocalizedString NoAbilities;
 
-	public LocalizedString FeaturesTitle;
-
-	public LocalizedString NoFeatures;
-
 	public LocalizedString UltimateAbilitiesTitle;
-
-	public LocalizedString ToggleSquad;
 
 	public LocalizedString UnconditionalModifiers;
 }

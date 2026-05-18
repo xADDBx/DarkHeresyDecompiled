@@ -4,7 +4,6 @@ using JetBrains.Annotations;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Items;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
@@ -56,18 +55,12 @@ public class PartySharedInventory : Entity, IHashable, IOwlPackable<PartySharedI
 		m_Collection = new ItemsCollection(this);
 	}
 
-	[JsonConstructor]
-	public PartySharedInventory(JsonConstructorMark _)
-		: base(_)
-	{
-	}
-
 	public PartySharedInventory(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}

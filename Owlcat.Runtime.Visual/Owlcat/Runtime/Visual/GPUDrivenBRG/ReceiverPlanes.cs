@@ -96,7 +96,7 @@ internal struct ReceiverPlanes
 						if (!math.any(math.isnan(x)))
 						{
 							ref NativeList<Plane> planes = ref Planes;
-							Plane value2 = new Plane(x.xyz, x.w);
+							Plane value2 = new Plane((Vector3)x.xyz, x.w);
 							planes.Add(in value2);
 						}
 					}
@@ -154,7 +154,7 @@ internal struct ReceiverPlanes
 					if (!math.any(math.isnan(x2)))
 					{
 						ref NativeList<Plane> planes2 = ref Planes;
-						Plane value2 = new Plane(x2.xyz, x2.w);
+						Plane value2 = new Plane((Vector3)x2.xyz, x2.w);
 						planes2.Add(in value2);
 					}
 				}

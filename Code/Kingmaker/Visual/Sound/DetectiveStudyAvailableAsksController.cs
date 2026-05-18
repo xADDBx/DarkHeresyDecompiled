@@ -39,7 +39,7 @@ public class DetectiveStudyAvailableAsksController : BaseAsksController, ITickUn
 			m_StudiesCache.Clear();
 			return;
 		}
-		baseUnitEntity.View.Asks?.DetectiveCanStudyClue.Schedule();
+		baseUnitEntity.View.Asks?.ClueCanBeProcessed.Schedule();
 		m_StudiesCache.Clear();
 	}
 }

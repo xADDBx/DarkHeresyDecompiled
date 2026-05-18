@@ -1,176 +1,124 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Code.Enums;
-using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.UnitLogic.Buffs.Components;
-using ObservableCollections;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.UnitInfo;
 
-public class UnitInfoBuffBlockView : View<UnitBuffBlockVM>
+public class UnitInfoBuffBlockView : View<UnitInfoBuffBlockVM>
 {
+	[Header("Groups")]
 	[SerializeField]
-	private BuffPCView m_BuffView;
-
-	[SerializeField]
-	private UnitInfoBuffBlockGroupView[] m_Groups;
+	private UnitInfoBuffGroupWidget m_CriticalGroup;
 
 	[SerializeField]
-	private BuffsGroupWidget m_CritGroup;
+	private UnitInfoBuffGroupWidget m_StatusGroup;
 
 	[SerializeField]
-	private DOTGroupWidget m_DOTGroup;
+	private UnitInfoBuffGroupWidget m_DOTGroup;
 
-	private readonly List<BuffPCView> m_BuffList = new List<BuffPCView>();
+	[SerializeField]
+	private UnitInfoBuffGroupWidget m_NegativeGroup;
 
-	public bool HasBuffs => m_BuffList.Any();
+	[SerializeField]
+	private UnitInfoBuffGroupWidget m_PositiveGroup;
 
-	private void Awake()
-	{
-		UnitInfoBuffBlockGroupView[] groups = m_Groups;
-		foreach (UnitInfoBuffBlockGroupView unitInfoBuffBlockGroupView in groups)
-		{
-			unitInfoBuffBlockGroupView.SetHeader(GetGroupHeader(unitInfoBuffBlockGroupView.Group));
-		}
-	}
+	[Header("Icons")]
+	[SerializeField]
+	private BuffsGroupWidget m_CriticalWidget;
 
-	private string GetGroupHeader(BuffGroupType group)
-	{
-		return group switch
-		{
-			BuffGroupType.Positive => UIStrings.Instance.Inspect.EffectsPositive.Text, 
-			BuffGroupType.Negative => UIStrings.Instance.Inspect.EffectsNegative.Text, 
-			BuffGroupType.DOT => UIStrings.Instance.Inspect.EffectsDOT.Text, 
-			BuffGroupType.CriticalEffect => UIStrings.Instance.Inspect.EffectsCritical.Text, 
-			_ => throw new ArgumentOutOfRangeException("group", group, null), 
-		};
-	}
+	[SerializeField]
+	private BuffsGroupWidget m_StatusWidget;
+
+	[SerializeField]
+	private DOTGroupWidget m_DOTWidget;
 
 	protected override void OnBind()
 	{
-		DrawBuffs();
-		base.ViewModel.Buffs.ObserveAdd().Subscribe(delegate
+		m_CriticalGroup.SetHeaderText(base.ViewModel.CriticalGroupHeader);
+		m_StatusGroup.SetHeaderText(base.ViewModel.StatusGroupHeader);
+		m_DOTGroup.SetHeaderText(base.ViewModel.DOTGroupHeader);
+		m_NegativeGroup.SetHeaderText(base.ViewModel.NegativeGroupHeader);
+		m_PositiveGroup.SetHeaderText(base.ViewModel.PositiveGroupHeader);
+		base.ViewModel.BuffBlockVM.CriticalEffects.Subscribe(HandleCriticalEffectsChanged).AddTo(this);
+		base.ViewModel.BuffBlockVM.StatusEffects.Subscribe(HandleStatusEffectsChanged).AddTo(this);
+		base.ViewModel.BuffBlockVM.DOTEffects.Subscribe(HandleDOTEffectsChanged).AddTo(this);
+		base.ViewModel.CriticalEffects.Buffs.Subscribe(delegate(IReadOnlyList<BuffVM> buffs)
 		{
-			DrawBuffs();
+			m_CriticalGroup.SetBuffs(buffs);
 		}).AddTo(this);
-		base.ViewModel.Buffs.ObserveRemove().Subscribe(delegate
+		base.ViewModel.StatusEffects.Buffs.Subscribe(delegate(IReadOnlyList<BuffVM> buffs)
 		{
-			DrawBuffs();
+			m_StatusGroup.SetBuffs(buffs);
 		}).AddTo(this);
-		ObservableSubscribeExtensions.Subscribe(base.ViewModel.Buffs.ObserveReset(), delegate
+		base.ViewModel.DOTEffects.Buffs.Subscribe(delegate(IReadOnlyList<BuffVM> buffs)
 		{
-			Clear();
+			m_DOTGroup.SetBuffs(buffs);
 		}).AddTo(this);
-		base.ViewModel.CriticalEffects.Subscribe(HandleCriticalEffectsChanged).AddTo(this);
-		base.ViewModel.DOTEffects.Subscribe(HandleDOTEffectsChanged).AddTo(this);
+		base.ViewModel.NegativeEffects.Buffs.Subscribe(delegate(IReadOnlyList<BuffVM> buffs)
+		{
+			m_NegativeGroup.SetBuffs(buffs);
+		}).AddTo(this);
+		base.ViewModel.PositiveEffects.Buffs.Subscribe(delegate(IReadOnlyList<BuffVM> buffs)
+		{
+			m_PositiveGroup.SetBuffs(buffs);
+		}).AddTo(this);
+	}
+
+	protected override void OnUnbind()
+	{
+		m_CriticalGroup.ClearBuffs();
+		m_StatusGroup.ClearBuffs();
+		m_DOTGroup.ClearBuffs();
+		m_NegativeGroup.ClearBuffs();
+		m_PositiveGroup.ClearBuffs();
 	}
 
 	private void HandleCriticalEffectsChanged(CriticalEffectsUIData data)
 	{
-		m_CritGroup.SetActive(data.Count > 0);
-		m_CritGroup.SetActiveLayer(GetLayerName(data.Count, data.HighestRank));
-		static string GetLayerName(int count, int rank)
+		bool flag = data.Count > 0;
+		m_CriticalWidget.SetActive(flag);
+		if (flag)
 		{
-			if (count == 1)
-			{
-				return $"Single_{rank}";
-			}
-			return $"Multiple_{rank}";
+			string activeLayer = ((data.Count == 1) ? $"Single_{data.HighestRank}" : $"Multiple_{data.HighestRank}");
+			m_CriticalWidget.SetActiveLayer(activeLayer);
+		}
+	}
+
+	private void HandleStatusEffectsChanged(StatusEffectsUIData data)
+	{
+		bool flag = data.Count > 0;
+		m_StatusWidget.SetActive(flag);
+		if (flag)
+		{
+			string activeLayer = data.HighestSeverity.ToString();
+			m_StatusWidget.SetCount(data.Count);
+			m_StatusWidget.SetActiveLayer(activeLayer);
 		}
 	}
 
 	private void HandleDOTEffectsChanged(DOTEffectsUIData data)
 	{
 		int count = data.DotEffects.Count;
-		m_DOTGroup.SetEffectsCount(count);
+		m_DOTWidget.SetEffectsCount(count);
 		if (count == 1)
 		{
 			DOT item = data.DotEffects.First().dotType;
-			m_DOTGroup.SetActiveLayerSingle(item.ToString());
+			m_DOTWidget.SetActiveLayerSingle(item.ToString());
 			return;
 		}
 		int num = 0;
 		foreach (var dotEffect in data.DotEffects)
 		{
 			DOT item2 = dotEffect.dotType;
-			if (num >= m_DOTGroup.MaxEffectsCount)
+			if (num >= m_DOTWidget.MaxEffectsCount)
 			{
 				break;
 			}
-			m_DOTGroup.SetActiveLayerMultiple(item2.ToString(), num);
+			m_DOTWidget.SetActiveLayerMultiple(item2.ToString(), num);
 			num++;
 		}
-	}
-
-	private void DrawBuffs()
-	{
-		base.ViewModel.SortBuffs();
-		DrawBuffsInternal(base.ViewModel.Buffs.ToList(), m_BuffList);
-		int num = m_Groups.Length;
-		for (int i = 0; i < num; i++)
-		{
-			UnitInfoBuffBlockGroupView groupView = m_Groups[i];
-			groupView.SetActive(m_BuffList.Any((BuffPCView b) => b.ViewModel.Group == groupView.Group));
-			groupView.SetSeparator(i + 1 < num);
-		}
-	}
-
-	private void DrawBuffsInternal(List<BuffVM> buffs, List<BuffPCView> views)
-	{
-		for (int i = 0; i < views.Count; i++)
-		{
-			BuffVM viewModel = views[i].ViewModel;
-			bool flag = false;
-			foreach (BuffVM buff in buffs)
-			{
-				if (buff == viewModel)
-				{
-					flag = true;
-					break;
-				}
-			}
-			if (!flag)
-			{
-				WidgetFactory.DisposeWidget(views[i]);
-				views.RemoveAt(i);
-				i--;
-			}
-		}
-		for (int j = 0; j < buffs.Count; j++)
-		{
-			BuffVM buffVM = buffs[j];
-			bool flag2 = false;
-			foreach (BuffPCView view in views)
-			{
-				if (view.ViewModel == buffVM)
-				{
-					flag2 = true;
-					break;
-				}
-			}
-			if (!flag2)
-			{
-				BuffPCView widget = WidgetFactory.GetWidget(m_BuffView);
-				widget.Bind(buffVM);
-				RectTransform buffParent = GetBuffParent(buffVM);
-				widget.transform.SetParent(buffParent, worldPositionStays: false);
-				views.Add(widget);
-			}
-		}
-	}
-
-	private RectTransform GetBuffParent(BuffVM vm)
-	{
-		return m_Groups.FirstOrDefault((UnitInfoBuffBlockGroupView g) => g.Group == vm.Group)?.Container;
-	}
-
-	private void Clear()
-	{
-		m_BuffList.ForEach(WidgetFactory.DisposeWidget);
-		m_BuffList.Clear();
 	}
 }

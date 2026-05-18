@@ -1,13 +1,28 @@
 using TMPro;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class TextFieldParams
+public readonly struct TextFieldParams
 {
-	public FontStyles? FontStyles;
+	public readonly FontStyles FontStyle;
 
-	public Color? FontColor;
+	public readonly TextAlignmentOptions? TextAlignment;
 
-	public float? FontSize;
+	public static TextFieldParams Default => new TextFieldParams(FontStyles.Normal, null);
+
+	public static TextFieldParams Bold => new TextFieldParams(FontStyles.Bold);
+
+	public static TextFieldParams Italic => new TextFieldParams(FontStyles.Italic);
+
+	public static TextFieldParams Strikethrough => new TextFieldParams(FontStyles.Strikethrough);
+
+	public static TextFieldParams Center => new TextFieldParams(FontStyles.Normal, TextAlignmentOptions.Center);
+
+	public static TextFieldParams Left => new TextFieldParams(FontStyles.Normal, TextAlignmentOptions.Left);
+
+	public TextFieldParams(FontStyles fontStyle = FontStyles.Normal, TextAlignmentOptions? textAlignment = null)
+	{
+		TextAlignment = textAlignment;
+		FontStyle = fontStyle;
+	}
 }

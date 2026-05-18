@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.EntitySystem.Properties;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Framework.Abilities.Utility;
 using Kingmaker.Framework.Utility;
+using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Owlcat.Fmw.Blueprints;
@@ -47,6 +49,12 @@ public class BlueprintAbilityModifier : BlueprintMechanicEntityFact
 	public OptionalValue<bool> CanTargetPoint = new OptionalValue<bool>();
 
 	public OptionalValue<BlueprintAbility.UsingInThreateningAreaType> UsingInThreateningArea = new OptionalValue<BlueprintAbility.UsingInThreateningAreaType>();
+
+	[Header("Scaling")]
+	[InfoBox("Scaling formula for this modifier. Trumps the ability's own scaling but is overridden by OverrideScaling.")]
+	public PropertyCalculator ScalingCalculator;
+
+	public LocalizedString ScalingDescription;
 
 	public override bool AllowContextActionsOnly => true;
 

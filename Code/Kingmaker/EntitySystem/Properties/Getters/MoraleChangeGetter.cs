@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Owlcat.Runtime.Core.Utility;
@@ -13,7 +14,7 @@ public class MoraleChangeGetter : IntPropertyGetter, PropertyContextAccessor.IRu
 {
 	protected override int GetBaseValue()
 	{
-		RulebookEvent rule = this.GetRule();
+		RulebookEvent rule = EvalContext.Current.Rule;
 		if (rule is RulePerformMoraleChange rulePerformMoraleChange)
 		{
 			return rulePerformMoraleChange.ResultDelta;

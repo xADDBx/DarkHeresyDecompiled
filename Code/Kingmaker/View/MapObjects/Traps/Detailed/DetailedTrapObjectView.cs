@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.View.MapObjects.SriptZones;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -19,6 +20,10 @@ public class DetailedTrapObjectView : TrapObjectView, IBlueprintedMapObjectView
 	private BlueprintTrapReference m_Blueprint;
 
 	public BlueprintTrap Blueprint => m_Blueprint?.Get();
+
+	public override BlueprintMechanicEntityFact MechanicFactBlueprint => Blueprint ?? base.MechanicFactBlueprint;
+
+	public override string NameInLog => Blueprint.Name;
 
 	public static DetailedTrapObjectView CreateView(BlueprintTrap blueprint, string uniqueId, string scriptZoneId)
 	{

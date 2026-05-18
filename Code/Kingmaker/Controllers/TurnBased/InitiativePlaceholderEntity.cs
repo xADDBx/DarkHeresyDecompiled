@@ -5,7 +5,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -22,7 +21,7 @@ using UnityEngine;
 namespace Kingmaker.Controllers.TurnBased;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class InitiativePlaceholderEntity : MechanicEntity, IPartyCombatHandler, ISubscriber, IUnitDeathHandler, ITurnEndHandler, ISubscriber<IMechanicEntity>, IInitiativeDelegate, ICombatParticipant, IHashable, IOwlPackable<InitiativePlaceholderEntity>
+public sealed class InitiativePlaceholderEntity : MechanicEntity, IPartyCombatHandler, ISubscriber, IUnitDeathHandler, ITurnEndHandler, ISubscriber<IMechanicEntity>, IInitiativeDelegate, ICombatParticipant, IHashable, IOwlPackable<InitiativePlaceholderEntity>
 {
 	private static readonly List<InitiativePlaceholderEntity> AllList = new List<InitiativePlaceholderEntity>();
 
@@ -83,21 +82,16 @@ public class InitiativePlaceholderEntity : MechanicEntity, IPartyCombatHandler, 
 		return All.FirstItem((InitiativePlaceholderEntity i) => i.Delegate == entity && i.Index == index) ?? Entity.Initialize(new InitiativePlaceholderEntity(entity, index));
 	}
 
-	[JsonConstructor]
-	private InitiativePlaceholderEntity(JsonConstructorMark _)
-		: base(_)
-	{
-	}
-
-	private InitiativePlaceholderEntity()
-	{
-	}
-
 	public InitiativePlaceholderEntity(MechanicEntity @delegate, int index)
 		: base(ConstructUniqueId(@delegate, index), @delegate.IsInGame, @delegate.Blueprint)
 	{
 		Delegate = @delegate;
 		Index = index;
+	}
+
+	private InitiativePlaceholderEntity(OwlPackConstructorParameter _)
+		: base(_)
+	{
 	}
 
 	protected override void OnInitialize()
@@ -122,7 +116,7 @@ public class InitiativePlaceholderEntity : MechanicEntity, IPartyCombatHandler, 
 		return null;
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -168,7 +162,7 @@ public class InitiativePlaceholderEntity : MechanicEntity, IPartyCombatHandler, 
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		InitiativePlaceholderEntity source = new InitiativePlaceholderEntity();
+		InitiativePlaceholderEntity source = new InitiativePlaceholderEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<InitiativePlaceholderEntity, TPossiblyBase>(ref source);
 	}
 

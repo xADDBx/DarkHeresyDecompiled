@@ -7,4 +7,10 @@ namespace Kingmaker.Blueprints.Root.Strings;
 public class UITransitionTexts
 {
 	public LocalizedString AvailableObjectives;
+
+	public LocalizedString TravelToText;
+
+	public LocalizedString ToGuncutterText;
+
+	public LocalizedString ConfirmTravelText;
 }

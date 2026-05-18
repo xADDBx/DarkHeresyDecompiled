@@ -1,6 +1,7 @@
 using System;
-using Kingmaker.Code.Gameplay.Components.Features;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Localization;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using UnityEngine;
 
 namespace Kingmaker.Blueprints.Root.Strings;
@@ -8,8 +9,6 @@ namespace Kingmaker.Blueprints.Root.Strings;
 [Serializable]
 public class UITooltips
 {
-	public LocalizedString BaseDamage;
-
 	public LocalizedString CannotbeEquip;
 
 	public LocalizedString CanBeEquip;
@@ -80,14 +79,15 @@ public class UITooltips
 
 	public LocalizedString AbilityAPCost;
 
+	public LocalizedString ToggleAbilityType;
+
 	public LocalizedString Before;
 
 	public LocalizedString After;
 
-	[Obsolete]
-	public LocalizedString TwoHanded;
-
 	public LocalizedString OneHanded;
+
+	public LocalizedString TwoHanded;
 
 	public LocalizedString NoItemsAvailableToSelect;
 
@@ -97,17 +97,9 @@ public class UITooltips
 
 	public LocalizedString Source;
 
-	public LocalizedString Sources;
+	public LocalizedString PermanentSources;
 
-	[Obsolete]
-	public LocalizedString RateOfFire;
-
-	public LocalizedString RateOfFireMelee;
-
-	[Obsolete]
-	public LocalizedString Recoil;
-
-	public LocalizedString MaximumRange;
+	public LocalizedString TemporarySources;
 
 	public LocalizedString CostAP;
 
@@ -125,7 +117,7 @@ public class UITooltips
 
 	public LocalizedString AttackAbilityGroupCooldown;
 
-	public LocalizedString MajorVeilDegradation;
+	public LocalizedString VeilDegradation;
 
 	public LocalizedString ShotsCount;
 
@@ -145,7 +137,9 @@ public class UITooltips
 
 	public LocalizedString HitChancesMaxDistance;
 
-	public LocalizedString ItemFooterLabel;
+	public LocalizedString AbilityDistance;
+
+	public LocalizedString AttachedModifiers;
 
 	public LocalizedString SpendAllMovementPointsShort;
 
@@ -170,31 +164,11 @@ public class UITooltips
 
 	public LocalizedString ScatterFar;
 
-	public LocalizedString BonusesSum;
-
-	public LocalizedString BaseChance;
-
 	public LocalizedString DifficultyReduceDescription;
-
-	public LocalizedString HPLeft;
-
-	public LocalizedString HPMax;
-
-	public LocalizedString HPTemporary;
-
-	public LocalizedString HPTotalLeft;
-
-	public LocalizedString HPTotalMax;
-
-	public LocalizedString ArmorLeft;
-
-	public LocalizedString ArmorMax;
 
 	public LocalizedString HasHPDamageBonus;
 
 	public LocalizedString HasArmorDamageBonus;
-
-	public LocalizedString PossibleToKill;
 
 	public LocalizedString TotalDamage;
 
@@ -202,11 +176,7 @@ public class UITooltips
 
 	public LocalizedString InitialDamage;
 
-	public LocalizedString BurstCount;
-
 	public LocalizedString PossibleHits;
-
-	public LocalizedString PossibleToPush;
 
 	public LocalizedString EveryRound;
 
@@ -228,20 +198,13 @@ public class UITooltips
 
 	public LocalizedString CriticalEffectsAvoidanceChance;
 
-	[Obsolete]
-	public LocalizedString DodgeAvoidance;
-
-	[Obsolete]
-	public LocalizedString ParryAvoidance;
-
-	[Obsolete]
-	public LocalizedString CoverAvoidance;
-
 	public LocalizedString Cover;
 
 	public LocalizedString Defence;
 
 	public LocalizedString DefencePenalty;
+
+	public LocalizedString MaxDefence;
 
 	public LocalizedString Overpenetration;
 
@@ -251,27 +214,10 @@ public class UITooltips
 
 	public LocalizedString YouWillLoseTitle;
 
-	public LocalizedString ReputationPointsAbbreviation;
-
 	public LocalizedString CommonFeatureDesc;
 
 	[Header("Hints")]
 	public LocalizedString ShowTooltipHint;
-
-	public LocalizedString HideTooltipHint;
-
-	public LocalizedString ShowComparativeHint;
-
-	public LocalizedString HideComparativeHint;
-
-	[Header("SoulMarks")]
-	public LocalizedString SoulMarkRankHeader;
-
-	public LocalizedString SoulMarkRankDescription;
-
-	public LocalizedString SoulMarkIsLocked;
-
-	public LocalizedString SoulMarkMayBeLocked;
 
 	[Header("Prerequisites")]
 	public LocalizedString Prerequisites;
@@ -287,8 +233,6 @@ public class UITooltips
 	public LocalizedString PrerequisiteLevel;
 
 	public LocalizedString PrerequisitesFooter;
-
-	public LocalizedString ToCurrentPrerequisiteFeature;
 
 	[Header("CharGen")]
 	public LocalizedString DoctrinesHeader;
@@ -306,6 +250,8 @@ public class UITooltips
 	[Header("Detective")]
 	public LocalizedString RelatedDetectiveItemsTitle;
 
+	public LocalizedString DetectiveCloseCaseDataTitle;
+
 	public LocalizedString RelatedDetectiveItemsDescription;
 
 	public LocalizedString CriticalEffectHint;
@@ -315,13 +261,38 @@ public class UITooltips
 
 	public LocalizedString WeaponTagDestructive;
 
-	public LocalizedString GetWeaponTagLabel(WeaponTagProperty tag)
+	public LocalizedString WeaponTagVital;
+
+	[Header("Formats")]
+	public LocalizedString ModifierPctAdd;
+
+	public LocalizedString ModifierPctMul;
+
+	[Header("Abilities")]
+	public LocalizedString AbilityScalingCharacteristics;
+
+	public LocalizedString AbilityRestrictionsTitle;
+
+	public LocalizedString LogicalOr;
+
+	public LocalizedString GetWeaponTagLabel(SpecialWeaponDamageType tag)
 	{
 		return tag switch
 		{
-			WeaponTagProperty.Brutal => WeaponTagBrutal, 
-			WeaponTagProperty.Destructive => WeaponTagDestructive, 
+			SpecialWeaponDamageType.Brutal => WeaponTagBrutal, 
+			SpecialWeaponDamageType.Destructive => WeaponTagDestructive, 
+			SpecialWeaponDamageType.Vital => WeaponTagVital, 
 			_ => null, 
+		};
+	}
+
+	public string GetModifierFormat(ModifierType type)
+	{
+		return type switch
+		{
+			ModifierType.PctAdd => ModifierPctAdd, 
+			ModifierType.PctMul => ModifierPctMul, 
+			_ => "{0}", 
 		};
 	}
 }

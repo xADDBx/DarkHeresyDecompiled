@@ -7,9 +7,9 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
@@ -64,7 +64,7 @@ public abstract class AbilityTrigger : UnitFactComponentDelegate
 		return CanRunActions(ability);
 	}
 
-	public bool RestrictionsIsPassed(MechanicsContext context, MechanicEntity owner, MechanicEntity target)
+	public bool RestrictionsIsPassed(IEvalContext context, MechanicEntity owner, MechanicEntity target)
 	{
 		return Restrictions.IsPassed(context, owner, target);
 	}
@@ -90,7 +90,7 @@ public abstract class AbilityTrigger : UnitFactComponentDelegate
 		}
 		if (assignContextFromAbility)
 		{
-			using (context.SetScope(assignAsTarget ? ((TargetWrapper)context.Caster) : target))
+			using (EvalContext.PushContext(context, assignAsTarget ? ((TargetWrapper)context.Caster) : target))
 			{
 				Action.Run();
 				return;

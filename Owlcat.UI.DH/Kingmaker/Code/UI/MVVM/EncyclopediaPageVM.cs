@@ -43,31 +43,24 @@ public class EncyclopediaPageVM : ViewModel
 			string text = (blueprintEncyclopediaPage.GlossaryEntry as BlueprintEncyclopediaGlossaryEntry)?.GetDescription();
 			GlossaryText = ((!string.IsNullOrWhiteSpace(text)) ? text : string.Empty);
 		}
-		foreach (IBlock block8 in page.GetBlocks())
+		foreach (IBlock block7 in page.GetBlocks())
 		{
 			EncyclopediaPageBlockVM encyclopediaPageBlockVM = null;
 			try
 			{
-				if (!(block8 is BlueprintEncyclopediaBlockText block))
+				if (!(block7 is BlueprintEncyclopediaBlockText block))
 				{
-					if (!(block8 is EncyclopediaEntryBlock block2))
+					if (!(block7 is EncyclopediaEntryBlock block2))
 					{
-						if (!(block8 is BlueprintEncyclopediaBlockImage block3))
+						if (!(block7 is BlueprintEncyclopediaBlockImage block3))
 						{
-							if (!(block8 is BlueprintEncyclopediaBlockBestiaryUnit block4))
+							if (!(block7 is BlueprintEncyclopediaBlockBestiaryUnit block4))
 							{
-								if (!(block8 is BlueprintEncyclopediaBlockPages block5))
+								if (!(block7 is BlueprintEncyclopediaBlockPages block5))
 								{
-									if (!(block8 is BlueprintEncyclopediaBookEventPage.BookEventLogBlock block6))
+									if (!(block7 is BlueprintEncyclopediaBookEventPage.BookEventLogBlock block6))
 									{
-										if (!(block8 is GlossaryEntryBlock glossaryEntryBlock))
-										{
-											if (block8 is BlueprintEncyclopediaAstropathBriefPage.AstropathBriefBlock block7)
-											{
-												encyclopediaPageBlockVM = new EncyclopediaPageBlockAstropathBriefVM(block7);
-											}
-										}
-										else
+										if (block7 is GlossaryEntryBlock glossaryEntryBlock)
 										{
 											bool marked = blueprintEncyclopediaGlossaryEntry == glossaryEntryBlock.Entry;
 											encyclopediaPageBlockVM = new EncyclopediaPageBlockGlossaryEntryVM(glossaryEntryBlock, marked);
@@ -105,7 +98,7 @@ public class EncyclopediaPageVM : ViewModel
 			}
 			catch (Exception ex)
 			{
-				PFLog.UI.Exception(ex, "Can't create block: {0}", block8);
+				PFLog.UI.Exception(ex, "Can't create block: {0}", block7);
 				continue;
 			}
 			if (encyclopediaPageBlockVM != null)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Code.GameCore.ElementsSystem;
+using Kingmaker.Localization;
 using Kingmaker.Utility.CodeTimer;
 using Owlcat.QA.Validation;
 using StateHasher.Core;
@@ -9,6 +10,7 @@ using UnityEngine;
 namespace Kingmaker.ElementsSystem;
 
 [Serializable]
+[ShrinkLocaleName(new string[] { "Action", "Actions", "ActionList", "ActionsList" })]
 public class ActionList : ElementsList, IHashable
 {
 	public enum ExceptionHandlingMode
@@ -20,6 +22,7 @@ public class ActionList : ElementsList, IHashable
 
 	[ValidateNotNull]
 	[SerializeReference]
+	[ShrinkLocaleName]
 	public GameAction[] Actions = new GameAction[0];
 
 	private readonly List<Exception> m_Exceptions = new List<Exception>(8);

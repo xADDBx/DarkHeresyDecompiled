@@ -1,11 +1,9 @@
 using System;
 using Kingmaker.Localization.Enums;
-using Kingmaker.UI.InputSystems;
 using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -18,7 +16,7 @@ public class OwlcatInputField : MonoBehaviour, IConfirmClickHandler, IConsoleEnt
 	private TMP_InputField m_InputField;
 
 	[SerializeField]
-	private ConsoleHint m_ConfirmHint;
+	private HintView m_ConfirmHint;
 
 	[SerializeField]
 	private OwlcatMultiButton m_Button;
@@ -36,8 +34,6 @@ public class OwlcatInputField : MonoBehaviour, IConfirmClickHandler, IConsoleEnt
 	private CompositeDisposable m_Disposables = new CompositeDisposable();
 
 	private IDisposable m_Disposable;
-
-	private InputLayer m_InputLayer;
 
 	public static readonly string InputLayerContextName = "InputField";
 
@@ -98,7 +94,7 @@ public class OwlcatInputField : MonoBehaviour, IConfirmClickHandler, IConsoleEnt
 			if (!m_IsEditing)
 			{
 				m_IsEnteredWithMouse = true;
-				PointerLeftClickCommand.Execute();
+				PointerLeftClickCommand.Execute(Unit.Default);
 				SelectInputFiled();
 			}
 		});
@@ -156,26 +152,6 @@ public class OwlcatInputField : MonoBehaviour, IConfirmClickHandler, IConsoleEnt
 			return;
 		}
 		m_IsEditing = true;
-		m_InputLayer = new InputLayer
-		{
-			ContextName = InputLayerContextName
-		};
-		m_Disposables.Add(EscHotkeyManager.Instance.Subscribe(Abort));
-		m_Disposables.Add(m_InputLayer.AddButton(delegate
-		{
-			Abort();
-		}, 9));
-		InputBindStruct inputBindStruct = m_InputLayer.AddButton(delegate
-		{
-			SelectInputFiled();
-		}, 10, InputActionEventType.ButtonJustReleased);
-		if (m_ConfirmHint != null && Game.Instance.ControllerMode == Game.ControllerModeType.Gamepad)
-		{
-			m_Disposables.Add(m_ConfirmHint.Bind(inputBindStruct));
-		}
-		m_Disposables.Add(inputBindStruct);
-		m_Disposables.Add(m_InputLayer.AddAxis(OnConsoleScroll, 3));
-		m_Disposables.Add(GamePad.Instance.PushLayer(m_InputLayer));
 		m_Button.SetActiveLayer("On");
 		m_InputField.OnSelect(null);
 		VirtualKeyboard.OpenKeyboard(OnKeyboardEditSucceeded, OnKeyboardEditDeclined, m_TittleText, Text, m_PlaceholderText, m_KeyboardLanguage, m_MaxTextLength);
@@ -186,7 +162,7 @@ public class OwlcatInputField : MonoBehaviour, IConfirmClickHandler, IConsoleEnt
 		m_InputField.OnScroll(eventData);
 	}
 
-	private void OnConsoleScroll(InputActionEventData inputActionEventData, float value)
+	private void OnConsoleScroll(float value)
 	{
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, value * m_InputField.scrollSensitivity);

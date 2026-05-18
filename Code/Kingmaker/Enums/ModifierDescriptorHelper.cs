@@ -29,7 +29,7 @@ public static class ModifierDescriptorHelper
 
 	public static bool IsPermanentModifier(this ModifierDescriptor descriptor)
 	{
-		if (descriptor != ModifierDescriptor.CareerAdvancement && descriptor != ModifierDescriptor.OriginAdvancement && descriptor != ModifierDescriptor.OtherAdvancement && descriptor != ModifierDescriptor.Difficulty && descriptor != ModifierDescriptor.BaseValue && descriptor != ModifierDescriptor.BaseStatBonus)
+		if (descriptor != ModifierDescriptor.CareerAdvancement && descriptor != ModifierDescriptor.OriginAdvancement && descriptor != ModifierDescriptor.OtherAdvancement && descriptor != ModifierDescriptor.Difficulty && descriptor != ModifierDescriptor.EnemyCombatVeterancy && descriptor != ModifierDescriptor.BaseValue && descriptor != ModifierDescriptor.BaseStatBonus)
 		{
 			return descriptor == ModifierDescriptor.Racial;
 		}

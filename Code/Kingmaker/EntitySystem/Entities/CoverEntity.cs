@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Kingmaker.Code.View.Mechanics.Entities.Covers;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
@@ -42,23 +41,17 @@ public class CoverEntity : DestructibleEntity, PartCover.IOwner, IEntityPartOwne
 		}
 	};
 
-	public new CoverEntityView View => (CoverEntityView)base.View;
-
 	public PartCover Cover => GetRequired<PartCover>();
 
 	public override bool CanBeAttackedDirectly => true;
 
-	protected CoverEntity(JsonConstructorMark _)
+	public CoverEntity(IDestructibleEntityConfig config)
+		: base(config)
+	{
+	}
+
+	protected CoverEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	public CoverEntity(string uniqueId, bool isInGame, BlueprintDestructibleObject blueprint)
-		: base(uniqueId, isInGame, blueprint)
-	{
-	}
-
-	protected CoverEntity()
 	{
 	}
 
@@ -78,7 +71,7 @@ public class CoverEntity : DestructibleEntity, PartCover.IOwner, IEntityPartOwne
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		CoverEntity source = new CoverEntity();
+		CoverEntity source = new CoverEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<CoverEntity, TPossiblyBase>(ref source);
 	}
 

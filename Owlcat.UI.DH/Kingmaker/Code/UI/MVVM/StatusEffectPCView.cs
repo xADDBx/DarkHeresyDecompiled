@@ -1,5 +1,5 @@
 namespace Kingmaker.Code.UI.MVVM;
 
-public class StatusEffectPCView : StatusEffectBaseView
+public sealed class StatusEffectPCView : StatusEffectBaseView
 {
 }

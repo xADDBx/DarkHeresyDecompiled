@@ -1,5 +1,4 @@
 using System;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Owlcat.Core.Overlays;
 using R3;
 
@@ -22,7 +21,7 @@ public class WwiseMonitorOverlay : Overlay
 	private void StartMonitor()
 	{
 		AkUnitySoundEngine.StartResourceMonitoring();
-		m_MonitorTick = ObservableSubscribeExtensions.Subscribe(MainThreadDispatcher.UpdateAsObservable(), delegate
+		m_MonitorTick = ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.Update), delegate
 		{
 			Tick();
 		});

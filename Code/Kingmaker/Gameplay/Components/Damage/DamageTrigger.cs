@@ -5,6 +5,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Properties;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.Framework.Mechanics;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
@@ -13,6 +14,7 @@ using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
+using UnityEngine;
 
 namespace Kingmaker.Gameplay.Components.Damage;
 
@@ -20,6 +22,9 @@ namespace Kingmaker.Gameplay.Components.Damage;
 [AllowedOn(typeof(BlueprintMechanicEntityFact))]
 [AllowMultipleComponents]
 [TypeId("c09907b2996642dfb931743d34a1dbff")]
+[SetsContext(ContextField.Target, Availability.Definitely)]
+[ContextRoleForField("ActionOnTarget", ContextField.Target, "damage victim", FallsBackTo = "rule.Target")]
+[ContextRoleForField("ActionOnCaster", ContextField.Target, "who dealt damage", FallsBackTo = "rule.Initiator")]
 public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 {
 	[Flags]
@@ -41,6 +46,7 @@ public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 	[ShowIf("ShowArmorCrack")]
 	public BoolPropertyChecker.Mode ArmorCrack;
 
+	[Tooltip("It works only if target was a Unit!")]
 	[HideIf("TriggerBefore")]
 	public BoolPropertyChecker.Mode TargetDies;
 

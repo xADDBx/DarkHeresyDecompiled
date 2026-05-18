@@ -1,40 +1,67 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.ResourceLinks;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class CharGenSetHeadGameCommand : GameCommand, IOwlPackable<CharGenSetHeadGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class CharGenSetHeadGameCommand : GameCommand, IMemoryPackable<CharGenSetHeadGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<CharGenSetHeadGameCommand>
 {
+	[Preserve]
+	private sealed class CharGenSetHeadGameCommandFormatter : MemoryPackFormatter<CharGenSetHeadGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CharGenSetHeadGameCommand value)
+		{
+			CharGenSetHeadGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref CharGenSetHeadGameCommand value)
+		{
+			CharGenSetHeadGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref CharGenSetHeadGameCommand value)
+		{
+			CharGenSetHeadGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref CharGenSetHeadGameCommand value)
+		{
+			CharGenSetHeadGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly EquipmentEntityLink m_Head;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly int m_Index;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "CharGenSetHeadGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[2]
-		{
-			new FieldInfo("m_Head", typeof(EquipmentEntityLink)),
-			new FieldInfo("m_Index", typeof(int))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	public CharGenSetHeadGameCommand([NotNull] EquipmentEntityLink m_head, int m_index)
 	{
 		if (m_head == null)
@@ -55,6 +82,182 @@ public sealed class CharGenSetHeadGameCommand : GameCommand, IOwlPackable<CharGe
 		{
 			h.HandleSetHead(m_Head, m_Index);
 		});
+	}
+
+	static CharGenSetHeadGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "CharGenSetHeadGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[2]
+			{
+				new FieldInfo("m_Head", typeof(EquipmentEntityLink)),
+				new FieldInfo("m_Index", typeof(int))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<CharGenSetHeadGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new CharGenSetHeadGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<CharGenSetHeadGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<CharGenSetHeadGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CharGenSetHeadGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(2);
+		writer.WritePackable(in value.m_Head);
+		writer.WriteUnmanaged(in value.m_Index);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref CharGenSetHeadGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		EquipmentEntityLink value2;
+		int value3;
+		if (memberCount == 2)
+		{
+			if (value == null)
+			{
+				value2 = reader.ReadPackable<EquipmentEntityLink>();
+				reader.ReadUnmanaged<int>(out value3);
+			}
+			else
+			{
+				value2 = value.m_Head;
+				value3 = value.m_Index;
+				reader.ReadPackable(ref value2);
+				reader.ReadUnmanaged<int>(out value3);
+			}
+		}
+		else
+		{
+			if (memberCount > 2)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(CharGenSetHeadGameCommand), 2, memberCount);
+				return;
+			}
+			if (value == null)
+			{
+				value2 = null;
+				value3 = 0;
+			}
+			else
+			{
+				value2 = value.m_Head;
+				value3 = value.m_Index;
+			}
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				if (memberCount != 1)
+				{
+					reader.ReadUnmanaged<int>(out value3);
+					_ = 2;
+				}
+			}
+			_ = value;
+		}
+		value = new CharGenSetHeadGameCommand(value2, value3);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref CharGenSetHeadGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Head");
+		writer.WritePackable(value.m_Head);
+		writer.WriteProperty("m_Index");
+		writer.WriteUnmanaged(value.m_Index);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref CharGenSetHeadGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		EquipmentEntityLink val;
+		int v;
+		if (value == null)
+		{
+			val = null;
+			v = 0;
+		}
+		else
+		{
+			val = value.m_Head;
+			v = value.m_Index;
+		}
+		bool[] array = new bool[2];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (!(text == "m_Head"))
+				{
+					if (text == "m_Index")
+					{
+						reader.ReadUnmanaged<int>(out v);
+						array[1] = true;
+					}
+				}
+				else
+				{
+					val = reader.ReadPackable<EquipmentEntityLink>();
+					array[0] = true;
+				}
+			}
+			else if (!(text == "m_Head"))
+			{
+				if (text == "m_Index")
+				{
+					reader.ReadUnmanaged<int>(out v);
+				}
+			}
+			else
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		_ = value;
+		value = new CharGenSetHeadGameCommand(val, v);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

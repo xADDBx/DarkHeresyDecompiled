@@ -7,7 +7,6 @@ using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Selection;
 using Kingmaker.Utility.DotNetExtensions;
@@ -64,11 +63,11 @@ public class PartyVM : ViewModel, IBarkHandler, ISubscriber<IEntity>, ISubscribe
 
 	public ReadOnlyReactiveProperty<bool> AllSelected => m_AllSelected;
 
-	public PartyVM()
+	public PartyVM(ReadOnlyReactiveProperty<bool> suppressUnitSelection = null)
 	{
 		for (int i = 0; i < 6; i++)
 		{
-			CharactersVM.Add(new PartyCharacterVM(NextPrev, i));
+			CharactersVM.Add(new PartyCharacterVM(NextPrev, i, suppressUnitSelection));
 		}
 		ObservableSubscribeExtensions.Subscribe(Game.Instance.Controllers.SelectionCharacter.ActualGroupUpdated, delegate
 		{
@@ -79,7 +78,6 @@ public class PartyVM : ViewModel, IBarkHandler, ISubscriber<IEntity>, ISubscribe
 				m_ActualGroupCopy = new List<BaseUnitEntity>(ActualGroup);
 			}
 		}).AddTo(this);
-		EventBus.Subscribe(this).AddTo(this);
 		Disposable.Create(DisposeImplementation).AddTo(this);
 	}
 

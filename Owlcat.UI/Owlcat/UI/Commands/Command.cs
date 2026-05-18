@@ -24,6 +24,8 @@ public class Command : INotifyPropertyChanged
 
 	private bool m_Active = true;
 
+	private float m_Progress;
+
 	private readonly CommandDelegate m_Delegate;
 
 	public string Binding { get; }
@@ -124,6 +126,18 @@ public class Command : INotifyPropertyChanged
 		}
 	}
 
+	public float Progress
+	{
+		get
+		{
+			return m_Progress;
+		}
+		internal set
+		{
+			SetProperty(ref m_Progress, value, "Progress");
+		}
+	}
+
 	public event PropertyChangedEventHandler PropertyChanged;
 
 	public event Action Triggering;
@@ -168,6 +182,11 @@ public class Command : INotifyPropertyChanged
 			return false;
 		}
 		if (!e.IsTrigger(Binding))
+		{
+			return false;
+		}
+		Progress = e.Progress;
+		if (e.Progress != 1f)
 		{
 			return false;
 		}

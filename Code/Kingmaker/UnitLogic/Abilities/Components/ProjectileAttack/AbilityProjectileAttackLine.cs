@@ -51,8 +51,6 @@ public class AbilityProjectileAttackLine
 
 	public readonly AbilityProjectileAttack ProjectileAttack;
 
-	public readonly int Index;
-
 	public readonly GridNodeBase FromNode;
 
 	public readonly GridNodeBase ToNode;
@@ -60,6 +58,8 @@ public class AbilityProjectileAttackLine
 	public readonly float StepHeight;
 
 	public HitData[] Hits;
+
+	public int Index { get; set; }
 
 	public Projectile Projectile { get; set; }
 
@@ -103,10 +103,13 @@ public class AbilityProjectileAttackLine
 	public (IEnumerable<HitData> Hits, bool HitCover) CalculateHits(bool autoHitFirst = false)
 	{
 		List<HitData> list = TempList.Get<HitData>();
+		IAbilityAoEPatternProvider patternSettings = Context.Ability.Blueprint.PatternSettings;
+		bool ignoreLos = patternSettings?.IsIgnoreLos ?? false;
+		bool ignoreLevelDifference = patternSettings?.IsIgnoreLevelDifference ?? false;
 		bool flag = false;
 		bool flag2 = false;
 		bool item = false;
-		foreach (var target in EnumerateTargets())
+		foreach (var target in AbilityProjectileAttackLineHelper.EnumerateTargets(Context, PriorityTarget, m_Nodes, FromNode, ToNode, ignoreLos, ignoreLevelDifference))
 		{
 			if ((Game.Instance.Controllers.TurnController.TurnBasedModeActive && !(target.Entity is BaseUnitEntity) && target.Entity != PriorityTarget && !target.Entity.CanBeAttackedDirectly) || list.Contains((HitData i) => i.Entity == target.Entity))
 			{
@@ -152,29 +155,5 @@ public class AbilityProjectileAttackLine
 			}
 		}
 		return (Hits: list, HitCover: item);
-	}
-
-	private IEnumerable<(MechanicEntity Entity, LosDescription Los, GridNodeBase Node)> EnumerateTargets()
-	{
-		List<MechanicEntity> targets = TempList.Get<MechanicEntity>();
-		if (PriorityTarget is ThinCoverEntity)
-		{
-			targets.Add(PriorityTarget);
-			yield return (Entity: PriorityTarget, Los: new LosDescription(LosCalculations.CoverType.Obstacle), Node: PriorityTarget.CurrentUnwalkableNode);
-		}
-		foreach (GridNodeBase node in m_Nodes)
-		{
-			if (AbilityProjectileAttackLineHelper.IsNodeAffected(null, FromNode, node, StepHeight))
-			{
-				MechanicEntity targetByNode = AbilityProjectileAttack.GetTargetByNode(node);
-				if (targetByNode != null && targetByNode != Context.Caster && Context.Ability.IsValidTargetForAttack(targetByNode) && !targets.Contains(targetByNode))
-				{
-					MechanicEntity caster = ProjectileAttack.Context.Caster;
-					LosDescription warhammerLos = LosCalculations.GetWarhammerLos(FromNode, caster.SizeRect, node, targetByNode.SizeRect);
-					targets.Add(targetByNode);
-					yield return (Entity: targetByNode, Los: warhammerLos, Node: node);
-				}
-			}
-		}
 	}
 }

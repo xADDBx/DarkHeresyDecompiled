@@ -31,11 +31,6 @@ public class SavingThrowBonusWithRestrictions : UnitFactComponentDelegate, IInit
 
 	public void OnEventAboutToTrigger(RulePerformSavingThrow evt)
 	{
-		if ((Type == SavingThrowType.Unknown || evt.Type == Type) && Restrictions.IsPassed(base.Context, null, null, evt))
-		{
-			int value = Bonus.Calculate(base.Context) * Multiplier;
-			evt.ValueModifiers.Add(value, base.Fact, ModifierDescriptor);
-		}
 	}
 
 	public void OnEventDidTrigger(RulePerformSavingThrow evt)

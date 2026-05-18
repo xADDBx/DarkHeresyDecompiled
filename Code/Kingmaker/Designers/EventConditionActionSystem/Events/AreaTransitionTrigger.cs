@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Owlcat.Runtime.Core.Utility;
@@ -19,7 +20,7 @@ public class AreaTransitionTrigger : EntityFactComponentDelegate, IAreaTransitio
 
 	public void HandleAreaTransition()
 	{
-		using (base.Fact.MaybeContext?.SetScope())
+		using (EvalContext.PushContextMaybe(base.Fact?.MaybeContext))
 		{
 			if (Conditions.Check())
 			{

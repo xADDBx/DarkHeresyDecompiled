@@ -1,8 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.View;
+using Kingmaker.Visual.Animation.Events;
 using Kingmaker.Visual.Animation.WeaponStyles;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -24,6 +27,19 @@ public class UnitAnimationActionProne : UnitAnimationAction
 		public bool StandUp;
 
 		public bool FastForwarding;
+
+		public bool AreWeaponsHidden;
+
+		public int ActEventsBeforeWeaponsHidden;
+
+		public bool ShouldUnequipWeapons()
+		{
+			if (StandUp && !AreWeaponsHidden)
+			{
+				return !Game.Instance.Player.IsInCombat;
+			}
+			return false;
+		}
 	}
 
 	private const float MinLayingTime = 0.5f;
@@ -63,7 +79,7 @@ public class UnitAnimationActionProne : UnitAnimationAction
 		AnimationClipWrapper lyingClip = GetLyingClip(weaponStyle);
 		ActionData actionData2 = (ActionData)(handle.ActionData = new ActionData());
 		handle.HasCrossfadePriority = true;
-		handle.AnimationLayer = AnimationLayerType.Prone;
+		handle.AnimationLayer = UnitAnimationLayerType.Prone;
 		AnimationClipWrapper fallingClip = GetFallingClip(weaponStyle);
 		AnimationClipWrapper animationClipWrapper = (handle.DeathFromProne ? lyingClip : fallingClip);
 		animationClipWrapper = (animationClipWrapper ? animationClipWrapper : fallingClip);
@@ -91,7 +107,6 @@ public class UnitAnimationActionProne : UnitAnimationAction
 		{
 			actionData.FallingFinished = true;
 			handle.Unit.Animator.enabled = false;
-			handle.Manager.SuspendEvents();
 			handle.Release();
 			handle.Manager.Disabled = true;
 		}
@@ -115,17 +130,17 @@ public class UnitAnimationActionProne : UnitAnimationAction
 	{
 		base.OnUpdate(handle, deltaTime);
 		AbstractUnitEntity data = handle.Unit.Data;
-		if (data == null || (data.LifeState.IsFinallyDead && handle.DeathFromProne && !data.GetOptional<UnitPartCompanion>()))
+		ActionData actionData = (ActionData)handle.ActionData;
+		if (data != null && actionData.ShouldUnequipWeapons() && actionData.ActEventsBeforeWeaponsHidden < handle.ActEventsCounter)
 		{
-			ActionData actionData = (ActionData)handle.ActionData;
-			if (IsActuallyProne(handle) && handle.GetTime() >= actionData.FallingTime + 0.5f)
-			{
-				handle.Unit.Animator.enabled = false;
-				handle.FinishInternal();
-				handle.Manager.StopEvents();
-				handle.Release();
-				handle.Manager.Disabled = true;
-			}
+			HideWeaponsOnStandUp(handle, actionData);
+		}
+		if ((data == null || (data.LifeState.IsFinallyDead && handle.DeathFromProne && !data.GetOptional<UnitPartCompanion>())) && IsActuallyProne(handle) && handle.GetTime() >= actionData.FallingTime + 0.5f)
+		{
+			handle.Unit.Animator.enabled = false;
+			handle.FinishInternal();
+			handle.Release();
+			handle.Manager.Disabled = true;
 		}
 		if (handle.ActiveAnimation == null)
 		{
@@ -141,20 +156,26 @@ public class UnitAnimationActionProne : UnitAnimationAction
 			return;
 		}
 		ActionData actionData = handle.ActionData as ActionData;
-		if (!actionData.StandUp)
+		if (actionData.StandUp)
 		{
-			actionData.StandUp = true;
-			AnimationClipWrapper standUpClip = GetStandUpClip(handle.WeaponStyle, handle.Unit.Data.IsInCombat);
-			if ((bool)standUpClip)
+			return;
+		}
+		actionData.StandUp = true;
+		AnimationClipWrapper standUpClip = GetStandUpClip(handle.WeaponStyle, Game.Instance.Player.IsInCombat);
+		if ((bool)standUpClip)
+		{
+			actionData.ActEventsBeforeWeaponsHidden = handle.ActEventsCounter;
+			if (standUpClip.Events.All((AnimationClipEvent e) => !(e is AnimationClipEventAct)))
 			{
-				handle.StartClip(standUpClip, ClipDurationType.Oneshot);
-				handle.ActiveAnimation.DoNotZeroOtherAnimations = true;
-				OnUpdate(handle, 0f);
+				HideWeaponsOnStandUp(handle, actionData);
 			}
-			else
-			{
-				handle.Release();
-			}
+			handle.StartClip(standUpClip, ClipDurationType.Oneshot);
+			handle.ActiveAnimation.DoNotZeroOtherAnimations = true;
+			OnUpdate(handle, 0f);
+		}
+		else
+		{
+			handle.Release();
 		}
 	}
 
@@ -181,14 +202,12 @@ public class UnitAnimationActionProne : UnitAnimationAction
 			{
 				handle.ActiveAnimation.TransitionOut = 0f;
 				handle.ActiveAnimation.StartTransitionOut();
-				handle.ActiveAnimation.StopEvents();
 				handle.ActiveAnimation.TransitionIn = 0f;
 			}
 		}
 		else
 		{
 			handle.ActiveAnimation.SetTime(10f);
-			handle.ActiveAnimation.SetWeight(1f);
 			handle.UpdateInternal(0.1f);
 		}
 		actionData.FastForwarding = false;
@@ -228,29 +247,16 @@ public class UnitAnimationActionProne : UnitAnimationAction
 	private AnimationClipWrapper GetStandUpClip(WeaponAnimationStyle weaponStyle, bool isInCombat)
 	{
 		WeaponStyleProneData weaponStyleProneData = WeaponStyleSettings[weaponStyle]?.Prone;
-		object obj;
+		AnimationClipWrapper animationClipWrapper = null;
 		if (!isInCombat)
 		{
-			obj = ((weaponStyleProneData != null) ? weaponStyleProneData.ProneOutNonCombat.Or(null) : null);
-			if (obj == null)
-			{
-				return NonCombatSettings?.ProneOutNonCombat;
-			}
+			animationClipWrapper = ((weaponStyleProneData != null) ? weaponStyleProneData.ProneOutNonCombat.Or(null) : null) ?? NonCombatSettings?.ProneOutNonCombat;
 		}
-		else
+		if ((object)animationClipWrapper == null)
 		{
-			obj = ((weaponStyleProneData != null) ? weaponStyleProneData.ProneOutCombat.Or(null) : null);
-			if (obj == null)
-			{
-				WeaponStyleProneData nonCombatSettings = NonCombatSettings;
-				if (nonCombatSettings == null)
-				{
-					return null;
-				}
-				obj = nonCombatSettings.ProneOutCombat;
-			}
+			animationClipWrapper = ((weaponStyleProneData != null) ? weaponStyleProneData.ProneOutCombat.Or(null) : null) ?? NonCombatSettings?.ProneOutCombat;
 		}
-		return (AnimationClipWrapper)obj;
+		return animationClipWrapper;
 	}
 
 	private AnimationClipWrapper GetLyingClip(WeaponAnimationStyle weaponStyle)
@@ -267,5 +273,14 @@ public class UnitAnimationActionProne : UnitAnimationAction
 			obj2 = nonCombatSettings.Prone;
 		}
 		return (AnimationClipWrapper)obj2;
+	}
+
+	private void HideWeaponsOnStandUp(UnitAnimationActionHandle handle, ActionData ad)
+	{
+		ad.AreWeaponsHidden = true;
+		if (handle.Unit is UnitEntityView unitEntityView)
+		{
+			unitEntityView.HandsEquipment.GetSelectedWeaponSet().HideWeaponModels();
+		}
 	}
 }

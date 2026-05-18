@@ -1,7 +1,6 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Items;
@@ -36,13 +35,8 @@ public class RulePerformIdentifyItem : RulebookEvent<UnitEntity>
 		{
 			return;
 		}
-		ModifiableValue statOptional = base.Initiator.GetStatOptional(StatType);
-		if (statOptional == null)
-		{
-			PFLog.Default.Error($"Can't identify item with stat '{StatType}'");
-			return;
-		}
-		int num = (CanUseUntrainedStat ? Math.Max(1, statOptional.BaseValue) : statOptional.BaseValue);
+		int statBase = base.Initiator.Actor.GetStatBase(StatType);
+		int num = (CanUseUntrainedStat ? Math.Max(1, statBase) : statBase);
 		if (num < 1)
 		{
 			return;
@@ -55,13 +49,13 @@ public class RulePerformIdentifyItem : RulebookEvent<UnitEntity>
 		identifyRollData.SkillValue = num;
 		identifyRollData.UsedSpell = SpellBonus > 0;
 		int identifyDC = Item.Blueprint.IdentifyDC;
-		RulePerformSkillCheck rulePerformSkillCheck = new RulePerformSkillCheck(base.Initiator, statOptional.Type, identifyDC)
+		RulePerformSkillCheck rulePerformSkillCheck = new RulePerformSkillCheck(base.Initiator, StatType, identifyDC)
 		{
 			Reason = new RuleReason(base.Initiator),
 			Silent = true,
 			Voice = RulePerformSkillCheck.VoicingType.None
 		};
-		rulePerformSkillCheck.DifficultyModifiers.Add(ModifierType.ValAdd, Bonus + SpellBonus, this, ModifierDescriptor.None);
+		rulePerformSkillCheck.ChanceRule.DifficultyModifiers.Add(ModifierType.ValAdd, Bonus + SpellBonus, this, ModifierDescriptor.None);
 		context.Trigger(rulePerformSkillCheck);
 		if (rulePerformSkillCheck.ResultIsSuccess)
 		{

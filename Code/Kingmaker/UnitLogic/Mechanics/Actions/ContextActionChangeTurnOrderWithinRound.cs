@@ -45,12 +45,13 @@ public class ContextActionChangeTurnOrderWithinRound : ContextAction
 			bulkSwapFluent.Swap(list[num].Initiative);
 		}
 		bulkSwapFluent.Finish();
-		AbilityExecutionContext abilityContext = base.AbilityContext;
-		if (abilityContext != null && abilityContext.Ability.IsPrecise)
+		AbilityData ability = base.Context.Ability;
+		AbilityData abilityData = ability;
+		if ((object)abilityData != null && abilityData.IsPrecise)
 		{
 			EventBus.RaiseEvent((IMechanicEntity)base.Target.Entity, (Action<IBodyPartHitAdditionalEffect>)delegate(IBodyPartHitAdditionalEffect h)
 			{
-				h.HandleBodyPartHitChangeTurn(base.AbilityContext?.Ability.PreciseBodyPart);
+				h.HandleBodyPartHitChangeTurn(ability.PreciseBodyPart);
 			}, isCheckRuntime: true);
 		}
 	}

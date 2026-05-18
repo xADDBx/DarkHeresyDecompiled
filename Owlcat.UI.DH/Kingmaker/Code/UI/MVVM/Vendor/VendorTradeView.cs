@@ -1,6 +1,10 @@
 using System;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.View;
+using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Gameplay.Features.Reputation;
+using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -25,7 +29,7 @@ public class VendorTradeView : View<VendorTradeViewVM>
 	protected TextMeshProUGUI m_VendorNoPortraitNoDataText;
 
 	[SerializeField]
-	protected TextMeshProUGUI FactionName;
+	protected TextMeshProUGUI m_FactionName;
 
 	[SerializeField]
 	protected Image m_FactionIcon;
@@ -123,6 +127,12 @@ public class VendorTradeView : View<VendorTradeViewVM>
 	private TextMeshProUGUI m_VendorRespectReputationLevel;
 
 	[SerializeField]
+	private OwlcatSelectable m_FearReputationBlock;
+
+	[SerializeField]
+	private OwlcatSelectable m_RespectReputationBlock;
+
+	[SerializeField]
 	private TextMeshProUGUI m_HideUnavailableFilterLabel;
 
 	[SerializeField]
@@ -140,7 +150,7 @@ public class VendorTradeView : View<VendorTradeViewVM>
 
 	[Header("No items to sell block")]
 	[SerializeField]
-	protected GameObject m_NoItemsToSell;
+	protected CanvasGroup m_NoItemsToSell;
 
 	[SerializeField]
 	protected TextMeshProUGUI m_NoItemsToSellText;
@@ -152,6 +162,8 @@ public class VendorTradeView : View<VendorTradeViewVM>
 	[Header("Split/transition window")]
 	[SerializeField]
 	protected VendorTransitionWindowView m_TransitionWindowPCView;
+
+	private IDisposable m_DealButtonHintSubscription;
 
 	public virtual void Initialize()
 	{
@@ -174,6 +186,11 @@ public class VendorTradeView : View<VendorTradeViewVM>
 		base.ViewModel.IsPossibleDeal.Subscribe(delegate(bool value)
 		{
 			m_DealButton.Interactable = value;
+			m_DealButtonHintSubscription?.Dispose();
+			if (!value)
+			{
+				m_DealButtonHintSubscription = m_DealButton.SetHint(base.ViewModel.DealInactiveWarning());
+			}
 		}).AddTo(this);
 		base.ViewModel.DealPrice.Subscribe(delegate(int value)
 		{
@@ -211,12 +228,24 @@ public class VendorTradeView : View<VendorTradeViewVM>
 		}).AddTo(this);
 		base.ViewModel.VendorFactionName.Subscribe(delegate(string faction)
 		{
-			FactionName.text = faction;
+			m_FactionName.text = faction;
 		}).AddTo(this);
 		base.ViewModel.VendorSprite.Subscribe(SetVendorPortrait).AddTo(this);
 		base.ViewModel.FactionSprite.Subscribe(SetVendorFactionImage).AddTo(this);
+		base.ViewModel.VendorFaction.Subscribe(delegate(FactionType? faction)
+		{
+			if (faction.HasValue)
+			{
+				TooltipTemplateGlossary template = new TooltipTemplateGlossary(UIUtilityEncyclopedy.GetFactionEncyclopediaKey(faction.Value));
+				m_FactionName.SetTooltip(template).AddTo(this);
+				m_FactionIcon.SetTooltip(template).AddTo(this);
+				m_FactionIconBottom.SetTooltip(template).AddTo(this);
+			}
+		}).AddTo(this);
 		m_VendorFearReputationLevel.text = base.ViewModel.VendorFearReputationLevel.ToString();
 		m_VendorRespectReputationLevel.text = base.ViewModel.VendorRespectReputationLevel.ToString();
+		m_FearReputationBlock.SetTooltip(new TooltipTemplateGlossary("Presence")).AddTo(this);
+		m_RespectReputationBlock.SetTooltip(new TooltipTemplateGlossary("Rapport")).AddTo(this);
 		m_VendorGroup.Bind(base.ViewModel.VendorSlotsGroup);
 		m_VendorItemsFilter.Bind(base.ViewModel.VendorItemsFilter);
 		m_ShowTrashToggle.IsOn.Subscribe(delegate(bool isOn)
@@ -280,6 +309,7 @@ public class VendorTradeView : View<VendorTradeViewVM>
 		{
 			m_VendorExchangeGroup.ForceScrollToTop();
 		}).AddTo(this);
+		UISounds.Instance.SetClickSound(m_DealButton, ButtonSoundsEnum.NoSound);
 	}
 
 	protected override void OnUnbind()
@@ -289,9 +319,9 @@ public class VendorTradeView : View<VendorTradeViewVM>
 
 	private void SetNoItemsToSell(bool value)
 	{
-		if (m_NoItemsToSell != null)
+		if (m_NoItemsToSell != null && m_NoItemsToSellText != null)
 		{
-			m_NoItemsToSell.SetActive(!value);
+			m_NoItemsToSell.alpha = ((!value) ? 1 : 0);
 			m_NoItemsToSellText.text = UIStrings.Instance.Tooltips.NoItemsAvailableToSelect;
 		}
 	}

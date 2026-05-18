@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Code.Framework.Utility.UnityExtensions;
 using Core.Async;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Base;
@@ -268,7 +269,9 @@ public class LocalizationManager : ILocalizationProvider
 		{
 			if (!File.Exists(packPath))
 			{
-				throw new FileNotFoundException($"Pack file {packPath} for locale {locale} not found", packPath);
+				string message = $"Pack file {packPath} for locale {locale} not found";
+				Utils.ShowWindowsMessage(message);
+				throw new FileNotFoundException(message, packPath);
 			}
 			JsonSerializer jsonSerializer = new JsonSerializer();
 			using StreamReader reader = new StreamReader(packPath);
@@ -298,7 +301,9 @@ public class LocalizationManager : ILocalizationProvider
 		{
 			if (!File.Exists(packPath))
 			{
-				throw new FileNotFoundException($"Pack file {packPath} for locale {locale} not found", packPath);
+				string message = $"Pack file {packPath} for locale {locale} not found";
+				Utils.ShowWindowsMessage(message);
+				throw new FileNotFoundException(message, packPath);
 			}
 			using (CodeTimer.New(Logger, "Loc pack loading: " + locale))
 			{

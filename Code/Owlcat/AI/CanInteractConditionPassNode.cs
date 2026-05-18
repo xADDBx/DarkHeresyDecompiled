@@ -1,5 +1,4 @@
 using Owlcat.BehaviourTrees;
-using Owlcat.Runtime.Core.Utility;
 
 namespace Owlcat.AI;
 
@@ -15,6 +14,6 @@ public class CanInteractConditionPassNode : ConditionPassNode
 
 	public override bool IsPassed()
 	{
-		return (m_Interactable.Value.Or(null)?.EnsurePart())?.CanInteract() ?? false;
+		return m_Interactable.Value?.CanInteract() ?? false;
 	}
 }

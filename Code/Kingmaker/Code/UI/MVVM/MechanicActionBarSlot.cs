@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.TurnBased;
@@ -16,14 +16,12 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Newtonsoft.Json;
 using Owlcat.UI;
 using OwlPack.Runtime;
-using StateHasher.Core;
-using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public abstract class MechanicActionBarSlot : IHashable, IOwlPackable, IOwlPackable<MechanicActionBarSlot>
+public abstract class MechanicActionBarSlot : IOwlPackable, IOwlPackable<MechanicActionBarSlot>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -130,7 +128,7 @@ public abstract class MechanicActionBarSlot : IHashable, IOwlPackable, IOwlPacka
 
 	public void PlaySound()
 	{
-		UISounds.Instance.Play(IsPossibleActive ? UISounds.Instance.Sounds.Combat.ActionBarSlotClick : UISounds.Instance.Sounds.Combat.ActionBarCanNotSlotClick);
+		UISounds.Instance.Play(IsPossibleActive ? CombatSounds.Instance.Combat.ActionBarSlotClick : CombatSounds.Instance.Combat.ActionBarCanNotSlotClick);
 	}
 
 	public virtual void TryShowWarning(Vector3 castPosition)
@@ -153,7 +151,7 @@ public abstract class MechanicActionBarSlot : IHashable, IOwlPackable, IOwlPacka
 	{
 		if (!CanUseIfTurnBased())
 		{
-			return UIStrings.Instance.TurnBasedTexts.NotEnoughActionsMessage;
+			return LocalizedTexts.Instance.Reasons.UnavailableGeneric;
 		}
 		return string.Empty;
 	}
@@ -245,15 +243,6 @@ public abstract class MechanicActionBarSlot : IHashable, IOwlPackable, IOwlPacka
 	public virtual TooltipBaseTemplate GetTooltipTemplate()
 	{
 		return null;
-	}
-
-	public virtual Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		EntityRef<BaseUnitEntity> obj = m_UnitRef;
-		Hash128 val = StructHasher<EntityRef<BaseUnitEntity>>.GetHash128(ref obj);
-		result.Append(ref val);
-		return result;
 	}
 
 	public abstract void Serialize<TFormatter>(TFormatter formatter, SerializerState state) where TFormatter : IOutputFormatter;

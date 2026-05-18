@@ -22,13 +22,11 @@ public class SetGraphNodeToUseAoeAbilityToNodeElement : BehaviourTreeNodeElement
 
 	public bool IncludeDeadUnitsInCalculations;
 
+	[OptionalParameter]
+	public PropertyCalculatorBlueprintVariableReference CalculatorBlueprint;
+
 	protected override SetGraphNodeToUseAoeAbilityToNode CreateTypedNode(Blackboard blackboard)
 	{
-		EntityVariable agentVariable = blackboard.GetAgentVariable();
-		GraphNodeVariable runtimeVariable = Variable.GetRuntimeVariable(blackboard);
-		GraphNodeVariable runtimeVariable2 = CasterNode.GetRuntimeVariable(blackboard);
-		GraphNodeListVariable runtimeVariable3 = NodesList.GetRuntimeVariable(blackboard);
-		AbilityVariable runtimeVariable4 = Ability.GetRuntimeVariable(blackboard);
-		return new SetGraphNodeToUseAoeAbilityToNode(agentVariable, runtimeVariable, runtimeVariable2, runtimeVariable3, runtimeVariable4, MinTotalValueToCastAbility, TargetValueCalculator, IncludeDeadUnitsInCalculations);
+		return new SetGraphNodeToUseAoeAbilityToNode(blackboard.GetAgentVariable(), Variable.GetRuntimeVariable(blackboard), CasterNode.GetRuntimeVariable(blackboard), NodesList.GetRuntimeVariable(blackboard), Ability.GetRuntimeVariable(blackboard), calculatorBlueprint: CalculatorBlueprint.GetOptionalRuntimeVariable<PropertyCalculatorBlueprintVariable>(blackboard), minTotalValueToCastAbility: MinTotalValueToCastAbility, targetValueCalculator: TargetValueCalculator, includeDeadUnitsInCalculations: IncludeDeadUnitsInCalculations);
 	}
 }

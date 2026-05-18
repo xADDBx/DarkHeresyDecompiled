@@ -6,7 +6,6 @@ using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.Morale;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Dialog;
 using Kingmaker.Controllers.TurnBased;
@@ -37,11 +36,13 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitCommandStartHandler, ISubscriber<IMechanicEntity>, IWarhammerAttackHandler, IUnitCommandActHandler, IUnitCommandEndHandler, IUnitActiveEquipmentSetHandler, ISubscriber<IBaseUnitEntity>, IUnitAbilityCooldownHandler, IAbilityExecutionProcessHandler, ILevelUpCompleteUIHandler, ILevelUpManagerUIHandler, IDialogInteractionHandler, IHoverActionBarSlotHandler, IAbilityTargetSelectionUIHandler, IAreaActivationHandler, IUnitDirectHoverUIHandler, IFullScreenUIHandler, IPreparationTurnBeginHandler, IPreparationTurnEndHandler, INetLobbyPlayersHandler, INetRoleSetHandler, IInterruptTurnStartHandler, IInterruptTurnEndHandler, ITurnStartHandler, IEntityGainFactHandler, IEntityLostFactHandler, IActionBarSlotsUpdatedHandler
 {
-	private readonly ReactiveProperty<bool> m_IsForceHidden;
+	private readonly ReactiveProperty<bool> m_IsForcedMinimized;
 
 	private readonly ReactiveProperty<bool> m_IsVisible;
 
 	private bool m_IsInFullScreenUI;
+
+	private bool m_IsForcedHidden;
 
 	private bool m_TargetSelectionStarted;
 
@@ -50,6 +51,8 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 	private bool m_SlotsUpdateQueuedOnTurnStart;
 
 	private IFullScreenUIHandler m_FullScreenUIHandlerImplementation;
+
+	private readonly Action m_DelayedUpdateFunc;
 
 	public readonly ActionBarPartConsumablesVM Consumables;
 
@@ -61,7 +64,7 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 
 	public readonly ActionBarMoraleVM Morale;
 
-	private readonly ReactiveProperty<CombatMechanicEntityVM> m_CurrentCombatUnit = new ReactiveProperty<CombatMechanicEntityVM>();
+	private readonly ReactiveProperty<CombatMechanicEntityVM> m_CurrentCombatUnit;
 
 	private readonly ReactiveProperty<float> m_CompassAngle = new ReactiveProperty<float>(0f);
 
@@ -77,7 +80,13 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 
 	private readonly ReactiveProperty<string> m_ControllablePlayerNickname = new ReactiveProperty<string>();
 
-	private Action m_DelayedUpdateFunc;
+	public readonly ReadOnlyReactiveProperty<bool> ForceHideCurrentUnit;
+
+	private BlueprintAreaPart.LocalMapRotationDegree LocalMapRotation => Game.Instance.CurrentlyLoadedAreaPart.LocalMapRotationDeg;
+
+	private BaseUnitEntity CurrentUnit => CurrentCombatUnit?.CurrentValue?.UnitAsBaseUnitEntity;
+
+	private bool IsInGame => IsInGameMode(Game.Instance.CurrentModeType);
 
 	public ReadOnlyReactiveProperty<CombatMechanicEntityVM> CurrentCombatUnit => m_CurrentCombatUnit;
 
@@ -95,13 +104,7 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 
 	public ReadOnlyReactiveProperty<string> ControllablePlayerNickname => m_ControllablePlayerNickname;
 
-	private BlueprintAreaPart.LocalMapRotationDegree LocalMapRotation => Game.Instance.CurrentlyLoadedAreaPart.LocalMapRotationDeg;
-
-	private BaseUnitEntity CurrentUnit => CurrentCombatUnit?.CurrentValue?.UnitAsBaseUnitEntity;
-
 	public HUDContext HUDContext => RootVM.Instance.HUDContext;
-
-	private bool IsInGame => IsInGameMode(Game.Instance.CurrentModeType);
 
 	public ReadOnlyReactiveProperty<bool> IsVisible => m_IsVisible;
 
@@ -119,17 +122,18 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 		}
 	}
 
-	public ReadOnlyReactiveProperty<bool> IsForceHidden => m_IsForceHidden;
+	public ReadOnlyReactiveProperty<bool> IsForcedMinimized => m_IsForcedMinimized;
 
-	public ActionBarVM(ReactiveProperty<CombatMechanicEntityVM> currentUnit)
+	public ActionBarVM(ReactiveProperty<CombatMechanicEntityVM> currentUnit, ReadOnlyReactiveProperty<bool> forceHideCurrentUnit)
 	{
-		m_IsForceHidden = new ReactiveProperty<bool>().AddTo(this);
+		m_IsForcedMinimized = new ReactiveProperty<bool>().AddTo(this);
 		m_IsVisible = new ReactiveProperty<bool>().AddTo(this);
 		Consumables = new ActionBarPartConsumablesVM().AddTo(this);
 		Weapons = new ActionBarPartWeaponsVM().AddTo(this);
 		Abilities = new ActionBarPartAbilitiesVM(isInCharScreen: false).AddTo(this);
 		VeilThickness = new VeilThicknessVM().AddTo(this);
 		Morale = new ActionBarMoraleVM().AddTo(this);
+		ForceHideCurrentUnit = forceHideCurrentUnit ?? new ReactiveProperty<bool>(value: false).AddTo(this);
 		m_CurrentCombatUnit = currentUnit;
 		CurrentCombatUnit.Subscribe(delegate
 		{
@@ -144,6 +148,12 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 		}
 		EventBus.Subscribe(this).AddTo(this);
 		m_DelayedUpdateFunc = DelayedUpdate;
+	}
+
+	public void SetForceHidden(bool value)
+	{
+		m_IsForcedHidden = value;
+		UpdateVisibility();
 	}
 
 	protected override void OnDispose()
@@ -167,7 +177,7 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 
 	private void UpdateVisibility()
 	{
-		m_IsVisible.Value = CurrentUnit != null && IsInGame && !m_IsInFullScreenUI;
+		m_IsVisible.Value = CurrentUnit != null && IsInGame && !m_IsInFullScreenUI && !m_IsForcedHidden;
 	}
 
 	public void OnGameModeStart(GameModeType gameMode)
@@ -239,7 +249,7 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 			return;
 		}
 		bool isPlayerFaction = currentUnit.IsPlayerFaction;
-		bool flag = ((Game.Instance.CurrentModeType == GameModeType.SpaceCombat) ? (!UtilityNet.IsControlMainCharacter()) : (!currentUnit.IsMyNetRole()));
+		bool flag = !currentUnit.IsMyNetRole();
 		m_ControllablePlayerNickname.Value = (PhotonManager.Player.GetNickName(currentUnit.GetPlayer(), out var nickName) ? nickName : string.Empty);
 		m_IsNotControllableCharacter.Value = isPlayerFaction && flag;
 	}
@@ -306,12 +316,12 @@ public class ActionBarVM : ViewModel, IGameModeHandler, ISubscriber, IUnitComman
 
 	public void StartDialogInteraction(BlueprintDialog dialog)
 	{
-		m_IsForceHidden.Value = true;
+		m_IsForcedMinimized.Value = true;
 	}
 
 	public void StopDialogInteraction(BlueprintDialog dialog)
 	{
-		m_IsForceHidden.Value = false;
+		m_IsForcedMinimized.Value = false;
 		if (Game.Instance.CurrentlyLoadedArea.IsPartyArea && (dialog.Type == DialogType.Book || dialog.Type == DialogType.Epilog))
 		{
 			OnUnitChanged();

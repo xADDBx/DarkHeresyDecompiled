@@ -16,7 +16,7 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowedOn(typeof(BlueprintUnitFact))]
 [AllowedOn(typeof(BlueprintUnit))]
 [TypeId("addae4953430725479cc27bae68ad849")]
-public class AllowDyingCondition : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class AllowDyingCondition : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class Runtime : EntityFactComponent<BaseUnitEntity, AllowDyingCondition>, IHashable, IOwlPackable<Runtime>

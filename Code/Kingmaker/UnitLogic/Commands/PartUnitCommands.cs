@@ -157,7 +157,7 @@ public sealed class PartUnitCommands : EntityPart<AbstractUnitEntity>, IUnitFeat
 			base.Owner.HoldState = false;
 			UpdateCombatTarget(cmd);
 			cmd.OnRun();
-			EventBus.RaiseEvent(delegate(IUnitRunCommandHandler h)
+			base.EventBus.RaiseEvent(delegate(IUnitRunCommandHandler h)
 			{
 				h.HandleUnitRunCommand(cmd);
 			});

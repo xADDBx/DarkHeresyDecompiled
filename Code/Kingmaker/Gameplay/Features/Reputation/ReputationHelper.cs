@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using Core.Cheats;
+using Kingmaker.Gameplay.Entities;
 
 namespace Kingmaker.Gameplay.Features.Reputation;
 
@@ -8,6 +10,15 @@ public static class ReputationHelper
 	public static ReputationDescription GetReputation(FactionType faction)
 	{
 		return Game.Instance.Reputation.Get(faction);
+	}
+
+	public static IEnumerable<int> GetReputationsRespect()
+	{
+		ReputationState rep = Game.Instance.Reputation;
+		yield return rep.Get(FactionType.AdeptusMechanicus).Respect;
+		yield return rep.Get(FactionType.AstraMilitarum).Respect;
+		yield return rep.Get(FactionType.MinistorumAndRedemptionists).Respect;
+		yield return rep.Get(FactionType.RulingCouncilOfNobles).Respect;
 	}
 
 	[Cheat(Name = "add_reputation_all", ExecutionPolicy = ExecutionPolicy.PlayMode)]

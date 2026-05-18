@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Enums.Sound;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.View.Animation;
+using Kingmaker.Visual.Animation.Decorators;
 using Kingmaker.Visual.Animation.Events;
 using UnityEngine;
 
@@ -11,7 +11,7 @@ namespace Kingmaker.Visual.Animation;
 
 [Serializable]
 [CreateAssetMenu(fileName = "AnimationClipWithEvents", menuName = "Animation Manager/Animation Clip with Events")]
-public class AnimationClipWrapper : ScriptableObject
+public class AnimationClipWrapper : AnimationClipWrapperSwitcher
 {
 	private enum RecognizedEventNames
 	{
@@ -28,9 +28,7 @@ public class AnimationClipWrapper : ScriptableObject
 		PostDecoratorObject = 13,
 		PlayFootstep = 14,
 		PlayBodyfall = 15,
-		FxAnimatorToggleAction = 16,
-		HideTorchEvent = 17,
-		UnhideTorchEvent = 18
+		FxAnimatorToggleAction = 16
 	}
 
 	[SerializeField]
@@ -40,7 +38,10 @@ public class AnimationClipWrapper : ScriptableObject
 	private List<AnimationClipEventTrack> m_EventTracks = new List<AnimationClipEventTrack>();
 
 	[NonSerialized]
-	private AnimationClipEvent[] _EventsSorted;
+	private AnimationClipEvent[] _AnimationEventsSorted;
+
+	[NonSerialized]
+	private AnimationClipEvent[] _MechanicEventsSorted;
 
 	[HideInInspector]
 	[SerializeField]
@@ -113,19 +114,35 @@ public class AnimationClipWrapper : ScriptableObject
 		where _eventTrack != null
 		select _eventTrack;
 
-	public AnimationClipEvent[] EventsSorted
+	public AnimationClipEvent[] AnimationEventsSorted
 	{
 		get
 		{
-			if (_EventsSorted == null)
+			if (_AnimationEventsSorted == null)
 			{
-				_EventsSorted = Events.ToArray();
-				if (_EventsSorted.Any())
+				_AnimationEventsSorted = Events.Where(AnimationEventFilter).ToArray();
+				if (_AnimationEventsSorted.Any())
 				{
-					Array.Sort(_EventsSorted, (AnimationClipEvent _event1, AnimationClipEvent _event2) => (int)((_event1.Time - _event2.Time) * 1000f));
+					Array.Sort(_AnimationEventsSorted, (AnimationClipEvent _event1, AnimationClipEvent _event2) => (int)((_event1.Time - _event2.Time) * 1000f));
 				}
 			}
-			return _EventsSorted;
+			return _AnimationEventsSorted;
+		}
+	}
+
+	public AnimationClipEvent[] MechanicEventsSorted
+	{
+		get
+		{
+			if (_MechanicEventsSorted == null)
+			{
+				_MechanicEventsSorted = Events.Where(MechanicEventFilter).ToArray();
+				if (_MechanicEventsSorted.Any())
+				{
+					Array.Sort(_MechanicEventsSorted, (AnimationClipEvent _event1, AnimationClipEvent _event2) => (int)((_event1.Time - _event2.Time) * 1000f));
+				}
+			}
+			return _MechanicEventsSorted;
 		}
 	}
 
@@ -165,10 +182,30 @@ public class AnimationClipWrapper : ScriptableObject
 		}
 	}
 
+	private static bool MechanicEventFilter(AnimationClipEvent e)
+	{
+		return e is AnimationClipEventAct;
+	}
+
+	private static bool AnimationEventFilter(AnimationClipEvent e)
+	{
+		return !MechanicEventFilter(e);
+	}
+
 	public AnimationClipWrapper(AnimationClip animationClip, IEnumerable<AnimationClipEventTrack> animationSoundTracks = null)
 	{
 		m_AnimationClip = animationClip;
 		m_EventTracks = ((animationSoundTracks != null) ? new List<AnimationClipEventTrack>(animationSoundTracks) : new List<AnimationClipEventTrack>());
+	}
+
+	public override AnimationClipWrapper GetWrapper(IAnimationManager animationManager)
+	{
+		return this;
+	}
+
+	public override IEnumerable<AnimationClipWrapper> EnumerateClips()
+	{
+		yield return this;
 	}
 
 	public override string ToString()
@@ -202,8 +239,6 @@ public class AnimationClipWrapper : ScriptableObject
 			RecognizedEventNames.FxAnimatorToggleAction => new AnimationClipEventToggleFxAnimator(animationEvent.time, animationEvent.stringParameter), 
 			RecognizedEventNames.PostCommandActEvent => new AnimationClipEventAct(animationEvent.time), 
 			RecognizedEventNames.PostDecoratorObject => new AnimationClipEventDecoratorObject(animationEvent.time, animationEvent.floatParameter, animationEvent.objectReferenceParameter as UnitAnimationDecoratorObject), 
-			RecognizedEventNames.HideTorchEvent => new AnimationClipEventPlaceFootprint(animationEvent.time, animationEvent.stringParameter, animationEvent.intParameter), 
-			RecognizedEventNames.UnhideTorchEvent => new AnimationClipEventTorchShow(animationEvent.time), 
 			_ => throw new NotSupportedException($"Animation event of type {result} is not supported."), 
 		};
 	}

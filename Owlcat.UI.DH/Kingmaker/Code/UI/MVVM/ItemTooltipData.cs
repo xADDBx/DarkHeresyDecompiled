@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Code.View.UI.MVVM.Tooltip;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Code.View.Bridge.Enums;

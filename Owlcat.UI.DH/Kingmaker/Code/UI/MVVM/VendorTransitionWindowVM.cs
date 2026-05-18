@@ -19,7 +19,7 @@ public class VendorTransitionWindowVM : ViewModel, IVendorDealHandler, ISubscrib
 
 	public int CurrentValue;
 
-	public VendorTransitionWindowVM(TradeLogic vendor, ItemEntity itemEntity, Action close)
+	public VendorTransitionWindowVM(TradeLogic _, ItemEntity itemEntity, Action close)
 	{
 		m_Close = close;
 		Slot = new ItemSlotVM(itemEntity, 0, null, compareTooltipEnabled: false).AddTo(this);
@@ -31,13 +31,7 @@ public class VendorTransitionWindowVM : ViewModel, IVendorDealHandler, ISubscrib
 		{
 			CurrentValue = ((!itemEntity.Collection.IsPlayerInventory) ? 1 : itemEntity.Count);
 		}
-		UISounds.Instance.Sounds.MessageBox.MessageBoxShow.Play();
 		EventBus.Subscribe(this).AddTo(this);
-	}
-
-	protected override void OnDispose()
-	{
-		UISounds.Instance.Sounds.MessageBox.MessageBoxHide.Play();
 	}
 
 	public void Deal()
@@ -55,7 +49,7 @@ public class VendorTransitionWindowVM : ViewModel, IVendorDealHandler, ISubscrib
 		{
 			Game.Instance.GameCommandQueue.AddForBuyVendor(Slot.ItemEntity, CurrentValue);
 		}
-		UISounds.Instance.Sounds.Vendor.Deal.Play();
+		FullScreenSounds.Instance.Vendor.MoveFromVendorToTrade.Play();
 		Close();
 	}
 

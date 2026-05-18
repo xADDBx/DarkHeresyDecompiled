@@ -19,14 +19,14 @@ public class TooltipTemplateMoralePhase : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_MoraleHeroicGlossaryEntry?.Title);
+		yield return new BrickTitleVM(m_MoraleHeroicGlossaryEntry?.Title);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		return new List<ITooltipBrick>
 		{
-			new TooltipBrickText(m_MoraleHeroicGlossaryEntry?.GetDescription())
+			new BrickTextVM(m_MoraleHeroicGlossaryEntry?.GetDescription())
 		};
 	}
 

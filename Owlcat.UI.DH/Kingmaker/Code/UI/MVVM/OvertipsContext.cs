@@ -43,7 +43,12 @@ public class OvertipsContext : ViewModel, IVariativeInteractionUIHandler, ISubsc
 
 	public void HandleInteractionRequest(InteractionVariativePart interactionPart)
 	{
-		HandleInteractionRequest(interactionPart.Owner, interactionPart.InteractionSettings.InteractionsWithConditions.Select((InteractionWithConditions c) => c.ToActorWithConditions()));
+		HandleInteractionRequest(interactionPart.Owner, interactionPart.InteractionSettings.Interactions.Select((InteractionWithConditions c) => c.ToActorWithConditions()));
+	}
+
+	protected override void OnDispose()
+	{
+		DisposeOvertips();
 	}
 
 	private void DisposeVariativeInteraction()

@@ -4,6 +4,7 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
+using Kingmaker.Utility;
 using Owlcat.AI.Mechanics.BodyParts;
 using Owlcat.BehaviourTrees;
 using Owlcat.Fmw.Blueprints;
@@ -24,7 +25,25 @@ public class SetBodyPartWithMaximumValueNode : BehaviourTreeNode
 
 	private readonly int m_MinThresholdValue;
 
-	public SetBodyPartWithMaximumValueNode(EntityVariable agent, BodyPartVariable variable, BodyPartListVariable bodyPartsList, EntityVariable target, PropertyCalculator functionToMaximize, int minThresholdValue)
+	private readonly PropertyCalculatorBlueprintVariable m_CalculatorBlueprint;
+
+	private bool HasScoringFunction
+	{
+		get
+		{
+			if (m_CalculatorBlueprint?.Value == null)
+			{
+				if (m_FunctionToMaximize != null)
+				{
+					return !m_FunctionToMaximize.Empty;
+				}
+				return false;
+			}
+			return true;
+		}
+	}
+
+	public SetBodyPartWithMaximumValueNode(EntityVariable agent, BodyPartVariable variable, BodyPartListVariable bodyPartsList, EntityVariable target, PropertyCalculator functionToMaximize, int minThresholdValue, PropertyCalculatorBlueprintVariable calculatorBlueprint)
 	{
 		m_Agent = agent;
 		m_Variable = variable;
@@ -32,11 +51,22 @@ public class SetBodyPartWithMaximumValueNode : BehaviourTreeNode
 		m_Target = target;
 		m_FunctionToMaximize = functionToMaximize;
 		m_MinThresholdValue = minThresholdValue;
+		m_CalculatorBlueprint = calculatorBlueprint;
+	}
+
+	private int EvaluateScore(MechanicEntity entity, TargetWrapper target = null)
+	{
+		PropertyCalculatorBlueprint propertyCalculatorBlueprint = m_CalculatorBlueprint?.Value;
+		if (propertyCalculatorBlueprint != null)
+		{
+			return propertyCalculatorBlueprint.Value.GetValue(entity, null, target) + propertyCalculatorBlueprint.Add;
+		}
+		return m_FunctionToMaximize.GetValue(entity, null, target);
 	}
 
 	public override NodeVisitResult ForwardVisit()
 	{
-		m_Variable.Value = GetGraphNodeWithMaximumValue(m_Agent.Value, (BaseUnitEntity)m_Target.Value, m_BodyPartsList.Value, m_FunctionToMaximize, m_MinThresholdValue);
+		m_Variable.Value = GetBodyPartWithMaximumValue(m_Agent.Value, (BaseUnitEntity)m_Target.Value, m_BodyPartsList.Value, m_MinThresholdValue);
 		if (!(m_Variable.Value != null))
 		{
 			return NodeVisitResult.Failure;
@@ -44,13 +74,13 @@ public class SetBodyPartWithMaximumValueNode : BehaviourTreeNode
 		return NodeVisitResult.Success;
 	}
 
-	private static BpRef<BlueprintBodyPart> GetGraphNodeWithMaximumValue(MechanicEntity agent, BaseUnitEntity target, List<BpRef<BlueprintBodyPart>> bodyParts, PropertyCalculator utilityFunction, int minThresholdValue)
+	private BpRef<BlueprintBodyPart> GetBodyPartWithMaximumValue(MechanicEntity agent, BaseUnitEntity target, List<BpRef<BlueprintBodyPart>> bodyParts, int minThresholdValue)
 	{
 		if (bodyParts == null || bodyParts.Count == 0)
 		{
 			return null;
 		}
-		if (utilityFunction == null || utilityFunction.Empty)
+		if (!HasScoringFunction)
 		{
 			return null;
 		}
@@ -63,7 +93,7 @@ public class SetBodyPartWithMaximumValueNode : BehaviourTreeNode
 				int num2 = 0;
 				using (ContextData<AiBodyPartsContextData>.Request().Setup(bodyPart.Blueprint))
 				{
-					num2 += utilityFunction.GetValue(new PropertyContext(agent, null, target));
+					num2 += EvaluateScore(agent, target);
 				}
 				if (num2 > num)
 				{

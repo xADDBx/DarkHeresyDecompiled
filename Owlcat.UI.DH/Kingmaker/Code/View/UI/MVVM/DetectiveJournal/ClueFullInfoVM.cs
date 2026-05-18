@@ -84,6 +84,7 @@ public class ClueFullInfoVM : ViewModel, IClueDataChangedHandler, ISubscriber
 		foreach (BlueprintClueStudy study in studies)
 		{
 			int valueOrDefault = Game.Instance.Player.UISettings.DetectiveSystemData.StudyIds.GetValueOrDefault(study, 0);
+			valueOrDefault = Math.Clamp(valueOrDefault, 0, AddendumVMs.Count);
 			AddendumVMs.Insert(valueOrDefault, new AddendumInfoVM(study, m_OpenClueInfo));
 		}
 	}
@@ -111,13 +112,13 @@ public class ClueFullInfoVM : ViewModel, IClueDataChangedHandler, ISubscriber
 		CreateInfo(list, fakeStudies);
 		if (list.Any())
 		{
-			m_AddendumsRefreshed?.Execute();
+			m_AddendumsRefreshed?.Execute(Unit.Default);
 		}
 	}
 
 	private void CloseStudyPanel()
 	{
-		StudyToMake.CurrentValue?.Dispose();
+		m_StudyToMake.CurrentValue?.Dispose();
 		m_StudyToMake.Value = null;
 		RefreshDataFor(BlueprintClue);
 	}
@@ -139,6 +140,7 @@ public class ClueFullInfoVM : ViewModel, IClueDataChangedHandler, ISubscriber
 		}
 		void OpenStudy()
 		{
+			m_StudyToMake.CurrentValue?.Dispose();
 			m_StudyToMake.Value = new NewStudyVM(BlueprintClue, AddendumVMs, CloseStudyPanel).AddTo(this);
 			m_StudyToMake.Value.SetupNextStudy();
 			m_StudyVM.Value = null;

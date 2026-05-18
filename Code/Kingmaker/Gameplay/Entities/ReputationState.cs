@@ -6,7 +6,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Gameplay.Features.Reputation;
-using Kingmaker.PubSubSystem.Core;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -48,18 +47,18 @@ public sealed class ReputationState : Entity, IHashable, IOwlPackable<Reputation
 
 	public override bool NeedsView => false;
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
 
-	private ReputationState(OwlPackConstructorParameter _)
-		: base(_)
+	public ReputationState()
+		: base("reputation-state-id", isInGame: true)
 	{
 	}
 
-	public ReputationState()
-		: base("reputation-state-id", isInGame: true)
+	private ReputationState(OwlPackConstructorParameter _)
+		: base(_)
 	{
 	}
 
@@ -69,7 +68,7 @@ public sealed class ReputationState : Entity, IHashable, IOwlPackable<Reputation
 		Metrics.Reputation.Value(value).Type(ReputationType.Respect).Faction(faction)
 			.CharacterLevel(Game.Instance.Player.PartyLevel)
 			.Send();
-		EventBus.RaiseEvent(delegate(IGainFactionReputationHandler h)
+		base.EventBus.RaiseEvent(delegate(IGainFactionReputationHandler h)
 		{
 			h.HandleGainFactionReputation(faction, ReputationType.Respect, value);
 		});
@@ -81,7 +80,7 @@ public sealed class ReputationState : Entity, IHashable, IOwlPackable<Reputation
 		Metrics.Reputation.Value(value).Type(ReputationType.Fear).Faction(faction)
 			.CharacterLevel(Game.Instance.Player.PartyLevel)
 			.Send();
-		EventBus.RaiseEvent(delegate(IGainFactionReputationHandler h)
+		base.EventBus.RaiseEvent(delegate(IGainFactionReputationHandler h)
 		{
 			h.HandleGainFactionReputation(faction, ReputationType.Fear, value);
 		});

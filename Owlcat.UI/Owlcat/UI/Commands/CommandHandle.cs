@@ -11,7 +11,7 @@ public class CommandHandle : IDisposable
 
 	private readonly IBindable m_Target;
 
-	private readonly ReadOnlyReactiveProperty<bool> m_Enabled;
+	private readonly Observable<bool> m_Enabled;
 
 	private ICollection<Command> m_TargetCommands;
 
@@ -19,7 +19,7 @@ public class CommandHandle : IDisposable
 
 	public Command Command => m_Command;
 
-	public CommandHandle(Command command, IBindable target, ReadOnlyReactiveProperty<bool> enabled = null)
+	public CommandHandle(Command command, IBindable target, Observable<bool> enabled = null)
 	{
 		m_Command = command;
 		m_Target = target;
@@ -57,6 +57,11 @@ public class CommandHandle : IDisposable
 		{
 			m_Command.Enabled = value;
 		})?.AddTo(m_Disposables);
+	}
+
+	public void Add(IDisposable disposable)
+	{
+		m_Disposables.Add(disposable);
 	}
 
 	public void Dispose()

@@ -5,6 +5,7 @@ using Owlcat.Runtime.Visual.Lighting;
 using Owlcat.Runtime.Visual.Waaagh.Data;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -35,13 +36,9 @@ public class WaaaghLights
 
 	public const int kMaxZBinsCount = 4096;
 
-	private readonly ScriptableRenderer m_ScriptableRenderer;
-
 	private GraphicsBuffer m_LightDataConstantBuffer;
 
 	private GraphicsBuffer m_LightVolumeDataConstantBuffer;
-
-	private GraphicsBuffer m_ZBinsConstantBuffer;
 
 	private GraphicsBuffer m_LightTilesBuffer;
 
@@ -75,8 +72,6 @@ public class WaaaghLights
 
 	public GraphicsBuffer LightVolumeDataConstantBuffer => m_LightVolumeDataConstantBuffer;
 
-	public GraphicsBuffer ZBinsConstantBuffer => m_ZBinsConstantBuffer;
-
 	public GraphicsBuffer LightTilesBuffer => m_LightTilesBuffer;
 
 	public GraphicsBuffer DeferredLightingFeatureTilesBuffer => m_DeferredLightingFeatureTilesBuffer;
@@ -95,38 +90,44 @@ public class WaaaghLights
 
 	public Vector4 LightDataParams => m_LightDataParams;
 
-	public WaaaghLights(ScriptableRenderer scriptableRenderer)
+	public TileSize TileSize { get; private set; }
+
+	public unsafe void FillZBins(ref WaaaghShaderVariablesGlobal g)
 	{
-		m_ScriptableRenderer = scriptableRenderer;
+		m_SetupJobsHandle.Complete();
+		fixed (float* destination = g._ZBins)
+		{
+			UnsafeUtility.MemCpy(destination, m_ZBins.GetUnsafeReadOnlyPtr(), 16384L);
+		}
+	}
+
+	public WaaaghLights()
+	{
 		m_LightDataConstantBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Constant, 4096, Marshal.SizeOf<float4>());
 		m_LightDataConstantBuffer.name = "LightDataCB";
 		m_LightVolumeDataConstantBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Constant, 3072, Marshal.SizeOf<float4>());
 		m_LightVolumeDataConstantBuffer.name = "LightVolumeDataCB";
-		m_ZBinsConstantBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Constant, 1024, Marshal.SizeOf<float4>());
-		m_ZBinsConstantBuffer.name = "ZBinsCB";
 		m_LightDataRaw = new NativeArray<float4>(4096, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 		m_LightVolumeDataRaw = new NativeArray<float4>(3072, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 		m_ZBins = new NativeArray<ZBin>(4096, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 	}
 
-	public void StartSetupJobs(ScriptableRenderContext context, ContextContainer frameData, TileSize tileSize)
+	public void StartSetupJobs(ScriptableRenderContext context, WaaaghCameraData cameraData, WaaaghRenderingData renderingData, WaaaghShadowData shadowData, TileSize tileSize)
 	{
-		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
-		Camera camera = waaaghCameraData.camera;
-		ref NativeArray<VisibleLight> visibleLights = ref waaaghRenderingData.VisibleLights;
+		Camera camera = cameraData.camera;
+		ref NativeArray<VisibleLight> visibleLights = ref renderingData.VisibleLights;
 		int length = visibleLights.Length;
 		m_LightCountClamped = math.min(length, 1024);
 		m_LightDescs = new NativeArray<LightDescriptor>(length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-		ShadowmaskEnabled = InitializeLightDescriptors(frameData);
-		InitLightTilesBuffer(frameData, tileSize);
+		ShadowmaskEnabled = InitializeLightDescriptors(renderingData, shadowData);
+		InitLightTilesBuffer(cameraData, tileSize);
 		if (ShadowmaskEnabled)
 		{
-			waaaghRenderingData.PerObjectData |= PerObjectData.ShadowMask;
-			waaaghRenderingData.PerObjectData |= PerObjectData.OcclusionProbe;
+			renderingData.PerObjectData |= PerObjectData.ShadowMask;
+			renderingData.PerObjectData |= PerObjectData.OcclusionProbe;
 		}
-		SetupDeferredLightingResources(waaaghCameraData);
+		TileSize = tileSize;
+		SetupDeferredLightingResources(cameraData);
 		int num = 0;
 		for (int i = 0; i < length && visibleLights[i].lightType == LightType.Directional; i++)
 		{
@@ -141,8 +142,8 @@ public class WaaaghLights
 		MinMaxZJob jobData = minMaxZJob;
 		m_SetupJobsHandle = IJobForExtensions.ScheduleParallel(jobData, length, 32, default(JobHandle));
 		m_SetupJobsHandle = m_LightDescs.SortJob(default(LightDescSorter)).Schedule(m_SetupJobsHandle);
-		m_SetupJobsHandle = waaaghShadowData.ShadowManager.ScheduleSetupJobs(ref m_LightDescs, frameData, m_SetupJobsHandle);
-		m_SetupJobsHandle = waaaghRenderingData.LightCookieManager.ScheduleSetupJobs(ref m_LightDescs, m_SetupJobsHandle);
+		m_SetupJobsHandle = shadowData.ShadowManager.ScheduleSetupJobs(ref m_LightDescs, cameraData, renderingData, shadowData, m_SetupJobsHandle);
+		m_SetupJobsHandle = renderingData.LightCookieManager.ScheduleSetupJobs(ref m_LightDescs, m_SetupJobsHandle);
 		ZBinningJob zBinningJob = default(ZBinningJob);
 		zBinningJob.ZBinFactor = w;
 		zBinningJob.CameraNearClip = camera.nearClipPlane;
@@ -154,10 +155,9 @@ public class WaaaghLights
 		m_SetupJobsHandle = IJobForExtensions.ScheduleParallel(jobData2, 64, 1, m_SetupJobsHandle);
 	}
 
-	private void InitLightTilesBuffer(ContextContainer frameData, TileSize tileSize)
+	private void InitLightTilesBuffer(WaaaghCameraData cameraData, TileSize tileSize)
 	{
-		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
-		ref RenderTextureDescriptor cameraTargetDescriptor = ref waaaghCameraData.cameraTargetDescriptor;
+		ref RenderTextureDescriptor cameraTargetDescriptor = ref cameraData.cameraTargetDescriptor;
 		int2 @int = 1;
 		@int.x = RenderingUtils.DivRoundUp(cameraTargetDescriptor.width, (int)tileSize);
 		@int.y = RenderingUtils.DivRoundUp(cameraTargetDescriptor.height, (int)tileSize);
@@ -175,23 +175,21 @@ public class WaaaghLights
 				m_LightTilesBuffer.name = "_LightTilesBuffer";
 			}
 		}
-		Camera camera = waaaghCameraData.camera;
+		Camera camera = cameraData.camera;
 		float w = 4096f / (camera.farClipPlane - camera.nearClipPlane);
 		m_ClusteringParams = new Vector4(@int.x, @int.y, (float)tileSize, w);
 	}
 
-	public void CompleteSetupJobs(ScriptableRenderContext context, ContextContainer frameData)
+	public void CompleteSetupJobs(ScriptableRenderContext context, WaaaghCameraData cameraData, WaaaghRenderingData renderingData, WaaaghShadowData shadowData)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
 		m_SetupJobsHandle.Complete();
-		using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.LightCookieSetup)))
+		using (new ProfilingScope(WaaaghProfileId.LightCookieSetup.Sampler()))
 		{
-			waaaghRenderingData.LightCookieManager.FinishSetup(m_ScriptableRenderer, ref m_LightDescs, frameData);
+			renderingData.LightCookieManager.FinishSetup(ref m_LightDescs, cameraData);
 		}
-		using (new ProfilingScope(ProfilingSampler.Get(WaaaghProfileId.ShadowsSetup)))
+		using (new ProfilingScope(WaaaghProfileId.ShadowsSetup.Sampler()))
 		{
-			waaaghShadowData.ShadowManager.FinishSetup(context, frameData);
+			shadowData.ShadowManager.FinishSetup(context, cameraData, renderingData);
 		}
 		ExtractLightDataJob extractLightDataJob = default(ExtractLightDataJob);
 		extractLightDataJob.WorldToViewMatrix = m_ViewMatrix;
@@ -204,11 +202,9 @@ public class WaaaghLights
 		m_SetupJobsHandle.Complete();
 	}
 
-	private bool InitializeLightDescriptors(ContextContainer frameData)
+	private bool InitializeLightDescriptors(WaaaghRenderingData renderingData, WaaaghShadowData shadowData)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
-		Span<VisibleLight> span = waaaghRenderingData.VisibleLights.AsSpan();
+		Span<VisibleLight> span = renderingData.VisibleLights.AsSpan();
 		int length = span.Length;
 		bool flag = false;
 		LightDescriptor value;
@@ -241,7 +237,7 @@ public class WaaaghLights
 					value.ShadowmapUpdateMode = component.ShadowmapUpdateMode;
 					value.ShadowmapAlwaysDrawDynamicShadowCasters = component.ShadowmapAlwaysDrawDynamicShadowCasters;
 					value.ShadowmapUpdateOnLightMovement = component.ShadowmapUpdateOnLightMovement;
-					if (waaaghShadowData.StaticShadowsCacheEnabled)
+					if (shadowData.StaticShadowsCacheEnabled)
 					{
 						visibleLight = reference;
 						if (visibleLight.lightType != LightType.Point)
@@ -249,17 +245,17 @@ public class WaaaghLights
 							visibleLight = reference;
 							if (visibleLight.lightType != 0)
 							{
-								goto IL_01ba;
+								goto IL_01a8;
 							}
 						}
 						value.ShadowsCanBeCached = bakingOutput.lightmapBakeType == LightmapBakeType.Realtime || !bakingOutput.isBaked || bakingOutput.lightmapBakeType == LightmapBakeType.Mixed;
 						value.ShadowsCanBeCached = value.ShadowsCanBeCached && component.ShadowmapUpdateMode == ShadowmapUpdateMode.Cached;
 					}
-					goto IL_01ba;
+					goto IL_01a8;
 				}
 				value.VolumetricLighting = false;
 				value.ColoredShadows = true;
-				goto IL_01e8;
+				goto IL_01d6;
 			}
 			value.ShadowStrength = 1f;
 			value.InnerSpotAngle = -1f;
@@ -270,12 +266,12 @@ public class WaaaghLights
 			value.ShadowmapUpdateMode = ShadowmapUpdateMode.EveryFrame;
 			value.ShadowmapAlwaysDrawDynamicShadowCasters = true;
 			value.ShadowmapUpdateOnLightMovement = true;
-			value.ShadowDepthBias = waaaghShadowData.DepthBias;
-			value.ShadowNormalBias = waaaghShadowData.NormalBias;
+			value.ShadowDepthBias = shadowData.DepthBias;
+			value.ShadowNormalBias = shadowData.NormalBias;
 			value.LightCookieIndex = -1;
 			value.lightCookieDescriptor = default(LightCookieDescriptor);
 			continue;
-			IL_0245:
+			IL_0232:
 			value.ShadowNearPlane = light.shadowNearPlane;
 			if (component != null && !component.UsePipelineSettings)
 			{
@@ -285,15 +281,15 @@ public class WaaaghLights
 			}
 			else
 			{
-				value.ShadowDepthBias = waaaghShadowData.DepthBias;
+				value.ShadowDepthBias = shadowData.DepthBias;
 				value.ShadowSlopeBias = light.type switch
 				{
-					LightType.Spot => waaaghShadowData.DirectionalSlopeBias, 
-					LightType.Directional => waaaghShadowData.DirectionalSlopeBias, 
-					LightType.Point => waaaghShadowData.PointSlopeBias, 
+					LightType.Spot => shadowData.DirectionalSlopeBias, 
+					LightType.Directional => shadowData.DirectionalSlopeBias, 
+					LightType.Point => shadowData.PointSlopeBias, 
 					_ => 0f, 
 				};
-				value.ShadowNormalBias = waaaghShadowData.NormalBias;
+				value.ShadowNormalBias = shadowData.NormalBias;
 			}
 			value.InnerSpotAngle = light.innerSpotAngle;
 			value.IsBaked = bakingOutput.lightmapBakeType == LightmapBakeType.Baked;
@@ -323,11 +319,11 @@ public class WaaaghLights
 			value.lightCookieDescriptor.uvSize = component.LightCookieSize;
 			value.lightCookieDescriptor.uvOffset = component.LightCookieOffset;
 			continue;
-			IL_01e8:
+			IL_01d6:
 			value.Shadows = light.shadows;
 			if (value.Shadows != 0)
 			{
-				if (!waaaghRenderingData.CullResults.GetShadowCasterBounds(i, out var _))
+				if (!renderingData.CullResults.GetShadowCasterBounds(i, out var _))
 				{
 					value.Shadows = LightShadows.None;
 				}
@@ -337,16 +333,16 @@ public class WaaaghLights
 					visibleLight = reference;
 					if (visibleLight.lightType != LightType.Point)
 					{
-						goto IL_0245;
+						goto IL_0232;
 					}
 				}
 				light.useViewFrustumForShadowCasterCull = false;
 			}
-			goto IL_0245;
-			IL_01ba:
+			goto IL_0232;
+			IL_01a8:
 			value.ShadowUpdateFrequencyByDistance = component.ShadowUpdateFrequencyByDistance;
 			value.ColoredShadows = component.ColoredShadows;
-			goto IL_01e8;
+			goto IL_01d6;
 		}
 		return flag;
 	}
@@ -381,10 +377,6 @@ public class WaaaghLights
 		if (m_LightVolumeDataConstantBuffer != null)
 		{
 			m_LightVolumeDataConstantBuffer.Release();
-		}
-		if (m_ZBinsConstantBuffer != null)
-		{
-			m_ZBinsConstantBuffer.Release();
 		}
 		if (m_LightTilesBuffer != null)
 		{

@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Fx;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
@@ -21,9 +22,9 @@ public static class UnitHologramExtension
 	{
 		UnitHologram unitHologram = null;
 		UnitEntityView unitEntityView = null;
-		if (unit.View.CharacterAvatar == null && unit.View.GetComponentInChildren<StarshipView>() != null)
+		if (unit.View.CharacterAvatar == null && unit.View.AsUnitEntityView().GetComponentInChildren<StarshipView>() != null)
 		{
-			LogChannel.Default.Warning(unit.View, "This unit is not a Character nor a Starship, creating a hologram for this thing isn't possible.");
+			LogChannel.Default.Warning(unit.View.AsUnitEntityView(), "This unit is not a Character nor a Starship, creating a hologram for this thing isn't possible.");
 			return null;
 		}
 		Skeleton skeleton = unit.View.CharacterAvatar.Skeleton;
@@ -34,11 +35,11 @@ public static class UnitHologramExtension
 		{
 			if (hologramRaceFx.Race == null)
 			{
-				LogChannel.Default.Error(unit.View, "No Skeletal config in HologramFx list in BlueprintFxRoot was found.");
+				LogChannel.Default.Error(unit.View.AsUnitEntityView(), "No Skeletal config in HologramFx list in BlueprintFxRoot was found.");
 			}
 			else if (hologramRaceFx.HologramPrefab == null)
 			{
-				LogChannel.Default.Error(unit.View, "No HologramPrefab in HologramFx list in BlueprintFxRoot was found.");
+				LogChannel.Default.Error(unit.View.AsUnitEntityView(), "No HologramPrefab in HologramFx list in BlueprintFxRoot was found.");
 			}
 			else if (hologramRaceFx.Race == skeleton)
 			{
@@ -61,7 +62,7 @@ public static class UnitHologramExtension
 		}
 		if (unitEntityView == null)
 		{
-			LogChannel.Default.Error(unit.View, "Cannot create hologram for the unit. Check BlueprintFxRoot so appropriate data was set in HologramPrefabArray.");
+			LogChannel.Default.Error(unit.View.AsUnitEntityView(), "Cannot create hologram for the unit. Check BlueprintFxRoot so appropriate data was set in HologramPrefabArray.");
 			return null;
 		}
 		try
@@ -83,7 +84,7 @@ public static class UnitHologramExtension
 					componentInChildren.gameObject.SetActive(value: false);
 				}
 			}
-			unitHologram.Setup(unitEntityView, unit.View);
+			unitHologram.Setup(unitEntityView, unit.View.AsUnitEntityView());
 		}
 		catch (Exception ex)
 		{
@@ -99,7 +100,7 @@ public static class UnitHologramExtension
 		UnitEntityView component = UnityEngine.Object.Instantiate(holoPrefabLink.Load()).GetComponent<UnitEntityView>();
 		if (component == null)
 		{
-			LogChannel.Default.Error(unit.View, "No UnitEntityView in HologramPrefab. No Hologram will be created. Check BlueprintFxRoot.");
+			LogChannel.Default.Error(unit.View.AsUnitEntityView(), "No UnitEntityView in HologramPrefab. No Hologram will be created. Check BlueprintFxRoot.");
 			return null;
 		}
 		return component;

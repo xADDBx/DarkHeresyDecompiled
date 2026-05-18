@@ -483,7 +483,7 @@ public class NetLobbyVM : ViewModel, INetEvents, ISubscriber, ISavesUpdatedHandl
 			bool flag = PhotonManager.NetGame.StartGame((SaveInfoKey)CurrentSave.CurrentValue.Reference);
 			if (flag)
 			{
-				UISounds.Instance.Sounds.Buttons.FinishChargenButtonClick.Play();
+				ButtonsSounds.Instance.FinishChargenButton.Click.Play();
 			}
 			m_CanConfirmLaunch.Value = flag;
 			return flag;

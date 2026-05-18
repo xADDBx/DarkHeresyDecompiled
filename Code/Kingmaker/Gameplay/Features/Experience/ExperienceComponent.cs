@@ -11,8 +11,6 @@ using UnityEngine;
 namespace Kingmaker.Gameplay.Features.Experience;
 
 [AllowedOn(typeof(BlueprintTrap))]
-[AllowedOn(typeof(BlueprintClue))]
-[AllowedOn(typeof(BlueprintQuestObjective))]
 [TypeId("011e862b513000f4bae31886f3489ace")]
 public sealed class ExperienceComponent : BlueprintComponent, IExperienceSettings
 {
@@ -31,19 +29,25 @@ public sealed class ExperienceComponent : BlueprintComponent, IExperienceSetting
 	private int _overrideCRValue;
 
 	[SerializeField]
-	[ShowIf("IsQuest")]
-	private bool _isMainQuest;
+	private bool _overrideExperienceAmount;
 
-	private bool IsQuest
+	[SerializeField]
+	[ShowIf("_overrideExperienceAmount")]
+	private int _overridenExperienceValue;
+
+	private bool IsQuest => Type == ExperienceType.Quest;
+
+	public int? OverrideValue
 	{
 		get
 		{
-			ExperienceType type = Type;
-			return type == ExperienceType.Quest || type == ExperienceType.MainQuest;
+			if (!_overrideExperienceAmount)
+			{
+				return null;
+			}
+			return _overridenExperienceValue;
 		}
 	}
-
-	public int? OverrideValue => null;
 
 	public int? OverrideCR
 	{
@@ -86,7 +90,7 @@ public sealed class ExperienceComponent : BlueprintComponent, IExperienceSetting
 				}
 				return ExperienceType.SkillCheck;
 			}
-			return _isMainQuest ? ExperienceType.MainQuest : ExperienceType.Quest;
+			return ExperienceType.Quest;
 		}
 		return ExperienceType.Encounter;
 	}

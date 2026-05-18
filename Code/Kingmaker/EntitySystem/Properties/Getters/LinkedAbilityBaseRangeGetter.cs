@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Owlcat.Runtime.Core.Utility;
@@ -13,7 +14,7 @@ public class LinkedAbilityBaseRangeGetter : IntPropertyGetter, PropertyContextAc
 {
 	protected override int GetBaseValue()
 	{
-		AbilityData ability = this.GetAbility();
+		AbilityData ability = EvalContext.Current.Ability;
 		if (ability == null)
 		{
 			return 0;
@@ -25,7 +26,7 @@ public class LinkedAbilityBaseRangeGetter : IntPropertyGetter, PropertyContextAc
 		return ability.Blueprint.Range switch
 		{
 			AbilityRange.Custom => ability.Blueprint.CustomRange, 
-			AbilityRange.Weapon => this.GetAbilityWeapon()?.Blueprint.WarhammerMaxDistance ?? 0, 
+			AbilityRange.Weapon => EvalContext.Current.AbilityWeapon?.Blueprint.WarhammerMaxDistance ?? 0, 
 			_ => 0, 
 		};
 	}

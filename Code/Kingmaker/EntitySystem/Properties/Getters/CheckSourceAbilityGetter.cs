@@ -1,11 +1,10 @@
 using System;
 using System.Linq;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -36,7 +35,7 @@ public class CheckSourceAbilityGetter : BoolPropertyGetter, PropertyContextAcces
 
 	protected override bool GetBaseValue()
 	{
-		BlueprintAbilityWrapper wrapper = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Top?.SourceAbility?.Blueprint;
+		BlueprintAbilityWrapper wrapper = EvalContext.Root.SourceAbility?.Blueprint;
 		return Abilities.ContainsAbility(wrapper);
 	}
 }

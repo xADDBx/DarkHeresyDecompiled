@@ -10,7 +10,10 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.Gameplay.Controllers.DetectiveRadar;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.Designers.EventConditionActionSystem.ContextData;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Framework.Interaction;
@@ -59,40 +62,39 @@ public class InteractionPartDetectiveClue : NewInteractionPart<InteractionDetect
 			{
 				await m_Servoskull.Scan(base.Target);
 			}
-			SharedStringAsset bark = m_Settings.Bark;
-			if ((object)bark != null)
+			using (ContextData<ActionExecutionContextData>.Request().Setup(ActionExecutionContextData.Type.Interaction))
 			{
-				LocalizedString @string = bark.String;
-				if (@string != null && !@string.Empty)
+				LocalizedString bark = m_Settings.Bark;
+				if (bark != null && !bark.Empty)
 				{
 					string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(m_Settings, base.Target);
-					BarkPlayer.Bark(base.Target, bark.String, VoiceOverType.Bark, voGuidBySourceAndTarget, -1f, m_Initiator);
+					BarkPlayer.Bark(base.Target, bark, VoiceOverType.Bark, voGuidBySourceAndTarget, -1f, m_Initiator);
 				}
+				m_Settings.Actions.Get()?.Run();
+				BlueprintCutscene maybeBlueprint = m_Settings.Cutscene.MaybeBlueprint;
+				if (maybeBlueprint != null)
+				{
+					CutscenePlayerView.Play(maybeBlueprint);
+				}
+				BlueprintDialog maybeBlueprint2 = m_Settings.Dialog.MaybeBlueprint;
+				if (maybeBlueprint2 != null)
+				{
+					DialogData data = DialogController.SetupDialogWithMapObject(maybeBlueprint2, base.Target, null, m_Initiator);
+					Game.Instance.Controllers.DialogController.StartDialog(data);
+				}
+				if (base.Target is DetectiveClueEntity detectiveClueEntity)
+				{
+					detectiveClueEntity.OnInteract();
+				}
+				base.EventBus.RaiseEvent((IMapObjectEntity)base.Target, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+				{
+					h.HandleObjectInteractChanged();
+				}, isCheckRuntime: true);
 			}
-			m_Settings.Actions.Get()?.Run();
-			BlueprintCutscene maybeBlueprint = m_Settings.Cutscene.MaybeBlueprint;
-			if (maybeBlueprint != null)
-			{
-				CutscenePlayerView.Play(maybeBlueprint);
-			}
-			BlueprintDialog maybeBlueprint2 = m_Settings.Dialog.MaybeBlueprint;
-			if (maybeBlueprint2 != null)
-			{
-				DialogData data = DialogController.SetupDialogWithMapObject(maybeBlueprint2, base.Target.View, null, m_Initiator);
-				Game.Instance.Controllers.DialogController.StartDialog(data);
-			}
-			if (base.Target is DetectiveClueEntity detectiveClueEntity)
-			{
-				detectiveClueEntity.OnInteract();
-			}
-			EventBus.RaiseEvent((IMapObjectEntity)base.Target, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
-			{
-				h.HandleObjectInteractChanged();
-			}, isCheckRuntime: true);
 		}
 	}
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionPartDetectiveClue",
 		OldNames = null,
@@ -198,7 +200,7 @@ public class InteractionPartDetectiveClue : NewInteractionPart<InteractionDetect
 
 	public string GetInteractionName()
 	{
-		return base.Settings.DisplayName?.String.Text;
+		return base.Settings.DisplayName?.Text;
 	}
 
 	public bool CheckRestriction(BaseUnitEntity user)
@@ -237,7 +239,7 @@ public class InteractionPartDetectiveClue : NewInteractionPart<InteractionDetect
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionPartDetectiveClue source = new InteractionPartDetectiveClue();
 		result = Unsafe.As<InteractionPartDetectiveClue, TPossiblyBase>(ref source);

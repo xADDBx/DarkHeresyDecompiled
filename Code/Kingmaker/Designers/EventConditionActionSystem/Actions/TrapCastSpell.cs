@@ -12,7 +12,6 @@ using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects.Traps;
-using Kingmaker.View.MapObjects.Traps.Simple;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
@@ -115,10 +114,7 @@ public class TrapCastSpell : GameAction
 		}
 		SimpleCaster free = SimpleCaster.GetFree();
 		free.IsTrap = true;
-		if (trapObjectData.View is SimpleTrapObjectView simpleTrapObjectView)
-		{
-			free.NameInLog = simpleTrapObjectView.NameInLog;
-		}
+		free.NameInLog = trapObjectData.Name;
 		if (ActorPosition != null)
 		{
 			free.Position = ActorPosition.GetValue();

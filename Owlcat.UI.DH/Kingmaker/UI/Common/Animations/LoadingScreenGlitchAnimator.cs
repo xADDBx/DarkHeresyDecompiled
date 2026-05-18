@@ -65,7 +65,7 @@ public class LoadingScreenGlitchAnimator : MonoBehaviour
 		if (m_GlitchImage.sprite != null)
 		{
 			m_GlitchImage.gameObject.SetActive(value: true);
-			UISounds.Instance.Play(UISounds.Instance.Sounds.LoadingScreen.FinishGlitch, isButton: false, playAnyway: true);
+			UISounds.Instance.Play(FullScreenUniqueSounds.Instance.LoadingScreen.FinishGlitch, isButton: false, playAnyway: true);
 			m_GlitchCo = StartCoroutine(GlitchCo());
 		}
 		else

@@ -3,6 +3,7 @@ using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
 
@@ -16,11 +17,11 @@ public class VendorBaseScreenVM : ViewModel
 
 	public readonly VendorTabNavigationVM VendorTabNavigationVM;
 
-	public VendorTradeViewVM VendorTradePartVM;
-
-	public FactionReputationVM FactionReputationVM;
-
 	public ReadOnlyReactiveProperty<VendorWindowsTab> ActiveTab => m_ActiveTab;
+
+	public VendorTradeViewVM VendorTradePartVM { get; private set; }
+
+	public FactionReputationVM FactionReputationVM { get; private set; }
 
 	public VendorBaseScreenVM()
 	{
@@ -36,6 +37,14 @@ public class VendorBaseScreenVM : ViewModel
 
 	private void SelectWindow(VendorWindowsTab tab)
 	{
+		if (VendorTradePartVM == null && FactionReputationVM == null)
+		{
+			FullScreenSounds.Instance.Vendor.Open.Play();
+		}
+		else
+		{
+			FullScreenSounds.Instance.Vendor.SwitchTo.Play();
+		}
 		switch (tab)
 		{
 		case VendorWindowsTab.Trade:
@@ -44,11 +53,11 @@ public class VendorBaseScreenVM : ViewModel
 			VendorTradePartVM = new VendorTradeViewVM(VendorHelper.TradeLogic.VendorEntity, delegate
 			{
 				VendorTradePartVM?.Dispose();
-			});
+			}).AddTo(this);
 			break;
 		case VendorWindowsTab.Reputation:
 			VendorTradePartVM?.Dispose();
-			FactionReputationVM = new FactionReputationVM();
+			FactionReputationVM = new FactionReputationVM().AddTo(this);
 			break;
 		}
 		m_ActiveTab.Value = tab;
@@ -62,5 +71,6 @@ public class VendorBaseScreenVM : ViewModel
 		{
 			h.HandleFullScreenUiChanged(state: false, FullScreenUIType.Vendor);
 		});
+		FullScreenSounds.Instance.Vendor.Close.Play();
 	}
 }

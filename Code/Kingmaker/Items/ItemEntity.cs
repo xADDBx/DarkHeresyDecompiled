@@ -17,7 +17,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.Items.Slots;
 using Kingmaker.Mechanics.Entities;
@@ -185,6 +184,9 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 	[OwlPackInclude]
 	protected bool m_NotLootable;
 
+	[OwlPackInclude]
+	public BlueprintItem SourceContainer;
+
 	[JsonProperty]
 	[OwlPackInclude]
 	protected List<IdentifyRollData> m_IdentifyRolls { get; set; } = new List<IdentifyRollData>();
@@ -348,19 +350,9 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 
 	protected virtual bool RemoveFromSlotWhenNoCharges => false;
 
-	public bool ToCargoAutomatically
-	{
-		get
-		{
-			if (!base.Blueprint.ToCargoAutomatically)
-			{
-				return Game.Instance.Player.ItemsToCargo.Contains(base.Blueprint);
-			}
-			return true;
-		}
-	}
-
-	public IEnumerable<ItemUIInteraction> UIInteractions => base.Blueprint.GetComponents<ItemUIInteraction>();
+	public IEnumerable<ItemUIInteraction> UIInteractions => from i in base.Blueprint.GetComponents<ItemUIInteraction>()
+		where i.CanInteract(Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI.Value)
+		select i;
 
 	public virtual bool IsLootable
 	{
@@ -368,7 +360,12 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 		{
 			if (!m_NotLootable)
 			{
-				return !(base.Blueprint is BlueprintItemEquipment blueprintItemEquipment) || !blueprintItemEquipment.IsUnlootable;
+				BlueprintItem blueprint = base.Blueprint;
+				if (blueprint == null || blueprint.IsLootable)
+				{
+					blueprint = SourceContainer;
+					return blueprint == null || blueprint.IsLootable;
+				}
 			}
 			return false;
 		}
@@ -444,7 +441,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 		}
 	}
 
-	public Sprite Icon => base.Blueprint.Icon;
+	public virtual Sprite Icon => base.Blueprint.Icon;
 
 	public string NameForAcronym => base.Blueprint.NameForAcronym;
 
@@ -507,12 +504,8 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 	{
 	}
 
-	protected ItemEntity(JsonConstructorMark _)
+	protected ItemEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntity()
 	{
 	}
 
@@ -671,7 +664,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 	{
 		m_WielderRef = wielder ?? throw new ArgumentNullException("wielder");
 		ReapplyFactsForWielder();
-		EventBus.RaiseEvent((IItemEntity)this, (Action<IEquipItemHandler>)delegate(IEquipItemHandler x)
+		base.EventBus.RaiseEvent((IItemEntity)this, (Action<IEquipItemHandler>)delegate(IEquipItemHandler x)
 		{
 			x.OnDidEquipped();
 		}, isCheckRuntime: true);
@@ -679,7 +672,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 
 	public virtual void OnWillUnequip()
 	{
-		EventBus.RaiseEvent((IItemEntity)this, (Action<IEquipItemHandler>)delegate(IEquipItemHandler x)
+		base.EventBus.RaiseEvent((IItemEntity)this, (Action<IEquipItemHandler>)delegate(IEquipItemHandler x)
 		{
 			x.OnWillUnequip();
 		}, isCheckRuntime: true);
@@ -769,7 +762,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 
 	public void OnOpenDescriptionFirstTime()
 	{
-		EventBus.RaiseEvent((IItemEntity)this, (Action<IPlayerOpenItemDescriptionFirstTimeHandler>)delegate(IPlayerOpenItemDescriptionFirstTimeHandler h)
+		base.EventBus.RaiseEvent((IItemEntity)this, (Action<IPlayerOpenItemDescriptionFirstTimeHandler>)delegate(IPlayerOpenItemDescriptionFirstTimeHandler h)
 		{
 			h.HandlePlayerOpenItemDescriptionFirstTime();
 		}, isCheckRuntime: true);
@@ -777,7 +770,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 
 	public void OnOpenDescription()
 	{
-		EventBus.RaiseEvent((IItemEntity)this, (Action<IPlayerOpenItemDescriptionHandler>)delegate(IPlayerOpenItemDescriptionHandler h)
+		base.EventBus.RaiseEvent((IItemEntity)this, (Action<IPlayerOpenItemDescriptionHandler>)delegate(IPlayerOpenItemDescriptionHandler h)
 		{
 			h.HandlePlayerOpenItemDescription();
 		}, isCheckRuntime: true);
@@ -883,7 +876,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 		if (Charges > 0)
 		{
 			Charges--;
-			EventBus.RaiseEvent((IMechanicEntity)user, (Action<IItemChargesHandler>)delegate(IItemChargesHandler h)
+			base.EventBus.RaiseEvent((IMechanicEntity)user, (Action<IItemChargesHandler>)delegate(IItemChargesHandler h)
 			{
 				h.HandleItemChargeSpent(this);
 			}, isCheckRuntime: true);
@@ -937,7 +930,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 		}
 		if (!IsIdentified)
 		{
-			EventBus.RaiseEvent((IItemEntity)this, (Action<IIdentifyHandler>)delegate(IIdentifyHandler h)
+			base.EventBus.RaiseEvent((IItemEntity)this, (Action<IIdentifyHandler>)delegate(IIdentifyHandler h)
 			{
 				h.OnFailedToIdentify();
 			}, isCheckRuntime: true);
@@ -991,7 +984,7 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 		return true;
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -1187,12 +1180,8 @@ public abstract class ItemEntity<TBlueprintItem> : ItemEntity, IHashable, IOwlPa
 	{
 	}
 
-	protected ItemEntity(JsonConstructorMark _)
+	protected ItemEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected ItemEntity()
 	{
 	}
 

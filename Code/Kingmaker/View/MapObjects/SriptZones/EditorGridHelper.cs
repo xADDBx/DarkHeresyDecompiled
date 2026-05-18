@@ -146,6 +146,6 @@ public static class EditorGridHelper
 	private static Vector3 GetStarterNode(AbstractDestructibleEntityView destructibleEntity, GridGraph graph)
 	{
 		Vector2 min = destructibleEntity.Bounds.min;
-		return FindWorldPositionOfNode(ConvertPointToGridCoordinates(new Vector3(min.x, 0f, min.y), graph), graph, destructibleEntity.ViewTransform.position.y);
+		return FindWorldPositionOfNode(ConvertPointToGridCoordinates(new Vector3(min.x, 0f, min.y), graph), graph, destructibleEntity.transform.position.y);
 	}
 }

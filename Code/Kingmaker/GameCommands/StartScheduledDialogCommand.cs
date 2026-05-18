@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;

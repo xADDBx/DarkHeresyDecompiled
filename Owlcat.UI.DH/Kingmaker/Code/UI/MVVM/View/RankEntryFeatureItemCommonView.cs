@@ -220,7 +220,7 @@ public class RankEntryFeatureItemCommonView : VirtualListElementViewBase<BaseRan
 		else
 		{
 			base.ViewModel.CareerPathVM.SelectNextItem();
-			UISounds.Instance.Sounds.Buttons.DoctrineNextButtonClick.Play();
+			ButtonsSounds.Instance.DoctrineNextButton.Click.Play();
 		}
 	}
 

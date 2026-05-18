@@ -32,8 +32,8 @@ public class ClickMapObjectHandler : IClickEventHandler
 	public HandlerPriorityResult GetPriority(GameObject gameObject, Vector3 worldPosition)
 	{
 		bool isOvertip = false;
-		MapObjectView mapObj = gameObject?.GetComponentNonAlloc<MapObjectView>();
-		return new HandlerPriorityResult((CheckMapObject(mapObj) && (CheckInteractions(mapObj, out isOvertip) || CheckDestructible(mapObj))) ? 1f : 0f, isOvertip);
+		MapObjectView mapObjectView = gameObject?.GetComponentNonAlloc<MapObjectView>();
+		return new HandlerPriorityResult((CheckMapObject(mapObjectView) && (CheckInteractions(mapObjectView, out isOvertip) || CheckDestructible(mapObjectView) || UtilityInteracts.VariativeInteractionCount(mapObjectView) > 0)) ? 1f : 0f, isOvertip);
 	}
 
 	private static bool CheckMapObject(MapObjectView mapObj)
@@ -93,14 +93,14 @@ public class ClickMapObjectHandler : IClickEventHandler
 		return false;
 	}
 
-	public bool OnClick(GameObject gameObject, Vector3 worldPosition, int button, bool simulate = false, bool muteEvents = false)
+	public bool OnClick(GameObject gameObject, Vector3 _, int button, bool simulate = false, bool muteEvents = false)
 	{
 		DestructibleEntityView destructibleEntityView = gameObject.Or(null)?.GetComponent<DestructibleEntityView>();
 		if (destructibleEntityView != null && destructibleEntityView.VisibleInExploration)
 		{
 			if (destructibleEntityView.ExplorationBark != null)
 			{
-				BarkPlayer.Bark(destructibleEntityView.EntityData, destructibleEntityView.ExplorationBark.String, VoiceOverType.Bark, string.Empty);
+				BarkPlayer.Bark(destructibleEntityView.EntityData, destructibleEntityView.ExplorationBark, VoiceOverType.Bark, string.Empty);
 			}
 			EventBus.RaiseEvent(delegate(IForceShowActionBarUIHandler h)
 			{
@@ -196,7 +196,7 @@ public class ClickMapObjectHandler : IClickEventHandler
 		{
 			warning = reasons.UnavailableGeneric;
 		}
-		if (interaction.AlreadyInteractedInThisCombatRound)
+		if (interaction.AlreadyInteractedInThisCombatRound && !interaction.CanInteract())
 		{
 			warning = reasons.AlreadyInteractedInThisCombatRound.Text;
 		}

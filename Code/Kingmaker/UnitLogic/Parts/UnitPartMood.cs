@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Kingmaker.DialogSystem.Blueprints;
+using Kingmaker.DialogSystem;
 using Kingmaker.UnitLogic.Mechanics;
 using Newtonsoft.Json;
 using OwlPack.Runtime;

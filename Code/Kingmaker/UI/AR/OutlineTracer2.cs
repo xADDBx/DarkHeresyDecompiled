@@ -95,7 +95,7 @@ internal struct OutlineTracer2
 
 	private readonly CellBuffer m_CellBuffer;
 
-	private readonly NativeArray<ushort> m_ChunkAreaMasks;
+	private readonly NativeArray<uint> m_ChunkAreaMasks;
 
 	private NativeArray<byte> m_ProcessedStatusFlags;
 
@@ -107,7 +107,7 @@ internal struct OutlineTracer2
 
 	private int m_TurnsCounter;
 
-	public OutlineTracer2(float cellSize, byte iterationNumber, CellBuffer cellBuffer, NativeArray<ushort> chunkAreaMasks, NativeArray<byte> processedStatusFlags, NativeList<OutlinePlotCommand> commands, OutlineCellFilter shapeFilter)
+	public OutlineTracer2(float cellSize, byte iterationNumber, CellBuffer cellBuffer, NativeArray<uint> chunkAreaMasks, NativeArray<byte> processedStatusFlags, NativeList<OutlinePlotCommand> commands, OutlineCellFilter shapeFilter)
 	{
 		m_CellSize = cellSize;
 		m_IterationNumber = iterationNumber;
@@ -127,7 +127,7 @@ internal struct OutlineTracer2
 		{
 			int num = m_CellIndex / 64;
 			int num2 = (num + 1) * 64;
-			if (m_ShapeFilter.TestArea(m_ChunkAreaMasks[num]))
+			if (m_ShapeFilter.TestChunk(m_ChunkAreaMasks[num]))
 			{
 				while (m_CellIndex < num2)
 				{
@@ -160,8 +160,7 @@ internal struct OutlineTracer2
 			result = default(OutlineTraceResult);
 			return false;
 		}
-		Cell cell = m_CellBuffer.GetCell(startCellIndex);
-		if (cell.TryGetAdjacent(in GridDirection.E, out var cellIndex) && cell.HasNoCut(in EdgeDirection.E) && IsCellBelongsToShape(cellIndex))
+		if (m_CellBuffer.GetCell(startCellIndex).TryGetAdjacent(in GridDirection.E, out var cellIndex) && IsCellBelongsToShape(cellIndex))
 		{
 			result = default(OutlineTraceResult);
 			return false;
@@ -263,7 +262,7 @@ internal struct OutlineTracer2
 	private bool IsCellBelongsToShape(int cellIndex)
 	{
 		int index = cellIndex / 64;
-		if (m_ShapeFilter.TestArea(m_ChunkAreaMasks[index]))
+		if (m_ShapeFilter.TestChunk(m_ChunkAreaMasks[index]))
 		{
 			return m_ShapeFilter.Test(cellIndex);
 		}

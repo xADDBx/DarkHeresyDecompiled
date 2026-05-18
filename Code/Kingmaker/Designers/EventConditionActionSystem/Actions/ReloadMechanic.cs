@@ -14,7 +14,7 @@ public class ReloadMechanic : GameAction
 
 	protected override void RunAction()
 	{
-		Game.ReloadAreaMechanic(ClearFx);
+		Game.ReloadAreaMechanic(ClearFx, needNavMeshRescam: false);
 	}
 
 	public override string GetCaption()

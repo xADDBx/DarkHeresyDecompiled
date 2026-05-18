@@ -81,13 +81,13 @@ public class LoadingScreenVM : ViewModel, IStartAwaitingUserInput, ISubscriber, 
 			UpdateLockProgress();
 			m_NeedUserInput.Value = LoadingProcess.Instance.IsAwaitingUserInput;
 		}).AddTo(this);
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.LoadingScreen).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
+		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.LoadingScreen).State(InterfaceMetricsEvent.InterfaceStates.Open).Send();
 	}
 
 	protected override void OnDispose()
 	{
 		base.OnDispose();
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.LoadingScreen).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).Send();
+		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.LoadingScreen).State(InterfaceMetricsEvent.InterfaceStates.Close).Send();
 	}
 
 	public void SetLoadingArea(BlueprintArea area)

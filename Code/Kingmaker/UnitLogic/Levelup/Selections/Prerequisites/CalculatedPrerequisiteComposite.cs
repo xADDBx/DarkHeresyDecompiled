@@ -41,7 +41,7 @@ public class CalculatedPrerequisiteComposite : CalculatedPrerequisite
 		foreach (CalculatedPrerequisite prerequisite in Prerequisites)
 		{
 			Color32 color = (prerequisite.Value ? UIConfig.Instance.TooltipColors.Bonus : UIConfig.Instance.TooltipColors.Penaty);
-			builder.Append($"\t<color=#{ColorUtility.ToHtmlStringRGB(color)}>{prerequisite.Description}</color>\n");
+			builder.Append($"\t<color=#{ColorUtility.ToHtmlStringRGB((Color)color)}>{prerequisite.Description}</color>\n");
 		}
 		return builder.ToString();
 	}

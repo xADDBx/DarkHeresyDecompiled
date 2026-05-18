@@ -85,7 +85,7 @@ public class ActionBarPartConsumablesVM : ActionBarBasePartVM, IUnitEquipmentHan
 		if (!LoadingProcess.Instance.IsLoadingInProcess && slot.Owner == Unit.Entity)
 		{
 			OnUnitChanged();
-			m_UnitChanged.Execute();
+			m_UnitChanged.Execute(R3.Unit.Default);
 		}
 	}
 }

@@ -6,7 +6,6 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
@@ -86,8 +85,7 @@ public class ContextActionApplyDOT : ContextAction
 			return false;
 		}
 		DOTLogic dOTLogic = buff.GetComponents<DOTLogic>().First((DOTLogic c) => c.Type == Type);
-		PropertyContext context = new PropertyContext(base.Caster, base.Context, base.Target);
-		if (!dOTLogic.SaveThrowRestrictions.IsPassed(context))
+		if (!dOTLogic.SaveThrowRestrictions.IsPassed(base.Context, base.Caster, base.Target))
 		{
 			return false;
 		}

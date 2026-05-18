@@ -111,9 +111,6 @@ public class RenderRuntimeShaders : IRenderPipelineResources, IRenderPipelineGra
 	[ResourcePath("Shaders/Utils/CopyCachedShadows.shader", SearchType.ProjectPath)]
 	public Shader CopyCachedShadowsPS;
 
-	[ResourcePath("Shaders/VirtualTexture/DownsampleVTFeedback.compute", SearchType.ProjectPath)]
-	public ComputeShader DownsampleVTFeedback;
-
 	public int version => m_Version;
 
 	bool IRenderPipelineGraphicsSettings.isAvailableInPlayerBuild => true;

@@ -77,7 +77,7 @@ public class CluePointerHandler : MonoBehaviour, IPointerDownHandler, IEventSyst
 
 	public void OnBeginDrag(PointerEventData eventData)
 	{
-		UISounds.Instance.Play(UISounds.Instance.Sounds.DetectiveSystem.CaseItemDragStart, base.gameObject);
+		UISounds.Instance.Play(ServiceWindowsSounds.Instance.DetectiveJournal.CaseItemDragStart, base.gameObject);
 	}
 
 	public void OnDrag(PointerEventData eventData)
@@ -100,7 +100,7 @@ public class CluePointerHandler : MonoBehaviour, IPointerDownHandler, IEventSyst
 
 	public void OnEndDrag(PointerEventData eventData)
 	{
-		UISounds.Instance.Play(UISounds.Instance.Sounds.DetectiveSystem.CaseItemDragStop, base.gameObject);
+		UISounds.Instance.Play(ServiceWindowsSounds.Instance.DetectiveJournal.CaseItemDragStop, base.gameObject);
 	}
 
 	public void OnPointerUp(PointerEventData eventData)

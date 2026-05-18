@@ -1,8 +1,8 @@
 using System;
 using JetBrains.Annotations;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
@@ -151,19 +151,19 @@ public readonly struct RuleReason : IUIDataProvider, IEquatable<RuleReason>
 		{
 			throw new ArgumentNullException("context");
 		}
-		MechanicEntityFact mechanicEntityFact = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.Fact;
-		if (mechanicEntityFact != null)
+		MechanicEntityFact fact = EvalContext.Current.Fact;
+		if (fact != null)
 		{
-			Fact = mechanicEntityFact;
-			Item = GetItemFromFact(mechanicEntityFact);
+			Fact = fact;
+			Item = GetItemFromFact(fact);
 		}
 		Context = context;
 		SourceEntity = (Caster = context.MaybeCaster);
 	}
 
-	public RuleReason(in RuleReason proto, [CanBeNull] MechanicsContext currentContext = null)
+	public RuleReason(in RuleReason proto, [CanBeNull] IEvalContext currentContext = null)
 	{
-		Context = currentContext ?? proto.Context;
+		Context = (currentContext as MechanicsContext) ?? proto.Context;
 		Fact = proto.Fact;
 		Rule = proto.Rule;
 		Caster = proto.Caster;
@@ -171,7 +171,24 @@ public readonly struct RuleReason : IUIDataProvider, IEquatable<RuleReason>
 		Item = proto.Item;
 	}
 
-	public RuleReason Copy([CanBeNull] MechanicsContext currentContext)
+	public RuleReason([NotNull] IEvalContext ctx)
+	{
+		this = default(RuleReason);
+		if (ctx == null)
+		{
+			throw new ArgumentNullException("ctx");
+		}
+		MechanicEntityFact mechanicEntityFact = (Fact = ctx.Fact);
+		Context = (ctx as MechanicsContext) ?? mechanicEntityFact?.MaybeContext;
+		Caster = ctx.Caster;
+		SourceEntity = ctx.Owner;
+		if (mechanicEntityFact != null)
+		{
+			Item = GetItemFromFact(mechanicEntityFact);
+		}
+	}
+
+	public RuleReason Copy([CanBeNull] IEvalContext currentContext)
 	{
 		return new RuleReason(in this, currentContext);
 	}

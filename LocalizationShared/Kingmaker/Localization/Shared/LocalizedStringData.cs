@@ -51,11 +51,6 @@ public class LocalizedStringData
 	public bool Spammable;
 
 	[NotNull]
-	[JsonProperty(PropertyName = "ownerGuid", DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate)]
-	[DefaultValue("")]
-	public string OwnerGuid = "";
-
-	[NotNull]
 	[JsonProperty(PropertyName = "languages")]
 	public List<LocaleData> Languages = new List<LocaleData>();
 
@@ -63,6 +58,10 @@ public class LocalizedStringData
 	[JsonProperty(PropertyName = "string_traits", DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate)]
 	[DefaultValue(null)]
 	public List<TraitData> StringTraits;
+
+	[CanBeNull]
+	[JsonProperty(PropertyName = "usages", DefaultValueHandling = DefaultValueHandling.Ignore)]
+	public List<UsageData> Usages;
 
 	public LocalizedStringData(Locale source, string key)
 	{
@@ -228,18 +227,29 @@ public class LocalizedStringData
 				language.OriginalText = text;
 				result = true;
 			}
-			if (language.Traits == null)
+			if (language.Traits != null)
 			{
-				continue;
-			}
-			foreach (TraitData trait in language.Traits)
-			{
-				text = ApplyFixups(language.Locale, trait.LocaleText);
-				if (text != trait.LocaleText)
+				foreach (TraitData trait in language.Traits)
 				{
-					trait.LocaleText = text;
-					result = true;
+					text = ApplyFixups(language.Locale, trait.LocaleText);
+					if (text != trait.LocaleText)
+					{
+						trait.LocaleText = text;
+						result = true;
+					}
 				}
+			}
+			string text2 = language.VOComment?.TrimEnd() ?? "";
+			if (text2 != language.VOComment)
+			{
+				language.VOComment = text2;
+				result = true;
+			}
+			text2 = language.TranslationComment?.TrimEnd() ?? "";
+			if (text2 != language.TranslationComment)
+			{
+				language.TranslationComment = text2;
+				result = true;
 			}
 		}
 		return result;
@@ -261,7 +271,6 @@ public class LocalizedStringData
 		}
 		text = text.Replace(" - ", " — ");
 		text = text.Replace("\r", "");
-		text = text.TrimEnd();
 		while (text.Contains("  "))
 		{
 			text = text.Replace("  ", " ");

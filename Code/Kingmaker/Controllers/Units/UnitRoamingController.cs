@@ -203,7 +203,7 @@ public class UnitRoamingController : IControllerTick, IController, IRoamingTurnE
 		{
 			return false;
 		}
-		if (unit is BaseUnitEntity item && dialogController.InvolvedUnits.Contains(item))
+		if (unit is BaseUnitEntity value && dialogController.InvolvedUnits.Contains(value))
 		{
 			return false;
 		}

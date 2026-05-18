@@ -5,6 +5,7 @@ using System.Linq;
 using DG.Tweening;
 using JetBrains.Annotations;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Settings;
 using Kingmaker.Sound;
 using Kingmaker.Sound.Base;
 using Kingmaker.UI;
@@ -102,8 +103,8 @@ public class SplashScreenController : MonoBehaviour
 	{
 		m_Enabled = true;
 		BaseCanvas.alpha = 1f;
-		m_FirstTime = PlayerPrefs.GetInt("FirstTimeLogoShow", -1) == -1;
-		PlayerPrefs.SetInt("FirstTimeLogoShow", 1);
+		m_FirstTime = !SettingsController.Instance.GeneralSettingsProvider.HasKey("FirstTimeLogoShow") && PlayerPrefs.GetInt("FirstTimeLogoShow", -1) == -1;
+		SettingsController.Instance.GeneralSettingsProvider.SetValue("FirstTimeLogoShow", 1);
 		m_TweenSequence = DOTween.Sequence();
 		m_TweenSequence.AppendInterval(0.1f);
 		foreach (ScreenUnit screen in m_Screens)

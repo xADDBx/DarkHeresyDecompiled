@@ -1,12 +1,11 @@
 using System;
 using JetBrains.Annotations;
 using Kingmaker.Code.Gameplay.Parts;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.UnitLogic.Parts;
 using UnityEngine;
@@ -64,7 +63,7 @@ public class RuleCalculateHeal : RulebookTargetEvent
 	private DamageStrategy _strategy;
 
 	[CanBeNull]
-	public MechanicsContext Context { get; }
+	public IEvalContext Context { get; }
 
 	[CanBeNull]
 	public IDamageablePart TargetDamageablePart { get; private set; }
@@ -101,7 +100,7 @@ public class RuleCalculateHeal : RulebookTargetEvent
 	private RuleCalculateHeal([NotNull] MechanicEntity initiator, [NotNull] MechanicEntity target)
 		: base(initiator, target)
 	{
-		Context = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
+		Context = EvalContext.Current;
 		SetTargetDamageablePart();
 	}
 
@@ -134,7 +133,8 @@ public class RuleCalculateHeal : RulebookTargetEvent
 	{
 		if (TargetDamageablePart != null)
 		{
-			if (Target.IsMechanism && Strategy != DamageStrategy.ArmorOnly)
+			PartHealth healthOptional = Target.GetHealthOptional();
+			if (healthOptional != null && healthOptional.IsForbidDirectHpDamage && Strategy != DamageStrategy.ArmorOnly)
 			{
 				Modifiers.Add(ModifierType.PctMul_Extra, 0, this, ModifierDescriptor.Mechanism);
 			}

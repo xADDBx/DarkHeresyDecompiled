@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Kingmaker.View.MapObjects;
 
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("e8314663525201148a07d32c9b075f3c")]
 public class LocalMapMarker : EntityPartComponent<LocalMapMarkerPart, LocalMapMarkerSettings>
 {
@@ -14,7 +15,7 @@ public class LocalMapMarker : EntityPartComponent<LocalMapMarkerPart, LocalMapMa
 		}
 		if (Settings.Description != null)
 		{
-			return Settings.Description.String;
+			return Settings.Description;
 		}
 		return "<???>";
 	}

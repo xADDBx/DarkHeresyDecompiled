@@ -13,4 +13,8 @@ public class UIOvertips
 	public LocalizedString NeedUnknownKey;
 
 	public LocalizedString SuitableUnit;
+
+	public LocalizedString AlreadyUsedInteract;
+
+	public LocalizedString SkillUseRestriction;
 }

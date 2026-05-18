@@ -56,25 +56,25 @@ internal sealed class LayeredMaterialController
 		m_ScriptPropertiesSnapshot.CaptureStaticProperties();
 	}
 
-	public void SetupRenderers(List<Renderer> renderers)
+	public void SetupRenderer(Renderer renderer)
 	{
-		CleanupRenderers();
-		foreach (Renderer renderer3 in renderers)
+		if (!(renderer is SkinnedMeshRenderer renderer2))
 		{
-			if (renderer3 is SkinnedMeshRenderer renderer)
+			if (renderer is MeshRenderer renderer3 && renderer3.GetSubMeshCount() == 1)
 			{
-				if (renderer.GetSubMeshCount() == 1)
-				{
-					m_RendererCollections[1].renderers.Add(LayeredMaterialRenderer.Get(renderer3));
-					m_RenderersCount++;
-				}
-			}
-			else if (renderer3 is MeshRenderer renderer2 && renderer2.GetSubMeshCount() == 1)
-			{
-				m_RendererCollections[0].renderers.Add(LayeredMaterialRenderer.Get(renderer3));
+				m_RendererCollections[0].renderers.Add(LayeredMaterialRenderer.Get(renderer));
 				m_RenderersCount++;
 			}
 		}
+		else if (renderer2.GetSubMeshCount() == 1)
+		{
+			m_RendererCollections[1].renderers.Add(LayeredMaterialRenderer.Get(renderer));
+			m_RenderersCount++;
+		}
+	}
+
+	public void UpdateMaterials()
+	{
 		float time = Time.time;
 		m_Timeline.UpdatePlayingTracks(time);
 		UpdateAdditionalMaterials();
@@ -199,6 +199,15 @@ internal sealed class LayeredMaterialController
 					renderers.RemoveAt(num);
 				}
 			}
+		}
+	}
+
+	public void RemoveRenderer(int rendererId)
+	{
+		LayeredMaterialRendererCollection[] rendererCollections = m_RendererCollections;
+		for (int i = 0; i < rendererCollections.Length; i++)
+		{
+			rendererCollections[i].renderers.RemoveAll((LayeredMaterialRenderer r) => r.IsRendererIdMatch(rendererId));
 		}
 	}
 }

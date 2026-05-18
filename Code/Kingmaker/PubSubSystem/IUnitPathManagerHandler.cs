@@ -9,7 +9,7 @@ namespace Kingmaker.PubSubSystem;
 
 public interface IUnitPathManagerHandler : ISubscriber<IMechanicEntity>, ISubscriber
 {
-	void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO);
+	void HandlePathAdded(Path path, float cost, List<BaseUnitEntity> enemiesAoO, bool hasThreats);
 
 	void HandlePathRemoved();
 

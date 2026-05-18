@@ -50,6 +50,8 @@ internal sealed class ShadowManager
 
 	private readonly Vector4[] m_FaceVectors;
 
+	public Vector4[] FaceVectors => m_FaceVectors;
+
 	public NativeList<ShadowRenderRequest> RenderRequests => m_RenderRequestList;
 
 	public NativeList<ShadowRenderRequest> RenderRequestsForCache => m_RenderRequestForCacheList;
@@ -111,10 +113,8 @@ internal sealed class ShadowManager
 		m_StatsisticsReference.Dispose();
 	}
 
-	public JobHandle ScheduleSetupJobs(ref NativeArray<LightDescriptor> lightDescriptorArray, ContextContainer frameData, JobHandle dependency)
+	public JobHandle ScheduleSetupJobs(ref NativeArray<LightDescriptor> lightDescriptorArray, WaaaghCameraData cameraData, WaaaghRenderingData renderingData, WaaaghShadowData shadowData, JobHandle dependency)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
 		m_PrecalculatedDirectionalShadowDataMap.Clear();
 		m_ProcessDataList.Clear();
 		m_RenderRequestList.Clear();
@@ -127,21 +127,21 @@ internal sealed class ShadowManager
 		{
 			return dependency;
 		}
-		PrecalculatedDirectionalShadowDataFactory.Populate(frameData, m_PrecalculatedDirectionalShadowDataMap);
-		int frameId = waaaghRenderingData.TimeData.FrameId;
-		ShadowLightDataFactory lightDataFactory = new ShadowLightDataFactory(frameData);
+		PrecalculatedDirectionalShadowDataFactory.Populate(renderingData, shadowData, m_PrecalculatedDirectionalShadowDataMap);
+		int frameId = renderingData.TimeData.FrameId;
+		ShadowLightDataFactory lightDataFactory = new ShadowLightDataFactory(cameraData, shadowData);
 		ShadowAtlasViewportAllocator dynamicAtlasAllocator = new ShadowAtlasViewportAllocator(m_ShadowMapAtlas.Allocator);
 		ShadowAtlasViewportAllocator staticCachedAtlasAllocator = default(ShadowAtlasViewportAllocator);
-		if (waaaghShadowData.StaticShadowsCacheEnabled)
+		if (shadowData.StaticShadowsCacheEnabled)
 		{
 			staticCachedAtlasAllocator = new ShadowAtlasViewportAllocator(m_CachedShadowMapAtlas.Allocator);
 		}
-		ShadowDistanceUpdateQualifier shadowDistanceUpdateQualifier = new ShadowDistanceUpdateQualifier(frameData, frameId);
+		ShadowDistanceUpdateQualifier shadowDistanceUpdateQualifier = new ShadowDistanceUpdateQualifier(cameraData, shadowData, frameId);
 		ShadowRenderDataFactory renderDataFactory = new ShadowRenderDataFactory(m_PrecalculatedDirectionalShadowDataMap, m_TetrahedronCalculator, SystemInfo.usesReversedZBuffer);
 		ShadowStatisticsWriter statisticsWriter = new ShadowStatisticsWriter(m_StatsisticsReference);
 		ShadowJob jobData = default(ShadowJob);
 		jobData.CurrentFrameId = frameId;
-		jobData.StaticShadowCacheEnabled = waaaghShadowData.StaticShadowsCacheEnabled;
+		jobData.StaticShadowCacheEnabled = shadowData.StaticShadowsCacheEnabled;
 		jobData.LightDescriptorArray = lightDescriptorArray;
 		jobData.ShadowDataCacheMap = m_ShadowDataCacheMap;
 		jobData.ProcessDataList = m_ProcessDataList;
@@ -160,11 +160,11 @@ internal sealed class ShadowManager
 		return jobData.Schedule(dependency);
 	}
 
-	public void FinishSetup(ScriptableRenderContext context, ContextContainer frameData)
+	public void FinishSetup(ScriptableRenderContext context, WaaaghCameraData cameraData, WaaaghRenderingData renderingData)
 	{
-		CullShadowCasters(ref context, frameData);
-		CreateShadowRenderLists(ref context, frameData);
-		ReportStatistics(frameData);
+		CullShadowCasters(ref context, renderingData);
+		CreateShadowRenderLists(ref context, renderingData);
+		ReportStatistics(cameraData);
 	}
 
 	private void UpdateShadowMapAtlases(ShadowSettings settings)
@@ -203,10 +203,9 @@ internal sealed class ShadowManager
 		}
 	}
 
-	private void CullShadowCasters(ref ScriptableRenderContext context, ContextContainer frameData)
+	private void CullShadowCasters(ref ScriptableRenderContext context, WaaaghRenderingData renderingData)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		NativeArray<VisibleLight> visibleLights = waaaghRenderingData.CullResults.visibleLights;
+		NativeArray<VisibleLight> visibleLights = renderingData.CullResults.visibleLights;
 		ShadowCastersCullingInfos shadowCastersCullingInfos = default(ShadowCastersCullingInfos);
 		shadowCastersCullingInfos.splitBuffer = new NativeArray<ShadowSplitData>(visibleLights.Length * 4, Allocator.Temp);
 		shadowCastersCullingInfos.perLightInfos = new NativeArray<LightShadowCasterCullingInfo>(visibleLights.Length, Allocator.Temp);
@@ -214,7 +213,7 @@ internal sealed class ShadowManager
 		int splitBufferOffset = 0;
 		PopulateShadowCastersCullingInfos(m_RenderRequestForCacheList, ref shadowCastersCullingInfos2, ref splitBufferOffset);
 		PopulateShadowCastersCullingInfos(m_RenderRequestList, ref shadowCastersCullingInfos2, ref splitBufferOffset);
-		context.CullShadowCasters(waaaghRenderingData.CullResults, shadowCastersCullingInfos2);
+		context.CullShadowCasters(renderingData.CullResults, shadowCastersCullingInfos2);
 	}
 
 	private unsafe static void PopulateShadowCastersCullingInfos(NativeList<ShadowRenderRequest> requestList, ref ShadowCastersCullingInfos shadowCastersCullingInfos, ref int splitBufferOffset)
@@ -244,16 +243,15 @@ internal sealed class ShadowManager
 		}
 	}
 
-	private void CreateShadowRenderLists(ref ScriptableRenderContext context, ContextContainer frameData)
+	private void CreateShadowRenderLists(ref ScriptableRenderContext context, WaaaghRenderingData renderingData)
 	{
 		bool supportsLightLayers = WaaaghPipeline.Asset.SupportsLightLayers;
-		CreateRenderListsForRequestsList(m_RenderRequestForCacheList, context, frameData, supportsLightLayers);
-		CreateRenderListsForRequestsList(m_RenderRequestList, context, frameData, supportsLightLayers);
+		CreateRenderListsForRequestsList(m_RenderRequestForCacheList, context, renderingData, supportsLightLayers);
+		CreateRenderListsForRequestsList(m_RenderRequestList, context, renderingData, supportsLightLayers);
 	}
 
-	private unsafe void CreateRenderListsForRequestsList(NativeList<ShadowRenderRequest> requestList, ScriptableRenderContext context, ContextContainer frameData, bool useRenderingLayerMask)
+	private unsafe void CreateRenderListsForRequestsList(NativeList<ShadowRenderRequest> requestList, ScriptableRenderContext context, WaaaghRenderingData renderingData, bool useRenderingLayerMask)
 	{
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
 		ShadowRenderRequest* unsafePtr = requestList.GetUnsafePtr();
 		int length = requestList.Length;
 		for (int i = 0; i < length; i++)
@@ -261,7 +259,7 @@ internal sealed class ShadowManager
 			ref ShadowRenderRequest reference = ref unsafePtr[i];
 			for (int j = 0; j < reference.FaceCount; j++)
 			{
-				ShadowDrawingSettings settings = new ShadowDrawingSettings(waaaghRenderingData.CullResults, reference.VisibleLightIndex);
+				ShadowDrawingSettings settings = new ShadowDrawingSettings(renderingData.CullResults, reference.VisibleLightIndex);
 				settings.useRenderingLayerMaskTest = useRenderingLayerMask;
 				settings.objectsFilter = reference.ObjectsFilter;
 				reference.RendererListArray[j] = context.CreateShadowRendererList(ref settings);
@@ -269,7 +267,7 @@ internal sealed class ShadowManager
 		}
 	}
 
-	private void ReportStatistics(ContextContainer frameData)
+	private void ReportStatistics(WaaaghCameraData cameraData)
 	{
 	}
 
@@ -278,11 +276,10 @@ internal sealed class ShadowManager
 		return new Vector3(p1.y - p2.y, p2.x - p1.x, p1.x * p2.y - p2.x * p1.y);
 	}
 
-	public void PushShadowConstantBuffer(CommandBuffer cmd)
+	public void PushShadowConstantBuffer(UnsafeCommandBuffer cmd)
 	{
 		ConstantBuffer.PushGlobal(cmd, in UnsafeCollectionExtensions.AsRef(in m_ShadowConstantBufferReference), ShaderPropertyId.ShadowConstantBuffer);
 		ConstantBuffer.PushGlobal(cmd, in UnsafeCollectionExtensions.AsRef(in m_ShadowCopyCacheConstantBufferReference), ShaderPropertyId.ShadowCopyCacheConstantBuffer);
 		cmd.SetGlobalVectorArray(ShaderPropertyId._Clips, m_PointLightClips);
-		cmd.SetGlobalVectorArray(ShaderPropertyId._FaceVectors, m_FaceVectors);
 	}
 }

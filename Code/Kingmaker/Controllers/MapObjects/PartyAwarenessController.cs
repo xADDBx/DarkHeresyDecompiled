@@ -9,6 +9,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Gameplay.Parts;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
@@ -79,35 +80,46 @@ public class PartyAwarenessController : IControllerTick, IController, IEntityPos
 				}
 			}
 		}
-		if ((awarenessCheck == null && !flag) || (awarenessCheck != null && awarenessCheck.Settings.HiddenInDarkness && !awarenessCheck.IsRevealedByFlashlight))
+		if ((awarenessCheck == null && !flag) || (awarenessCheck != null && awarenessCheck.Settings.HiddenInDarkness && Game.Instance.Player.Flashlight.FlashlightInUse && !awarenessCheck.IsRevealedByFlashlight))
 		{
 			return;
 		}
 		bool isAwarenessCheckPassed = mapObject.IsAwarenessCheckPassed;
-		float num = character.DistanceTo(mapObject.View.ViewTransform.position);
+		float num = character.DistanceTo(mapObject.ViewPosition);
 		if (isAwarenessCheckPassed || flag)
 		{
 			if (!mapObject.WasHighlightedOnRevealAndNoticed && num < (float)ConfigRoot.Instance.SystemMechanics.StandartPerceptionRadius && !Game.Instance.Player.IsInCombat)
 			{
-				mapObject.View.OnEntityNoticed(character);
+				mapObject.OnEntityNoticed(character);
 			}
 		}
-		else if (awarenessCheck.IsCheckAllowedFor(character) && num < awarenessCheck.Settings.Radius && character.Vision.HasLOS(mapObject.View))
+		else if (awarenessCheck.IsCheckAllowedFor(character) && num < awarenessCheck.Settings.Radius && character.Vision.HasLOS(mapObject))
 		{
 			RollAwareness(character, mapObject);
 		}
-		if (!isAwarenessCheckPassed && mapObject.IsAwarenessCheckPassed && mapObject.View is TrapObjectView trapObjectView)
+		if (isAwarenessCheckPassed || !mapObject.IsAwarenessCheckPassed || !(mapObject is TrapObjectData trapObjectData))
 		{
-			PartAwarenessCheck partAwarenessCheck = trapObjectView.LinkedTrap?.Data.AwarenessCheck;
-			if (partAwarenessCheck != null)
+			return;
+		}
+		PartAwarenessCheck partAwarenessCheck = trapObjectData.LinkedTrap?.AwarenessCheck;
+		if (partAwarenessCheck != null)
+		{
+			partAwarenessCheck.SetPassed(value: true);
+			EventBus.RaiseEvent((IMapObjectEntity)trapObjectData.LinkedTrap, (Action<IAwarenessHandler>)delegate(IAwarenessHandler h)
 			{
-				partAwarenessCheck.IsPassed = true;
-			}
-			PartAwarenessCheck partAwarenessCheck2 = trapObjectView.Device?.Data.AwarenessCheck;
-			if (partAwarenessCheck2 != null)
+				h.OnEntityNoticed(character);
+			}, isCheckRuntime: true);
+			trapObjectData.LinkedTrap.OnEntityNoticed(character);
+		}
+		PartAwarenessCheck partAwarenessCheck2 = trapObjectData.Device?.AwarenessCheck;
+		if (partAwarenessCheck2 != null)
+		{
+			partAwarenessCheck2.SetPassed(value: true);
+			EventBus.RaiseEvent((IMapObjectEntity)trapObjectData.Device, (Action<IAwarenessHandler>)delegate(IAwarenessHandler h)
 			{
-				partAwarenessCheck2.IsPassed = true;
-			}
+				h.OnEntityNoticed(character);
+			}, isCheckRuntime: true);
+			trapObjectData.Device.OnEntityNoticed(character);
 		}
 	}
 
@@ -131,19 +143,19 @@ public class PartyAwarenessController : IControllerTick, IController, IEntityPos
 			{
 				Reason = data
 			});
-			awarenessCheck.LastAwarenessValue[character.FromBaseUnitEntity()] = character.Skills.SkillAwareness;
+			awarenessCheck.LastAwarenessValue[character.FromBaseUnitEntity()] = character.Actor.GetStat(StatType.SkillAwareness, null, default(StatContext), "RollAwareness");
 			flag = rulePerformSkillCheck.ResultIsSuccess;
 		}
-		awarenessCheck.IsPassed = flag;
+		awarenessCheck.SetPassed(flag);
 		if (flag)
 		{
 			EventBus.RaiseEvent((IMapObjectEntity)data, (Action<IAwarenessHandler>)delegate(IAwarenessHandler h)
 			{
 				h.OnEntityNoticed(character);
 			}, isCheckRuntime: true);
-			if (data.View is TrapObjectView { TrappedObject: not null } trapObjectView)
+			if (data is TrapObjectData { TrappedObject: { } trappedObject })
 			{
-				trapObjectView.TrappedObject.View.OnEntityNoticed(character);
+				trappedObject.OnEntityNoticed(character);
 			}
 		}
 		else if (BuildModeUtility.IsDevelopment)

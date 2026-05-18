@@ -37,26 +37,27 @@ public class UnitLifeController : BaseUnitController
 	{
 		if (unit.LifeState.ScriptedKill || unit.LifeState.MarkedForDeath)
 		{
-			if (unit.IsMechanism)
+			PartHealth healthOptional = unit.GetHealthOptional();
+			if (healthOptional != null && healthOptional.IsCountHpAsArmor)
 			{
 				PartArmor required = unit.GetRequired<PartArmor>();
 				if (required != null)
 				{
 					required.SetDurabilityLeft(0);
-					goto IL_0041;
+					goto IL_004d;
 				}
 			}
 			unit.Health.SetHitPointsLeft(0);
 		}
-		goto IL_0041;
-		IL_0041:
+		goto IL_004d;
+		IL_004d:
 		unit.LifeState.MarkedForDeath = false;
 		UnitLifeState newLifeState = CalculateLifeState(unit);
 		SetLifeState(unit, newLifeState);
 		if ((bool)unit.Features.Immortality && !unit.LifeState.ScriptedKill && !Game.Instance.Controllers.TurnController.TurnBasedModeActive && !LoadingProcess.Instance.IsLoadingInProcess)
 		{
-			UnitAnimationManager maybeAnimationManager = unit.MaybeAnimationManager;
-			if ((object)maybeAnimationManager != null && maybeAnimationManager.IsGoingProne)
+			UnitAnimationManager maybeUnitAnimationManager = unit.MaybeUnitAnimationManager;
+			if ((object)maybeUnitAnimationManager != null && maybeUnitAnimationManager.IsGoingProne)
 			{
 				unit.LifeState.Resurrect();
 			}
@@ -69,7 +70,7 @@ public class UnitLifeController : BaseUnitController
 		{
 			return UnitLifeState.Dead;
 		}
-		if (unit.Health.HitPointsLeft > 0)
+		if (!unit.Health.IsFullyDamaged)
 		{
 			return UnitLifeState.Conscious;
 		}

@@ -113,7 +113,9 @@ public class ReplaceAbility : UnitFactComponentDelegate
 
 	protected override void OnActivateOrPostLoad()
 	{
-		base.Owner.GetOrCreate<PartAbilityReplacements>().Add(base.Fact, TargetAbility, RequestSavableData<ComponentData>().ReplacementAbility);
+		EntityFactRef<Ability> replacementAbility = RequestSavableData<ComponentData>().ReplacementAbility;
+		base.Owner.GetOrCreate<PartAbilityReplacements>().Add(base.Fact, TargetAbility, replacementAbility);
+		replacementAbility.Fact?.UpdateModifiers();
 	}
 
 	protected override void OnDeactivate()

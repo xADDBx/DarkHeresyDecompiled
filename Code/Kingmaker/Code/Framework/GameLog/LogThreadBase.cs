@@ -5,6 +5,8 @@ using System.Linq;
 using Code.Framework.Utility.UnityExtensions;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings.GameLog;
+using Kingmaker.Code.Framework.Utility;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.Code.View.Bridge.Utils;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -59,8 +61,8 @@ public abstract class LogThreadBase : BaseDisposable
 
 	public static ITooltipBrick CreateBrickModifier(Modifier modifier, bool valueIsPercent = false, string additionText = null, int nestedLevel = 0, bool isResultValue = false, bool isWithoutPlus = false, bool noName = false)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> createTooltipBrickTextValue = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		if (createTooltipBrickTextValue == null)
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> createBrickTextValue = CombatLogTooltipService.CreateBrickTextValue;
+		if (createBrickTextValue == null)
 		{
 			return null;
 		}
@@ -71,36 +73,19 @@ public abstract class LogThreadBase : BaseDisposable
 		string text = string.Empty;
 		if (!noName)
 		{
-			text = StatModifiersBreakdown.GetBonusSourceText(modifier);
-			if (text.IsNullOrEmpty())
-			{
-				text = LocalizedTexts.Instance.Descriptors.GetText(modifier.Descriptor);
-			}
+			text = modifier.GetFormattedName();
 		}
-		string text2 = "";
-		string text3 = ((modifier.Type == ModifierType.PctMul) ? "×" : "");
-		string text4 = ((!isWithoutPlus && modifier.Value > 0 && modifier.Type != ModifierType.PctMul && modifier.Type != ModifierType.PctMul_Extra) ? "+" : "");
-		string text5 = (((valueIsPercent && modifier.Type == ModifierType.ValAdd) || modifier.Type == ModifierType.PctAdd) ? "%" : "");
-		float num = modifier.Value;
-		if (valueIsPercent && modifier.Type == ModifierType.PctAdd)
+		ModifierFormatFlags modifierFormatFlags = ModifierFormatFlags.None;
+		if (valueIsPercent)
 		{
-			num = num / 100f + 1f;
-			text3 = "×";
-			text4 = "";
-			text5 = "";
+			modifierFormatFlags |= ModifierFormatFlags.IsPercent;
 		}
-		ModifierType type = modifier.Type;
-		if (type == ModifierType.PctMul || type == ModifierType.PctMul_Extra)
+		if (isWithoutPlus)
 		{
-			text3 = "×";
-			num /= 100f;
+			modifierFormatFlags |= ModifierFormatFlags.NoPlusSign;
 		}
-		if (!text3.IsNullOrEmpty())
-		{
-			text2 = " (" + num * 100f + "%)";
-		}
-		string value = text3 + text4 + num.ToString(CultureInfo.InvariantCulture) + text5 + additionText + text2;
-		return createTooltipBrickTextValue(new TooltipBrickTextValueArgs(text, value, nestedLevel, isResultValue));
+		string formattedValue = modifier.GetFormattedValue(additionText, modifierFormatFlags);
+		return createBrickTextValue(new TooltipBrickTextValueArgs(text, formattedValue, nestedLevel, isResultValue));
 	}
 
 	public void Cleanup()
@@ -123,7 +108,7 @@ public abstract class LogThreadBase : BaseDisposable
 
 	public static IEnumerable<ITooltipBrick> GetMinMaxDamageModifiers(IReadonlyModifiersValue min, IReadonlyModifiersValue max, int nestedLevel)
 	{
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
+		Func<BrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
 		if (tooltipBrickIconTextValue == null)
 		{
 			yield break;
@@ -142,14 +127,14 @@ public abstract class LogThreadBase : BaseDisposable
 				}
 			}
 			TooltipModifiersUtility.ModifierDescription modifierDescription = new TooltipModifiersUtility.ModifierDescription(item);
-			yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifierDescription.LocalizedName, flag ? modifierDescription.Value : (modifierDescription.Value + " " + s.MinDamage.Text), nestedLevel, isResultValue: true));
+			yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(modifierDescription.LocalizedName, flag ? modifierDescription.Value : (modifierDescription.Value + " " + s.MinDamage.Text), nestedLevel, isResultValue: true));
 		}
 		foreach (Modifier item3 in max.List)
 		{
 			if (!copyList.Contains(item3))
 			{
 				TooltipModifiersUtility.ModifierDescription modifierDescription2 = new TooltipModifiersUtility.ModifierDescription(item3);
-				yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifierDescription2.LocalizedName, modifierDescription2.Value + " " + s.MaxDamage.Text, nestedLevel, isResultValue: true));
+				yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(modifierDescription2.LocalizedName, modifierDescription2.Value + " " + s.MaxDamage.Text, nestedLevel, isResultValue: true));
 			}
 		}
 	}
@@ -161,7 +146,7 @@ public abstract class LogThreadBase : BaseDisposable
 
 	private static IEnumerable<ITooltipBrick> GetModifiers(IReadonlyModifiersComposite modifiers, int nestedLevel, bool showSummary, bool showModifiers, IReadonlyModifiersComposite baseValueModifiers = null, IReadonlyModifiersComposite vitalModifiers = null)
 	{
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
+		Func<BrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
 		if (tooltipBrickIconTextValue == null)
 		{
 			yield break;
@@ -178,10 +163,10 @@ public abstract class LogThreadBase : BaseDisposable
 				if (!baseValueAdded)
 				{
 					TooltipModifiersUtility.ModifierDescription modifierDescription = new TooltipModifiersUtility.ModifierDescription(modifiers.GetModifier((Modifier i) => i.Type == ModifierType.ValAdd && i.Descriptor == ModifierDescriptor.BaseValue) ?? new Modifier(ModifierType.ValAdd, 0, null, null, null, BonusType.None, StatType.Unknown, ModifierDescriptor.BaseValue));
-					yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifierDescription.LocalizedName, modifierDescription.PlainValue, nestedLevel, isResultValue: true));
+					yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(modifierDescription.LocalizedName, modifierDescription.PlainValue, nestedLevel, isResultValue: true));
 					baseValueAdded = true;
 				}
-				yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifiersList.LocalizedTitle, modifiersList.TitleValue, nestedLevel, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: false, isBeigeBackground: false, isRedBackground: false, new TooltipTemplateModifiers(modifiersList, excludeBaseValue: true)));
+				yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(modifiersList.LocalizedTitle, modifiersList.TitleValue, nestedLevel, isResultValue: true, null, CombatLogIcon.None, BrickElementPalette.Normal, new TooltipTemplateModifiers(modifiersList, excludeBaseValue: true)));
 			}
 			if (!showModifiers)
 			{
@@ -190,7 +175,7 @@ public abstract class LogThreadBase : BaseDisposable
 			foreach (TooltipModifiersUtility.ModifierDescription modifier in modifiersList)
 			{
 				int nested = (showSummary ? (nestedLevel + 1) : nestedLevel);
-				yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(modifier.LocalizedName, modifier.Value, nested, isResultValue: true));
+				yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(modifier.LocalizedName, modifier.Value, nested, isResultValue: true));
 				IReadonlyModifiersComposite details = modifier.Details;
 				if (details == null || details.List.Count <= 0)
 				{
@@ -206,8 +191,8 @@ public abstract class LogThreadBase : BaseDisposable
 
 	public static IEnumerable<ITooltipBrick> GetCommonDamageModifiers(IReadonlyModifiersComposite modifiers, int nestedLevel)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> tooltipBrickTextValue = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> tooltipBrickTextValue = CombatLogTooltipService.CreateBrickTextValue;
+		Func<BrickIconTextValueArgs, ITooltipBrick> tooltipBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
 		if (tooltipBrickTextValue == null || tooltipBrickIconTextValue == null)
 		{
 			yield break;
@@ -228,7 +213,7 @@ public abstract class LogThreadBase : BaseDisposable
 			}
 			if (num != 0 || flag)
 			{
-				yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.ValAdd.Text, UtilityText.AddSign(num).ToString(CultureInfo.InvariantCulture) ?? "", nestedLevel + 1, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+				yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.ValAdd.Text, UtilityText.AddSign(num).ToString(CultureInfo.InvariantCulture) ?? "", nestedLevel + 1, isResultValue: true));
 				bool needPrefix = false;
 				foreach (Modifier item2 in valAddList)
 				{
@@ -260,7 +245,7 @@ public abstract class LogThreadBase : BaseDisposable
 			if (num2 != 0f || flag2)
 			{
 				num2 += 100f;
-				yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.PctAdd.Text, $"×{(num2 / 100f).ToString(CultureInfo.InvariantCulture)} ({num2}%)", nestedLevel + 1, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+				yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.PctAdd.Text, $"×{(num2 / 100f).ToString(CultureInfo.InvariantCulture)} ({num2}%)", nestedLevel + 1, isResultValue: true));
 				yield return tooltipBrickTextValue(new TooltipBrickTextValueArgs(s.BaseModifier.Text, "100%", nestedLevel + 1, isResultValue: true));
 				foreach (Modifier item4 in pctAddList)
 				{
@@ -280,7 +265,7 @@ public abstract class LogThreadBase : BaseDisposable
 				num3 *= (float)item5.Value / 100f;
 			}
 			num3 *= 100f;
-			yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.PctMul.Text, "×" + (num3 / 100f).ToString(CultureInfo.InvariantCulture) + " (" + num3 + "%)", nestedLevel + 1, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+			yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.PctMul.Text, "×" + (num3 / 100f).ToString(CultureInfo.InvariantCulture) + " (" + num3 + "%)", nestedLevel + 1, isResultValue: true));
 			yield return tooltipBrickTextValue(new TooltipBrickTextValueArgs(s.BaseModifier.Text, "100%", nestedLevel + 1, isResultValue: true));
 			foreach (Modifier item6 in pctMulList)
 			{
@@ -314,7 +299,7 @@ public abstract class LogThreadBase : BaseDisposable
 			}
 			if (num4 != 0 || flag3)
 			{
-				yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.ValAddExtra.Text, UtilityText.AddSign(num4).ToString(CultureInfo.InvariantCulture) ?? "", nestedLevel + 1, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+				yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.ValAddExtra.Text, UtilityText.AddSign(num4).ToString(CultureInfo.InvariantCulture) ?? "", nestedLevel + 1, isResultValue: true));
 				bool needPrefix = false;
 				foreach (Modifier item8 in valAddExtraList)
 				{
@@ -340,7 +325,7 @@ public abstract class LogThreadBase : BaseDisposable
 			num5 *= (float)item9.Value / 100f;
 		}
 		num5 *= 100f;
-		yield return tooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(s.PctMulExtra.Text, "×" + (num5 / 100f).ToString(CultureInfo.InvariantCulture) + " (" + num5 + "%)", nestedLevel + 1, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: false, isGrayBackground: true));
+		yield return tooltipBrickIconTextValue(new BrickIconTextValueArgs(s.PctMulExtra.Text, "×" + (num5 / 100f).ToString(CultureInfo.InvariantCulture) + " (" + num5 + "%)", nestedLevel + 1, isResultValue: true));
 		yield return tooltipBrickTextValue(new TooltipBrickTextValueArgs(s.BaseModifier.Text, "100%", nestedLevel + 1, isResultValue: true));
 		foreach (Modifier item10 in pctMulExtraList)
 		{
@@ -362,9 +347,9 @@ public abstract class LogThreadBase : BaseDisposable
 
 	public static IEnumerable<ITooltipBrick> GetDamageModifiers(RolledDamage damageData, int nestedLevel, bool minMax, bool common)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> createTooltipBrickTextValue = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> createTooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
-		if (createTooltipBrickTextValue == null || createTooltipBrickIconTextValue == null)
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> createBrickTextValue = CombatLogTooltipService.CreateBrickTextValue;
+		Func<BrickIconTextValueArgs, ITooltipBrick> createBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
+		if (createBrickTextValue == null || createBrickIconTextValue == null)
 		{
 			yield break;
 		}
@@ -397,25 +382,25 @@ public abstract class LogThreadBase : BaseDisposable
 
 	protected static IEnumerable<ITooltipBrick> ShowReroll(RuleRollChance roll, int chance, bool isTargetHitIcon = false, bool isProtectionIcon = false)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> tooltipBrickTextValue = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		Func<TooltipBrickChanceArgs, ITooltipBrick> tooltipBrickChance = CombatLogTooltipService.CreateTooltipBrickChance;
-		Func<TooltipBrickTriggeredAutoArgs, ITooltipBrick> createTooltipBrickTriggeredAuto = CombatLogTooltipService.CreateTooltipBrickTriggeredAuto;
-		if (tooltipBrickTextValue != null && tooltipBrickChance != null && createTooltipBrickTriggeredAuto != null && roll.RerollSuccessChance.HasValue)
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> tooltipBrickTextValue = CombatLogTooltipService.CreateBrickTextValue;
+		Func<BrickChanceArgs, ITooltipBrick> tooltipBrickChance = CombatLogTooltipService.CreateBrickChance;
+		Func<TooltipBrickTriggeredAutoArgs, ITooltipBrick> createBrickTriggeredAuto = CombatLogTooltipService.CreateBrickTriggeredAuto;
+		if (tooltipBrickTextValue != null && tooltipBrickChance != null && createBrickTriggeredAuto != null && roll.RerollSuccessChance.HasValue)
 		{
 			int num = roll.RollHistory[0];
-			yield return createTooltipBrickTriggeredAuto(new TooltipBrickTriggeredAutoArgs(Strings.TooltipBrickStrings.TriggeredReroll.Text, null, num <= chance));
+			yield return createBrickTriggeredAuto(new TooltipBrickTriggeredAutoArgs(Strings.TooltipBrickStrings.TriggeredReroll.Text, null, num <= chance));
 			yield return tooltipBrickTextValue(new TooltipBrickTextValueArgs(roll.RerollSourceFactName, null, 2));
 			for (int i = roll.RollHistory.Count - 2; i >= 0; i--)
 			{
-				yield return tooltipBrickChance(new TooltipBrickChanceArgs((i == 0) ? Strings.TooltipBrickStrings.InitialRoll.Text : Strings.TooltipBrickStrings.CheckRoll.Text, (i == 0) ? chance : roll.RerollSuccessChance.Value, roll.RollHistory[i], 2, isResultValue: false, null, isProtectionIcon, isTargetHitIcon));
+				yield return tooltipBrickChance(new BrickChanceArgs((i == 0) ? Strings.TooltipBrickStrings.InitialRoll.Text : Strings.TooltipBrickStrings.CheckRoll.Text, (i == 0) ? chance : roll.RerollSuccessChance.Value, roll.RollHistory[i], 2, isResultValue: false, null, CombatLogIcon.Protection));
 			}
 		}
 	}
 
 	protected static ITooltipBrick MinMaxValueBorder(int value, int min, int max, int nestedLevel, bool percent, string minText = null, string maxText = null)
 	{
-		Func<TooltipBrickTextValueArgs, ITooltipBrick> createTooltipBrickTextValue = CombatLogTooltipService.CreateTooltipBrickTextValue;
-		if (createTooltipBrickTextValue == null)
+		Func<TooltipBrickTextValueArgs, ITooltipBrick> createBrickTextValue = CombatLogTooltipService.CreateBrickTextValue;
+		if (createBrickTextValue == null)
 		{
 			return null;
 		}
@@ -431,29 +416,29 @@ public abstract class LogThreadBase : BaseDisposable
 		string text = (percent ? "%" : "");
 		if (value < min)
 		{
-			return createTooltipBrickTextValue(new TooltipBrickTextValueArgs(minText, $"{tooltipBrickStrings.MinValue.Text} {min}{text} ({value}{text})", nestedLevel));
+			return createBrickTextValue(new TooltipBrickTextValueArgs(minText, $"{tooltipBrickStrings.MinValue.Text} {min}{text} ({value}{text})", nestedLevel));
 		}
 		if (value > max)
 		{
-			return createTooltipBrickTextValue(new TooltipBrickTextValueArgs(maxText, $"{tooltipBrickStrings.MaxValue.Text} {max}{text} ({value}{text})", nestedLevel));
+			return createBrickTextValue(new TooltipBrickTextValueArgs(maxText, $"{tooltipBrickStrings.MaxValue.Text} {max}{text} ({value}{text})", nestedLevel));
 		}
 		return null;
 	}
 
 	protected static ITooltipBrick AddMinMaxValue(float value, int nestedLevel, int minValue = 0, bool isResultValue = false)
 	{
-		Func<TooltipBrickIconTextValueArgs, ITooltipBrick> createTooltipBrickIconTextValue = CombatLogTooltipService.CreateTooltipBrickIconTextValue;
-		if (createTooltipBrickIconTextValue == null)
+		Func<BrickIconTextValueArgs, ITooltipBrick> createBrickIconTextValue = CombatLogTooltipService.CreateBrickIconTextValue;
+		if (createBrickIconTextValue == null)
 		{
 			return null;
 		}
 		if (value < (float)minValue)
 		{
-			return createTooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs("<b>" + Strings.TooltipBrickStrings.ChanceBorderMin.Text + "</b>", "<b>" + Strings.TooltipBrickStrings.MinValue.Text + " " + minValue + "% (" + value.ToString(CultureInfo.InvariantCulture) + "%</b>)", nestedLevel, isResultValue, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: true, isGrayBackground: true));
+			return createBrickIconTextValue(new BrickIconTextValueArgs("<b>" + Strings.TooltipBrickStrings.ChanceBorderMin.Text + "</b>", "<b>" + Strings.TooltipBrickStrings.MinValue.Text + " " + minValue + "% (" + value.ToString(CultureInfo.InvariantCulture) + "%</b>)", nestedLevel, isResultValue, null, CombatLogIcon.BorderChance));
 		}
 		if (value > 100f)
 		{
-			return createTooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs("<b>" + Strings.TooltipBrickStrings.ChanceBorder.Text + "</b>", "<b>" + Strings.TooltipBrickStrings.MaxValue.Text + " " + 100 + "% (" + value.ToString(CultureInfo.InvariantCulture) + "%</b>)", nestedLevel, isResultValue, null, isProtectionIcon: false, isTargetHitIcon: false, isBorderChanceIcon: true, isGrayBackground: true));
+			return createBrickIconTextValue(new BrickIconTextValueArgs("<b>" + Strings.TooltipBrickStrings.ChanceBorder.Text + "</b>", "<b>" + Strings.TooltipBrickStrings.MaxValue.Text + " " + 100 + "% (" + value.ToString(CultureInfo.InvariantCulture) + "%</b>)", nestedLevel, isResultValue, null, CombatLogIcon.BorderChance));
 		}
 		return null;
 	}

@@ -71,19 +71,19 @@ public class UnitPartBuffSuppress : BaseUnitPart, IHashable, IOwlPackable<UnitPa
 
 	private void Update()
 	{
-		foreach (Buff buff in base.Owner.Buffs)
+		foreach (Buff item in base.Owner.Buffs.RawFacts.ToList())
 		{
-			bool flag = IsSuppressed(buff);
-			if (buff.IsSuppressed != flag)
+			bool flag = IsSuppressed(item);
+			if (item.IsSuppressed != flag)
 			{
-				if (flag && buff.Active)
+				if (flag && item.Active)
 				{
-					buff.Deactivate();
+					item.Deactivate();
 				}
-				buff.IsSuppressed = flag;
-				if (!flag && !buff.Active)
+				item.IsSuppressed = flag;
+				if (!flag && !item.Active)
 				{
-					buff.Activate();
+					item.Activate();
 				}
 			}
 		}

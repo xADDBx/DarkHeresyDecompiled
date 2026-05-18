@@ -2,7 +2,7 @@ using Owlcat.Runtime.Core.Utility;
 
 namespace Owlcat.BehaviourTrees;
 
-[NodeMenuItem("Add Node/Variables/Entity/Set Entity", "Set Entity")]
+[NodeMenuItem("Add Node/Variables/MechanicEntity/Set Entity", "Set Entity")]
 [TypeId("743fdf44c6bf43bba1dbedcce5f63f88")]
 public class SetEntityNodeElement : BehaviourTreeNodeElement<SetEntityNode>
 {

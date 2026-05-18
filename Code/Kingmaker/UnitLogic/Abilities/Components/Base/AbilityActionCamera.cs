@@ -1,3 +1,4 @@
+using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -7,6 +8,7 @@ using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Abilities.Components.Base;
 
+[Obsolete("Unused in code")]
 [AllowedOn(typeof(BlueprintAbility))]
 [TypeId("b557f8c8bd8e67440b84e93292d2e370")]
 public class AbilityActionCamera : BlueprintComponent
@@ -27,8 +29,6 @@ public class AbilityActionCamera : BlueprintComponent
 
 	public AbilityActionCameraSettings GetSettings(UnitUseAbility abilityCommand)
 	{
-		Transform caster = abilityCommand.Executor?.View?.ViewTransform;
-		Transform target = abilityCommand.Target?.Entity?.View?.ViewTransform;
-		return new AbilityActionCameraSettings(caster, target, TriggerActionCameraChance);
+		return default(AbilityActionCameraSettings);
 	}
 }

@@ -50,7 +50,7 @@ public abstract class BaseUseAbilityLogThread : LogThreadBase
 				ItemEntity itemEntity = ItemsEntityFactory.CreateItemCopy(ability.SourceItem, 1);
 				GameLogContext.Tooltip = itemEntity;
 				CombatLogMessage message2 = LogThreadBase.Strings.UseItem.CreateCombatLogMessage();
-				TooltipBaseTemplate template2 = CombatLogTooltipService.CreateTooltipTemplateItemBlueprint(itemEntity.Blueprint);
+				TooltipBaseTemplate template2 = CombatLogTooltipService.CreateTooltipTemplateItemForLog(itemEntity, mechanicEntity);
 				AddMessage(new CombatLogMessage(message2, template2, hasTooltip: true, mechanicEntity));
 			}
 			else

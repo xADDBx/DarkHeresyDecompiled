@@ -21,6 +21,8 @@ using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.Random;
 using Kingmaker.View.Covers;
 using Kingmaker.Visual.Particles;
+using Kingmaker.Visual.Particles.Blueprints;
+using Owlcat.Fmw.Blueprints;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
@@ -63,9 +65,8 @@ public static class AbilityProjectileAttackLineHelper
 			Vector3 start = fromNode.Vector3Position();
 			Vector3 end = nodes[nodes.Count - 1].Vector3Position();
 			Vector3 position = context.Caster.Position;
-			TargetWrapper targetWrapper2 = GetProjectileTarget(context, attackLine, hits);
-			bool flag = hits.Any((AbilityProjectileAttackLine.HitData h) => h.RollPerformAttackRule.ResultIsCoverHit);
-			TargetWrapper targetWrapper3 = ((targetWrapper != null) ? targetWrapper : new TargetWrapper(position, null, context.Caster));
+			bool isCoverHit = hits.Any((AbilityProjectileAttackLine.HitData h) => h.RollPerformAttackRule.ResultIsCoverHit);
+			TargetWrapper targetWrapper2 = ((targetWrapper != null) ? targetWrapper : new TargetWrapper(position, null, context.Caster));
 			int value = context.Ability.RangeCells;
 			if (hits.Length != 0)
 			{
@@ -75,24 +76,17 @@ public static class AbilityProjectileAttackLineHelper
 					AbilityProjectileAttackLine.HitData hitData = array[i];
 					if (hitData.IsRedirecting)
 					{
-						flag = true;
-						value = WarhammerGeometryUtils.DistanceToInCells(targetWrapper3.Point, default(IntRect), hitData.Entity.Center, default(IntRect));
+						isCoverHit = true;
+						value = WarhammerGeometryUtils.DistanceToInCells(targetWrapper2.Point, default(IntRect), hitData.Entity.Center, default(IntRect));
 						break;
 					}
 				}
 			}
-			Vector3 offset = Vector3.zero;
-			if (!flag && attackLine.Index < context.ProjectileHitPositions.Count)
-			{
-				targetWrapper2 = new TargetWrapper(context.ProjectileHitPositions[attackLine.Index]);
-			}
-			else
-			{
-				offset = GetProjectileMisdirectionOffset(position, targetWrapper2.Point, 0.15f);
-			}
-			Projectile projectile = new ProjectileLauncher(projectileBlueprint, targetWrapper3, targetWrapper2).Ability(context.Ability).MaxRangeCells(value).Index(attackLine.Index)
-				.MisdirectionOffset(offset)
-				.IsCoverHit(flag)
+			TargetWrapper projectileTarget = GetProjectileTarget(context, attackLine, hits, (attackLine.Index < context.ProjectileHitPositions.Count) ? new Vector3?(context.ProjectileHitPositions[attackLine.Index]) : null);
+			Vector3 projectileMisdirectionOffset = GetProjectileMisdirectionOffset(position, projectileTarget.Point, 0.15f);
+			Projectile projectile = new ProjectileLauncher(projectileBlueprint, targetWrapper2, projectileTarget).Ability(context.Ability).MaxRangeCells(value).Index(attackLine.Index)
+				.MisdirectionOffset(projectileMisdirectionOffset)
+				.IsCoverHit(isCoverHit)
 				.Launch();
 			attackLine.Projectile = projectile;
 			Debug.DrawLine(start, end, Color.yellow);
@@ -134,73 +128,70 @@ public static class AbilityProjectileAttackLineHelper
 		}
 	}
 
-	private static TargetWrapper GetProjectileTarget(AbilityExecutionContext context, AbilityProjectileAttackLine attackLine, AbilityProjectileAttackLine.HitData[] hits)
+	private static TargetWrapper GetProjectileTarget(AbilityExecutionContext context, AbilityProjectileAttackLine attackLine, AbilityProjectileAttackLine.HitData[] hits, Vector3? precalculatedPosition = null)
 	{
 		GridNodeBase node = attackLine.Nodes.LastOrDefault((GridNodeBase x) => IsNodeAffected(null, attackLine.FromNode, x, attackLine.StepHeight)) ?? attackLine.Nodes.Last();
-		AbilityProjectileAttackLine.HitData hitData = hits.LastItem();
-		AbilityProjectileAttackLine.HitData hitData2 = hits.LastItem((AbilityProjectileAttackLine.HitData i) => i.Entity is UnitEntity && i.RollPerformAttackRule.ResultIsHit);
-		RulePerformAttackRoll rollPerformAttackRule;
+		AbilityProjectileAttackLine.HitData lastHit = hits.LastItem();
+		AbilityProjectileAttackLine.HitData hitData = hits.LastItem((AbilityProjectileAttackLine.HitData i) => i.Entity is UnitEntity && i.RollPerformAttackRule.ResultIsHit);
 		Vector3 vector;
-		if (hitData2.Empty)
+		if (hitData.Empty)
 		{
-			if (!hitData.Empty)
+			if (!lastHit.Empty)
 			{
-				rollPerformAttackRule = hitData.RollPerformAttackRule;
+				RulePerformAttackRoll rollPerformAttackRule = lastHit.RollPerformAttackRule;
 				if (rollPerformAttackRule != null && !rollPerformAttackRule.IsOverpenetration && rollPerformAttackRule.ResultIsHit)
 				{
-					vector = hitData.Node.Vector3Position();
+					vector = lastHit.Node.Vector3Position();
 					vector.y = node.Vector3Position().y + 1f;
 					return vector;
 				}
 			}
 			Vector3 eyePosition = context.Caster.EyePosition;
-			AbilityProjectileAttackLine.HitData hitData3 = hits.LastItem((AbilityProjectileAttackLine.HitData i) => i.Entity is UnitEntity);
-			if (hitData3.Empty)
+			AbilityProjectileAttackLine.HitData hitData2 = hits.LastItem((AbilityProjectileAttackLine.HitData i) => i.Entity is UnitEntity);
+			if (hitData2.Empty)
 			{
 				vector = node.Vector3Position();
 				vector.y = attackLine.ToNode.Vector3Position().y + 1f;
 				eyePosition.y = vector.y;
 				return eyePosition + (vector - eyePosition).normalized * s_MissTargetDistance;
 			}
-			if (TryGetTargetPointByRandomLocator(hitData2.Entity, context, hitData.Node, out vector))
+			if (TryGetTargetPointByRandomLocator(hitData.Entity, context, lastHit, out vector))
 			{
 				return vector;
 			}
 			vector = node.Vector3Position();
-			vector.y = hitData3.Node.Vector3Position().y + 1f;
+			vector.y = hitData2.Node.Vector3Position().y + 1f;
 			eyePosition.y = vector.y;
 			return eyePosition + (vector - eyePosition).normalized * s_MissTargetDistance;
 		}
-		rollPerformAttackRule = hitData.RollPerformAttackRule;
-		if (rollPerformAttackRule != null && !rollPerformAttackRule.IsOverpenetration && rollPerformAttackRule.ResultIsHit)
+		if (precalculatedPosition.HasValue)
 		{
-			return hitData2.Entity;
+			return precalculatedPosition;
 		}
-		if (TryGetTargetPointByRandomLocator(hitData2.Entity, context, hitData.Node, out vector))
+		if (TryGetTargetPointByRandomLocator(hitData.Entity, context, lastHit, out vector))
 		{
 			return vector;
 		}
-		vector = hitData.Node.Vector3Position();
+		vector = lastHit.Node.Vector3Position();
 		vector.y = node.Vector3Position().y + 1f;
 		return vector;
 	}
 
-	private static bool TryGetTargetPointByRandomLocator(MechanicEntity unit, AbilityExecutionContext context, GridNodeBase lastHitNode, out Vector3 result)
+	private static bool TryGetTargetPointByRandomLocator(MechanicEntity unit, AbilityExecutionContext context, AbilityProjectileAttackLine.HitData lastHit, out Vector3 result)
 	{
+		result = default(Vector3);
 		if (!(unit is UnitEntity unitEntity))
 		{
-			result = default(Vector3);
 			return false;
 		}
-		FxBone fxBone = ObjectExtensions.Or(unitEntity.View.ParticlesSnapMap, null)?.GetLocators(FxRoot.Instance.LocatorGroupTorso).Random(PFStatefulRandom.UnitLogic.Abilities);
+		BpRef<BlueprintFxLocatorGroup> bpRef = lastHit.RollPerformAttackRule.ResultHitLocation.FxLocatorGroups?.ElementAtOrDefault(0);
+		BlueprintFxLocatorGroup group = (((object)bpRef != null) ? ((BlueprintFxLocatorGroup?)bpRef) : FxRoot.Instance.LocatorGroupDefaultHit);
+		FxBone fxBone = ObjectExtensions.Or(unitEntity.View.ParticlesSnapMap, null)?.GetLocators(group).Random(PFStatefulRandom.UnitLogic.Abilities);
 		if (fxBone == null)
 		{
-			result = default(Vector3);
 			return false;
 		}
-		Vector3 normalized = (fxBone.Transform.position - context.Caster.EyePosition).normalized;
-		float magnitude = (lastHitNode.Vector3Position() - context.Caster.Position).magnitude;
-		result = context.Caster.EyePosition + normalized * magnitude;
+		result = fxBone.Transform.position;
 		return true;
 	}
 
@@ -264,36 +255,43 @@ public static class AbilityProjectileAttackLineHelper
 		return result;
 	}
 
-	public static bool IsNodeAffected(IAbilityDataProviderForPattern ability, GridNodeBase fromNode, GridNodeBase targetNode, float stepHeight)
+	public static bool IsNodeAffected(IAbilityDataProviderForPattern ability, GridNodeBase fromNode, GridNodeBase targetNode, float stepHeight, bool ignoreLos = false, bool ignoreLevelDifference = false)
 	{
-		using (ProfileScope.New("HasLos"))
+		if (!ignoreLos)
 		{
-			if (ability != null)
+			using (ProfileScope.New("HasLos"))
 			{
-				if (!ability.HasLosCached(fromNode, targetNode))
+				if (ability != null)
+				{
+					if (!ability.HasLosCached(fromNode, targetNode))
+					{
+						return false;
+					}
+				}
+				else if (!LosCalculations.HasLos(fromNode, default(IntRect), targetNode, default(IntRect)))
 				{
 					return false;
 				}
 			}
-			else if (!LosCalculations.HasLos(fromNode, default(IntRect), targetNode, default(IntRect)))
-			{
-				return false;
-			}
 		}
-		int num = Mathf.Max(Mathf.Abs(fromNode.XCoordinateInGrid - targetNode.XCoordinateInGrid), Mathf.Abs(fromNode.ZCoordinateInGrid - targetNode.ZCoordinateInGrid));
-		float num2 = fromNode.Vector3Position().y + (float)num * stepHeight;
-		if (Mathf.Abs(targetNode.Vector3Position().y - num2) <= 1f)
+		if (!ignoreLevelDifference)
 		{
-			return true;
-		}
-		foreach (DestructibleEntity destructibleEntity in Game.Instance.EntityPools.DestructibleEntities)
-		{
-			if (destructibleEntity.CanBeAttackedDirectly && destructibleEntity.GetOccupiedNodes().Contains(targetNode) && num2 >= destructibleEntity.Position.y - 1f && num2 <= targetNode.Vector3Position().y + 1f)
+			int num = Mathf.Max(Mathf.Abs(fromNode.XCoordinateInGrid - targetNode.XCoordinateInGrid), Mathf.Abs(fromNode.ZCoordinateInGrid - targetNode.ZCoordinateInGrid));
+			float num2 = fromNode.Vector3Position().y + (float)num * stepHeight;
+			if (Mathf.Abs(targetNode.Vector3Position().y - num2) <= 1f)
 			{
 				return true;
 			}
+			foreach (DestructibleEntity destructibleEntity in Game.Instance.EntityPools.DestructibleEntities)
+			{
+				if (destructibleEntity.CanBeAttackedDirectly && destructibleEntity.GetOccupiedNodes().Contains(targetNode) && num2 >= destructibleEntity.Position.y - 1f && num2 <= targetNode.Vector3Position().y + 1f)
+				{
+					return true;
+				}
+			}
+			return false;
 		}
-		return false;
+		return true;
 	}
 
 	public static float GetStepHeightBetweenCells(GridNodeBase fromNode, GridNodeBase toNode)
@@ -310,31 +308,51 @@ public static class AbilityProjectileAttackLineHelper
 		return PFStatefulRandom.UnitLogic.Abilities.Range(0f - radius, radius) * vector + PFStatefulRandom.UnitLogic.Abilities.Range(0f - radius, radius) * up;
 	}
 
-	private static OrientedPatternData GetOrientedPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, bool coveredTargetsOnly, int? builtInHaloSize, int? haloSize)
+	private static OrientedPatternData GetOrientedPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, bool coveredTargetsOnly, int? builtInHaloSize, int? haloSize, bool ignoreLos = false, bool ignoreLevelDifference = false, int patternAngle = 30)
 	{
-		GridNodeBase bestShootingPosition = ability.GetBestShootingPosition(casterNode, new TargetWrapper(targetNode.Vector3Position()));
-		Vector2 normalized = (targetNode.Vector3Position() - bestShootingPosition.Vector3Position()).To2D().normalized;
-		PatternGridData patternGridData = GridPatterns.ConstructPattern(PatternType.Cone, ability.RangeCells, 30, normalized, ability.Caster.Size);
+		patternAngle = ((patternAngle > 0) ? patternAngle : 30);
+		GridNodeBase gridNodeBase = casterNode;
+		if (ability.Caster.SizeRect != default(IntRect))
+		{
+			int num = int.MaxValue;
+			foreach (GridNodeBase occupiedNode in ability.Caster.GetOccupiedNodes(casterNode))
+			{
+				int num2 = WarhammerGeometryUtils.DistanceToInCells(casterNode.CoordinatesInGrid, default(IntRect), occupiedNode.CoordinatesInGrid, default(IntRect));
+				if (num2 < num && LosCalculations.HasLos(occupiedNode, default(IntRect), targetNode, default(IntRect)))
+				{
+					gridNodeBase = occupiedNode;
+					num = num2;
+				}
+			}
+		}
+		Vector2 normalized = (targetNode.Vector3Position() - gridNodeBase.Vector3Position()).To2D().normalized;
+		PatternGridData patternGridData = GridPatterns.ConstructPattern(PatternType.Cone, ability.RangeCells, patternAngle, normalized, ability.Caster.Size);
 		if (builtInHaloSize.HasValue)
 		{
 			PatternGridData patternGridData2 = patternGridData;
-			patternGridData = patternGridData2.BuildHalo(builtInHaloSize.Value, PatternGridData.HaloMode.IncludeOriginalPattern, bestShootingPosition.CoordinatesInGrid, normalized, preventBlowback: true, disposable: true);
+			patternGridData = patternGridData2.BuildHalo(builtInHaloSize.Value, PatternGridData.HaloMode.IncludeOriginalPattern, gridNodeBase.CoordinatesInGrid, normalized, preventBlowback: true, disposable: true);
 			patternGridData2.Dispose();
 		}
 		if (haloSize.HasValue)
 		{
 			PatternGridData patternGridData3 = patternGridData;
-			patternGridData = patternGridData3.BuildHalo(haloSize.Value, PatternGridData.HaloMode.ExcludeOriginalPattern, bestShootingPosition.CoordinatesInGrid, normalized, preventBlowback: true, disposable: true);
+			patternGridData = patternGridData3.BuildHalo(haloSize.Value, PatternGridData.HaloMode.ExcludeOriginalPattern, gridNodeBase.CoordinatesInGrid, normalized, preventBlowback: true, disposable: true);
 			patternGridData3.Dispose();
 		}
-		GridGraph graph = (GridGraph)bestShootingPosition.Graph;
-		PatternGridData pattern = patternGridData.Move(bestShootingPosition.CoordinatesInGrid);
+		GridGraph graph = (GridGraph)casterNode.Graph;
+		Vector2Int vector2Int = new Linecast.Ray2NodeOffsets(Vector2Int.zero, normalized).Take(2).Last();
+		Vector2Int offset = gridNodeBase.CoordinatesInGrid + vector2Int;
+		PatternGridData pattern = patternGridData.Move(offset);
 		NodeList nodeList = new NodeList(graph, in pattern);
-		float stepHeightBetweenCells = GetStepHeightBetweenCells(bestShootingPosition, targetNode);
+		float stepHeightBetweenCells = GetStepHeightBetweenCells(gridNodeBase, targetNode);
 		Dictionary<GridNodeBase, PatternCellDataAccumulator> dictionary = new Dictionary<GridNodeBase, PatternCellDataAccumulator>();
 		TempList.Get<float>().Capacity = ability.BurstAttacksCount;
 		foreach (GridNodeBase item in nodeList)
 		{
+			if (item == gridNodeBase)
+			{
+				continue;
+			}
 			MechanicEntity mechanicEntity = (MechanicEntity)(((object)item.GetFirstUnit()) ?? ((object)item.GetDestructibleEntities().FirstOrDefault()));
 			if (coveredTargetsOnly && mechanicEntity == null)
 			{
@@ -343,28 +361,28 @@ public static class AbilityProjectileAttackLineHelper
 			float defenceProbability = 1f;
 			float coverProbability = 0f;
 			float evasionProbability = 0f;
-			float num = 0f;
+			float num3 = 0f;
 			BaseUnitEntity baseUnitEntity = mechanicEntity as BaseUnitEntity;
-			if (baseUnitEntity != null)
+			if (mechanicEntity == null)
 			{
 				defenceProbability = 0f;
-				goto IL_01c9;
+				goto IL_02a6;
 			}
 			using (ProfileScope.New("IsNodeAffected"))
 			{
-				if (!IsNodeAffected(ability, bestShootingPosition, item, stepHeightBetweenCells) || ability.Caster.IsUnitPositionContainsNode(bestShootingPosition.Vector3Position(), item))
+				if (!IsNodeAffected(ability, gridNodeBase, item, stepHeightBetweenCells, ignoreLos, ignoreLevelDifference) || ability.Caster.GetOccupiedNodes(casterNode).Contains(item))
 				{
 					continue;
 				}
-				goto IL_01c9;
+				goto IL_02a6;
 			}
-			IL_01c9:
-			Vector3 vector = bestShootingPosition.Vector3Position() - item.Vector3Position();
+			IL_02a6:
+			Vector3 vector = gridNodeBase.Vector3Position() - item.Vector3Position();
 			if (mechanicEntity != null)
 			{
 				RuleCalculateHitChances ruleCalculateHitChances = new RuleCalculateHitChances(ability.Caster, mechanicEntity, ability.Data, 0);
 				Rulebook.Trigger(ruleCalculateHitChances);
-				num = (float)ruleCalculateHitChances.ResultHitChance / 100f;
+				num3 = (float)ruleCalculateHitChances.ResultHitChance / 100f;
 			}
 			if (baseUnitEntity != null && vector.magnitude > 0.1f)
 			{
@@ -378,18 +396,59 @@ public static class AbilityProjectileAttackLineHelper
 				};
 				defenceProbability = (baseUnitEntity.IsDead ? 1f : ability.CalculateDefenceChanceCached((UnitEntity)baseUnitEntity, cellCoverStatus));
 			}
-			dictionary[item] = new PatternCellDataAccumulator(new float[1] { num }, defenceProbability, coverProbability, evasionProbability, mainCell: true);
+			dictionary[item] = new PatternCellDataAccumulator(new float[1] { num3 }, defenceProbability, coverProbability, evasionProbability, mainCell: true);
 		}
-		return new OrientedPatternData(dictionary, bestShootingPosition);
+		return new OrientedPatternData(dictionary, gridNodeBase);
 	}
 
-	public static OrientedPatternData GetOrientedPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, bool coveredTargetsOnly = false, int? builtInHaloSize = null)
+	public static OrientedPatternData GetOrientedPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, bool coveredTargetsOnly = false, int? builtInHaloSize = null, bool ignoreLos = false, bool ignoreLevelDifference = false, int patternAngle = 30)
 	{
-		return GetOrientedPattern(ability, casterNode, targetNode, coveredTargetsOnly, builtInHaloSize, null);
+		return GetOrientedPattern(ability, casterNode, targetNode, coveredTargetsOnly, builtInHaloSize, null, ignoreLos, ignoreLevelDifference, patternAngle);
 	}
 
 	public static OrientedPatternData GetOrientedHaloPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, bool coveredTargetsOnly = false, int? builtInHaloSize = null, int? haloSize = null)
 	{
 		return GetOrientedPattern(ability, casterNode, targetNode, coveredTargetsOnly, builtInHaloSize, haloSize);
+	}
+
+	[CanBeNull]
+	public static MechanicEntity GetTargetByNode(GridNodeBase node)
+	{
+		BaseUnitEntity firstUnit = node.GetFirstUnit();
+		if (firstUnit != null)
+		{
+			return firstUnit;
+		}
+		FilteredList<DestructibleEntity> destructibleEntities = node.GetDestructibleEntities();
+		if (destructibleEntities.Any())
+		{
+			return destructibleEntities.First();
+		}
+		return null;
+	}
+
+	public static IEnumerable<(MechanicEntity Entity, LosDescription Los, GridNodeBase Node)> EnumerateTargets([NotNull] AbilityExecutionContext context, [CanBeNull] MechanicEntity priorityTarget, [NotNull] IEnumerable<GridNodeBase> nodes, [NotNull] GridNodeBase fromNode, [NotNull] GridNodeBase toNode, bool ignoreLos = false, bool ignoreLevelDifference = false)
+	{
+		List<MechanicEntity> targets = TempList.Get<MechanicEntity>();
+		if (priorityTarget is ThinCoverEntity)
+		{
+			targets.Add(priorityTarget);
+			yield return (Entity: priorityTarget, Los: new LosDescription(LosCalculations.CoverType.Obstacle), Node: priorityTarget.CurrentUnwalkableNode);
+		}
+		foreach (GridNodeBase node in nodes)
+		{
+			float stepHeightBetweenCells = GetStepHeightBetweenCells(fromNode, toNode);
+			if (IsNodeAffected(null, fromNode, node, stepHeightBetweenCells, ignoreLos, ignoreLevelDifference))
+			{
+				MechanicEntity targetByNode = GetTargetByNode(node);
+				if (targetByNode != null && targetByNode != context.Caster && context.Ability.IsValidTargetForAttack(targetByNode) && !targets.Contains(targetByNode))
+				{
+					MechanicEntity caster = context.Caster;
+					LosDescription warhammerLos = LosCalculations.GetWarhammerLos(fromNode, caster.SizeRect, node, targetByNode.SizeRect);
+					targets.Add(targetByNode);
+					yield return (Entity: targetByNode, Los: warhammerLos, Node: node);
+				}
+			}
+		}
 	}
 }

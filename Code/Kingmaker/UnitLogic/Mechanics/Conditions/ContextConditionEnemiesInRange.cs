@@ -24,7 +24,7 @@ public class ContextConditionEnemiesInRange : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity caster = base.Context.MaybeCaster;
+		MechanicEntity caster = base.Eval.Caster;
 		if (caster == null)
 		{
 			PFLog.Default.Error(this, "Caster is missing");

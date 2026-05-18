@@ -11,6 +11,7 @@ using Kingmaker.TextTools.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
+using UnityEngine.Pool;
 
 namespace Kingmaker.Code.Framework.GameLog;
 
@@ -24,7 +25,7 @@ public class PerformScatterAttackLogThread : LogThreadBase, IGameLogEventHandler
 		}
 		GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)evt.Context.Caster;
 		GameLogContext.Text = evt.Ability.Weapon?.Name ?? evt.Ability.Name;
-		GameLogContext.AttacksCount = evt.ScatterAttacks.Count;
+		GameLogContext.AttacksCount = evt.ScatterAttacks.Count((GameLogEventAttack a) => !a.Rule.FromOverpenetration);
 		GameLogEventAttack gameLogEventAttack = evt.ScatterAttacks.FindOrDefault((GameLogEventAttack o) => o != null && o.RollRuleDamage != null);
 		if (gameLogEventAttack != null)
 		{
@@ -32,6 +33,7 @@ public class PerformScatterAttackLogThread : LogThreadBase, IGameLogEventHandler
 		}
 		int num = 0;
 		int num2 = 0;
+		int num3 = 0;
 		foreach (GameLogEventAttack scatterAttack in evt.ScatterAttacks)
 		{
 			if (!scatterAttack.Rule.FromOverpenetration)
@@ -44,10 +46,12 @@ public class PerformScatterAttackLogThread : LogThreadBase, IGameLogEventHandler
 				case AttackResult.CoverHit:
 					num2++;
 					break;
+				default:
+					num3++;
+					break;
 				}
 			}
 		}
-		int num3 = evt.ScatterAttacks.Count - num - num2;
 		StringBuilder stringBuilder = GameLogUtility.StringBuilder;
 		if (num > 0)
 		{
@@ -85,29 +89,35 @@ public class PerformScatterAttackLogThread : LogThreadBase, IGameLogEventHandler
 
 	private static IEnumerable<ITooltipBrick> CollectExtraBricks(GameLogEventAbility evt)
 	{
-		int countAttack = 0;
-		foreach (GameLogEventAttack scatterAttack in evt.ScatterAttacks)
+		List<GameLogEventAttack> value;
+		using (CollectionPool<List<GameLogEventAttack>, GameLogEventAttack>.Get(out value))
 		{
-			int index = scatterAttack.Rule.BurstIndex + 1;
-			bool isAttack = false;
-			for (; countAttack < evt.ScatterAttacks.Count; countAttack++)
+			value.AddRange(evt.ScatterAttacks);
+			value.Sort((GameLogEventAttack a1, GameLogEventAttack a2) => a1.Rule.BurstIndex.CompareTo(a2.Rule.BurstIndex));
+			foreach (GameLogEventAttack item in value)
 			{
-				GameLogEventAttack gameLogEventAttack = evt.ScatterAttacks[countAttack];
-				if (gameLogEventAttack.RollPerformAttackRule.BurstIndex + 1 != index)
+				GameLogContext.ResultDamage = item.Rule.ResultDamageValue;
+				GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)item.Rule.Target;
+				if (item.Rule.FromOverpenetration)
 				{
-					break;
+					GameLogContext.Description = LogThreadBase.Strings.TooltipBrickStrings.FromOverpenetration.Text;
+					if (item.RollPerformAttackRule.IsOverpenetration)
+					{
+						GameLogContext.Description = LogThreadBase.Strings.TooltipBrickStrings.FromOverpenetrationAndTriggersOverpenetration.Text;
+					}
 				}
-				isAttack = true;
-				GameLogContext.ResultDamage = gameLogEventAttack.Rule.ResultDamageValue;
-				GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)gameLogEventAttack.Rule.Target;
-				GameLogContext.Description = (gameLogEventAttack.Rule.FromOverpenetration ? LogThreadBase.Strings.TooltipBrickStrings.TriggersOverpenetration.Text : null);
-				AttackResult result = gameLogEventAttack.Rule.Result;
-				string name = ((result == AttackResult.Hit || result == AttackResult.CoverHit) ? LogThreadBase.Strings.TooltipBrickStrings.ScatterAttackHit.Text : LogThreadBase.Strings.TooltipBrickStrings.ScatterAttackMiss.Text) + " " + GetAttackResultText(gameLogEventAttack.Rule.Result);
-				yield return CombatLogTooltipService.CreateTooltipBrickIconTextValue(new TooltipBrickIconTextValueArgs(name, string.Empty));
-			}
-			if (!isAttack)
-			{
-				yield return CombatLogTooltipService.CreateTooltipBrickIconText(LogThreadBase.Strings.TooltipBrickStrings.ScatterAttackMiss.Text + " " + LogThreadBase.Strings.TooltipBrickStrings.ScatterAttackNoTarget.Text, arg2: false);
+				else if (item.RollPerformAttackRule.IsOverpenetration)
+				{
+					GameLogContext.Description = LogThreadBase.Strings.TooltipBrickStrings.TriggersOverpenetration.Text;
+				}
+				else
+				{
+					GameLogContext.Description = null;
+				}
+				AttackResult result = item.Rule.Result;
+				string arg = ((result == AttackResult.Hit || result == AttackResult.CoverHit) ? LogThreadBase.Strings.TooltipBrickStrings.ScatterAttackHit.Text : LogThreadBase.Strings.TooltipBrickStrings.ScatterAttackMiss.Text);
+				string name = $"{item.Rule.BurstIndex + 1}: {arg} {GetAttackResultText(item.Rule.Result)}";
+				yield return CombatLogTooltipService.CreateBrickIconTextValue(new BrickIconTextValueArgs(name, string.Empty));
 			}
 		}
 	}

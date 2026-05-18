@@ -9,13 +9,11 @@ public interface IAbstractUnitEntity : IMechanicEntity, IEntity, IDisposable
 {
 	bool IsExtra { get; }
 
-	new string UniqueId { get; }
-
 	string CharacterName { get; }
 
-	new Vector3 Position { get; set; }
-
-	Transform ViewTransform { get; }
-
 	Gender Gender { get; }
+
+	float GetOrientationTo(Vector3 position);
+
+	void TurnTo(Vector3 point);
 }

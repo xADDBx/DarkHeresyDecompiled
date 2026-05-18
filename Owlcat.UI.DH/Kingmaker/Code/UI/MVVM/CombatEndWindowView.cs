@@ -1,64 +1,67 @@
-using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.Bridge.Enums;
+using System;
+using Kingmaker.Code.UI.MVVM.View;
 using Kingmaker.UI.Common.Animations;
+using Kingmaker.UI.Transitions;
 using Owlcat.UI;
 using R3;
-using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class CombatEndWindowView : View<CombatEndWindowVM>
+public class CombatEndWindowView : View<CombatEndWindowVM>, ITransitable
 {
 	[SerializeField]
 	private FadeAnimator m_Animator;
 
 	[SerializeField]
-	private TextMeshProUGUI m_HeaderLabel;
+	private ModalWindowView m_ModalWindowView;
 
 	[SerializeField]
-	private TextMeshProUGUI m_DescriptionLabel;
+	private float m_HideTimer;
 
-	[SerializeField]
-	private TextMeshProUGUI m_XpLabel;
+	private IDisposable m_HideTimerDisposable;
 
-	protected virtual void Awake()
+	Transition ITransitable.Show()
 	{
-		m_Animator.Initialize();
-		m_HeaderLabel.text = UICombatEndWindowTexts.Instance.VictoryTitle.Text;
+		return new UIAnimatorShowTransition(m_Animator).Run();
+	}
+
+	Transition ITransitable.Hide()
+	{
+		return new UIAnimatorHideTransition(m_Animator).Run();
 	}
 
 	protected override void OnBind()
 	{
 		m_Animator.AppearAnimation();
-		base.ViewModel.CombatEndReason.Subscribe(SetCombatEndReason).AddTo(this);
-		base.ViewModel.GainedXp.Subscribe(SetGainedXp).AddTo(this);
-		Game.Instance.RequestPauseUi(isPaused: true);
+		m_ModalWindowView.Bind(base.ViewModel.ModalWindowVM);
+		if (base.ViewModel.CloseByTimer)
+		{
+			StartHideTimer();
+		}
 	}
 
 	protected override void OnUnbind()
 	{
-		m_Animator.DisappearAnimation();
-		Game.Instance.RequestPauseUi(isPaused: false);
+		m_ModalWindowView.Unbind();
+		StopHideTimer();
 	}
 
-	protected void Close(bool endCombat)
+	private void StartHideTimer()
 	{
-		base.ViewModel.Close(endCombat);
+		m_HideTimerDisposable?.Dispose();
+		TimeSpan dueTime = TimeSpan.FromSeconds(m_HideTimer + m_Animator.AppearTime);
+		m_HideTimerDisposable = Observable.Timer(dueTime).Subscribe(Close);
 	}
 
-	private void SetCombatEndReason(CombatEndReason combatEndReason)
+	private void StopHideTimer()
 	{
-		m_DescriptionLabel.text = UICombatEndWindowTexts.Instance.GetDescriptionText(combatEndReason);
-		SetCombatEndReasonImpl(combatEndReason);
+		m_HideTimerDisposable?.Dispose();
+		m_HideTimerDisposable = null;
 	}
 
-	protected virtual void SetCombatEndReasonImpl(CombatEndReason combatEndReason)
+	private void Close()
 	{
-	}
-
-	private void SetGainedXp(int gainedXp)
-	{
-		m_XpLabel.text = "";
+		base.ViewModel.Close(endCombat: true);
 	}
 }

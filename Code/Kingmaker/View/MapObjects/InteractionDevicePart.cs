@@ -19,7 +19,7 @@ public class InteractionDevicePart : InteractionPart<InteractionDeviceSettings>,
 	[OwlPackInclude]
 	public int State;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionDevicePart",
 		OldNames = null,
@@ -42,7 +42,7 @@ public class InteractionDevicePart : InteractionPart<InteractionDeviceSettings>,
 	protected override void OnViewDidAttach()
 	{
 		base.OnViewDidAttach();
-		m_Animator = base.View.Or(null)?.GetComponentInChildren<Animator>();
+		m_Animator = base.View?.GetComponentInChildren<Animator>();
 		m_Animator.Or(null)?.SetInteger("State", State);
 	}
 
@@ -87,7 +87,7 @@ public class InteractionDevicePart : InteractionPart<InteractionDeviceSettings>,
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionDevicePart source = new InteractionDevicePart();
 		result = Unsafe.As<InteractionDevicePart, TPossiblyBase>(ref source);

@@ -24,29 +24,36 @@ public class CommandMarkHiddenSpan : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		Data commandData = player.GetCommandData<Data>(this);
-		commandData.Unit = Unit.GetValue();
-		commandData.Unit?.Features.Hidden.Retain();
-		if (NoFadeOut)
+		if (!Unit.TryGetValue(out var value))
 		{
-			AbstractUnitEntity unit = commandData.Unit;
-			if (((unit == null) ? null : unit.View.Or(null)?.Fader) != null)
-			{
-				commandData.Unit.View.Fader.Visible = false;
-				commandData.Unit.View.Fader.FastForward();
-			}
+			return CommandResult.Fail("Failed to find unit");
 		}
+		player.GetCommandData<Data>(this).Unit = value;
+		value.Features.Hidden.Retain();
+		if (NoFadeOut && value.View.Fader != null)
+		{
+			value.View.Fader.Visible = false;
+			value.View.Fader.FastForward();
+		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		player.GetCommandData<Data>(this).Unit?.Features.Hidden.Release();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -54,8 +61,9 @@ public class CommandMarkHiddenSpan : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

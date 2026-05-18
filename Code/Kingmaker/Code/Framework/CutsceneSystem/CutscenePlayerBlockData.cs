@@ -201,6 +201,7 @@ public class CutscenePlayerBlockData : IHashable, IOwlPackable, IOwlPackable<Cut
 				gatePlayer.StopTracks();
 			}
 		}
+		CompleteBlock(shouldSignal: false);
 	}
 
 	public void Pause()

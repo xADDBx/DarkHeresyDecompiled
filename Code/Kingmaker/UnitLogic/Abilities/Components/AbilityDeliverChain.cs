@@ -6,7 +6,8 @@ using Kingmaker.Controllers.Projectiles;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
@@ -18,6 +19,12 @@ namespace Kingmaker.UnitLogic.Abilities.Components;
 
 [ComponentName("Ability/FX/AbilityDeliverChain")]
 [TypeId("8779bb9fcaf367842a53834d9e956006")]
+[ReadsContext(new ContextField[]
+{
+	ContextField.Caster,
+	ContextField.ClickedTarget,
+	ContextField.Ability
+})]
 public class AbilityDeliverChain : AbilityDeliverEffect
 {
 	[NotNull]
@@ -148,7 +155,7 @@ public class AbilityDeliverChain : AbilityDeliverEffect
 		}
 		if (m_Condition.HasConditions)
 		{
-			using (context.SetScope(unit.ToITargetWrapper()))
+			using (EvalContext.PushContext(context, unit))
 			{
 				return m_Condition.Check();
 			}

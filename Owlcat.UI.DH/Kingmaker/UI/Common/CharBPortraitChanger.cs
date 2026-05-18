@@ -91,7 +91,7 @@ public class CharBPortraitChanger : MonoBehaviour
 		}
 		if (playSound)
 		{
-			UISounds.Instance.Sounds.Chargen.ChargenPortraitChange.Play();
+			FullScreenSounds.Instance.Chargen.ChargenPortraitChange.Play();
 		}
 		m_LowerImage.Portrait.sprite = m_CurrentPortrait;
 		m_LowerImage.CanvasGroup.alpha = 1f;

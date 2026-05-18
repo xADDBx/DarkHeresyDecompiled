@@ -22,11 +22,11 @@ public class ShowBarkNode : ActionNode, IBarkSource
 
 	private readonly EntityVariable m_Agent;
 
-	private readonly SharedStringAsset m_BarkString;
+	private readonly LocalizedString m_BarkString;
 
 	private readonly float m_Duration;
 
-	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { m_BarkString.String };
+	public IEnumerable<LocalizedString> Barks => new LocalizedString[1] { m_BarkString };
 
 	public bool IsVoIdForced => false;
 
@@ -34,14 +34,14 @@ public class ShowBarkNode : ActionNode, IBarkSource
 
 	public bool Spammable => false;
 
-	public ShowBarkNode(EntityVariable agent, SharedStringAsset barkString, BarkDurationType durationType, float customDuration)
+	public ShowBarkNode(EntityVariable agent, LocalizedString barkString, BarkDurationType durationType, float customDuration)
 	{
 		m_Agent = agent;
 		m_BarkString = barkString;
 		m_Duration = durationType switch
 		{
 			BarkDurationType.CustomDuration => Mathf.Max(0.3f, customDuration), 
-			BarkDurationType.DurationByText => UtilityBark.GetBarkDuration(m_BarkString.String), 
+			BarkDurationType.DurationByText => UtilityBark.GetBarkDuration(m_BarkString), 
 			_ => UtilityBark.DefaultBarkTime, 
 		};
 	}
@@ -49,6 +49,6 @@ public class ShowBarkNode : ActionNode, IBarkSource
 	protected override void DoAction()
 	{
 		string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, m_Agent.Value);
-		BarkPlayer.Bark(m_Agent.Value, m_BarkString.String, VoiceOverType.Bark, voGuidBySourceAndTarget, m_Duration);
+		BarkPlayer.Bark(m_Agent.Value, m_BarkString, VoiceOverType.Bark, voGuidBySourceAndTarget, m_Duration);
 	}
 }

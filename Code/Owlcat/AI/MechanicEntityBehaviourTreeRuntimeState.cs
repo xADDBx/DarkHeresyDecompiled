@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.BehaviourTrees;
@@ -14,17 +13,37 @@ public class MechanicEntityBehaviourTreeRuntimeState : IRuntimeEntityBlackboard
 
 	public IEnumerable<RuntimeVariable> Variables => m_Variables;
 
-	public MechanicEntityBehaviourTreeRuntimeState(BehaviourTreeSerializableData data, Blackboard blackboard, BehaviourTree behaviourTree)
+	public MechanicEntityBehaviourTreeRuntimeState(BehaviourTreeRuntimeToBlueprintBridge runtimeBridge)
 	{
-		m_Variables = GetStorableVariables(data, blackboard).Concat(GetLimitedEntryNodesState(data, behaviourTree)).ToList();
+		m_Variables = new List<RuntimeVariable>();
+		CollectFromBridge(runtimeBridge);
 	}
 
-	public static void Restore(IRuntimeEntityBlackboard runtimeEntityBlackboard, Blackboard blackboard, BehaviourTree behaviourTree)
+	public static void Restore(IRuntimeEntityBlackboard runtimeEntityBlackboard, BehaviourTreeRuntimeToBlueprintBridge runtimeBridge)
 	{
 		if (runtimeEntityBlackboard != null)
 		{
-			SetStorableVariables(runtimeEntityBlackboard, blackboard);
-			SetLimitedEntryNodesState(runtimeEntityBlackboard, behaviourTree);
+			RestoreToBridge(runtimeEntityBlackboard, runtimeBridge);
+		}
+	}
+
+	private void CollectFromBridge(BehaviourTreeRuntimeToBlueprintBridge bridge)
+	{
+		m_Variables.AddRange(GetStorableVariables(bridge.BehaviourTreeData, bridge.BehaviourTree.Blackboard));
+		m_Variables.AddRange(GetLimitedEntryNodesState(bridge.BehaviourTreeData, bridge.BehaviourTree));
+		foreach (SubTreeNode subTreeNode in bridge.BehaviourTree.SubTreeNodes)
+		{
+			CollectFromBridge(subTreeNode.RuntimeBridge);
+		}
+	}
+
+	private static void RestoreToBridge(IRuntimeEntityBlackboard runtimeEntityBlackboard, BehaviourTreeRuntimeToBlueprintBridge bridge)
+	{
+		SetStorableVariables(runtimeEntityBlackboard, bridge.BehaviourTree.Blackboard);
+		SetLimitedEntryNodesState(runtimeEntityBlackboard, bridge.BehaviourTree);
+		foreach (SubTreeNode subTreeNode in bridge.BehaviourTree.SubTreeNodes)
+		{
+			RestoreToBridge(runtimeEntityBlackboard, subTreeNode.RuntimeBridge);
 		}
 	}
 
@@ -85,43 +104,34 @@ public class MechanicEntityBehaviourTreeRuntimeState : IRuntimeEntityBlackboard
 
 	private static void SetStorableVariables(IRuntimeEntityBlackboard runtimeEntityBlackboard, Blackboard blackboard)
 	{
-		foreach (RuntimeVariable variable in runtimeEntityBlackboard.Variables)
+		foreach (RuntimeVariable variable2 in runtimeEntityBlackboard.Variables)
 		{
-			string key = variable.Key;
-			BlackboardVariable blackboardVariable = null;
-			try
-			{
-				blackboardVariable = blackboard.GetVariable(key);
-			}
-			catch (Exception)
-			{
-			}
-			if (blackboardVariable == null)
+			if (!BehaviourTreeBlackboardExtensions.TryGetVariable(blackboard, variable2.Key, out var variable))
 			{
 				continue;
 			}
-			if (!(blackboardVariable is Owlcat.BehaviourTrees.IntegerVariable integerVariable))
+			if (!(variable is Owlcat.BehaviourTrees.IntegerVariable integerVariable))
 			{
-				if (!(blackboardVariable is BooleanVariable booleanVariable))
+				if (!(variable is BooleanVariable booleanVariable))
 				{
-					if (!(blackboardVariable is Owlcat.BehaviourTrees.FloatVariable floatVariable))
+					if (!(variable is Owlcat.BehaviourTrees.FloatVariable floatVariable))
 					{
-						if (blackboardVariable is PositionVariable positionVariable && variable is Vector3Variable vector3Variable)
+						if (variable is PositionVariable positionVariable && variable2 is Vector3Variable vector3Variable)
 						{
 							positionVariable.Value = vector3Variable.Value;
 						}
 					}
-					else if (variable is Owlcat.EntityBlackboard.FloatVariable floatVariable2)
+					else if (variable2 is Owlcat.EntityBlackboard.FloatVariable floatVariable2)
 					{
 						floatVariable.Value = floatVariable2.Value;
 					}
 				}
-				else if (variable is Owlcat.EntityBlackboard.IntegerVariable integerVariable2)
+				else if (variable2 is Owlcat.EntityBlackboard.IntegerVariable integerVariable2)
 				{
 					booleanVariable.Value = integerVariable2.Value != 0;
 				}
 			}
-			else if (variable is Owlcat.EntityBlackboard.IntegerVariable integerVariable3)
+			else if (variable2 is Owlcat.EntityBlackboard.IntegerVariable integerVariable3)
 			{
 				integerVariable.Value = integerVariable3.Value;
 			}

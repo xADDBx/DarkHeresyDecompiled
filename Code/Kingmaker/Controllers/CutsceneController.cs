@@ -7,6 +7,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Groups;
 using Kingmaker.Utility.CodeTimer;
@@ -18,13 +19,15 @@ using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Controllers;
 
-public class CutsceneController : IControllerEnable, IController, IControllerDisable, IControllerTick, IGameModeHandler, ISubscriber
+public class CutsceneController : IControllerEnable, IController, IControllerDisable, IControllerTick, IGameModeHandler, ISubscriber, IAreaHandler
 {
 	private static readonly LogChannel Logger = PFLog.Cutscene;
 
 	private readonly bool m_TickBackground;
 
 	private static bool s_ShouldStartSkipping;
+
+	private static bool s_IsAreaUnloading;
 
 	public static bool Skipping { get; private set; }
 
@@ -154,7 +157,11 @@ public class CutsceneController : IControllerEnable, IController, IControllerDis
 
 	public void OnGameModeStop(GameModeType gameMode)
 	{
-		if ((gameMode == GameModeType.Cutscene || gameMode == GameModeType.CutsceneGlobalMap) && (Skipping || s_ShouldStartSkipping))
+		if (!(gameMode == GameModeType.Cutscene) && !(gameMode == GameModeType.CutsceneGlobalMap))
+		{
+			return;
+		}
+		if (Skipping || s_ShouldStartSkipping)
 		{
 			Logger.Log("Stop skipping cutscene");
 			Skipping = false;
@@ -164,6 +171,26 @@ public class CutsceneController : IControllerEnable, IController, IControllerDis
 			FadeCanvas.Instance.HideLoadingScreen();
 			FadeCanvas.Instance.Fadeout(fade: false);
 		}
+		if (!s_IsAreaUnloading)
+		{
+			return;
+		}
+		s_IsAreaUnloading = false;
+		foreach (CutscenePlayerData item in Game.Instance.EntityPools.Cutscenes.Where((CutscenePlayerData c) => c.HasActiveLockControl && !c.IsFinished).ToList())
+		{
+			item.Stop();
+			item.HoldingState?.RemoveEntityData(item);
+		}
+	}
+
+	public void OnAreaBeginUnloading()
+	{
+		s_IsAreaUnloading = true;
+	}
+
+	public void OnAreaDidLoad()
+	{
+		s_IsAreaUnloading = false;
 	}
 
 	private static void StartCutsceneSkip()

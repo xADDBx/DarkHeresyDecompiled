@@ -199,7 +199,7 @@ public abstract class GroupChangerVM : ViewModel, IAcceptChangeGroupHandler, ISu
 
 	protected virtual string CanMoveCharacterFromRemoteToParty(UnitReference unitReference)
 	{
-		if (m_PartyCharacter.Count == 6)
+		if (m_PartyCharacter.Count == Game.Instance.Player.MaxPartySize)
 		{
 			return UIStrings.Instance.GroupChangerTexts.MaxGroupCountWarning;
 		}

@@ -60,6 +60,9 @@ public class CombatTextCommonView : CombatTextEntityBaseView<CombatMessageBase>
 	[SerializeField]
 	private float m_StrikethroughMarginRight = 4f;
 
+	[SerializeField]
+	private float m_MaxWidth = 370f;
+
 	private bool m_IsStrikethrough;
 
 	private bool m_HasBigIcon;
@@ -91,7 +94,13 @@ public class CombatTextCommonView : CombatTextEntityBaseView<CombatMessageBase>
 	{
 		m_Text.text = combatMessage.GetText();
 		m_Text.color = combatMessage.GetColor() ?? m_DefaultColor;
-		base.Rect.sizeDelta = new Vector2(m_Text.preferredWidth + (m_IconContainer.transform as RectTransform).rect.width + m_Spacing * 2f, base.Rect.rect.height);
+		m_Text.textWrappingMode = ((m_Text.preferredWidth >= m_MaxWidth) ? TextWrappingModes.Normal : TextWrappingModes.NoWrap);
+		float num = Mathf.Min(m_Text.preferredWidth, m_MaxWidth);
+		m_Text.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, num);
+		base.Rect.sizeDelta = new Vector2(num + m_IconContainer.rectTransform.rect.width + m_Spacing * 2f, m_Text.preferredHeight);
+		Vector3 localPosition = base.Rect.localPosition;
+		localPosition.x = 0f;
+		base.Rect.localPosition = localPosition;
 		m_Icon.sprite = combatMessage.GetSprite();
 		m_Icon.color = ((m_Icon.sprite != null) ? Color.white : Color.clear);
 		m_IconCanvasGroup.alpha = ((m_Icon.sprite != null) ? 1f : 0f);

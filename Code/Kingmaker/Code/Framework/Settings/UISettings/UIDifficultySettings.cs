@@ -16,45 +16,48 @@ public class UIDifficultySettings : IUISettingsSheet
 
 	public UISettingsEntityBool RespecAllowed;
 
-	public UISettingsEntitySliderInt EnemyDodgePercentModifier;
+	public UISettingsEntityEnemyDifficulty EnemyDurability;
 
-	public UISettingsEntitySliderInt MinPartyDamage;
-
-	public UISettingsEntitySliderInt MinPartyDamageFraction;
-
-	public UISettingsEntitySliderInt NPCAttributesBaseValuePercentMultiplier;
-
-	public UISettingDropdownHardCrowdControlDurationLimit HardCrowdControlOnPartyMaxDurationRounds;
+	public UISettingsEntityEnemyDifficulty EnemyDamage;
 
 	public UISettingsEntitySliderInt SkillCheckModifier;
 
-	public UISettingsEntitySliderInt EnemyHitPointsPercentModifier;
-
-	public UISettingsEntitySliderInt PartyDamageDealtAfterArmorReductionPercentModifier;
-
-	public UISettingsEntitySliderInt AvoidableDamagePercentModifier;
-
 	public UISettingsEntitySliderInt EnemyMovementPoints;
 
-	public UISettingsEntityNPCDifficulty NPCDifficulty;
+	public UISettingsEntitySliderInt EnemyDamageModifier;
+
+	public UISettingsEntitySliderInt PartyDamageModifier;
+
+	public UISettingsEntitySliderInt EnemyDodgeModifier;
+
+	public UISettingsEntitySliderInt EnemySkillModifier;
+
+	public UISettingsEntitySliderInt PartyPositiveMoraleChangeModifier;
+
+	public UISettingsEntitySliderInt PartyNegativeMoraleChangeModifier;
+
+	public UISettingsEntitySliderInt EnemyPositiveMoraleChangeModifier;
+
+	public UISettingsEntitySliderInt EnemyNegativeMoraleChangeModifier;
 
 	public void LinkToSettings()
 	{
-		GameDifficulty.LinkSetting(SettingsRoot.Difficulty.GameDifficulty);
-		OnlyOneSave.LinkSetting(SettingsRoot.Difficulty.OnlyOneSave);
-		CombatEncountersCapacity.LinkSetting(SettingsRoot.Difficulty.CombatEncountersCapacity);
-		RespecAllowed.LinkSetting(SettingsRoot.Difficulty.RespecAllowed);
-		EnemyDodgePercentModifier.LinkSetting(SettingsRoot.Difficulty.EnemyDodgePercentModifier);
-		MinPartyDamage.LinkSetting(SettingsRoot.Difficulty.MinPartyDamage);
-		MinPartyDamageFraction.LinkSetting(SettingsRoot.Difficulty.MinPartyDamageFraction);
-		NPCAttributesBaseValuePercentMultiplier.LinkSetting(SettingsRoot.Difficulty.NPCAttributesBaseValuePercentModifier);
-		HardCrowdControlOnPartyMaxDurationRounds.LinkSetting(SettingsRoot.Difficulty.HardCrowdControlOnPartyMaxDurationRounds);
-		SkillCheckModifier.LinkSetting(SettingsRoot.Difficulty.SkillCheckModifier);
-		EnemyHitPointsPercentModifier.LinkSetting(SettingsRoot.Difficulty.EnemyHitPointsPercentModifier);
-		PartyDamageDealtAfterArmorReductionPercentModifier.LinkSetting(SettingsRoot.Difficulty.PartyDamageDealtAfterArmorReductionPercentModifier);
-		AvoidableDamagePercentModifier.LinkSetting(SettingsRoot.Difficulty.AvoidableDamagePercentModifier);
-		EnemyMovementPoints.LinkSetting(SettingsRoot.Difficulty.EnemyMovementPoints);
-		NPCDifficulty.LinkSetting(SettingsRoot.Difficulty.NPCDifficulty);
+		GameDifficulty?.LinkSetting(SettingsRoot.Difficulty.GameDifficulty);
+		OnlyOneSave?.LinkSetting(SettingsRoot.Difficulty.OnlyOneSave);
+		CombatEncountersCapacity?.LinkSetting(SettingsRoot.Difficulty.CombatEncountersCapacity);
+		RespecAllowed?.LinkSetting(SettingsRoot.Difficulty.RespecAllowed);
+		EnemyDurability?.LinkSetting(SettingsRoot.Difficulty.EnemyDurability);
+		EnemyDamage?.LinkSetting(SettingsRoot.Difficulty.EnemyDamage);
+		SkillCheckModifier?.LinkSetting(SettingsRoot.Difficulty.SkillCheckModifier);
+		EnemyMovementPoints?.LinkSetting(SettingsRoot.Difficulty.EnemyMovementPoints);
+		EnemyDamageModifier?.LinkSetting(SettingsRoot.Difficulty.EnemyDamageModifier);
+		PartyDamageModifier?.LinkSetting(SettingsRoot.Difficulty.PartyDamageModifier);
+		EnemyDodgeModifier?.LinkSetting(SettingsRoot.Difficulty.EnemyDodgeModifier);
+		EnemySkillModifier?.LinkSetting(SettingsRoot.Difficulty.EnemySkillModifier);
+		PartyPositiveMoraleChangeModifier?.LinkSetting(SettingsRoot.Difficulty.PartyPositiveMoraleChangeModifier);
+		PartyNegativeMoraleChangeModifier?.LinkSetting(SettingsRoot.Difficulty.PartyNegativeMoraleChangeModifier);
+		EnemyPositiveMoraleChangeModifier?.LinkSetting(SettingsRoot.Difficulty.EnemyPositiveMoraleChangeModifier);
+		EnemyNegativeMoraleChangeModifier?.LinkSetting(SettingsRoot.Difficulty.EnemyNegativeMoraleChangeModifier);
 	}
 
 	public void UpdateInteractable()
@@ -64,7 +67,10 @@ public class UIDifficultySettings : IUISettingsSheet
 
 	public void InitializeSettings()
 	{
-		OnlyOneSave.ModificationAllowedCheck = () => GameUIState.Instance.IsInMainMenu || OnlyOneSave.Setting.GetValue();
-		OnlyOneSave.ModificationAllowedReason = UIStrings.Instance.InteractableSettingsReasons.GetLabelByOrigin(SettingsNotInteractableReasonType.OnlyOneSaveSwitchOn);
+		if (!(OnlyOneSave == null))
+		{
+			OnlyOneSave.ModificationAllowedCheck = () => GameUIState.Instance.IsInMainMenu || OnlyOneSave.Setting.GetValue();
+			OnlyOneSave.ModificationAllowedReason = UIStrings.Instance.InteractableSettingsReasons.GetLabelByOrigin(SettingsNotInteractableReasonType.OnlyOneSaveSwitchOn);
+		}
 	}
 }

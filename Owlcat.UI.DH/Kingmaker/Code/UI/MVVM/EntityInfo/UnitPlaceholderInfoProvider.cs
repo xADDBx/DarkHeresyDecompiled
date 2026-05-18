@@ -1,15 +1,19 @@
 using Kingmaker.View;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.EntityInfo;
 
-public class UnitPlaceholderInfoProvider : IEntityInfoProvider<GameObject>
+public class UnitPlaceholderInfoProvider : IEntityInfoProvider<GameObjectInfo>
 {
 	private static readonly IEntityInfo m_InfoPlaceholder = new EntityInfoPlaceholder();
 
-	public bool TryGetEntityInfo(GameObject gameObject, out IEntityInfo entityInfo)
+	public bool TryGetEntityInfo(GameObjectInfo info, out IEntityInfo entityInfo)
 	{
-		if (gameObject.TryGetComponent<UnitEntityView>(out var _))
+		if (!info.GameObject || !info.IsHighlighted || !info.IsTurnBasedMode)
+		{
+			entityInfo = null;
+			return false;
+		}
+		if (info.GameObject.TryGetComponent<UnitEntityView>(out var _))
 		{
 			entityInfo = m_InfoPlaceholder;
 			return true;

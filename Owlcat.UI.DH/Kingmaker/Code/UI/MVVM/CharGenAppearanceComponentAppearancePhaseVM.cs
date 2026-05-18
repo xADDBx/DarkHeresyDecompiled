@@ -1,13 +1,10 @@
-using System.Linq;
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Base;
 using Kingmaker.Code.UI.MVVM.View;
-using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections.CharacterGender;
@@ -20,80 +17,80 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenAppearanceComponentAppearancePhaseVM : CharGenPhaseBaseVM, ILevelUpDollHandler, ISubscriber, ICharGenPortraitSelectorHoverHandler, ICharGenAppearancePhaseHandler, ICharGenAppearanceComponentUpdateHandler
 {
-	private readonly ReactiveProperty<bool> m_CurrentPageIsFirst = new ReactiveProperty<bool>();
+	private static readonly CharGenAppearancePageComponent[] _ComponentOrder = new CharGenAppearancePageComponent[13]
+	{
+		CharGenAppearancePageComponent.Gender,
+		CharGenAppearancePageComponent.FaceType,
+		CharGenAppearancePageComponent.BodyType,
+		CharGenAppearancePageComponent.SkinColour,
+		CharGenAppearancePageComponent.HairType,
+		CharGenAppearancePageComponent.HairColour,
+		CharGenAppearancePageComponent.EyebrowType,
+		CharGenAppearancePageComponent.EyebrowColour,
+		CharGenAppearancePageComponent.BeardType,
+		CharGenAppearancePageComponent.BeardColour,
+		CharGenAppearancePageComponent.ScarsType,
+		CharGenAppearancePageComponent.Tattoo,
+		CharGenAppearancePageComponent.Augmentic
+	};
 
-	private readonly ReactiveProperty<bool> m_CurrentPageIsLast = new ReactiveProperty<bool>();
+	private readonly ReactiveProperty<CharGenAppearancePageType> m_CurrentPageType = new ReactiveProperty<CharGenAppearancePageType>();
 
-	private readonly ReactiveProperty<CharGenAppearancePageVM> m_CurrentPageVM = new ReactiveProperty<CharGenAppearancePageVM>();
+	private readonly Dictionary<CharGenAppearancePageComponent, BaseCharGenAppearancePageComponentVM> m_ComponentsByType = new Dictionary<CharGenAppearancePageComponent, BaseCharGenAppearancePageComponentVM>();
 
-	private readonly ObservableList<CharGenAppearancePageVM> m_Pages = new ObservableList<CharGenAppearancePageVM>();
+	private readonly List<BaseCharGenAppearancePageComponentVM> m_Components = new List<BaseCharGenAppearancePageComponentVM>();
 
 	private SelectionStateDoll m_SelectionStateDoll;
 
 	private SelectionStateGender m_SelectionStateGender;
 
-	private bool m_Subscribed;
-
 	private CompositeDisposable m_UpdateComponentsSubscription;
 
-	private readonly ReactiveCommand<CharGenAppearancePageType> m_OnPageChanged = new ReactiveCommand<CharGenAppearancePageType>();
-
-	public readonly SelectionGroupRadioVM<CharGenAppearancePageVM> PagesSelectionGroupRadioVM;
+	private CompositeDisposable m_ComponentSubscriptions;
 
 	private readonly ReactiveProperty<PortraitVM> m_PortraitVM = new ReactiveProperty<PortraitVM>();
 
 	public readonly ObservableList<VirtualListElementVMBase> VirtualListCollection = new ObservableList<VirtualListElementVMBase>();
 
-	public ReadOnlyReactiveProperty<bool> CurrentPageIsFirst => m_CurrentPageIsFirst;
+	private readonly ReactiveProperty<DollZoomLevel> m_Zoom = new ReactiveProperty<DollZoomLevel>(DollZoomLevel.Max);
 
-	public ReadOnlyReactiveProperty<bool> CurrentPageIsLast => m_CurrentPageIsLast;
-
-	public ReadOnlyReactiveProperty<CharGenAppearancePageVM> CurrentPageVM => m_CurrentPageVM;
-
-	public Observable<CharGenAppearancePageType> OnPageChanged => m_OnPageChanged;
+	public ReadOnlyReactiveProperty<CharGenAppearancePageType> CurrentPageType => m_CurrentPageType;
 
 	public ReadOnlyReactiveProperty<PortraitVM> PortraitVM => m_PortraitVM;
 
-	public DollState DollState => CharGenContext.Doll;
+	public ReadOnlyReactiveProperty<DollZoomLevel> Zoom => m_Zoom;
 
-	public CharGenAppearanceComponentAppearancePhaseVM(CharGenContext charGenContext)
+	public DollState DollState => m_CharGenContext.Doll;
+
+	public CharGenAppearanceComponentAppearancePhaseVM(CharGenContext charGenContext, SelectionStateGender selectionStateGender)
 		: base(charGenContext, CharGenPhaseType.Appearance)
 	{
-		PagesSelectionGroupRadioVM = AddDisposableAndReturn(new SelectionGroupRadioVM<CharGenAppearancePageVM>(m_Pages, m_CurrentPageVM));
-		AddDisposable(CurrentPageVM.Subscribe(delegate(CharGenAppearancePageVM value)
-		{
-			m_CurrentPageIsFirst.Value = m_Pages.FirstOrDefault() == value;
-			m_CurrentPageIsLast.Value = m_Pages.LastOrDefault() == value;
-		}));
-		AddDisposable(CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager));
+		base.DisplayMode = CharGenDisplayMode.DollOnly;
+		base.HasSmallPortrait = true;
+		m_SelectionStateGender = selectionStateGender;
+		m_CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager).AddTo(this);
+		CreateComponents();
 	}
 
 	public void HandleAppearanceComponentUpdate(CharGenAppearancePageComponent component)
 	{
-		CurrentPageVM.CurrentValue.UpdateComponent(component);
+		if (m_ComponentsByType.TryGetValue(component, out var value))
+		{
+			CharGenAppearanceComponentFactory.UpdateComponent(component, value, m_CharGenContext);
+		}
 	}
 
 	void ICharGenAppearancePhaseHandler.HandleAppearancePageChange(CharGenAppearancePageType pageType)
 	{
-		ClearPortrait();
-		VirtualListCollection.Clear();
-		CharGenAppearancePageVM charGenAppearancePageVM = m_Pages.FirstOrDefault((CharGenAppearancePageVM p) => p.PageType == pageType);
-		if (charGenAppearancePageVM == null)
-		{
-			PFLog.UI.Error($"CharGenAppearancePageVM not found {pageType}");
-			return;
-		}
 		if (!UtilityNet.IsControlMainCharacter())
 		{
-			m_CurrentPageVM.Value = charGenAppearancePageVM;
+			m_CurrentPageType.Value = pageType;
 		}
-		charGenAppearancePageVM.BeginPageView();
-		foreach (BaseCharGenAppearancePageComponentVM component in charGenAppearancePageVM.Components)
-		{
-			VirtualListCollection.Add(component);
-		}
-		m_OnPageChanged.Execute(charGenAppearancePageVM.PageType);
-		UpdateVisualSettings();
+	}
+
+	public void SelectPage(CharGenAppearancePageType pageType)
+	{
+		m_CurrentPageType.Value = pageType;
 	}
 
 	public void HandleHoverStart(PortraitData portrait)
@@ -114,7 +111,7 @@ public class CharGenAppearanceComponentAppearancePhaseVM : CharGenPhaseBaseVM, I
 	protected override void DisposeImplementation()
 	{
 		base.DisposeImplementation();
-		m_Pages.Clear();
+		ClearComponents();
 		VirtualListCollection.Clear();
 		ClearPortrait();
 	}
@@ -135,55 +132,124 @@ public class CharGenAppearanceComponentAppearancePhaseVM : CharGenPhaseBaseVM, I
 
 	protected override void OnBeginDetailedView()
 	{
-		CurrentPageVM.CurrentValue?.BeginPageView();
 		UpdateVisualSettings();
-		ApplyDollState(CharGenContext.Doll);
-		if (!m_Subscribed)
+		ApplyDollState(m_CharGenContext.Doll);
+		UpdateComponents();
+		CaptureDefaults();
+	}
+
+	private void CreateComponents()
+	{
+		ClearComponents();
+		m_ComponentSubscriptions = new CompositeDisposable();
+		CharGenAppearancePageComponent[] componentOrder = _ComponentOrder;
+		foreach (CharGenAppearancePageComponent charGenAppearancePageComponent in componentOrder)
 		{
-			CreatePages();
-			PagesSelectionGroupRadioVM.TrySelectFirstValidEntity();
-			AddDisposable(EventBus.Subscribe(this));
-			AddDisposable(CurrentPageVM.Subscribe(OnCurrentPageChanged));
-			m_Subscribed = true;
+			BaseCharGenAppearancePageComponentVM component = CharGenAppearanceComponentFactory.GetComponent(charGenAppearancePageComponent, m_CharGenContext);
+			if (component != null)
+			{
+				m_Components.Add(component);
+				m_ComponentsByType[charGenAppearancePageComponent] = component;
+				VirtualListCollection.Add(component);
+				component.OnChanged.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(OnComponentChanged).AddTo(m_ComponentSubscriptions);
+			}
+		}
+		foreach (BaseCharGenAppearancePageComponentVM component2 in m_Components)
+		{
+			component2.OnBeginView();
 		}
 	}
 
-	private void CreatePages()
+	private void OnComponentChanged(CharGenAppearancePageComponent changedComponent)
 	{
-		foreach (CharGenAppearancePageType item in CharGenAppearancePages.PagesOrder.Where(IsPageEnabled))
+		if (base.IsInDetailedView.CurrentValue)
 		{
-			CharGenAppearancePageVM disposable = new CharGenAppearancePageVM(CharGenContext, item, base.IsInDetailedView);
-			m_Pages.Add(AddDisposableAndReturn(disposable));
+			ApplyVisualForComponent(changedComponent);
 		}
-		foreach (CharGenAppearancePageVM page in m_Pages)
+		List<CharGenAppearancePageComponent> list = new List<CharGenAppearancePageComponent>();
+		switch (changedComponent)
 		{
-			if (page.PageType != CharGenAppearancePageType.General)
+		case CharGenAppearancePageComponent.BodyType:
+			list.Add(CharGenAppearancePageComponent.SkinColour);
+			break;
+		case CharGenAppearancePageComponent.HairType:
+			list.Add(CharGenAppearancePageComponent.HairColour);
+			break;
+		case CharGenAppearancePageComponent.EyebrowType:
+			list.Add(CharGenAppearancePageComponent.EyebrowColour);
+			break;
+		case CharGenAppearancePageComponent.BeardType:
+			list.Add(CharGenAppearancePageComponent.BeardColour);
+			break;
+		case CharGenAppearancePageComponent.Tattoo:
+			list.Add(CharGenAppearancePageComponent.TattooColor);
+			break;
+		}
+		UpdateComponents(list);
+	}
+
+	private void ApplyVisualForComponent(CharGenAppearancePageComponent component)
+	{
+		DollState doll = m_CharGenContext.Doll;
+		switch (component)
+		{
+		case CharGenAppearancePageComponent.HairType:
+		case CharGenAppearancePageComponent.HairColour:
+		case CharGenAppearancePageComponent.EyebrowType:
+		case CharGenAppearancePageComponent.EyebrowColour:
+		case CharGenAppearancePageComponent.PortType1:
+		case CharGenAppearancePageComponent.PortType2:
+			doll.ShowHelmTemp = false;
+			doll.ShowClothTemp = true;
+			m_Zoom.Value = DollZoomLevel.Min;
+			break;
+		case CharGenAppearancePageComponent.ScarsType:
+		case CharGenAppearancePageComponent.Tattoo:
+		case CharGenAppearancePageComponent.Augmentic:
+			doll.ShowHelmTemp = false;
+			doll.ShowClothTemp = false;
+			m_Zoom.Value = DollZoomLevel.Min;
+			break;
+		default:
+			doll.ShowHelmTemp = true;
+			doll.ShowClothTemp = true;
+			m_Zoom.Value = DollZoomLevel.Max;
+			break;
+		}
+	}
+
+	protected override void OnEndDetailedView()
+	{
+		base.OnEndDetailedView();
+		DollState doll = m_CharGenContext.Doll;
+		doll.ShowHelmTemp = true;
+		doll.ShowClothTemp = true;
+		m_Zoom.Value = DollZoomLevel.Max;
+	}
+
+	private void UpdateComponents()
+	{
+		UpdateComponents(m_ComponentsByType.Keys);
+	}
+
+	private void UpdateComponents(IEnumerable<CharGenAppearancePageComponent> componentTypes)
+	{
+		foreach (CharGenAppearancePageComponent componentType in componentTypes)
+		{
+			if (m_ComponentsByType.TryGetValue(componentType, out var value))
 			{
-				page.CreateComponentsIfNeeded();
+				CharGenAppearanceComponentFactory.UpdateComponent(componentType, value, m_CharGenContext);
+				value.ContentChanged.Execute(Unit.Default);
 			}
 		}
 	}
 
-	private bool IsPageEnabled(CharGenAppearancePageType pageType)
+	private void ClearComponents()
 	{
-		if (pageType != CharGenAppearancePageType.NavigatorMutations)
-		{
-			return true;
-		}
-		CharGenConfig charGenConfig = CharGenContext.CharGenConfig;
-		if (charGenConfig.Mode == CharGenMode.NewCompanion)
-		{
-			return charGenConfig.CompanionType == CharGenCompanionType.Navigator;
-		}
-		return false;
-	}
-
-	private void OnCurrentPageChanged(CharGenAppearancePageVM pageVM)
-	{
-		if (pageVM != null)
-		{
-			Game.Instance.GameCommandQueue.CharGenChangeAppearancePage(pageVM.PageType);
-		}
+		m_ComponentsByType.Clear();
+		m_Components.Clear();
+		m_ComponentSubscriptions?.Dispose();
+		m_ComponentSubscriptions = null;
 	}
 
 	private void ApplyDollState(DollState dollState)
@@ -216,31 +282,19 @@ public class CharGenAppearanceComponentAppearancePhaseVM : CharGenPhaseBaseVM, I
 			m_SelectionStateDoll = manager.GetSelectionState(manager.Path, selectionByType, 0) as SelectionStateDoll;
 			m_SelectionStateGender = manager.GetSelectionState(manager.Path, selectionByType2, 0) as SelectionStateGender;
 			m_UpdateComponentsSubscription = new CompositeDisposable();
-			m_UpdateComponentsSubscription.Add(CharGenContext.Doll.GetReactiveProperty((DollState dollState) => dollState.Gender).Subscribe(delegate(Gender gender)
+			m_UpdateComponentsSubscription.Add(m_CharGenContext.Doll.GetReactiveProperty((DollState dollState) => dollState.Gender).Subscribe(delegate(Gender gender)
 			{
 				m_SelectionStateGender.SelectGender(gender);
 				UpdateComponents();
 			}));
-			PagesSelectionGroupRadioVM.TrySelectFirstValidEntity();
-		}
-	}
-
-	private void UpdateComponents()
-	{
-		foreach (CharGenAppearancePageVM page in m_Pages)
-		{
-			page.UpdateComponents();
 		}
 	}
 
 	private void UpdateVisualSettings()
 	{
-		if (CurrentPageVM.CurrentValue != null)
-		{
-			UtilityChargen.GetClothesColorsProfile(CharGenContext.Doll.Clothes, out var colorPreset);
-			bool showVisualSettings = CurrentPageVM.CurrentValue.PageType != 0 && (!CharGenContext.Doll.ShowCloth || colorPreset != null);
-			SetShowVisualSettings(showVisualSettings);
-		}
+		UtilityChargen.GetClothesColorsProfile(m_CharGenContext.Doll.Clothes, out var colorPreset);
+		bool showVisualSettings = !m_CharGenContext.Doll.ShowCloth || colorPreset != null;
+		SetShowVisualSettings(showVisualSettings);
 	}
 
 	private void ClearPortrait()
@@ -249,13 +303,38 @@ public class CharGenAppearanceComponentAppearancePhaseVM : CharGenPhaseBaseVM, I
 		m_PortraitVM.Value = null;
 	}
 
-	public bool GoNextPage()
+	public void Randomize()
 	{
-		return PagesSelectionGroupRadioVM.SelectNextValidEntity();
+		foreach (BaseCharGenAppearancePageComponentVM component in m_Components)
+		{
+			if (component.Type == CharGenAppearancePageComponent.Gender)
+			{
+				component.Randomize();
+			}
+		}
+		UpdateComponents();
+		foreach (BaseCharGenAppearancePageComponentVM component2 in m_Components)
+		{
+			if (component2.Type != CharGenAppearancePageComponent.Gender)
+			{
+				component2.Randomize();
+			}
+		}
 	}
 
-	public bool GoPrevPage()
+	public void ResetToDefault()
 	{
-		return PagesSelectionGroupRadioVM.SelectPrevValidEntity();
+		foreach (BaseCharGenAppearancePageComponentVM component in m_Components)
+		{
+			component.ResetToDefault();
+		}
+	}
+
+	private void CaptureDefaults()
+	{
+		foreach (BaseCharGenAppearancePageComponentVM component in m_Components)
+		{
+			component.CaptureDefaults();
+		}
 	}
 }

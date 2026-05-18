@@ -9,9 +9,12 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Formations;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
+using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
+using Kingmaker.UnitLogic.Enums;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.View;
 using Owlcat.QA.Validation;
@@ -49,6 +52,10 @@ public class CommandMoveParty : CommandBase
 	[SerializeField]
 	private Player.CharactersList m_UnitsList;
 
+	[Tooltip("Those units won't be moved")]
+	[SerializeReference]
+	public AbstractUnitEvaluator[] ExceptThese;
+
 	[KDB("Вставляем только LocatorView")]
 	[AllowedEntityType(typeof(LocatorView))]
 	[ValidateNotEmpty]
@@ -77,19 +84,32 @@ public class CommandMoveParty : CommandBase
 	[Tooltip("Timeout in case something breaks, forces this command to stop after this many seconds")]
 	private float m_Timeout = 20f;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	private IEnumerable<BaseUnitEntity> GetTargetUnits()
+	{
+		AbstractUnitEntity value;
+		return from x in Game.Instance.Player.GetCharactersList(m_UnitsList)
+			where !x.HasMechanicFeature(MechanicsFeatureType.Hidden) && x.IsInGame
+			where !ElementExtendAsObject.Valid(ExceptThese).Any((AbstractUnitEvaluator y) => y != null && y.TryGetValue(out value) && x == value)
+			select x;
+	}
+
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		int num = 0;
 		Vector3[] positions = GetPositions();
-		IEnumerable<BaseUnitEntity> charactersList = Game.Instance.Player.GetCharactersList(m_UnitsList);
+		IEnumerable<BaseUnitEntity> targetUnits = GetTargetUnits();
 		PFLog.Default.Log($"[CommandMoveParty] Starting with {m_UnitsList}. Party size:");
-		foreach (BaseUnitEntity item in charactersList)
+		foreach (BaseUnitEntity item in targetUnits)
 		{
 			PFLog.Default.Log($"  - {item.CharacterName}: IsDead={item.LifeState.IsDead}, IsUnconscious={item.LifeState.IsUnconscious}, LifeState={item.LifeState.State}");
 		}
-		foreach (BaseUnitEntity item2 in charactersList)
+		foreach (BaseUnitEntity item2 in targetUnits)
 		{
+			if (item2.HasMechanicFeature(MechanicsFeatureType.Hidden) || !item2.IsInGame)
+			{
+				continue;
+			}
 			Vector3 vector = positions[num++ % positions.Length];
 			UnitData affectedUnit = new UnitData
 			{
@@ -150,6 +170,7 @@ public class CommandMoveParty : CommandBase
 				}
 			});
 		}
+		return CommandResult.Success;
 	}
 
 	private Vector3[] GetPositions()
@@ -171,7 +192,7 @@ public class CommandMoveParty : CommandBase
 		return resultPositions.ToArray();
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		int num = 0;
 		Vector3[] positions = GetPositions();
@@ -186,6 +207,7 @@ public class CommandMoveParty : CommandBase
 			}
 			num++;
 		}
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -205,20 +227,21 @@ public class CommandMoveParty : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (time > (double)m_Timeout)
 		{
 			InterruptImpl(commandData);
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		InterruptImpl(commandData);
+		return CommandResult.Success;
 	}
 
 	private void InterruptImpl(Data commandData)
@@ -235,7 +258,7 @@ public class CommandMoveParty : CommandBase
 		}
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		TeleportEveryoneFailedToArrive(commandData);
@@ -258,6 +281,7 @@ public class CommandMoveParty : CommandBase
 		{
 			((BaseUnitEntity)affectedUnit2.Unit).SetOrientation(affectedUnit2.TargetRotation.eulerAngles.y);
 		}
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

@@ -9,22 +9,23 @@ using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Designers;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Gameplay.Parts;
 using Kingmaker.Items;
 using Kingmaker.Localization;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -47,15 +48,21 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 
 	public abstract int DisableDC { get; set; }
 
-	public new TrapObjectView View => (TrapObjectView)base.View;
+	public new ITrapEntityView View => (ITrapEntityView)base.View;
 
-	public TrapObjectViewSettings Settings => View.Settings;
-
-	[CanBeNull]
-	public TrapObjectData LinkedTrap => View.LinkedTrap.Or(null)?.Data;
+	public new ITrapEntityConfig Config => (ITrapEntityConfig)base.Config;
 
 	[CanBeNull]
-	public TrapObjectData Device => View.Device.Or(null)?.Data;
+	public TrapObjectData LinkedTrap => Config.LinkedTrap.Entity;
+
+	[CanBeNull]
+	public TrapObjectData Device => Config.Device.Entity;
+
+	[CanBeNull]
+	public MapObjectEntity TrappedObject => Config.TrappedObject.Entity;
+
+	[CanBeNull]
+	public ScriptZoneEntity ScriptZone => Config.ScriptZone.Entity;
 
 	public abstract int DisableTriggerMargin { get; }
 
@@ -71,38 +78,26 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 
 	public abstract void RunDisableActions(BaseUnitEntity user);
 
-	protected TrapObjectData(TrapObjectView trapView)
-		: base(trapView)
-	{
-	}
-
-	protected TrapObjectData(string uniqueId, bool isInGame, BlueprintMechanicEntityFact blueprint)
-		: base(uniqueId, isInGame, blueprint)
+	protected TrapObjectData(ITrapEntityConfig config)
+		: base(config)
 	{
 	}
 
 	[UsedImplicitly]
-	protected TrapObjectData(JsonConstructorMark _)
+	protected TrapObjectData(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected TrapObjectData()
 	{
 	}
 
 	protected override void OnIsInGameChanged()
 	{
 		base.OnIsInGameChanged();
-		if (!(View == null))
+		if (Config != null)
 		{
-			if ((bool)Settings.ScriptZoneTrigger)
+			ScriptZoneEntity scriptZone = ScriptZone;
+			if (scriptZone != null)
 			{
-				Settings.ScriptZoneTrigger.Data.IsInGame = base.IsInGame;
-			}
-			if ((bool)View.Collider)
-			{
-				View.Collider.gameObject.SetActive(base.IsInGame);
+				scriptZone.IsInGame = base.IsInGame;
 			}
 		}
 	}
@@ -110,7 +105,7 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 	protected override void OnPreSave()
 	{
 		base.OnPreSave();
-		ScriptZoneId = View.Settings.ScriptZoneTrigger.Or(null)?.UniqueId;
+		ScriptZoneId = ScriptZone?.UniqueId;
 	}
 
 	public void OnAreaBeginUnloading()
@@ -127,7 +122,7 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 		BaseUnitEntity baseUnitEntity = null;
 		foreach (BaseUnitEntity item in units)
 		{
-			if ((units.Count <= 1 || !item.IsPet) && (baseUnitEntity == null || (int)item.Stats.GetStat(DisarmSkill) > (int)baseUnitEntity.Stats.GetStat(DisarmSkill)))
+			if ((units.Count <= 1 || !item.IsPet) && (baseUnitEntity == null || (int)item.Actor.GetStat(DisarmSkill, null, default(StatContext), "SelectUnit") > (int)baseUnitEntity.Actor.GetStat(DisarmSkill, null, default(StatContext), "SelectUnit")))
 			{
 				baseUnitEntity = item;
 			}
@@ -137,7 +132,7 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 
 	public void Interact(BaseUnitEntity user)
 	{
-		if (View.IsNotScriptZoneTrigger && !base.IsAwarenessCheckPassed)
+		if (Config.IsNotScriptZoneTrigger && !base.IsAwarenessCheckPassed)
 		{
 			TriggerTrap(user);
 		}
@@ -149,9 +144,9 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 			}
 			if (!CanUnitDisable(user))
 			{
-				EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IInteractionRestrictionHandler>)delegate(IInteractionRestrictionHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IInteractionRestrictionHandler>)delegate(IInteractionRestrictionHandler h)
 				{
-					h.HandleCantDisarmTrap(View);
+					h.HandleCantDisarmTrap(this);
 				}, isCheckRuntime: true);
 				return;
 			}
@@ -168,30 +163,27 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 			if (rulePerformSkillCheck.ResultIsSuccess)
 			{
 				RunDisableActions(user);
-				if (Settings?.DisabledSound != "")
-				{
-					View.PostSoundEvent(Settings.DisabledSound);
-				}
+				View?.OnDisarmed();
 				Deactivate();
-				EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IDisarmTrapHandler>)delegate(IDisarmTrapHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IDisarmTrapHandler>)delegate(IDisarmTrapHandler h)
 				{
-					h.HandleDisarmTrapSuccess(View);
+					h.HandleDisarmTrapSuccess(this);
 				}, isCheckRuntime: true);
 			}
 			else if (rulePerformSkillCheck.RollResult >= rulePerformSkillCheck.EffectiveSkill + DisableTriggerMargin)
 			{
-				EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IDisarmTrapHandler>)delegate(IDisarmTrapHandler h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IDisarmTrapHandler>)delegate(IDisarmTrapHandler h)
 				{
-					h.HandleDisarmTrapCriticalFail(View);
+					h.HandleDisarmTrapCriticalFail(this);
 				}, isCheckRuntime: true);
 				TriggerTrap(user);
 			}
 			else
 			{
-				View.PostSoundEvent(Settings.DisableFailSound);
-				EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IDisarmTrapHandler>)delegate(IDisarmTrapHandler h)
+				View?.OnDisarmFailed();
+				base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IDisarmTrapHandler>)delegate(IDisarmTrapHandler h)
 				{
-					h.HandleDisarmTrapFail(View);
+					h.HandleDisarmTrapFail(this);
 				}, isCheckRuntime: true);
 			}
 		}
@@ -207,17 +199,24 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 
 	private void TriggerTrap(BaseUnitEntity triggeringUnit)
 	{
-		using (ContextData<BlueprintTrap.ElementsData>.Request().Setup(triggeringUnit, View))
+		using (ContextData<BlueprintTrap.ElementsData>.Request().Setup(triggeringUnit, this))
 		{
-			if (CanTrigger())
+			if (!CanTrigger())
 			{
-				EventBus.RaiseEvent((IBaseUnitEntity)triggeringUnit, (Action<ITrapActivationHandler>)delegate(ITrapActivationHandler h)
-				{
-					h.HandleTrapActivation(View);
-				}, isCheckRuntime: true);
+				return;
+			}
+			base.EventBus.RaiseEvent((IBaseUnitEntity)triggeringUnit, (Action<ITrapActivationHandler>)delegate(ITrapActivationHandler h)
+			{
+				h.HandleTrapActivation(this);
+			}, isCheckRuntime: true);
+			try
+			{
 				RunTrapActions();
+			}
+			finally
+			{
 				Deactivate();
-				View.PostSoundEvent(Settings.TriggerSound);
+				View?.OnTriggered();
 			}
 		}
 	}
@@ -230,7 +229,7 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 		{
 			base.IsInGame = false;
 		}
-		View.OnDeactivated();
+		View?.OnDeactivated();
 		if (LinkedTrap != null && LinkedTrap.TrapActive)
 		{
 			LinkedTrap.Deactivate();

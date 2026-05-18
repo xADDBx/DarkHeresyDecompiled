@@ -2,14 +2,12 @@ using System;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.RuleSystem;
-using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Pathfinding;
 using UnityEngine;
@@ -134,111 +132,101 @@ public static class PropertyContextAccessor
 	{
 	}
 
-	private static PropertyContext PropertyContext
-	{
-		get
-		{
-			if (!SimpleContextData<PropertyContext, PropertyContext.Scope>.TryGetCurrent(out var result))
-			{
-				throw new InvalidOperationException();
-			}
-			return result;
-		}
-	}
+	private static IEvalContext Context => EvalContext.Current;
 
 	private static Exception BuildException<T>(this T _) where T : IBase
 	{
-		return new Exception("Failed to get property by _ " + typeof(T).Name);
+		return new Exception("Failed to get property by " + typeof(T).Name);
 	}
 
 	[NotNull]
-	public static MechanicsContext GetMechanicContext(this IMechanicContext accessor)
+	public static IEvalContext GetEvalContext(this IMechanicContext accessor)
 	{
-		return PropertyContext.MechanicContext ?? throw accessor.BuildException();
+		return Context ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static RulebookEvent GetRule(this IRule accessor)
 	{
-		return PropertyContext.Rule ?? throw accessor.BuildException();
+		return Context.Rule ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static AbilityData GetAbility(this IAbility accessor)
 	{
-		return PropertyContext.Ability ?? throw accessor.BuildException();
+		return Context.Ability ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static Entity GetContextCaster(this IContextCaster accessor)
 	{
-		return PropertyContext.ContextCaster ?? throw accessor.BuildException();
+		return Context.Caster ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static MechanicEntity GetCurrentTarget(this ICurrentTargetEntity accessor)
 	{
-		return PropertyContext.CurrentTargetEntity ?? throw accessor.BuildException();
+		return Context.CurrentTargetEntity ?? throw accessor.BuildException();
 	}
 
 	public static Vector3 GetCurrentTargetPosition(this ICurrentTarget accessor)
 	{
-		return PropertyContext.ContextMainTargetPosition ?? throw accessor.BuildException();
+		return (Context.Target ?? throw accessor.BuildException()).Point;
 	}
 
 	public static float GetCurrentTargetOrientation(this ICurrentTarget accessor)
 	{
-		return PropertyContext.ContextMainTargetOrientation ?? throw accessor.BuildException();
+		return (Context.Target ?? throw accessor.BuildException()).Orientation;
 	}
 
 	[NotNull]
 	public static MechanicEntity GetContextMainTarget(this IContextMainTargetEntity accessor)
 	{
-		return PropertyContext.ContextMainTarget ?? throw accessor.BuildException();
+		return Context.ClickedTarget?.Entity ?? throw accessor.BuildException();
 	}
 
 	public static Vector3 GetContextMainTargetPosition(this IContextMainTarget accessor)
 	{
-		return PropertyContext.CurrentTargetPosition ?? throw accessor.BuildException();
+		return (Context.ClickedTarget ?? throw accessor.BuildException()).Point;
 	}
 
 	public static float GetContextMainTargetOrientation(this IContextMainTarget accessor)
 	{
-		return PropertyContext.CurrentTargetOrientation ?? throw accessor.BuildException();
+		return (Context.ClickedTarget ?? throw accessor.BuildException()).Orientation;
 	}
 
 	[NotNull]
 	public static Entity GetRuleInitiator(this IRuleInitiator accessor)
 	{
-		return PropertyContext.Rule?.Initiator ?? throw accessor.BuildException();
+		return Context.Rule?.Initiator ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static Entity GetRuleTarget(this IRuleTarget accessor)
 	{
-		return PropertyContext.Rule?.Target ?? throw accessor.BuildException();
+		return Context.Rule?.Target ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static ItemEntityWeapon GetAbilityWeapon(this IAbilityWeapon accessor)
 	{
-		return ((PropertyContext.Rule is RuleCalculateStatsWeapon ruleCalculateStatsWeapon) ? ruleCalculateStatsWeapon.Weapon : PropertyContext.Ability?.Weapon) ?? throw accessor.BuildException();
+		return Context.AbilityWeapon ?? throw accessor.BuildException();
 	}
 
 	[NotNull]
 	public static MechanicEntity GetTargetByType(this ITargetByType accessor, PropertyTargetType type)
 	{
-		return PropertyContext.GetTargetEntity(type) ?? throw accessor.BuildException();
+		return Context.GetEntityByType(type) ?? throw accessor.BuildException();
 	}
 
 	public static Vector3 GetTargetPositionByType(this ITargetByType accessor, PropertyTargetType type)
 	{
-		return PropertyContext.GetTargetPosition(type) ?? throw accessor.BuildException();
+		return (Context.GetEntityByType(type) ?? throw accessor.BuildException()).Position;
 	}
 
 	public static IntRect GetTargetRectByType(this ITargetByType accessor, PropertyTargetType type)
 	{
-		return PropertyContext.GetTargetRectByType(type) ?? throw accessor.BuildException();
+		return ((Context.GetEntityByType(type) as BaseUnitEntity) ?? throw accessor.BuildException()).SizeRect;
 	}
 
 	public static BlueprintScriptableObject GetOwnerBlueprint(this IOwnerBlueprint accessor)
@@ -247,108 +235,104 @@ public static class PropertyContextAccessor
 	}
 
 	[CanBeNull]
-	public static MechanicsContext GetMechanicContext(this IOptionalMechanicContext _)
+	public static IEvalContext GetEvalContext(this IOptionalMechanicContext _)
 	{
-		return PropertyContext.MechanicContext;
+		return Context;
 	}
 
 	[CanBeNull]
 	public static RulebookEvent GetRule(this IOptionalRule _)
 	{
-		return PropertyContext.Rule;
+		return Context.Rule;
 	}
 
 	[CanBeNull]
 	public static AbilityData GetAbility(this IOptionalAbility _)
 	{
-		return PropertyContext.Ability;
+		return Context.Ability;
 	}
 
 	[CanBeNull]
 	public static Entity GetContextCaster(this IOptionalContextCaster _)
 	{
-		return PropertyContext.ContextCaster;
+		return Context.Caster;
 	}
 
 	[CanBeNull]
 	public static MechanicEntity GetCurrentTarget(this IOptionalCurrentTargetEntity _)
 	{
-		return PropertyContext.CurrentTargetEntity;
+		return Context.CurrentTargetEntity;
 	}
 
 	[CanBeNull]
 	public static Vector3? GetCurrentTargetPosition(this IOptionalCurrentTarget _)
 	{
-		return PropertyContext.CurrentTargetPosition;
+		return Context.Target?.Point;
 	}
 
 	[CanBeNull]
 	public static float? GetCurrentTargetOrientation(this IOptionalCurrentTarget _)
 	{
-		return PropertyContext.CurrentTargetOrientation;
+		return Context.Target?.Orientation;
 	}
 
 	[CanBeNull]
 	public static MechanicEntity GetContextMainTarget(this IOptionalContextMainTargetEntity _)
 	{
-		return PropertyContext.ContextMainTarget;
+		return Context.ClickedTarget?.Entity;
 	}
 
 	[CanBeNull]
 	public static Vector3? GetContextMainTargetPosition(this IOptionalContextMainTarget _)
 	{
-		return PropertyContext.ContextMainTargetPosition;
+		return Context.ClickedTarget?.Point;
 	}
 
 	[CanBeNull]
 	public static float? GetContextMainTargetOrientation(this IOptionalContextMainTarget _)
 	{
-		return PropertyContext.ContextMainTargetOrientation;
+		return Context.ClickedTarget?.Orientation;
 	}
 
 	[CanBeNull]
 	public static Entity GetRuleInitiator(this IOptionalRuleInitiator _)
 	{
-		return PropertyContext.Rule?.Initiator;
+		return Context.Rule?.Initiator;
 	}
 
 	[CanBeNull]
 	public static Entity GetRuleTarget(this IOptionalRuleTarget _)
 	{
-		return PropertyContext.Rule?.Target;
+		return Context.Rule?.Target;
 	}
 
 	[CanBeNull]
 	public static ItemEntityWeapon GetAbilityWeapon(this IOptionalAbilityWeapon _)
 	{
-		if (!(PropertyContext.Rule is RuleCalculateStatsWeapon ruleCalculateStatsWeapon))
-		{
-			return PropertyContext.Ability?.Weapon;
-		}
-		return ruleCalculateStatsWeapon.Weapon;
+		return Context.AbilityWeapon;
 	}
 
 	[CanBeNull]
 	public static Entity GetTargetByType(this IOptionalTargetByType _, PropertyTargetType type)
 	{
-		return PropertyContext.GetTargetEntity(type);
+		return Context.GetEntityByType(type);
 	}
 
 	[CanBeNull]
 	public static Vector3? GetTargetPositionByType(this IOptionalTargetByType _, PropertyTargetType type)
 	{
-		return PropertyContext.GetTargetPosition(type);
+		return Context.GetEntityPositionByType(type);
 	}
 
 	[CanBeNull]
 	public static IntRect? GetTargetRectByType(this IOptionalTargetByType _, PropertyTargetType type)
 	{
-		return PropertyContext.GetTargetRectByType(type);
+		return Context.GetEntityRectByType(type);
 	}
 
 	[CanBeNull]
 	public static MechanicEntityFact GetFact(this IOptionalFact _)
 	{
-		return PropertyContext.Fact;
+		return Context.Fact;
 	}
 }

@@ -12,7 +12,6 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Framework.Interaction;
 using Kingmaker.Interaction;
 using Kingmaker.Pathfinding;
-using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Utility.DotNetExtensions;
@@ -28,7 +27,7 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects.InteractionComponentBase;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IPartyCombatHandler, IHashable, IOwlPackable<AbstractInteractionPart>
+public abstract class AbstractInteractionPart : EntityPartWithConfig, IPartyCombatHandler, ISubscriber, IHashable, IOwlPackable<AbstractInteractionPart>
 {
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
@@ -44,7 +43,7 @@ public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandl
 
 	public virtual bool CanBeForceShown => true;
 
-	public new MapObjectView View => (MapObjectView)base.View;
+	public new IMapObjectView View => (IMapObjectView)base.View;
 
 	public new MapObjectEntity Owner => (MapObjectEntity)base.Owner;
 
@@ -214,7 +213,7 @@ public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandl
 				return result;
 			}
 		}
-		Vector3 p = View.Or(null)?.ViewTransform.position ?? Vector3.zero;
+		Vector3 p = Owner.ViewPosition;
 		if (units.Count <= 1)
 		{
 			return units.FirstOrDefault();
@@ -233,7 +232,7 @@ public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandl
 		{
 			interactionPosition = interactionPosition.ToXZ();
 		}
-		return Mathf.RoundToInt(UnitMovementAgentBase.GetDistanceToSegment(unitPosition, eyePosition, interactionPosition) / GraphParamsMechanicsCache.GridCellSize) <= approachRadius;
+		return Mathf.RoundToInt(GetDistanceToSegment(unitPosition, eyePosition, interactionPosition) / GraphParamsMechanicsCache.GridCellSize) <= approachRadius;
 	}
 
 	public virtual bool IsEnoughCloseForInteraction(BaseUnitEntity unit, Vector3? position = null)
@@ -263,18 +262,6 @@ public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandl
 		return true;
 	}
 
-	public virtual void HandleDestructionSuccess(MapObjectView mapObjectView)
-	{
-		if (mapObjectView == View)
-		{
-			SetUnlocked();
-		}
-	}
-
-	public virtual void HandleDestructionFail(MapObjectView mapObjectView)
-	{
-	}
-
 	public void HandlePartyCombatStateChanged(bool inCombat)
 	{
 		m_LastCombatRoundInteractionAttempt = -1;
@@ -290,6 +277,24 @@ public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandl
 		AlreadyVisited = true;
 	}
 
+	private static float GetDistanceToSegment(Vector3 start, Vector3 end, Vector3 point)
+	{
+		Vector3 rhs = end - start;
+		float num = 0f - (rhs.x * start.x + rhs.y * start.y + rhs.z * start.z);
+		float num2 = 0f - (rhs.x * end.x + rhs.y * end.y + rhs.z * end.z);
+		bool num3 = rhs.x * point.x + rhs.y * point.y + rhs.z * point.z + num < 0f;
+		bool flag = rhs.x * point.x + rhs.y * point.y + rhs.z * point.z + num2 < 0f;
+		if (num3)
+		{
+			return Vector3.Distance(start, point);
+		}
+		if (!flag)
+		{
+			return Vector3.Distance(end, point);
+		}
+		return Vector3.Cross(start - point, rhs).magnitude / rhs.magnitude;
+	}
+
 	public override Hash128 GetHash128()
 	{
 		Hash128 result = default(Hash128);
@@ -302,8 +307,4 @@ public abstract class AbstractInteractionPart : ViewBasedPart, IDestructionHandl
 		result.Append(ref m_LastCombatRoundInteractionAttempt);
 		return result;
 	}
-
-	public abstract override void Serialize<TFormatter>(TFormatter formatter, SerializerState state);
-
-	public abstract override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state);
 }

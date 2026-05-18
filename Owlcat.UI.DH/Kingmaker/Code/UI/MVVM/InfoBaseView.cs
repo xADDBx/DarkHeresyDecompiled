@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Code.UI.MVVM.View;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using UnityEngine;
@@ -24,13 +23,11 @@ public abstract class InfoBaseView<TInfoBaseVM> : View<TInfoBaseVM> where TInfoB
 
 	[Header("Bricks Config")]
 	[SerializeField]
-	private TooltipBricksView m_BricksConfig;
+	private TooltipBricksRegistry m_BricksRegistry;
 
-	protected readonly List<MonoBehaviour> m_Bricks = new List<MonoBehaviour>();
+	private readonly List<IBrickView> m_Bricks = new List<IBrickView>();
 
-	private readonly List<MonoBehaviour> m_BricksGroups = new List<MonoBehaviour>();
-
-	private readonly List<IConsoleTooltipBrick> m_NavigationBricks = new List<IConsoleTooltipBrick>();
+	private readonly List<IBrickView> m_BricksGroups = new List<IBrickView>();
 
 	protected override void OnBind()
 	{
@@ -41,63 +38,66 @@ public abstract class InfoBaseView<TInfoBaseVM> : View<TInfoBaseVM> where TInfoB
 		SetPart(base.ViewModel.HintBricks, m_HintContainer);
 	}
 
-	private void SetPart(IEnumerable<TooltipBaseBrickVM> bricks, RectTransform container)
-	{
-		container.Or(null)?.gameObject.SetActive(bricks.Any());
-		TooltipBricksGroupView tooltipBricksGroupView = null;
-		foreach (TooltipBaseBrickVM brick in bricks)
-		{
-			MonoBehaviour brickView = TooltipEngine.GetBrickView(m_BricksConfig, brick);
-			IConsoleTooltipBrick consoleTooltipBrick = brickView as IConsoleTooltipBrick;
-			if (brick is TooltipBricksGroupVM)
-			{
-				if (brickView != null)
-				{
-					tooltipBricksGroupView = (TooltipBricksGroupView)brickView;
-					tooltipBricksGroupView.transform.SetParent(container, worldPositionStays: false);
-					m_BricksGroups.Add(tooltipBricksGroupView);
-					m_NavigationBricks.Add(tooltipBricksGroupView);
-				}
-				else
-				{
-					tooltipBricksGroupView = null;
-				}
-				continue;
-			}
-			if (tooltipBricksGroupView != null)
-			{
-				tooltipBricksGroupView.AddChild(brickView.transform as RectTransform);
-				if (consoleTooltipBrick != null)
-				{
-					tooltipBricksGroupView.AddNavChild(consoleTooltipBrick.GetConsoleEntity());
-				}
-			}
-			else
-			{
-				brickView.transform.SetParent(container, worldPositionStays: false);
-				if (consoleTooltipBrick != null)
-				{
-					m_NavigationBricks.Add(consoleTooltipBrick);
-				}
-			}
-			m_Bricks.Add(brickView);
-		}
-	}
-
 	protected override void OnUnbind()
 	{
 		base.OnUnbind();
-		m_Bricks.ForEach(TooltipEngine.DestroyBrickView);
+		m_Bricks.ForEach(delegate(IBrickView v)
+		{
+			WidgetFactory.DisposeWidget((MonoBehaviour)v);
+		});
 		m_Bricks.Clear();
-		m_BricksGroups.ForEach(TooltipEngine.DestroyBrickView);
+		m_BricksGroups.ForEach(delegate(IBrickView v)
+		{
+			WidgetFactory.DisposeWidget((MonoBehaviour)v);
+		});
 		m_BricksGroups.Clear();
-		m_NavigationBricks.Clear();
 	}
 
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour(IConsoleNavigationOwner owner = null)
+	private void SetPart(IEnumerable<TooltipBrickVM> bricks, RectTransform container)
 	{
-		GridConsoleNavigationBehaviour gridConsoleNavigationBehaviour = new GridConsoleNavigationBehaviour(owner);
-		gridConsoleNavigationBehaviour.AddColumn(m_NavigationBricks.Select((IConsoleTooltipBrick i) => i.GetConsoleEntity()).ToList());
-		return gridConsoleNavigationBehaviour;
+		container.Or(null)?.gameObject.SetActive(bricks.Any());
+		foreach (TooltipBrickVM brick in bricks)
+		{
+			PlaceBrick(brick, container, null);
+		}
+	}
+
+	private void PlaceBrick(TooltipBrickVM brickVM, RectTransform container, BrickGroupView parentGroup)
+	{
+		IBrickView brickView = m_BricksRegistry?.GetView(brickVM?.GetType());
+		if (brickView == null)
+		{
+			PFLog.UI.Error($"Can't find brick view for {brickVM?.GetType()} in registry {m_BricksRegistry?.name}", this);
+			return;
+		}
+		brickView.BindVM(brickVM);
+		Attach(brickView, container, parentGroup);
+		if (!(brickVM is BricksGroupBaseVM bricksGroupBaseVM))
+		{
+			m_Bricks.Add(brickView);
+			return;
+		}
+		if (!(brickView is BrickGroupView brickGroupView))
+		{
+			PFLog.UI.Error($"Expected BrickGroupView for {brickVM.GetType()}, got {brickView.GetType()}");
+			return;
+		}
+		m_BricksGroups.Add(brickGroupView);
+		foreach (TooltipBrickVM child in bricksGroupBaseVM.Children)
+		{
+			PlaceBrick(child, container, brickGroupView);
+		}
+	}
+
+	private static void Attach(IBrickView view, RectTransform container, BrickGroupView parentGroup)
+	{
+		if (parentGroup != null)
+		{
+			parentGroup.AddChild(view.Transform as RectTransform);
+		}
+		else
+		{
+			view.Transform.SetParent(container, worldPositionStays: false);
+		}
 	}
 }

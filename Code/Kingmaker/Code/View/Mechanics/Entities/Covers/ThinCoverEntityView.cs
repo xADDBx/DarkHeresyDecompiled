@@ -9,6 +9,6 @@ public class ThinCoverEntityView : BaseCoverEntityView
 {
 	public override Entity CreateEntityData(bool load)
 	{
-		return Entity.Initialize(new ThinCoverEntity(UniqueId, base.IsInGameBySettings, base.Blueprint));
+		return Entity.Initialize(new ThinCoverEntity(this));
 	}
 }

@@ -2,7 +2,6 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
-using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats;
 using Kingmaker.Enums;
 using Kingmaker.PubSubSystem.Core;
@@ -32,12 +31,6 @@ public class SavingThrowBonusAgainstBuffCaster : UnitFactComponentDelegate, IIni
 
 	public void OnEventAboutToTrigger(RulePerformSavingThrow evt)
 	{
-		MechanicEntity mechanicEntity = evt.Reason.Ability?.Caster;
-		if (mechanicEntity != null && mechanicEntity == base.Context.MaybeCaster && (Type == SavingThrowType.Unknown || evt.Type == Type) && Restrictions.IsPassed(base.Context, null, null, evt))
-		{
-			int value = Bonus.Calculate(base.Context) * Multiplier;
-			evt.ValueModifiers.Add(value, base.Fact, ModifierDescriptor);
-		}
 	}
 
 	public void OnEventDidTrigger(RulePerformSavingThrow evt)

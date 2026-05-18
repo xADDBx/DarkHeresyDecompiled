@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
@@ -11,7 +12,9 @@ using Owlcat.Runtime.Core.Utility;
 namespace Kingmaker.EntitySystem.Properties;
 
 [Serializable]
+[Obsolete]
 [AllowedOn(typeof(BlueprintAbility))]
+[AllowedOn(typeof(BlueprintToggleAbility))]
 [AllowedOn(typeof(BlueprintBuff))]
 [AllowedOn(typeof(BlueprintFeature))]
 [AllowedOn(typeof(BlueprintAreaEffect))]

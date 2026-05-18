@@ -37,7 +37,6 @@ public class NewGameRoot : BlueprintScriptableObject
 	[SerializeField]
 	private bool m_SkipMainMenu;
 
-	[SerializeField]
 	public List<NewGamePreset> NewGamePresetToChoose => m_NewGamePresetToChoose;
 
 	public IEnumerable<BlueprintCampaign> StoryCampaigns => m_StoryCampaigns?.Dereference();

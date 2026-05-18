@@ -10,9 +10,9 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipTemplateVail : TooltipBaseTemplate
 {
-	private readonly string m_GlossaryHeader;
+	private readonly string m_GlossaryHeader = UIStrings.Instance.ActionBar.VailHeader.Text;
 
-	private readonly string m_GlossaryFooter;
+	private readonly string m_GlossaryFooter = UIStrings.Instance.ActionBar.VeilPhenomenaDescription.Text;
 
 	private int m_VeilValue;
 
@@ -20,17 +20,11 @@ public class TooltipTemplateVail : TooltipBaseTemplate
 
 	private int m_PhenomenaChance;
 
-	public TooltipTemplateVail()
-	{
-		m_GlossaryHeader = UIStrings.Instance.ActionBar.VailHeader.Text;
-		m_GlossaryFooter = UIStrings.Instance.ActionBar.VeilPhenomenaDescription.Text;
-	}
-
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
 		return new List<ITooltipBrick>
 		{
-			new TooltipBrickIconValueStat(UIUtilityEncyclopedy.GetGlossaryEntryName("VeilThickness"), m_VeilValue.ToString(), ConfigRoot.Instance.UIConfig.UIIcons.TooltipIcons.Vail, TooltipIconValueStatType.Normal, isWhite: true)
+			new BrickIconValueStatVM(new TextValueElement(UIUtilityEncyclopedy.GetGlossaryEntryName("VeilThickness"), m_VeilValue.ToString()), ConfigRoot.Instance.UIConfig.UIIcons.TooltipIcons.Vail, IconColor.White)
 		};
 	}
 
@@ -38,22 +32,22 @@ public class TooltipTemplateVail : TooltipBaseTemplate
 	{
 		List<ITooltipBrick> obj = new List<ITooltipBrick>
 		{
-			new TooltipBrickText(m_GlossaryHeader, TooltipTextType.Simple, isHeader: false, TooltipTextAlignment.Left),
-			new TooltipBrickSeparator(TooltipBrickElementType.Small)
+			new BrickTextVM(m_GlossaryHeader, TooltipTextType.Simple, TooltipTextAlignment.Left),
+			new BrickSeparatorVM(TooltipBrickElementType.Small)
 		};
 		int maxVeilDamage = ConfigRoot.Instance.PsykerRoot.MaxVeilDamage;
 		int num = m_VeilValue * 100 / maxVeilDamage;
 		int veilValue = m_VeilValue;
-		List<BrickSliderValueVM> list = new List<BrickSliderValueVM>();
+		List<SliderValuesVM> list = new List<SliderValuesVM>();
 		int value = Mathf.RoundToInt((float)m_PhenomenaChance / 100f * (float)num);
 		Color32 veilPhenomenaColor = UIConfig.Instance.TooltipColors.VeilPhenomenaColor;
 		string text = $"{m_PhenomenaChance}%";
-		list.Add(new BrickSliderValueVM(0, 100, value, null, needColor: true, veilPhenomenaColor, null, isValueOnBottom: false, needValueText: false, text));
+		list.Add(new SliderValuesVM(0, 100, value, null, needColor: true, veilPhenomenaColor, null, isValueOnBottom: false, needValueText: false, text));
 		Color32 veilPerilColor = UIConfig.Instance.TooltipColors.VeilPerilColor;
 		text = $"{m_PerilChance}%";
-		list.Add(new BrickSliderValueVM(0, 100, num, null, needColor: true, veilPerilColor, null, isValueOnBottom: false, needValueText: false, text));
-		obj.Add(new TooltipBrickSlider(0, maxVeilDamage, veilValue, list, showValue: false, 50, UIConfig.Instance.TooltipColors.ProgressbarNeutral));
-		obj.Add(new TooltipBrickText(m_GlossaryFooter, TooltipTextType.Simple, isHeader: false, TooltipTextAlignment.Left));
+		list.Add(new SliderValuesVM(0, 100, num, null, needColor: true, veilPerilColor, null, isValueOnBottom: false, needValueText: false, text));
+		obj.Add(new BrickSliderVM(0, maxVeilDamage, veilValue, list, showValue: false, UIConfig.Instance.TooltipColors.ProgressbarNeutral));
+		obj.Add(new BrickTextVM(m_GlossaryFooter, TooltipTextType.Simple, TooltipTextAlignment.Left));
 		return obj;
 	}
 

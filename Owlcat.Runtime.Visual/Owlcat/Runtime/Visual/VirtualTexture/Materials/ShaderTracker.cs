@@ -12,7 +12,7 @@ public class ShaderTracker : ObjectTracker<Shader>
 	{
 	}
 
-	public override void ProcessData(List<Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+	public override void ProcessData(List<Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 	{
 	}
 }

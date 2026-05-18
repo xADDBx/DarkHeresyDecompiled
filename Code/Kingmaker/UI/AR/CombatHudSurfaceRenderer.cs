@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 using Pathfinding;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace Kingmaker.UI.AR;
 
@@ -31,6 +32,8 @@ public sealed class CombatHudSurfaceRenderer : MonoBehaviour
 	private readonly MaterialBindingDataSource m_MaterialBindingDataSource = new MaterialBindingDataSource();
 
 	private Material[] m_PendingOverrideMaterials;
+
+	private static readonly int s_CohesionIntersectionShift = GetIntersectionShift(CombatHudAreas.Cohesion, CombatHudAreas.CohesionIntersection);
 
 	[Header("Los Optimization")]
 	[field: SerializeField]
@@ -63,9 +66,16 @@ public sealed class CombatHudSurfaceRenderer : MonoBehaviour
 
 	public IAreaSource LosBlockerAreaSource { get; set; }
 
-	public IAreaSource AllyCohesionAreaSource { get; set; }
+	public IAreaSource HarmfulAreaSource { get; set; }
 
-	public IAreaSource HostileCohesionAreaSource { get; set; }
+	public IAreaSource ChannelingAbilityAreaSource { get; set; }
+
+	public IAreaSource CohesionAreaSource { get; set; }
+
+	public IAreaSource HoveredUnitCohesionAreaSource { get; set; }
+
+	public List<AreaSourceData> CohesionAreaDataList { get; } = new List<AreaSourceData>();
+
 
 	public List<AreaSourceData> AllyDebugAreaDataList { get; } = new List<AreaSourceData>();
 
@@ -74,6 +84,10 @@ public sealed class CombatHudSurfaceRenderer : MonoBehaviour
 
 
 	public CombatHudCommandSetAsset AbilityCommandsOverride { get; set; }
+
+	public bool AdditionalInfoModeEnabled { get; set; }
+
+	public bool PointCharacterInfoModeEnabled { get; set; }
 
 	public HighlightData HighlightSpaceCombatMovementAreaPhaseThree { get; set; }
 
@@ -122,6 +136,7 @@ public sealed class CombatHudSurfaceRenderer : MonoBehaviour
 			return;
 		}
 		CombatHudSurfaceRendererAsset combatHudSurfaceRendererAsset = ResolveAsset();
+		CombatHudCommand[] globalCommands = combatHudSurfaceRendererAsset.globalCommands;
 		m_Service.DiscardPendingRequest();
 		m_MaterialBindingDataSource.Clear();
 		m_MaterialBindingDataSource.SetHighlight(HighlightDataSource.SpaceCombatMovement3, HighlightSpaceCombatMovementAreaPhaseThree);
@@ -162,65 +177,226 @@ public sealed class CombatHudSurfaceRenderer : MonoBehaviour
 		{
 			surfaceServiceRequest.Areas.Add(new AreaData(8192u, LosBlockerAreaSource));
 		}
-		if (AllyCohesionAreaSource != null)
+		if (HarmfulAreaSource != null)
 		{
-			surfaceServiceRequest.Areas.Add(new AreaData(512u, AllyCohesionAreaSource));
+			surfaceServiceRequest.Areas.Add(new AreaData(4096u, HarmfulAreaSource));
 		}
-		if (HostileCohesionAreaSource != null)
+		if (ChannelingAbilityAreaSource != null)
 		{
-			surfaceServiceRequest.Areas.Add(new AreaData(1024u, HostileCohesionAreaSource));
+			surfaceServiceRequest.Areas.Add(new AreaData(65536u, ChannelingAbilityAreaSource));
 		}
-		foreach (AreaSourceData allyDebugAreaData in AllyDebugAreaDataList)
+		CombatHudCommand[] array = (AdditionalInfoModeEnabled ? combatHudSurfaceRendererAsset.AdditionalInfoMode : null);
+		CombatHudCommand[] array2 = ((PointCharacterInfoModeEnabled && HoveredUnitCohesionAreaSource != null) ? combatHudSurfaceRendererAsset.pointCharacterInfoCommands : null);
+		if (array2 != null)
 		{
-			surfaceServiceRequest.Areas.Add(new AreaData(64u, allyDebugAreaData.Source, 1, isStratagem: true));
-		}
-		foreach (AreaSourceData hostileDebugAreaData in HostileDebugAreaDataList)
-		{
-			surfaceServiceRequest.Areas.Add(new AreaData(2048u, hostileDebugAreaData.Source, 1, isStratagem: true));
+			surfaceServiceRequest.Areas.Add(new AreaData(512u, HoveredUnitCohesionAreaSource, s_CohesionIntersectionShift));
 		}
 		bool num = DeploymentPermittedAreaSource != null;
 		bool flag = MovementAreaSource != null;
 		bool flag2 = MinRangeAreaSource != null || MaxRangeAreaSource != null || EffectiveRangeAreaSource != null;
 		bool flag3 = PrimaryAreaSource != null || SecondaryAreaSource != null;
-		CombatHudCommand[] array = (num ? combatHudSurfaceRendererAsset.deploymentCommands : (flag ? combatHudSurfaceRendererAsset.movementCommands : ((flag3 && flag2) ? ((AbilityCommandsOverride != null) ? AbilityCommandsOverride.Commands : combatHudSurfaceRendererAsset.abilityPatternRangeCommands) : (flag2 ? ((AbilityCommandsOverride != null) ? AbilityCommandsOverride.Commands : combatHudSurfaceRendererAsset.abilityRangeCommands) : ((!flag3) ? null : ((AbilityCommandsOverride != null) ? AbilityCommandsOverride.Commands : combatHudSurfaceRendererAsset.abilityPatternCommands))))));
+		CombatHudCommand[] array3 = (num ? combatHudSurfaceRendererAsset.deploymentCommands : (flag ? combatHudSurfaceRendererAsset.movementCommands : ((flag3 && flag2) ? ((AbilityCommandsOverride != null) ? AbilityCommandsOverride.Commands : combatHudSurfaceRendererAsset.abilityPatternRangeCommands) : (flag2 ? ((AbilityCommandsOverride != null) ? AbilityCommandsOverride.Commands : combatHudSurfaceRendererAsset.abilityRangeCommands) : ((!flag3) ? null : ((AbilityCommandsOverride != null) ? AbilityCommandsOverride.Commands : combatHudSurfaceRendererAsset.abilityPatternCommands))))));
+		bool flag4 = false;
+		if (array3 != null)
+		{
+			CombatHudCommand[] array4 = array3;
+			foreach (CombatHudCommand combatHudCommand in array4)
+			{
+				if ((combatHudCommand.GetExecutionMode() & CombatHudCommandExecutionMode.PerCohesion) != 0)
+				{
+					flag4 = true;
+				}
+			}
+		}
 		if (array != null)
 		{
-			CombatHudCommand[] array2 = array;
-			foreach (CombatHudCommand combatHudCommand in array2)
+			CombatHudCommand[] array4 = array;
+			foreach (CombatHudCommand combatHudCommand2 in array4)
 			{
-				combatHudCommand.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource);
+				if ((combatHudCommand2.GetExecutionMode() & CombatHudCommandExecutionMode.PerCohesion) != 0)
+				{
+					flag4 = true;
+				}
 			}
+		}
+		if (array2 != null)
+		{
+			CombatHudCommand[] array4 = array2;
+			foreach (CombatHudCommand combatHudCommand3 in array4)
+			{
+				if ((combatHudCommand3.GetExecutionMode() & CombatHudCommandExecutionMode.PerCohesion) != 0)
+				{
+					flag4 = true;
+				}
+			}
+		}
+		if (globalCommands != null)
+		{
+			CombatHudCommand[] array4 = globalCommands;
+			foreach (CombatHudCommand combatHudCommand4 in array4)
+			{
+				if ((combatHudCommand4.GetExecutionMode() & CombatHudCommandExecutionMode.PerCohesion) != 0)
+				{
+					flag4 = true;
+				}
+			}
+		}
+		bool flag5 = flag4 && CohesionAreaDataList.Count > 0;
+		if (CohesionAreaSource != null && !flag5)
+		{
+			surfaceServiceRequest.Areas.Add(new AreaData(512u, CohesionAreaSource, s_CohesionIntersectionShift));
 		}
 		int num2 = 0;
+		int num3 = -1;
+		if (flag5)
+		{
+			num3 = num2;
+			foreach (AreaSourceData cohesionAreaData in CohesionAreaDataList)
+			{
+				surfaceServiceRequest.Areas.Add(new AreaData(512u, cohesionAreaData.Source, s_CohesionIntersectionShift, isStratagem: true));
+				num2++;
+			}
+		}
+		int num4 = -1;
 		if (AllyDebugAreaDataList.Count > 0)
 		{
-			foreach (AreaSourceData allyDebugAreaData2 in AllyDebugAreaDataList)
+			num4 = num2;
+			foreach (AreaSourceData allyDebugAreaData in AllyDebugAreaDataList)
 			{
-				CombatHudCommand[] array2 = combatHudSurfaceRendererAsset.allyDebugCommands;
-				foreach (CombatHudCommand combatHudCommand2 in array2)
-				{
-					m_MaterialBindingDataSource.SetIcon(IconOverrideSource.Stratagem, allyDebugAreaData2.IconTexture);
-					m_MaterialBindingDataSource.SetMaterialRemap(allyDebugAreaData2.MaterialRemapAsset);
-					combatHudCommand2.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource, num2);
-				}
+				surfaceServiceRequest.Areas.Add(new AreaData(64u, allyDebugAreaData.Source, 1, isStratagem: true));
 				num2++;
 			}
-			m_MaterialBindingDataSource.SetMaterialRemap(null);
 		}
+		int num5 = -1;
 		if (HostileDebugAreaDataList.Count > 0)
 		{
-			foreach (AreaSourceData hostileDebugAreaData2 in HostileDebugAreaDataList)
+			num5 = num2;
+			foreach (AreaSourceData hostileDebugAreaData in HostileDebugAreaDataList)
 			{
-				CombatHudCommand[] array2 = combatHudSurfaceRendererAsset.hostileDebugCommands;
-				foreach (CombatHudCommand combatHudCommand3 in array2)
-				{
-					m_MaterialBindingDataSource.SetIcon(IconOverrideSource.Stratagem, hostileDebugAreaData2.IconTexture);
-					m_MaterialBindingDataSource.SetMaterialRemap(hostileDebugAreaData2.MaterialRemapAsset);
-					combatHudCommand3.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource, num2);
-				}
+				surfaceServiceRequest.Areas.Add(new AreaData(2048u, hostileDebugAreaData.Source, 1, isStratagem: true));
 				num2++;
 			}
-			m_MaterialBindingDataSource.SetMaterialRemap(null);
+		}
+		List<CombatHudCommand> value;
+		using (CollectionPool<List<CombatHudCommand>, CombatHudCommand>.Get(out value))
+		{
+			if (array3 != null)
+			{
+				CombatHudCommand[] array4 = array3;
+				for (int i = 0; i < array4.Length; i++)
+				{
+					CombatHudCommand item = array4[i];
+					CombatHudCommandExecutionMode executionMode = item.GetExecutionMode();
+					if ((executionMode & CombatHudCommandExecutionMode.Main) != 0)
+					{
+						item.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource);
+					}
+					if ((executionMode & CombatHudCommandExecutionMode.PerCohesion) != 0)
+					{
+						value.Add(item);
+					}
+				}
+			}
+			if (array != null)
+			{
+				CombatHudCommand[] array4 = array;
+				for (int i = 0; i < array4.Length; i++)
+				{
+					CombatHudCommand item2 = array4[i];
+					CombatHudCommandExecutionMode executionMode2 = item2.GetExecutionMode();
+					if ((executionMode2 & CombatHudCommandExecutionMode.Main) != 0)
+					{
+						item2.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource);
+					}
+					if ((executionMode2 & CombatHudCommandExecutionMode.PerCohesion) != 0)
+					{
+						value.Add(item2);
+					}
+				}
+			}
+			if (array2 != null)
+			{
+				CombatHudCommand[] array4 = array2;
+				for (int i = 0; i < array4.Length; i++)
+				{
+					CombatHudCommand item3 = array4[i];
+					CombatHudCommandExecutionMode executionMode3 = item3.GetExecutionMode();
+					if ((executionMode3 & CombatHudCommandExecutionMode.Main) != 0)
+					{
+						item3.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource);
+					}
+					if ((executionMode3 & CombatHudCommandExecutionMode.PerCohesion) != 0)
+					{
+						value.Add(item3);
+					}
+				}
+			}
+			if (globalCommands != null)
+			{
+				CombatHudCommand[] array4 = globalCommands;
+				for (int i = 0; i < array4.Length; i++)
+				{
+					CombatHudCommand item4 = array4[i];
+					CombatHudCommandExecutionMode executionMode4 = item4.GetExecutionMode();
+					if ((executionMode4 & CombatHudCommandExecutionMode.Main) != 0)
+					{
+						item4.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource);
+					}
+					if ((executionMode4 & CombatHudCommandExecutionMode.PerCohesion) != 0)
+					{
+						value.Add(item4);
+					}
+				}
+			}
+			if (AllyDebugAreaDataList.Count > 0)
+			{
+				for (int j = 0; j < AllyDebugAreaDataList.Count; j++)
+				{
+					AreaSourceData areaSourceData = AllyDebugAreaDataList[j];
+					int stratagemId = num4 + j;
+					CombatHudCommand[] array4 = combatHudSurfaceRendererAsset.allyDebugCommands;
+					foreach (CombatHudCommand combatHudCommand5 in array4)
+					{
+						m_MaterialBindingDataSource.SetIcon(IconOverrideSource.Stratagem, areaSourceData.IconTexture);
+						m_MaterialBindingDataSource.SetMaterialRemap(areaSourceData.MaterialRemapAsset);
+						combatHudCommand5.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource, stratagemId);
+					}
+				}
+				m_MaterialBindingDataSource.SetMaterialRemap(null);
+			}
+			if (HostileDebugAreaDataList.Count > 0)
+			{
+				for (int k = 0; k < HostileDebugAreaDataList.Count; k++)
+				{
+					AreaSourceData areaSourceData2 = HostileDebugAreaDataList[k];
+					int stratagemId2 = num5 + k;
+					CombatHudCommand[] array4 = combatHudSurfaceRendererAsset.hostileDebugCommands;
+					foreach (CombatHudCommand combatHudCommand6 in array4)
+					{
+						m_MaterialBindingDataSource.SetIcon(IconOverrideSource.Stratagem, areaSourceData2.IconTexture);
+						m_MaterialBindingDataSource.SetMaterialRemap(areaSourceData2.MaterialRemapAsset);
+						combatHudCommand6.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource, stratagemId2);
+					}
+				}
+				m_MaterialBindingDataSource.SetMaterialRemap(null);
+			}
+			if (flag5 && value.Count > 0)
+			{
+				for (int l = 0; l < CohesionAreaDataList.Count; l++)
+				{
+					AreaSourceData areaSourceData3 = CohesionAreaDataList[l];
+					int stratagemId3 = num3 + l;
+					surfaceServiceRequest.CommandBuffer.ClearFill();
+					surfaceServiceRequest.CommandBuffer.ClearOutline();
+					m_MaterialBindingDataSource.SetIcon(IconOverrideSource.Stratagem, areaSourceData3.IconTexture);
+					m_MaterialBindingDataSource.SetMaterialRemap(areaSourceData3.MaterialRemapAsset);
+					foreach (CombatHudCommand item5 in value)
+					{
+						item5.PushCommand(surfaceServiceRequest, m_MaterialBindingDataSource, stratagemId3);
+					}
+				}
+				m_MaterialBindingDataSource.SetMaterialRemap(null);
+			}
 		}
 		m_Service.SetPendingRequest(surfaceServiceRequest);
 	}
@@ -261,5 +437,28 @@ public sealed class CombatHudSurfaceRenderer : MonoBehaviour
 			}
 		}
 		return true;
+	}
+
+	private static int GetIntersectionShift(CombatHudAreas areaFlag, CombatHudAreas intersectionFlag)
+	{
+		int singleBitIndex = GetSingleBitIndex((uint)areaFlag);
+		int num = GetSingleBitIndex((uint)intersectionFlag) - singleBitIndex;
+		if (num <= 0)
+		{
+			return 0;
+		}
+		return num;
+	}
+
+	private static int GetSingleBitIndex(uint mask)
+	{
+		for (int i = 0; i < 32; i++)
+		{
+			if ((mask & (uint)(1 << i)) != 0)
+			{
+				return i;
+			}
+		}
+		return -1;
 	}
 }

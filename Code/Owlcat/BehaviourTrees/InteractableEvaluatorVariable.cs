@@ -8,9 +8,9 @@ public class InteractableEvaluatorVariable : InteractableVariable
 {
 	private readonly InteractionActionEvaluator m_Evaluator;
 
-	private InteractionAction m_LastEvaluatedValue;
+	private InteractionActionPart m_LastEvaluatedValue;
 
-	public override InteractionAction Value
+	public override InteractionActionPart Value
 	{
 		get
 		{

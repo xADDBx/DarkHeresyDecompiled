@@ -5,10 +5,11 @@ using Code.Framework.Utility.UnityExtensions;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Visual.CharacterSystem;
+using Kingmaker.Code.View.Visual.CharacterSystem.EquipmentComponents;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.Utility.UnityExtensions;
+using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Kingmaker.Visual.MaterialEffects;
@@ -81,6 +82,15 @@ public class Character : RegisteredBehaviour, IUpdatable
 		public int SecondaryIndex;
 	}
 
+	private struct EquipmentModifierEntry
+	{
+		public Skeleton.BoneModifier Modifier;
+
+		public Transform BoneTransform;
+
+		public int Priority;
+	}
+
 	[HideInInspector]
 	public bool PreventUpdate;
 
@@ -114,7 +124,20 @@ public class Character : RegisteredBehaviour, IUpdatable
 
 	private bool m_IsInitialized;
 
-	private readonly List<(Skeleton.BoneModifier modifier, Transform boneTransform)> m_EquipmentBoneModifiers = new List<(Skeleton.BoneModifier, Transform)>();
+	private const string MaleEEMarker = "_M_";
+
+	private const string FemaleEEMarker = "_F_";
+
+	[NonSerialized]
+	private bool m_HasMaleEE;
+
+	[NonSerialized]
+	private bool m_HasFemaleEE;
+
+	[NonSerialized]
+	private bool m_GenderMismatchWarned;
+
+	private readonly List<EquipmentModifierEntry> m_EquipmentBoneModifiers = new List<EquipmentModifierEntry>();
 
 	private BoneUpdateJob m_BoneUpdateJob;
 
@@ -138,8 +161,6 @@ public class Character : RegisteredBehaviour, IUpdatable
 	[Tooltip("Sometimes we need to forbid visualization of belt items, for Example on Ulfar")]
 	public bool ForbidBeltItemVisualization;
 
-	public bool HoldWeaponsInNonCombat;
-
 	public bool SaveRagdoll;
 
 	public CharacterAtlasSize MaxAtlasSize = CharacterAtlasSize.Default;
@@ -151,6 +172,8 @@ public class Character : RegisteredBehaviour, IUpdatable
 	public CharacterDisplayOptions DisplayOptions = CharacterDisplayOptions.Default;
 
 	public HashSet<UnitAnimationManager> MechsAnimationManagers = new HashSet<UnitAnimationManager>();
+
+	private AbstractUnitEntityView m_Owner;
 
 	public static RenderingLayerEnum DefaultCharacterRenderingLayer => RenderingLayerEnum.RenderingLayer2;
 
@@ -214,6 +237,18 @@ public class Character : RegisteredBehaviour, IUpdatable
 		}
 	}
 
+	public bool IsReadyForBaking
+	{
+		get
+		{
+			if (!IsBaked)
+			{
+				return m_CharacterBuilder?.IsReadyForBaking() ?? false;
+			}
+			return false;
+		}
+	}
+
 	public List<EquipmentEntityLink> SavedEquipmentEntities
 	{
 		get
@@ -261,6 +296,8 @@ public class Character : RegisteredBehaviour, IUpdatable
 
 	public event Action<Character> OnUpdated;
 
+	public event Action<Character> OnOutfitOnlyUpdated;
+
 	public void Initialize()
 	{
 		if (m_IsInitialized)
@@ -295,6 +332,34 @@ public class Character : RegisteredBehaviour, IUpdatable
 		m_IsInitialized = true;
 	}
 
+	private void OnAddEquipmentEntity(EquipmentEntity equipmentEntity)
+	{
+		foreach (IAddEquipmentEntityHandler featureComponent in equipmentEntity.GetFeatureComponents<IAddEquipmentEntityHandler>())
+		{
+			featureComponent.HandleEquipmentEntityAdded(m_Owner);
+		}
+	}
+
+	private void OnDisposeBakedCharacter()
+	{
+		foreach (EquipmentEntityLink savedEquipmentEntity in SavedEquipmentEntities)
+		{
+			EquipmentEntity equipmentEntity = savedEquipmentEntity.Load();
+			if (!(equipmentEntity == null))
+			{
+				OnRemoveEquipmentEntity(equipmentEntity);
+			}
+		}
+	}
+
+	private void OnRemoveEquipmentEntity(EquipmentEntity equipmentEntity)
+	{
+		foreach (IRemoveEquipmentEntityHandler featureComponent in equipmentEntity.GetFeatureComponents<IRemoveEquipmentEntityHandler>())
+		{
+			featureComponent.HandleEquipmentEntityRemoved(m_Owner);
+		}
+	}
+
 	private void InitBakedCharacter()
 	{
 		foreach (BakedCharacter.RendererDescription rendererDescription in m_BakedCharacter.RendererDescriptions)
@@ -318,6 +383,14 @@ public class Character : RegisteredBehaviour, IUpdatable
 		{
 			comp.EnsureComponent<HighlighterBlocker>();
 			comp.EnsureComponent<OccludedObjectHighlighterBlocker>();
+		}
+		foreach (EquipmentEntityLink savedEquipmentEntity in SavedEquipmentEntities)
+		{
+			EquipmentEntity equipmentEntity = savedEquipmentEntity.Load();
+			if (!(equipmentEntity == null))
+			{
+				OnAddEquipmentEntity(equipmentEntity);
+			}
 		}
 	}
 
@@ -408,6 +481,10 @@ public class Character : RegisteredBehaviour, IUpdatable
 		{
 			m_BonesForJob.Dispose();
 		}
+		if (IsBaked)
+		{
+			OnDisposeBakedCharacter();
+		}
 	}
 
 	public void DoUpdate()
@@ -434,6 +511,7 @@ public class Character : RegisteredBehaviour, IUpdatable
 				if (Animator != null)
 				{
 					Animator.Rebind();
+					Animator.Update(0f);
 				}
 				CacheSkeletonBones();
 				SetUpCharacterRenderingLayerMask();
@@ -441,6 +519,14 @@ public class Character : RegisteredBehaviour, IUpdatable
 				ProbeAnchorOverrider.UpdateProbeAnchorsOnObject(base.gameObject, renderers);
 				this.OnUpdated?.Invoke(this);
 				this.OnBackEquipmentUpdated?.Invoke();
+			}
+			if ((m_RebuildRequest & CharacterRebuildMode.OnlyOutfit) == CharacterRebuildMode.OnlyOutfit)
+			{
+				this.OnOutfitOnlyUpdated?.Invoke(this);
+			}
+			if ((m_RebuildRequest & CharacterRebuildMode.OnlyAtlases) != 0)
+			{
+				m_CharacterBuilder.UpdateOutfitColors(RampIndices);
 			}
 		}
 		catch (Exception ex)
@@ -459,14 +545,6 @@ public class Character : RegisteredBehaviour, IUpdatable
 		if (!IsBaked)
 		{
 			m_RebuildRequest |= mode;
-		}
-	}
-
-	public void OnApplicationFocus(bool isFocused)
-	{
-		if (isFocused && !ApplicationFocusEvents.CharacterDisabled && !IsBaked && Screen.fullScreen)
-		{
-			RequestRebuild(CharacterRebuildMode.OnlyAtlases);
 		}
 	}
 
@@ -540,6 +618,8 @@ public class Character : RegisteredBehaviour, IUpdatable
 		m_EquipmentBoneModifiers.Clear();
 		foreach (EquipmentEntity equipmentEntity in EquipmentEntities)
 		{
+			int num = 0;
+			num = (equipmentEntity.HasFeature(EquipmentFeatureFlag.IsBackpack) ? 30 : (equipmentEntity.HasFeature(EquipmentFeatureFlag.IsCloak) ? 20 : (equipmentEntity.HasFeature(EquipmentFeatureFlag.IsArmor) ? 10 : 0)));
 			foreach (Skeleton.BoneModifier skeletonModifier in equipmentEntity.SkeletonModifiers)
 			{
 				if (skeletonModifier.IsValid() && !skeletonModifier.HasConflictsWithEquipment(EquipmentEntities))
@@ -548,14 +628,18 @@ public class Character : RegisteredBehaviour, IUpdatable
 					if (byName == null)
 					{
 						PFLog.TechArt.Error("Can't find bone for EE skeleton modifier " + equipmentEntity.name + ", " + skeletonModifier.BoneType.BoneName);
+						continue;
 					}
-					else
+					m_EquipmentBoneModifiers.Add(new EquipmentModifierEntry
 					{
-						m_EquipmentBoneModifiers.Add((skeletonModifier, byName));
-					}
+						Modifier = skeletonModifier,
+						BoneTransform = byName,
+						Priority = num
+					});
 				}
 			}
 		}
+		m_EquipmentBoneModifiers.Sort((EquipmentModifierEntry a, EquipmentModifierEntry b) => a.Priority.CompareTo(b.Priority));
 	}
 
 	public void RestoreSavedEquipment()
@@ -590,23 +674,17 @@ public class Character : RegisteredBehaviour, IUpdatable
 
 	public void AddEquipmentEntity(EquipmentEntity ee, bool saved = false)
 	{
-		if (ee == null || EquipmentEntities.Contains(ee))
+		if (ee == null)
+		{
+			return;
+		}
+		DetectMixedGenderEquipment(ee);
+		if (EquipmentEntities.Contains(ee))
 		{
 			return;
 		}
 		EquipmentEntities.Add(ee);
-		if (ee.ForcedPrimaryIndex >= 0 || ee.ForcedSecondaryIndex >= 0)
-		{
-			SelectedRampIndices selectedRampIndices = RampIndices.FirstOrDefault((SelectedRampIndices rampIndices) => rampIndices.EquipmentEntity == ee);
-			if (selectedRampIndices == null)
-			{
-				selectedRampIndices = CreateRampIndices(ee);
-			}
-			selectedRampIndices.PrimaryIndex = ee.ForcedPrimaryIndex;
-			selectedRampIndices.SecondaryIndex = ee.ForcedSecondaryIndex;
-			RequestRebuild(CharacterRebuildMode.FullUpdate);
-			return;
-		}
+		OnAddEquipmentEntity(ee);
 		if (ee.HasPrimaryRamps || ee.HasSecondaryRamps)
 		{
 			if (!RampIndices.Contains((SelectedRampIndices rampIndices) => rampIndices.EquipmentEntity == ee))
@@ -616,6 +694,32 @@ public class Character : RegisteredBehaviour, IUpdatable
 			RequestRebuild(CharacterRebuildMode.OnlyAtlases);
 		}
 		RequestRebuild(CharacterRebuildMode.FullUpdate);
+	}
+
+	private void DetectMixedGenderEquipment(EquipmentEntity ee)
+	{
+		if (m_GenderMismatchWarned || string.IsNullOrEmpty(ee.name))
+		{
+			return;
+		}
+		bool flag = ee.name.Contains("_M_");
+		bool flag2 = ee.name.Contains("_F_");
+		if (flag != flag2)
+		{
+			if (flag)
+			{
+				m_HasMaleEE = true;
+			}
+			else
+			{
+				m_HasFemaleEE = true;
+			}
+			if (m_HasMaleEE && m_HasFemaleEE)
+			{
+				m_GenderMismatchWarned = true;
+				PFLog.TechArt.Error(base.gameObject, "Mixed-gender EquipmentEntities on character '" + base.gameObject.name + "': adding '" + ee.name + "' but list already contains opposite-gender items. Breaks bone-binding (mesh parts stuck in bind-pose, mismatched skeleton). Likely cause: gender-dependent equipment was resolved before Owner.Gender was set on the unit.");
+			}
+		}
 	}
 
 	public void AddEquipmentEntities(IEnumerable<EquipmentEntity> ees, bool saved = false)
@@ -647,6 +751,7 @@ public class Character : RegisteredBehaviour, IUpdatable
 			RampIndices.Remove((SelectedRampIndices rampIndices) => rampIndices.EquipmentEntity == ee);
 			if (EquipmentEntities.Remove(ee))
 			{
+				OnRemoveEquipmentEntity(ee);
 				RequestRebuild(CharacterRebuildMode.FullUpdate);
 			}
 		}
@@ -728,7 +833,17 @@ public class Character : RegisteredBehaviour, IUpdatable
 			{
 				for (int i = 0; i < m_EquipmentBoneModifiers.Count; i++)
 				{
-					m_EquipmentBoneModifiers[i].modifier.Apply(m_EquipmentBoneModifiers[i].boneTransform);
+					Transform boneTransform = m_EquipmentBoneModifiers[i].BoneTransform;
+					if (boneTransform != null)
+					{
+						boneTransform.localPosition = Vector3.zero;
+						boneTransform.localRotation = Quaternion.identity;
+						boneTransform.localScale = Vector3.one;
+					}
+				}
+				for (int j = 0; j < m_EquipmentBoneModifiers.Count; j++)
+				{
+					m_EquipmentBoneModifiers[j].Modifier.Apply(m_EquipmentBoneModifiers[j].BoneTransform);
 				}
 			}
 			if ((bool)Skeleton && Skeleton.IsDirty())
@@ -806,5 +921,10 @@ public class Character : RegisteredBehaviour, IUpdatable
 				CurrentLayer = renderer.renderingLayerMask;
 			}
 		}
+	}
+
+	public void SetupOwner(AbstractUnitEntityView owner)
+	{
+		m_Owner = owner;
 	}
 }

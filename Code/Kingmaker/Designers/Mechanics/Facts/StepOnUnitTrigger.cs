@@ -5,7 +5,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -40,7 +40,7 @@ public class StepOnUnitTrigger : UnitFactComponentDelegate, IUnitMovementHandler
 			{
 				continue;
 			}
-			using (base.Context.SetScope(unit.ToITargetWrapper()))
+			using (EvalContext.PushFact(base.Fact, unit))
 			{
 				if (Restrictions.IsPassed(base.Context, base.Owner))
 				{

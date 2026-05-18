@@ -152,7 +152,7 @@ public class QuestNotificatorVM : ViewModel, INewServiceWindowUIHandler, ISubscr
 		QuestEntities.Clear();
 		ObjectiveEntities.Clear();
 		m_IsShowUp.Value = false;
-		m_ForceCloseCommand.Execute();
+		m_ForceCloseCommand.Execute(Unit.Default);
 	}
 
 	public void HandleOpenJournal()
@@ -200,6 +200,6 @@ public class QuestNotificatorVM : ViewModel, INewServiceWindowUIHandler, ISubscr
 	{
 		QuestEntities.Clear();
 		ObjectiveEntities.Clear();
-		m_ClearCommand.Execute();
+		m_ClearCommand.Execute(Unit.Default);
 	}
 }

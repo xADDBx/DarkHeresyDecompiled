@@ -39,6 +39,8 @@ public class ConfigRoot
 
 	private static readonly BpRef<BlueprintDifficultyRoot> DifficultyRootRef = new BpRef<BlueprintDifficultyRoot>("ea0fc7492a3b459f9874c5576580efa9");
 
+	private static readonly BpRef<BlueprintEnemyScalingRoot> EnemyScalingRootRef = new BpRef<BlueprintEnemyScalingRoot>("41896711782d46aba329a1cf8efbd752");
+
 	private static readonly BpRef<CutscenesRoot> CutsceneRootRef = new BpRef<CutscenesRoot>("abe8b95bc0164356a0a47c3aee0d6b1c");
 
 	private static readonly BpRef<BlueprintTraumaRoot> TraumaRootRef = new BpRef<BlueprintTraumaRoot>("c36f337f95724a49a2ea61f9246239e2");
@@ -119,6 +121,8 @@ public class ConfigRoot
 
 	private static readonly BpRef<BlueprintItemProgressionRoot> ItemProgressionRootRef = new BpRef<BlueprintItemProgressionRoot>("8faf66ee99404b3fbf50b126759dd61a");
 
+	private static readonly BpRef<BlueprintItemFactionRoot> ItemFactionRootRef = new BpRef<BlueprintItemFactionRoot>("9180d5dfa8714f14a3ea51b748b0e6cc");
+
 	public CheatRoot Cheats => CheatRootRef;
 
 	public BlueprintCombatRoot CombatRoot => CombatRootRef;
@@ -152,6 +156,8 @@ public class ConfigRoot
 	public SkillCheckRoot SkillCheckRoot => SkillCheckRootRef;
 
 	public BlueprintDifficultyRoot DifficultyRoot => DifficultyRootRef;
+
+	public BlueprintEnemyScalingRoot EnemyScalingRoot => EnemyScalingRootRef;
 
 	public CutscenesRoot CutsceneRoot => CutsceneRootRef;
 
@@ -224,4 +230,6 @@ public class ConfigRoot
 	public BlueprintEncounterRoot EncounterRoot => EncounterRootRef;
 
 	public BlueprintItemProgressionRoot ItemProgressionRoot => ItemProgressionRootRef;
+
+	public BlueprintItemFactionRoot ItemFactionRoot => ItemFactionRootRef;
 }

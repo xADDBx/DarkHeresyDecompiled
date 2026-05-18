@@ -3,6 +3,7 @@ using Kingmaker.Controllers.Interfaces;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.GameModes;
 using Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View.MapObjects.Traps;
 
@@ -44,7 +45,7 @@ public class EntityVisibilityForPlayerController : IControllerTick, IController
 	private static void Update(MechanicEntity entity, bool revealVisible)
 	{
 		BaseUnitEntity baseUnitEntity = entity as BaseUnitEntity;
-		if (!(entity.View == null) && (baseUnitEntity == null || !baseUnitEntity.IsSleepingWithouTimers || (baseUnitEntity.LifeState.IsFinallyDead && !baseUnitEntity.LifeState.IsDeathRevealed)))
+		if (entity.View != null && (baseUnitEntity == null || !baseUnitEntity.IsSleepingWithouTimers || (baseUnitEntity.LifeState.IsFinallyDead && !baseUnitEntity.LifeState.IsDeathRevealed)))
 		{
 			bool visible = ((baseUnitEntity != null) ? IsVisible(baseUnitEntity) : IsVisible(entity));
 			entity.View.SetVisible(visible, force: false, revealVisible);
@@ -95,7 +96,8 @@ public class EntityVisibilityForPlayerController : IControllerTick, IController
 		{
 			return false;
 		}
-		if (entity is MapObjectEntity { IsAwarenessCheckPassed: false } || (!entity.IsRevealed && entity.IsInFogOfWar))
+		bool flag = ((entity is AbstractUnitEntity) ? (!entity.IsInFogOfWar) : (entity.IsRevealed || !entity.IsInFogOfWar));
+		if (!((!(entity is MapObjectEntity mapObjectEntity) || mapObjectEntity.IsAwarenessCheckPassed) && flag))
 		{
 			return false;
 		}

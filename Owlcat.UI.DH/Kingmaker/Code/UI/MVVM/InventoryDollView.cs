@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.UI.Components.AnimatedElements;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.DollRoom;
@@ -12,6 +12,7 @@ using Owlcat.UI;
 using R3;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -65,10 +66,24 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 	protected WeaponSetSelectorPCView m_WeaponSetSelector;
 
 	[SerializeField]
+	private FadeAnimator m_WeaponSetForegroundFade;
+
+	[Header("Ruler")]
+	[SerializeField]
 	private InventoryRuler m_Ruler;
 
 	[SerializeField]
 	private OwlcatButton m_ResetRulerTargetButton;
+
+	[Header("Mask")]
+	[SerializeField]
+	private RawImage m_Mask;
+
+	[SerializeField]
+	private Material m_TwoSlotsMaskMaterial;
+
+	[SerializeField]
+	private Material m_OneSlotMaskMaterial;
 
 	private List<TSlotView> m_AllSlots;
 
@@ -83,6 +98,7 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 	public override void Initialize()
 	{
 		base.Initialize();
+		SetSlotGroupsVisibility(isVisible: false);
 		if (m_AllSlots == null)
 		{
 			m_AllSlots = new List<TSlotView> { m_BodyArmor, m_HeadArmor, m_Gloves, m_Boots, m_Back, m_Neck, m_Ring1, m_Ring2 };
@@ -101,6 +117,8 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 	protected override void OnBind()
 	{
 		SetSlotGroupsVisibility(isVisible: true);
+		BindSlots();
+		UpdateMask();
 		base.OnBind();
 		m_SetupCoroutine = DollSetupCoroutine();
 		m_BindCompleted = true;
@@ -111,8 +129,9 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 		ObservableSubscribeExtensions.Subscribe(m_ResetRulerTargetButton.OnLeftClickAsObservable(), delegate
 		{
 			m_CharacterController.ResetTargetView();
-			UISounds.Instance.Sounds.Inventory.InventoryResetDollPosition.Play();
+			ServiceWindowsSounds.Instance.Inventory.ResetDollPosition.Play();
 		}).AddTo(this);
+		m_WeaponSetForegroundFade.AppearAnimation();
 	}
 
 	protected override void OnUnbind()
@@ -121,6 +140,7 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 		m_BindCompleted = false;
 		m_SetupCoroutine = null;
 		m_DollRoomInitialized = false;
+		m_WeaponSetForegroundFade.DisappearInstant();
 	}
 
 	protected override void RefreshView()
@@ -130,6 +150,7 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 		{
 			UpdateRoom();
 			BindSlots();
+			UpdateMask();
 		}
 	}
 
@@ -162,18 +183,14 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 
 	private void UpdateRoom()
 	{
-		m_DollFadeAnimator.DisappearAnimation(delegate
+		try
 		{
-			try
-			{
-				Room.SetupUnit(base.ViewModel.Unit.CurrentValue);
-			}
-			catch (Exception ex)
-			{
-				PFLog.UI.Exception(ex);
-			}
-			m_DollFadeAnimator.AppearAnimation();
-		});
+			Room.SetupUnit(base.ViewModel.Unit.CurrentValue);
+		}
+		catch (Exception ex)
+		{
+			PFLog.UI.Exception(ex);
+		}
 	}
 
 	private void BindSlots()
@@ -212,6 +229,12 @@ public abstract class InventoryDollView<TSlotView> : CharInfoComponentView<Inven
 	{
 		m_LeftSlots.Or(null)?.SetActive(isVisible);
 		m_RightSlots.Or(null)?.SetActive(isVisible);
+	}
+
+	private void UpdateMask()
+	{
+		int weaponSetsCount = UIUtilityUnit.GetWeaponSetsCount(base.ViewModel.Unit.CurrentValue);
+		m_Mask.material = ((weaponSetsCount == 1) ? m_OneSlotMaskMaterial : m_TwoSlotsMaskMaterial);
 	}
 
 	private IEnumerator DollSetupCoroutine()

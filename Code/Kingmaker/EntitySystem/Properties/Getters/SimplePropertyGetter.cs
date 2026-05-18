@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -17,6 +18,6 @@ public class SimplePropertyGetter : IntPropertyGetter, PropertyContextAccessor.I
 
 	protected override int GetBaseValue()
 	{
-		return Property.GetValue(base.CurrentEntity, this.GetMechanicContext());
+		return Property.GetValue(base.CurrentEntity, EvalContext.Current);
 	}
 }

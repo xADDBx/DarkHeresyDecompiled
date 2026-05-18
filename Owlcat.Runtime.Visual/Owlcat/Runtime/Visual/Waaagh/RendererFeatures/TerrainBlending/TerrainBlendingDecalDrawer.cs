@@ -1,16 +1,17 @@
 using System;
 using System.Collections.Generic;
 using Owlcat.Runtime.Visual.VirtualTerrain;
-using Owlcat.Runtime.Visual.Waaagh.Passes;
+using Owlcat.Runtime.Visual.Waaagh.Recorders;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.TerrainBlending;
 
-internal sealed class TerrainBlendingDecalDrawer : ICustomDecalDrawer
+internal sealed class TerrainBlendingDecalDrawer : IDisposable
 {
 	private struct TerrainInfo : IComparable<TerrainInfo>
 	{
@@ -44,11 +45,20 @@ internal sealed class TerrainBlendingDecalDrawer : ICustomDecalDrawer
 		}
 	}
 
+	private sealed class PassData
+	{
+		public TerrainBlendingRendererFeatureAsset Asset;
+
+		public MaterialPropertyBlock Properties;
+
+		public readonly List<TerrainInfo> TerrainInfos = new List<TerrainInfo>();
+
+		public Mesh TerrainDecalMesh;
+	}
+
 	private const int kFrustumPlanesCount = 6;
 
 	private const int kFrustumPointsCount = 8;
-
-	private static readonly ProfilingSampler ProfilingSampler = new ProfilingSampler("Terrain Blending");
 
 	private static readonly int _TerrainSize = Shader.PropertyToID("_TerrainSize");
 
@@ -76,131 +86,93 @@ internal sealed class TerrainBlendingDecalDrawer : ICustomDecalDrawer
 
 	private static Vector3[] s_TempPoints;
 
-	private readonly TerrainBlendingFeature m_Feature;
-
-	private readonly MaterialPropertyBlock m_Properties;
+	private readonly TerrainBlendingRendererFeatureAsset m_Asset;
 
 	private readonly Mesh m_TerrainDecalMesh;
 
 	private readonly List<TerrainInfo> m_TerrainInfos = new List<TerrainInfo>();
 
-	[NonSerialized]
 	private NativeArray<float4> m_CullingJobFrustumPlanes;
 
-	[NonSerialized]
 	private NativeArray<float3> m_CullingJobFrustumPoints;
 
-	[NonSerialized]
 	private NativeArray<TerrainCullingJob.Box> m_CullingJobTerrainBoundingBoxes;
 
-	[NonSerialized]
 	private NativeArray<bool> m_CullingJobTerrainVisibleStatuses;
 
-	[NonSerialized]
 	private JobHandle m_CullingJobHandle;
 
-	[NonSerialized]
 	private bool m_CullingJobScheduled;
 
-	[NonSerialized]
-	private TerrainBlendingMaterialInfoCache m_MaterialInfoCache = new TerrainBlendingMaterialInfoCache();
+	private readonly TerrainBlendingMaterialInfoCache m_MaterialInfoCache = new TerrainBlendingMaterialInfoCache();
 
-	public TerrainBlendingDecalDrawer(TerrainBlendingFeature feature)
+	public TerrainBlendingDecalDrawer(TerrainBlendingRendererFeatureAsset asset)
 	{
-		m_Feature = feature;
-		m_Properties = new MaterialPropertyBlock();
+		m_Asset = asset;
 		m_TerrainDecalMesh = TerrainBlendingDecalMeshFactory.Create();
 	}
 
-	public void OnStartSetupJobs(Camera camera)
+	public void Dispose()
 	{
-		ScheduleCullingJob(camera);
+		CoreUtils.Destroy(m_TerrainDecalMesh);
 	}
 
-	public void OnCompleteSetupJobs()
+	public void Draw(in RecordContext context)
 	{
-		CompleteCullingJob();
-	}
-
-	public bool HasAnyScheduledWorkload()
-	{
-		return m_CullingJobScheduled;
-	}
-
-	public bool CanBeCulled()
-	{
-		return !HasAnythingToDrawInternal();
-	}
-
-	public bool PreventParentPassCulling(ScriptableRenderContext context)
-	{
-		return HasAnythingToDrawInternal();
-	}
-
-	private bool HasAnythingToDrawInternal()
-	{
-		CompleteCullingJob();
-		return m_TerrainInfos.Count > 0;
-	}
-
-	public void Draw(CommandBuffer cmd, ScriptableRenderContext context, CustomDecalSubset subset)
-	{
-		CompleteCullingJob();
-		if (m_TerrainInfos.Count == 0 || subset != 0)
+		if (m_TerrainInfos.Count == 0)
 		{
 			return;
 		}
-		try
+		PassData passData2;
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Terrain Blending", out passData2, WaaaghProfileId.TerrainBlending.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\TerrainBlending\\TerrainBlendingDecalDrawer.cs", 90);
+		passData2.Asset = m_Asset;
+		PassData passData3 = passData2;
+		if (passData3.Properties == null)
 		{
-			using (new ProfilingScope(cmd, ProfilingSampler))
+			passData3.Properties = new MaterialPropertyBlock();
+		}
+		passData2.TerrainInfos.Clear();
+		passData2.TerrainInfos.AddRange(m_TerrainInfos);
+		passData2.TerrainDecalMesh = m_TerrainDecalMesh;
+		Decals.SetupDeferredDecalsDrawPass(in context, unsafeRenderGraphBuilder);
+		unsafeRenderGraphBuilder.SetRenderFunc(delegate(PassData passData, UnsafeGraphContext context)
+		{
+			Vector4 value = new Vector4(passData.Asset.SurfaceNormalBlendSlopeRange.x, passData.Asset.SurfaceNormalBlendSlopeRange.y, passData.Asset.SurfaceNormalBlendFactor, 0f);
+			passData.Properties.Clear();
+			passData.Properties.SetFloat(_TerrainBlendingOffset, passData.Asset.BlendingOffset);
+			passData.Properties.SetFloat(_TerrainBlendingDepth, passData.Asset.BlendingDepth);
+			passData.Properties.SetFloat(_TerrainBlendingNoiseTiling, passData.Asset.BlendingNoiseTiling);
+			passData.Properties.SetFloat(_TerrainBlendingNoiseStrength, passData.Asset.BlendingNoiseStrength);
+			passData.Properties.SetVector(_TerrainBlendingSurfaceNormalBlendParams, value);
+			passData.Properties.SetInteger(_TerrainBlendingDebugMode, (int)passData.Asset.DebugMode);
+			TerrainInfo terrainInfo = passData.TerrainInfos[0];
+			context.cmd.SetGlobalInt(_TerrainBlendingRenderingLayerMask, (int)passData.Asset.RenderingLayerMask.value);
+			context.cmd.DrawProcedural(Matrix4x4.identity, terrainInfo.TerrainMaterialTemplate, terrainInfo.TerrainMaterialInfo.BlendingMaskPopulatePass, MeshTopology.Triangles, 3);
+			foreach (TerrainInfo terrainInfo2 in passData.TerrainInfos)
 			{
-				m_Properties.SetFloat(_TerrainBlendingOffset, m_Feature.BlendingOffset);
-				m_Properties.SetFloat(_TerrainBlendingDepth, m_Feature.BlendingDepth);
-				m_Properties.SetFloat(_TerrainBlendingNoiseTiling, m_Feature.BlendingNoiseTiling);
-				m_Properties.SetFloat(_TerrainBlendingNoiseStrength, m_Feature.BlendingNoiseStrength);
-				m_Properties.SetVector(_TerrainBlendingSurfaceNormalBlendParams, new Vector4(m_Feature.SurfaceNormalBlendSlopeRange.x, m_Feature.SurfaceNormalBlendSlopeRange.y, m_Feature.SurfaceNormalBlendFactor, 0f));
-				if (m_Feature.DebugMode != 0)
-				{
-					cmd.EnableShaderKeyword("_TERRAIN_BLENDING_DEBUG");
-					m_Properties.SetInteger(_TerrainBlendingDebugMode, (int)m_Feature.DebugMode);
-				}
-				else
-				{
-					cmd.DisableShaderKeyword("_TERRAIN_BLENDING_DEBUG");
-				}
-				TerrainInfo terrainInfo = m_TerrainInfos[0];
-				cmd.SetGlobalInt(_TerrainBlendingRenderingLayerMask, (int)m_Feature.RenderingLayerMask.value);
-				cmd.DrawProcedural(Matrix4x4.identity, terrainInfo.TerrainMaterialTemplate, terrainInfo.TerrainMaterialInfo.BlendingMaskPopulatePass, MeshTopology.Triangles, 3);
-				foreach (TerrainInfo terrainInfo2 in m_TerrainInfos)
-				{
-					TerrainInfo info2 = terrainInfo2;
-					SetupTerrainProperties(in info2);
-					cmd.DrawMesh(m_TerrainDecalMesh, info2.Matrix, info2.TerrainMaterialTemplate, 0, info2.TerrainMaterialInfo.BlendingMaskReducePass, m_Properties);
-				}
-				foreach (TerrainInfo terrainInfo3 in m_TerrainInfos)
-				{
-					TerrainInfo info3 = terrainInfo3;
-					SetupTerrainProperties(in info3);
-					cmd.DrawMesh(m_TerrainDecalMesh, info3.Matrix, info3.TerrainMaterialTemplate, 0, info3.TerrainMaterialInfo.BlendingDecalPass, m_Properties);
-				}
+				TerrainInfo info = terrainInfo2;
+				SetupTerrainProperties(in info, passData.Properties);
+				context.cmd.DrawMesh(passData.TerrainDecalMesh, info.Matrix, info.TerrainMaterialTemplate, 0, info.TerrainMaterialInfo.BlendingMaskReducePass, passData.Properties);
 			}
-		}
-		finally
-		{
-			m_TerrainInfos.Clear();
-			m_Properties.Clear();
-		}
-		void SetupTerrainProperties(in TerrainInfo info)
-		{
-			info.OwlcatTerrain.PopulateMaterialProperties(m_Properties);
-			m_Properties.SetVector(_TerrainSize, info.Size);
-			m_Properties.SetTexture(_TerrainHeightmapTexture, info.TerrainData.heightmapTexture);
-			m_Properties.SetTexture(_TerrainNormalmapTexture, info.Terrain.normalmapTexture);
-			m_Properties.SetVector(_TerrainBlendingHeightmapMad, new Vector4((float)(info.Terrain.terrainData.heightmapResolution - 1) / (float)info.Terrain.terrainData.heightmapResolution, 0.5f / (float)(info.Terrain.terrainData.heightmapResolution - 1), 0f, 0f));
-		}
+			foreach (TerrainInfo terrainInfo3 in passData.TerrainInfos)
+			{
+				TerrainInfo info2 = terrainInfo3;
+				SetupTerrainProperties(in info2, passData.Properties);
+				context.cmd.DrawMesh(passData.TerrainDecalMesh, info2.Matrix, info2.TerrainMaterialTemplate, 0, info2.TerrainMaterialInfo.BlendingDecalPass, passData.Properties);
+			}
+		});
 	}
 
-	private void ScheduleCullingJob(Camera camera)
+	private static void SetupTerrainProperties(in TerrainInfo info, MaterialPropertyBlock properties)
+	{
+		info.OwlcatTerrain.PopulateMaterialProperties(properties);
+		properties.SetVector(_TerrainSize, info.Size);
+		properties.SetTexture(_TerrainHeightmapTexture, info.TerrainData.heightmapTexture);
+		properties.SetTexture(_TerrainNormalmapTexture, info.Terrain.normalmapTexture);
+		properties.SetVector(_TerrainBlendingHeightmapMad, new Vector4((float)(info.Terrain.terrainData.heightmapResolution - 1) / (float)info.Terrain.terrainData.heightmapResolution, 0.5f / (float)(info.Terrain.terrainData.heightmapResolution - 1), 0f, 0f));
+	}
+
+	public JobHandle ScheduleCullingJob(Camera camera, JobHandle dependency)
 	{
 		PopulateTerrainInfo(camera.transform.position);
 		if (m_TerrainInfos.Count != 0)
@@ -217,10 +189,12 @@ internal sealed class TerrainBlendingDecalDrawer : ICustomDecalDrawer
 			TerrainCullingJob jobData = terrainCullingJob;
 			m_CullingJobHandle = jobData.Schedule();
 			m_CullingJobScheduled = true;
+			return m_CullingJobHandle;
 		}
+		return dependency;
 	}
 
-	private void CompleteCullingJob()
+	public void CompleteCullingJob()
 	{
 		if (!m_CullingJobScheduled)
 		{

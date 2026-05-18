@@ -1,6 +1,6 @@
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Buffs;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Owlcat.Runtime.Core.Utility;
@@ -18,7 +18,7 @@ public class BlueprintUnitFact : BlueprintMechanicEntityFact
 
 	public override bool AllowContextActionsOnly => !m_AllowNonContextActions;
 
-	public override MechanicEntityFact CreateFact(MechanicsContext parentContext, BuffDuration duration, int rank = 1)
+	public override MechanicEntityFact CreateFact(IEvalContext parentContext, BuffDuration duration, int rank = 1)
 	{
 		return new UnitFact(this, parentContext);
 	}

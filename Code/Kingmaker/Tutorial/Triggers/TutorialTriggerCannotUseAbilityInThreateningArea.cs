@@ -11,10 +11,15 @@ public class TutorialTriggerCannotUseAbilityInThreateningArea : TutorialTrigger,
 {
 	public void HandleCannotUseAbilityInThreateningArea(AbilityData ability)
 	{
-		TryToTrigger(null, delegate(TutorialContext context)
+		MechanicEntity caster2 = ability.Caster;
+		BaseUnitEntity caster = caster2 as BaseUnitEntity;
+		if (caster != null && caster2.IsPlayerFaction)
 		{
-			context.SourceAbility = ability;
-			context.SourceUnit = ability.Caster as BaseUnitEntity;
-		});
+			TryToTrigger(null, delegate(TutorialContext context)
+			{
+				context.SourceAbility = ability;
+				context.SourceUnit = caster;
+			});
+		}
 	}
 }

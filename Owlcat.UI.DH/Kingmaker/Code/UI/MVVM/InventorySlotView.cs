@@ -69,7 +69,7 @@ public abstract class InventorySlotView : ItemSlotView<ItemSlotVM>
 	{
 		if ((bool)m_BlinkMark)
 		{
-			UISounds.Instance.Sounds.Systems.BlinkAttentionMark.Play();
+			SystemSounds.Instance.Systems.BlinkAttentionMark.Play();
 			m_BlinkTween?.Kill();
 			m_BlinkMark.alpha = 1f;
 			m_BlinkTween = m_BlinkMark.DOFade(0f, 0.65f).SetLoops(2).SetEase(Ease.OutSine)

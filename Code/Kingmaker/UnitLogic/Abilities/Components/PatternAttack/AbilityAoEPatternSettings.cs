@@ -45,6 +45,18 @@ public class AbilityAoEPatternSettings : IAbilityAoEPatternProvider
 
 	public bool CalculateAttackFromPatternCentre;
 
+	public bool Directional
+	{
+		get
+		{
+			return m_Directional;
+		}
+		set
+		{
+			m_Directional = value;
+		}
+	}
+
 	private AoEPattern CurrentPattern => Pattern;
 
 	private bool IsIgnoreLosOrMeleeLos

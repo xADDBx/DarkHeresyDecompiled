@@ -1,28 +1,27 @@
 using System.Collections.Generic;
 using Owlcat.Runtime.Visual.Waaagh.RendererFeatures;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Owlcat.Runtime.Visual.Waaagh.Data;
 
 public abstract class ScriptableRendererData : ScriptableObject
 {
+	[FormerlySerializedAs("m_RefactoringRendererFeatures")]
 	[SerializeField]
-	internal List<ScriptableRendererFeature> m_RendererFeatures = new List<ScriptableRendererFeature>(10);
-
-	[SerializeField]
-	internal List<long> m_RendererFeatureMap = new List<long>(10);
+	internal List<RendererFeatureAsset> m_RendererFeatures = new List<RendererFeatureAsset>();
 
 	internal bool IsInvalidated { get; set; }
 
-	public List<ScriptableRendererFeature> RendererFeatures => m_RendererFeatures;
+	public List<RendererFeatureAsset> RendererFeatures => m_RendererFeatures;
 
-	internal ScriptableRenderer InternalCreateRenderer()
+	internal IPipelineRenderer InternalCreateRenderer()
 	{
 		IsInvalidated = false;
 		return Create();
 	}
 
-	protected abstract ScriptableRenderer Create();
+	protected abstract IPipelineRenderer Create();
 
 	public new void SetDirty()
 	{

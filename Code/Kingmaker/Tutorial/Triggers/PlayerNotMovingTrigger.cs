@@ -25,7 +25,7 @@ public class PlayerNotMovingTrigger : TutorialTriggerTimer, IGameTimeChangedHand
 	{
 		if (CanStart && !IsDone && !(Game.Instance.CurrentModeType != GameModeType.Default))
 		{
-			if (!Player.MovementAgent.IsReallyMoving)
+			if (!Player.IsReallyMoving)
 			{
 				m_TimeSinceNotMoving += delta;
 			}

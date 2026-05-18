@@ -57,7 +57,7 @@ public class TaskMovePartyToPoint : ClockworkRunnerTask
 		{
 			return true;
 		}
-		if (!arg.View.MovementAgent.IsReallyMoving)
+		if (!arg.IsReallyMoving)
 		{
 			return true;
 		}

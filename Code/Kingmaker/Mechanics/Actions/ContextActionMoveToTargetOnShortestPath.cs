@@ -4,11 +4,12 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.ResourceLinks;
+using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.Utility.Attributes;
-using Kingmaker.Visual.Animation;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
@@ -54,7 +55,7 @@ public class ContextActionMoveToTargetOnShortestPath : ContextAction
 
 	[SerializeField]
 	[ShowIf("IsJumpTransition")]
-	private AnimationClipWrapper m_JumpAnimation;
+	private AnimationClipWrapperLink m_JumpAnimationLink;
 
 	private bool IsJumpTransition => m_TransitionType == TransitionType.Jump;
 
@@ -66,11 +67,12 @@ public class ContextActionMoveToTargetOnShortestPath : ContextAction
 	protected override void RunAction()
 	{
 		UnitEntity unitEntity = base.Target?.Entity as UnitEntity;
-		if (!(unitEntity?.View == null) && m_TargetPoint != null && unitEntity.CanMove && base.AbilityContext != null)
+		AbilityExecutionContext abilityContext = base.AbilityContext;
+		if (unitEntity?.View != null && m_TargetPoint != null && unitEntity.CanMove && (abilityContext != null || IsJumpTransition))
 		{
 			if (m_TransitionType == TransitionType.Jump)
 			{
-				MakeUnitJump(unitEntity, m_TargetPoint.GetValue(), m_JumpAnimation);
+				MakeUnitJump(unitEntity, m_TargetPoint.GetValue(), m_JumpAnimationLink);
 			}
 			else
 			{
@@ -94,7 +96,7 @@ public class ContextActionMoveToTargetOnShortestPath : ContextAction
 			{
 				warhammerPathPlayer.vectorPath.RemoveRange(num + 1, warhammerPathPlayer.vectorPath.Count - num - 1);
 			}
-			base.AbilityContext.TemporarilyBlockLastPathNode(warhammerPathPlayer, unit);
+			base.AbilityContext?.TemporarilyBlockLastPathNode(warhammerPathPlayer, unit);
 			UnitMoveToProperParams unitMoveToProperParams = new UnitMoveToProperParams(ForcedPath.Construct(warhammerPathPlayer), 0f);
 			if (m_ProvokeAttackOfOpportunity)
 			{
@@ -108,7 +110,7 @@ public class ContextActionMoveToTargetOnShortestPath : ContextAction
 		}
 	}
 
-	private void MakeUnitJump(UnitEntity unit, Vector3 targetPoint, AnimationClipWrapper jumpAnimation)
+	private void MakeUnitJump(UnitEntity unit, Vector3 targetPoint, AnimationClipWrapperLink jumpAnimation)
 	{
 		Vector3 startingPosition = unit.Position;
 		GridNodeBase nearestNodeXZ = startingPosition.GetNearestNodeXZ();

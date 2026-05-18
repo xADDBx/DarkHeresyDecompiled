@@ -797,7 +797,7 @@ public class GPUDrivenResourceRegistry : IDisposable, IGPUDrivenMemoryProfilingS
 			result.Length = batchBreakingPropertiesMetadata.Count;
 		}
 		int num = 0;
-		bool flag = WaaaghPipeline.Asset.VirtualTextureSettings.Enabled && VirtualTextureUtils.DoesMaterialUseVT(material);
+		bool flag = VirtualTextureUtils.DoesMaterialUseVT(material);
 		foreach (int item in batchBreakingPropertiesMetadata.Mask)
 		{
 			if (!flag || !virtualTexturePropertyMask.GetBit(item))

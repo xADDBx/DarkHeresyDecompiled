@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 
@@ -24,7 +25,7 @@ public class CheckInterruptGetter : BoolPropertyGetter, PropertyContextAccessor.
 		}
 		if (CheckSourceOfInterrupt)
 		{
-			return ContextData<InterruptTurnData>.Current?.Source == this.GetTargetByType(Target);
+			return ContextData<InterruptTurnData>.Current?.Source == EvalContext.Current.GetEntityByType(Target);
 		}
 		return true;
 	}

@@ -1,4 +1,6 @@
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -19,9 +21,9 @@ public class SwitchSyncSettings : GameSyncSettings
 		return $"[SwitchGroup] {switchGroup} set to {bindingProperty}";
 	}
 
-	public override void Sync(PropertyContext context, uint playingId)
+	public override void Sync(MechanicEntity entity, IEvalContext context, uint playingId)
 	{
-		uint value = (uint)bindingProperty.GetValue(context);
+		uint value = (uint)bindingProperty.GetValue(entity, context);
 		AkUnitySoundEngine.SetSwitch(AkUtilities.ShortIDGenerator.Compute(switchGroup), value, AkUnitySoundEngine.GetGameObjectFromPlayingID(playingId));
 	}
 }

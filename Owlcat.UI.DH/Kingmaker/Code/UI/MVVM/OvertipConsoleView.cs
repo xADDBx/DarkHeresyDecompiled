@@ -1,7 +1,5 @@
 using System;
 using Kingmaker.Code.UI.Common.PageNavigation;
-using Kingmaker.UI.Pointer;
-using Owlcat.UI;
 using R3;
 using TMPro;
 using UnityEngine;
@@ -11,7 +9,7 @@ namespace Kingmaker.Code.UI.MVVM;
 public class OvertipConsoleView : MonoBehaviour, IDisposable
 {
 	[SerializeField]
-	private ConsoleHint m_Hint;
+	private HintView m_Hint;
 
 	[SerializeField]
 	private TextMeshProUGUI m_HintLabel;
@@ -36,33 +34,10 @@ public class OvertipConsoleView : MonoBehaviour, IDisposable
 
 	public void SetConfirmHint(ReadOnlyReactiveProperty<bool> isActive, string label)
 	{
-		m_Disposable.Add(m_Hint.BindCustomAction(8, SurfaceMainInputLayer.Instance, isActive.And(ConsoleCursor.Instance.IsNotActiveProperty).ToReadOnlyReactiveProperty(initialValue: false)));
-		if (m_HintLabel != null)
-		{
-			m_Hint.SetLabel(label);
-			m_HintLabel.autoSizeTextContainer = false;
-			m_HintLabel.autoSizeTextContainer = true;
-		}
 	}
 
 	public void SetPaginator(bool show, bool isChosen, int surroundingsCount = 0, int surroundingIndex = -1)
 	{
-		if (show && (!ConsoleCursor.Instance.IsActive || Game.Instance.Player.IsInCombat))
-		{
-			m_PageNavigation.Show(surroundingsCount, null, surroundingIndex);
-			if (isChosen)
-			{
-				m_PageNavigation.AddInput();
-			}
-			else
-			{
-				m_PageNavigation.ClearInput();
-			}
-		}
-		else
-		{
-			m_PageNavigation.Hide();
-		}
 	}
 
 	public void Dispose()

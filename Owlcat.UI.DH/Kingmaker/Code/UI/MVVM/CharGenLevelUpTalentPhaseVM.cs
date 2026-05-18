@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Blueprints.Facts;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI;
+using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.DotNetExtensions;
 using R3;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -28,7 +29,10 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 
 	public void ToggleGrouping()
 	{
+		SaveDropdownsState();
+		SaveFavorites();
 		m_IsGroupedBySource.Value = !m_IsGroupedBySource.Value;
+		UnitSaveData.PreferredTalentSortingType = (m_IsGroupedBySource.CurrentValue ? CharGenUnitSaveData.ChargenDropdownType.TalentSource : CharGenUnitSaveData.ChargenDropdownType.TalentType);
 		CreateItemList();
 	}
 
@@ -36,20 +40,24 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 	{
 		if (CareerPath == null || base.Unit == null)
 		{
-			Debug.LogError("CareerPath or Unit is null");
+			PFLog.UI.Error("CareerPath or Unit is null");
 			return;
 		}
 		Items.Clear();
 		if (m_Items.Empty())
 		{
-			(from x in SelectionFeature.Items
-				group x by x.Feature into g
-				select g.First() into g
-				orderby g.Feature.Name
-				select g).ForEach(delegate(FeatureSelectionItem f)
+			using (GameLogContext.Scope)
 			{
-				m_Items.Add(new CharGenLevelUpSelectorTalentItemVM(f, OnItemHovered, CharGenContext.LevelUpManager.CurrentValue).AddTo(this));
-			});
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)base.Unit;
+				(from x in SelectionFeature.Items
+					group x by x.Feature into g
+					select g.First() into g
+					orderby g.Feature.Name
+					select g).ForEach(delegate(FeatureSelectionItem f)
+				{
+					m_Items.Add(new CharGenLevelUpSelectorTalentItemVM(f, OnItemHovered, m_CharGenContext.LevelUpManager.CurrentValue).AddTo(this));
+				});
+			}
 		}
 		m_Items.ForEach(delegate(CharGenLevelUpSelectorTalentItemVM i)
 		{
@@ -67,6 +75,7 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 		{
 			SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
 		}
+		CheckIsAllCollapsedHeaders();
 	}
 
 	protected override void SaveSelection()
@@ -91,6 +100,7 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 			ClearItemList();
 			m_Items.Clear();
 		}
+		m_IsGroupedBySource.Value = UnitSaveData.PreferredTalentSortingType == CharGenUnitSaveData.ChargenDropdownType.TalentSource;
 		CreateItemList();
 	}
 
@@ -99,6 +109,7 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 		itemVM.RefreshView.Execute(default(Unit));
 		if (itemVM is CharGenLevelUpSelectorTalentItemVM charGenLevelUpSelectorTalentItemVM)
 		{
+			charGenLevelUpSelectorTalentItemVM.SetFavorite(m_CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp, UnitSaveData.FavoriteFeatures.Contains(charGenLevelUpSelectorTalentItemVM.Blueprint.AssetGuidThreadSafe));
 			if (SelectionFeature.CanSelect(charGenLevelUpSelectorTalentItemVM.FeatureSelectionItem))
 			{
 				charGenLevelUpSelectorTalentItemVM.UpdateAccessibility(LEVEL_UP_ITEM_STATE.Available);
@@ -109,21 +120,39 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 		}
 	}
 
+	protected override void DisposeImplementation()
+	{
+		SaveDropdownsState();
+		SaveFavorites();
+		base.DisposeImplementation();
+	}
+
+	protected override void OnEndDetailedView()
+	{
+		base.OnEndDetailedView();
+		SaveDropdownsState();
+	}
+
 	private void CreateListBySource()
 	{
-		foreach (BlueprintUnitFact source in (from g in SelectionFeature.Items.Select((FeatureSelectionItem i) => i.GetSourceBlueprint()).Distinct()
-			orderby g?.Name
+		foreach (string source in (from g in SelectionFeature.Items.Select((FeatureSelectionItem i) => i.GetSourceBlueprint().Name).Distinct()
+			orderby g
 			select g).ToList())
 		{
 			CharGenLevelUpNestedListHeaderVM header = null;
 			if (source != null)
 			{
-				header = new CharGenLevelUpNestedListHeaderVM(source).AddTo(this);
+				header = new CharGenLevelUpNestedListHeaderVM(null, source).AddTo(this);
+				header.IsExpanded.Subscribe(delegate
+				{
+					CheckIsAllCollapsedHeaders();
+				}).AddTo(header);
+				header.SetExpand(UnitSaveData.IsDropdownOpen(CharGenUnitSaveData.ChargenDropdownType.TalentSource, header.Label.CurrentValue) ?? true);
 				AddItem(header);
 			}
 			(from i in m_Items
-				where i.FeatureSelectionItem.GetSourceBlueprint() == source
-				orderby i.State.CurrentValue, i.FeatureSelectionItem.Feature.Name
+				where i.FeatureSelectionItem.GetSourceBlueprint().Name == source
+				orderby i.State.CurrentValue, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.FeatureSelectionItem.Feature.Name
 				select i).ForEach(delegate(CharGenLevelUpSelectorTalentItemVM f)
 			{
 				f.SetParentNode(header);
@@ -136,17 +165,20 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 	{
 		List<TalentGroup> list = Enum.GetValues(typeof(TalentGroup)).Cast<TalentGroup>().ToList();
 		TalentGroup recommendedTalentGroup = base.Unit.Progression.RecommendedTalentGroup;
-		List<CharGenLevelUpNestedListHeaderVM> list2 = new List<CharGenLevelUpNestedListHeaderVM>();
 		foreach (TalentGroup type in list)
 		{
 			CharGenLevelUpNestedListHeaderVM header = new CharGenLevelUpNestedListHeaderVM(null, type.ToString(), null, 0, (recommendedTalentGroup & type) != 0).AddTo(this);
 			if (m_Items.Any((CharGenLevelUpSelectorTalentItemVM i) => i.FeatureSelectionItem.Feature.TalentIconInfo.MainGroup == type))
 			{
-				list2.Add(header);
+				header.IsExpanded.Subscribe(delegate
+				{
+					CheckIsAllCollapsedHeaders();
+				}).AddTo(header);
+				header.SetExpand(UnitSaveData.IsDropdownOpen(CharGenUnitSaveData.ChargenDropdownType.TalentType, header.Label.CurrentValue) ?? header.IsRecommended.CurrentValue);
 				AddItem(header);
 				(from i in m_Items
 					where i.FeatureSelectionItem.Feature.TalentIconInfo.MainGroup == type
-					orderby i.State.CurrentValue, i.FeatureSelectionItem.Feature.Name
+					orderby i.State.CurrentValue, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.FeatureSelectionItem.Feature.Name
 					select i).ForEach(delegate(CharGenLevelUpSelectorTalentItemVM f)
 				{
 					f.SetParentNode(header);
@@ -154,12 +186,22 @@ public class CharGenLevelUpTalentPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<Ch
 				});
 			}
 		}
-		if (recommendedTalentGroup != 0)
+		List<CharGenLevelUpSelectorTalentItemVM> list2 = m_Items.Where((CharGenLevelUpSelectorTalentItemVM i) => !i.FeatureSelectionItem.Feature.TalentIconInfo.HasGroups).ToList();
+		if (list2.Any())
 		{
-			list2.ForEach(delegate(CharGenLevelUpNestedListHeaderVM h)
+			CharGenLevelUpNestedListHeaderVM header = new CharGenLevelUpNestedListHeaderVM(null, "No Talent Group").AddTo(this);
+			AddItem(header);
+			list2.ForEach(delegate(CharGenLevelUpSelectorTalentItemVM f)
 			{
-				h.SetExpand(h.IsRecommended.CurrentValue);
+				f.SetParentNode(header);
+				AddItem(f);
 			});
 		}
+	}
+
+	private void SaveDropdownsState()
+	{
+		List<CharGenLevelUpNestedListHeaderVM> source = Items.OfType<CharGenLevelUpNestedListHeaderVM>().ToList();
+		UnitSaveData.SetDropDownList(UnitSaveData.PreferredTalentSortingType, source.ToDictionary((CharGenLevelUpNestedListHeaderVM h) => h.Label.CurrentValue, (CharGenLevelUpNestedListHeaderVM h) => h.IsExpanded.CurrentValue));
 	}
 }

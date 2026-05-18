@@ -1,10 +1,6 @@
 using System;
 using Kingmaker.ElementsSystem;
-using Kingmaker.UnitLogic.Abilities.Components.Patterns;
-using Kingmaker.View.Covers;
 using Owlcat.Runtime.Core.Utility;
-using Pathfinding;
-using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Mechanics.Actions;
 
@@ -23,28 +19,5 @@ public class WarhammerContextActionCoverActions : ContextAction
 
 	protected override void RunAction()
 	{
-		Vector3 origin;
-		IntRect originSize;
-		if (base.AbilityContext.Ability.GetPatternSettings() != null)
-		{
-			Vector3 position = base.Context.MaybeCaster.Position;
-			Vector3 point = base.AbilityContext.ClickedTarget.Point;
-			origin = AoEPatternHelper.GetActualCastPosition(base.AbilityContext.Caster, position, point, base.AbilityContext.Ability.MinRangeCells, base.AbilityContext.Ability.RangeCells);
-			originSize = default(IntRect);
-		}
-		else
-		{
-			origin = base.Context.MaybeCaster.Position;
-			originSize = base.Context.MaybeCaster.SizeRect;
-		}
-		IntRect sizeRect = base.Target.SizeRect;
-		if ((LosCalculations.CoverType)LosCalculations.GetWarhammerLos(origin, originSize, base.Target.Point, sizeRect) == LosCalculations.CoverType.Obstacle)
-		{
-			NoCoverActions.Run();
-		}
-		else
-		{
-			CoverActions.Run();
-		}
 	}
 }

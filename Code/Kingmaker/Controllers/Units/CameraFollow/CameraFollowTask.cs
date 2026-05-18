@@ -29,12 +29,13 @@ public class CameraFollowTask : ICameraFollowTask
 
 	public bool IsActive => Game.Instance.Controllers.TimeController.RealTime < m_FinishTime;
 
-	public CameraFollowTask(CameraFollowTaskParams taskParams, Vector3 position, int priority, string debugName)
+	public CameraFollowTask(CameraFollowTaskParams taskParams, Vector3 position, int priority, bool canStartBrain, string debugName)
 	{
 		TaskParams = taskParams;
 		Position = position;
 		Priority = priority;
 		DebugName = debugName;
+		CanStartBrain = canStartBrain;
 		m_LifeTime = TimeSpan.FromSeconds(taskParams.CameraObserveTime + taskParams.BlendSettings.BlendTime);
 	}
 

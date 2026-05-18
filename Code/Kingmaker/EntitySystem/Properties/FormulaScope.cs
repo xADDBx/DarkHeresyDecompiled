@@ -57,7 +57,7 @@ public static class FormulaScope
 		m_Indent--;
 		if (m_Indent < 0)
 		{
-			PFLog.Default.Error($"FormulaScope m_Indent < 0! {m_Indent}");
+			PFLog.Mechanics.Error($"FormulaScope m_Indent < 0! {m_Indent}");
 			m_Indent = 0;
 		}
 	}

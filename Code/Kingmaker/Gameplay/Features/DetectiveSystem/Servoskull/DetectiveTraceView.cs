@@ -1,11 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
+using Kingmaker.Framework.EntitySystem.Interfaces.View;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
 using Owlcat.QA.Validation;
+using R3;
 using UnityEngine;
 using UnityEngine.VFX;
 
@@ -16,30 +22,8 @@ namespace Kingmaker.Gameplay.Features.DetectiveSystem.Servoskull;
 [KnowledgeDatabaseID("293237afebf2491e80e610b0e29f240f")]
 [RequireComponent(typeof(VisualEffect))]
 [RequireComponent(typeof(InteractionDetectiveTrace))]
-public class DetectiveTraceView : MapObjectView
+public class DetectiveTraceView : MapObjectView, IDetectiveTraceView, IEntityView, IDetectiveTraceConfig, IMapObjectEntityConfig, IMechanicEntityConfig, IEntityConfig
 {
-	[Serializable]
-	public class DetectiveTracePoint
-	{
-		public Vector3 Position;
-
-		public bool IsInterruption;
-	}
-
-	[Serializable]
-	public class DetectiveTraceStep
-	{
-		public Vector3 Position;
-
-		public Quaternion Rotation;
-
-		public DetectiveTraceStep(Vector3 position, Quaternion rotation)
-		{
-			Position = position;
-			Rotation = rotation;
-		}
-	}
-
 	public const string PointGameObjectName = "TracePoint";
 
 	public const string FX_DetectiveFootstepsVisualEffectAssetGUID = "ccd3d778be8d5aa4ba17c996368bba70";
@@ -51,6 +35,16 @@ public class DetectiveTraceView : MapObjectView
 	public static int FalseStateBoolId = Shader.PropertyToID("FootStepFalseState");
 
 	public static int SkullPosVector2Id = Shader.PropertyToID("SkullPos");
+
+	public static int FootStepsAliveParticlesBoolId = Shader.PropertyToID("FootStepsAlive");
+
+	public static int WindowAliveParticlesBoolId = Shader.PropertyToID("WindowAlive");
+
+	public static int FootStepFoundColorVector4Id = Shader.PropertyToID("FootStepFoundColor");
+
+	public static int FootStepFollowedBySkullColorVector4Id = Shader.PropertyToID("FootStepFollowedColor");
+
+	public static int FootStepAlphaMultiplyFloatId = Shader.PropertyToID("AlphaMult");
 
 	public static int FootStepMapTextureId = Shader.PropertyToID("FootStepMap");
 
@@ -105,11 +99,29 @@ public class DetectiveTraceView : MapObjectView
 
 	private PartDetectiveServoSkull m_ServoSkullPart;
 
+	private readonly ReactiveProperty<DetectiveTraceStatus> m_CurrentStatus = new ReactiveProperty<DetectiveTraceStatus>();
+
 	public new DetectiveTraceEntity Data => (DetectiveTraceEntity)base.Data;
+
+	IReadOnlyList<DetectiveTracePoint> IDetectiveTraceConfig.PointsData => PointsData;
+
+	bool IDetectiveTraceConfig.TrueEnd => TrueEnd;
+
+	bool IDetectiveTraceConfig.HideInteract => HideInteract;
+
+	bool IDetectiveTraceConfig.HideInteractionIfFollowed => HideInteractionIfFollowed;
+
+	bool IDetectiveTraceConfig.HideInteractionIfFollowedToDeadEnd => HideInteractionIfFollowedToDeadEnd;
+
+	bool IDetectiveTraceConfig.Found => Found;
+
+	IEnumerable<EntityRef<DetectiveTraceEntity>> IDetectiveTraceConfig.Continuations => Continuations.Select((DetectiveTraceView i) => new EntityRef<DetectiveTraceEntity>(i.UniqueId));
+
+	public ReadOnlyReactiveProperty<DetectiveTraceStatus> CurrentStatus => m_CurrentStatus;
 
 	public override Entity CreateEntityData(bool load)
 	{
-		return Entity.Initialize(new DetectiveTraceEntity(UniqueId, base.IsInGameBySettings));
+		return Entity.Initialize(new DetectiveTraceEntity(this));
 	}
 
 	protected override void Awake()
@@ -140,10 +152,22 @@ public class DetectiveTraceView : MapObjectView
 	protected override void OnDidAttachToData()
 	{
 		base.OnDidAttachToData();
-		OnStatusLoad();
+		OnStatusLoad(Game.Instance.Controllers.TurnController.InCombat);
 	}
 
-	public void OnStatusChanged()
+	protected override void OnVisibilityChanged()
+	{
+		base.OnVisibilityChanged();
+		UpdateMarkers();
+	}
+
+	public override void OnInFogOfWarChanged()
+	{
+		base.OnInFogOfWarChanged();
+		UpdateMarkers();
+	}
+
+	public void OnStatusChanged(bool inCombat)
 	{
 		m_ServoSkullPart = PartDetectiveServoSkull.Find();
 		switch (Data.Status)
@@ -151,12 +175,21 @@ public class DetectiveTraceView : MapObjectView
 		case DetectiveTraceStatus.None:
 			m_TraceStepsVFX.enabled = false;
 			m_TraceStepsVFX.SetBool(AliveParticlesBoolId, b: true);
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: true);
+			m_TraceStepsVFX.SetBool(FootStepsAliveParticlesBoolId, b: true);
 			m_TraceStepsVFX.SetBool(FalseStateBoolId, b: false);
 			break;
 		case DetectiveTraceStatus.Found:
-			m_TraceStepsVFX.enabled = true;
+			m_TraceStepsVFX.enabled = !inCombat;
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: true);
+			break;
+		case DetectiveTraceStatus.Followed:
+			m_TraceStepsVFX.enabled = !inCombat;
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: false);
 			break;
 		case DetectiveTraceStatus.FollowedToDeadEnd:
+			m_TraceStepsVFX.enabled = !inCombat;
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: false);
 			m_TraceStepsVFX.SetBool(FalseStateBoolId, b: true);
 			break;
 		case DetectiveTraceStatus.FollowedToTrueEnd:
@@ -171,6 +204,7 @@ public class DetectiveTraceView : MapObjectView
 				gameObject.SetActive(Data.Status == DetectiveTraceStatus.Found);
 			}
 		}
+		m_CurrentStatus.Value = Data.Status;
 		UpdateMarkers();
 	}
 
@@ -185,7 +219,7 @@ public class DetectiveTraceView : MapObjectView
 		base.transform.position = zero;
 	}
 
-	public void OnStatusLoad()
+	public void OnStatusLoad(bool inCombat)
 	{
 		RepositionTargetTransform();
 		m_ServoSkullPart = PartDetectiveServoSkull.Find();
@@ -197,19 +231,22 @@ public class DetectiveTraceView : MapObjectView
 			m_TraceStepsVFX.SetBool(FalseStateBoolId, b: false);
 			break;
 		case DetectiveTraceStatus.Found:
-			m_TraceStepsVFX.enabled = true;
+			m_TraceStepsVFX.enabled = !inCombat;
 			m_TraceStepsVFX.SetBool(AliveParticlesBoolId, b: true);
 			m_TraceStepsVFX.SetBool(FalseStateBoolId, b: false);
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: false);
 			break;
 		case DetectiveTraceStatus.Followed:
-			m_TraceStepsVFX.enabled = true;
+			m_TraceStepsVFX.enabled = !inCombat;
 			m_TraceStepsVFX.SetBool(AliveParticlesBoolId, b: true);
 			m_TraceStepsVFX.SetBool(FalseStateBoolId, b: false);
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: false);
 			break;
 		case DetectiveTraceStatus.FollowedToDeadEnd:
-			m_TraceStepsVFX.enabled = true;
+			m_TraceStepsVFX.enabled = !inCombat;
 			m_TraceStepsVFX.SetBool(AliveParticlesBoolId, b: true);
 			m_TraceStepsVFX.SetBool(FalseStateBoolId, b: true);
+			m_TraceStepsVFX.SetBool(WindowAliveParticlesBoolId, b: false);
 			break;
 		case DetectiveTraceStatus.FollowedToTrueEnd:
 			m_TraceStepsVFX.enabled = false;
@@ -225,6 +262,7 @@ public class DetectiveTraceView : MapObjectView
 				gameObject.SetActive(Data.Status == DetectiveTraceStatus.Found);
 			}
 		}
+		m_CurrentStatus.Value = Data.Status;
 		UpdateMarkers();
 	}
 
@@ -238,25 +276,44 @@ public class DetectiveTraceView : MapObjectView
 
 	public void UpdateMarkers()
 	{
-		if (Data.Status == DetectiveTraceStatus.Followed)
+		if (!base.IsVisible || base.IsInFogOfWar)
 		{
-			CreateMarkers();
+			return;
 		}
-		else
+		if (Data.Status != DetectiveTraceStatus.Followed)
 		{
+			InteractionPartDetectiveTrace? interaction = Data.Interaction;
+			if (interaction != null && interaction.ShowNotFollowedOnMap)
+			{
+				DetectiveTraceStatus status = Data.Status;
+				if (status == DetectiveTraceStatus.None || status == DetectiveTraceStatus.Found)
+				{
+					goto IL_004b;
+				}
+			}
 			RemoveMarkers();
+			return;
 		}
+		goto IL_004b;
+		IL_004b:
+		CreateMarkers();
 	}
 
 	private void CreateMarkers()
 	{
 		LocalMapMarkerPart orCreate = Data.GetOrCreate<LocalMapMarkerPart>();
 		orCreate.IsRuntimeCreated = true;
+		orCreate.OverridePosition = PointsData.LastOrDefault()?.Position;
 		orCreate.Settings.Type = LocalMapMarkType.DetectiveTrace;
 	}
 
 	private void RemoveMarkers()
 	{
 		Data.Remove<LocalMapMarkerPart>();
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

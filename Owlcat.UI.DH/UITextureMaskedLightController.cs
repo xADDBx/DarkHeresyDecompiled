@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.UI.Pointer;
 using Kingmaker.Utility.Attributes;
 using UnityEngine;
 using UnityEngine.UI;
@@ -72,7 +73,7 @@ public class UITextureMaskedLightController : MonoBehaviour
 		if (!(m_TargetGraphic == null) && !(m_MaterialInstance == null))
 		{
 			Canvas canvas = m_TargetGraphic.canvas;
-			if (!(canvas == null) && RectTransformUtility.ScreenPointToLocalPointInRectangle(m_CursorRectTransform, Input.mousePosition, canvas.worldCamera, out var localPoint))
+			if (!(canvas == null) && RectTransformUtility.ScreenPointToLocalPointInRectangle(m_CursorRectTransform, CursorController.CursorPosition, canvas.worldCamera, out var localPoint))
 			{
 				Rect rect = m_CursorRectTransform.rect;
 				float num = Mathf.Clamp01((localPoint.x - rect.xMin) / rect.width);

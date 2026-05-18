@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints.Root.Strings.GameLog;
 using Kingmaker.Code.Framework.GameLog;
 using Owlcat.UI;
+using R3;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -62,5 +63,6 @@ public abstract class CombatLogItemBaseView : VirtualListElementViewBase<CombatL
 	public virtual void UpdateTextSize(float multiplier)
 	{
 		LayoutRebuilder.ForceRebuildLayoutImmediate(base.transform as RectTransform);
+		base.ViewModel.ContentChanged.Execute(Unit.Default);
 	}
 }

@@ -28,7 +28,8 @@ public abstract class BlueprintItemEquipment : BlueprintItem
 
 	public bool IsNonRemovable;
 
-	public bool IsUnlootable;
+	[SerializeField]
+	private bool IsUnlootable;
 
 	[SerializeField]
 	private KingmakerEquipmentEntityReference m_EquipmentEntity;
@@ -73,9 +74,11 @@ public abstract class BlueprintItemEquipment : BlueprintItem
 	[NotNull]
 	public virtual IEnumerable<KingmakerEquipmentEntity> EquipmentEntityAlternatives => m_EquipmentEntityAlternatives.Dereference();
 
+	public override bool IsLootable => !IsUnlootable;
+
 	public abstract override ItemsItemType ItemType { get; }
 
-	public abstract string InventoryEquipSound { get; }
+	public abstract string InventoryEquipSound { get; set; }
 
 	public bool CanBeEquippedBy(MechanicEntity entity)
 	{

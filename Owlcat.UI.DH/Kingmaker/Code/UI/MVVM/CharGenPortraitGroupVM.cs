@@ -11,9 +11,9 @@ public class CharGenPortraitGroupVM : ViewModel
 {
 	private readonly ReactiveProperty<bool> m_Expanded = new ReactiveProperty<bool>();
 
-	public readonly PortraitCategory PortraitCategory;
-
 	public readonly ObservableList<CharGenPortraitSelectorItemVM> PortraitCollection = new ObservableList<CharGenPortraitSelectorItemVM>();
+
+	public readonly PortraitCategory PortraitCategory;
 
 	public ReadOnlyReactiveProperty<bool> Expanded => m_Expanded;
 

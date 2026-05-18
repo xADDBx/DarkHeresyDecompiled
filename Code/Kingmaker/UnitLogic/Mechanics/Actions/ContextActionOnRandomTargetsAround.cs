@@ -4,7 +4,6 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
@@ -53,7 +52,7 @@ public class ContextActionOnRandomTargetsAround : ContextAction
 
 	protected override void RunAction()
 	{
-		if ((bool)ContextData<UnitHelper.PreviewUnit>.Current || base.Context.MaybeCaster == null)
+		if ((bool)ContextData<UnitHelper.PreviewUnit>.Current || base.Context.Caster == null)
 		{
 			return;
 		}
@@ -70,11 +69,11 @@ public class ContextActionOnRandomTargetsAround : ContextAction
 		}
 		if (OnEnemies)
 		{
-			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsEnemy(base.Context.MaybeCaster));
+			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsEnemy(base.Context.Caster));
 		}
 		if (OnlyAllies)
 		{
-			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsAlly(base.Context.MaybeCaster));
+			list.RemoveAll((BaseUnitEntity p) => !p.CombatGroup.IsAlly(base.Context.Caster));
 		}
 		if (!AffectDead)
 		{
@@ -108,7 +107,7 @@ public class ContextActionOnRandomTargetsAround : ContextAction
 		while (num > 0 && !list.Empty())
 		{
 			BaseUnitEntity baseUnitEntity = list.Random(PFStatefulRandom.Mechanics);
-			using (base.Context.SetScope(baseUnitEntity.ToITargetWrapper()))
+			using (base.Context.PushTarget(baseUnitEntity))
 			{
 				Actions.Run();
 			}

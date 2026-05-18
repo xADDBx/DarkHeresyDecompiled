@@ -34,9 +34,9 @@ public class ContextActionIncinerate : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
+		MechanicEntity? caster = base.Context.Caster;
 		MechanicEntity entity = base.Target.Entity;
-		if (maybeCaster == null || entity == null)
+		if (caster == null || entity == null)
 		{
 			return;
 		}
@@ -62,7 +62,7 @@ public class ContextActionIncinerate : ContextAction
 				num += DOTLogic.GetBasicDamageOfType(item, type2);
 			}
 			base.Context[ContextPropertyName] += num / 2;
-			new ProjectileLauncher(Projectile, item, entity).Ability(base.AbilityContext?.Ability).Launch();
+			new ProjectileLauncher(Projectile, item, entity).Ability(base.Context.Ability).Launch();
 		}
 	}
 }

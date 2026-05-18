@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints.Items.Armors;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items.Slots;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -19,7 +20,7 @@ public class CheckArmorTypeGetter : BoolPropertyGetter, PropertyContextAccessor.
 
 	protected override bool GetBaseValue()
 	{
-		BaseUnitEntity baseUnitEntity = this.GetTargetByType(Target) as BaseUnitEntity;
+		BaseUnitEntity baseUnitEntity = EvalContext.Current.GetEntityByType(Target) as BaseUnitEntity;
 		ArmorSlot armorSlot = baseUnitEntity?.Body.Armor;
 		if (armorSlot == null || !armorSlot.HasArmor)
 		{

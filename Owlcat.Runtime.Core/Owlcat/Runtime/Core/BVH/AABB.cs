@@ -43,7 +43,7 @@ public struct AABB
 
 	public static implicit operator Bounds(AABB aabb)
 	{
-		return new Bounds(aabb.Center, aabb.Extents);
+		return new Bounds((Vector3)aabb.Center, (Vector3)aabb.Extents);
 	}
 
 	public static explicit operator AABB(Bounds b)

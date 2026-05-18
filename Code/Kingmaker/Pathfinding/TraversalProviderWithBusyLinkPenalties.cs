@@ -21,19 +21,22 @@ public class TraversalProviderWithBusyLinkPenalties : ITraversalProvider
 		{
 			return traversalCost;
 		}
-		if (!m_BusyLinks.TryGetValue(key, out var value))
+		lock (m_BusyLinks)
 		{
-			return traversalCost;
-		}
-		uint num = 0u;
-		foreach (BusyLink item in value)
-		{
-			if (Game.Instance.RealTimeController.CurrentSystemStepIndex - item.SystemStep <= 100)
+			if (!m_BusyLinks.TryGetValue(key, out var value))
 			{
-				num++;
+				return traversalCost;
 			}
+			uint num = 0u;
+			foreach (BusyLink item in value)
+			{
+				if (Game.Instance.RealTimeController.CurrentSystemStepIndex - item.SystemStep <= 100)
+				{
+					num++;
+				}
+			}
+			return traversalCost + num * 1000;
 		}
-		return traversalCost + num * 1000;
 	}
 
 	public void RegisterPath(Path path, int traverserId)
@@ -42,31 +45,34 @@ public class TraversalProviderWithBusyLinkPenalties : ITraversalProvider
 		{
 			return;
 		}
-		foreach (GraphNode item in path.path)
+		lock (m_BusyLinks)
 		{
-			if (!(item is LinkNode key))
+			foreach (GraphNode item in path.path)
 			{
-				continue;
-			}
-			if (!m_BusyLinks.TryGetValue(key, out var value))
-			{
-				value = new List<BusyLink>();
-				m_BusyLinks[key] = value;
-			}
-			BusyLink busyLink = new BusyLink
-			{
-				SystemStep = Game.Instance.RealTimeController.CurrentSystemStepIndex,
-				TraverserId = traverserId
-			};
-			for (int i = 0; i < value.Count; i++)
-			{
-				if (value[i].TraverserId == traverserId)
+				if (!(item is LinkNode key))
 				{
-					value[i] = busyLink;
-					return;
+					continue;
 				}
+				if (!m_BusyLinks.TryGetValue(key, out var value))
+				{
+					value = new List<BusyLink>();
+					m_BusyLinks[key] = value;
+				}
+				BusyLink busyLink = new BusyLink
+				{
+					SystemStep = Game.Instance.RealTimeController.CurrentSystemStepIndex,
+					TraverserId = traverserId
+				};
+				for (int i = 0; i < value.Count; i++)
+				{
+					if (value[i].TraverserId == traverserId)
+					{
+						value[i] = busyLink;
+						return;
+					}
+				}
+				value.Add(busyLink);
 			}
-			value.Add(busyLink);
 		}
 	}
 
@@ -76,35 +82,44 @@ public class TraversalProviderWithBusyLinkPenalties : ITraversalProvider
 		{
 			return;
 		}
-		foreach (GraphNode item in path.path)
+		lock (m_BusyLinks)
 		{
-			if (!(item is LinkNode key) || !m_BusyLinks.TryGetValue(key, out var value))
+			foreach (GraphNode item in path.path)
 			{
-				continue;
-			}
-			for (int i = 0; i < value.Count; i++)
-			{
-				if (value[i].TraverserId == traverserId)
+				if (!(item is LinkNode key) || !m_BusyLinks.TryGetValue(key, out var value))
 				{
-					value.RemoveAt(i);
-					return;
+					continue;
+				}
+				for (int i = 0; i < value.Count; i++)
+				{
+					if (value[i].TraverserId == traverserId)
+					{
+						value.RemoveAt(i);
+						return;
+					}
 				}
 			}
 		}
 	}
 
-	public void UnregisterNode(LinkNode ln, int traverserId)
+	public void UnregisterNodes(IEnumerable<LinkNode> nodes, int traverserId)
 	{
-		if (!m_BusyLinks.TryGetValue(ln, out var value))
+		lock (m_BusyLinks)
 		{
-			return;
-		}
-		for (int i = 0; i < value.Count; i++)
-		{
-			if (value[i].TraverserId == traverserId)
+			foreach (LinkNode node in nodes)
 			{
-				value.RemoveAt(i);
-				break;
+				if (!m_BusyLinks.TryGetValue(node, out var value))
+				{
+					continue;
+				}
+				for (int i = 0; i < value.Count; i++)
+				{
+					if (value[i].TraverserId == traverserId)
+					{
+						value.RemoveAt(i);
+						return;
+					}
+				}
 			}
 		}
 	}

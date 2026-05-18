@@ -108,7 +108,7 @@ public class PartFaction : BaseUnitPart, IEquatable<PartFaction>, IHashable, IOw
 		m_CachedIsPlayerFaction = null;
 		if (!initializingNow)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitFactionHandler>)delegate(IUnitFactionHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitFactionHandler>)delegate(IUnitFactionHandler h)
 			{
 				h.HandleFactionChanged();
 			}, isCheckRuntime: true);

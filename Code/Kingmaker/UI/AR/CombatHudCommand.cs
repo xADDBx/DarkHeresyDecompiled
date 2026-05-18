@@ -44,6 +44,8 @@ public struct CombatHudCommand
 
 		public bool overwrite;
 
+		public bool separatePass;
+
 		public float meshOffset;
 
 		public OutlineCellFilter shape;
@@ -63,9 +65,9 @@ public struct CombatHudCommand
 		public static implicit operator SurfaceCellFilterData(in SurfaceCellFilter value)
 		{
 			SurfaceCellFilterData result = default(SurfaceCellFilterData);
-			result.belongToAllAreaMask = (int)value.belongToAll;
-			result.belongToAnyAreasMask = (int)value.belongToAny;
-			result.notBelongToAnyAreasMask = (int)value.notBelongToAny;
+			result.belongToAllAreaMask = (uint)value.belongToAll;
+			result.belongToAnyAreasMask = (uint)value.belongToAny;
+			result.notBelongToAnyAreasMask = (uint)value.notBelongToAny;
 			return result;
 		}
 
@@ -89,9 +91,9 @@ public struct CombatHudCommand
 		public static implicit operator OutlineCellFilterData(OutlineCellFilter value)
 		{
 			OutlineCellFilterData result = default(OutlineCellFilterData);
-			result.belongToAllAreaMask = (int)value.belongToAll;
-			result.belongToAnyAreasMask = (int)value.belongToAny;
-			result.notBelongToAnyAreasMask = (int)value.notBelongToAny;
+			result.belongToAllAreaMask = (uint)value.belongToAll;
+			result.belongToAnyAreasMask = (uint)value.belongToAny;
+			result.notBelongToAnyAreasMask = (uint)value.notBelongToAny;
 			result.surfaceBuffer = value.surfaceBuffer;
 			return result;
 		}
@@ -103,6 +105,8 @@ public struct CombatHudCommand
 	}
 
 	public CombatHudCommandCode code;
+
+	public CombatHudCommandExecutionMode executionMode;
 
 	public WriteSurfaceArgs writeSurfaceArgs;
 
@@ -120,7 +124,7 @@ public struct CombatHudCommand
 		case CombatHudCommandCode.BuildOutline:
 			return buildOutlineArgs.shape.GetUsedAreas() | buildOutlineArgs.mask.GetUsedAreas();
 		default:
-			return (CombatHudAreas)0;
+			return (CombatHudAreas)0u;
 		}
 	}
 
@@ -140,6 +144,15 @@ public struct CombatHudCommand
 		}
 	}
 
+	public CombatHudCommandExecutionMode GetExecutionMode()
+	{
+		if (executionMode != 0)
+		{
+			return executionMode;
+		}
+		return CombatHudCommandExecutionMode.Main;
+	}
+
 	public void PushCommand(SurfaceServiceRequest request, MaterialBindingDataSource bindingDataSource, int stratagemId = -1)
 	{
 		switch (code)
@@ -149,7 +162,8 @@ public struct CombatHudCommand
 			Material material2 = bindingDataSource.RemapMaterial(writeSurfaceArgs.material, writeSurfaceArgs.materialRemapTag);
 			MaterialOverrides overrides2 = bindingDataSource.GetOverrides(IconOverrideSource.None, writeSurfaceArgs.highlightBinding);
 			int materialId2 = request.InsertMaterial(material2, overrides2);
-			request.CommandBuffer.WriteFill(materialId2, -1, writeSurfaceArgs.shape);
+			int shapeId = ((stratagemId >= 0) ? stratagemId : (-1));
+			request.CommandBuffer.WriteFill(materialId2, shapeId, writeSurfaceArgs.shape);
 			break;
 		}
 		case CombatHudCommandCode.WriteDebugFill:
@@ -157,7 +171,7 @@ public struct CombatHudCommand
 			Material material = bindingDataSource.RemapMaterial(writeSurfaceArgs.material, writeSurfaceArgs.materialRemapTag);
 			MaterialOverrides overrides = bindingDataSource.GetOverrides(IconOverrideSource.Stratagem, writeSurfaceArgs.highlightBinding);
 			int materialId = request.InsertMaterial(material, overrides);
-			request.CommandBuffer.WriteFill(materialId, stratagemId, writeSurfaceArgs.shape);
+			request.CommandBuffer.WriteFill(materialId, (stratagemId >= 0) ? stratagemId : (-1), writeSurfaceArgs.shape);
 			break;
 		}
 		case CombatHudCommandCode.ClearFillBuffer:
@@ -179,7 +193,17 @@ public struct CombatHudCommand
 				{
 					break;
 				}
-				request.CommandBuffer.ComposeOutlineMesh(buildOutlineArgs.lineType, buildOutlineArgs.overwrite, new float3(0f, buildOutlineArgs.meshOffset, 0f), buildOutlineArgs.shape, buildOutlineArgs.mask);
+				if (buildOutlineArgs.separatePass)
+				{
+					request.CommandBuffer.ClearOutline();
+				}
+				OutlineCellFilterData shape = buildOutlineArgs.shape;
+				CombatHudAreas combatHudAreas = buildOutlineArgs.shape.belongToAll | buildOutlineArgs.shape.belongToAny;
+				if (buildOutlineArgs.separatePass && (combatHudAreas & CombatHudAreas.Cohesion) != 0)
+				{
+					shape.notBelongToAnyAreasMask |= 16384u;
+				}
+				request.CommandBuffer.ComposeOutlineMesh(buildOutlineArgs.lineType, buildOutlineArgs.overwrite, new float3(0f, buildOutlineArgs.meshOffset, 0f), shape, buildOutlineArgs.mask);
 				foreach (Material item in value)
 				{
 					request.CommandBuffer.AppendOutlineMesh(request.InsertMaterial(item, default(MaterialOverrides)));

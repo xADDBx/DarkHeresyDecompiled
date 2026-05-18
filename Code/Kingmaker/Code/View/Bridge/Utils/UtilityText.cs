@@ -3,7 +3,9 @@ using System.Linq;
 using System.Text;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Localization;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics.Damage;
 using UnityEngine;
@@ -76,6 +78,19 @@ public static class UtilityText
 		{
 			description.Append(" " + conjunction + " ");
 		}
+	}
+
+	public static string FormatModifierValue(float? value, ModifierType modifierType)
+	{
+		if (!value.HasValue)
+		{
+			return "–";
+		}
+		if (modifierType == ModifierType.PctMul || modifierType == ModifierType.PctMul_Extra)
+		{
+			return (UtilityMath.ToFraction(value.Value) + 1f).ToString("0:00");
+		}
+		return AddSign(value);
 	}
 
 	public static string AddSign(float? value)

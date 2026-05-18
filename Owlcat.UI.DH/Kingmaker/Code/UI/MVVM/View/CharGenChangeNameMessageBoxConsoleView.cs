@@ -1,8 +1,3 @@
-using Kingmaker.Blueprints.Root.Strings;
-using Owlcat.UI;
-using R3;
-using Rewired;
-
 namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenChangeNameMessageBoxConsoleView : MessageBoxConsoleView
@@ -11,18 +6,8 @@ public class CharGenChangeNameMessageBoxConsoleView : MessageBoxConsoleView
 
 	private CharGenChangeNameMessageBoxVM ChangeNameViewModel => base.ViewModel as CharGenChangeNameMessageBoxVM;
 
-	protected override void CreateInputImpl(InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
+	protected new void CreateInputImpl()
 	{
-		base.CreateInputImpl(inputLayer, hintsWidget);
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			ChangeNameViewModel.SetRandomName();
-		}, 10), UIStrings.Instance.CharGen.SetRandomNameButton).AddTo(this);
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			m_InputField.Select();
-		}, 11, CanEditNameByYourself, InputActionEventType.ButtonJustReleased), UIStrings.Instance.CharGen.EditNameButton).AddTo(this);
-		ConfirmBindActive.Value = true;
 	}
 
 	protected override void SetAcceptInteractable(bool interactable)

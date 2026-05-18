@@ -36,9 +36,9 @@ public class PartChanneling : MechanicEntityPart, IUIChanneling, IHashable, IOwl
 	{
 		get
 		{
-			if (Buff != null)
+			if (Buff != null && IsTargetReachable())
 			{
-				return IsTargetReachable();
+				return Target.Entity != Ability.Caster;
 			}
 			return false;
 		}
@@ -48,18 +48,21 @@ public class PartChanneling : MechanicEntityPart, IUIChanneling, IHashable, IOwl
 
 	public bool IsTargetReachable()
 	{
-		if (Target != null)
+		if (Target == null)
 		{
-			IntRect rectForSize = SizePathfindingHelper.GetRectForSize(Target.Entity?.Size ?? Size.Medium);
-			IntRect rectForSize2 = SizePathfindingHelper.GetRectForSize(Ability.Caster.Size);
-			LosDescription warhammerLos = LosCalculations.GetWarhammerLos(Target.Point, rectForSize, Ability.Caster.Position, rectForSize2);
-			if (WarhammerGeometryUtils.DistanceToInCells(Target.Point, rectForSize, Ability.Caster.Position, rectForSize2) <= Ability.RangeCells)
-			{
-				return (LosCalculations.CoverType)warhammerLos != LosCalculations.CoverType.LosBlocker;
-			}
 			return false;
 		}
-		return false;
+		IntRect rectForSize = SizePathfindingHelper.GetRectForSize(Target.Entity?.Size ?? Size.Medium);
+		IntRect rectForSize2 = SizePathfindingHelper.GetRectForSize(Ability.Caster.Size);
+		if (WarhammerGeometryUtils.DistanceToInCells(Target.Point, rectForSize, Ability.Caster.Position, rectForSize2) > Ability.RangeCells)
+		{
+			return false;
+		}
+		if (!Ability.NeedLoS)
+		{
+			return true;
+		}
+		return (LosCalculations.CoverType)LosCalculations.GetWarhammerLos(Target.Point, rectForSize, Ability.Caster.Position, rectForSize2) != LosCalculations.CoverType.LosBlocker;
 	}
 
 	public void Set(Buff buff, ChannelingLogic logic)
@@ -67,12 +70,12 @@ public class PartChanneling : MechanicEntityPart, IUIChanneling, IHashable, IOwl
 		Buff?.MarkExpired();
 		_buff = buff;
 		Ability = new AbilityData(logic.Ability, base.Owner);
-		Target = buff.Context.ClickedTarget;
+		Target = buff.Context.SourceClickedTarget;
 	}
 
 	public void Clear(Buff buff, ChannelingLogic _)
 	{
-		if (Buff == buff)
+		if (buff == null || Buff == buff)
 		{
 			_buff = default(EntityFactRef<Buff>);
 			Ability = null;

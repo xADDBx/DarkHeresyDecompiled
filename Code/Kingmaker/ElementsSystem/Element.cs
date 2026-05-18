@@ -14,10 +14,13 @@ namespace Kingmaker.ElementsSystem;
 [Serializable]
 public abstract class Element : ICanBeLogContext, IHaveCaption, IHaveDescription, IElementConvertable
 {
+	public static LogChannel LogChannel = LogChannelFactory.GetOrCreate("Elements");
+
 	[HideInInspector]
 	public string name;
 
-	public static LogChannel LogChannel = LogChannelFactory.GetOrCreate("Elements");
+	[CanBeNull]
+	private static ElementsDebugger Debugger => ContextData<ElementsDebugger>.Current;
 
 	public SimpleBlueprint Owner { get; set; }
 
@@ -53,8 +56,61 @@ public abstract class Element : ICanBeLogContext, IHaveCaption, IHaveDescription
 
 	string IHaveCaption.Caption => GetCaption(useLineBreaks: false);
 
-	[CanBeNull]
-	private static ElementsDebugger Debugger => ContextData<ElementsDebugger>.Current;
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	private static void Log(LogSeverity severity, object context, string messageFormat, params object[] @params)
+	{
+		Owlcat.Runtime.Core.Logging.Logger.Instance.Log(LogChannel, context, severity, null, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	public static void LogInfo(object context, string messageFormat, params object[] @params)
+	{
+		Log(LogSeverity.Message, context, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	public static void LogInfo(string messageFormat, params object[] @params)
+	{
+		Log(LogSeverity.Message, Debugger?.Element, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	public static void LogWarning(object context, string messageFormat, params object[] @params)
+	{
+		Log(LogSeverity.Warning, context, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	public static void LogWarning(string messageFormat, params object[] @params)
+	{
+		Log(LogSeverity.Warning, Debugger?.Element, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	public static void LogError(object context, string messageFormat, params object[] @params)
+	{
+		Log(LogSeverity.Error, context, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	[StringFormatMethod("messageFormat")]
+	public static void LogError(string messageFormat, params object[] @params)
+	{
+		Log(LogSeverity.Error, Debugger?.Element, messageFormat, @params);
+	}
+
+	[StackTraceIgnore]
+	public static void LogException(Exception exception)
+	{
+		Element source = Debugger?.Element ?? (exception as ElementLogicException)?.Element;
+		Owlcat.Runtime.Core.Logging.Logger.Instance.Log(LogChannel, source, LogSeverity.Error, exception, null, null);
+	}
 
 	public void InitName()
 	{
@@ -125,61 +181,5 @@ public abstract class Element : ICanBeLogContext, IHaveCaption, IHaveDescription
 	public virtual Color GetCaptionColor()
 	{
 		return Color.white;
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	private static void Log(LogSeverity severity, object context, string messageFormat, params object[] @params)
-	{
-		Owlcat.Runtime.Core.Logging.Logger.Instance.Log(LogChannel, context, severity, null, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	public static void LogInfo(object context, string messageFormat, params object[] @params)
-	{
-		Log(LogSeverity.Message, context, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	public static void LogInfo(string messageFormat, params object[] @params)
-	{
-		Log(LogSeverity.Message, Debugger?.Element, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	public static void LogWarning(object context, string messageFormat, params object[] @params)
-	{
-		Log(LogSeverity.Warning, context, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	public static void LogWarning(string messageFormat, params object[] @params)
-	{
-		Log(LogSeverity.Warning, Debugger?.Element, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	public static void LogError(object context, string messageFormat, params object[] @params)
-	{
-		Log(LogSeverity.Error, context, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	[StringFormatMethod("messageFormat")]
-	public static void LogError(string messageFormat, params object[] @params)
-	{
-		Log(LogSeverity.Error, Debugger?.Element, messageFormat, @params);
-	}
-
-	[StackTraceIgnore]
-	public static void LogException(Exception exception)
-	{
-		Element source = Debugger?.Element ?? (exception as ElementLogicException)?.Element;
-		Owlcat.Runtime.Core.Logging.Logger.Instance.Log(LogChannel, source, LogSeverity.Error, exception, null, null);
 	}
 }

@@ -29,9 +29,16 @@ public class CombatUnitEntityView : View<CombatMechanicEntityVM>
 
 	public RectTransform UnitNameAnchor => m_NameAnchor;
 
+	public ReadOnlyReactiveProperty<bool> IsHovered => m_SelectionButton.IsHovered;
+
 	public void SetActive(bool isActive)
 	{
 		base.gameObject.SetActive(isActive);
+	}
+
+	public void SetFocused(bool isFocused)
+	{
+		m_SelectionButton.SetSelectedExternal(isFocused);
 	}
 
 	protected override void OnBind()
@@ -41,8 +48,8 @@ public class CombatUnitEntityView : View<CombatMechanicEntityVM>
 			SetActive(isActive: false);
 			return;
 		}
+		base.ViewModel.FactionInfo.Subscribe(HandleUnitFactionChanged).AddTo(this);
 		m_PortraitWidget.SetPortrait(base.ViewModel.MechanicEntity, !base.ViewModel.UsedSubtypeIcon);
-		m_PortraitWidget.SetVisualLayer(base.ViewModel.IsEnemy.CurrentValue, base.ViewModel.IsPlayerFaction);
 		base.ViewModel.ConcentrationVM.Subscribe(m_ConcentrationView.Bind).AddTo(this);
 		base.ViewModel.OvertipMoraleVM.Subscribe(m_MoraleView.Bind).AddTo(this);
 		base.ViewModel.UnitHealthPartVM.Subscribe(m_HealthView.Bind).AddTo(this);
@@ -56,5 +63,10 @@ public class CombatUnitEntityView : View<CombatMechanicEntityVM>
 		m_BuffsBlockView.Unbind();
 		m_SelectionButton.Unbind();
 		m_PortraitWidget.ClearPortrait();
+	}
+
+	private void HandleUnitFactionChanged((bool isEnemy, bool isPlayerFaction) data)
+	{
+		m_PortraitWidget.SetVisualLayer(data.isEnemy, data.isPlayerFaction);
 	}
 }

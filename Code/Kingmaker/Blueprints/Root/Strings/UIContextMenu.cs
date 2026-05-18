@@ -18,8 +18,6 @@ public class UIContextMenu
 
 	public LocalizedString Information;
 
-	public LocalizedString Sell;
-
 	public LocalizedString Split;
 
 	public LocalizedString TakeOff;

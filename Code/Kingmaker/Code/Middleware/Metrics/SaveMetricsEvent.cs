@@ -6,9 +6,10 @@ public class SaveMetricsEvent : MetricsEvent
 {
 	protected override string Name => "save";
 
-	public SaveMetricsEvent(bool isGameEvent)
-		: base(isGameEvent)
+	public SaveMetricsEvent Id(string id)
 	{
+		AddParam("id", id);
+		return this;
 	}
 
 	public SaveMetricsEvent Type(SaveInfo.SaveType type)
@@ -23,20 +24,8 @@ public class SaveMetricsEvent : MetricsEvent
 			SaveInfo.SaveType.Remote => "remote", 
 			SaveInfo.SaveType.ForImport => "for_import", 
 			SaveInfo.SaveType.IronMan => "iron_man", 
-			_ => MetricsEvent.EnumToSnakeCase(type), 
+			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
-		return this;
-	}
-
-	public SaveMetricsEvent Location(string location)
-	{
-		AddParam("location", location);
-		return this;
-	}
-
-	public SaveMetricsEvent Encounter(string encounter)
-	{
-		AddParam("encounter", encounter);
 		return this;
 	}
 }

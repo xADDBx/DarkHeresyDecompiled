@@ -2,18 +2,17 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.QA;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.DotNetExtensions;
 
 namespace Kingmaker.EntitySystem.Properties;
 
 public static class PropertyCalculatorComponentHelper
 {
-	public static int CalculateValue(this BlueprintScriptableObject blueprint, ContextPropertyName propertyName, MechanicEntity currentEntity, MechanicsContext context)
+	public static int CalculateValue(this BlueprintScriptableObject blueprint, ContextPropertyName propertyName, MechanicEntity currentEntity, IEvalContext context)
 	{
 		if (!blueprint.TryCalculateValue(propertyName, currentEntity, context, out var result))
 		{
@@ -22,7 +21,7 @@ public static class PropertyCalculatorComponentHelper
 		return result;
 	}
 
-	public static IEnumerable<IPropertyCalculatorComponent> GetAllCalculators(this MechanicsContext context, BlueprintScriptableObject blueprint = null)
+	public static IEnumerable<IPropertyCalculatorComponent> GetAllCalculators(this IEvalContext context, BlueprintScriptableObject blueprint = null)
 	{
 		if (blueprint == null)
 		{
@@ -57,10 +56,18 @@ public static class PropertyCalculatorComponentHelper
 			{
 				yield return propertyCalculatorComponent;
 			}
+			if (!(component is IPropertyCalculatorProvider propertyCalculatorProvider))
+			{
+				continue;
+			}
+			foreach (IPropertyCalculatorComponent propertyCalculator in propertyCalculatorProvider.GetPropertyCalculators())
+			{
+				yield return propertyCalculator;
+			}
 		}
 	}
 
-	public static bool TryCalculateValue(this BlueprintScriptableObject blueprint, ContextPropertyName propertyName, MechanicEntity currentEntity, MechanicsContext context, out int result)
+	public static bool TryCalculateValue(this BlueprintScriptableObject blueprint, ContextPropertyName propertyName, MechanicEntity currentEntity, IEvalContext context, out int result)
 	{
 		if (!(blueprint is BlueprintAbilityModifier))
 		{
@@ -89,15 +96,25 @@ public static class PropertyCalculatorComponentHelper
 				result = CalculateValue(currentEntity, context, propertyCalculatorComponent);
 				return true;
 			}
+			if (!(blueprintComponent is IPropertyCalculatorProvider propertyCalculatorProvider))
+			{
+				continue;
+			}
+			foreach (IPropertyCalculatorComponent propertyCalculator in propertyCalculatorProvider.GetPropertyCalculators())
+			{
+				if (propertyCalculator.Name == propertyName)
+				{
+					result = CalculateValue(currentEntity, context, propertyCalculator);
+					return true;
+				}
+			}
 		}
 		result = 0;
 		return false;
 	}
 
-	private static int CalculateValue(MechanicEntity currentEntity, MechanicsContext context, IPropertyCalculatorComponent calculator)
+	private static int CalculateValue(MechanicEntity currentEntity, IEvalContext context, IPropertyCalculatorComponent calculator)
 	{
-		PropertyContext result;
-		PropertyContext context2 = ((!SimpleContextData<PropertyContext, PropertyContext.Scope>.TryGetCurrent(out result)) ? new PropertyContext(currentEntity, context) : result.WithCurrentEntity(currentEntity).WithContext(context));
-		return calculator.GetValue(context2);
+		return calculator.GetValue(context, currentEntity);
 	}
 }

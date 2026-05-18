@@ -1,7 +1,5 @@
 using System;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.Enums;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
 using Owlcat.Runtime.Core.Utility;
 
@@ -35,7 +33,7 @@ public sealed class ContextActionModifyMoraleChange : ContextAction
 
 	protected override void RunAction()
 	{
-		RuleCalculateMoraleChange ruleCalculateMoraleChange = (SimpleContextData<IRulebookEvent, MechanicsContext.Scope.Rule>.Current as RuleCalculateMoraleChange) ?? (SimpleContextData<IRulebookEvent, MechanicsContext.Scope.Rule>.Current as RulePerformMoraleChange)?.RuleCalculateMoraleChange;
+		RuleCalculateMoraleChange ruleCalculateMoraleChange = (base.Context.Rule as RuleCalculateMoraleChange) ?? (base.Context.Rule as RulePerformMoraleChange)?.RuleCalculateMoraleChange;
 		if (ruleCalculateMoraleChange == null)
 		{
 			throw new InvalidOperationException("Cannot find RuleCalculateMoraleChange");

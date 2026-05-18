@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using JetBrains.Annotations;
+using Kingmaker.Blueprints;
 using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Levelup.Selections;
+using Kingmaker.UnitLogic.Levelup.Selections.CharacterGender;
+using Kingmaker.UnitLogic.Levelup.Selections.CharacterName;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
-using Kingmaker.UnitLogic.Levelup.Selections.Stats;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Kingmaker.Utility.DotNetExtensions;
@@ -47,7 +49,17 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 		where i.PathRank >= RanksRange.From && i.PathRank <= RanksRange.To
 		select i) ?? Enumerable.Empty<(BlueprintPath, int, BlueprintFeature)>();
 
-	public bool IsAllSelectionsMadeAndValid => m_Selections.AllItems((SelectionState i) => (i.IsMade || !i.CanSelectAny) && i.IsValid);
+	public bool IsAllSelectionsMadeAndValid
+	{
+		get
+		{
+			if (m_Selections.Any())
+			{
+				return m_Selections.AllItems((SelectionState i) => (i.IsMade || !i.CanSelectAny) && i.IsValid);
+			}
+			return true;
+		}
+	}
 
 	public LevelUpManager([NotNull] BaseUnitEntity targetUnit, bool autoCommit)
 	{
@@ -96,7 +108,15 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 		{
 			RecalculatePreview(applySelections: false);
 		}
-		AdvancePathRankTo(PreviewUnit, path, GetTargetPathRankOfSelectPath(targetCharacterLevel));
+		int i;
+		for (i = RanksRange.From; i <= RanksRange.To; i++)
+		{
+			AdvancePathRankTo(PreviewUnit, path, i, allowInvalidate: true);
+			if (m_Selections.SkipWhile((SelectionState s) => s.PathRank < i).Any((SelectionState s) => s.PathRank == i && s.CanSelectAny))
+			{
+				break;
+			}
+		}
 	}
 
 	private int GetTargetPathRankOfSelectPath(int targetCharacterLevel)
@@ -149,8 +169,12 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 			throw new InvalidOperationException($"Can't commit levelup: not all selections made and valid\n{stringBuilder}");
 		}
 		IsCommitted = true;
-		AdvancePathRankTo(TargetUnit, Path, TargetUnit.Progression.GetRank(Path) + 1);
+		AdvancePathRankTo(TargetUnit, Path, TargetUnit.Progression.GetRank(Path) + 1, allowInvalidate: false);
 		ApplySelections(TargetUnit, invalidate: false);
+		foreach (SelectionState selection in m_Selections)
+		{
+			Metrics.LevelUp.SelectionId(selection.Blueprint.AssetGuid).CompanionId(TargetUnit.Blueprint.AssetGuid).Send();
+		}
 		if (Path is BlueprintOriginPath)
 		{
 			TargetUnit.Body.Initialize();
@@ -228,9 +252,13 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 
 	void IOnSelectionChangedAccess.OnSelectionChanged(SelectionState selection)
 	{
-		if (AutoCommit || (!(selection is SelectionStateFeature) && !(selection is SelectionStateStats)))
+		if (AutoCommit)
 		{
 			ApplySelection(PreviewUnit, selection, invalidateNext: true);
+		}
+		else if (selection is SelectionStateCharacterName)
+		{
+			ApplySelection(PreviewUnit, selection, invalidateNext: false);
 		}
 		else
 		{
@@ -238,60 +266,73 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 		}
 	}
 
-	private void AdvancePathRankTo(BaseUnitEntity unit, BlueprintPath path, int rank)
+	private void AdvancePathRankTo(BaseUnitEntity unit, BlueprintPath path, int rank, bool allowInvalidate)
 	{
-		if (IsPreview(unit))
+		using (ContextData<DisableStatefulRandomContext>.RequestIf(IsPreview(unit)))
 		{
-			using (ContextData<DisableStatefulRandomContext>.Request())
+			int rank2 = unit.Progression.Features.GetRank(path);
+			if (rank2 >= rank || rank > GetMaxAvailablePathRank())
 			{
-				Apply();
 				return;
 			}
+			if (rank > path.Ranks)
+			{
+				throw new Exception($"Can't advance {path} rank to {rank} (max rank is {path.Ranks})");
+			}
+			bool flag = false;
+			for (int j = 0; j < rank - rank2; j++)
+			{
+				AddPathRank(unit, path, out var invalidate2);
+				flag = flag || invalidate2;
+			}
+			if (!(allowInvalidate && flag))
+			{
+				return;
+			}
+			foreach (SelectionState item in m_Selections.SkipWhile((SelectionState i) => i.PathRank < rank))
+			{
+				InvalidateSelection(item);
+			}
 		}
-		Apply();
-		static void AddPathRank(BaseUnitEntity u, BlueprintPath p)
+		static void AddPathRank(BaseUnitEntity u, BlueprintPath p, out bool invalidate)
 		{
 			int num = u.Progression.GetPathRank(p) + 1;
 			BlueprintPath.RankEntry obj = p.GetRankEntry(num) ?? throw new Exception($"Rank entry is null: path {p}, rank {num}");
 			u.Progression.AddPathRank(p);
+			invalidate = false;
 			foreach (BlueprintFeature feature in obj.Features)
 			{
 				u.Progression.Features.Add(feature)?.AddSource(p, p, num);
-			}
-		}
-		void Apply()
-		{
-			int rank2 = unit.Progression.Features.GetRank(path);
-			if (rank2 < rank && rank <= GetMaxAvailablePathRank())
-			{
-				if (rank > path.Ranks)
-				{
-					throw new Exception($"Can't advance {path} rank to {rank} (max rank is {path.Ranks})");
-				}
-				for (int i = 0; i < rank - rank2; i++)
-				{
-					AddPathRank(unit, path);
-				}
+				invalidate |= feature.GetComponent<AddFeaturesToLevelUp>() != null;
 			}
 		}
 	}
 
 	private void ApplySelections(BaseUnitEntity unit, bool invalidate)
 	{
-		int num = m_Selections.FindLastIndex((SelectionState i) => i.IsMade);
-		for (int j = 0; j < m_Selections.Count; j++)
+		int num = m_Selections.FindLastIndex((SelectionState i) => i.ShouldApply);
+		int num2 = m_Selections.FindIndex((SelectionState i) => i is SelectionStateGender);
+		if (num2 >= 0 && num2 <= num)
 		{
-			SelectionState selectionState = m_Selections[j];
+			SelectionState selection = m_Selections[num2];
 			if (invalidate)
 			{
-				InvalidateSelection(selectionState);
+				InvalidateSelection(selection);
 			}
-			if (j <= num)
+			ApplySelection(unit, selection, invalidateNext: false);
+		}
+		for (int j = 0; j < m_Selections.Count; j++)
+		{
+			if (j != num2)
 			{
-				ApplySelection(unit, selectionState, invalidateNext: false);
-				if (!unit.IsPreviewUnit)
+				SelectionState selection2 = m_Selections[j];
+				if (invalidate)
 				{
-					Metrics.LevelUp.SelectionId(selectionState.Blueprint.AssetGuid).CompanionId(unit.Blueprint.AssetGuid).Send();
+					InvalidateSelection(selection2);
+				}
+				if (j <= num)
+				{
+					ApplySelection(unit, selection2, invalidateNext: false);
 				}
 			}
 		}
@@ -316,7 +357,7 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 			int num3 = ((selectionState == null) ? selection.Path.Ranks : ((selectionState.Path == selection.Path && selectionState.PathRank > selection.PathRank) ? selectionState.PathRank : selection.PathRank));
 			for (int i = pathRank + 1; i <= num3; i++)
 			{
-				AdvancePathRankTo(unit, selection.Path, i);
+				AdvancePathRankTo(unit, selection.Path, i, allowInvalidate: true);
 			}
 			selection.Apply(unit);
 			if (invalidateNext)

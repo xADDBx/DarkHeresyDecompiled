@@ -16,7 +16,7 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 {
 	private readonly struct TargetEntityMovementData
 	{
-		private readonly UnitMovementAgentBase m_MovementAgent;
+		private readonly UnitMovementAgent m_MovementAgent;
 
 		private readonly UnitMoveContinuously m_MoveCommand;
 
@@ -32,7 +32,7 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 				{
 					return null;
 				}
-				return m_MovementAgent.Speed;
+				return m_MovementAgent.MaxSpeed;
 			}
 		}
 
@@ -86,29 +86,33 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 			ForceFinish(ResultType.Fail);
 			return;
 		}
-		TargetEntityMovementData targetData = new TargetEntityMovementData(mechanicEntity);
-		if (!targetData.IsMoving && !base.Executor.MovementAgent.IsReallyMoving && !base.Params.ForceMove)
+		if (HasReachedDestination)
 		{
-			ForceFinish(ResultType.Success);
+			ResetMovement();
 			return;
 		}
+		TargetEntityMovementData targetData = new TargetEntityMovementData(mechanicEntity);
 		base.Params.MovementType = GetMovementType(targetData);
 		if (ShouldMatchTargetMovement(targetData))
 		{
 			if (targetData.IsPositionChanged)
 			{
-				if (HasReachedDestination)
-				{
-					ForceFinish(ResultType.Success);
-					return;
-				}
 				m_RepathTimer = float.MaxValue;
 				MatchTargetMovement(targetData);
 			}
 		}
+		else if (IsCloseEnoughToDestination)
+		{
+			MoveStraightToDestination();
+		}
+		else if (base.Executor.MovementAgent.AlwaysUseDirectionalMovement)
+		{
+			Vector2 vector = (Destination - base.Executor.Position).To2D();
+			base.Executor.MovementAgent.SetUpDirectionalMovementParams(vector.normalized, 1f);
+			base.Executor.MovementAgent.MaxSpeedOverride = null;
+		}
 		else
 		{
-			ResetMoveAgentOverride();
 			m_RepathTimer += Game.Instance.RealTimeController.SystemDeltaTime;
 			if (ShouldRepath(targetData))
 			{
@@ -133,7 +137,7 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 
 	private bool ShouldMatchTargetMovement(TargetEntityMovementData targetData)
 	{
-		if (targetData.IsMoving)
+		if (targetData.IsMoving && targetData.Direction.HasValue)
 		{
 			return IsCloseEnoughToDestination;
 		}
@@ -142,31 +146,47 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 
 	private void MatchTargetMovement(TargetEntityMovementData targetData)
 	{
-		UnitMovementAgentContinuous unitMovementAgentContinuous = SetMoveAgentContinuous();
-		unitMovementAgentContinuous.MaxSpeedOverride = targetData.MaxSpeedOverride;
-		unitMovementAgentContinuous.DirectionFromController = targetData.Direction ?? (Destination - base.Executor.Position).normalized.To2D();
-		unitMovementAgentContinuous.DirectionFromControllerMagnitude = targetData.Multiplier ?? 1f;
+		base.Executor.MovementAgent.SetUpDirectionalMovementParams(targetData.Direction.Value, targetData.Multiplier ?? 1f);
+		if (base.Params.UseOwnSpeed)
+		{
+			base.Executor.MovementAgent.MaxSpeedOverride = null;
+		}
+		else
+		{
+			base.Executor.MovementAgent.MaxSpeedOverride = targetData.MaxSpeedOverride;
+		}
 		base.Params.MovementType = targetData.MovementType ?? WalkSpeedType.Walk;
+	}
+
+	private void MoveStraightToDestination()
+	{
+		Vector2 vector = (Destination - base.Executor.Position).To2D();
+		base.Executor.MovementAgent.SetUpDirectionalMovementParams(vector.normalized, vector.sqrMagnitude / 3f);
+		base.Executor.MovementAgent.MaxSpeedOverride = null;
+		base.Params.MovementType = WalkSpeedType.Walk;
 	}
 
 	private bool ShouldRepath(TargetEntityMovementData targetData)
 	{
-		if (!targetData.IsMoving || base.Executor.MovementAgent.IsReallyMoving)
+		if (!base.Executor.MovementAgent.IsTraverseInProgress)
 		{
-			if ((m_RememberedDestination - Destination).sqrMagnitude > 1f)
+			if ((!targetData.IsMoving || base.Executor.IsReallyMoving) && !(base.Executor.MovementAgent.EstimatedTimeLeft < 0.3f))
 			{
-				return m_RepathTimer > 0.3f;
+				if ((m_RememberedDestination - Destination).sqrMagnitude > 1f)
+				{
+					return m_RepathTimer > 0.3f;
+				}
+				return false;
 			}
-			return false;
+			return true;
 		}
-		return true;
+		return false;
 	}
 
 	private void Repath()
 	{
 		m_RepathTimer = 0f;
 		m_RememberedDestination = Destination;
-		base.Executor.View.StopMoving();
 		AbstractUnitEntity executor = base.Executor;
 		if (base.Params.UseStraightPath)
 		{
@@ -175,23 +195,34 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 				base.Executor.Position,
 				Destination
 			});
-			executor.View.MoveTo(path2, Destination, 0.2f);
+			if (!base.Executor.MovementAgent.SmoothRepath)
+			{
+				executor.StopMoving();
+			}
+			executor.MoveTo(path2, Destination, 0.2f);
 			return;
 		}
 		PathfindingService.Instance.FindPathRT_Delayed(base.Executor.MovementAgent, Destination, 0.2f, 1, delegate(ForcedPath path)
 		{
-			if (path.error)
+			if (!base.Executor.MovementAgent.IsTraverseInProgress)
 			{
-				PFLog.Pathfinding.Error("An error path was returned. Ignoring");
-			}
-			else if (path.path == null || path.path.Count == 0)
-			{
-				PFLog.Pathfinding.Error(((path.path == null) ? "Path is null" : "Path is empty") + ". Ignoring");
-			}
-			else
-			{
-				Vector3 destination = ((ObstacleAnalyzer.GetArea(Destination) == path.path[0].Area) ? Destination : TrimPathToCurrentArea(path));
-				executor.View.MoveTo(path, destination, 0.2f);
+				if (path.error)
+				{
+					PFLog.Pathfinding.Error("An error path was returned. Ignoring");
+				}
+				else if (path.path == null || path.path.Count == 0)
+				{
+					PFLog.Pathfinding.Error(((path.path == null) ? "Path is null" : "Path is empty") + ". Ignoring");
+				}
+				else
+				{
+					Vector3 destination = ((ObstacleAnalyzer.GetArea(Destination) == path.path[0].Area) ? Destination : TrimPathToCurrentArea(path));
+					if (!base.Executor.MovementAgent.SmoothRepath)
+					{
+						executor.StopMoving();
+					}
+					executor.MoveTo(path, destination, 0.2f);
+				}
 			}
 		});
 	}
@@ -213,31 +244,6 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 		return vectorPath[vectorPath.Count - 1];
 	}
 
-	private UnitMovementAgentContinuous SetMoveAgentContinuous()
-	{
-		UnitMovementAgentContinuous unitMovementAgentContinuous = base.Executor.View.gameObject.GetComponent<UnitMovementAgentContinuous>();
-		if (unitMovementAgentContinuous == null)
-		{
-			unitMovementAgentContinuous = base.Executor.View.gameObject.AddComponent<UnitMovementAgentContinuous>();
-			base.Executor.View.AgentOverride = unitMovementAgentContinuous;
-			base.Executor.View.AgentOverride.Init(base.Executor.View.gameObject);
-		}
-		else
-		{
-			base.Executor.View.AgentOverride = unitMovementAgentContinuous;
-		}
-		return unitMovementAgentContinuous;
-	}
-
-	private void ResetMoveAgentOverride()
-	{
-		if (base.Executor?.View?.AgentOverride != null)
-		{
-			base.Executor.View.AgentOverride.Blocker.Unblock();
-			base.Executor.View.AgentOverride = null;
-		}
-	}
-
 	protected override ResultType OnAction()
 	{
 		return ResultType.None;
@@ -246,7 +252,12 @@ public sealed class UnitFollow : AbstractUnitCommand<UnitFollowParams>
 	protected override void OnEnded()
 	{
 		base.OnEnded();
-		ResetMoveAgentOverride();
+		ResetMovement();
+	}
+
+	private void ResetMovement()
+	{
+		base.Executor.MovementAgent.Stop();
 		base.Executor.MovementAgent.MaxSpeedOverride = null;
 		if (base.Target != null)
 		{

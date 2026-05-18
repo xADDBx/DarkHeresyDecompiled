@@ -32,11 +32,11 @@ public class ContextConditionBuffRank : ContextCondition
 			PFLog.Default.Error("No such buff on target");
 			return false;
 		}
-		if (BuffFromCaster && entityFact.MaybeContext.MaybeCaster != base.Context.MaybeCaster)
+		if (BuffFromCaster && entityFact.MaybeContext.MaybeCaster != base.Eval.Caster)
 		{
 			PFLog.Default.Error("Caster of the buff is not the caster of this ability");
 			return false;
 		}
-		return entityFact.GetRank() >= RankValue.Calculate(base.Context);
+		return entityFact.GetRank() >= RankValue.Calculate(base.Eval);
 	}
 }

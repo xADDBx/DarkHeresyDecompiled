@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Kingmaker.Code.View.Mechanics.Entities.Covers;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.UnitLogic.Parts;
@@ -46,21 +45,15 @@ public class ThinCoverEntity : DestructibleEntity, PartCover.IOwner, IEntityPart
 		}
 	};
 
-	public new ThinCoverEntityView View => (ThinCoverEntityView)base.View;
-
 	public PartCover Cover => GetRequired<PartCover>();
 
-	protected ThinCoverEntity(JsonConstructorMark _)
+	public ThinCoverEntity(IDestructibleEntityConfig config)
+		: base(config)
+	{
+	}
+
+	protected ThinCoverEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	public ThinCoverEntity(string uniqueId, bool isInGame, BlueprintDestructibleObject blueprint)
-		: base(uniqueId, isInGame, blueprint)
-	{
-	}
-
-	protected ThinCoverEntity()
 	{
 	}
 
@@ -72,7 +65,7 @@ public class ThinCoverEntity : DestructibleEntity, PartCover.IOwner, IEntityPart
 
 	public bool IsCoverBetween(GridNodeBase node1, GridNodeBase node2)
 	{
-		Rect rect = View.Or(null)?.Bounds ?? default(Rect);
+		Rect rect = base.Config?.Bounds ?? default(Rect);
 		bool num = rect.width > rect.height;
 		Vector2 vector = node1.Vector3Position().To2D();
 		Vector2 vector2 = node2.Vector3Position().To2D();
@@ -128,7 +121,7 @@ public class ThinCoverEntity : DestructibleEntity, PartCover.IOwner, IEntityPart
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		ThinCoverEntity source = new ThinCoverEntity();
+		ThinCoverEntity source = new ThinCoverEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<ThinCoverEntity, TPossiblyBase>(ref source);
 	}
 

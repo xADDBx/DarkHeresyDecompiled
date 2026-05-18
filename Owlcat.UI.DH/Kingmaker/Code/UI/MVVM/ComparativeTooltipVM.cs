@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -8,22 +7,40 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class ComparativeTooltipVM : ViewModel
 {
-	public readonly List<TooltipVM> TooltipVms = new List<TooltipVM>();
+	private readonly List<TooltipVM> m_MainTooltips = new List<TooltipVM>();
 
-	public TooltipVM MainTooltip => TooltipVms.LastOrDefault();
+	private readonly List<TooltipVM> m_CompareTooltips = new List<TooltipVM>();
 
-	public TooltipVM FirstCompareTooltip => TooltipVms.FirstOrDefault();
+	public readonly Transform Source;
 
-	public RectTransform MainOwnerTransform => MainTooltip?.OwnerTransform;
+	public IReadOnlyList<TooltipVM> MainTooltips => m_MainTooltips;
 
-	public RectTransform ComparativeOwnerTransform => FirstCompareTooltip?.OwnerTransform;
+	public IReadOnlyList<TooltipVM> CompareTooltips => m_CompareTooltips;
 
-	public ComparativeTooltipVM(IEnumerable<TooltipData> tooltipsData, bool showScrollbar)
+	public TooltipVM FirstMainTooltip
 	{
-		foreach (TooltipData tooltipsDatum in tooltipsData)
+		get
 		{
-			TooltipVM item = new TooltipVM(tooltipsDatum, isComparative: true, shouldNotHideLittleTooltip: false, showScrollbar).AddTo(this);
-			TooltipVms.Add(item);
+			if (m_MainTooltips.Count <= 0)
+			{
+				return null;
+			}
+			return m_MainTooltips[0];
+		}
+	}
+
+	public ComparativeTooltipVM(Transform source, IEnumerable<TooltipData> mainTooltipsData, IEnumerable<TooltipData> compareTooltipsData, bool showScrollbar)
+	{
+		Source = source;
+		foreach (TooltipData compareTooltipsDatum in compareTooltipsData)
+		{
+			TooltipVM item = new TooltipVM(compareTooltipsDatum, isComparative: true, shouldNotHideLittleTooltip: false, showScrollbar).AddTo(this);
+			m_CompareTooltips.Add(item);
+		}
+		foreach (TooltipData mainTooltipsDatum in mainTooltipsData)
+		{
+			TooltipVM item2 = new TooltipVM(mainTooltipsDatum, isComparative: true, shouldNotHideLittleTooltip: false, showScrollbar).AddTo(this);
+			m_MainTooltips.Add(item2);
 		}
 	}
 }

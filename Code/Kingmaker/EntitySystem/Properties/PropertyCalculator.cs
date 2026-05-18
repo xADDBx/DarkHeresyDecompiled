@@ -9,9 +9,10 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Kingmaker.EntitySystem.Properties.Getters;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.RuleSystem;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
@@ -21,6 +22,8 @@ using UnityEngine;
 namespace Kingmaker.EntitySystem.Properties;
 
 [Serializable]
+[SetsContext(ContextField.CurrentEntity, Availability.Definitely)]
+[SetsContext(ContextField.Target, Availability.Maybe)]
 public class PropertyCalculator : ElementsList, IHashable
 {
 	public enum OperationType
@@ -100,74 +103,67 @@ public class PropertyCalculator : ElementsList, IHashable
 		}
 	}
 
-	public int GetValue(PropertyContext context)
+	public int GetValue([NotNull] MechanicEntity currentEntity, IEvalContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null)
 	{
 		using (ProfileScope.New("Calculator"))
 		{
 			using ElementsDebugger elementsDebugger = ElementsDebugger.Scope(this);
 			try
 			{
-				if (TargetType != 0)
+				using (EvalContext.PushPropertyContext(context, currentEntity, currentTarget, rule, ability).Get(out context))
 				{
-					MechanicEntity targetEntity = context.GetTargetEntity(TargetType);
-					if (targetEntity == null)
+					if (TargetType != 0)
 					{
-						if (!FailSilentlyIfNoTarget)
+						MechanicEntity entityByType = context.GetEntityByType(TargetType);
+						if (entityByType == null)
 						{
-							throw new Exception($"Can't switch target to {TargetType}: inaccessible in context (Fact={context.Fact}, Ability={context.Ability})");
+							if (!FailSilentlyIfNoTarget)
+							{
+								throw new Exception($"Can't switch target to {TargetType}: inaccessible in context (Fact={context.Fact}, Ability={ability})");
+							}
+							elementsDebugger?.SetResult(0);
+							return 0;
 						}
-						elementsDebugger?.SetResult(0);
-						return 0;
+						currentEntity = entityByType;
 					}
-					context = context.WithCurrentEntity(targetEntity);
-				}
-				using (context.SetScope())
-				{
-					int result = PropertyCalculatorHelper.CalculateValue(Getters, Operation, this);
-					elementsDebugger?.SetResult(result);
-					if (elementsDebugger != null)
+					using (context.PushCurrentEntity(currentEntity))
 					{
-						SetupDebugContext(context, elementsDebugger);
+						int result = PropertyCalculatorHelper.CalculateValue(Getters, Operation, this);
+						elementsDebugger?.SetResult(result);
+						if (elementsDebugger != null)
+						{
+							SetupDebugContext(context, elementsDebugger);
+						}
+						return result;
 					}
-					return result;
 				}
 			}
 			catch (Exception ex)
 			{
-				PFLog.Default.Exception(ex, "Exception in PropertyCalculator");
+				PFLog.Mechanics.Exception(ex, "Exception in PropertyCalculator");
 				elementsDebugger?.SetException(ex);
 				return 0;
 			}
 		}
 	}
 
-	public int GetValue([NotNull] MechanicEntity currentEntity, MechanicsContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null)
-	{
-		return GetValue(new PropertyContext(currentEntity, context, currentTarget, rule, ability));
-	}
-
-	public bool GetBoolValue(PropertyContext context)
-	{
-		return GetValue(context) != 0;
-	}
-
-	public bool GetBoolValue([NotNull] MechanicEntity currentEntity, MechanicsContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null)
+	public bool GetBoolValue([NotNull] MechanicEntity currentEntity, IEvalContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null)
 	{
 		return GetValue(currentEntity, context, currentTarget, rule, ability) != 0;
 	}
 
-	private void SetupDebugContext(PropertyContext context, ElementsDebugger debugger)
+	private void SetupDebugContext(IEvalContext context, ElementsDebugger debugger)
 	{
 		if (ElementsDebugger.IsContextDebugEnabled)
 		{
 			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.Append($"[{PropertyTargetType.CurrentEntity}] : {context.GetTargetEntity(PropertyTargetType.CurrentEntity)}");
-			stringBuilder.Append($"\n[{PropertyTargetType.CurrentTarget}] : {context.GetTargetEntity(PropertyTargetType.CurrentTarget)}");
-			stringBuilder.Append($"\n[{PropertyTargetType.ContextOwner}] : {context.GetTargetEntity(PropertyTargetType.ContextOwner)}");
-			stringBuilder.Append($"\n[{PropertyTargetType.ContextCaster}] : {context.GetTargetEntity(PropertyTargetType.ContextCaster)}");
-			stringBuilder.Append($"\n[{PropertyTargetType.RuleTarget}] : {context.GetTargetEntity(PropertyTargetType.RuleTarget)}");
-			stringBuilder.Append($"\n[{PropertyTargetType.RuleInitiator}] : {context.GetTargetEntity(PropertyTargetType.RuleInitiator)}");
-			stringBuilder.Append($"\n[{PropertyTargetType.ContextMainTarget}] : {context.GetTargetEntity(PropertyTargetType.ContextMainTarget)}");
+			stringBuilder.Append($"[{PropertyTargetType.CurrentEntity}] : {context.GetEntityByType(PropertyTargetType.CurrentEntity)}");
+			stringBuilder.Append($"\n[{PropertyTargetType.CurrentTarget}] : {context.GetEntityByType(PropertyTargetType.CurrentTarget)}");
+			stringBuilder.Append($"\n[{PropertyTargetType.ContextOwner}] : {context.GetEntityByType(PropertyTargetType.ContextOwner)}");
+			stringBuilder.Append($"\n[{PropertyTargetType.ContextCaster}] : {context.GetEntityByType(PropertyTargetType.ContextCaster)}");
+			stringBuilder.Append($"\n[{PropertyTargetType.RuleTarget}] : {context.GetEntityByType(PropertyTargetType.RuleTarget)}");
+			stringBuilder.Append($"\n[{PropertyTargetType.RuleInitiator}] : {context.GetEntityByType(PropertyTargetType.RuleInitiator)}");
+			stringBuilder.Append($"\n[{PropertyTargetType.ContextMainTarget}] : {context.GetEntityByType(PropertyTargetType.ContextMainTarget)}");
 			debugger.ContextDebugData = new ContextDebugData
 			{
 				StringData = stringBuilder.ToString()

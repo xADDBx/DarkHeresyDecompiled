@@ -61,7 +61,7 @@ public class CommandControlCamera : CommandBase
 	[SerializeReference]
 	public FloatEvaluator RotateTarget;
 
-	[ShowIf("Move")]
+	[ShowIf("Rotate")]
 	[SerializeReference]
 	public bool RotateToInitialCameraPosition;
 
@@ -170,29 +170,31 @@ public class CommandControlCamera : CommandBase
 
 	private bool TimingIsTime => TimingMode == TimingModeType.FixTime;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		TimingModeType timingMode = (skipping ? TimingModeType.Snap : TimingMode);
 		CameraRig.Instance?.SetWorldOffset(Vector2.zero);
 		StartCameraTransformations(player, commandData, timingMode);
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.OnStop(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		CameraRig instance = CameraRig.Instance;
 		instance.StopCoroutine(commandData.RotateCoroutine);
 		instance.StopCoroutine(commandData.ScrollCoroutine);
 		commandData.RotateCoroutine = null;
 		commandData.ScrollCoroutine = null;
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		StartCameraTransformations(player, commandData, TimingModeType.Snap);
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -209,21 +211,22 @@ public class CommandControlCamera : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		if (time > 20.0)
 		{
 			player.GetCommandData<Data>(this).TakingTooLong = true;
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		StartCameraTransformations(player, commandData, TimingModeType.Snap);
 		commandData.RotateCoroutine = null;
 		commandData.ScrollCoroutine = null;
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

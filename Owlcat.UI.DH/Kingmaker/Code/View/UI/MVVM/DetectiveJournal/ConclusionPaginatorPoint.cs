@@ -22,7 +22,7 @@ public class ConclusionPaginatorPoint : View<BlueprintConclusion>, IConclusionsU
 	private void UpdateState()
 	{
 		m_RefutedParent.Or(null)?.gameObject.SetActive(base.ViewModel.IsRefuted());
-		if (Game.Instance.DetectiveSystem.HasItem(base.ViewModel))
+		if (Game.Instance.DetectiveSystem.HasItemExcludingHidden(base.ViewModel))
 		{
 			m_StateSelectable.SetActiveLayer("Selected");
 		}

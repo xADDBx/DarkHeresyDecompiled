@@ -10,8 +10,8 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
@@ -131,7 +131,7 @@ public class AbilityCustomDirectMovement : AbilityCustomLogic, IAbilityAoEPatter
 			{
 				baseUnitEntity.CombatState.RegisterMoveCells(pathCellsCount - 1);
 			}
-			using (context.SetScope(caster.ToITargetWrapper()))
+			using (EvalContext.PushContext(context, caster))
 			{
 				ActionsOnCaster.Run();
 			}
@@ -158,7 +158,7 @@ public class AbilityCustomDirectMovement : AbilityCustomLogic, IAbilityAoEPatter
 	{
 		MechanicEntity caster = context.Caster;
 		BaseUnitEntity casterUnit = caster as BaseUnitEntity;
-		UnitMovementAgentBase movementAgent = caster.MaybeMovementAgent;
+		UnitMovementAgent movementAgent = caster.MaybeMovementAgent;
 		GraphNode lastNode = path.path.Last();
 		if (path.vectorPath.Count == 0)
 		{
@@ -167,7 +167,6 @@ public class AbilityCustomDirectMovement : AbilityCustomLogic, IAbilityAoEPatter
 		float distanceToHandle = Mathf.Sqrt(2f) * 1.Cells().Meters * 1.1f;
 		HashSet<MechanicEntity> handledTargets = new HashSet<MechanicEntity>(targets.Length * 2);
 		movementAgent.MaxSpeedOverride = 10f;
-		movementAgent.IsCharging = true;
 		casterUnit?.Features.IsCharging.Retain(context.Ability.Fact);
 		bool failedToStartPath = false;
 		try
@@ -201,7 +200,6 @@ public class AbilityCustomDirectMovement : AbilityCustomLogic, IAbilityAoEPatter
 			}
 		}
 		context.Caster.Position = lastNode.Vector3Position();
-		movementAgent.IsCharging = false;
 		movementAgent.MaxSpeedOverride = null;
 		casterUnit?.Features.IsCharging.Release(context.Ability.Fact);
 		EventBus.RaiseEvent((IMechanicEntity)caster, (Action<IDirectMovementHandler>)delegate(IDirectMovementHandler h)
@@ -264,7 +262,7 @@ public class AbilityCustomDirectMovement : AbilityCustomLogic, IAbilityAoEPatter
 
 	private void HandleTarget(AbilityExecutionContext context, [NotNull] MechanicEntity target)
 	{
-		using (context.SetScope(target.ToITargetWrapper()))
+		using (EvalContext.PushContext(context, target))
 		{
 			ActionsOnEncounteredTarget.Run();
 		}

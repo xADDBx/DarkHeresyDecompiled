@@ -2,6 +2,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.Utility;
@@ -11,13 +12,25 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Abilities.Components;
 
 [TypeId("66e032e5cf38801428940a1a0d14b946")]
-public class AbilityEffectRunAction : AbilityApplyEffect
+public class AbilityEffectRunAction : AbilityApplyEffect, IAbilityPrediction
 {
 	public ActionList Actions;
 
 	public ActionList ActionsOnAlly;
 
 	public ActionList ActionsOnEnemy;
+
+	public void CollectPrediction(AbilityPredictionContext context)
+	{
+		MechanicEntity maybeCaster = context.ExecutionContext.MaybeCaster;
+		MechanicEntity currentTarget = context.CurrentTarget;
+		ActionList actions = GetActions(maybeCaster, currentTarget);
+		if (actions != Actions)
+		{
+			context.ProcessActionList(Actions);
+		}
+		context.ProcessActionList(actions);
+	}
 
 	public override void Apply(AbilityExecutionContext context, TargetWrapper target)
 	{

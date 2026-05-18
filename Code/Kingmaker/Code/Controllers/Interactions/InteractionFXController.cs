@@ -7,7 +7,6 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using Kingmaker.Visual.Particles;
-using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.Code.Controllers.Interactions;
@@ -22,7 +21,7 @@ public class InteractionFXController : IController, IInteractWithVariantActorHan
 			if (interactWithToolFXData == null || !interactWithToolFXData.DoNotShowFx)
 			{
 				GameObject prefab = ((interactWithToolFXData != null && interactWithToolFXData.OverrideDefaultFx && interactWithToolFXData.OverrideFxPrefab != null) ? interactWithToolFXData.OverrideFxPrefab : GetDefaultInteractFx());
-				GameObject target = ((interactWithToolFXData != null && interactWithToolFXData.FxLocator != null) ? interactWithToolFXData.FxLocator : interactionPart.Owner.View.Or(null)?.gameObject);
+				GameObject target = ((interactWithToolFXData != null && interactWithToolFXData.FxLocator != null) ? interactWithToolFXData.FxLocator : interactionPart.Owner.View?.gameObject);
 				FxHelper.SpawnFxOnGameObject(prefab, target);
 			}
 		}

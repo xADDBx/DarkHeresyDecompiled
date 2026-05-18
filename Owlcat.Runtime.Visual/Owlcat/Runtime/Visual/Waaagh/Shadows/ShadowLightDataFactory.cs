@@ -5,7 +5,6 @@ using Owlcat.Runtime.Visual.Waaagh.Lighting;
 using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.Shadows;
 
@@ -31,21 +30,19 @@ internal struct ShadowLightDataFactory
 
 	private unsafe fixed int m_LightTypeToViewportCountMap[5];
 
-	public unsafe ShadowLightDataFactory(ContextContainer frameData)
+	public unsafe ShadowLightDataFactory(WaaaghCameraData cameraData, WaaaghShadowData shadowData)
 	{
-		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
-		WaaaghShadowData waaaghShadowData = frameData.Get<WaaaghShadowData>();
-		m_ScreenResolution = new int2(waaaghCameraData.cameraTargetDescriptor.width, waaaghCameraData.cameraTargetDescriptor.height);
-		m_SpotLightResolution = waaaghShadowData.SpotLightResolution;
-		m_PointLightResolution = waaaghShadowData.PointLightResolution;
-		m_DirectionalLightResolutionMax = (int)waaaghShadowData.DirectionalLightCascadeResolution;
+		m_ScreenResolution = new int2(cameraData.cameraTargetDescriptor.width, cameraData.cameraTargetDescriptor.height);
+		m_SpotLightResolution = shadowData.SpotLightResolution;
+		m_PointLightResolution = shadowData.PointLightResolution;
+		m_DirectionalLightResolutionMax = (int)shadowData.DirectionalLightCascadeResolution;
 		m_LightTypeToFaceCountMap[0] = 1;
-		m_LightTypeToFaceCountMap[1] = waaaghShadowData.DirectionalLightCascades.Count;
+		m_LightTypeToFaceCountMap[1] = shadowData.DirectionalLightCascades.Count;
 		m_LightTypeToFaceCountMap[2] = 4;
 		m_LightTypeToFaceCountMap[3] = 0;
 		m_LightTypeToFaceCountMap[4] = 0;
 		m_LightTypeToViewportCountMap[0] = 1;
-		m_LightTypeToViewportCountMap[1] = waaaghShadowData.DirectionalLightCascades.Count;
+		m_LightTypeToViewportCountMap[1] = shadowData.DirectionalLightCascades.Count;
 		m_LightTypeToViewportCountMap[2] = 1;
 		m_LightTypeToViewportCountMap[3] = 0;
 		m_LightTypeToViewportCountMap[4] = 0;

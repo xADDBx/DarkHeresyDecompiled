@@ -24,10 +24,22 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 	[SerializeField]
 	private float m_BigFontSize;
 
-	[Header("Health")]
 	[SerializeField]
-	private Image m_HPBackground;
+	private CanvasGroup m_HPGroup;
 
+	[SerializeField]
+	private CanvasGroup m_ArmorGroup;
+
+	[SerializeField]
+	private GameObject m_HPBackground;
+
+	[SerializeField]
+	private GameObject m_ArmorBackground;
+
+	[SerializeField]
+	private GameObject m_HPArmorBackground;
+
+	[Header("Health")]
 	[SerializeField]
 	private Slider m_HPMaxSlider;
 
@@ -47,12 +59,6 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 	private CanvasGroup m_HPLabelCanvasGroup;
 
 	[Header("Armor")]
-	[SerializeField]
-	private CanvasGroup m_ArmorGroup;
-
-	[SerializeField]
-	private Image m_HPArmorBackground;
-
 	[SerializeField]
 	private Slider m_ArmorMaxSlider;
 
@@ -81,54 +87,6 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 
 	private bool m_IsBinding;
 
-	private bool CheckDestructible
-	{
-		get
-		{
-			if (!base.ViewModel.MechanicEntityUIState.IsDestructible.CurrentValue)
-			{
-				return true;
-			}
-			if (!base.ViewModel.MechanicEntityUIState.IsTBM.CurrentValue && !base.ViewModel.VisibleInExploration)
-			{
-				return false;
-			}
-			if (base.ViewModel.MechanicEntityUIState.IsDestructibleNotCover.CurrentValue)
-			{
-				return true;
-			}
-			if (base.ViewModel.MechanicEntityUIState.Ability.CurrentValue != null && base.ViewModel.MechanicEntityUIState.IsTarget.CurrentValue)
-			{
-				return true;
-			}
-			return base.ViewModel.MechanicEntityUIState.IsMouseOverUnit.CurrentValue;
-		}
-	}
-
-	private bool IsEnemyInPreparationTurn
-	{
-		get
-		{
-			if (base.ViewModel.MechanicEntityUIState.IsEnemy.CurrentValue)
-			{
-				return base.ViewModel.MechanicEntityUIState.IsPreparationTurn.CurrentValue;
-			}
-			return false;
-		}
-	}
-
-	private bool IsVisible
-	{
-		get
-		{
-			if (!base.ViewModel.MechanicEntityUIState.HasHiddenCondition.CurrentValue && (base.ViewModel.MechanicEntityUIState.IsInCombat.CurrentValue || IsEnemyInPreparationTurn || base.ViewModel.VisibleInExploration) && !base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead.CurrentValue)
-			{
-				return CheckDestructible;
-			}
-			return false;
-		}
-	}
-
 	public void HideInstant()
 	{
 		m_FadeTween?.Kill();
@@ -139,28 +97,32 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 	protected override void OnBind()
 	{
 		m_IsBinding = true;
-		base.ViewModel.MechanicEntityUIState.IsEnemy.CombineLatest(base.ViewModel.MechanicEntityUIState.IsPlayer, base.ViewModel.MechanicEntityUIState.IsDestructible, base.ViewModel.MechanicEntityUIState.IsCover, (bool enemy, bool player, bool destructible, bool cover) => new { enemy, player, destructible, cover }).Subscribe(value =>
+		base.ViewModel.EntityUIState.IsEnemy.CombineLatest(base.ViewModel.EntityUIState.IsPlayer, base.ViewModel.EntityUIState.IsDestructible, base.ViewModel.EntityUIState.IsCover, (bool enemy, bool player, bool destructible, bool cover) => new { enemy, player, destructible, cover }).Subscribe(value =>
 		{
 			int activeLayer = ((value.destructible || value.cover) ? 3 : ((!value.player) ? (value.enemy ? 1 : 2) : 0));
 			m_MultiSelectable.SetActiveLayer(activeLayer);
-		}).AddTo(this);
-		base.ViewModel.HitPointMax.Subscribe(delegate(int value)
-		{
-			m_HPMaxSlider.maxValue = value;
-		}).AddTo(this);
-		base.ViewModel.HitPointLeft.Subscribe(delegate(int value)
-		{
-			m_HPLeftSlider.SetValue(value, !m_IsBinding);
-			m_HPLabel.text = (base.ViewModel.HideRealHealthInUI ? "???" : value.ToString());
 		}).AddTo(this);
 		base.ViewModel.CanDie.Subscribe(delegate(bool value)
 		{
 			m_DeathMark.alpha = (value ? 1 : 0);
 			m_DeathMark.blocksRaycasts = value;
 		}).AddTo(this);
+		bool countHpAsArmor = base.ViewModel.EntityUIState.IsCountHpAsArmor;
+		if (!countHpAsArmor)
+		{
+			base.ViewModel.HitPointMax.Subscribe(delegate(int value)
+			{
+				m_HPMaxSlider.maxValue = value;
+			}).AddTo(this);
+			base.ViewModel.HitPointLeft.Subscribe(delegate(int value)
+			{
+				m_HPLeftSlider.SetValue(value, !m_IsBinding);
+				m_HPLabel.text = (base.ViewModel.HideRealHealthInUI ? "???" : value.ToString());
+			}).AddTo(this);
+		}
 		base.ViewModel.ArmorMax.Subscribe(delegate(int value)
 		{
-			SetArmorVisuals(value > 0);
+			SetGroupsVisibility(value > 0, !countHpAsArmor);
 			m_ArmorMaxSlider.maxValue = value;
 		}).AddTo(this);
 		base.ViewModel.ArmorLeft.Subscribe(delegate(int value)
@@ -171,7 +133,7 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 		base.ViewModel.MaxDamage.Subscribe(SetDamagePredict).AddTo(this);
 		base.ViewModel.MaxHeal.CombineLatest(base.ViewModel.HealStrategy, (int heal, DamageStrategy strategy) => (heal: heal, strategy: strategy)).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(SetHealPredict)
 			.AddTo(this);
-		base.ViewModel.MechanicEntityUIState.IsEnemy.CombineLatest(base.ViewModel.MechanicEntityUIState.IsInCombat, base.ViewModel.MechanicEntityUIState.HasHiddenCondition, base.ViewModel.MechanicEntityUIState.IsDeadOrUnconsciousIsDead, base.ViewModel.MechanicEntityUIState.IsMouseOverUnit, base.ViewModel.MechanicEntityUIState.ForceHotKeyPressed, (bool _, bool _, bool _, bool _, bool _, bool _) => true).Subscribe(delegate
+		base.ViewModel.EntityUIState.IsEnemy.CombineLatest(base.ViewModel.EntityUIState.IsInCombat, base.ViewModel.EntityUIState.HideOvertip, base.ViewModel.EntityUIState.IsDeadOrUnconsciousIsDead, base.ViewModel.EntityUIState.IsMouseOverUnit, base.ViewModel.EntityUIState.ForceHotKeyPressed, base.ViewModel.EntityUIState.IsPreparationTurn, (bool _, bool _, bool _, bool _, bool _, bool _, bool _) => true).Subscribe(delegate
 		{
 			DoVisibility();
 		}).AddTo(this);
@@ -194,18 +156,20 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 
 	private void DoVisibility()
 	{
-		float endValue = (IsVisible ? 1f : 0f);
+		bool flag = base.ViewModel.ShowBlock();
+		float endValue = (flag ? 1f : 0f);
 		m_FadeTween?.Kill();
 		m_FadeTween = m_CanvasGroup.DOFade(endValue, 0.2f).SetUpdate(isIndependentUpdate: true).SetAutoKill(autoKillOnCompletion: true);
-		m_CanvasGroup.blocksRaycasts = IsVisible;
+		m_CanvasGroup.blocksRaycasts = flag;
 	}
 
-	private void SetArmorVisuals(bool hasArmor)
+	private void SetGroupsVisibility(bool hasArmor, bool hasHp)
 	{
 		m_ArmorGroup.alpha = (hasArmor ? 1f : 0f);
-		m_HPBackground.color = ((!hasArmor) ? Color.white : Color.clear);
-		m_HPArmorBackground.color = (hasArmor ? Color.white : Color.clear);
-		m_HPLabel.fontSize = (hasArmor ? m_SmallFontSize : m_BigFontSize);
+		m_HPGroup.alpha = (hasHp ? 1f : 0f);
+		m_HPArmorBackground.SetActive(hasArmor && hasHp);
+		m_HPBackground.SetActive(!hasArmor && hasHp);
+		m_ArmorBackground.SetActive(hasArmor && !hasHp);
 	}
 
 	private void SetDamagePredict((int health, int armor) damage)
@@ -221,8 +185,8 @@ public class OvertipUnitHealthBlockView : View<OvertipHealthBlockVM>
 		m_HPLabelCanvasGroup.alpha = 0f;
 		m_ArmorLabelCanvasGroup.alpha = 0f;
 		int currentValue = base.ViewModel.ArmorLeft.CurrentValue;
-		int currentValue2 = base.ViewModel.HitPointLeft.CurrentValue;
 		int num = Mathf.Max(0, currentValue - damage.armor);
+		int currentValue2 = base.ViewModel.HitPointLeft.CurrentValue;
 		int num2 = Mathf.Max(0, currentValue2 - damage.health);
 		m_ArmorMaxDamageSlider.SetRange(num, currentValue, blink: true);
 		m_HPMaxDamageSlider.SetRange(num2, currentValue2, blink: true);

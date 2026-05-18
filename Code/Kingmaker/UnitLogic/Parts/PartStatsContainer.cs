@@ -1,9 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using JetBrains.Annotations;
-using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
-using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.UnitLogic.Mechanics;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -11,85 +8,16 @@ using UnityEngine;
 
 namespace Kingmaker.UnitLogic.Parts;
 
+[Obsolete("MechanicActor - new stats")]
 [OwlPackable(OwlPackableMode.Generate)]
 public class PartStatsContainer : MechanicEntityPart, IHashable, IOwlPackable<PartStatsContainer>
 {
-	public interface IOwner : IEntityPartOwner<PartStatsContainer>, IEntityPartOwner
-	{
-		PartStatsContainer Stats { get; }
-	}
-
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartStatsContainer",
 		OldNames = null,
 		Fields = new FieldInfo[0]
 	};
-
-	public StatsContainer Container { get; private set; }
-
-	public Dictionary<StatType, StatType> OverridenBaseStat { get; } = new Dictionary<StatType, StatType>();
-
-
-	public IEnumerable<ModifiableValue> AllStats => Container.AllStats;
-
-	protected override void OnAttachOrPrePostLoad()
-	{
-		Container = new StatsContainer(base.Owner);
-	}
-
-	protected override void OnDidPostLoad()
-	{
-		Container.OnDidPostLoad();
-	}
-
-	[CanBeNull]
-	public TModifiableValue GetStatOptional<TModifiableValue>(StatType type) where TModifiableValue : ModifiableValue
-	{
-		return Container.GetStatOptional<TModifiableValue>(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValue GetStatOptional(StatType type)
-	{
-		return Container.GetStatOptional(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValueAttributeStat GetAttributeOptional(StatType type)
-	{
-		return Container.GetStatOptional<ModifiableValueAttributeStat>(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValueSkill GetSkillOptional(StatType type)
-	{
-		return Container.GetStatOptional<ModifiableValueSkill>(type);
-	}
-
-	[CanBeNull]
-	public ModifiableValue GetStat(StatType type)
-	{
-		return Container.GetStat(type);
-	}
-
-	[NotNull]
-	public TModifiableValue GetStat<TModifiableValue>(StatType type) where TModifiableValue : ModifiableValue
-	{
-		return Container.GetStat<TModifiableValue>(type);
-	}
-
-	[NotNull]
-	public ModifiableValueAttributeStat GetAttribute(StatType type)
-	{
-		return Container.GetAttribute(type);
-	}
-
-	[NotNull]
-	public ModifiableValueSkill GetSkill(StatType type)
-	{
-		return Container.GetSkill(type);
-	}
 
 	public override Hash128 GetHash128()
 	{

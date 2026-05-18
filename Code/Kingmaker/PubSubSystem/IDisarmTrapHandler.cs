@@ -7,9 +7,9 @@ namespace Kingmaker.PubSubSystem;
 
 public interface IDisarmTrapHandler : ISubscriber<IBaseUnitEntity>, ISubscriber
 {
-	void HandleDisarmTrapSuccess(TrapObjectView trap);
+	void HandleDisarmTrapSuccess(TrapObjectData trap);
 
-	void HandleDisarmTrapFail(TrapObjectView trap);
+	void HandleDisarmTrapFail(TrapObjectData trap);
 
-	void HandleDisarmTrapCriticalFail(TrapObjectView trap);
+	void HandleDisarmTrapCriticalFail(TrapObjectData trap);
 }

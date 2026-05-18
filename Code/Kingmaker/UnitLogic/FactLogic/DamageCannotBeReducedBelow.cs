@@ -49,8 +49,7 @@ public class DamageCannotBeReducedBelow : UnitFactComponentDelegate, IInitiatorR
 		{
 			if (Restriction.IsPassed(base.Context, null, null, evt))
 			{
-				PropertyContext context = new PropertyContext(base.Owner, base.Context, null, evt);
-				int num = ((m_ValueType == ValueType.PercentOfMaxDamage) ? Mathf.RoundToInt((float)Value.GetValue(context) / 100f * (float)evt.ResultDamage.GetMaxValueWithoutPenalties()) : Value.GetValue(context));
+				int num = ((m_ValueType == ValueType.PercentOfMaxDamage) ? Mathf.RoundToInt((float)Value.GetValue(base.Owner, base.Context, null, evt) / 100f * (float)evt.ResultDamage.GetMaxValueWithoutPenalties()) : Value.GetValue(base.Owner, base.Context, null, evt));
 				int num2 = Math.Max(0, num - evt.ResultValue);
 				if (num2 > 0)
 				{

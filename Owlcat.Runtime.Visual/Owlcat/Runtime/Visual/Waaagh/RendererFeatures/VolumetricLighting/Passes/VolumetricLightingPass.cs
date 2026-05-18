@@ -1,8 +1,6 @@
 using Owlcat.Runtime.Visual.Lighting;
 using Owlcat.Runtime.Visual.Overrides;
-using Owlcat.Runtime.Visual.Waaagh.Data;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
-using Owlcat.Runtime.Visual.Waaagh.Passes;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -11,8 +9,91 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.VolumetricLighting.Passes;
 
-public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPassData>
+internal static class VolumetricLightingPass
 {
+	private sealed class PassData
+	{
+		public Material ShadowmapDownsampleMaterial;
+
+		public ComputeShader VoxelizationShader;
+
+		public ComputeShader LightingShader;
+
+		public ComputeShader ScatterShader;
+
+		public TextureHandle VoxelizedSceneTexture;
+
+		public TextureHandle LightingHistoryTexture;
+
+		public TextureHandle ScatterTexture;
+
+		public Texture2D BlueNoiseTexture;
+
+		public TextureHandle Shadowmap;
+
+		public TextureHandle ShadowmapDownsampled;
+
+		public int3 VoxelizationDispatchSize;
+
+		public int3 LightingDispatchSize;
+
+		public int3 ScatterDispatchSize;
+
+		public Vector4 LightingTextureSize;
+
+		public Matrix4x4 ViewProjMatrix;
+
+		public Matrix4x4 InvViewProjMatrix;
+
+		public Matrix4x4 PrevViewProjMatrix;
+
+		public Vector4 VolumetricProjectionParams;
+
+		public Vector4 HeightFogParams;
+
+		public Vector4 DownsampledShadowmapSize;
+
+		public float BlueNoiseTextureSize;
+
+		public Vector4 ScatteringExtinction;
+
+		public float Anisotropy;
+
+		public bool TricubicDeferred;
+
+		public bool TricubicForward;
+
+		public float LightShadows;
+
+		public float TemporalFeedback;
+
+		public float AmbientLightScale;
+
+		public bool HighRes;
+
+		public bool TemporalAccumulation;
+
+		public bool UseDownsampledShadowmap;
+
+		public bool LocalVolumesEnabled;
+
+		public Vector4 LocalVolumetricFogClusteringParams;
+
+		public BufferHandle LocalFogBoundsBuffer;
+
+		public BufferHandle LocalFogGpuDataBuffer;
+
+		public BufferHandle LocalFogTilesBuffer;
+
+		public BufferHandle LocalFogZBinsBuffer;
+
+		public Matrix4x4 ScreenProjMatrix;
+
+		public Texture VolumeMaskAtlas;
+
+		public bool SkipFirstFrameTemporalAccumulation;
+	}
+
 	private static readonly int _ResultUAV = Shader.PropertyToID("_ResultUAV");
 
 	private static readonly int _VoxelizedSceneTexture = Shader.PropertyToID("_VoxelizedSceneTexture");
@@ -57,6 +138,10 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 
 	private static readonly int _VolumeMaskAtlas = Shader.PropertyToID("_VolumeMaskAtlas");
 
+	private static readonly int _SourceTexture = Shader.PropertyToID("_SourceTexture");
+
+	private static readonly int _VolumetricLightingShadowmapRT = Shader.PropertyToID("_VolumetricLightingShadowmapRT");
+
 	private static readonly string TEMPORAL_ACCUMULATION = "TEMPORAL_ACCUMULATION";
 
 	private static readonly string _LOCAL_VOLUMETRIC_VOLUMES_ENABLED = "_LOCAL_VOLUMETRIC_VOLUMES_ENABLED";
@@ -67,96 +152,69 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 
 	private static readonly int3 m_ScatterGroupSize = new int3(8, 8, 1);
 
-	private Material m_ShadowmapDownsampleMaterial;
-
-	private ComputeShader m_VoxelizationShader;
-
-	private ComputeShader m_LightingShader;
-
-	private ComputeShader m_ScatterShader;
-
-	private VolumetricLightingFeature m_Feature;
-
-	public override string Name => "VolumetricLightingPass";
-
-	public TileSize TileSize { get; internal set; }
-
-	public VolumetricFog VolumetricFog { get; internal set; }
-
-	public VolumetricLightingPass(RenderPassEvent evt, VolumetricLightingFeature feature)
-		: base(evt)
+	public static void Record(in RecordContext context, VolumetricLightingRendererFeature feature, Material shadowDownsampleMaterial, VolumetricLightingData volumetricLightingData)
 	{
-		m_ShadowmapDownsampleMaterial = feature.ShadowmapDownsampleMaterial;
-		m_VoxelizationShader = feature.Resources.VoxelizationShader;
-		m_LightingShader = feature.Resources.LightingShader;
-		m_ScatterShader = feature.Resources.ScatterShader;
-		m_Feature = feature;
-	}
-
-	protected override void Setup(RenderGraphBuilder builder, VolumetricLightingPassData data, ContextContainer frameData)
-	{
-		WaaaghCameraData waaaghCameraData = frameData.Get<WaaaghCameraData>();
-		WaaaghRenderingData waaaghRenderingData = frameData.Get<WaaaghRenderingData>();
-		WaaaghResourceData waaaghResourceData = frameData.Get<WaaaghResourceData>();
-		data.ShadowmapDownsampleMaterial = m_ShadowmapDownsampleMaterial;
-		data.VoxelizationShader = m_VoxelizationShader;
-		data.LightingShader = m_LightingShader;
-		data.ScatterShader = m_ScatterShader;
-		Vector2Int cameraRenderPixelSize = new Vector2Int(waaaghCameraData.cameraTargetDescriptor.width, waaaghCameraData.cameraTargetDescriptor.height);
-		int3 textureSize = new int3(waaaghCameraData.cameraTargetDescriptor.width, waaaghCameraData.cameraTargetDescriptor.height, (int)m_Feature.Settings.Slices);
-		int tileSize = (int)TileSize;
-		textureSize.x = RenderingUtils.DivRoundUp(textureSize.x, tileSize);
-		textureSize.y = RenderingUtils.DivRoundUp(textureSize.y, tileSize);
-		VolumetricCameraBuffer volumetricCameraBuffer = VolumetricCameraBuffers.EnsureCamera(waaaghCameraData.camera, cameraRenderPixelSize, textureSize, m_Feature.Settings.TemporalAccumulation ? 1 : 0);
-		data.SkipFirstFrameTemporalAccumulation = !volumetricCameraBuffer.IsFirstFrame;
+		PassData passData;
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("VolumetricLighting", out passData, WaaaghProfileId.VolumetricLighting.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\VolumetricLightingPass.cs", 105);
+		passData.ShadowmapDownsampleMaterial = shadowDownsampleMaterial;
+		passData.VoxelizationShader = feature.Resources.VoxelizationShader;
+		passData.LightingShader = feature.Resources.LightingShader;
+		passData.ScatterShader = feature.Resources.ScatterShader;
+		Vector2Int cameraRenderPixelSize = new Vector2Int(context.CameraData.cameraTargetDescriptor.width, context.CameraData.cameraTargetDescriptor.height);
+		int3 textureSize = new int3(context.CameraData.cameraTargetDescriptor.width, context.CameraData.cameraTargetDescriptor.height, (int)feature.Settings.Slices);
+		textureSize.x = RenderingUtils.DivRoundUp(textureSize.x, (int)volumetricLightingData.TileSize);
+		textureSize.y = RenderingUtils.DivRoundUp(textureSize.y, (int)volumetricLightingData.TileSize);
+		VolumetricCameraBuffer volumetricCameraBuffer = VolumetricCameraBuffers.EnsureCamera(context.CameraData.camera, cameraRenderPixelSize, textureSize, feature.Settings.TemporalAccumulation ? 1 : 0);
+		passData.SkipFirstFrameTemporalAccumulation = !volumetricCameraBuffer.IsFirstFrame;
 		TextureDesc desc = new TextureDesc(textureSize.x, textureSize.y);
 		desc.slices = textureSize.z;
 		desc.dimension = TextureDimension.Tex3D;
 		desc.enableRandomWrite = true;
 		desc.colorFormat = GraphicsFormat.R16G16B16A16_SFloat;
 		desc.name = "VoxelizedScene";
-		data.VoxelizedSceneTexture = builder.CreateTransientTexture(in desc);
+		passData.VoxelizedSceneTexture = unsafeRenderGraphBuilder.CreateTransientTexture(in desc);
 		desc.name = "VolumetricScatter";
-		waaaghResourceData.VolumetricScatter = waaaghRenderingData.RenderGraph.CreateTexture(in desc);
-		data.ScatterTexture = builder.WriteTexture(in waaaghResourceData.VolumetricScatter);
-		data.TemporalAccumulation = m_Feature.Settings.TemporalAccumulation;
-		data.TemporalFeedback = m_Feature.Settings.TemporalFeedback;
-		if (m_Feature.Settings.TemporalAccumulation)
+		volumetricLightingData.ScatterTexture = context.RenderGraph.CreateTexture(in desc);
+		passData.ScatterTexture = volumetricLightingData.ScatterTexture;
+		unsafeRenderGraphBuilder.UseTexture(in passData.ScatterTexture, AccessFlags.Write);
+		passData.TemporalAccumulation = feature.Settings.TemporalAccumulation;
+		passData.TemporalFeedback = feature.Settings.TemporalFeedback;
+		if (feature.Settings.TemporalAccumulation)
 		{
-			data.LightingHistoryTexture = waaaghRenderingData.RenderGraph.ImportTexture(volumetricCameraBuffer.GetCurrentFrameRT());
-			data.BlueNoiseTexture = m_Feature.SharedTextures.BlueNoise16Textures[waaaghRenderingData.TimeData.FrameId % m_Feature.SharedTextures.BlueNoise16Textures.Length];
+			passData.LightingHistoryTexture = context.RenderGraph.ImportTexture(volumetricCameraBuffer.GetCurrentFrameRT());
+			unsafeRenderGraphBuilder.UseTexture(in passData.LightingHistoryTexture, AccessFlags.ReadWrite);
+			passData.BlueNoiseTexture = feature.SharedTextures.BlueNoise16Textures[context.RenderingData.TimeData.FrameId % feature.SharedTextures.BlueNoise16Textures.Length];
 		}
 		else
 		{
-			data.BlueNoiseTexture = m_Feature.SharedTextures.BlueNoise16Textures[0];
+			passData.BlueNoiseTexture = feature.SharedTextures.BlueNoise16Textures[0];
 		}
-		data.CameraDepthCopy = builder.ReadTexture(in waaaghResourceData.CameraDepthCopyRT);
 		bool num = WaaaghPipeline.Asset.ShadowSettings.ShadowQuality == ShadowQuality.Disable;
-		bool flag = Mathf.Approximately(waaaghCameraData.maxShadowDistance, 0f);
+		bool flag = Mathf.Approximately(context.CameraData.maxShadowDistance, 0f);
 		int num2;
-		TextureHandle input;
 		if (!num)
 		{
 			num2 = ((!flag) ? 1 : 0);
 			if (num2 != 0)
 			{
-				input = waaaghResourceData.Shadowmap;
-				data.Shadowmap = builder.ReadTexture(in input);
-				goto IL_02a5;
+				passData.Shadowmap = context.FrameResources.Shadows.Shadowmap;
+				unsafeRenderGraphBuilder.UseTexture(in context.FrameResources.Shadows.Shadowmap);
+				goto IL_02d6;
 			}
 		}
 		else
 		{
 			num2 = 0;
 		}
-		input = waaaghRenderingData.RenderGraph.defaultResources.defaultShadowTexture;
-		data.Shadowmap = builder.ReadTexture(in input);
-		goto IL_02a5;
-		IL_02a5:
-		if (num2 != 0 && m_Feature.Settings.UseDownsampledShadowmap && m_Feature.Settings.DownsampledShadowmapSize < WaaaghPipeline.Asset.ShadowSettings.AtlasSize)
+		passData.Shadowmap = context.RenderGraph.defaultResources.defaultShadowTexture;
+		TextureHandle input = context.RenderGraph.defaultResources.defaultShadowTexture;
+		unsafeRenderGraphBuilder.UseTexture(in input);
+		goto IL_02d6;
+		IL_02d6:
+		if (num2 != 0 && feature.Settings.UseDownsampledShadowmap && feature.Settings.DownsampledShadowmapSize < WaaaghPipeline.Asset.ShadowSettings.AtlasSize)
 		{
-			data.UseDownsampledShadowmap = true;
-			int downsampledShadowmapSize = (int)m_Feature.Settings.DownsampledShadowmapSize;
+			passData.UseDownsampledShadowmap = true;
+			int downsampledShadowmapSize = (int)feature.Settings.DownsampledShadowmapSize;
 			TextureDesc desc2 = new TextureDesc(downsampledShadowmapSize, downsampledShadowmapSize);
 			desc2.isShadowMap = true;
 			desc2.depthBufferBits = DepthBits.Depth16;
@@ -165,17 +223,17 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 			desc2.dimension = TextureDimension.Tex2D;
 			desc2.useMipMap = false;
 			desc2.name = "ShadowmapDownsampledRT";
-			data.ShadowmapDownsampled = builder.CreateTransientTexture(in desc2);
-			data.DownsampledShadowmapSize = new Vector4(downsampledShadowmapSize, downsampledShadowmapSize, 1f / (float)downsampledShadowmapSize, 1f / (float)downsampledShadowmapSize);
+			passData.ShadowmapDownsampled = unsafeRenderGraphBuilder.CreateTransientTexture(in desc2);
+			passData.DownsampledShadowmapSize = new Vector4(downsampledShadowmapSize, downsampledShadowmapSize, 1f / (float)downsampledShadowmapSize, 1f / (float)downsampledShadowmapSize);
 		}
 		else
 		{
-			data.UseDownsampledShadowmap = false;
+			passData.UseDownsampledShadowmap = false;
 		}
-		data.TilesMinMaxZ = builder.ReadTexture(in waaaghResourceData.TilesMinMaxZTexture);
-		Camera camera = waaaghCameraData.camera;
+		unsafeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._TilesMinMaxZTexture);
+		Camera camera = context.CameraData.camera;
 		float nearClipPlane = camera.nearClipPlane;
-		float num3 = math.min(m_Feature.Settings.FarClip, camera.farClipPlane);
+		float num3 = math.min(feature.Settings.FarClip, camera.farClipPlane);
 		float z = nearClipPlane / num3;
 		float w = num3 / nearClipPlane;
 		Matrix4x4 worldToCameraMatrix = camera.worldToCameraMatrix;
@@ -187,73 +245,70 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 		Matrix4x4 matrix4x = Matrix4x4.Inverse(worldToCameraMatrix);
 		Matrix4x4 matrix4x2 = Matrix4x4.Inverse(proj);
 		Matrix4x4 invViewProjMatrix = matrix4x * matrix4x2;
-		data.ViewProjMatrix = viewProjMatrix;
-		data.InvViewProjMatrix = invViewProjMatrix;
-		data.PrevViewProjMatrix = volumetricCameraBuffer.PrevViewProjMatrix;
-		data.VolumetricProjectionParams = new Vector4(nearClipPlane, num3, z, w);
-		float num4 = ScaleHeightFromLayerDepth(Mathf.Max(0.01f, VolumetricFog.FogHeight.value));
-		data.HeightFogParams = new Vector4(VolumetricFog.BaseHeight.value, 1f / num4, num4, VolumetricFog.HeightFogEnabled.value ? 1 : 0);
-		data.LightingTextureSize = new Vector4(textureSize.x, textureSize.y, textureSize.z);
-		data.VoxelizationDispatchSize = new int3(RenderingUtils.DivRoundUp(textureSize.x, m_VoxelizationGroupSize.x), RenderingUtils.DivRoundUp(textureSize.y, m_VoxelizationGroupSize.y), RenderingUtils.DivRoundUp(textureSize.z, m_VoxelizationGroupSize.z));
-		data.LightingDispatchSize = new int3(RenderingUtils.DivRoundUp(textureSize.x, m_LightingGroupSize.x), RenderingUtils.DivRoundUp(textureSize.y, m_LightingGroupSize.y), RenderingUtils.DivRoundUp(textureSize.z, m_LightingGroupSize.z));
-		data.ScatterDispatchSize = new int3(RenderingUtils.DivRoundUp(textureSize.x, m_ScatterGroupSize.x), RenderingUtils.DivRoundUp(textureSize.y, m_ScatterGroupSize.y), 1);
-		data.BlueNoiseTextureSize = data.BlueNoiseTexture.width;
-		float num5 = 1f / VolumetricFog.FogDistanceAttenuation.value;
-		Vector4 scatteringExtinction = (Vector4)CoreUtils.ConvertSRGBToActiveColorSpace(VolumetricFog.Albedo.value) * num5;
-		data.ScatteringExtinction = scatteringExtinction;
-		data.ScatteringExtinction.w = num5;
-		data.Anisotropy = VolumetricFog.Anisotropy.value;
-		data.TricubicDeferred = m_Feature.Settings.TricubicFilteringDeferred;
-		data.TricubicForward = m_Feature.Settings.TricubicFilteringForward;
-		data.LightShadows = (float)m_Feature.Settings.LightShadows;
-		data.AmbientLightScale = VolumetricFog.AmbientLightMultiplier.value;
-		data.HighRes = m_Feature.Settings.Slices == VolumetricLightingSlices.x128;
-		data.LocalVolumesEnabled = m_Feature.Settings.LocalVolumesEnabled;
-		if (data.LocalVolumesEnabled)
+		passData.ViewProjMatrix = viewProjMatrix;
+		passData.InvViewProjMatrix = invViewProjMatrix;
+		passData.PrevViewProjMatrix = volumetricCameraBuffer.PrevViewProjMatrix;
+		passData.VolumetricProjectionParams = new Vector4(nearClipPlane, num3, z, w);
+		VolumetricFog volumetricFog = volumetricLightingData.VolumetricFog;
+		float num4 = ScaleHeightFromLayerDepth(Mathf.Max(0.01f, volumetricFog.FogHeight.value));
+		passData.HeightFogParams = new Vector4(volumetricFog.BaseHeight.value, 1f / num4, num4, volumetricFog.HeightFogEnabled.value ? 1 : 0);
+		passData.LightingTextureSize = new Vector4(textureSize.x, textureSize.y, textureSize.z);
+		passData.VoxelizationDispatchSize = new int3(RenderingUtils.DivRoundUp(textureSize.x, m_VoxelizationGroupSize.x), RenderingUtils.DivRoundUp(textureSize.y, m_VoxelizationGroupSize.y), RenderingUtils.DivRoundUp(textureSize.z, m_VoxelizationGroupSize.z));
+		passData.LightingDispatchSize = new int3(RenderingUtils.DivRoundUp(textureSize.x, m_LightingGroupSize.x), RenderingUtils.DivRoundUp(textureSize.y, m_LightingGroupSize.y), RenderingUtils.DivRoundUp(textureSize.z, m_LightingGroupSize.z));
+		passData.ScatterDispatchSize = new int3(RenderingUtils.DivRoundUp(textureSize.x, m_ScatterGroupSize.x), RenderingUtils.DivRoundUp(textureSize.y, m_ScatterGroupSize.y), 1);
+		passData.BlueNoiseTextureSize = passData.BlueNoiseTexture.width;
+		float num5 = 1f / volumetricFog.FogDistanceAttenuation.value;
+		Vector4 scatteringExtinction = (Vector4)CoreUtils.ConvertSRGBToActiveColorSpace(volumetricFog.Albedo.value) * num5;
+		passData.ScatteringExtinction = scatteringExtinction;
+		passData.ScatteringExtinction.w = num5;
+		passData.Anisotropy = volumetricFog.Anisotropy.value;
+		passData.TricubicDeferred = feature.Settings.TricubicFilteringDeferred;
+		passData.TricubicForward = feature.Settings.TricubicFilteringForward;
+		passData.LightShadows = (float)feature.Settings.LightShadows;
+		passData.AmbientLightScale = volumetricFog.AmbientLightMultiplier.value;
+		passData.HighRes = feature.Settings.Slices == VolumetricLightingSlices.x128;
+		passData.LocalVolumesEnabled = feature.Settings.LocalVolumesEnabled;
+		if (passData.LocalVolumesEnabled)
 		{
-			data.LocalVolumetricFogClusteringParams = m_Feature.FogClusteringParams;
-			data.LocalFogBoundsBuffer = builder.ReadBuffer(in m_Feature.VisibleVolumesBoundsBufferHandle);
-			data.LocalFogTilesBuffer = builder.ReadBuffer(in m_Feature.FogTilesBufferHandle);
-			data.LocalFogGpuDataBuffer = builder.ReadBuffer(in m_Feature.VisibleVolumesDataBufferHandle);
-			data.LocalFogZBinsBuffer = builder.ReadBuffer(in m_Feature.ZBinsBufferHandle);
-			data.ScreenProjMatrix = GetScreenProjMatrix(waaaghCameraData);
-			data.VolumeMaskAtlas = LocalVolumetricFogManager.Instance.VolumeAtlas.GetAtlas();
-			if (data.VolumeMaskAtlas == null)
+			passData.LocalVolumetricFogClusteringParams = feature.FogClusteringParams;
+			passData.LocalFogBoundsBuffer = volumetricLightingData.VisibleVolumesBoundsBuffer;
+			passData.LocalFogTilesBuffer = volumetricLightingData.FogTilesBuffer;
+			passData.LocalFogGpuDataBuffer = volumetricLightingData.VisibleVolumesDataBuffer;
+			passData.LocalFogZBinsBuffer = volumetricLightingData.ZBinsBuffer;
+			unsafeRenderGraphBuilder.UseBuffer(in passData.LocalFogBoundsBuffer);
+			unsafeRenderGraphBuilder.UseBuffer(in passData.LocalFogTilesBuffer);
+			unsafeRenderGraphBuilder.UseBuffer(in passData.LocalFogGpuDataBuffer);
+			unsafeRenderGraphBuilder.UseBuffer(in passData.LocalFogZBinsBuffer);
+			passData.ScreenProjMatrix = GetScreenProjMatrix(in context.CameraData);
+			passData.VolumeMaskAtlas = LocalVolumetricFogManager.Instance.VolumeAtlas.GetAtlas();
+			if (passData.VolumeMaskAtlas == null)
 			{
-				data.VolumeMaskAtlas = CoreUtils.blackVolumeTexture;
+				passData.VolumeMaskAtlas = CoreUtils.blackVolumeTexture;
 			}
 		}
-		volumetricCameraBuffer.Swap(data.ViewProjMatrix);
+		volumetricCameraBuffer.Swap(passData.ViewProjMatrix);
+		unsafeRenderGraphBuilder.SetRenderFunc(delegate(PassData data, UnsafeGraphContext context)
+		{
+			Render(data, context);
+		});
 	}
 
-	private Matrix4x4 GetScreenProjMatrix(WaaaghCameraData cameraData)
+	private static void Render(PassData data, UnsafeGraphContext context)
 	{
-		Matrix4x4 matrix4x = default(Matrix4x4);
-		float num = cameraData.cameraTargetDescriptor.width;
-		float num2 = cameraData.cameraTargetDescriptor.height;
-		matrix4x.SetRow(0, new Vector4(0.5f * num, 0f, 0f, 0.5f * num));
-		matrix4x.SetRow(1, new Vector4(0f, 0.5f * num2, 0f, 0.5f * num2));
-		matrix4x.SetRow(2, new Vector4(0f, 0f, 0.5f, 0.5f));
-		matrix4x.SetRow(3, new Vector4(0f, 0f, 0f, 1f));
-		return matrix4x * cameraData.GetProjectionMatrix();
-	}
-
-	protected override void Render(VolumetricLightingPassData data, RenderGraphContext context)
-	{
+		TextureHandle rt;
 		if (data.UseDownsampledShadowmap)
 		{
 			context.cmd.SetRenderTarget(data.ShadowmapDownsampled);
-			context.cmd.SetGlobalTexture(ShaderPropertyId._ShadowmapRT, data.Shadowmap);
+			context.cmd.SetGlobalTexture(_SourceTexture, data.Shadowmap);
 			context.cmd.SetGlobalVector(_OutputSize, data.DownsampledShadowmapSize);
 			context.cmd.DrawProcedural(Matrix4x4.identity, data.ShadowmapDownsampleMaterial, 0, MeshTopology.Triangles, 3);
-			context.cmd.SetGlobalTexture(ShaderPropertyId._ShadowmapRT, data.ShadowmapDownsampled);
+			rt = data.ShadowmapDownsampled;
 		}
 		else
 		{
-			context.cmd.SetGlobalTexture(ShaderPropertyId._ShadowmapRT, data.Shadowmap);
+			rt = data.Shadowmap;
 		}
 		context.cmd.SetComputeTextureParam(data.VoxelizationShader, 0, _ResultUAV, data.VoxelizedSceneTexture);
-		context.cmd.SetComputeTextureParam(data.VoxelizationShader, 0, ShaderPropertyId._TilesMinMaxZTexture, data.TilesMinMaxZ);
 		context.cmd.SetComputeVectorParam(data.VoxelizationShader, _VolumeScatter_Size, data.LightingTextureSize);
 		context.cmd.SetComputeVectorParam(data.VoxelizationShader, _VolumetricScatteringExtinction, data.ScatteringExtinction);
 		context.cmd.SetComputeMatrixParam(data.VoxelizationShader, _VolumetricInvViewProj, data.InvViewProjMatrix);
@@ -285,6 +340,7 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 		}
 		context.cmd.SetComputeTextureParam(data.LightingShader, 0, _ResultUAV, data.ScatterTexture);
 		context.cmd.SetComputeTextureParam(data.LightingShader, 0, _VoxelizedSceneTexture, data.VoxelizedSceneTexture);
+		context.cmd.SetComputeTextureParam(data.LightingShader, 0, _VolumetricLightingShadowmapRT, rt);
 		if (data.TemporalAccumulation)
 		{
 			context.cmd.SetComputeTextureParam(data.LightingShader, 0, _HistoryTexture, data.LightingHistoryTexture);
@@ -301,14 +357,14 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 		context.cmd.SetComputeFloatParam(data.LightingShader, _TemporalFeedback, data.TemporalFeedback);
 		context.cmd.SetComputeFloatParam(data.LightingShader, _VolumetricAmbientLightScale, data.AmbientLightScale);
 		context.cmd.SetComputeVectorParam(data.LightingShader, _VolumetricScatteringExtinction, data.ScatteringExtinction);
-		RenderingUtils.SetLightProbe(context.cmd, RenderSettings.ambientProbe);
+		RenderingUtils.SetLightProbe(CommandBufferHelpers.GetNativeCommandBuffer(context.cmd), RenderSettings.ambientProbe);
 		context.cmd.DispatchCompute(data.LightingShader, 0, data.LightingDispatchSize.x, data.LightingDispatchSize.y, data.LightingDispatchSize.z);
-		TextureHandle textureHandle = ((!data.TemporalAccumulation) ? data.VoxelizedSceneTexture : data.LightingHistoryTexture);
+		TextureHandle rt2 = ((!data.TemporalAccumulation) ? data.VoxelizedSceneTexture : data.LightingHistoryTexture);
 		context.cmd.SetComputeTextureParam(data.ScatterShader, 1, _VolumeInject, data.ScatterTexture);
-		context.cmd.SetComputeTextureParam(data.ScatterShader, 1, _ResultUAV, textureHandle);
+		context.cmd.SetComputeTextureParam(data.ScatterShader, 1, _ResultUAV, rt2);
 		context.cmd.SetComputeVectorParam(data.ScatterShader, _VolumeScatter_Size, data.LightingTextureSize);
 		context.cmd.DispatchCompute(data.ScatterShader, 1, data.LightingDispatchSize.x, data.LightingDispatchSize.y, data.LightingDispatchSize.z);
-		context.cmd.SetComputeTextureParam(data.ScatterShader, 0, _VolumeInject, textureHandle);
+		context.cmd.SetComputeTextureParam(data.ScatterShader, 0, _VolumeInject, rt2);
 		context.cmd.SetComputeTextureParam(data.ScatterShader, 0, _ResultUAV, data.ScatterTexture);
 		context.cmd.SetComputeVectorParam(data.ScatterShader, _VolumetricProjectionParams, data.VolumetricProjectionParams);
 		context.cmd.SetComputeVectorParam(data.ScatterShader, _VolumeScatter_Size, data.LightingTextureSize);
@@ -320,10 +376,18 @@ public class VolumetricLightingPass : ScriptableRenderPass<VolumetricLightingPas
 		context.cmd.SetGlobalFloat(_VolumtricTricubicForward, data.TricubicForward ? 1 : 0);
 		context.cmd.SetGlobalVector(_VolumetricProjectionParams, data.VolumetricProjectionParams);
 		context.cmd.SetGlobalMatrix(_VolumetricViewProj, data.ViewProjMatrix);
-		if (data.UseDownsampledShadowmap)
-		{
-			context.cmd.SetGlobalTexture(ShaderPropertyId._ShadowmapRT, data.Shadowmap);
-		}
+	}
+
+	private static Matrix4x4 GetScreenProjMatrix(in WaaaghCameraData cameraData)
+	{
+		Matrix4x4 matrix4x = default(Matrix4x4);
+		float num = cameraData.cameraTargetDescriptor.width;
+		float num2 = cameraData.cameraTargetDescriptor.height;
+		matrix4x.SetRow(0, new Vector4(0.5f * num, 0f, 0f, 0.5f * num));
+		matrix4x.SetRow(1, new Vector4(0f, 0.5f * num2, 0f, 0.5f * num2));
+		matrix4x.SetRow(2, new Vector4(0f, 0f, 0.5f, 0.5f));
+		matrix4x.SetRow(3, new Vector4(0f, 0f, 0f, 1f));
+		return matrix4x * cameraData.GetProjectionMatrix();
 	}
 
 	private static float ScaleHeightFromLayerDepth(float d)

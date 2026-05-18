@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using DG.Tweening;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.PubSubSystem;
@@ -11,7 +10,6 @@ using Kingmaker.Utility.DotNetExtensions;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -75,17 +73,13 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 
 	private string m_ChoosedAnswer;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
+	protected readonly List<BookEventCueView> m_MemorizedCuesViews = new List<BookEventCueView>();
 
-	protected readonly List<BookEventCueView> MemorizedCuesViews = new List<BookEventCueView>();
+	protected readonly List<BookEventCueView> m_CurrentCuesViews = new List<BookEventCueView>();
 
-	protected readonly List<BookEventCueView> CurrentCuesViews = new List<BookEventCueView>();
+	protected readonly List<BookEventAnswerPCView> m_AnswersEntities = new List<BookEventAnswerPCView>();
 
-	protected readonly List<BookEventAnswerPCView> AnswersEntities = new List<BookEventAnswerPCView>();
-
-	protected readonly ReactiveProperty<bool> VotesIsActive = new ReactiveProperty<bool>();
-
-	protected InputLayer Layer;
+	protected readonly ReactiveProperty<bool> m_VotesIsActive = new ReactiveProperty<bool>();
 
 	protected ReadOnlyReactiveProperty<bool> IsShowHistory => m_IsShowHistory;
 
@@ -100,7 +94,6 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 	{
 		m_LastHistoryCueIndex = -1;
 		Show();
-		CreateNavigation();
 		base.ViewModel.EventPicture.Select((Sprite ev) => ev != null).Subscribe(delegate
 		{
 			SetupPicture();
@@ -139,7 +132,6 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 				m_FlavorTextHeader.SetActive(value: false);
 			}
 		}).AddTo(this);
-		GamePad.Instance.PushLayer(Layer).AddTo(this);
 	}
 
 	protected override void OnUnbind()
@@ -149,36 +141,26 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 
 	private void Show()
 	{
-		VotesIsActive.Value = false;
+		m_VotesIsActive.Value = false;
 		m_IsShown = true;
 		m_WindowAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.Dialogue.BookOpen.Play();
+		FullScreenSounds.Instance.Dialogue.BookOpen.Play();
 		m_FlavorTextHeader.SetActive(value: true);
 		m_Spacer.SetActive(value: false);
 	}
 
 	private void Hide()
 	{
-		VotesIsActive.Value = false;
+		m_VotesIsActive.Value = false;
 		m_IsShown = false;
 		m_WindowAnimator.DisappearAnimation();
-		UISounds.Instance.Sounds.Dialogue.BookClose.Play();
-	}
-
-	protected virtual void CreateNavigation()
-	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		Layer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = "BookEvent"
-		});
-		CreateInputImpl(Layer, m_NavigationBehaviour);
+		FullScreenSounds.Instance.Dialogue.BookClose.Play();
 	}
 
 	private void SetCues()
 	{
 		m_CuesScrollRect.ScrollToTop();
-		CurrentCuesViews.Clear();
+		m_CurrentCuesViews.Clear();
 		foreach (CueVM cue in base.ViewModel.Cues)
 		{
 			BookEventCueView cueView = WidgetFactory.GetWidget(m_CueView, activate: true, strictMatching: true);
@@ -194,53 +176,31 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 			{
 				cueView.Shade();
 			}
-			CurrentCuesViews.Add(cueView);
+			m_CurrentCuesViews.Add(cueView);
 		}
 	}
 
 	private void SetAnswers()
 	{
-		VotesIsActive.Value = false;
+		m_VotesIsActive.Value = false;
 		if (base.ViewModel.Answers.CurrentValue == null)
 		{
 			return;
 		}
-		foreach (BookEventAnswerPCView answersEntity in AnswersEntities)
+		foreach (BookEventAnswerPCView answersEntity in m_AnswersEntities)
 		{
 			answersEntity.Unbind();
 		}
-		AnswersEntities.Clear();
+		m_AnswersEntities.Clear();
 		foreach (AnswerVM item in base.ViewModel.Answers.CurrentValue)
 		{
 			BookEventAnswerPCView widget = WidgetFactory.GetWidget(m_AnswerView, activate: true, strictMatching: true);
 			widget.Bind(item);
 			widget.transform.SetParent(m_AnswersPanel.transform, worldPositionStays: false);
 			widget.name = $"Answer {widget.transform.GetSiblingIndex()}";
-			AnswersEntities.Add(widget);
+			m_AnswersEntities.Add(widget);
 		}
 		m_AnswersScrollRect.ScrollToTop();
-	}
-
-	private void UpdateNavigation(bool showHistory)
-	{
-		m_NavigationBehaviour.Clear();
-		if (!showHistory)
-		{
-			m_NavigationBehaviour.AddColumn(AnswersEntities.Where((BookEventAnswerPCView a) => a.Button.Interactable).ToList());
-		}
-		m_NavigationBehaviour.FocusOnFirstValidEntity();
-	}
-
-	protected virtual void UpdateFocusLinks()
-	{
-	}
-
-	public void SetAnswerFocusTo(BookEventAnswerView answer)
-	{
-		if ((bool)AnswersEntities.FirstOrDefault((BookEventAnswerPCView a) => a == answer))
-		{
-			m_NavigationBehaviour.FocusOnEntityManual(answer);
-		}
 	}
 
 	private void FillHistory()
@@ -268,7 +228,7 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 			cueView.name = $"Cue {cueView.transform.GetSiblingIndex()}";
 			cueView.m_CueGroup.DOFade(1f, 0.2f).SetUpdate(isIndependentUpdate: true).SetAutoKill(autoKillOnCompletion: true);
 			m_MemorizedCues.Add(cueVM);
-			MemorizedCuesViews.Add(cueView);
+			m_MemorizedCuesViews.Add(cueView);
 			m_LastHistoryCueIndex = i;
 		}
 	}
@@ -281,12 +241,11 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 			TooltipHelper.HideTooltip();
 			m_ContentAnimator.DisappearAnimation(delegate
 			{
-				UISounds.Instance.Sounds.Dialogue.BookPageTurn.Play();
+				FullScreenSounds.Instance.Dialogue.BookPageTurn.Play();
 				m_ContentAnimator.AppearAnimation();
 				SetCues();
 				SetAnswers();
 				FillHistory();
-				Observable.NextFrame().Subscribe(UpdateFocusLinks);
 				m_ContentRefreshing = false;
 			});
 			m_AnswersScrollRect.ScrollToTop();
@@ -311,23 +270,8 @@ public class BookEventBaseView : View<BookEventVM>, IEncyclopediaGlossaryModeHan
 		m_PictureAnimator.AppearAnimation();
 	}
 
-	protected virtual void CreateInputImpl(InputLayer inputLayer, GridConsoleNavigationBehaviour behaviour)
+	protected virtual void CreateInputImpl()
 	{
-		inputLayer.AddButton(OnConfirmClick, 8).AddTo(this);
-		inputLayer.AddAxis(Scroll, 3).AddTo(this);
-	}
-
-	private void OnConfirmClick(InputActionEventData obj)
-	{
-		(m_NavigationBehaviour.CurrentEntity as IConfirmClickHandler)?.OnConfirmClick();
-	}
-
-	private void Scroll(InputActionEventData obj, float value)
-	{
-		if (!IsShowHistory.CurrentValue)
-		{
-			m_CuesScrollRect.Scroll(value, smooth: true);
-		}
 	}
 
 	public void HandleGlossaryMode(bool state)

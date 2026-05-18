@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Code.View.UI.MVVM.Tooltip.Bricks;
 using Kingmaker;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
@@ -21,7 +20,7 @@ public class TooltipTemplateDetectiveAnswer : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(UIStrings.Instance.DetectiveJournal.HypothesisLabel, TooltipTitleType.H2);
+		yield return new BrickTitleVM(UIStrings.Instance.DetectiveJournal.HypothesisLabel, TooltipTitleType.H2);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -31,19 +30,19 @@ public class TooltipTemplateDetectiveAnswer : TooltipBaseTemplate
 			yield break;
 		}
 		IEnumerable<BlueprintCaseItem> items = from item in Answer.DegreeProgression.ElementAt(degree).Items.Dereference()
-			where !(item is BlueprintClue) && Game.Instance.DetectiveSystem.HasItem(item)
+			where !(item is BlueprintClue) && Game.Instance.DetectiveSystem.HasItemExcludingHidden(item)
 			select item;
 		if (!items.Any())
 		{
-			yield return new TooltipBrickText(UIStrings.Instance.DetectiveJournal.NoStrongEvidence.Text);
+			yield return new BrickTextVM(UIStrings.Instance.DetectiveJournal.NoStrongEvidence.Text);
 			yield break;
 		}
-		yield return new TooltipBrickText(UIStrings.Instance.DetectiveJournal.HasSomeEvidence.Text);
+		yield return new BrickTextVM(UIStrings.Instance.DetectiveJournal.HasSomeEvidence.Text);
 		foreach (BlueprintCaseItem item in items)
 		{
 			if (!(item is BlueprintClue))
 			{
-				yield return new TooltipBrickCaseItem(item, forceHideContradiction: false);
+				yield return new BrickCaseItemVM(item, forceHideContradiction: false);
 			}
 		}
 	}

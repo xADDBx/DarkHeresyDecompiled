@@ -3,6 +3,7 @@ using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.Attributes;
@@ -32,7 +33,7 @@ public class CheckAbilityWeaponChosenGetter : BoolPropertyGetter, PropertyContex
 
 	protected override bool GetBaseValue()
 	{
-		ItemEntityWeapon abilityWeapon = this.GetAbilityWeapon();
+		ItemEntityWeapon abilityWeapon = EvalContext.Current.AbilityWeapon;
 		ItemEntityWeapon itemEntityWeapon = base.CurrentEntity.GetOptional<WarhammerUnitPartChooseWeapon>()?.ChosenWeapon;
 		if (abilityWeapon == null || itemEntityWeapon == null)
 		{

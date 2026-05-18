@@ -1,5 +1,5 @@
 using Kingmaker.Blueprints;
-using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Items;
@@ -10,7 +10,6 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.Parts;
-using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -37,27 +36,76 @@ public class BuffVM : ViewModel, IUnitEquipmentHandler, ISubscriber<IMechanicEnt
 
 	public int SortOrder { get; private set; }
 
-	public bool IsSpecial { get; private set; }
-
 	public Sprite Icon { get; }
 
 	public BuffVM(Buff buff)
 	{
 		Buff = buff;
 		m_NonStackBonus = Buff?.Owner?.GetOptional<UnitPartNonStackBonuses>();
-		Icon = ObjectExtensions.Or(buff.Icon, UIConfig.Instance.UIIcons.DefaultAbilityIcon);
+		Icon = buff.Icon.GetDefaultIfNull(DefaultImageType.Ability);
 		m_ShowNonStackNotification.Value = ShowNonStackWarning();
 		m_Rank.Value = buff.Rank;
 		DealsDamage = buff.Blueprint?.GetComponent<DOTLogicVisual>() != null;
 		SetGroup();
 		SetSortOrder();
-		CheckSpecial();
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
 	public IEntity GetSubscribingEntity()
 	{
 		return Buff?.Owner;
+	}
+
+	public bool IsSpecialBuff()
+	{
+		return Buff.Blueprint.BuffUISettings?.ShowInSpecial ?? false;
+	}
+
+	public bool IsImportantBuff()
+	{
+		return Buff.Blueprint.BuffUISettings?.CheckImportantBuffConditions(GetBuffTargetType()) ?? false;
+	}
+
+	public void HandleEquipmentSlotUpdated(ItemSlot slot, ItemEntity previousItem)
+	{
+		if (ShouldHandle(slot.Owner))
+		{
+			m_ShowNonStackNotification.Value = ShowNonStackWarning();
+		}
+	}
+
+	public void HandleBuffDidAdded(Buff buff, MechanicEntity caster)
+	{
+		if (ShouldHandle(buff.Owner))
+		{
+			m_ShowNonStackNotification.Value = ShowNonStackWarning();
+			UpdateRank();
+		}
+	}
+
+	public void HandleBuffDidRemoved(Buff buff, MechanicEntity caster)
+	{
+		if (ShouldHandle(buff.Owner))
+		{
+			m_ShowNonStackNotification.Value = ShowNonStackWarning();
+			UpdateRank();
+		}
+	}
+
+	public void HandleBuffRankIncreased(Buff buff, int delta, MechanicEntity caster)
+	{
+		if (ShouldHandle(buff.Owner))
+		{
+			UpdateRank();
+		}
+	}
+
+	public void HandleBuffRankDecreased(Buff buff, int delta, MechanicEntity caster)
+	{
+		if (ShouldHandle(buff.Owner))
+		{
+			UpdateRank();
+		}
 	}
 
 	private bool ShowNonStackWarning()
@@ -123,7 +171,7 @@ public class BuffVM : ViewModel, IUnitEquipmentHandler, ISubscriber<IMechanicEnt
 			{
 				SortOrder = 0;
 			}
-			else if (Buff.Blueprint.IsDOTVisual)
+			else if (!Buff.Blueprint.IsDOTVisual)
 			{
 				SortOrder = 1;
 			}
@@ -131,53 +179,6 @@ public class BuffVM : ViewModel, IUnitEquipmentHandler, ISubscriber<IMechanicEnt
 			{
 				SortOrder = 2;
 			}
-		}
-	}
-
-	public void CheckSpecial()
-	{
-		IsSpecial = Buff.Blueprint.BuffUISettings?.ShouldShowInSpecial(GetBuffTargetType()) ?? false;
-	}
-
-	public void HandleEquipmentSlotUpdated(ItemSlot slot, ItemEntity previousItem)
-	{
-		if (ShouldHandle(slot.Owner))
-		{
-			m_ShowNonStackNotification.Value = ShowNonStackWarning();
-		}
-	}
-
-	public void HandleBuffDidAdded(Buff buff, MechanicEntity caster)
-	{
-		if (ShouldHandle(buff.Owner))
-		{
-			m_ShowNonStackNotification.Value = ShowNonStackWarning();
-			UpdateRank();
-		}
-	}
-
-	public void HandleBuffDidRemoved(Buff buff, MechanicEntity caster)
-	{
-		if (ShouldHandle(buff.Owner))
-		{
-			m_ShowNonStackNotification.Value = ShowNonStackWarning();
-			UpdateRank();
-		}
-	}
-
-	public void HandleBuffRankIncreased(Buff buff, int delta, MechanicEntity caster)
-	{
-		if (ShouldHandle(buff.Owner))
-		{
-			UpdateRank();
-		}
-	}
-
-	public void HandleBuffRankDecreased(Buff buff, int delta, MechanicEntity caster)
-	{
-		if (ShouldHandle(buff.Owner))
-		{
-			UpdateRank();
 		}
 	}
 

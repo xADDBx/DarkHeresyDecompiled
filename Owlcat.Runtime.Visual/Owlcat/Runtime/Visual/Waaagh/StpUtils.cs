@@ -16,7 +16,7 @@ internal static class StpUtils
 		allowScaling = false;
 	}
 
-	private static void PopulateStpConfig(WaaaghCameraData cameraData, TextureHandle inputColor, TextureHandle inputDepth, TextureHandle inputMotion, int debugViewIndex, TextureHandle debugView, TextureHandle destination, Texture2D noiseTexture, out STP.Config config)
+	public static void PopulateStpConfig(WaaaghCameraData cameraData, in TextureHandle inputColor, in TextureHandle inputDepth, in TextureHandle inputMotion, int debugViewIndex, in TextureHandle debugView, in TextureHandle destination, Texture2D noiseTexture, out STP.Config config)
 	{
 		cameraData.camera.TryGetComponent<WaaaghAdditionalCameraData>(out var component);
 		MotionVectorsPersistentData motionVectorsPersistentData = component.MotionVectorsPersistentData;
@@ -66,13 +66,5 @@ internal static class StpUtils
 		}
 		config.numActiveViews = num2;
 		config.perViewConfigs = STP.perViewConfigs;
-	}
-
-	internal static void Execute(RenderGraph renderGraph, WaaaghResourceData resourceData, WaaaghCameraData cameraData, TextureHandle inputColor, TextureHandle inputDepth, TextureHandle inputMotion, TextureHandle destination, Texture2D noiseTexture)
-	{
-		TextureHandle nullHandle = TextureHandle.nullHandle;
-		int debugViewIndex = 0;
-		PopulateStpConfig(cameraData, inputColor, inputDepth, inputMotion, debugViewIndex, nullHandle, destination, noiseTexture, out var config);
-		STP.Execute(renderGraph, ref config);
 	}
 }

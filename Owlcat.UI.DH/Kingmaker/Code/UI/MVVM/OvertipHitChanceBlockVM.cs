@@ -1,14 +1,22 @@
+using System.Linq;
+using Kingmaker.Blueprints;
+using Kingmaker.Code.Gameplay.Blueprints;
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.Clicks.Handlers;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.Designers.Mechanics.Facts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
+using Kingmaker.UnitLogic.Buffs;
+using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.Utility;
-using ObservableCollections;
 using Owlcat.UI;
 using Pathfinding;
 using R3;
@@ -28,23 +36,21 @@ public class OvertipHitChanceBlockVM : ViewModel
 
 	private readonly ReactiveProperty<int> m_BurstIndex = new ReactiveProperty<int>(0);
 
-	private readonly ObservableList<HitChanceEntityVM> m_BurstHitChancesCollection = new ObservableList<HitChanceEntityVM>();
-
 	private readonly ReactiveProperty<float> m_DefenceChance = new ReactiveProperty<float>(0f);
 
 	private readonly ReactiveProperty<float> m_CoverChance = new ReactiveProperty<float>(0f);
 
 	private readonly ReactiveProperty<bool> m_IsVisible = new ReactiveProperty<bool>();
 
-	public readonly MechanicEntityUIState MechanicEntityUIState;
+	public readonly MechanicEntityUIState EntityUIState;
 
-	private MechanicEntity Unit => MechanicEntityUIState.MechanicEntity.MechanicEntity;
+	private MechanicEntity Unit => EntityUIState.MechanicEntity.MechanicEntity;
 
-	private MechanicEntityUIWrapper MechanicEntityUIWrapper => MechanicEntityUIState.MechanicEntity;
+	private MechanicEntityUIWrapper MechanicEntityUIWrapper => EntityUIState.MechanicEntity;
 
 	public ReadOnlyReactiveProperty<bool> CanTarget => m_CanTarget;
 
-	public ReadOnlyReactiveProperty<bool> IsCaster => MechanicEntityUIState.IsCaster;
+	public ReadOnlyReactiveProperty<bool> IsCaster => EntityUIState.IsCaster;
 
 	public ReadOnlyReactiveProperty<float> HitChance => m_HitChance;
 
@@ -60,19 +66,61 @@ public class OvertipHitChanceBlockVM : ViewModel
 
 	public ReadOnlyReactiveProperty<bool> IsVisible => m_IsVisible;
 
-	public AbilityData Ability => MechanicEntityUIState.AbilityTargetUIData.CurrentValue.Ability;
+	public bool AffectedByCriticalEffect { get; private set; }
+
+	public AbilityData Ability => EntityUIState.AbilityTargetUIData.CurrentValue.Ability;
 
 	public bool IsAttack { get; private set; }
 
 	public OvertipHitChanceBlockVM(MechanicEntityUIState mechanicEntityUIState)
 	{
-		MechanicEntityUIState = mechanicEntityUIState;
+		EntityUIState = mechanicEntityUIState;
 		EventBus.Subscribe(this).AddTo(this);
-		MechanicEntityUIState.IsInCombat.CombineLatest(MechanicEntityUIState.IsVisibleForPlayer, MechanicEntityUIState.IsDeadOrUnconsciousIsDead, MechanicEntityUIState.IsMouseOverUnit, MechanicEntityUIState.IsTarget, MechanicEntityUIState.Ability, MechanicEntityUIState.AbilityTargetUIData, (bool isInCombat, bool isVisibleForPlayer, bool isDead, bool isHovered, bool isTarget, AbilityData ability, AbilityTargetUIData abilityUIData) => new { isInCombat, isVisibleForPlayer, isDead, isHovered, isTarget, ability, abilityUIData }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(data =>
+		EntityUIState.IsInCombat.CombineLatest(EntityUIState.IsVisibleForPlayer, EntityUIState.IsDeadOrUnconsciousIsDead, EntityUIState.IsMouseOverUnit, EntityUIState.IsTarget, EntityUIState.Ability, EntityUIState.AbilityTargetUIData, (bool isInCombat, bool isVisibleForPlayer, bool isDead, bool isHovered, bool isTarget, AbilityData ability, AbilityTargetUIData abilityUIData) => new { isInCombat, isVisibleForPlayer, isDead, isHovered, isTarget, ability, abilityUIData }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(data =>
 		{
 			UpdateHitChanceVisibility(data.isInCombat, data.isVisibleForPlayer, data.isDead, data.isHovered, data.isTarget, data.ability);
 		})
 			.AddTo(this);
+	}
+
+	public CriticalEffectsUIData GetCasterCriticalEffects()
+	{
+		MechanicEntity mechanicEntity = EntityUIState.AbilityTargetUIData.CurrentValue.Ability?.Caster;
+		if (mechanicEntity == null)
+		{
+			return default(CriticalEffectsUIData);
+		}
+		int num = 0;
+		int num2 = 0;
+		foreach (BlueprintBodyPart bodyPart in mechanicEntity.BodyParts)
+		{
+			Buff mainBuff = mechanicEntity.Buffs.GetBuff(bodyPart.CriticalEffect);
+			if (mainBuff == null)
+			{
+				continue;
+			}
+			foreach (AddFactsOnRank item in from m in mainBuff.Blueprint.GetComponents<AddFactsOnRank>()
+				where m.RankValue.Value == mainBuff.Rank
+				select m)
+			{
+				foreach (BlueprintMechanicEntityFact fact in item.Facts)
+				{
+					if (fact is BlueprintBuff blueprint)
+					{
+						Buff buff = mechanicEntity.Buffs.GetBuff(blueprint);
+						if (buff != null && buff.HasNegativeHitChanceModifier())
+						{
+							num++;
+							num2 = Mathf.Max(num2, mainBuff.Rank);
+						}
+					}
+				}
+			}
+		}
+		CriticalEffectsUIData result = default(CriticalEffectsUIData);
+		result.Count = num;
+		result.HighestRank = num2;
+		return result;
 	}
 
 	protected override void OnDispose()
@@ -88,7 +136,7 @@ public class OvertipHitChanceBlockVM : ViewModel
 
 	private bool CheckIsVisible(bool isInCombat, bool isVisibleForPlayer, bool isDead, bool isHovered, bool isTarget, AbilityData ability)
 	{
-		if (!isInCombat || !isVisibleForPlayer || isDead || ability == null)
+		if (!isInCombat || !isVisibleForPlayer || isDead || ability == null || EntityUIState.IsOvertipPartHiddenBySettings(UnitOvertipUIPart.HitChance))
 		{
 			return false;
 		}
@@ -96,8 +144,8 @@ public class OvertipHitChanceBlockVM : ViewModel
 		{
 			return isTarget;
 		}
-		bool canTargetFromDesiredPosition = MechanicEntityUIState.AbilityTargetUIData.CurrentValue.CanTargetFromDesiredPosition;
-		MechanicEntity mechanicEntity = MechanicEntityUIState.MechanicEntity.MechanicEntity;
+		bool canTargetFromDesiredPosition = EntityUIState.AbilityTargetUIData.CurrentValue.CanTargetFromDesiredPosition;
+		MechanicEntity mechanicEntity = EntityUIState.MechanicEntity.MechanicEntity;
 		if (ability.IsSingleTarget && ability.IsRanged)
 		{
 			return (!mechanicEntity.IsPlayerFaction && canTargetFromDesiredPosition) || isHovered;
@@ -128,21 +176,21 @@ public class OvertipHitChanceBlockVM : ViewModel
 
 	private void UpdateProperties()
 	{
-		AbilityData currentValue = MechanicEntityUIState.Ability.CurrentValue;
+		AbilityData currentValue = EntityUIState.Ability.CurrentValue;
 		if (currentValue == null)
 		{
 			ClearProperties();
 			return;
 		}
-		ClearBurstHitChances();
-		AbilityTargetUIData currentValue2 = MechanicEntityUIState.AbilityTargetUIData.CurrentValue;
-		m_CanTarget.Value = MechanicEntityUIState.IsTarget.CurrentValue || CanTargetByAbility(currentValue);
+		AbilityTargetUIData currentValue2 = EntityUIState.AbilityTargetUIData.CurrentValue;
+		m_CanTarget.Value = EntityUIState.IsTarget.CurrentValue || CanTargetByAbility(currentValue);
 		m_HitAlways.Value = currentValue2.HitChance.HitAlways;
 		m_BurstIndex.Value = currentValue2.AttacksCount;
 		m_HitChance.Value = currentValue2.HitChance.HitWithAvoidanceChance;
 		m_InitialHitChance.Value = currentValue2.HitChance.InitialHitChance;
 		m_DefenceChance.Value = currentValue2.HitChance.DefenceChance;
 		m_CoverChance.Value = currentValue2.HitChance.CoverChance;
+		AffectedByCriticalEffect = currentValue2.HitChance.TargetHasCriticalEffects;
 		IsAttack = currentValue.Blueprint.AttackType.HasValue;
 	}
 
@@ -151,7 +199,7 @@ public class OvertipHitChanceBlockVM : ViewModel
 		VirtualPositionController virtualPositionController = Game.Instance.Controllers.VirtualPositionController;
 		ClickWithSelectedAbilityHandler selectedAbilityHandler = Game.Instance.Controllers.SelectedAbilityHandler;
 		PointerController clickEventsController = Game.Instance.Controllers.ClickEventsController;
-		TargetWrapper targetWrapper = ((MechanicEntityUIState.IsMouseOverUnit.CurrentValue && (bool)clickEventsController.PointerOn) ? selectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, clickEventsController.WorldPosition) : ((TargetWrapper)Unit));
+		TargetWrapper targetWrapper = ((EntityUIState.IsMouseOverUnit.CurrentValue && (bool)clickEventsController.PointerOn) ? selectedAbilityHandler.GetTargetForDesiredPosition(clickEventsController.PointerOn, clickEventsController.WorldPosition) : ((TargetWrapper)Unit));
 		AbilityData.UnavailabilityReasonType? unavailabilityReason = null;
 		bool flag = targetWrapper != null && ability.CanTargetFromDesiredPosition(targetWrapper, out unavailabilityReason);
 		bool flag2 = IsValidAoETarget(ability.Blueprint.AoETargets);
@@ -188,12 +236,6 @@ public class OvertipHitChanceBlockVM : ViewModel
 		m_CoverChance.Value = 0f;
 		m_CanTarget.Value = false;
 		IsAttack = false;
-		ClearBurstHitChances();
-	}
-
-	private void ClearBurstHitChances()
-	{
-		m_BurstHitChancesCollection.Clear();
 	}
 
 	private bool IsValidAoETarget(TargetType targetType)

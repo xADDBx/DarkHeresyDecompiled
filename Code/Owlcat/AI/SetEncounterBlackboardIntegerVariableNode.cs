@@ -34,7 +34,7 @@ public class SetEncounterBlackboardIntegerVariableNode : BehaviourTreeNode
 			PFLog.AI.Error("Failed to calculate value");
 			return NodeVisitResult.Failure;
 		}
-		int value = m_ValueCalculator.GetValue(new PropertyContext(m_Agent.Value));
+		int value = m_ValueCalculator.GetValue(m_Agent.Value);
 		if (!m_EncounterBlackboard.Value.TrySetIntValue(m_EncounterVariableName, value))
 		{
 			PFLog.AI.Error("Failed to set variable: " + m_EncounterVariableName);

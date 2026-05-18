@@ -19,14 +19,14 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class AreaTransitionPart : ViewBasedPart<AreaTransitionSettings>, IUnlockableFlagReference, IAreaEnterPointReference, IUnlockHandler, ISubscriber, IEtudesUpdateHandler, IAreaHandler, ILocalizationHandler, IHashable, IOwlPackable<AreaTransitionPart>
+public class AreaTransitionPart : EntityPartWithConfig<AreaTransitionSettings>, IUnlockableFlagReference, IAreaEnterPointReference, IUnlockHandler, ISubscriber, IEtudesUpdateHandler, IAreaHandler, ILocalizationHandler, IHashable, IOwlPackable<AreaTransitionPart>
 {
 	[JsonProperty]
 	[GameStateIgnore]
 	[OwlPackInclude]
 	public bool AlreadyUnlocked;
 
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "AreaTransitionPart",
 		OldNames = null,
@@ -43,7 +43,7 @@ public class AreaTransitionPart : ViewBasedPart<AreaTransitionSettings>, IUnlock
 
 	public BlueprintAreaTransition Blueprint => base.Settings.Blueprint;
 
-	protected override void OnSettingsDidSet(bool isNewSettings)
+	protected override void OnConfigDidSet(bool isNewConfig)
 	{
 		if (base.Settings.AddMapMarker)
 		{
@@ -154,7 +154,7 @@ public class AreaTransitionPart : ViewBasedPart<AreaTransitionSettings>, IUnlock
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		AreaTransitionPart source = new AreaTransitionPart();
 		result = Unsafe.As<AreaTransitionPart, TPossiblyBase>(ref source);

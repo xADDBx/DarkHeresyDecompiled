@@ -8,11 +8,20 @@ namespace Kingmaker.Visual.MaterialEffects.CustomMaterialProperty;
 
 internal sealed class CustomMaterialPropertyAnimationController : IDisposable
 {
+	private struct MaterialEntry
+	{
+		public Material Material;
+
+		public int RendererId;
+	}
+
 	private struct MaterialInfo
 	{
 		public Material Material;
 
 		public float OriginalValue;
+
+		public int RendererId;
 	}
 
 	private struct ClipInfo
@@ -52,17 +61,33 @@ internal sealed class CustomMaterialPropertyAnimationController : IDisposable
 			m_PropertyId = propertyId;
 		}
 
-		public void AddMaterial(Material material)
+		public void AddMaterial(Material material, int rendererId)
 		{
 			m_Materials.Add(new MaterialInfo
 			{
 				Material = material,
-				OriginalValue = material.GetFloat(m_PropertyId)
+				OriginalValue = material.GetFloat(m_PropertyId),
+				RendererId = rendererId
 			});
 			if (m_HasPropertyOverridenValue)
 			{
 				material.SetFloat(m_PropertyId, m_PropertyOverridenValue);
 			}
+		}
+
+		public void ClearMaterial(int rendererId)
+		{
+			if (m_HasPropertyOverridenValue)
+			{
+				foreach (MaterialInfo material in m_Materials)
+				{
+					if (material.RendererId == rendererId)
+					{
+						material.Material.SetFloat(m_PropertyId, material.OriginalValue);
+					}
+				}
+			}
+			m_Materials.RemoveAll((MaterialInfo info) => info.RendererId == rendererId);
 		}
 
 		public void ClearMaterials()
@@ -203,7 +228,7 @@ internal sealed class CustomMaterialPropertyAnimationController : IDisposable
 		animator.Clear();
 	});
 
-	private readonly List<Material> m_Materials = new List<Material>();
+	private readonly List<MaterialEntry> m_Materials = new List<MaterialEntry>();
 
 	private readonly List<PropertyAnimator> m_PropertyAnimators = new List<PropertyAnimator>();
 
@@ -217,16 +242,29 @@ internal sealed class CustomMaterialPropertyAnimationController : IDisposable
 		m_Materials.Clear();
 	}
 
-	public void AddMaterial(Material material)
+	public void AddMaterial(Material material, int rendererId)
 	{
-		m_Materials.Add(material);
+		m_Materials.Add(new MaterialEntry
+		{
+			Material = material,
+			RendererId = rendererId
+		});
 		foreach (PropertyAnimator propertyAnimator in m_PropertyAnimators)
 		{
 			if (material.HasFloat(propertyAnimator.PropertyId))
 			{
-				propertyAnimator.AddMaterial(material);
+				propertyAnimator.AddMaterial(material, rendererId);
 			}
 		}
+	}
+
+	public void ClearMaterial(int rendererId)
+	{
+		foreach (PropertyAnimator propertyAnimator in m_PropertyAnimators)
+		{
+			propertyAnimator.ClearMaterial(rendererId);
+		}
+		m_Materials.RemoveAll((MaterialEntry entry) => entry.RendererId == rendererId);
 	}
 
 	public void ClearMaterials()
@@ -303,11 +341,11 @@ internal sealed class CustomMaterialPropertyAnimationController : IDisposable
 		}
 		PropertyAnimator propertyAnimator = s_PropertyAnimatorsPool.Get();
 		propertyAnimator.Setup(propertyName, num);
-		foreach (Material material in m_Materials)
+		foreach (MaterialEntry material in m_Materials)
 		{
-			if (material.HasFloat(num))
+			if (material.Material.HasFloat(num))
 			{
-				propertyAnimator.AddMaterial(material);
+				propertyAnimator.AddMaterial(material.Material, material.RendererId);
 			}
 		}
 		m_PropertyAnimators.Add(propertyAnimator);

@@ -7,7 +7,6 @@ using Owlcat.Runtime.Core.Collections;
 using Owlcat.Runtime.Visual.Waaagh;
 using Owlcat.Runtime.Visual.Waaagh.FrameData;
 using Owlcat.Runtime.Visual.Waaagh.Lighting;
-using Owlcat.Runtime.Visual.Waaagh.Passes;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -190,161 +189,33 @@ public class LightCookieManager : IDisposable
 		}
 	}
 
-	private sealed class LightCookiePass : ScriptableRenderPass
+	private class UpdateLightCookiePassData
 	{
-		private sealed class PassData
+		public bool hasAnyLightWithCookie;
+
+		public RTHandle atlasTexture;
+
+		public List<Texture> blitCookieTextures;
+
+		public NativeReference<LightCookieConstantBuffer> cookieConstantBufferReference;
+
+		public NativeList<BlitCommandData> blitCommands;
+
+		public LightCookieShaderFormat lightCookieShaderFormat;
+
+		public TexturePackedChannelsInfo atlasChannelsInfo;
+	}
+
+	private readonly struct TexturePackedChannelsInfo
+	{
+		public readonly uint componentCount;
+
+		public readonly int swizzleMask;
+
+		public TexturePackedChannelsInfo(GraphicsFormat graphicsFormat)
 		{
-			public bool hasAnyLightWithCookie;
-
-			public TextureHandle atlasTexture;
-
-			public List<Texture> blitCookieTextures;
-
-			public NativeReference<LightCookieConstantBuffer> cookieConstantBufferReference;
-
-			public NativeList<BlitCommandData> blitCommands;
-
-			public LightCookieShaderFormat lightCookieShaderFormat;
-
-			public TexturePackedChannelsInfo atlasChannelsInfo;
-		}
-
-		private readonly struct TexturePackedChannelsInfo
-		{
-			public readonly uint componentCount;
-
-			public readonly int swizzleMask;
-
-			public TexturePackedChannelsInfo(GraphicsFormat graphicsFormat)
-			{
-				componentCount = GraphicsFormatUtility.GetComponentCount(graphicsFormat);
-				swizzleMask = (1 << (int)(GraphicsFormatUtility.GetSwizzleA(graphicsFormat) & (FormatSwizzle)7) << 24) | (1 << (int)(GraphicsFormatUtility.GetSwizzleB(graphicsFormat) & (FormatSwizzle)7) << 16) | (1 << (int)(GraphicsFormatUtility.GetSwizzleG(graphicsFormat) & (FormatSwizzle)7) << 8) | (1 << (int)(GraphicsFormatUtility.GetSwizzleR(graphicsFormat) & (FormatSwizzle)7));
-			}
-		}
-
-		private static readonly int kLightCookieAtlasId = Shader.PropertyToID("_LightCookieAtlas");
-
-		private static readonly int kLightCookieAtlasFormatId = Shader.PropertyToID("_LightCookieAtlasFormat");
-
-		private static readonly int kLightCookieConstantBufferId = Shader.PropertyToID("LightCookieConstantBuffer");
-
-		private static readonly Vector4 kIdentityScaleOffset = new Vector4(1f, 1f, 0f, 0f);
-
-		private static readonly BaseRenderFunc<PassData, RenderGraphContext> s_RenderFunc = Render;
-
-		private readonly TextureHandle m_AtlasTexture;
-
-		private readonly List<Texture> m_BlitCookieTextures;
-
-		private readonly NativeList<LightCookieData> m_CookieDataList;
-
-		private readonly NativeList<BlitCommandData> m_BlitCommandDataList;
-
-		private readonly NativeReference<LightCookieConstantBuffer> m_CookieConstantBufferReference;
-
-		private readonly LightCookieShaderFormat m_LightCookieShaderFormat;
-
-		private readonly TexturePackedChannelsInfo m_AtlasChannelsInfo;
-
-		public override string Name => "Update Light Cookie";
-
-		public LightCookiePass(TextureHandle atlasTexture, GraphicsFormat atlasGraphicsFormat, LightCookieShaderFormat lightCookieShaderFormat, List<Texture> blitCookieTextures, NativeList<LightCookieData> cookieDataList, NativeList<BlitCommandData> blitCommandDataList, NativeReference<LightCookieConstantBuffer> cookieConstantBufferReference)
-			: base(RenderPassEvent.BeforeRendering)
-		{
-			m_AtlasTexture = atlasTexture;
-			m_AtlasChannelsInfo = new TexturePackedChannelsInfo(atlasGraphicsFormat);
-			m_BlitCookieTextures = blitCookieTextures;
-			m_CookieDataList = cookieDataList;
-			m_BlitCommandDataList = blitCommandDataList;
-			m_CookieConstantBufferReference = cookieConstantBufferReference;
-			m_LightCookieShaderFormat = lightCookieShaderFormat;
-		}
-
-		public override void RecordRenderGraph(ContextContainer frameData)
-		{
-			PassData passData;
-			using RenderGraphBuilder renderGraphBuilder = frameData.Get<WaaaghRenderingData>().RenderGraph.AddRenderPass<PassData>(Name, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Lighting\\LightCookieManager.cs", 412);
-			passData.hasAnyLightWithCookie = m_CookieDataList.Length > 0;
-			passData.atlasTexture = m_AtlasTexture;
-			passData.blitCookieTextures = m_BlitCookieTextures;
-			passData.blitCommands = m_BlitCommandDataList;
-			passData.cookieConstantBufferReference = m_CookieConstantBufferReference;
-			passData.lightCookieShaderFormat = m_LightCookieShaderFormat;
-			passData.atlasChannelsInfo = m_AtlasChannelsInfo;
-			renderGraphBuilder.AllowPassCulling(value: false);
-			renderGraphBuilder.ReadWriteTexture(in m_AtlasTexture);
-			renderGraphBuilder.SetRenderFunc(s_RenderFunc);
-		}
-
-		private static void Render(PassData passData, RenderGraphContext context)
-		{
-			CommandBuffer cmd = context.cmd;
-			SetupGlobalState(cmd, in passData);
-			cmd.SetRenderTarget(passData.atlasTexture);
-			UpdateAtlas(cmd, in passData);
-			cmd.SetGlobalTexture(kLightCookieAtlasId, passData.atlasTexture);
-			context.renderContext.ExecuteCommandBuffer(cmd);
-			cmd.Clear();
-		}
-
-		private static void SetupGlobalState(CommandBuffer cmd, in PassData passData)
-		{
-			CoreUtils.SetKeyword(cmd, ShaderKeywordStrings._LIGHT_COOKIES, passData.hasAnyLightWithCookie);
-			if (passData.hasAnyLightWithCookie)
-			{
-				cmd.SetGlobalFloat(kLightCookieAtlasFormatId, (float)passData.lightCookieShaderFormat);
-				ConstantBuffer.PushGlobal(cmd, in UnsafeCollectionExtensions.AsRef(in passData.cookieConstantBufferReference), kLightCookieConstantBufferId);
-			}
-		}
-
-		private static void UpdateAtlas(CommandBuffer cmd, in PassData passData)
-		{
-			int length = passData.blitCommands.Length;
-			for (int i = 0; i < length; i++)
-			{
-				BlitCommandData blitCommandData = passData.blitCommands[i];
-				Texture texture = passData.blitCookieTextures[i];
-				TexturePackedChannelsInfo source = new TexturePackedChannelsInfo(texture.graphicsFormat);
-				bool flag = IsSingleChannelBlit(in source, in passData.atlasChannelsInfo);
-				if (texture.dimension == TextureDimension.Tex2D)
-				{
-					if (flag)
-					{
-						Blitter.BlitQuadSingleChannel(cmd, texture, kIdentityScaleOffset, blitCommandData.scaleOffset, 0);
-					}
-					else
-					{
-						Blitter.BlitQuad(cmd, texture, kIdentityScaleOffset, blitCommandData.scaleOffset, 0, bilinear: true);
-					}
-				}
-				else if (texture.dimension == TextureDimension.Cube)
-				{
-					if (flag)
-					{
-						Blitter.BlitCubeToOctahedral2DQuadSingleChannel(cmd, texture, blitCommandData.scaleOffset, 0);
-					}
-					else
-					{
-						Blitter.BlitCubeToOctahedral2DQuad(cmd, texture, blitCommandData.scaleOffset, 0);
-					}
-				}
-			}
-		}
-
-		private static bool IsSingleChannelBlit(in TexturePackedChannelsInfo source, in TexturePackedChannelsInfo dest)
-		{
-			if (source.componentCount == 1 || dest.componentCount == 1)
-			{
-				if (source.componentCount != dest.componentCount)
-				{
-					return true;
-				}
-				if (source.swizzleMask != dest.swizzleMask)
-				{
-					return true;
-				}
-			}
-			return false;
+			componentCount = GraphicsFormatUtility.GetComponentCount(graphicsFormat);
+			swizzleMask = (1 << (int)(GraphicsFormatUtility.GetSwizzleA(graphicsFormat) & (FormatSwizzle)7) << 24) | (1 << (int)(GraphicsFormatUtility.GetSwizzleB(graphicsFormat) & (FormatSwizzle)7) << 16) | (1 << (int)(GraphicsFormatUtility.GetSwizzleG(graphicsFormat) & (FormatSwizzle)7) << 8) | (1 << (int)(GraphicsFormatUtility.GetSwizzleR(graphicsFormat) & (FormatSwizzle)7));
 		}
 	}
 
@@ -595,13 +466,11 @@ public class LightCookieManager : IDisposable
 		}
 	}
 
-	private readonly RenderGraph m_RenderGraph;
-
 	private const int kMaxAtlasAllocationCount = 512;
 
 	private const int kMaxCookieCount = 128;
 
-	private readonly TextureHandle m_AtlasTextureHandle;
+	private readonly RTHandle m_AtlasTextureHandle;
 
 	private LightCookieAtlas m_Atlas;
 
@@ -617,15 +486,18 @@ public class LightCookieManager : IDisposable
 
 	private NativeReference<Statistics> m_StatisticsReference;
 
-	private readonly LightCookiePass m_LightCookiePass;
-
 	private readonly List<Texture> m_CookieTextures;
 
 	private readonly StringBuilder m_MessageBuilder = new StringBuilder();
 
-	public LightCookieManager(RenderGraph renderGraph, in Settings settings)
+	private static readonly int kLightCookieAtlasId = Shader.PropertyToID("_LightCookieAtlas");
+
+	private static readonly int kLightCookieConstantBufferId = Shader.PropertyToID("LightCookieConstantBuffer");
+
+	private static readonly Vector4 kIdentityScaleOffset = new Vector4(1f, 1f, 0f, 0f);
+
+	public LightCookieManager(in Settings settings)
 	{
-		m_RenderGraph = renderGraph;
 		m_LightCookieDataList = new NativeList<LightCookieData>(Allocator.Persistent);
 		m_CookieScaleOffsetList = new NativeList<float4>(Allocator.Persistent);
 		m_BlitCommandDataList = new NativeList<BlitCommandData>(Allocator.Persistent);
@@ -633,23 +505,13 @@ public class LightCookieManager : IDisposable
 		m_LastSizeDivisorReference = new NativeReference<int>(Allocator.Persistent);
 		m_StatisticsReference = new NativeReference<Statistics>(Allocator.Persistent);
 		m_Atlas = new LightCookieAtlas(settings.atlasTextureResolution, 512, Allocator.Persistent);
-		TextureDesc desc = new TextureDesc(settings.atlasTextureResolution.x, settings.atlasTextureResolution.y)
-		{
-			colorFormat = settings.atlasTextureFormat,
-			filterMode = FilterMode.Bilinear,
-			wrapMode = TextureWrapMode.Clamp,
-			useMipMap = false,
-			autoGenerateMips = false,
-			name = "Light Cookie Atlas"
-		};
-		m_AtlasTextureHandle = m_RenderGraph.CreateSharedTexture(in desc, explicitRelease: true);
+		m_AtlasTextureHandle = RTHandles.Alloc(settings.atlasTextureResolution.x, settings.atlasTextureResolution.y, 1, DepthBits.None, settings.atlasTextureFormat, FilterMode.Bilinear, TextureWrapMode.Clamp, TextureDimension.Tex2D, enableRandomWrite: false, useMipMap: false, autoGenerateMips: true, isShadowMap: false, 1, 0f, MSAASamples.None, bindTextureMS: false, useDynamicScale: false, useDynamicScaleExplicit: false, RenderTextureMemoryless.None, VRTextureUsage.None, "Light Cookie Atlas");
 		m_CookieTextures = new List<Texture>();
-		m_LightCookiePass = new LightCookiePass(m_AtlasTextureHandle, settings.atlasTextureFormat, blitCookieTextures: m_CookieTextures, cookieDataList: m_LightCookieDataList, blitCommandDataList: m_BlitCommandDataList, lightCookieShaderFormat: GetLightCookieShaderFormat(settings.atlasTextureFormat), cookieConstantBufferReference: m_CookieConstantBufferReference);
 	}
 
 	public void Dispose()
 	{
-		m_RenderGraph.ReleaseSharedTexture(m_AtlasTextureHandle);
+		RTHandles.Release(m_AtlasTextureHandle);
 		m_Atlas.Dispose();
 		m_LightCookieDataList.Dispose();
 		m_CookieScaleOffsetList.Dispose();
@@ -677,14 +539,13 @@ public class LightCookieManager : IDisposable
 		return jobData.Schedule(dependency);
 	}
 
-	internal void FinishSetup(ScriptableRenderer scriptableRenderer, ref NativeArray<LightDescriptor> lightDescriptors, ContextContainer frameData)
+	internal void FinishSetup(ref NativeArray<LightDescriptor> lightDescriptors, WaaaghCameraData cameraData)
 	{
 		PopulateCookieTextureList(ref lightDescriptors);
-		scriptableRenderer.EnqueuePass(m_LightCookiePass);
-		ReportStatistics(frameData);
+		ReportStatistics(cameraData);
 	}
 
-	private void ReportStatistics(ContextContainer frameData)
+	private void ReportStatistics(WaaaghCameraData cameraData)
 	{
 	}
 
@@ -727,5 +588,94 @@ public class LightCookieManager : IDisposable
 		default:
 			return LightCookieShaderFormat.RGB;
 		}
+	}
+
+	public static void UpdateLightCookiePass(in RecordContext context)
+	{
+		context.RenderingData.LightCookieManager.UpdateLightCookies(context.RenderGraph);
+	}
+
+	public void UpdateLightCookies(RenderGraph renderGraph)
+	{
+		UpdateLightCookiePassData passData2;
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateLightCookiePassData>("UpdateLightCookiePass", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Lighting\\LightCookieManager.cs", 378);
+		passData2.hasAnyLightWithCookie = m_LightCookieDataList.Length > 0;
+		passData2.atlasTexture = m_AtlasTextureHandle;
+		passData2.blitCookieTextures = m_CookieTextures;
+		passData2.blitCommands = m_BlitCommandDataList;
+		passData2.cookieConstantBufferReference = m_CookieConstantBufferReference;
+		passData2.lightCookieShaderFormat = GetLightCookieShaderFormat(m_AtlasTextureHandle.rt.graphicsFormat);
+		passData2.atlasChannelsInfo = new TexturePackedChannelsInfo(m_AtlasTextureHandle.rt.graphicsFormat);
+		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
+		unsafeRenderGraphBuilder.SetRenderFunc(delegate(UpdateLightCookiePassData passData, UnsafeGraphContext context)
+		{
+			UnsafeCommandBuffer cmd = context.cmd;
+			SetupGlobalState(cmd, in passData);
+			cmd.SetRenderTarget(passData.atlasTexture);
+			UpdateAtlas(cmd, in passData);
+			cmd.SetGlobalTexture(kLightCookieAtlasId, passData.atlasTexture);
+		});
+	}
+
+	private static void SetupGlobalState(UnsafeCommandBuffer cmd, in UpdateLightCookiePassData passData)
+	{
+		CoreUtils.SetKeyword(cmd, ShaderKeywordStrings._LIGHT_COOKIES, passData.hasAnyLightWithCookie);
+		if (passData.hasAnyLightWithCookie)
+		{
+			ref LightCookieConstantBuffer reference = ref UnsafeCollectionExtensions.AsRef(in passData.cookieConstantBufferReference);
+			reference._LightCookieAtlasFormat = (float)passData.lightCookieShaderFormat;
+			ConstantBuffer.PushGlobal(cmd, in reference, kLightCookieConstantBufferId);
+		}
+	}
+
+	private static void UpdateAtlas(UnsafeCommandBuffer cmd, in UpdateLightCookiePassData passData)
+	{
+		int length = passData.blitCommands.Length;
+		CommandBuffer nativeCommandBuffer = CommandBufferHelpers.GetNativeCommandBuffer(cmd);
+		for (int i = 0; i < length; i++)
+		{
+			BlitCommandData blitCommandData = passData.blitCommands[i];
+			Texture texture = passData.blitCookieTextures[i];
+			TexturePackedChannelsInfo source = new TexturePackedChannelsInfo(texture.graphicsFormat);
+			bool flag = IsSingleChannelBlit(in source, in passData.atlasChannelsInfo);
+			if (texture.dimension == TextureDimension.Tex2D)
+			{
+				if (flag)
+				{
+					Blitter.BlitQuadSingleChannel(nativeCommandBuffer, texture, kIdentityScaleOffset, blitCommandData.scaleOffset, 0);
+				}
+				else
+				{
+					Blitter.BlitQuad(nativeCommandBuffer, texture, kIdentityScaleOffset, blitCommandData.scaleOffset, 0, bilinear: true);
+				}
+			}
+			else if (texture.dimension == TextureDimension.Cube)
+			{
+				if (flag)
+				{
+					Blitter.BlitCubeToOctahedral2DQuadSingleChannel(nativeCommandBuffer, texture, blitCommandData.scaleOffset, 0);
+				}
+				else
+				{
+					Blitter.BlitCubeToOctahedral2DQuad(nativeCommandBuffer, texture, blitCommandData.scaleOffset, 0);
+				}
+			}
+		}
+	}
+
+	private static bool IsSingleChannelBlit(in TexturePackedChannelsInfo source, in TexturePackedChannelsInfo dest)
+	{
+		if (source.componentCount == 1 || dest.componentCount == 1)
+		{
+			if (source.componentCount != dest.componentCount)
+			{
+				return true;
+			}
+			if (source.swizzleMask != dest.swizzleMask)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 }

@@ -16,13 +16,6 @@ public class WarhammerPathAi : WarhammerPath<WarhammerPathAiMetric, WarhammerPat
 		return warhammerPathAi;
 	}
 
-	public static WarhammerPathAi ConstructForGatherDeviationNodes(AbstractUnitEntity unit, Vector3 start, float maxLength, [CanBeNull] GridNodeBase targetNode, [CanBeNull] MechanicEntity targetEntity, BlockMode blockMode, bool passThroughSmallUnits, WarhammerPathAiMetric initialLength, ITraversalCostProvider<WarhammerPathAiMetric> traversalCostProvider, OnPathDelegate callback = null)
-	{
-		WarhammerPathAi warhammerPathAi = PathPool.GetPath<WarhammerPathAi>();
-		warhammerPathAi.Setup(unit, start, maxLength, targetNode, targetEntity, blockMode, passThroughSmallUnits, initialLength, traversalCostProvider, oneWayLinksAreForbidden: false, callback, isGatheringDeviationNodes: true);
-		return warhammerPathAi;
-	}
-
 	protected override WarhammerPathAiCell Convert(in WarhammerPathAiMetric distance, in GraphNode node, in GraphNode parentNode, in IWarhammerTraversalProvider traversalProvider)
 	{
 		return new WarhammerPathAiCell(node.Vector3Position(), distance.DiagonalsCount, distance.Length, node, parentNode, traversalProvider.CanTraverseEndNode(node, 0), distance.EnteredAoE, distance.LeavedAoE, distance.StepsInsideDamagingAoE, distance.ProvokedAttacks);

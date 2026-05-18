@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using Kingmaker.Code.Framework;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
@@ -129,7 +128,7 @@ public class ActionBarPartAbilitiesVM : ActionBarBasePartVM, IActionBarPartAbili
 		}
 		if (flag)
 		{
-			m_SlotCountChanged.Execute();
+			m_SlotCountChanged.Execute(R3.Unit.Default);
 		}
 	}
 

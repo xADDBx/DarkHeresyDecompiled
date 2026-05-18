@@ -1,8 +1,9 @@
+using System;
 using UnityEngine;
 
 namespace Owlcat.Runtime.Visual.Waaagh.Shadows;
 
-internal sealed class NativeQuadTreeDebugger
+internal sealed class NativeQuadTreeDebugger : IDisposable
 {
 	private Texture2D m_AllocationTexture;
 
@@ -15,7 +16,7 @@ internal sealed class NativeQuadTreeDebugger
 		{
 			if (m_AllocationTexture != null)
 			{
-				Object.DestroyImmediate(m_AllocationTexture);
+				UnityEngine.Object.DestroyImmediate(m_AllocationTexture);
 			}
 			m_AllocationTexture = new Texture2D(num, num, TextureFormat.ARGB32, mipChain: true);
 			m_AllocationTexture.filterMode = FilterMode.Point;
@@ -46,5 +47,11 @@ internal sealed class NativeQuadTreeDebugger
 			m_AllocationTexture.SetPixels32(pixels, miplevel);
 		}
 		m_AllocationTexture.Apply(updateMipmaps: false);
+	}
+
+	public void Dispose()
+	{
+		UnityEngine.Object.DestroyImmediate(m_AllocationTexture);
+		m_AllocationTexture = null;
 	}
 }

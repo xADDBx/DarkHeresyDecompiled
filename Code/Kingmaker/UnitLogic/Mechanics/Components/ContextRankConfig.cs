@@ -5,8 +5,6 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Properties;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Mechanics.Entities;
@@ -231,40 +229,41 @@ public class ContextRankConfig : BlueprintComponent
 		case ContextRankBaseValueType.FeatureRank:
 			return caster.Progression.Features.GetRank(m_Feature.Get());
 		case ContextRankBaseValueType.StatBonus:
-			return caster.GetStatOptional<ModifiableValueAttributeStat>(m_Stat)?.Bonus ?? 0;
+		case ContextRankBaseValueType.BaseStat:
+		case ContextRankBaseValueType.WarhammerStatBonus:
+		case ContextRankBaseValueType.Stat:
+			return 0;
 		case ContextRankBaseValueType.CharacterLevel:
 			return caster.Progression.CharacterLevel;
 		case ContextRankBaseValueType.FeatureList:
 		{
-			int num5 = 0;
+			int num2 = 0;
 			BlueprintFeatureReference[] featureList = m_FeatureList;
 			foreach (BlueprintFeatureReference blueprintFeatureReference2 in featureList)
 			{
 				if (caster.Progression.Features.Contains(blueprintFeatureReference2.Get()))
 				{
-					num5++;
+					num2++;
 				}
 			}
-			return num5;
+			return num2;
 		}
 		case ContextRankBaseValueType.FeatureListRanks:
 		{
-			int num6 = 0;
+			int num5 = 0;
 			BlueprintFeatureReference[] featureList = m_FeatureList;
 			foreach (BlueprintFeatureReference blueprintFeatureReference3 in featureList)
 			{
-				num6 += caster.Progression.Features.GetRank(blueprintFeatureReference3.Get());
+				num5 += caster.Progression.Features.GetRank(blueprintFeatureReference3.Get());
 			}
-			return num6;
+			return num5;
 		}
 		case ContextRankBaseValueType.MasterFeatureRank:
 			return caster.Master?.Progression.Features.GetRank(m_Feature.Get()) ?? 0;
 		case ContextRankBaseValueType.CasterCR:
 			return 0;
-		case ContextRankBaseValueType.BaseStat:
-			return caster.Stats.GetStatOptional(m_Stat)?.BaseValue ?? 0;
 		case ContextRankBaseValueType.CustomProperty:
-			return SimpleBlueprintExtendAsObject.Or(m_CustomProperty.Get(), null)?.GetValue(new PropertyContext(caster)) ?? 0;
+			return SimpleBlueprintExtendAsObject.Or(m_CustomProperty.Get(), null)?.GetValue(caster) ?? 0;
 		case ContextRankBaseValueType.CasterBuffRank:
 			return (caster?.Facts.Get(m_Buff.Get())?.GetRank()).GetValueOrDefault();
 		case ContextRankBaseValueType.TargetBuffRank:
@@ -275,7 +274,7 @@ public class ContextRankConfig : BlueprintComponent
 			BlueprintEntityPropertyReference[] customPropertyList = m_CustomPropertyList;
 			for (int i = 0; i < customPropertyList.Length; i++)
 			{
-				int num4 = SimpleBlueprintExtendAsObject.Or(customPropertyList[i].Get(), null)?.GetValue(new PropertyContext(caster)) ?? 0;
+				int num4 = SimpleBlueprintExtendAsObject.Or(customPropertyList[i].Get(), null)?.GetValue(caster) ?? 0;
 				if (num4 > num3)
 				{
 					num3 = num4;
@@ -283,8 +282,6 @@ public class ContextRankConfig : BlueprintComponent
 			}
 			return num3;
 		}
-		case ContextRankBaseValueType.WarhammerStatBonus:
-			return caster.Stats.GetStatOptional<ModifiableValueAttributeStat>(m_Stat)?.WarhammerBonus ?? 0;
 		case ContextRankBaseValueType.CurrentWeaponRateOfFire:
 			if (caster == null || context.SourceAbility?.Weapon == null)
 			{
@@ -297,21 +294,17 @@ public class ContextRankConfig : BlueprintComponent
 				return 0;
 			}
 			return Game.Instance.EntityPools.AllUnits.Count((AbstractUnitEntity p) => p.DistanceToInCells(caster) <= 1);
-		case ContextRankBaseValueType.Stat:
-			return caster.Stats.GetStatOptional(m_Stat)?.ModifiedValue ?? 0;
 		case ContextRankBaseValueType.WarhammerStatBonusPlusFeatureList:
 		{
-			int num = caster.Stats.GetStatOptional<ModifiableValueAttributeStat>(m_Stat)?.WarhammerBonus ?? 0;
-			int num2 = 0;
+			int num = 0;
 			BlueprintFeatureReference[] featureList = m_FeatureList;
 			foreach (BlueprintFeatureReference blueprintFeatureReference in featureList)
 			{
-				num2 += caster.Progression.Features.GetRank(blueprintFeatureReference.Get());
+				num += caster.Progression.Features.GetRank(blueprintFeatureReference.Get());
 			}
-			return num + num2;
+			return num;
 		}
 		default:
-			PFLog.Default.Error(context.Blueprint, $"Invalid rank base value: {context.Blueprint}");
 			return 0;
 		}
 	}

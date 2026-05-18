@@ -79,7 +79,7 @@ public abstract class AbilityLifecycleTrigger : MechanicEntityFactComponentDeleg
 		EndActions.Run();
 	}
 
-	private bool CheckCondition(AbilityExecutionContext context)
+	protected bool CheckCondition(AbilityExecutionContext context)
 	{
 		if (base.Fact.Blueprint is BlueprintAbility blueprint && !context.Ability.Blueprint.SameAbility(blueprint))
 		{

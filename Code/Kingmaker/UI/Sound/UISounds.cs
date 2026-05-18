@@ -42,7 +42,7 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 		EventBus.Unsubscribe(this);
 	}
 
-	public void Play(BlueprintUISound.UISound type, bool isButton = false, bool playAnyway = false)
+	public void Play(UISound type, bool isButton = false, bool playAnyway = false)
 	{
 		if ((!ShouldNotToPlaySound || isButton || playAnyway) && UIDollRooms.Instance != null)
 		{
@@ -50,7 +50,7 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 		}
 	}
 
-	public void Play(BlueprintUISound.UISound sound, GameObject gameObject, bool isButton = false, bool playAnyway = false)
+	public void Play(UISound sound, GameObject gameObject, bool isButton = false, bool playAnyway = false)
 	{
 		if (sound != null && !string.IsNullOrEmpty(sound.Id) && (!ShouldNotToPlaySound || isButton || playAnyway))
 		{
@@ -62,40 +62,38 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 	{
 		if (!GameUIState.Instance.IsInventoryDollRotating)
 		{
+			ButtonsSounds buttonsSounds = Instance.Sounds.ButtonsSounds;
 			switch (soundType)
 			{
 			case -1:
-				Play(Instance.Sounds.Buttons.ButtonHover, isButton: true);
+				Play(buttonsSounds.Default.Hover, isButton: true);
 				break;
 			case 0:
-				Play(Instance.Sounds.Buttons.PlastickButtonHover, isButton: true);
+				Play(buttonsSounds.PlasticButton.Hover, isButton: true);
 				break;
 			case 1:
-				Play(Instance.Sounds.Buttons.ExitToWarpButtonHover, isButton: true);
-				break;
-			case 2:
-				Play(Instance.Sounds.SpaceColonization.ProjectWindowButtonHover, isButton: true);
+				Play(buttonsSounds.ExitToWarpButton.Hover, isButton: true);
 				break;
 			case 3:
-				Play(Instance.Sounds.Buttons.FinishChargenButtonHover, isButton: true);
+				Play(buttonsSounds.FinishChargenButton.Hover, isButton: true);
 				break;
 			case 4:
-				Play(Instance.Sounds.Buttons.LootCollectAllButtonHover, isButton: true);
+				Play(buttonsSounds.LootCollectAllButton.Hover, isButton: true);
 				break;
 			case 5:
-				Play(Instance.Sounds.Buttons.DoctrineNextButtonHover, isButton: true);
+				Play(buttonsSounds.DoctrineNextButton.Hover, isButton: true);
 				break;
 			case 6:
-				Play(Instance.Sounds.Buttons.PaperComponentSoundHover, isButton: true);
+				Play(buttonsSounds.PaperComponentSound.Hover, isButton: true);
 				break;
 			case 7:
-				Play(Instance.Sounds.Buttons.AnalogButtonHover, isButton: true);
+				Play(buttonsSounds.AnalogButton.Hover, isButton: true);
 				break;
 			case 8:
-				Play(Instance.Sounds.Buttons.PaperButtonHover, isButton: true);
+				Play(buttonsSounds.PaperButton.Hover, isButton: true);
 				break;
 			case 9:
-				Play(Instance.Sounds.Buttons.MajorPaperButtonHover, isButton: true);
+				Play(buttonsSounds.MajorPaperButton.Hover, isButton: true);
 				break;
 			default:
 				LogChannel.Default.Warning("UI sound events in OwlcatButton don't supported in project");
@@ -108,43 +106,43 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 
 	public void PlayButtonClickSound(int soundType = -1)
 	{
+		ButtonsSounds buttonsSounds = Instance.Sounds.ButtonsSounds;
 		switch (soundType)
 		{
 		case -1:
-			Play(Instance.Sounds.Buttons.ButtonClick, isButton: true);
+			Play(buttonsSounds.Default.Click, isButton: true);
 			break;
 		case 0:
-			Play(Instance.Sounds.Buttons.PlastickButtonClick, isButton: true);
+			Play(buttonsSounds.Default.Click, isButton: true);
 			break;
 		case 1:
-			Play(Instance.Sounds.Buttons.ExitToWarpButtonClick, isButton: true);
+			Play(buttonsSounds.ExitToWarpButton.Click, isButton: true);
 			break;
 		case 3:
-			Play(Instance.Sounds.Buttons.FinishChargenButtonClick, isButton: true);
+			Play(buttonsSounds.FinishChargenButton.Click, isButton: true);
 			break;
 		case 4:
-			Play(Instance.Sounds.Buttons.LootCollectAllButtonClick, isButton: true);
+			Play(buttonsSounds.LootCollectAllButton.Click, isButton: true);
 			break;
 		case 5:
-			Play(Instance.Sounds.Buttons.DoctrineNextButtonClick, isButton: true);
+			Play(buttonsSounds.DoctrineNextButton.Click, isButton: true);
 			break;
 		case 6:
-			Play(Instance.Sounds.Buttons.PaperComponentSoundClick, isButton: true);
+			Play(buttonsSounds.PaperComponentSound.Click, isButton: true);
 			break;
 		case 7:
-			Play(Instance.Sounds.Buttons.AnalogButtonClick, isButton: true);
+			Play(buttonsSounds.AnalogButton.Click, isButton: true);
 			break;
 		case 8:
-			Play(Instance.Sounds.Buttons.PaperButtonClick, isButton: true);
+			Play(buttonsSounds.PaperButton.Click, isButton: true);
 			break;
 		case 9:
-			Play(Instance.Sounds.Buttons.MajorPaperButtonClick, isButton: true);
+			Play(buttonsSounds.MajorPaperButton.Click, isButton: true);
 			break;
 		default:
 			LogChannel.Default.Warning("UI sound events in OwlcatButton don't supported in project");
 			break;
 		case -2:
-		case 2:
 			break;
 		}
 	}
@@ -152,28 +150,28 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 	public void PlayInteractionSound(UIInteractionType type, GameObject gameObject, bool isSuccess)
 	{
 		UIInteractionType type2 = ContextData<InteractionVariantData>.Current?.VariantActor?.UIType ?? type;
-		BlueprintUISound sounds = Instance.Sounds;
-		BlueprintUISound.UISound sound = sounds.DoNothingEvent;
-		if (sounds.InteractionSounds.Interactions != null)
+		SystemSounds.UIInteractionSounds interactionSounds = Instance.Sounds.SystemSounds.InteractionSounds;
+		UISound uISound = Instance.Sounds.DoNothingEvent;
+		if (interactionSounds.Interactions != null)
 		{
-			sound = sounds.InteractionSounds.GetInteractionSound(type2, isSuccess) ?? sounds.DoNothingEvent;
+			uISound = interactionSounds.GetInteractionSound(type2, isSuccess) ?? uISound;
 		}
-		Play(sound, gameObject, isButton: true);
+		Play(uISound, gameObject, isButton: true);
 	}
 
 	public void PlayConsoleHintClickSound()
 	{
-		Play(Instance.Sounds.ConsoleHints.ConsoleHintClick, isButton: true);
+		Play(SystemSounds.Instance.ConsoleHints.Click, isButton: true);
 	}
 
 	public void PlayConsoleHintHoldSoundStart()
 	{
-		Play(Instance.Sounds.ConsoleHints.ConsoleHintHoldStart, isButton: true);
+		Play(SystemSounds.Instance.ConsoleHints.HoldStart, isButton: true);
 	}
 
 	public void PlayConsoleHintHoldSoundStop()
 	{
-		Play(Instance.Sounds.ConsoleHints.ConsoleHintHoldStop, isButton: true);
+		Play(SystemSounds.Instance.ConsoleHints.HoldStop, isButton: true);
 	}
 
 	public void PlayConsoleHintHoldSoundSetRtpcValue(float value)
@@ -228,7 +226,8 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 
 	void IDropItemHandler.HandleDropItem(ItemEntity item, bool split)
 	{
-		Play(split ? Instance.Sounds.Loot.LootCollectAll : Instance.Sounds.Loot.LootCollectOne);
+		UISound type = (split ? Instance.Sounds.ModalWindowsSounds.Loot.CollectAll : Instance.Sounds.ModalWindowsSounds.Loot.CollectOne);
+		Play(type);
 		PlayItemSound(SlotAction.Take, item, equipSound: false);
 	}
 
@@ -238,7 +237,7 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 
 	void ISplitItemHandler.HandleSplitItem()
 	{
-		Play(Instance.Sounds.Loot.LootCollectAll);
+		Play(Instance.Sounds.ModalWindowsSounds.Loot.CollectAll);
 	}
 
 	void ISplitItemHandler.HandleAfterSplitItem(ItemEntity item)
@@ -253,11 +252,11 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 	{
 		if (entity?.View == null)
 		{
-			Play(Instance.Sounds.Coop.MobPing);
+			Play(Instance.Sounds.CoopSounds.Pings.MobPing);
 		}
 		else
 		{
-			Play(Instance.Sounds.Coop.MobPing, entity.View.GO);
+			Play(Instance.Sounds.CoopSounds.Pings.MobPing, entity.View.GO);
 		}
 	}
 
@@ -267,12 +266,12 @@ public class UISounds : IUIKitSoundManager, IService, IDropItemHandler, ISubscri
 
 	public void HandlePingPositionSound(GameObject gameObject)
 	{
-		Play(Instance.Sounds.Coop.GroundPing, gameObject);
+		Play(Instance.Sounds.CoopSounds.Pings.GroundPing, gameObject);
 	}
 
 	public void HandlePingActionBarAbility(NetPlayer player, string keyName, Entity characterEntityRef, int slotIndex)
 	{
-		Play(Instance.Sounds.Coop.ActionBarAbilityPing);
+		Play(Instance.Sounds.CoopSounds.Pings.ActionBarAbilityPing);
 	}
 
 	public void SetClickAndHoverSound(OwlcatSelectable soundObject, ButtonSoundsEnum soundType)

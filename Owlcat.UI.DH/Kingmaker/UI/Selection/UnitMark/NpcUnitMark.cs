@@ -5,6 +5,7 @@ using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -39,7 +40,7 @@ public class NpcUnitMark : BaseSurfaceUnitMark, INetPingEntity, ISubscriber, ICe
 
 	protected override List<UnitMarkDecal> GetAllDecals()
 	{
-		return new List<UnitMarkDecal> { m_DialogCurrentSpeakerDecal, m_CombatDecal, m_CombatSelectedDecal, m_CombatIsInAoeDecal };
+		return new List<UnitMarkDecal> { m_DialogCurrentSpeakerDecal, m_CombatDecal, m_CombatSelectedDecal };
 	}
 
 	protected override UnitMarkDecal GetAbilityTargetDecal()
@@ -52,6 +53,7 @@ public class NpcUnitMark : BaseSurfaceUnitMark, INetPingEntity, ISubscriber, ICe
 		base.Initialize(unit);
 		SetUnitSize(unit.SizeRect.Width > 1);
 		m_PingTarget?.SetActive(state: false);
+		m_CombatIsInAoeDecal?.SetActive(state: false);
 	}
 
 	public override void HandleStateChanged()
@@ -60,10 +62,10 @@ public class NpcUnitMark : BaseSurfaceUnitMark, INetPingEntity, ISubscriber, ICe
 		{
 			bool flag = base.State.HasFlag(UnitMarkState.IsInCombat);
 			bool flag2 = base.State.HasFlag(UnitMarkState.CurrentTurn);
-			m_DialogCurrentSpeakerDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && base.State.HasFlag(UnitMarkState.DialogCurrentSpeaker));
-			m_CombatDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && !flag2);
-			m_CombatSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag2);
-			m_CombatIsInAoeDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && base.State.HasFlag(UnitMarkState.IsInAoEPattern));
+			bool flag3 = BaseUnitMark.IsHideAllUI || IsHiddenBySettings();
+			m_DialogCurrentSpeakerDecal.SetActive(!flag3 && !BaseUnitMark.IsCutscene && base.State.HasFlag(UnitMarkState.DialogCurrentSpeaker));
+			m_CombatDecal.SetActive(!flag3 && !BaseUnitMark.IsCutscene && flag && !flag2);
+			m_CombatSelectedDecal.SetActive(!flag3 && !BaseUnitMark.IsCutscene && flag2);
 		}
 	}
 

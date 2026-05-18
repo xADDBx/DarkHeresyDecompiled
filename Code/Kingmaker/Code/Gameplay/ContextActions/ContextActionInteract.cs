@@ -26,33 +26,32 @@ public class ContextActionInteract : ContextAction
 	protected override void RunAction()
 	{
 		BaseUnitEntity baseUnitEntity = base.Caster as BaseUnitEntity;
-		InteractionAction value = InteractionActionEvaluator.GetValue();
+		InteractionActionPart value = InteractionActionEvaluator.GetValue();
 		if (TryCreateInteractCommand(baseUnitEntity, value, out var commandParams))
 		{
 			baseUnitEntity.Commands.RunImmediate(commandParams);
 		}
 	}
 
-	private bool TryCreateInteractCommand(BaseUnitEntity agent, InteractionAction interaction, out UnitCommandParams commandParams)
+	private bool TryCreateInteractCommand(BaseUnitEntity agent, InteractionActionPart interactionPart, out UnitCommandParams commandParams)
 	{
 		commandParams = null;
-		InteractionActionPart interactionActionPart = interaction.EnsurePart();
-		if (interactionActionPart.Type == InteractionType.Flashlight || interactionActionPart.Type == InteractionType.Variant)
+		if (interactionPart.Type == InteractionType.Flashlight || interactionPart.Type == InteractionType.Variant)
 		{
 			return false;
 		}
-		if (!interactionActionPart.CanInteract())
+		if (!interactionPart.CanInteract())
 		{
 			return false;
 		}
-		if (interactionActionPart.Type == InteractionType.Direct)
+		if (interactionPart.Type == InteractionType.Direct)
 		{
-			commandParams = UnitDirectInteract.CreateCommandParams(interactionActionPart);
+			commandParams = UnitDirectInteract.CreateCommandParams(interactionPart);
 			return true;
 		}
-		if (interactionActionPart.Type == InteractionType.Approach && interactionActionPart.IsEnoughCloseForInteraction(agent))
+		if (interactionPart.Type == InteractionType.Approach && interactionPart.IsEnoughCloseForInteraction(agent))
 		{
-			commandParams = new UnitInteractWithObjectParams(interactionActionPart)
+			commandParams = new UnitInteractWithObjectParams(interactionPart)
 			{
 				IsSynchronized = true
 			};

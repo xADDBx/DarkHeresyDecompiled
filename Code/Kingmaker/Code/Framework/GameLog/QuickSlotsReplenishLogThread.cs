@@ -50,7 +50,7 @@ public class QuickSlotsReplenishLogThread : LogThreadBase, IGameLogEventHandler<
 
 	private IEnumerable<ITooltipBrick> GetTooltipBricks(IReadOnlyDictionary<MechanicEntity, List<BlueprintItem>> result)
 	{
-		Func<CombatLogMessage, bool, ITooltipBrick> getTemplate = CombatLogTooltipService.CreateTooltipBrickNestedMessage;
+		Func<CombatLogMessage, bool, ITooltipBrick> getTemplate = CombatLogTooltipService.CreateBrickNestedMessage;
 		if (getTemplate == null || result == null)
 		{
 			yield break;

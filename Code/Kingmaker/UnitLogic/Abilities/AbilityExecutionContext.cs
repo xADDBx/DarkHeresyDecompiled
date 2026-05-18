@@ -11,6 +11,7 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Pathfinding;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -149,6 +150,8 @@ public class AbilityExecutionContext : MechanicsContext, IHashable, IOwlPackable
 	public int TargetsInPatternCount { get; set; } = 1;
 
 
+	public IEnumerator<AbilityDeliveryTarget> PreparedDeliveryProcess { get; set; }
+
 	[NotNull]
 	public new AbilityData Ability => base.Ability;
 
@@ -157,7 +160,7 @@ public class AbilityExecutionContext : MechanicsContext, IHashable, IOwlPackable
 
 	public IEnumerable<AbilitySpawnFx> FxSpawners => AbilityBlueprint.GetComponents<AbilitySpawnFx>();
 
-	public OrientedPatternData Pattern
+	public override OrientedPatternData Pattern
 	{
 		get
 		{
@@ -171,7 +174,7 @@ public class AbilityExecutionContext : MechanicsContext, IHashable, IOwlPackable
 
 	public override Vector3? SourceCastPosition => m_CastPosition;
 
-	public LosDescription LosToClickedTarget => GetLosToClickedTarget();
+	public override LosDescription LosToClickedTarget => GetLosToClickedTarget();
 
 	private LosDescription GetLosToClickedTarget()
 	{
@@ -183,7 +186,7 @@ public class AbilityExecutionContext : MechanicsContext, IHashable, IOwlPackable
 	{
 	}
 
-	private void Setup(AbilityData ability, TargetWrapper clickedTarget, Vector3 casterPosition, MechanicsContext parentContext)
+	private void Setup(AbilityData ability, TargetWrapper clickedTarget, Vector3 casterPosition, IEvalContext parentContext)
 	{
 		m_CastPosition = casterPosition;
 		BlueprintAbility originalBlueprint = ability.Blueprint.OriginalBlueprint;
@@ -197,7 +200,7 @@ public class AbilityExecutionContext : MechanicsContext, IHashable, IOwlPackable
 		base.Direction = (ClickedTarget.IsOrientationSpecified ? (Quaternion.Euler(0f, ClickedTarget.Orientation, 0f) * Vector3.forward).normalized : (ClickedTarget.Point - casterPosition).normalized);
 	}
 
-	public static AbilityExecutionContext Claim(AbilityData ability, TargetWrapper clickedTarget, Vector3 casterPosition, MechanicsContext parentContext = null)
+	public static AbilityExecutionContext Claim(AbilityData ability, TargetWrapper clickedTarget, Vector3 casterPosition, IEvalContext parentContext = null)
 	{
 		if (!Pool.TryPop(out var result))
 		{
@@ -298,7 +301,7 @@ public class AbilityExecutionContext : MechanicsContext, IHashable, IOwlPackable
 
 	public bool CanTargetBodyPart(BlueprintBodyPart bodyPart)
 	{
-		if (bodyPart.Restrictions.IsPassed(this))
+		if (bodyPart.Restrictions.IsPassed(EvalContext.Current))
 		{
 			if (bodyPart.ReplaceableByCover)
 			{

@@ -43,7 +43,7 @@ public class ModifiableValueAttributeStat : ModifiableValue
 		}
 	}
 
-	protected override int MinValue => 1;
+	public override int MinValue => 1;
 
 	public int Bonus => base.ModifiedValue / 10;
 

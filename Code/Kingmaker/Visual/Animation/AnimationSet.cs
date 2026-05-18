@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Animancer.TransitionLibraries;
 using JetBrains.Annotations;
 using Kingmaker.Visual.Animation.Actions;
+using Kingmaker.Visual.Animation.Decorators;
 using Kingmaker.Visual.Animation.Kingmaker;
 using UnityEngine;
 
@@ -48,46 +50,19 @@ public class AnimationSet : ScriptableObject
 
 	[SerializeField]
 	[HideInInspector]
-	private AnimationActionBase m_StartupAction;
-
-	[SerializeField]
-	[HideInInspector]
 	private List<AnimationActionEntry> m_ActionEntries;
-
-	[SerializeField]
-	[HideInInspector]
-	private List<Transition> m_Transitions = new List<Transition>();
 
 	[CanBeNull]
 	private IReadOnlyDictionary<UnitAnimationType, AnimationActionEntry> m_ActionsByType;
 
+	[HideInInspector]
+	public TransitionLibraryAsset TransitionLibrary;
+
+	public UnitAnimationDecoratorObject[] Decorators;
+
 	public List<AnimationActionEntry> ActionEntries => m_ActionEntries;
 
 	public IEnumerable<AnimationActionBase> Actions => m_ActionEntries.Select((AnimationActionEntry x) => x.Action);
-
-	public IEnumerable<Transition> Transitions => m_Transitions;
-
-	public AnimationActionBase StartupAction
-	{
-		get
-		{
-			return m_StartupAction;
-		}
-		set
-		{
-			if (value == null)
-			{
-				m_StartupAction = null;
-				return;
-			}
-			if (Actions.Contains(value))
-			{
-				m_StartupAction = value;
-				return;
-			}
-			UnityEngine.Debug.LogErrorFormat("Action {0} dont included in this AnimationSet.", value);
-		}
-	}
 
 	public UnitAnimationAction GetAction(UnitAnimationType type)
 	{
@@ -132,39 +107,5 @@ public class AnimationSet : ScriptableObject
 		}
 		int index = m_ActionEntries.FindIndex((AnimationActionEntry x) => x.Type == unitAction.Type);
 		m_ActionEntries[index].Action = action;
-	}
-
-	public void RemoveAction(AnimationActionBase action)
-	{
-		int index = m_ActionEntries.FindIndex((AnimationActionEntry x) => x.Action == action);
-		m_ActionEntries[index].Action = null;
-		for (int i = 0; i < m_Transitions.Count; i++)
-		{
-			Transition transition = m_Transitions[i];
-			if (transition.FromAction == action || transition.ToAction == action)
-			{
-				RemoveTransition(transition);
-				i--;
-			}
-		}
-		if (m_StartupAction == action)
-		{
-			m_StartupAction = null;
-		}
-	}
-
-	public bool AddTransition(Transition transition)
-	{
-		if (m_Transitions.Any((Transition t) => t.FromClip == transition.FromClip && t.ToClip == transition.ToClip && t.FromAction == transition.FromAction && t.ToAction == transition.ToAction))
-		{
-			return false;
-		}
-		m_Transitions.Add(transition);
-		return true;
-	}
-
-	public bool RemoveTransition(Transition transition)
-	{
-		return m_Transitions.Remove(transition);
 	}
 }

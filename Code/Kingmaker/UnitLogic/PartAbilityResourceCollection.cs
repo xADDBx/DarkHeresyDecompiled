@@ -7,7 +7,6 @@ using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Networking.Serialization;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
@@ -129,7 +128,7 @@ public class PartAbilityResourceCollection : EntityPart, IHashable, IOwlPackable
 			}
 			int maxAmount = resource.GetMaxAmount(base.ConcreteOwner);
 			resource.Amount = (restoreFull ? maxAmount : Math.Min(resource.Amount + amount, maxAmount));
-			EventBus.RaiseEvent(base.Owner, delegate(IAbilityResourceHandler h)
+			base.EventBus.RaiseEvent(base.Owner, delegate(IAbilityResourceHandler h)
 			{
 				h.HandleAbilityResourceChange(resource);
 			});
@@ -168,7 +167,7 @@ public class PartAbilityResourceCollection : EntityPart, IHashable, IOwlPackable
 			amount = resource.Amount;
 		}
 		resource.Amount -= amount;
-		EventBus.RaiseEvent(base.Owner, delegate(IAbilityResourceHandler h)
+		base.EventBus.RaiseEvent(base.Owner, delegate(IAbilityResourceHandler h)
 		{
 			h.HandleAbilityResourceChange(resource);
 		});

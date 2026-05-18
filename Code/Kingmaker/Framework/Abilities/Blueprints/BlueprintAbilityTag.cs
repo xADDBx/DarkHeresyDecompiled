@@ -21,4 +21,8 @@ public sealed class BlueprintAbilityTag : BlueprintScriptableObject
 	public Sprite Icon;
 
 	public Sprite AbilityIcon;
+
+	public Sprite SymbolIcon;
+
+	public Color BackgroundColor;
 }

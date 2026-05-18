@@ -3,6 +3,7 @@ using System.Collections;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
@@ -48,11 +49,11 @@ public class ResurrectionLogic : UnitBuffComponentDelegate
 
 	private IEnumerator ResurrectionCoroutine(ComponentRuntime runtime)
 	{
-		UnitEntityView unitView = base.Owner.View;
+		IUnitEntityView unitView = base.Owner.View;
 		TimeSpan startTime = Game.Instance.Controllers.TimeController.GameTime;
 		bool firstFxStarted = false;
 		bool secondFxStarted = false;
-		Vector3 torsoPosition = base.Owner.View.CenterTorso.transform.position;
+		Vector3 torsoPosition = base.Owner.View.AsUnitEntityView().CenterTorso.position;
 		while (!secondFxStarted)
 		{
 			TimeSpan gameTime = Game.Instance.Controllers.TimeController.GameTime;
@@ -68,7 +69,7 @@ public class ResurrectionLogic : UnitBuffComponentDelegate
 				PartVision partVision = maybeCaster?.GetVisionOptional();
 				if (partVision != null && !partVision.HasLOS(owner))
 				{
-					owner.Position = maybeCaster.Position + maybeCaster.View.ViewTransform.forward.normalized * 2f;
+					owner.Position = maybeCaster.Position + maybeCaster.Forward * 2f;
 				}
 				else
 				{

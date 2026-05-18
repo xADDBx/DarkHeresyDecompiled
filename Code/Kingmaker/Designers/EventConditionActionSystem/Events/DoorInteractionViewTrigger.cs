@@ -7,7 +7,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
-using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Events;
@@ -33,7 +32,7 @@ public class DoorInteractionViewTrigger : MonoBehaviour, IInteractionHandler, IS
 	public void OnInteract(AbstractInteractionPart interaction)
 	{
 		InteractionDoorPart interactionDoorPart = interaction as InteractionDoorPart;
-		if (!interactionDoorPart || !(interactionDoorPart.View.Or(null)?.gameObject == base.gameObject))
+		if (!interactionDoorPart || !(interactionDoorPart.View?.gameObject == base.gameObject))
 		{
 			return;
 		}
@@ -54,7 +53,7 @@ public class DoorInteractionViewTrigger : MonoBehaviour, IInteractionHandler, IS
 			return;
 		}
 		InteractionDoorPart interactionDoorPart = interaction as InteractionDoorPart;
-		if ((bool)interactionDoorPart && interactionDoorPart.View.Or(null)?.gameObject == base.gameObject)
+		if ((bool)interactionDoorPart && interactionDoorPart.View?.gameObject == base.gameObject)
 		{
 			using (ContextData<InteractingUnitData>.Request().Setup(EventInvokerExtensions.BaseUnitEntity))
 			{

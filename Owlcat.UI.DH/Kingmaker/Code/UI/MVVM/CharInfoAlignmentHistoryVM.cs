@@ -10,7 +10,7 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CharInfoAlignmentHistoryVM : CharInfoComponentVM
 {
-	public List<CharInfoSoulMarkShiftRecordVM> SoulMarkShiftsHistory;
+	public List<CharInfoAlignmentShiftRecordVM> SoulMarkShiftsHistory;
 
 	public string Biography { get; private set; }
 
@@ -28,7 +28,7 @@ public class CharInfoAlignmentHistoryVM : CharInfoComponentVM
 		if (IsMainPlayer)
 		{
 			SoulMarkShiftsHistory = (from s in AlignmentShiftExtension.AppliedShifts()
-				select new CharInfoSoulMarkShiftRecordVM(s)).ToList();
+				select new CharInfoAlignmentShiftRecordVM(s)).ToList();
 			return;
 		}
 		IEnumerable<BlueprintCompanionStory> source = Game.Instance.Player.CompanionStories.Get(Unit.CurrentValue);

@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
-using Kingmaker.Controllers.Dialog;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
@@ -23,17 +22,17 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITooltipHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, IInteractionHighlightUIHandler, IGameModeHandler, ITurnBasedModeHandler, ITurnBasedModeStartHandler, IAreaHandler, IAdditiveAreaSwitchHandler, ILootInteractionHandler, ISubscriber<IBaseUnitEntity>, ITradeStateChanged
 {
-	private readonly ReactiveProperty<TooltipVM> m_TooltipVM = new ReactiveProperty<TooltipVM>();
+	private readonly TooltipsDataCache m_TooltipsDataCache;
 
-	private readonly ReactiveProperty<HintVM> m_HintVM = new ReactiveProperty<HintVM>();
+	private readonly ReactiveProperty<TooltipVM> m_TooltipVM;
 
-	private readonly ReactiveProperty<InfoWindowVM> m_InfoWindowVM = new ReactiveProperty<InfoWindowVM>();
+	private readonly ReactiveProperty<HintVM> m_HintVM;
 
-	private readonly ReactiveProperty<InfoWindowVM> m_GlossaryInfoWindowVM = new ReactiveProperty<InfoWindowVM>();
+	private readonly ReactiveProperty<InfoWindowVM> m_InfoWindowVM;
 
-	private readonly ReactiveProperty<ComparativeTooltipVM> m_ComparativeTooltipVM = new ReactiveProperty<ComparativeTooltipVM>();
+	private readonly ReactiveProperty<InfoWindowVM> m_GlossaryInfoWindowVM;
 
-	public readonly TooltipsDataCache TooltipsDataCache;
+	private readonly ReactiveProperty<ComparativeTooltipVM> m_ComparativeTooltipVM;
 
 	private IDisposable m_DelayedShowTooltipHandle;
 
@@ -41,7 +40,7 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 
 	private Vector2? m_LastTooltipPosition;
 
-	private bool m_MussHide;
+	private bool m_MustHide;
 
 	public ReadOnlyReactiveProperty<TooltipVM> TooltipVM => m_TooltipVM;
 
@@ -60,13 +59,12 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 		m_InfoWindowVM = infoWindowVM;
 		m_GlossaryInfoWindowVM = glossaryInfoWindowVM;
 		m_ComparativeTooltipVM = comparativeTooltipVM;
-		TooltipsDataCache = new TooltipsDataCache().AddTo(this);
+		m_TooltipsDataCache = new TooltipsDataCache().AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
-		TooltipVM.Where((TooltipVM t) => t == null).Timeout(TimeSpan.FromMilliseconds(200.0)).Subscribe(delegate
+		ObservableSubscribeExtensions.Subscribe(TooltipVM.Select((TooltipVM t) => (t != null) ? Observable.Never<Unit>() : Observable.Timer(TimeSpan.FromMilliseconds(200.0))).Switch(), delegate
 		{
 			m_LastTooltipPosition = null;
-		})
-			.AddTo(this);
+		}).AddTo(this);
 	}
 
 	protected override void OnDispose()
@@ -88,46 +86,37 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 		}
 	}
 
-	public void HandleInfoRequest(TooltipBaseTemplate template, ConsoleNavigationBehaviour ownerNavigationBehaviour = null, bool shouldNotHideLittleTooltip = false)
+	public void HandleInfoRequest(TooltipBaseTemplate template, bool shouldNotHideLittleTooltip = false)
 	{
 		Vector2? lastTooltipPosition = ((InfoWindowVM.CurrentValue == null) ? m_LastTooltipPosition : null);
 		DisposeInfoWindow();
 		if (template != null)
 		{
-			ownerNavigationBehaviour?.UnFocusCurrentEntity();
 			m_InfoWindowVM.Value = new InfoWindowVM(template, delegate
 			{
 				DisposeInfoWindow();
-				ownerNavigationBehaviour?.FocusOnCurrentEntity();
 			}, shouldNotHideLittleTooltip, lastTooltipPosition).AddTo(this);
 		}
 	}
 
-	public void HandleMultipleInfoRequest(IEnumerable<TooltipBaseTemplate> templates, ConsoleNavigationBehaviour ownerNavigationBehaviour = null)
+	public void HandleMultipleInfoRequest(IEnumerable<TooltipBaseTemplate> templates)
 	{
 		DisposeInfoWindow();
 		if (templates != null)
 		{
-			ownerNavigationBehaviour?.UnFocusCurrentEntity();
 			m_InfoWindowVM.Value = new InfoWindowVM(templates, delegate
 			{
 				DisposeInfoWindow();
-				ownerNavigationBehaviour?.FocusOnCurrentEntity();
 			}).AddTo(this);
 		}
 	}
 
-	public void HandleGlossaryInfoRequest(TooltipTemplateGlossary template, ConsoleNavigationBehaviour ownerNavigationBehaviour = null)
+	public void HandleGlossaryInfoRequest(TooltipTemplateGlossary template)
 	{
 		if (template != null)
 		{
-			ownerNavigationBehaviour?.UnFocusCurrentEntity();
 			TooltipHelper.AddGlossaryHistory(template.GlossaryEntry);
-			m_GlossaryInfoWindowVM.Value = new InfoWindowVM(template, delegate
-			{
-				DisposeGlossaryInfoWindow();
-				ownerNavigationBehaviour?.FocusOnCurrentEntity();
-			}).AddTo(this);
+			m_GlossaryInfoWindowVM.Value = new InfoWindowVM(template, DisposeGlossaryInfoWindow).AddTo(this);
 		}
 		else
 		{
@@ -135,12 +124,37 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 		}
 	}
 
-	public void HandleComparativeTooltipRequest(IEnumerable<TooltipData> data, bool showScrollbar = false)
+	public void HandleComparativeTooltipRequest(Transform source, IEnumerable<TooltipData> data, bool showScrollbar = false)
 	{
 		DisposeComparativeTooltip();
-		if (!data.Empty())
+		List<TooltipData> list = data?.ToList() ?? new List<TooltipData>();
+		if (list.Count > 0)
 		{
-			m_ComparativeTooltipVM.Value = new ComparativeTooltipVM(data, showScrollbar).AddTo(this);
+			List<TooltipData> list2 = new List<TooltipData>();
+			if (list.Count > 1)
+			{
+				List<TooltipData> list3 = list2;
+				List<TooltipData> list4 = list;
+				list3.Add(list4[list4.Count - 1]);
+				list.RemoveLast();
+				List<TooltipData> list5 = list2;
+				List<TooltipData> list6 = list;
+				list = list5;
+				list2 = list6;
+			}
+			m_ComparativeTooltipVM.Value = new ComparativeTooltipVM(source, list, list2, showScrollbar).AddTo(this);
+			ContextMenuHelper.HideContextMenu();
+		}
+	}
+
+	public void HandleComparativeTooltipRequest(Transform source, IEnumerable<TooltipData> mainData, IEnumerable<TooltipData> compareData, bool showScrollbar = false)
+	{
+		DisposeComparativeTooltip();
+		List<TooltipData> list = mainData?.ToList() ?? new List<TooltipData>();
+		List<TooltipData> list2 = compareData?.ToList() ?? new List<TooltipData>();
+		if (list.Count > 0 || list2.Count > 0)
+		{
+			m_ComparativeTooltipVM.Value = new ComparativeTooltipVM(source, list, list2, showScrollbar).AddTo(this);
 			ContextMenuHelper.HideContextMenu();
 		}
 	}
@@ -149,11 +163,11 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 	{
 		if (data != null && shouldShow)
 		{
-			m_MussHide = false;
+			m_MustHide = false;
 			TimeSpan dueTime = TimeSpan.FromSeconds((float)SettingsRoot.Game.Tooltips.ShowDelay);
 			m_DelayedShowHintHandle = ObservableSubscribeExtensions.Subscribe(Observable.Timer(dueTime, UnityTimeProvider.UpdateIgnoreTimeScale), delegate
 			{
-				if (!m_MussHide)
+				if (!m_MustHide)
 				{
 					m_HintVM.Value = new HintVM(data).AddTo(this);
 				}
@@ -201,7 +215,7 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 
 	private void DisposeHint()
 	{
-		m_MussHide = true;
+		m_MustHide = true;
 		m_DelayedShowHintHandle?.Dispose();
 		m_DelayedShowHintHandle = null;
 		HintVM.CurrentValue?.Dispose();
@@ -228,7 +242,7 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 
 	public void OnGameModeStart(GameModeType gameMode)
 	{
-		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.GameOver || gameMode == GameModeType.CutsceneGlobalMap || gameMode == GameModeType.StarSystem || gameMode == GameModeType.Dialog)
+		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.GameOver || gameMode == GameModeType.CutsceneGlobalMap || gameMode == GameModeType.Dialog)
 		{
 			DisposeAll();
 		}
@@ -273,10 +287,6 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 	{
 	}
 
-	public void HandleSpaceLootInteraction(ILootable[] objects, LootContainerType containerType, Action closeCallback, SkillCheckResult skillCheckResult = null)
-	{
-	}
-
 	public void HandleZoneLootInteraction(AreaTransitionPart areaTransition)
 	{
 		DisposeAll();
@@ -295,10 +305,11 @@ public class TooltipContext : ViewModel, ITooltipBaseHandler, ISubscriber, ITool
 	{
 	}
 
-	public void DisposeAll()
+	private void DisposeAll()
 	{
-		TooltipsDataCache.Clear();
+		m_TooltipsDataCache.Clear();
 		DisposeTooltip();
+		DisposeComparativeTooltip();
 		DisposeHint();
 		DisposeInfoWindow();
 		DisposeGlossaryInfoWindow();

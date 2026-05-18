@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Owlcat.UI;
 using UnityEngine;
 
@@ -17,11 +16,18 @@ public abstract class CombatTextCreator<TCombatTextView, TCombatMessage> where T
 
 	private Action m_CollectionUpdated;
 
-	public readonly List<CombatTextEntityBaseView<TCombatMessage>> ActiveViews = new List<CombatTextEntityBaseView<TCombatMessage>>();
+	private Action<TCombatMessage> m_MessageDisposed;
 
-	public void SetCallback(Action collectionUpdated)
+	private Dictionary<TCombatTextView, TCombatMessage> m_ViewToMessageDictionary = new Dictionary<TCombatTextView, TCombatMessage>();
+
+	private List<TCombatTextView> m_ActiveViews = new List<TCombatTextView>();
+
+	public IReadOnlyList<TCombatTextView> ActiveViews => m_ActiveViews;
+
+	public void SetCallbacks(Action<TCombatMessage> messageDisposed, Action collectionUpdated)
 	{
 		m_CollectionUpdated = collectionUpdated;
+		m_MessageDisposed = messageDisposed;
 	}
 
 	public virtual TCombatTextView Create(TCombatMessage message)
@@ -29,16 +35,21 @@ public abstract class CombatTextCreator<TCombatTextView, TCombatMessage> where T
 		TCombatTextView combatTextView = WidgetPool.Retain(m_PrefabView, ContainerRect);
 		combatTextView.SetData(message, delegate
 		{
-			DisposeCombatText(combatTextView);
+			HandleTextComplete(combatTextView);
 		});
-		ActiveViews.Add(combatTextView);
+		m_ViewToMessageDictionary.Add(combatTextView, message);
+		m_ActiveViews.Add(combatTextView);
 		return combatTextView;
 	}
 
 	public void Clear()
 	{
-		ActiveViews.ToList().ForEach(DisposeCombatText);
-		ActiveViews.Clear();
+		foreach (var (view, message) in m_ViewToMessageDictionary)
+		{
+			DisposeCombatText(view, message);
+		}
+		m_ViewToMessageDictionary.Clear();
+		m_ActiveViews.Clear();
 		m_CollectionUpdated?.Invoke();
 	}
 
@@ -46,11 +57,21 @@ public abstract class CombatTextCreator<TCombatTextView, TCombatMessage> where T
 	{
 	}
 
-	private void DisposeCombatText(CombatTextEntityBaseView<TCombatMessage> combatText)
+	private void HandleTextComplete(TCombatTextView combatText)
 	{
-		WidgetPool.Release(combatText);
-		ActiveViews.Remove(combatText);
-		m_CollectionUpdated?.Invoke();
-		OnTextViewDisposed(combatText);
+		if (m_ViewToMessageDictionary.TryGetValue(combatText, out var value))
+		{
+			DisposeCombatText(combatText, value);
+			m_ViewToMessageDictionary.Remove(combatText);
+			m_ActiveViews.Remove(combatText);
+			m_CollectionUpdated?.Invoke();
+		}
+	}
+
+	private void DisposeCombatText(TCombatTextView view, TCombatMessage message)
+	{
+		WidgetPool.Release(view);
+		m_MessageDisposed?.Invoke(message);
+		OnTextViewDisposed(view);
 	}
 }

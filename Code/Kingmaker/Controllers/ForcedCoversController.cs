@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Kingmaker.Controllers.Interfaces;
+using Kingmaker.PubSubSystem;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.View.Covers;
 using Pathfinding;
 
@@ -31,11 +33,19 @@ public class ForcedCoversController : IControllerTick, IController
 	public void RegisterCoverProvider(IDynamicCoverProvider coverProvider)
 	{
 		m_RegisteredCoverProviders.Add(coverProvider);
+		EventBus.RaiseEvent(delegate(IDynamicCoverProviderChangedHandler h)
+		{
+			h.HandleDynamicCoverProviderRegistered(coverProvider);
+		});
 	}
 
 	public void UnregisterCoverProvider(IDynamicCoverProvider coverProvider)
 	{
 		m_RegisteredCoverProviders.Remove(coverProvider);
+		EventBus.RaiseEvent(delegate(IDynamicCoverProviderChangedHandler h)
+		{
+			h.HandleDynamicCoverProviderUnregistered(coverProvider);
+		});
 	}
 
 	public bool TryGetCoverType(GridNodeBase node, out LosCalculations.CoverType coverType)

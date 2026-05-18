@@ -23,11 +23,11 @@ public class ContextConditionCasterHasFact : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		if (base.Context?.MaybeCaster == null)
+		if (base.Eval.Caster == null)
 		{
 			PFLog.Default.Error(this, "Caster is missing");
 			return false;
 		}
-		return base.Context.MaybeCaster.Facts.Contains(Fact);
+		return base.Eval.Caster.Facts.Contains(Fact);
 	}
 }

@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -22,6 +23,6 @@ public class CheckContextBlueprintGetter : BoolPropertyGetter, PropertyContextAc
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetMechanicContext().Blueprint == Blueprint;
+		return EvalContext.Current.Blueprint == Blueprint;
 	}
 }

@@ -7,7 +7,6 @@ using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Dialog;
 using Kingmaker.EntitySystem.Entities;
 using Owlcat.UI;
-using TMPro;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -62,7 +61,7 @@ public class TooltipTemplateSkillCheckDC : TooltipBaseTemplate
 	{
 		if (m_Check != null)
 		{
-			yield return new TooltipBrickTitle(string.Format(UIStrings.Instance.Tooltips.TitlePreviewSkillcheckSkillDC, Texts.SkillCheck.Text, m_SkillName));
+			yield return new BrickTitleVM(string.Format(UIStrings.Instance.Tooltips.TitlePreviewSkillcheckSkillDC, Texts.SkillCheck.Text, m_SkillName));
 		}
 	}
 
@@ -88,24 +87,24 @@ public class TooltipTemplateSkillCheckDC : TooltipBaseTemplate
 
 	private IEnumerable<ITooltipBrick> FillForActingUnit()
 	{
-		yield return new TooltipBrickPortraitAndName(m_ActingUnit.Portrait.SmallPortrait, m_ActingUnit.CharacterName, new TooltipBrickTitle($"{m_SkillName}: {m_ValueDC}", TooltipTitleType.H6, TextAlignmentOptions.Left));
-		yield return new TooltipBrickChance(Texts.SkillCheckChance.Text, m_SkillcheckChance, m_FakeRoll, 0, isResultValue: true, null, isProtectionIcon: false, isTargetHitIcon: true, isBorderChanceIcon: false, isGrayBackground: true);
-		yield return new TooltipBrickTextValue(Texts.SkillValue.Text, m_ValueDC.ToString("+#;-#;0"), 1);
+		yield return new BrickPortraitAndNameVM(m_ActingUnit.Portrait.SmallPortrait, m_ActingUnit.CharacterName, new BrickTitleVM(new TextEntity($"{m_SkillName}: {m_ValueDC}", TextFieldParams.Left), TooltipTitleType.H6));
+		yield return new BrickChanceVM(Texts.SkillCheckChance.Text, m_SkillcheckChance, m_FakeRoll, 0, isResultValue: true, null, CombatLogIcon.TargetHit);
+		yield return new BrickTextValueVM(Texts.SkillValue.Text, m_ValueDC.ToString("+#;-#;0"), 1);
 		if (m_ConditionDC != 0)
 		{
-			yield return new TooltipBrickTextValue(Texts.DifficultyClass.Text, m_ConditionDC.ToString("+#;-#;0"), 1);
+			yield return new BrickTextValueVM(Texts.DifficultyClass.Text, m_ConditionDC.ToString("+#;-#;0"), 1);
 		}
 		if (m_Check.IsBestParameter && !m_Check.FakePassed.HasValue)
 		{
-			yield return new TooltipBrickSeparator(TooltipBrickElementType.Small);
-			yield return new TooltipBrickText(UIStrings.Instance.Tooltips.TipPreviewSkillcheckBestCharacter, TooltipTextType.Italic | TooltipTextType.Centered, isHeader: true);
+			yield return new BrickSeparatorVM(TooltipBrickElementType.Small);
+			yield return new BrickTextVM(UIStrings.Instance.Tooltips.TipPreviewSkillcheckBestCharacter, TooltipTextType.Italic | TooltipTextType.Centered, TooltipTextAlignment.Midl, m_ActingUnit);
 		}
 	}
 
 	private IEnumerable<ITooltipBrick> FillFreeSkillcheck()
 	{
-		yield return new TooltipBrickText(m_SkillName + ": " + UIUtilityText.AddSign(m_ValueDC) + "\n" + $"({UIStrings.Instance.SkillcheckTooltips.SkillCheckChance.Text}: {m_SkillcheckChance}%)", TooltipTextType.Centered);
-		yield return new TooltipBrickIconValueStat(Texts.DifficultyModRoll, m_ConditionDC.ToString(), null, TooltipIconValueStatType.Centered);
-		yield return new TooltipBrickValueStatFormula($"{m_ConditionDC.ToString()} {Texts.SkillValue.Text} + {m_ValueDC} {Texts.DifficultyClass.Text}", null, null);
+		yield return new BrickTextVM(m_SkillName + ": " + UIUtilityText.AddSign(m_ValueDC) + "\n" + $"({UIStrings.Instance.SkillcheckTooltips.SkillCheckChance.Text}: {m_SkillcheckChance}%)", TooltipTextType.Centered);
+		yield return new BrickIconValueStatVM(new TextValueElement(new TextEntity(Texts.DifficultyModRoll, TextFieldParams.Center), new TextEntity(m_ConditionDC.ToString())));
+		yield return new BrickValueStatFormulaVM($"{m_ConditionDC.ToString()} {Texts.SkillValue.Text} + {m_ValueDC} {Texts.DifficultyClass.Text}", null, null);
 	}
 }

@@ -33,15 +33,15 @@ public class ContextConditionHasBuffFromGroup : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		MechanicEntity mechanicEntity = (CheckOnCaster ? base.Context.MaybeCaster : base.Target.Entity);
+		MechanicEntity caster = base.Eval.Caster;
+		MechanicEntity mechanicEntity = (CheckOnCaster ? base.Eval.Caster : base.Target.Entity);
 		if (mechanicEntity == null)
 		{
 			return false;
 		}
 		foreach (Buff buff in mechanicEntity.Buffs)
 		{
-			if (buff.Blueprint.AbilityGroups.Any((BlueprintAbilityGroup p) => Groups.Contains(p)) && (!OnlyFromCaster || buff.Context.MaybeCaster == maybeCaster))
+			if (buff.Blueprint.AbilityGroups.Any((BlueprintAbilityGroup p) => Groups.Contains(p)) && (!OnlyFromCaster || buff.Context.MaybeCaster == caster))
 			{
 				return true;
 			}

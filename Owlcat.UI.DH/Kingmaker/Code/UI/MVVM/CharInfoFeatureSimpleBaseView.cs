@@ -30,7 +30,7 @@ public class CharInfoFeatureSimpleBaseView : VirtualListElementViewBase<CharInfo
 	[SerializeField]
 	protected TextMeshProUGUI m_AcronymText;
 
-	protected AccessibilityTextHelper TextHelper;
+	protected AccessibilityTextHelper m_TextHelper;
 
 	[Header("Tooltip")]
 	[SerializeField]
@@ -47,16 +47,16 @@ public class CharInfoFeatureSimpleBaseView : VirtualListElementViewBase<CharInfo
 
 	protected override void BindViewImplementation()
 	{
-		if (TextHelper == null)
+		if (m_TextHelper == null)
 		{
-			TextHelper = new AccessibilityTextHelper(m_DisplayName);
+			m_TextHelper = new AccessibilityTextHelper(m_DisplayName);
 		}
 		Clear();
 		Show();
 		SetupIcon();
 		SetupName();
 		SetupTooltip();
-		TextHelper.UpdateTextSize();
+		m_TextHelper.UpdateTextSize();
 	}
 
 	private void SetupTooltip()
@@ -70,10 +70,10 @@ public class CharInfoFeatureSimpleBaseView : VirtualListElementViewBase<CharInfo
 	protected override void DestroyViewImplementation()
 	{
 		Hide();
-		TextHelper.Dispose();
+		m_TextHelper.Dispose();
 	}
 
-	protected virtual void Clear()
+	protected void Clear()
 	{
 		m_AcronymText.text = string.Empty;
 		m_FeatureIcon.enabled = false;
@@ -112,8 +112,9 @@ public class CharInfoFeatureSimpleBaseView : VirtualListElementViewBase<CharInfo
 		{
 			m_AcronymText.gameObject.SetActive(value: true);
 			m_AcronymText.text = base.ViewModel.Acronym;
-			m_AcronymText.color = (((bool)m_GroupsView && base.ViewModel.TalentIconsInfo.HasGroups) ? UIConfig.Instance.GroupAcronymColor : UIConfig.Instance.SingleAcronymColor);
-			if (m_GroupsView != null && base.ViewModel.TalentIconsInfo.HasGroups)
+			bool flag = m_GroupsView != null && base.ViewModel.TalentIconsInfo.HasGroups;
+			m_AcronymText.color = UIConfig.Instance.TooltipsConfig.GetAcronymColor(flag);
+			if (flag)
 			{
 				m_GroupsView.SetupView(base.ViewModel.TalentIconsInfo);
 				return;

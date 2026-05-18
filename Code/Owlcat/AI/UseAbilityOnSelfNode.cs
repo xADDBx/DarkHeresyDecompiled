@@ -35,23 +35,26 @@ public class UseAbilityOnSelfNode : TaskNode
 		{
 			return NodeResult.Failure;
 		}
-		m_RuntimeInternalData.Value.ResetIdleTime();
 		if (m_CommandHandle == null)
 		{
 			if (!baseUnitEntity.Commands.Empty)
 			{
+				m_RuntimeInternalData.Value.ResetIdleTime();
 				return NodeResult.Running;
 			}
 			m_CommandHandle = baseUnitEntity.Commands.RunImmediate(m_CommandParams);
-			if (m_CommandHandle != null)
+			if (m_CommandHandle == null)
 			{
-				return NodeResult.Running;
+				PFLog.AI.Log($"Failed to run UnitUseAbility command: {value}");
+				return NodeResult.Failure;
 			}
-			return NodeResult.Failure;
+			m_RuntimeInternalData.Value.ResetIdleTime();
+			return NodeResult.Running;
 		}
 		AbstractUnitCommand cmd = m_CommandHandle.Cmd;
 		if (cmd != null && !cmd.IsFinished)
 		{
+			m_RuntimeInternalData.Value.ResetIdleTime();
 			return NodeResult.Running;
 		}
 		m_CommandHandle = null;

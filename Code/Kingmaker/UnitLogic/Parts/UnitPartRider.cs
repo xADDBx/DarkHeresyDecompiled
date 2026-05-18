@@ -9,7 +9,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.View;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using StateHasher.Core.Hashers;
@@ -56,7 +55,7 @@ public class UnitPartRider : BaseUnitPart, IHashable, IOwlPackable<UnitPartRider
 
 	private void ClearSaddledUnit()
 	{
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitMountHandler>)delegate(IUnitMountHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitMountHandler>)delegate(IUnitMountHandler h)
 		{
 			h.HandleUnitDismount(m_SaddledUnitRef.Entity);
 		}, isCheckRuntime: true);
@@ -71,10 +70,10 @@ public class UnitPartRider : BaseUnitPart, IHashable, IOwlPackable<UnitPartRider
 
 	private void SetAvoidanceEnabled(bool enabled)
 	{
-		UnitMovementAgentBase unitMovementAgentBase = base.Owner.View.Or(null)?.MovementAgent;
-		if (unitMovementAgentBase != null)
+		UnitMovementAgent unitMovementAgent = base.Owner?.MovementAgent;
+		if (unitMovementAgent != null)
 		{
-			unitMovementAgentBase.AvoidanceDisabled = !enabled;
+			unitMovementAgent.AvoidanceDisabled = !enabled;
 		}
 	}
 

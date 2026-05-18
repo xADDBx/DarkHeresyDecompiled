@@ -8,6 +8,7 @@ using Owlcat.Runtime.Visual.IndirectRendering.Details;
 using Owlcat.Runtime.Visual.Terrain;
 using Owlcat.Runtime.Visual.Waaagh;
 using Owlcat.Runtime.Visual.Waaagh.Data;
+using Owlcat.Runtime.Visual.Waaagh.PipelineResources;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -139,6 +140,8 @@ public class IndirectRenderingSystem
 
 	public Camera DebugCamera;
 
+	private static readonly ShaderTagId[] s_TempShaderTagIds;
+
 	public static IndirectRenderingSystem Instance { get; private set; }
 
 	private bool UsingLightProbes
@@ -159,6 +162,7 @@ public class IndirectRenderingSystem
 		s_LightModeTag = new ShaderTagId("LightMode");
 		s_AmbientProbeEvaluateDirection = new Vector3[1] { Vector3.up };
 		s_AmbientProbeEvaluateResult = new Color[1] { Color.gray };
+		s_TempShaderTagIds = new ShaderTagId[DrawingSettings.maxShaderPasses];
 		Instance = new IndirectRenderingSystem();
 	}
 
@@ -166,10 +170,11 @@ public class IndirectRenderingSystem
 	{
 	}
 
-	public void Initialize(ComputeShader cullingShader)
+	public void Initialize()
 	{
+		RenderRuntimeShaders renderPipelineSettings = GraphicsSettings.GetRenderPipelineSettings<RenderRuntimeShaders>();
 		m_Settings = GraphicsSettings.GetRenderPipelineSettings<IndirectRenderingSystemSettings>();
-		m_ShaderCulling = cullingShader;
+		m_ShaderCulling = renderPipelineSettings.IndirectRenderingCullShader;
 		m_KernelClear = m_ShaderCulling.FindKernel("Clear");
 		m_KernelCulling = m_ShaderCulling.FindKernel("Culling");
 		m_KernelArgsCopy = m_ShaderCulling.FindKernel("ArgsCopy");
@@ -177,7 +182,7 @@ public class IndirectRenderingSystem
 		m_FirstInit = false;
 	}
 
-	public void Dispose()
+	public void Cleanup()
 	{
 		m_MaterialCache.Clear();
 		IIndirectMesh[] array = m_MeshData.Keys.ToArray();
@@ -629,7 +634,7 @@ public class IndirectRenderingSystem
 		}
 	}
 
-	public void Cull(ScriptableRenderContext context, Camera camera)
+	public void Cull(CommandBuffer cmd, Camera camera)
 	{
 		if (m_InstanceDataBuffer == null || m_ArgsBuffer == null || m_IsVisibleBuffer == null || !m_InstanceDataBuffer.IsValid() || !m_ArgsBuffer.IsValid() || !m_IsVisibleBuffer.IsValid())
 		{
@@ -647,42 +652,39 @@ public class IndirectRenderingSystem
 		{
 			return;
 		}
-		CommandBuffer commandBuffer = CommandBufferPool.Get();
-		using (new ProfilingScope(commandBuffer, m_CullingProfilingSampler))
+		using (new ProfilingScope(cmd, m_CullingProfilingSampler))
 		{
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._MeshCount, m_MeshData.Count);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelClear, ShaderPropertyId._ArgsBuffer, m_ArgsBuffer);
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._ArgsBufferSize, m_ArgsBuffer.count);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelClear, ShaderPropertyId._MeshArgsBuffer, m_MeshArgsBuffer);
-			commandBuffer.DispatchCompute(m_ShaderCulling, m_KernelClear, RenderingUtils.DivRoundUp(m_MeshData.Count, 64), 1, 1);
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._TotalInstanceCount, num);
-			commandBuffer.SetComputeMatrixParam(m_ShaderCulling, ShaderPropertyId._CamViewProj, val);
-			commandBuffer.SetComputeVectorParam(m_ShaderCulling, ShaderPropertyId._CamPosition, camera2.transform.position);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._InstanceDataBuffer, m_InstanceDataBuffer);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._ArgsBuffer, m_ArgsBuffer);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._IsVisibleBuffer, m_IsVisibleBuffer);
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._IsVisibleBufferSize, m_IsVisibleBuffer.count);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._MeshDataBuffer, m_MeshDataBuffer);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._MeshArgsBuffer, m_MeshArgsBuffer);
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._MeshArgsBufferSize, m_MeshArgsBuffer.count);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._MeshCount, m_MeshData.Count);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelClear, ShaderPropertyId._ArgsBuffer, m_ArgsBuffer);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._ArgsBufferSize, m_ArgsBuffer.count);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelClear, ShaderPropertyId._MeshArgsBuffer, m_MeshArgsBuffer);
+			cmd.DispatchCompute(m_ShaderCulling, m_KernelClear, RenderingUtils.DivRoundUp(m_MeshData.Count, 64), 1, 1);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._TotalInstanceCount, num);
+			cmd.SetComputeMatrixParam(m_ShaderCulling, ShaderPropertyId._CamViewProj, val);
+			cmd.SetComputeVectorParam(m_ShaderCulling, ShaderPropertyId._CamPosition, camera2.transform.position);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._InstanceDataBuffer, m_InstanceDataBuffer);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._ArgsBuffer, m_ArgsBuffer);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._IsVisibleBuffer, m_IsVisibleBuffer);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._IsVisibleBufferSize, m_IsVisibleBuffer.count);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._MeshDataBuffer, m_MeshDataBuffer);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelCulling, ShaderPropertyId._MeshArgsBuffer, m_MeshArgsBuffer);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._MeshArgsBufferSize, m_MeshArgsBuffer.count);
 			if (m_Settings.ShapeCullingEnabled && OwlcatTerrainTransition.Active)
 			{
 				float num2 = Mathf.Max(0f, OwlcatTerrainTransition.ShapeRadius - OwlcatTerrainTransition.ShapeBlendWidth / 2f);
-				commandBuffer.SetComputeVectorParam(m_ShaderCulling, ShaderPropertyId._IndirectInstancingShapeCullingParams, new Vector4(1f, num2 * num2, OwlcatTerrainTransition.ShapeCenter.x, OwlcatTerrainTransition.ShapeCenter.z));
+				cmd.SetComputeVectorParam(m_ShaderCulling, ShaderPropertyId._IndirectInstancingShapeCullingParams, new Vector4(1f, num2 * num2, OwlcatTerrainTransition.ShapeCenter.x, OwlcatTerrainTransition.ShapeCenter.z));
 			}
 			else
 			{
-				commandBuffer.SetComputeVectorParam(m_ShaderCulling, ShaderPropertyId._IndirectInstancingShapeCullingParams, default(Vector4));
+				cmd.SetComputeVectorParam(m_ShaderCulling, ShaderPropertyId._IndirectInstancingShapeCullingParams, default(Vector4));
 			}
-			commandBuffer.DispatchCompute(m_ShaderCulling, m_KernelCulling, RenderingUtils.DivRoundUp(num, 64), 1, 1);
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._MeshCount, m_MeshData.Count);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelArgsCopy, ShaderPropertyId._ArgsBuffer, m_ArgsBuffer);
-			commandBuffer.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._ArgsBufferSize, m_ArgsBuffer.count);
-			commandBuffer.SetComputeBufferParam(m_ShaderCulling, m_KernelArgsCopy, ShaderPropertyId._MeshArgsBuffer, m_MeshArgsBuffer);
-			commandBuffer.DispatchCompute(m_ShaderCulling, m_KernelArgsCopy, RenderingUtils.DivRoundUp(m_MeshData.Count, 64), 1, 1);
+			cmd.DispatchCompute(m_ShaderCulling, m_KernelCulling, RenderingUtils.DivRoundUp(num, 64), 1, 1);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._MeshCount, m_MeshData.Count);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelArgsCopy, ShaderPropertyId._ArgsBuffer, m_ArgsBuffer);
+			cmd.SetComputeIntParam(m_ShaderCulling, ShaderPropertyId._ArgsBufferSize, m_ArgsBuffer.count);
+			cmd.SetComputeBufferParam(m_ShaderCulling, m_KernelArgsCopy, ShaderPropertyId._MeshArgsBuffer, m_MeshArgsBuffer);
+			cmd.DispatchCompute(m_ShaderCulling, m_KernelArgsCopy, RenderingUtils.DivRoundUp(m_MeshData.Count, 64), 1, 1);
 		}
-		context.ExecuteCommandBuffer(commandBuffer);
-		CommandBufferPool.Release(commandBuffer);
 	}
 
 	private void OnTetrahedralizationCompleted()
@@ -779,10 +781,31 @@ public class IndirectRenderingSystem
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static Vector3 GetWorldPosition(in IndirectInstanceData instanceData)
 	{
-		return instanceData.objectToWorld.GetColumn(3);
+		Matrix4x4 objectToWorld = instanceData.objectToWorld;
+		return objectToWorld.GetColumn(3);
 	}
 
 	public void DrawPass(CommandBuffer cmd, CameraType cameraType, bool isIndirectRenderingEnabled, bool isSceneViewInPrefabEditMode, RendererListParams rendererListParams, bool debugOverdraw)
+	{
+		ShaderTagId[] array = s_TempShaderTagIds;
+		int num = 0;
+		for (int i = 0; i < DrawingSettings.maxShaderPasses; i++)
+		{
+			ShaderTagId shaderPassName = rendererListParams.drawSettings.GetShaderPassName(i);
+			if (shaderPassName == ShaderTagId.none)
+			{
+				break;
+			}
+			array[num] = shaderPassName;
+			num++;
+		}
+		if (num != 0)
+		{
+			DrawPass(cmd, cameraType, isIndirectRenderingEnabled, isSceneViewInPrefabEditMode, debugOverdraw, rendererListParams.filteringSettings.renderQueueRange, array.AsSpan(0, num));
+		}
+	}
+
+	public void DrawPass(CommandBuffer cmd, CameraType cameraType, bool isIndirectRenderingEnabled, bool isSceneViewInPrefabEditMode, bool debugOverdraw, RenderQueueRange renderQueueRange, Span<ShaderTagId> lightModes, Material overrideDebugMaterial = null, int overrideDebugMaterialPass = 0)
 	{
 		if (!isIndirectRenderingEnabled || (cameraType != CameraType.Game && cameraType != CameraType.SceneView) || (cameraType == CameraType.SceneView && isSceneViewInPrefabEditMode))
 		{
@@ -822,16 +845,13 @@ public class IndirectRenderingSystem
 					num3 = key.Materials.Count - 1;
 				}
 				Material material = key.Materials[num3];
-				if (material != null && material.renderQueue >= rendererListParams.filteringSettings.renderQueueRange.lowerBound && material.renderQueue <= rendererListParams.filteringSettings.renderQueueRange.upperBound && TryGetShaderReflectionInfo(material.shader, out var result))
+				if (material != null && material.renderQueue >= renderQueueRange.lowerBound && material.renderQueue <= renderQueueRange.upperBound && TryGetShaderReflectionInfo(material.shader, out var result))
 				{
-					for (int j = 0; j < DrawingSettings.maxShaderPasses; j++)
+					Span<ShaderTagId> span = lightModes;
+					for (int j = 0; j < span.Length; j++)
 					{
-						ShaderTagId shaderPassName = rendererListParams.drawSettings.GetShaderPassName(j);
-						if (shaderPassName == ShaderTagId.none)
-						{
-							break;
-						}
-						int num4 = Array.IndexOf(result.PassLightModes, shaderPassName);
+						ShaderTagId value = span[j];
+						int num4 = Array.IndexOf(result.PassLightModes, value);
 						if (num4 >= 0)
 						{
 							m_MaterialPropertyBlock.SetInt(ShaderPropertyId._ArgsOffset, num2);

@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using Code.View.UI.MVVM.Tooltip.Bricks.Items;
+using Code.View.UI.UIUtils;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
+using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Components;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.Blueprints.Root;
@@ -10,7 +12,11 @@ using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Components.Features;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Enums;
 using Kingmaker.Items;
+using Kingmaker.Settings;
+using Kingmaker.Settings.Difficulty;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.FactLogic;
@@ -22,10 +28,18 @@ using UnityEngine.TextCore.Text;
 
 namespace Kingmaker.Code.UI.MVVM;
 
+[UsedImplicitly]
 public class WeaponItemPart : BaseItemPart
 {
+	public BlueprintItemWeapon BlueprintItemWeapon => (BlueprintItemWeapon)m_BlueprintItem;
+
 	public WeaponItemPart(ItemEntity item, ItemTooltipData itemTooltipData, ItemTooltipData compareItemTooltipData = null, bool isScreenWindowTooltip = false)
 		: base(item, itemTooltipData, compareItemTooltipData, isScreenWindowTooltip)
+	{
+	}
+
+	public WeaponItemPart(BlueprintItem blueprintItem, ItemTooltipData itemTooltipData, ItemTooltipData compareItemTooltipData = null, bool isScreenWindowTooltip = false)
+		: base(blueprintItem, itemTooltipData, compareItemTooltipData, isScreenWindowTooltip)
 	{
 	}
 
@@ -40,67 +54,90 @@ public class WeaponItemPart : BaseItemPart
 		return list;
 	}
 
-	private ITooltipBrick CreateWeaponHeader()
-	{
-		string itemName = GetItemName();
-		StatData damageStatData = GetDamageStatData();
-		BlueprintItemWeapon blueprintItemWeapon = (BlueprintItemWeapon)m_BlueprintItem;
-		string itemType = (blueprintItemWeapon.IsTwoHanded ? UIStrings.Instance.InventoryScreen.TwoHandWeapon.Text : UIStrings.Instance.InventoryScreen.OneHandWeapon.Text);
-		string itemLabel = string.Concat(str2: UIStrings.Instance.WeaponCategories.GetWeaponRangeLabel(blueprintItemWeapon.Range), str0: UIUtilityText.WrapWithWeight(UIStrings.Instance.WeaponCategories.GetWeaponHeavinessLabel(blueprintItemWeapon.Heaviness), TextFontWeight.SemiBold), str1: " | ");
-		string text = m_ItemTooltipData.GetText(TooltipElement.WeaponFamily);
-		ItemEntity item = m_Item;
-		Sprite image = ((item != null) ? ObjectExtensions.Or(item.Icon, null) : null) ?? SimpleBlueprintExtendAsObject.Or(m_BlueprintItem, null)?.Icon;
-		bool hasUpgrade = false;
-		return new TooltipBrickWeaponHeader(itemName, image, damageStatData, hasUpgrade, blueprintItemWeapon.WeaponTags.ToList(), itemType, itemLabel, text, GetSpecialValues());
-	}
-
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		List<ITooltipBrick> list = new List<ITooltipBrick>();
 		AddDOT(list);
 		AddWeaponStats(list);
+		AddCombatVeterancy(list);
 		AddAbilities(list);
 		AddItemStatBonuses(list);
-		AddWeaponTags(list);
+		AddWeaponTags(list, type);
 		AddDescription(list, type);
 		if (type == TooltipTemplateType.Info)
 		{
 			AddRestrictions(list, type);
 		}
+		AddArtisticDescription(list);
 		return list;
 	}
 
-	private void AddWeaponTags(List<ITooltipBrick> bricks)
+	private ITooltipBrick CreateWeaponHeader()
+	{
+		string itemName = GetItemName();
+		StatData damageStatData = GetDamageStatData();
+		string itemType = (BlueprintItemWeapon.IsTwoHanded ? UIStrings.Instance.InventoryScreen.TwoHandWeapon.Text : UIStrings.Instance.InventoryScreen.OneHandWeapon.Text);
+		string weaponRangeLabel = UIStrings.Instance.WeaponCategories.GetWeaponRangeLabel(BlueprintItemWeapon.Range);
+		string text = UIUtilityText.WrapWithWeight(UIStrings.Instance.WeaponCategories.GetWeaponHeavinessLabel(BlueprintItemWeapon.Heaviness), TextFontWeight.SemiBold) ?? "";
+		if (!string.IsNullOrEmpty(weaponRangeLabel))
+		{
+			text = text + " | " + weaponRangeLabel;
+		}
+		string text2 = m_ItemTooltipData.GetText(TooltipElement.WeaponFamily);
+		ItemEntity item = m_Item;
+		Sprite image = ((item != null) ? ObjectExtensions.Or(item.Icon, null) : null) ?? SimpleBlueprintExtendAsObject.Or(m_BlueprintItem, null)?.Icon;
+		return new BrickWeaponHeaderVM(itemName, image, damageStatData, hasUpgrade: false, BlueprintItemWeapon.WeaponTags.ToList(), itemType, text, text2, BlueprintItemWeapon, m_Item as ItemEntityWeapon);
+	}
+
+	private void AddWeaponTags(List<ITooltipBrick> bricks, TooltipTemplateType type)
 	{
 		if (!UIConfig.Instance.FeatureTagsConfig.ShowTagsDescriptions)
 		{
 			return;
 		}
-		List<WeaponTagUISettings> list = (m_BlueprintItem as BlueprintItemWeapon)?.WeaponTags.ToList() ?? new List<WeaponTagUISettings>();
-		if (!list.Any())
+		List<WeaponTagUISettings> source = BlueprintItemWeapon?.WeaponTags.ToList() ?? new List<WeaponTagUISettings>();
+		if (!source.Any())
 		{
 			return;
 		}
-		bricks.Add(new TooltipBrickText(string.Empty));
-		foreach (WeaponTagUISettings item in list)
+		bricks.Add(new BrickTextVM(string.Empty));
+		foreach (WeaponTagUISettings tag in source.OrderBy((WeaponTagUISettings t) => t.Type))
 		{
-			if (!TooltipBrickWeaponHeaderVM.SpecialTags.Contains(item.Tag))
+			bool flag = type == TooltipTemplateType.Tooltip && tag.Type == PropertyType.Common;
+			if (!tag.IsBodyIgnoreTag())
 			{
-				Sprite weaponTagIcon = UIConfig.Instance.FeatureTagsConfig.GetWeaponTagIcon(item);
-				Color weaponMountColor = UIConfig.Instance.FeatureTagsConfig.GetWeaponMountColor(item);
-				TempTagUtils.GetTagNameAndDescription(item, out var tagName, out var tagDescription);
-				tagDescription = UIUtilityText.UpdateDescriptionWithUIProperties(tagDescription, m_Item.Owner);
-				bricks.Add(new TooltipBrickTagDescription(weaponTagIcon, weaponMountColor, tagName, tagDescription));
+				Sprite weaponTagIcon = UIConfig.Instance.FeatureTagsConfig.GetWeaponTagIcon(tag);
+				Color weaponMountColor = UIConfig.Instance.FeatureTagsConfig.GetWeaponMountColor(tag);
+				string descriptionWithItemEquipped = UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagName(tag));
+				string tagDescription = (flag ? string.Empty : UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagDescription(tag)));
+				if (!flag)
+				{
+					bricks.Add(new BrickSpaceVM(25f));
+				}
+				bricks.Add(new BrickTagDescriptionVM(weaponTagIcon, weaponMountColor, descriptionWithItemEquipped, tagDescription));
 			}
 		}
 	}
 
 	protected override void AddDescription(List<ITooltipBrick> bricks, TooltipTemplateType type)
 	{
-		if (!((m_BlueprintItem as BlueprintItemWeapon)?.WeaponTags.ToList() ?? new List<WeaponTagUISettings>()).Any((WeaponTagUISettings t) => t.Type == PropertyType.Unique))
+		if (!(BlueprintItemWeapon?.WeaponTags.ToList() ?? new List<WeaponTagUISettings>()).Any((WeaponTagUISettings t) => t.Type == PropertyType.Unique))
 		{
 			base.AddDescription(bricks, type);
 		}
+	}
+
+	protected override CostStruct GetCost()
+	{
+		CostStruct cost = base.GetCost();
+		WeaponTagUISettings weaponTagUISettings = BlueprintItemWeapon?.WeaponTags.FirstOrDefault((WeaponTagUISettings t) => t.Tag == WeaponTagProperty.Expensive);
+		if (weaponTagUISettings == null)
+		{
+			return cost;
+		}
+		string tagName = UIUtilityItem.GetTagName(weaponTagUISettings);
+		string tagDescription = UIUtilityItem.GetTagDescription(weaponTagUISettings);
+		return new CostStruct(cost.LeftText, cost.RightText, cost.AdditionalText, CostType.Expensive, new TooltipTemplateSimple(tagName, tagDescription));
 	}
 
 	private void AddWeaponStats(List<ITooltipBrick> bricks)
@@ -117,13 +154,13 @@ public class WeaponItemPart : BaseItemPart
 
 	private void AddAdditionalHitChance(List<ITooltipBrick> bricks)
 	{
-		AddIconStatValue(bricks, TooltipElement.SingleAdditionalHitChance, null, TooltipBrickIconStatValueType.Positive, TooltipBrickIconStatValueType.Positive);
-		AddIconStatValue(bricks, TooltipElement.BurstAdditionalHitChance, null, TooltipBrickIconStatValueType.Positive, TooltipBrickIconStatValueType.Positive);
-		AddIconStatValue(bricks, TooltipElement.AoeAdditionalHitChance, null, TooltipBrickIconStatValueType.Positive, TooltipBrickIconStatValueType.Positive);
+		AddIconStatValue(bricks, TooltipElement.OverpenetrationChance, null, BrickElementPalette.Positive, BrickElementPalette.Positive);
+		AddIconStatValue(bricks, TooltipElement.HitChance, null, BrickElementPalette.Positive, BrickElementPalette.Positive);
 	}
 
 	private void AddRateOfFire(List<ITooltipBrick> bricks)
 	{
+		AddIconStatValue(bricks, TooltipElement.Recoil, ConfigRoot.Instance.UIConfig.UIIcons.Recoil);
 		if (!(m_Item is ItemEntityWeapon itemEntityWeapon) || itemEntityWeapon.Blueprint.IsRanged)
 		{
 			Sprite crit = ConfigRoot.Instance.UIConfig.UIIcons.Crit;
@@ -175,23 +212,25 @@ public class WeaponItemPart : BaseItemPart
 		}
 		if (num > 0)
 		{
-			bricks.Add(new TooltipBrickWeaponDOTInitialDamage(buff, num));
+			bricks.Add(new BrickWeaponDOTInitialDamageVM(buff, num));
 		}
 	}
 
-	private Dictionary<WeaponTagProperty, int> GetSpecialValues()
+	private void AddCombatVeterancy(List<ITooltipBrick> bricks)
 	{
-		BlueprintItemWeapon blueprintItemWeapon = (BlueprintItemWeapon)m_BlueprintItem;
-		return new Dictionary<WeaponTagProperty, int>
+		if (!(m_Item is ItemEntityWeapon { Wielder: BaseUnitEntity { IsPlayerEnemy: not false } wielder }))
 		{
+			return;
+		}
+		float damageFactor = DifficultyUtils.GetDamageFactor(SettingsRoot.Difficulty.EnemyDamage, wielder.CR);
+		if (!Mathf.Approximately(damageFactor, 1f))
+		{
+			string text = LocalizedTexts.Instance.Descriptors.GetText(ModifierDescriptor.EnemyCombatVeterancy);
+			if (string.IsNullOrEmpty(text))
 			{
-				WeaponTagProperty.Brutal,
-				blueprintItemWeapon.BrutalDamage
-			},
-			{
-				WeaponTagProperty.Destructive,
-				blueprintItemWeapon.DestructiveDamage
+				text = "Combat Veterancy";
 			}
-		};
+			bricks.Add(new BrickTextVM($"{text}: ×{damageFactor:F2}"));
+		}
 	}
 }

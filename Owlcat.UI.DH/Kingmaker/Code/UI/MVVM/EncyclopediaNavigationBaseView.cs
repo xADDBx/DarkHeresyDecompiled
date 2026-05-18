@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Common;
 using Owlcat.UI;
 using R3;

@@ -31,7 +31,7 @@ internal class DebugDisplaySettingsRendering : IDebugDisplaySettingsData, IDebug
 
 		public static readonly DebugUI.Widget.NameAndTooltip OverdrawMode = new DebugUI.Widget.NameAndTooltip
 		{
-			name = "Overdraw Mode",
+			name = "Debug Overdraw",
 			tooltip = "Debug anywhere pixels are overdrawn on top of each other."
 		};
 
@@ -151,36 +151,19 @@ internal class DebugDisplaySettingsRendering : IDebugDisplaySettingsData, IDebug
 					},
 					(DebugUI.Widget)new DebugUI.Container
 					{
-						isHiddenCallback = () => data.OverdrawMode != DebugOverdrawMode.QuadOverdraw,
-						children = 
+						isHiddenCallback = () => data.OverdrawMode == DebugOverdrawMode.None,
+						children = { (DebugUI.Widget)new DebugUI.IntField
 						{
-							(DebugUI.Widget)new DebugUI.IntField
+							displayName = "Overdraw Threshold",
+							tooltip = null,
+							getter = () => data.OverdrawThreshold,
+							setter = delegate(int value)
 							{
-								displayName = "Max Quad Cost",
-								tooltip = null,
-								getter = () => data.QuadOverdrawSettings.MaxQuadCost,
-								setter = delegate(int value)
-								{
-									data.QuadOverdrawSettings.MaxQuadCost = value;
-								},
-								min = () => 0,
-								max = () => 100
+								data.OverdrawThreshold = value;
 							},
-							(DebugUI.Widget)new DebugUI.EnumField
-							{
-								displayName = "Object Filter",
-								autoEnum = typeof(QuadOverdrawObjectFilter),
-								getter = () => (int)data.QuadOverdrawSettings.ObjectFilter,
-								setter = delegate
-								{
-								},
-								getIndex = () => (int)data.QuadOverdrawSettings.ObjectFilter,
-								setIndex = delegate(int value)
-								{
-									data.QuadOverdrawSettings.ObjectFilter = (QuadOverdrawObjectFilter)value;
-								}
-							}
-						}
+							min = () => 1,
+							max = () => 99
+						} }
 					}
 				}
 			};
@@ -361,15 +344,15 @@ internal class DebugDisplaySettingsRendering : IDebugDisplaySettingsData, IDebug
 		}
 	}
 
-	public QuadOverdrawSettings QuadOverdrawSettings
+	public int OverdrawThreshold
 	{
 		get
 		{
-			return m_DebugData.RenderingDebug.QuadOverdrawSettings;
+			return m_DebugData.RenderingDebug.OverdrawThreshold;
 		}
 		internal set
 		{
-			m_DebugData.RenderingDebug.QuadOverdrawSettings = value;
+			m_DebugData.RenderingDebug.OverdrawThreshold = value;
 		}
 	}
 

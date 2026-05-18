@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using DG.Tweening;
 using Kingmaker.Blueprints.Items;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Items;
@@ -17,7 +16,6 @@ using R3.Triggers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -94,11 +92,8 @@ public class ItemSlotPCView : ItemSlotBaseView, IDraggableElement
 		{
 			m_MainConfig = componentInParent.GetMainTooltipConfig(m_MainConfig);
 			m_CompareConfig = componentInParent.GetCompareTooltipConfig(m_CompareConfig);
-			ref TooltipConfig compareConfig = ref m_CompareConfig;
-			List<TooltipBaseTemplate> currentValue = base.ViewModel.Tooltip.CurrentValue;
-			compareConfig.MaxHeight = ((currentValue != null && currentValue.Count > 2) ? 450 : 0);
 		}
-		this.SetTooltip(base.ViewModel.Tooltip, m_MainConfig, m_CompareConfig).AddTo(this);
+		this.SetTooltip(base.ViewModel.MainTooltips, base.ViewModel.CompareTooltips, m_MainConfig, m_CompareConfig).AddTo(this);
 	}
 
 	private void SubscribeInteractions()
@@ -144,7 +139,7 @@ public class ItemSlotPCView : ItemSlotBaseView, IDraggableElement
 		{
 			h.OnBeginDrag(eventData, base.gameObject);
 		});
-		m_OnBeginDragCommand.Execute();
+		m_OnBeginDragCommand.Execute(Unit.Default);
 		UpdateSlotLayer();
 	}
 
@@ -163,7 +158,7 @@ public class ItemSlotPCView : ItemSlotBaseView, IDraggableElement
 		{
 			h.OnEndDrag(eventData);
 		});
-		m_OnEndDragCommand.Execute();
+		m_OnEndDragCommand.Execute(Unit.Default);
 		UpdateSlotLayer();
 	}
 
@@ -189,11 +184,11 @@ public class ItemSlotPCView : ItemSlotBaseView, IDraggableElement
 		{
 			if (base.ViewModel is InsertableLootSlotVM)
 			{
-				UISounds.Instance.Sounds.Loot.InsertableLootDrop.Play();
+				ModalWindowsSounds.Instance.Loot.InsertableLootDrop.Play();
 			}
 			else
 			{
-				UISounds.Instance.Sounds.Inventory.ErrorEquip.Play();
+				ServiceWindowsSounds.Instance.Inventory.ErrorEquip.Play();
 			}
 			return;
 		}
@@ -209,7 +204,7 @@ public class ItemSlotPCView : ItemSlotBaseView, IDraggableElement
 		}
 		else
 		{
-			UISounds.Instance.Sounds.Combat.CombatGridCantPerformActionClick.Play();
+			CombatSounds.Instance.Combat.CombatGridCantPerformActionClick.Play();
 		}
 	}
 
@@ -219,12 +214,10 @@ public class ItemSlotPCView : ItemSlotBaseView, IDraggableElement
 		{
 			return false;
 		}
-		Image icon = slot.Icon;
-		ItemEntity currentValue = base.ViewModel.Item.CurrentValue;
-		icon.sprite = ((currentValue != null) ? currentValue.Icon.Or(ConfigRoot.Instance.UIConfig.UIIcons.DefaultItemIcon) : null);
+		slot.Icon.sprite = base.ViewModel.Item.CurrentValue?.Icon.GetDefaultIfNull(DefaultImageType.Item);
 		TextMeshProUGUI count = slot.Count;
-		ItemEntity currentValue2 = base.ViewModel.Item.CurrentValue;
-		count.text = ((currentValue2 == null || !currentValue2.IsStackable) ? string.Empty : base.ViewModel.Item.CurrentValue?.Count.ToString());
+		ItemEntity currentValue = base.ViewModel.Item.CurrentValue;
+		count.text = ((currentValue == null || !currentValue.IsStackable) ? string.Empty : base.ViewModel.Item.CurrentValue?.Count.ToString());
 		slot.OverideSize = new Vector2(96f, 96f);
 		return true;
 	}

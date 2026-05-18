@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Assets.Code.View.UI.MVVM;
+using Code.View.UI.MVVM;
 using Kingmaker.Blueprints;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -16,15 +15,22 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections;
+using Kingmaker.UnitLogic.Levelup.Selections.CharacterGender;
+using Kingmaker.UnitLogic.Levelup.Selections.CharacterName;
 using Kingmaker.UnitLogic.Levelup.Selections.Doll;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
+using Kingmaker.UnitLogic.Levelup.Selections.Portrait;
 using Kingmaker.UnitLogic.Levelup.Selections.Stats;
+using Kingmaker.UnitLogic.Levelup.Selections.Voice;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.UnitLogic.Progression.Paths;
+using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.Visual.Sound;
 using ObservableCollections;
 using Owlcat.UI;
 using Photon.Realtime;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -32,9 +38,9 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 {
 	public readonly CharGenContext CharGenContext;
 
-	private readonly List<CharGenPhaseBaseVM> m_PhasesList = new List<CharGenPhaseBaseVM>();
+	private readonly List<(SelectionState, CharGenPhaseBaseVM)> m_PhasesList = new List<(SelectionState, CharGenPhaseBaseVM)>();
 
-	public readonly SelectionGroupRadioVM<CharGenPhaseBaseVM> PhasesSelectionGroupRadioVM;
+	private readonly ObservableList<CharGenPhaseBaseVM> m_PhasesCollection = new ObservableList<CharGenPhaseBaseVM>();
 
 	private readonly ReactiveProperty<CharGenPhaseBaseVM> m_CurrentPhaseVM = new ReactiveProperty<CharGenPhaseBaseVM>();
 
@@ -48,29 +54,47 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	private readonly ReactiveProperty<bool> m_IsInCharscreen = new ReactiveProperty<bool>();
 
-	private readonly ObservableList<CharGenPhaseBaseVM> m_PhasesCollection = new ObservableList<CharGenPhaseBaseVM>();
+	private readonly ReactiveCommand<bool> m_CheckCoopControls = new ReactiveCommand<bool>();
 
-	private CharGenPhaseBaseVM m_LastPhase;
+	private readonly ReactiveProperty<bool> m_IsMainCharacter = new ReactiveProperty<bool>();
+
+	private readonly ReactiveProperty<BaseUnitEntity> m_Unit = new ReactiveProperty<BaseUnitEntity>();
 
 	private readonly Action m_CloseAction;
 
 	private readonly Action<BaseUnitEntity> m_CompleteAction;
 
+	private readonly CompositeDisposable m_PhaseSubscriptions = new CompositeDisposable();
+
+	private bool m_PortraitSynchronizingInProgress;
+
+	private bool m_IsPlaningMode;
+
+	private LevelUpManager m_PlaningLevelUpManager;
+
+	private CharGenPhaseBaseVM m_LastPhase;
+
 	private IDisposable m_PortraitSubscription;
 
 	private IDisposable m_PhaseIsCompletedSubscription;
-
-	private readonly CompositeDisposable m_PhaseSubscriptions = new CompositeDisposable();
 
 	private bool m_IsPhasesDirty;
 
 	private readonly bool m_IsCustomCompanionChargen;
 
-	private readonly ReactiveCommand<bool> m_CheckCoopControls = new ReactiveCommand<bool>();
+	public readonly SelectionGroupRadioVM<CharGenPhaseBaseVM> PhasesSelectionGroupRadioVM;
 
-	private readonly ReactiveProperty<bool> m_IsMainCharacter = new ReactiveProperty<bool>();
+	private CharGenMode m_Mode => CharGenContext.CharGenConfig.Mode;
 
-	private bool m_PortraitSynchronizingInProgress;
+	private bool m_IsLevelUpMode => m_Mode == CharGenMode.LevelUp;
+
+	public InfoSectionVM ChargenInfoSectionVM { get; }
+
+	public InfoSectionVM LevelUpInfoSectionVM { get; }
+
+	public ChargenProgressionVM ProgressionVM { get; }
+
+	public CharInfoExperienceVM Experience { get; }
 
 	public ObservableList<CharGenPhaseBaseVM> PhasesCollection => m_PhasesCollection;
 
@@ -90,30 +114,32 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	public CharGenPhaseBaseVM LastPhase => m_LastPhase;
 
-	public InfoSectionVM InfoSectionVM { get; private set; }
-
-	public ChargenProgressionVM ProgressionVM { get; private set; }
-
 	public Observable<bool> CheckCoopControls => m_CheckCoopControls;
 
 	public ReadOnlyReactiveProperty<bool> IsMainCharacter => m_IsMainCharacter;
 
 	public CharGenVM(CharGenConfig config, Action closeAction, Action<BaseUnitEntity> completeAction, bool isCustomCompanionChargen)
 	{
+		PFLog.UI.Log($"[{Time.frameCount}] | {Time.realtimeSinceStartup} Start creating CharGenVM");
 		m_CloseAction = closeAction;
 		m_CompleteAction = completeAction;
 		m_IsCustomCompanionChargen = isCustomCompanionChargen;
 		m_IsMainCharacter.Value = UtilityNet.IsControlMainCharacter();
-		InfoSectionVM = new InfoSectionVM().AddTo(this);
+		LevelUpInfoSectionVM = new InfoSectionVM().AddTo(this);
+		ChargenInfoSectionVM = new InfoSectionVM().AddTo(this);
 		CharGenContext = new CharGenContext(config).AddTo(this);
+		CharGenContext.SetPregenUnit(null);
 		CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager).AddTo(this);
-		CharGenContext.SetPregenUnit(config.Unit);
 		CharGenContext.IsCustomCharacter.Subscribe(delegate
 		{
 			m_IsPhasesDirty = true;
 			HideVisualSettings();
 		}).AddTo(this);
-		ProgressionVM = new ChargenProgressionVM(CharGenContext.LevelUpManager, m_CurrentPhaseVM).AddTo(this);
+		if (config.Mode == CharGenMode.LevelUp)
+		{
+			ProgressionVM = new ChargenProgressionVM(CharGenContext.LevelUpManager, m_CurrentPhaseVM).AddTo(this);
+			Experience = new CharInfoExperienceVM(m_Unit).AddTo(this);
+		}
 		UpdatePhases();
 		PhasesSelectionGroupRadioVM = new SelectionGroupRadioVM<CharGenPhaseBaseVM>(m_PhasesCollection, m_CurrentPhaseVM).AddTo(this);
 		PhasesSelectionGroupRadioVM.TrySelectFirstValidEntity();
@@ -123,14 +149,15 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 			HideVisualSettings();
 			if (phase != null)
 			{
-				m_PhaseSubscriptions.Add(phase.IsCompletedAndAvailable.Subscribe(delegate(bool value)
+				phase.IsCompletedAndAvailable.Subscribe(delegate(bool value)
 				{
 					m_CurrentPhaseIsCompleted.Value = value;
-				}));
-				m_PhaseSubscriptions.Add(phase.ShowVisualSettings.Subscribe(delegate(bool value)
+				}).AddTo(m_PhaseSubscriptions);
+				phase.ShowVisualSettings.Subscribe(delegate(bool value)
 				{
 					m_ShouldShowVisualSettings.Value = value;
-				}));
+				}).AddTo(m_PhaseSubscriptions);
+				UpdateChargenMusicState(phase);
 			}
 		}).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
@@ -142,6 +169,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		{
 			m_IsInCharscreen.Value = type == FullScreenUIType.CharacterScreen || type == FullScreenUIType.Inventory;
 		}).AddTo(this);
+		PFLog.UI.Log($"[{Time.frameCount}] | {Time.realtimeSinceStartup} Finished creating CharGenVM");
 	}
 
 	public void SetCurrentPhase(CharGenPhaseBaseVM phaseVM)
@@ -149,21 +177,17 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		m_CurrentPhaseVM.Value = phaseVM;
 	}
 
-	public void SetInputLayer(InputLayer inputLayer, Action<InputLayer, ReactiveProperty<bool>> setter)
-	{
-		setter(inputLayer, m_IsMainCharacter);
-	}
-
 	protected override void OnDispose()
 	{
 		ClearPhaseSubscription();
 		ClearPortrait();
 		HideVisualSettings();
-		foreach (CharGenPhaseBaseVM phases in m_PhasesList)
+		foreach (var phases in m_PhasesList)
 		{
-			phases.Dispose();
+			phases.Item2.Dispose();
 		}
 		m_PhasesList.Clear();
+		SoundState.Instance.OnMusicChargenStateChange(MusicStateHandler.MusicChargenState.None);
 		base.OnDispose();
 	}
 
@@ -177,7 +201,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	public void Complete()
 	{
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Buttons.FinishChargenButtonClick, isButton: false, playAnyway: true);
+		UISounds.Instance.Play(ButtonsSounds.Instance.FinishChargenButton.Click, isButton: false, playAnyway: true);
 		bool syncPortrait = PhotonManager.Lobby.IsActive && PhotonManager.Initialized && PhotonManager.Instance.PortraitSyncer.IsNeedSyncPortrait();
 		Game.Instance.GameCommandQueue.CharGenClose(withComplete: true, syncPortrait);
 	}
@@ -189,16 +213,6 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	async void ICharGenCloseHandler.HandleClose(bool withComplete, bool syncPortrait)
 	{
-		switch (CharGenContext.CharGenConfig.Mode)
-		{
-		case CharGenMode.LevelUp:
-			Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.LevelUp).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).Send();
-			break;
-		case CharGenMode.NewGame:
-		case CharGenMode.NewCompanion:
-			Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.CharGen).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).Send();
-			return;
-		}
 		if (syncPortrait)
 		{
 			if (!m_PortraitSynchronizingInProgress)
@@ -230,6 +244,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	private void CloseWithComplete()
 	{
+		CharGenContext.EnsureDollSet();
 		CharGenContext.CommitLevelUp();
 		m_CompleteAction?.Invoke(CharGenContext.CurrentUnit.CurrentValue);
 		if (CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp)
@@ -279,35 +294,29 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	public void ToCharInfo()
 	{
-		if (m_CurrentPhaseVM.Value == null)
+		if (m_CurrentPhaseVM.Value != null)
 		{
-			return;
+			CharInfoPageType pageType = m_CurrentPhaseVM.Value.PhaseType switch
+			{
+				CharGenPhaseType.LevelUpUpgrade => CharInfoPageType.Abilities, 
+				CharGenPhaseType.LevelUpAbility => CharInfoPageType.Abilities, 
+				CharGenPhaseType.LevelUpModification => CharInfoPageType.Abilities, 
+				CharGenPhaseType.LevelUpSpecialization => CharInfoPageType.Archetype, 
+				CharGenPhaseType.LevelUpTalent => CharInfoPageType.Archetype, 
+				_ => CharInfoPageType.Characteristics, 
+			};
+			EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
+			{
+				h.HandleOpenCharacterInfo(pageType, CharGenContext.CurrentUnit.CurrentValue);
+			});
+			m_IsInCharscreen.Value = true;
 		}
-		switch (m_CurrentPhaseVM.Value.PhaseType)
-		{
-		case CharGenPhaseType.LevelUpAbility:
-		case CharGenPhaseType.LevelUpModification:
-		case CharGenPhaseType.LevelUpUpgrade:
-			EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
-			{
-				h.HandleOpenCharacterInfo(CharInfoPageType.Abilities, CharGenContext.CurrentUnit.CurrentValue);
-			});
-			break;
-		case CharGenPhaseType.LevelUpSpecialization:
-		case CharGenPhaseType.LevelUpTalent:
-			EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
-			{
-				h.HandleOpenCharacterInfo(CharInfoPageType.Archetype, CharGenContext.CurrentUnit.CurrentValue);
-			});
-			break;
-		default:
-			EventBus.RaiseEvent(delegate(IServiceWindowUIHandler h)
-			{
-				h.HandleOpenCharacterInfo(CharInfoPageType.Characteristics, CharGenContext.CurrentUnit.CurrentValue);
-			});
-			break;
-		}
-		m_IsInCharscreen.Value = true;
+	}
+
+	public void TogglePlaningMode()
+	{
+		m_IsPlaningMode = !m_IsPlaningMode;
+		m_IsPhasesDirty = true;
 	}
 
 	private void HandleUpdatePhases()
@@ -318,182 +327,119 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	private void UpdatePhases()
 	{
-		List<CharGenPhaseBaseVM> phasesList = m_PhasesList;
-		bool currentValue = CharGenContext.IsCustomCharacter.CurrentValue;
-		bool flag = CharGenContext.CharGenConfig.Mode == CharGenMode.NewGame;
-		if (CharGenContext.LevelUpManager.CurrentValue.Path == null)
-		{
-			AddPhase(phasesList, new CharGenCareerPhaseVM_NEW(CharGenContext));
-			UpdatePhasesLinks();
-			m_IsPhasesDirty = false;
-			return;
-		}
-		if (CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp)
-		{
-			(int, int) ranksRange = CharGenContext.LevelUpManager.CurrentValue.RanksRange;
-			if (ranksRange.Item1 > ranksRange.Item2)
-			{
-				Close();
-			}
-			var (i, _) = ranksRange;
-			for (; i <= ranksRange.Item2; i++)
-			{
-				AddPhaseByRank(i);
-			}
-			UpdatePhasesLinks();
-			m_IsPhasesDirty = false;
-			return;
-		}
-		if (TryClearPhaseFromList<CharGenPregenPhaseVM>(check: true, phasesList))
-		{
-			AddPhase(phasesList, new CharGenPregenPhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenAppearanceComponentAppearancePhaseVM>(check: true, phasesList))
-		{
-			AddPhase(phasesList, new CharGenAppearanceComponentAppearancePhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenSoulMarkPhaseVM>(currentValue && !flag, phasesList))
-		{
-			AddPhase(phasesList, new CharGenSoulMarkPhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenHomeworldPhaseVM>(currentValue, phasesList))
-		{
-			AddPhase(phasesList, new CharGenHomeworldPhaseVM(CharGenContext));
-		}
-		bool check = HasFeatureGroupInSelections(FeatureGroup.ChargenImperialWorld);
-		if (TryClearPhaseFromList<CharGenImperialHomeworldChildPhaseVM>(check, phasesList))
-		{
-			AddPhase(phasesList, new CharGenImperialHomeworldChildPhaseVM(CharGenContext));
-		}
-		bool check2 = HasFeatureGroupInSelections(FeatureGroup.ChargenForgeWorld);
-		if (TryClearPhaseFromList<CharGenForgeHomeworldChildPhaseVM>(check2, phasesList))
-		{
-			AddPhase(phasesList, new CharGenForgeHomeworldChildPhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenOccupationPhaseVM>(currentValue, phasesList))
-		{
-			AddPhase(phasesList, new CharGenOccupationPhaseVM(CharGenContext));
-		}
-		bool check3 = HasFeatureGroupInSelections(FeatureGroup.ChargenNavigator);
-		if (TryClearPhaseFromList<CharGenNavigatorPhaseVM>(check3, phasesList))
-		{
-			AddPhase(phasesList, new CharGenNavigatorPhaseVM(CharGenContext));
-		}
-		bool check4 = HasFeatureGroupInSelections(FeatureGroup.ChargenPsyker);
-		if (TryClearPhaseFromList<CharGenSanctionedPsykerChildPhaseVM>(check4, phasesList))
-		{
-			AddPhase(phasesList, new CharGenSanctionedPsykerChildPhaseVM(CharGenContext));
-		}
-		bool check5 = HasFeatureGroupInSelections(FeatureGroup.ChargenMomentOfTriumph);
-		if (TryClearPhaseFromList<CharGenMomentOfTriumphPhaseVM>(check5, phasesList))
-		{
-			AddPhase(phasesList, new CharGenMomentOfTriumphPhaseVM(CharGenContext));
-		}
-		bool check6 = HasFeatureGroupInSelections(FeatureGroup.ChargenDarkestHour);
-		if (TryClearPhaseFromList<CharGenDarkestHourPhaseVM>(check6, phasesList))
-		{
-			AddPhase(phasesList, new CharGenDarkestHourPhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenCareerPhaseVM>(currentValue, phasesList))
-		{
-			AddPhase(phasesList, new CharGenCareerPhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenAttributesPhaseVM>(currentValue, phasesList))
-		{
-			AddPhase(phasesList, new CharGenAttributesPhaseVM(CharGenContext, m_CurrentPhaseVM));
-		}
-		if (TryClearPhaseFromList<CharGenShipPhaseVM>(flag, phasesList))
-		{
-			AddPhase(phasesList, new CharGenShipPhaseVM(CharGenContext));
-		}
-		if (TryClearPhaseFromList<CharGenSummaryPhaseVM>(check: true, phasesList))
-		{
-			AddPhase(phasesList, new CharGenSummaryPhaseVM(CharGenContext));
-		}
+		List<(SelectionState, CharGenPhaseBaseVM)> list = new List<(SelectionState, CharGenPhaseBaseVM)>();
+		AddChargenPhases(list);
+		AddLevelUpPhases(list);
+		m_PhasesList.Clear();
+		m_PhasesList.AddRange(list);
 		UpdatePhasesLinks();
 		m_IsPhasesDirty = false;
 	}
 
-	private bool TryClearPhaseFromList<TPhase>(bool check, List<CharGenPhaseBaseVM> list) where TPhase : CharGenPhaseBaseVM
+	private void AddChargenPhases(List<(SelectionState s, CharGenPhaseBaseVM)> list)
 	{
-		if (check)
+		if (!m_IsLevelUpMode)
 		{
-			if (!list.Any((CharGenPhaseBaseVM ph) => ph is TPhase))
+			List<(SelectionState, BlueprintSelectionWithUI)> list2 = (from s in CharGenContext.LevelUpManager.CurrentValue.Selections
+				where s.PathRank <= 1 && s.Blueprint is BlueprintSelectionWithUI
+				select (s: s, (BlueprintSelectionWithUI)s.Blueprint)).ToList();
+			for (int i = 0; i < list2.Count; i++)
 			{
-				return true;
+				AddPhaseFromSelection(list, list2[i], 0);
 			}
 		}
-		else
+	}
+
+	private void AddLevelUpPhases(List<(SelectionState s, CharGenPhaseBaseVM)> list)
+	{
+		if (!m_IsLevelUpMode && !m_IsPlaningMode)
 		{
-			TPhase val = null;
-			foreach (CharGenPhaseBaseVM item in list)
-			{
-				if (item is TPhase val2)
-				{
-					val = val2;
-				}
-			}
-			if (val != null && !(CurrentPhaseVM.CurrentValue is TPhase))
-			{
-				val.Dispose();
-				list.Remove(val);
-			}
+			return;
 		}
-		return false;
+		(int, int) tuple = CharGenContext.LevelUpManager.CurrentValue.RanksRange;
+		if (m_IsPlaningMode && m_PlaningLevelUpManager != null)
+		{
+			tuple = (1, m_PlaningLevelUpManager.Selections.Max((SelectionState s) => s.PathRank));
+		}
+		if (tuple.Item1 > tuple.Item2)
+		{
+			Close();
+		}
+		var (i, _) = tuple;
+		for (; i <= tuple.Item2; i++)
+		{
+			AddPhaseByRank(list, i);
+		}
 	}
 
-	private void AddPhase(List<CharGenPhaseBaseVM> list, CharGenPhaseBaseVM phase)
+	private void AddPhaseByRank(List<(SelectionState s, CharGenPhaseBaseVM)> list, int rank)
 	{
-		phase.AddTo(this);
-		list.Add(phase);
-	}
-
-	private void AddPhaseByRank(int rank)
-	{
-		List<BlueprintFeature> list = (from f in CharGenContext.LevelUpManager.CurrentValue.Features
+		LevelUpManager obj = ((m_IsPlaningMode && m_PlaningLevelUpManager != null && rank > 1) ? m_PlaningLevelUpManager : CharGenContext.LevelUpManager.CurrentValue);
+		List<BlueprintFeature> list2 = (from f in obj.Features
 			where f.PathRank == rank
 			select f.Item3).ToList();
-		if (list.Count > 0)
+		List<(SelectionState s, BlueprintSelectionWithUI)> list3 = (from s in obj.Selections
+			where s.PathRank == rank && s.Blueprint is BlueprintSelectionWithUI
+			select (s: s, (BlueprintSelectionWithUI)s.Blueprint)).ToList();
+		if (list2.Count > 0)
 		{
-			AddPhase(m_PhasesList, new CharGenLevelUpFeaturePhaseVM(CharGenContext, list, InfoSectionVM, rank));
+			AddPhase(list, null, new CharGenLevelUpFeaturePhaseVM(list2, CharGenContext, LevelUpInfoSectionVM, rank));
 			rank = -Math.Abs(rank);
 		}
-		foreach (SelectionState item in CharGenContext.LevelUpManager.CurrentValue.Selections.Where((SelectionState s) => s.PathRank == rank).ToList())
+		foreach (var item in list3)
 		{
-			if (item is SelectionStateStats selectionStateStats)
+			AddPhaseFromSelection(list, item, rank);
+			rank = -Math.Abs(rank);
+		}
+	}
+
+	private void AddPhaseFromSelection(List<(SelectionState s, CharGenPhaseBaseVM)> list, (SelectionState, BlueprintSelectionWithUI) selection, int rank)
+	{
+		int num = m_PhasesList.FindIndex(((SelectionState, CharGenPhaseBaseVM) p) => p.Item1 == selection.Item1);
+		if (num >= 0 && CheckPrerequisites(selection.Item1))
+		{
+			list.Add(m_PhasesList[num]);
+		}
+		else if (CheckPrerequisites(selection.Item1))
+		{
+			CharGenPhaseBaseVM phase = GetPhase(selection.Item1, selection.Item2, rank);
+			if (phase != null)
 			{
-				if (selectionStateStats.Blueprint is BlueprintSelectionAttributes)
-				{
-					AddPhase(m_PhasesList, new CharGenLevelUpCharacteristicsPhaseVM(CharGenContext, selectionStateStats, InfoSectionVM, rank));
-				}
-				if (selectionStateStats.Blueprint is BlueprintSelectionSkills)
-				{
-					AddPhase(m_PhasesList, new CharGenLevelUpSkillPhaseVM(CharGenContext, selectionStateStats, InfoSectionVM, rank));
-				}
-				rank = -Math.Abs(rank);
+				AddPhase(list, selection.Item1, phase);
 			}
-			if (item is SelectionStateFeature selectionStateFeature)
-			{
-				switch (selectionStateFeature.Blueprint.Group)
-				{
-				case FeatureGroup.AbilityUpgrade:
-					AddPhase(m_PhasesList, new CharGenLevelUpAbilityUpgradePhaseVM(CharGenContext, selectionStateFeature, InfoSectionVM, rank));
-					break;
-				case FeatureGroup.ActiveAbility:
-					AddPhase(m_PhasesList, new CharGenLevelUpAbilityPhaseVM(CharGenContext, selectionStateFeature, InfoSectionVM, rank));
-					break;
-				case FeatureGroup.Modifier:
-					AddPhase(m_PhasesList, new CharGenLevelUpModificationPhaseVM(CharGenContext, selectionStateFeature, InfoSectionVM, rank));
-					break;
-				case FeatureGroup.Specialization:
-					AddPhase(m_PhasesList, new CharGenLevelUpSpecializationPhaseVM(CharGenContext, selectionStateFeature, InfoSectionVM, rank));
-					break;
-				case FeatureGroup.Talent:
-					AddPhase(m_PhasesList, new CharGenLevelUpTalentPhaseVM(CharGenContext, selectionStateFeature, InfoSectionVM, rank));
-					break;
-				}
-				rank = -Math.Abs(rank);
-			}
+		}
+	}
+
+	private CharGenPhaseBaseVM GetPhase(SelectionState selectionState, BlueprintSelectionWithUI blueprintSelection, int rank = 0)
+	{
+		return blueprintSelection.PhaseType switch
+		{
+			SelectionUIPhaseType.Appearance => new CharGenAppearanceComponentAppearancePhaseVM(CharGenContext, (SelectionStateGender)selectionState), 
+			SelectionUIPhaseType.Portrait => new CharGenPortraitPhaseVM(CharGenContext, (SelectionStatePortrait)selectionState, (BlueprintPortraitSelection)blueprintSelection), 
+			SelectionUIPhaseType.Homeworld => new CharGenHomeworldPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, ChargenInfoSectionVM), 
+			SelectionUIPhaseType.DeathWorld => new CharGenDeathWorldFeaturePhaseVM(CharGenContext, (SelectionStateFeature)selectionState, ChargenInfoSectionVM), 
+			SelectionUIPhaseType.Occupation => new CharGenOccupationPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, ChargenInfoSectionVM), 
+			SelectionUIPhaseType.Noble => new CharGenNobleHomeworldChildPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, ChargenInfoSectionVM), 
+			SelectionUIPhaseType.Voice => new CharGenVoicePhaseVM(CharGenContext, (SelectionStateVoice)selectionState, (BlueprintVoiceSelection)blueprintSelection), 
+			SelectionUIPhaseType.Name => new CharGenSummaryPhaseVM(CharGenContext, (SelectionStateCharacterName)selectionState), 
+			SelectionUIPhaseType.Career => new CharGenCareerPhaseVM(CharGenContext, ChargenInfoSectionVM, (SelectionStateFeature)selectionState), 
+			SelectionUIPhaseType.Specialization => new CharGenLevelUpSpecializationPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Attributes => new CharGenLevelUpCharacteristicsPhaseVM(CharGenContext, (SelectionStateStats)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Skill => new CharGenLevelUpSkillPhaseVM(CharGenContext, (SelectionStateStats)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Upgrade => new CharGenLevelUpAbilityUpgradePhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Ability => new CharGenLevelUpAbilityPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Modification => new CharGenLevelUpModificationPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Talent => new CharGenLevelUpTalentPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			_ => null, 
+		};
+	}
+
+	private void AddPhase(List<(SelectionState, CharGenPhaseBaseVM)> list, SelectionState state, CharGenPhaseBaseVM phase)
+	{
+		if (phase != null)
+		{
+			phase.AddTo(this);
+			list.Add((state, phase));
 		}
 	}
 
@@ -506,7 +452,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		List<CharGenPhaseBaseVM> list = m_PhasesCollection.ToList();
 		for (int i = 0; i < m_PhasesList.Count; i++)
 		{
-			CharGenPhaseBaseVM item = m_PhasesList[i];
+			CharGenPhaseBaseVM item = m_PhasesList[i].Item2;
 			if (m_PhasesCollection.Contains(item))
 			{
 				m_PhasesCollection.Move(m_PhasesCollection.IndexOf(item), i);
@@ -533,6 +479,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 	{
 		if (manager != null)
 		{
+			m_Unit.Value = CharGenContext.LevelUpManager.CurrentValue.PreviewUnit;
 			ClearPortrait();
 			m_PortraitSubscription = CharGenContext.Doll.GetReactiveProperty((DollState dollState) => dollState.PortraitData).Subscribe(delegate(PortraitData value)
 			{
@@ -557,18 +504,27 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		m_CurrentPhaseIsCompleted.Value = false;
 	}
 
-	private bool HasFeatureGroupInSelections(FeatureGroup featureGroup)
+	private void UpdateChargenMusicState(CharGenPhaseBaseVM phase)
 	{
+		SoundState.Instance.OnMusicChargenStateChange(phase.ChargenMusicState);
+	}
+
+	private bool CheckPrerequisites(SelectionState state)
+	{
+		if (!(state is SelectionStateFeature selectionStateFeature))
+		{
+			return true;
+		}
 		if (!CharGenContext.IsCustomCharacter.CurrentValue)
 		{
 			return false;
 		}
-		LevelUpManager currentValue = CharGenContext.LevelUpManager.CurrentValue;
-		if (currentValue == null)
+		LevelUpManager levelUpManager = ((m_IsPlaningMode && m_PlaningLevelUpManager != null && state.PathRank > 1) ? m_PlaningLevelUpManager : CharGenContext.LevelUpManager.CurrentValue);
+		if (levelUpManager != null)
 		{
-			return false;
+			return selectionStateFeature.Blueprint.MeetPrerequisites(levelUpManager.PreviewUnit);
 		}
-		return UtilityChargen.GetFeatureSelectionsByGroup(currentValue.Path, featureGroup, currentValue.PreviewUnit).Any();
+		return false;
 	}
 
 	public void HandleCreateLevelUpManager(LevelUpManager manager)
@@ -587,16 +543,15 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	private void ClearPhasesAfterCareerChanged()
 	{
-		foreach (CharGenPhaseBaseVM item in new List<CharGenPhaseBaseVM>(m_PhasesList))
+		if (!CharGenContext.LevelUpManager.CurrentValue.PreviewUnit.Progression.AllCareerPaths.Empty())
 		{
-			if (!(item is CharGenCareerPhaseVM_NEW))
+			BlueprintCareerPath item = CharGenContext.LevelUpManager.CurrentValue.PreviewUnit.Progression.AllCareerPaths.FirstOrDefault().Blueprint;
+			if (item != null)
 			{
-				m_PhasesList.Remove(item);
-				m_PhasesCollection.Remove(item);
-				item.Dispose();
+				m_PlaningLevelUpManager = new LevelUpManager(CharGenContext.LevelUpManager.CurrentValue.PreviewUnit, item, autoCommit: false, item.RankEntries.Count());
+				m_IsPhasesDirty = true;
 			}
 		}
-		m_IsPhasesDirty = true;
 	}
 
 	public void HandleUICommitChanges()
@@ -610,9 +565,16 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		var (i, _) = ranksRange;
 		for (; i <= ranksRange.Item2; i++)
 		{
-			num = (m_PhasesList.Where((CharGenPhaseBaseVM p) => Math.Abs(p.Rank) == i).All((CharGenPhaseBaseVM p) => p.IsCompletedAndAvailable.CurrentValue) ? i : num);
+			num = ((from p in m_PhasesList
+				select p.Item2 into p
+				where Math.Abs(p.Rank) == i
+				select p).All((CharGenPhaseBaseVM p) => p.IsCompletedAndAvailable.CurrentValue) ? i : num);
 		}
-		ProgressionVM.SetLastFinishedRank(num);
+		if (CharGenContext.CharGenConfig.Mode != CharGenMode.LevelUp)
+		{
+			m_IsPhasesDirty = true;
+		}
+		ProgressionVM?.SetLastFinishedRank(num);
 	}
 
 	public void HandlePlayerEnteredRoom(Photon.Realtime.Player player)
@@ -635,5 +597,34 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	public void HandleRoomOwnerChanged()
 	{
+	}
+
+	public SelectionStateStats GetAttributeSelectionIfAvailable()
+	{
+		CharGenContext charGenContext = CharGenContext;
+		if (charGenContext != null)
+		{
+			ReadOnlyReactiveProperty<LevelUpManager> levelUpManager = charGenContext.LevelUpManager;
+			if (levelUpManager != null)
+			{
+				LevelUpManager currentValue = levelUpManager.CurrentValue;
+				if (currentValue != null)
+				{
+					_ = currentValue.Selections;
+					if (0 == 0)
+					{
+						foreach (SelectionState selection in CharGenContext.LevelUpManager.CurrentValue.Selections)
+						{
+							if (selection is SelectionStateStats selectionStateStats && selectionStateStats.Blueprint is BlueprintSelectionAttributes)
+							{
+								return selectionStateStats;
+							}
+						}
+						return null;
+					}
+				}
+			}
+		}
+		return null;
 	}
 }

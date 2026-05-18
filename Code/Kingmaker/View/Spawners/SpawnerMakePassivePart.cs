@@ -9,9 +9,9 @@ using UnityEngine;
 namespace Kingmaker.View.Spawners;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class SpawnerMakePassivePart : ViewBasedPart, IUnitInitializer, IHashable, IOwlPackable<SpawnerMakePassivePart>
+public class SpawnerMakePassivePart : EntityPartWithConfig, IUnitInitializer, IHashable, IOwlPackable<SpawnerMakePassivePart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "SpawnerMakePassivePart",
 		OldNames = null,
@@ -43,7 +43,7 @@ public class SpawnerMakePassivePart : ViewBasedPart, IUnitInitializer, IHashable
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		SpawnerMakePassivePart source = new SpawnerMakePassivePart();
 		result = Unsafe.As<SpawnerMakePassivePart, TPossiblyBase>(ref source);

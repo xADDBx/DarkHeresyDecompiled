@@ -28,10 +28,6 @@ public class JournalNavigationBaseView : View<JournalNavigationVM>, ISetCurrentQ
 
 	private bool m_IsInit;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
-	private InputLayer m_InputLayer;
-
 	protected bool ShowCompleted => Game.Instance.Player.UISettings.JournalShowCompletedQuest;
 
 	protected WidgetList WidgetList => m_WidgetList;

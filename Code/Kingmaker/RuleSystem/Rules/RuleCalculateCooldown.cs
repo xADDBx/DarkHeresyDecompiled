@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.FactLogic;
 
 namespace Kingmaker.RuleSystem.Rules;
 
+[RuleRoles(Initiator = "ability caster", Target = "caster (self)")]
 public class RuleCalculateCooldown : RulebookEvent
 {
 	public List<GroupCooldownData> GroupCooldownsData = new List<GroupCooldownData>();

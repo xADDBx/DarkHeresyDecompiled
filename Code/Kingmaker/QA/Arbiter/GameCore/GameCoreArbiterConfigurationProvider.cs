@@ -86,7 +86,7 @@ public class GameCoreArbiterConfigurationProvider : IArbiterServiceConfiguration
 			new Measure("UniqueUnitPrefabs", () => Game.Instance.EntityPools.AllUnits.All.Select((AbstractUnitEntity u) => u.ViewSettings.PrefabGuid).Distinct().Count()),
 			new Measure("Corpses", () => Game.Instance.EntityPools.AllUnits.All.Count((AbstractUnitEntity u) => u.LifeState.IsDead)),
 			new Measure("MapObjects", () => Game.Instance.EntityPools.MapObjects.Count()),
-			new Measure("InteractiveObjects", () => Game.Instance.EntityPools.MapObjects.Count((MapObjectEntity m) => m.View.GetComponent<IInteractionComponent>() != null)),
+			new Measure("InteractiveObjects", () => Game.Instance.EntityPools.MapObjects.Count((MapObjectEntity m) => m.Parts.GetAll<InteractionPart>().Any())),
 			new Measure("Traps", () => Game.Instance.EntityPools.MapObjects.OfType<TrapObjectData>().Count()),
 			new Measure("Cutscenes", () => Game.Instance.EntityPools.Cutscenes.Count()),
 			new GameCoreUITexturesMeasure()

@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
 
@@ -14,9 +15,9 @@ public class CheckAbilityWeaponClassificationGetter : BoolPropertyGetter, Proper
 
 	protected override bool GetBaseValue()
 	{
-		if (this.GetAbilityWeapon() != null)
+		if (EvalContext.Current.AbilityWeapon != null)
 		{
-			return Classifications.HasItem(this.GetAbilityWeapon().Blueprint.Classification);
+			return Classifications.HasItem(EvalContext.Current.AbilityWeapon.Blueprint.Classification);
 		}
 		return false;
 	}

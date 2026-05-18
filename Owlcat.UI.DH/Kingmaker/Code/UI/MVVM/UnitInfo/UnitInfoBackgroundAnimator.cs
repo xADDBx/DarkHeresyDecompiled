@@ -1,4 +1,5 @@
 using Kingmaker.UI;
+using Kingmaker.UI.Pointer;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.UnitInfo;
@@ -22,7 +23,7 @@ public class UnitInfoBackgroundAnimator : MonoBehaviour
 
 	public void Animate()
 	{
-		RectTransformUtility.ScreenPointToLocalPointInRectangle(m_MainContainer, Input.mousePosition, UICamera.Instance, out var localPoint);
+		RectTransformUtility.ScreenPointToLocalPointInRectangle(m_MainContainer, CursorController.CursorPosition, UICamera.Instance, out var localPoint);
 		Vector2 vector = new Vector2(localPoint.x / (m_MainContainer.rect.width * 0.5f), localPoint.y / (m_MainContainer.rect.height * 0.5f));
 		UnitInfoBackgroundParallax[] backgroundParallax = m_BackgroundParallax;
 		for (int i = 0; i < backgroundParallax.Length; i++)

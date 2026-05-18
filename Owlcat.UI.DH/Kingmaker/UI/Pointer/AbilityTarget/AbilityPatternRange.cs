@@ -6,6 +6,7 @@ using Kingmaker.Controllers.Clicks;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
 using Kingmaker.Pathfinding;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -115,16 +116,12 @@ public class AbilityPatternRange : AbilityRange, IShowAoEAffectedUIHandler, ISub
 			{
 				Ability.GatherAffectedTargetsData(orientedPatternData, bestShootingPositionForDesiredPosition.Vector3Position(), targetWrapper2, in m_AbilityTargets);
 			}
-			if (Ability.Weapon != null && !Ability.Blueprint.IsBurst)
-			{
-				_ = MaxRangeCells;
-			}
 			Vector3 desiredPosition = Game.Instance.Controllers.VirtualPositionController.GetDesiredPosition(Ability.Caster);
 			NodeList nodes = Ability.Caster.GetOccupiedNodes(desiredPosition);
 			if (GridPatterns.TryGetEnclosingRect(in nodes, out var result))
 			{
 				bool flag = Ability.Blueprint.ComponentsArray.Any((BlueprintComponent c) => c is AbilityAttackDelivery abilityAttackDelivery && abilityAttackDelivery.IsBurst);
-				if (Ability.Blueprint.IsBurst)
+				if (Ability.Blueprint.IsBurst && !Ability.CanTargetPoint)
 				{
 					orientedPatternData = (m_AbilityTargets.Any() ? new OrientedPatternData(orientedPatternData.Nodes.Where((GridNodeBase n) => n.GetFirstUnit() != null).ToList(), new GridNode()) : default(OrientedPatternData));
 				}
@@ -148,6 +145,17 @@ public class AbilityPatternRange : AbilityRange, IShowAoEAffectedUIHandler, ISub
 				ObjectExtensions.Or(UnitPredictionManager.Instance, null)?.SetAbilityArea(bestShootingPositionForDesiredPosition.Vector3Position(), actualCastNode.Vector3Position(), orientedPatternData);
 			}
 			PushTargetUIDataEvents();
+		}
+	}
+
+	protected override void ClearRange()
+	{
+		foreach (AbilityTargetUIData abilityTarget in m_AbilityTargets)
+		{
+			EventBus.RaiseEvent((IMechanicEntity)abilityTarget.Target, (Action<ICellAbilityHandler>)delegate(ICellAbilityHandler h)
+			{
+				h.HandleCellAbilityClear();
+			}, isCheckRuntime: true);
 		}
 	}
 

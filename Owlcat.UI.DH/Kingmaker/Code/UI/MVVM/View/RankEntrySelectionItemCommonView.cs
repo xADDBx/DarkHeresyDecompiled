@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Code.UI.Common.Animations;
 using Code.View.UI.UIUtils;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Utility.Attributes;
@@ -25,9 +25,6 @@ public class RankEntrySelectionItemCommonView : VirtualListElementViewBase<RankE
 
 	[SerializeField]
 	private Image m_MainButtonImage;
-
-	[SerializeField]
-	private RankEntrySelectionStateSprites[] m_StateSprites;
 
 	[SerializeField]
 	private bool m_IsListEntry = true;
@@ -122,19 +119,15 @@ public class RankEntrySelectionItemCommonView : VirtualListElementViewBase<RankE
 
 	private void UpdateState(RankEntryState entryState)
 	{
-		RankEntrySelectionStateSprites rankEntrySelectionStateSprites = m_StateSprites.FirstOrDefault((RankEntrySelectionStateSprites p) => p.FeatureGroup == base.ViewModel.FeatureGroup);
-		if (rankEntrySelectionStateSprites == null)
+		Sprite entity = UIConfig.Instance.TooltipsConfig.FeatureGroupsIcons.GetEntity(base.ViewModel.FeatureGroup);
+		if (entity == null)
 		{
 			m_MainButtonImage.gameObject.SetActive(value: false);
-		}
-		else if (entryState == RankEntryState.NotSelectable || entryState == RankEntryState.FirstSelectable || entryState == RankEntryState.WaitPreviousToSelect || entryState == RankEntryState.Selectable)
-		{
-			m_MainButtonImage.sprite = rankEntrySelectionStateSprites.Icon;
-			m_MainButtonImage.gameObject.SetActive(value: true);
 		}
 		else
 		{
-			m_MainButtonImage.gameObject.SetActive(value: false);
+			m_MainButtonImage.sprite = entity;
+			m_MainButtonImage.gameObject.SetActive(entryState == RankEntryState.NotSelectable || entryState == RankEntryState.FirstSelectable || entryState == RankEntryState.WaitPreviousToSelect || entryState == RankEntryState.Selectable);
 		}
 		m_MainButton.SetActiveLayer(entryState.ToString());
 	}

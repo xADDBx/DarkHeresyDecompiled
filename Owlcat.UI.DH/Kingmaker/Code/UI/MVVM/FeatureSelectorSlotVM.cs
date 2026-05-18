@@ -11,6 +11,6 @@ public class FeatureSelectorSlotVM : CharInfoFeatureVM
 		: base(ability, unit)
 	{
 		m_Tooltip = new ReactiveProperty<TooltipBaseTemplate>();
-		m_Tooltip.Value = new TooltipTemplateAbility(ability.Data, isScreenWindowTooltip: true);
+		m_Tooltip.Value = new TooltipTemplateAbility(ability.Data);
 	}
 }

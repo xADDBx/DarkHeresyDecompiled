@@ -4,9 +4,11 @@ using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.Localization;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
+using UnityEngine;
 
 namespace Kingmaker.Code.Gameplay.Features.DetectiveClues.View;
 
+[DisallowMultipleComponent]
 [KnowledgeDatabaseID("b579d072a2874f7fac615b74ccf584bf")]
 public class InteractionDetectiveClue : NewInteractionComponent<InteractionPartDetectiveClue, InteractionDetectiveClueSettings>, IBarkSource
 {

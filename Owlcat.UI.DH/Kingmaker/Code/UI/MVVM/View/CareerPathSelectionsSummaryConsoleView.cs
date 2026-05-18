@@ -1,5 +1,4 @@
 using Kingmaker.Blueprints.Root.Strings;
-using Owlcat.UI;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.View;
@@ -35,10 +34,5 @@ public class CareerPathSelectionsSummaryConsoleView : BaseCareerPathSelectionTab
 	protected override void HandleClickBack()
 	{
 		base.ViewModel.SelectPreviousItem();
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		return m_InfoView.GetNavigationBehaviour();
 	}
 }

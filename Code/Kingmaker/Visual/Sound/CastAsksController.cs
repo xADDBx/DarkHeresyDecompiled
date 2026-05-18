@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
@@ -18,7 +19,10 @@ public class CastAsksController : BaseAsksController, IClickActionHandler, ISubs
 {
 	void IClickActionHandler.OnAbilityCastRefused(AbilityData ability, TargetWrapper target, IAbilityTargetRestriction failedRestriction)
 	{
-		ability.Caster?.View.Asks?.CantDo.Schedule();
+		using (EvalContext.PushAsksContext(ability.Caster, ability.Caster))
+		{
+			ability.Caster?.View.Asks?.CantDo.Schedule();
+		}
 	}
 
 	public void OnAttackRequested(BaseUnitEntity unit, UnitEntityView target)
@@ -52,11 +56,11 @@ public class CastAsksController : BaseAsksController, IClickActionHandler, ISubs
 		{
 			if (concreteInitiator == concreteTarget)
 			{
-				concreteInitiator.View.Asks?.BeingHealed.Schedule();
+				concreteInitiator.View.Asks?.BeingSupported.Schedule();
 			}
-			else if (concreteTarget.IsAlly(concreteInitiator) && (!(concreteInitiator.View != null) || concreteInitiator.View.Asks == null || !concreteInitiator.View.Asks.HealingAlly.Schedule(is2D: false, HealAllyCallback)))
+			else if (concreteTarget.IsAlly(concreteInitiator) && (concreteInitiator.View == null || concreteInitiator.View.Asks == null || !concreteInitiator.View.Asks.SupportAnAlly.Schedule(is2D: false, HealAllyCallback)))
 			{
-				concreteTarget.View.Asks?.BeingHealed.Schedule();
+				concreteTarget.View.Asks?.BeingSupported.Schedule();
 			}
 		}
 	}
@@ -64,21 +68,28 @@ public class CastAsksController : BaseAsksController, IClickActionHandler, ISubs
 	private static void HealAllyCallback(AsksContext askContext)
 	{
 		MechanicEntity entity = askContext.Target.Entity;
-		if (entity != null && !(entity.View == null) && entity.View.Asks != null)
+		if (entity != null && entity.View != null && entity.View.Asks != null)
 		{
 			PartLifeState lifeStateOptional = entity.GetLifeStateOptional();
 			if (lifeStateOptional != null && lifeStateOptional.IsConscious)
 			{
-				entity.View.Asks?.BeingHealed.Schedule(is2D: false, null, askContext);
+				entity.View.Asks?.BeingSupported.Schedule(is2D: false, null, askContext);
 			}
 		}
 	}
 
 	void IClickMechanicActionBarSlotHandler.HandleClickMechanicActionBarSlot(MechanicActionBarSlot action)
 	{
-		if (!action.IsPossibleActive && action.Unit != null && !(action.Unit.View == null) && action.Unit.View.Asks != null && !(action is MechanicActionBarSlotEmpty))
+		if (action.IsPossibleActive || action.Unit == null || action.Unit.View == null || action.Unit.View.Asks == null)
 		{
-			action.Unit.View.Asks.CantDo.Schedule();
+			return;
+		}
+		using (EvalContext.PushAsksContext(action.Unit, action.Unit))
+		{
+			if (!(action is MechanicActionBarSlotEmpty))
+			{
+				action.Unit.View.Asks.CantDo.Schedule();
+			}
 		}
 	}
 
@@ -88,8 +99,8 @@ public class CastAsksController : BaseAsksController, IClickActionHandler, ISubs
 		{
 			return;
 		}
-		using AbilityExecutionContext abilityExecutionContext = ability.ClaimExecutionContext(ability.Caster);
-		using (abilityExecutionContext.SetScope())
+		using AbilityExecutionContext context = ability.ClaimExecutionContext(ability.Caster);
+		using (EvalContext.PushContext(context, ability.Caster))
 		{
 			AskWrapper order = ability.Caster.View.Asks.Order;
 			switch (ability.Blueprint.AbilityTag)

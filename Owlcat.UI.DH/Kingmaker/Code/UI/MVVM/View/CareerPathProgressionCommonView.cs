@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Code.View.UI.Helpers;
 using DG.Tweening;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;

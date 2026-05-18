@@ -15,6 +15,6 @@ public class ContextConditionRandomLessThen : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		return PFStatefulRandom.Mechanics.Range(1, 100) <= Value.Calculate(base.Context);
+		return PFStatefulRandom.Mechanics.Range(1, 100) <= Value.Calculate(base.Eval);
 	}
 }

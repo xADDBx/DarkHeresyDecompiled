@@ -1,11 +1,9 @@
-using Assets.Code.View.UI.MVVM;
 using Code.View.UI.MVVM.Tooltip.Templates;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Code.UI.MVVM;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Framework.Abilities.Blueprints;
 using Kingmaker.Gameplay.Parts;
 using Kingmaker.UnitLogic.Abilities;
@@ -32,7 +30,9 @@ public class AbilitySlotVM : ViewModel
 
 	private ReactiveProperty<bool> m_IsSelected = new ReactiveProperty<bool>();
 
-	private ReactiveProperty<bool?> m_CanApplyModifier = new ReactiveProperty<bool?>();
+	private ReactiveProperty<bool?> m_CanApplyModifierOnSelect = new ReactiveProperty<bool?>();
+
+	private ReactiveProperty<bool> m_CanApplyModifierOnHover = new ReactiveProperty<bool>();
 
 	private ReactiveProperty<bool> m_HasThisModifier = new ReactiveProperty<bool>();
 
@@ -40,7 +40,9 @@ public class AbilitySlotVM : ViewModel
 
 	public ReadOnlyReactiveProperty<bool> IsSelected => m_IsSelected;
 
-	public ReadOnlyReactiveProperty<bool?> CanApplyModifier => m_CanApplyModifier;
+	public ReadOnlyReactiveProperty<bool?> CanApplyModifierOnSelect => m_CanApplyModifierOnSelect;
+
+	public ReadOnlyReactiveProperty<bool> CanApplyModifierOnHover => m_CanApplyModifierOnHover;
 
 	public ReadOnlyReactiveProperty<bool> HasThisModifier => m_HasThisModifier;
 
@@ -49,6 +51,23 @@ public class AbilitySlotVM : ViewModel
 	public TooltipBaseTemplate Tooltip { get; private set; }
 
 	public TooltipBaseTemplate ModifierTooltip { get; private set; }
+
+	public bool IsBrokenOrHeroic
+	{
+		get
+		{
+			BlueprintAbilityWrapper blueprintAbilityWrapper = Ability?.Data.Blueprint;
+			if (blueprintAbilityWrapper != null)
+			{
+				if (!blueprintAbilityWrapper.IsBroken)
+				{
+					return blueprintAbilityWrapper.IsHeroic;
+				}
+				return true;
+			}
+			return false;
+		}
+	}
 
 	[CanBeNull]
 	private PartAbilityModifiers PartAbilityModifiers => m_AbilitiesTabVM.PartAbilityModifiers;
@@ -86,7 +105,7 @@ public class AbilitySlotVM : ViewModel
 	public bool IsSuitableModifier(BlueprintAbilityModifier modifier)
 	{
 		PartAbilityModifiers partAbilityModifiers = PartAbilityModifiers;
-		if (partAbilityModifiers == null)
+		if (partAbilityModifiers == null || IsBrokenOrHeroic)
 		{
 			return false;
 		}
@@ -138,11 +157,15 @@ public class AbilitySlotVM : ViewModel
 		}).AddTo(this);
 		m_AbilitiesTabVM.SelectedModifierSlot.Subscribe(delegate(ModificationSlotVM m)
 		{
-			m_CanApplyModifier.Value = ((m == null) ? null : new bool?(IsSuitableModifier(m.Modifier)));
+			m_CanApplyModifierOnSelect.Value = ((m == null) ? null : new bool?(IsSuitableModifier(m.Modifier)));
 		}).AddTo(this);
 		m_AbilitiesTabVM.HoveredModifierSlot.Subscribe(delegate(ModificationSlotVM m)
 		{
-			m_HasThisModifier.Value = m != null && IsSuitableModifier(m.Modifier);
+			m_CanApplyModifierOnHover.Value = m != null && IsSuitableModifier(m.Modifier);
+		}).AddTo(this);
+		m_AbilitiesTabVM.HoveredModifierSlot.Subscribe(delegate(ModificationSlotVM m)
+		{
+			m_HasThisModifier.Value = m != null && m_AppliedModifier.Value == m.Modifier;
 		}).AddTo(this);
 	}
 }

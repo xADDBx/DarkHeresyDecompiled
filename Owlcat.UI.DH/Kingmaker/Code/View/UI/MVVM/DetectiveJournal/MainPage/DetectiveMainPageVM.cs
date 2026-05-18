@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Framework.DetectiveSystem;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
 
 namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal.MainPage;
 
-public class DetectiveMainPageVM : ViewModel
+public class DetectiveMainPageVM : ViewModel, ICaseStatusChanged, ISubscriber
 {
 	public readonly ObservableList<CaseCardVM> Cases = new ObservableList<CaseCardVM>();
 
@@ -31,6 +33,7 @@ public class DetectiveMainPageVM : ViewModel
 			UpdateCases();
 		}).AddTo(this);
 		m_OnCaseCardClick = onCaseCardClick;
+		EventBus.Subscribe(this).AddTo(this);
 	}
 
 	public void ToggleClosedCases()
@@ -52,5 +55,10 @@ public class DetectiveMainPageVM : ViewModel
 			Cases.Add(new CaseCardVM(null, m_OnCaseCardClick));
 		}
 		m_HasAnyFolder.Value = allAvailableCases.Any() || flag;
+	}
+
+	public void HandleCaseStatusChanged(BlueprintCase blueprint)
+	{
+		UpdateCases();
 	}
 }

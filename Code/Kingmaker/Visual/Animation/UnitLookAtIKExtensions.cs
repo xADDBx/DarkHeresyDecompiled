@@ -1,47 +1,52 @@
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.PubSubSystem.Core;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation;
 
 public static class UnitLookAtIKExtensions
 {
-	public static void LookAt(this AbstractUnitEntity unit, Vector3 position, float turningTime = 0.3f, float duration = 0f)
+	public static void LookAt(this IAbstractUnitEntity unit, Vector3 position, RotatedBonesSet rotatedBonesSet = RotatedBonesSet.HeadAndSpine, float turningTime = 0.3f, float duration = 0f)
 	{
-		LookAtIKController componentInChildren = unit.View.gameObject.GetComponentInChildren<LookAtIKController>();
+		LookAtIKController componentInChildren = unit.View.GO.GetComponentInChildren<LookAtIKController>();
 		if (componentInChildren == null)
 		{
 			unit.TurnTo(position);
+			return;
 		}
-		else if (unit.GetDeltaAngle(position) > 80f)
+		if (unit.GetDeltaAngle(position) > 80f)
 		{
-			componentInChildren.StopLookAt();
+			componentInChildren.PushResetCommand();
 			unit.TurnTo(position);
+			return;
 		}
-		else
+		componentInChildren.PushLookAtCommand(new ConstantPositionProvider(position), rotatedBonesSet, turningTime, duration);
+		if (duration > 0f)
 		{
-			componentInChildren.StartLookAt(position, turningTime, duration);
+			componentInChildren.PushResetCommand(turningTime);
 		}
 	}
 
-	public static void LookAtWithoutTurnTo(this AbstractUnitEntity unit, Vector3 position, float maxDeltaAngle = 80f, float turningTime = 0.3f, float duration = 0f)
+	public static void LookAtWithoutTurnTo(this IAbstractUnitEntity unit, Vector3 position, RotatedBonesSet rotatedBonesSet = RotatedBonesSet.HeadAndSpine, float turningTime = 0.3f, float duration = 0f)
 	{
-		LookAtIKController componentInChildren = unit.View.gameObject.GetComponentInChildren<LookAtIKController>();
+		unit.LookAtWithoutTurnTo(new ConstantPositionProvider(position), rotatedBonesSet, turningTime, duration);
+	}
+
+	public static void LookAtWithoutTurnTo(this IAbstractUnitEntity unit, IVector3PositionProvider positionProvider, RotatedBonesSet rotatedBonesSet = RotatedBonesSet.HeadAndSpine, float turningTime = 0.3f, float duration = 0f)
+	{
+		LookAtIKController componentInChildren = unit.View.GO.GetComponentInChildren<LookAtIKController>();
 		if (!(componentInChildren == null))
 		{
-			if (unit.GetDeltaAngle(position) > Mathf.Min(80f, maxDeltaAngle))
+			componentInChildren.PushLookAtCommand(positionProvider, rotatedBonesSet, turningTime, duration);
+			if (duration > 0f)
 			{
-				componentInChildren.StopLookAt();
-			}
-			else
-			{
-				componentInChildren.StartLookAt(position, turningTime, duration);
+				componentInChildren.PushResetCommand(turningTime);
 			}
 		}
 	}
 
-	public static bool IsLookingAt(this AbstractUnitEntity unit, Vector3 targetPosition, float? targetAngleHint = null)
+	public static bool IsLookingAt(this IAbstractUnitEntity unit, Vector3 targetPosition, float? targetAngleHint = null)
 	{
-		LookAtIKController componentInChildren = unit.View.gameObject.GetComponentInChildren<LookAtIKController>();
+		LookAtIKController componentInChildren = unit.View.GO.GetComponentInChildren<LookAtIKController>();
 		if (componentInChildren != null && componentInChildren.IsLookingAt(targetPosition))
 		{
 			return true;
@@ -50,12 +55,22 @@ public static class UnitLookAtIKExtensions
 		return unit.GetDeltaAngle(angle) == 0f;
 	}
 
-	public static void StopLookAt(this AbstractUnitEntity unit, float turningTime = 0.3f)
+	public static bool IsFinishedLookAtCommands(this IAbstractUnitEntity unit)
 	{
-		LookAtIKController componentInChildren = unit.View.gameObject.GetComponentInChildren<LookAtIKController>();
+		LookAtIKController componentInChildren = unit.View.GO.GetComponentInChildren<LookAtIKController>();
+		if (componentInChildren == null)
+		{
+			return true;
+		}
+		return !componentInChildren.HasCommandToProcess();
+	}
+
+	public static void StopLookAt(this IAbstractUnitEntity unit, float turningTime = 0.3f)
+	{
+		LookAtIKController componentInChildren = unit.View.GO.GetComponentInChildren<LookAtIKController>();
 		if (componentInChildren != null)
 		{
-			componentInChildren.StopLookAt(turningTime);
+			componentInChildren.ResetImmediately(turningTime);
 		}
 	}
 
@@ -64,12 +79,12 @@ public static class UnitLookAtIKExtensions
 		return Mathf.Abs(Mathf.DeltaAngle(angle1, angle2));
 	}
 
-	public static float GetDeltaAngle(this AbstractUnitEntity unit, float angle)
+	public static float GetDeltaAngle(this IAbstractUnitEntity unit, float angle)
 	{
 		return Mathf.Abs(Mathf.DeltaAngle(unit.Orientation, angle));
 	}
 
-	public static float GetDeltaAngle(this AbstractUnitEntity unit, Vector3 position)
+	public static float GetDeltaAngle(this IAbstractUnitEntity unit, Vector3 position)
 	{
 		return Mathf.Abs(Mathf.DeltaAngle(unit.Orientation, unit.GetOrientationTo(position)));
 	}

@@ -38,7 +38,7 @@ public class GroupChangerCommonVM : GroupChangerVM
 			GroupChangerCharacterVM groupChangerCharacterVM = list.FirstOrDefault((GroupChangerCharacterVM c) => c == characterVm);
 			if (groupChangerCharacterVM != null)
 			{
-				groupChangerCharacterVM.SetIsInParty(num < 6);
+				groupChangerCharacterVM.SetIsInParty(num < Game.Instance.Player.MaxPartySize);
 				num++;
 			}
 		}
@@ -47,7 +47,7 @@ public class GroupChangerCommonVM : GroupChangerVM
 			GroupChangerCharacterVM groupChangerCharacterVM2 = list.FirstOrDefault((GroupChangerCharacterVM c) => c == characterVm);
 			if (groupChangerCharacterVM2 != null)
 			{
-				groupChangerCharacterVM2.SetIsInParty(num < 6);
+				groupChangerCharacterVM2.SetIsInParty(num < Game.Instance.Player.MaxPartySize);
 				num++;
 			}
 		}
@@ -70,7 +70,7 @@ public class GroupChangerCommonVM : GroupChangerVM
 
 	private bool MustBeInParty(BaseUnitEntity character)
 	{
-		if (character != Game.Instance.Player.MainCharacterEntity && character.Blueprint.GetComponent<LockedCompanionComponent>() == null && !RequiredUnits.Contains(character.Blueprint))
+		if (character != Game.Instance.Player.MainCharacterEntity && !RequiredUnits.Contains(character.Blueprint))
 		{
 			return PartPartyLock.IsLocked(character);
 		}

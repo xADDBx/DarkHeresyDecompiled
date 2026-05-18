@@ -26,11 +26,7 @@ public abstract class WeaponStatsModifier : MechanicEntityFactComponentDelegate
 
 	public ContextValueModifierWithType AdditionalArmorDamage = new ContextValueModifierWithType();
 
-	public ContextValueModifierWithType SingleAdditionalHitChance = new ContextValueModifierWithType();
-
-	public ContextValueModifierWithType BurstAdditionalHitChance = new ContextValueModifierWithType();
-
-	public ContextValueModifierWithType AoeAdditionalHitChance = new ContextValueModifierWithType();
+	public ContextValueModifierWithType AdditionalHitChance = new ContextValueModifierWithType();
 
 	public ContextValueModifierWithType MaxDistance = new ContextValueModifierWithType();
 
@@ -53,9 +49,7 @@ public abstract class WeaponStatsModifier : MechanicEntityFactComponentDelegate
 		DamageMax.TryApply(rule.BaseDamage.MaxValueModifiers, base.Fact, Descriptor);
 		AdditionalHealthDamage.TryApply(rule.BaseDamage.HealthDamageModifiers, base.Fact, Descriptor);
 		AdditionalArmorDamage.TryApply(rule.BaseDamage.ArmorDamageModifiers, base.Fact, Descriptor);
-		SingleAdditionalHitChance.TryApply(rule.SingleAdditionalHitChanceModifiers, base.Fact, Descriptor);
-		BurstAdditionalHitChance.TryApply(rule.BurstAdditionalHitChanceModifiers, base.Fact, Descriptor);
-		AoeAdditionalHitChance.TryApply(rule.AoeAdditionalHitChanceModifiers, base.Fact, Descriptor);
+		AdditionalHitChance.TryApply(rule.AdditionalHitChanceModifiers, base.Fact, Descriptor);
 		MaxDistance.TryApply(rule.MaxDistanceModifiers, base.Fact, Descriptor);
 		RateOfFire.TryApply(rule.RateOfFireModifiers, base.Fact, Descriptor);
 		Recoil.TryApply(rule.RecoilModifiers, base.Fact, Descriptor);

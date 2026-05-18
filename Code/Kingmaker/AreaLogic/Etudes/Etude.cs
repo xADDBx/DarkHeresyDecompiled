@@ -26,7 +26,7 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 	{
 		Name = "Etude",
 		OldNames = null,
-		Fields = new FieldInfo[11]
+		Fields = new FieldInfo[12]
 		{
 			new FieldInfo("m_ComponentsData", typeof(Dictionary<string, List<IEntityFactComponentSavableData>>)),
 			new FieldInfo("m_Components", typeof(List<EntityFactComponent>)),
@@ -38,7 +38,8 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 			new FieldInfo("ChildOf", typeof(EntityFactRef)),
 			new FieldInfo("IsCompleted", typeof(bool)),
 			new FieldInfo("CompletionInProgress", typeof(bool)),
-			new FieldInfo("ActivationTime", typeof(TimeSpan))
+			new FieldInfo("ActivationTime", typeof(TimeSpan)),
+			new FieldInfo("IsPaused", typeof(bool))
 		}
 	};
 
@@ -59,6 +60,10 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 	[JsonProperty]
 	[OwlPackInclude]
 	public TimeSpan ActivationTime { get; private set; }
+
+	[JsonProperty]
+	[OwlPackInclude]
+	public bool IsPaused { get; private set; }
 
 	public Etude(BlueprintEtude blueprint, [CanBeNull] Etude parent)
 		: base((BlueprintFact)blueprint)
@@ -91,6 +96,15 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 		GameCoreHistoryLog.Instance.EtudeEvent(null, ToString());
 	}
 
+	public void SetPaused(bool isPaused)
+	{
+		if (IsPaused != isPaused)
+		{
+			IsPaused = isPaused;
+			base.Owner.MarkConditionsDirty();
+		}
+	}
+
 	public void FinishCompletion()
 	{
 		if (!CompletionInProgress)
@@ -119,6 +133,7 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 		base.Owner.MarkConditionsDirty();
 		base.OnActivate();
 		base.Owner.Facts.EnsureFactProcessor<EtudesTree>().AddToPlaying(this);
+		base.Owner.Etudes.TryShutDownExclusionGroupsOf(Blueprint);
 		PFLog.Etudes.Log("Etude playing: " + Blueprint.name);
 		if (IsCompleted || CompletionInProgress)
 		{
@@ -175,6 +190,8 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 		result.Append(ref val3);
 		TimeSpan val4 = ActivationTime;
 		result.Append(ref val4);
+		bool val5 = IsPaused;
+		result.Append(ref val5);
 		return result;
 	}
 
@@ -213,6 +230,8 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 		formatter.UnmanagedField(9, "CompletionInProgress", ref value6, state);
 		TimeSpan value7 = ActivationTime;
 		formatter.Field(10, "ActivationTime", ref value7, state);
+		bool value8 = IsPaused;
+		formatter.UnmanagedField(11, "IsPaused", ref value8, state);
 		formatter.EndObject();
 	}
 
@@ -262,6 +281,9 @@ public class Etude : EntityFact<EtudesSystem>, IHashable, IOwlPackable<Etude>
 				break;
 			case 10:
 				ActivationTime = formatter.ReadPackable<TimeSpan>(state);
+				break;
+			case 11:
+				IsPaused = formatter.ReadUnmanaged<bool>(state);
 				break;
 			}
 		}

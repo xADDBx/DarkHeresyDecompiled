@@ -20,7 +20,13 @@ public interface IEntity : IDisposable
 
 	Vector3 Position { get; set; }
 
-	IEntityViewBase View { get; }
+	Quaternion Rotation { get; }
+
+	float Orientation { get; set; }
+
+	Vector3 Forward { get; }
+
+	IEntityView View { get; }
 
 	bool IsInState { get; }
 

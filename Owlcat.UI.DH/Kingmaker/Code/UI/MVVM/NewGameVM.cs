@@ -14,21 +14,21 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class NewGameVM : ViewModel
 {
-	public readonly SelectionGroupRadioVM<NewGameMenuEntityVM> MenuSelectionGroup;
-
 	private readonly ReactiveProperty<NewGameMenuEntityVM> m_SelectedMenuEntity = new ReactiveProperty<NewGameMenuEntityVM>();
 
 	private readonly List<NewGameMenuEntityVM> m_MenuEntitiesList = new List<NewGameMenuEntityVM>();
 
 	private readonly ReactiveCommand<Unit> m_ChangeTab = new ReactiveCommand<Unit>();
 
-	private Action m_CloseCallback;
+	private readonly Action m_CloseCallback;
 
-	private Action m_FinishCallback;
+	private readonly Action m_FinishCallback;
+
+	public readonly SelectionGroupRadioVM<NewGameMenuEntityVM> MenuSelectionGroup;
 
 	public ReadOnlyReactiveProperty<NewGameMenuEntityVM> SelectedMenuEntity => m_SelectedMenuEntity;
 
-	public NewGamePhasePresetVM PresetVM { get; }
+	public NewGamePhaseStoryVM StoryVM { get; }
 
 	public NewGamePhaseDifficultyVM DifficultyVM { get; }
 
@@ -38,17 +38,13 @@ public class NewGameVM : ViewModel
 	{
 		m_CloseCallback = closeCallback;
 		m_FinishCallback = finishCallback;
-		PresetVM = new NewGamePhasePresetVM(m_CloseCallback, delegate
-		{
-			GoToPhase(DifficultyVM);
-		}).AddTo(this);
+		Game.NewGamePreset = GameStarter.MainPreset;
 		DifficultyVM = new NewGamePhaseDifficultyVM(delegate
 		{
 			SettingsController.Instance.ConfirmAllTempValues();
 			SettingsController.Instance.SaveAll();
-			GoToPhase(PresetVM);
+			m_CloseCallback?.Invoke();
 		}, DifficultyNexStep).AddTo(this);
-		CreateMenuEntity(UIStrings.Instance.NewGameWin.ScenarioMenuLabel, PresetVM, OnPresetMenuSelect);
 		CreateMenuEntity(UIStrings.Instance.NewGameWin.DifficultyMenuLabel, DifficultyVM, OnDifficultyMenuSelect);
 		MenuSelectionGroup = new SelectionGroupRadioVM<NewGameMenuEntityVM>(m_MenuEntitiesList, m_SelectedMenuEntity);
 		m_SelectedMenuEntity.Value = m_MenuEntitiesList.First();
@@ -96,23 +92,16 @@ public class NewGameVM : ViewModel
 		m_MenuEntitiesList.Add(newGameMenuEntityVM);
 	}
 
-	private void OnPresetMenuSelect()
-	{
-		DifficultyVM.SetEnabled(value: false);
-		PresetVM.SetEnabled(value: true);
-		m_ChangeTab.Execute();
-	}
-
 	private void OnStoryMenuSelect()
 	{
 		DifficultyVM.SetEnabled(value: false);
-		m_ChangeTab.Execute();
+		m_ChangeTab.Execute(Unit.Default);
 	}
 
 	private void OnDifficultyMenuSelect()
 	{
 		DifficultyVM.SetEnabled(value: true);
-		m_ChangeTab.Execute();
+		m_ChangeTab.Execute(Unit.Default);
 	}
 
 	public void OnStart()

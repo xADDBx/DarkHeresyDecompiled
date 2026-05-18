@@ -14,7 +14,7 @@ namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBaseVM>>
 {
-	private const float SELECTOR_LEVEL_OFFSET = 12f;
+	private const float SelectorLevelOffset = 12f;
 
 	[SerializeField]
 	protected OwlcatMultiSelectable m_BackgroundFrame;
@@ -33,52 +33,6 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 
 	[SerializeField]
 	private CharGenCommonPhaseRoadmapView m_PhaseRoadmapViewPrefab;
-
-	[Space]
-	[SerializeField]
-	protected CharGenPregenPhaseRoadmapView m_PregenPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenAppearancePhaseRoadmapView m_AppearancePhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_SoulMarkPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_HomeworldPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_ImperialHomeworldChildPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_ForgeHomeworldChildPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_SanctionedPsykerChildPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_OccupationPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_NavigatorPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_MomentOfTriumphPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenBackgroundBasePhaseRoadmapView m_DarkestHourPhaseRoadmapView;
-
-	[SerializeField]
-	protected CharGenCareerPhaseRoadmapView m_CareerPhaseRoadmapView;
-
-	[SerializeField]
-	private CharGenAttributesPhaseRoadmapView m_AttributesPhaseRoadmapView;
-
-	[SerializeField]
-	private CharGenShipPhaseRoadmapView m_ShipPhaseRoadmapView;
-
-	[SerializeField]
-	private CharGenSummaryPhaseRoadmapView m_SummaryPhaseRoadmapView;
 
 	[SerializeField]
 	private RectTransform m_Selector;
@@ -106,10 +60,6 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 
 	private List<CharGenCommonPhaseRoadmapView> m_PhaseViews = new List<CharGenCommonPhaseRoadmapView>();
 
-	public void Initialize()
-	{
-	}
-
 	protected override void OnBind()
 	{
 		ClearRoadmapPhaseViews();
@@ -119,6 +69,7 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 		}
 		base.ViewModel.EntitiesCollection.ObserveAdd().Subscribe(CreateRoadmapPhaseView).AddTo(this);
 		base.ViewModel.EntitiesCollection.ObserveRemove().Subscribe(RemoveRoadmapPhaseView).AddTo(this);
+		base.ViewModel.EntitiesCollection.ObserveReset().Subscribe(ClearRoadmapPhaseViews).AddTo(this);
 		base.ViewModel.EntitiesCollection.ObserveMove().Subscribe(delegate
 		{
 			DelayedMoveSelector(base.ViewModel.SelectedEntity.Value);
@@ -151,7 +102,7 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 
 	private void RemoveRoadmapPhaseView(CollectionRemoveEvent<CharGenPhaseBaseVM> removeEvent)
 	{
-		foreach (CharGenCommonPhaseRoadmapView item in m_PhaseViews.Where((CharGenCommonPhaseRoadmapView v) => v.ViewModel == removeEvent.Value || v.ViewModel == null))
+		foreach (CharGenCommonPhaseRoadmapView item in m_PhaseViews.Where((CharGenCommonPhaseRoadmapView v) => v.ViewModel == removeEvent.Value || v.ViewModel == null).ToList())
 		{
 			m_PhaseViews.Remove(item);
 			WidgetPool.Release(item);
@@ -166,16 +117,16 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 			return;
 		}
 		m_DelayedSelectorMoveDisposable?.Dispose();
-		m_DelayedSelectorMoveDisposable = ObservableSubscribeExtensions.Subscribe(Observable.IntervalFrame(2), delegate
+		m_DelayedSelectorMoveDisposable = ObservableSubscribeExtensions.Subscribe(Observable.TimerFrame(2), delegate
 		{
 			m_ScrollRectExtended.EnsureVisibleHorizontal(m_SelectedView.ViewRectTransform, 160f);
-			float endValue = m_SelectedView.ViewRectTransform.localPosition.x + ((selectedEntity.Rank > 0) ? 12f : 0f);
-			m_Selector.DOLocalMoveX(endValue, m_AnimationDuration).OnStart(delegate
+			float endValue = m_SelectedView.ViewRectTransform.position.x + ((selectedEntity.Rank > 0) ? 12f : 0f);
+			m_Selector.DOMoveX(endValue, m_AnimationDuration).OnStart(delegate
 			{
 				if (m_PrevEntity != selectedEntity)
 				{
-					UISounds.Instance.Sounds.Selector.SelectorStart.Play();
-					UISounds.Instance.Sounds.Selector.SelectorLoopStart.Play();
+					SystemSounds.Instance.Selector.Start.Play();
+					SystemSounds.Instance.Selector.LoopStart.Play();
 					m_SelectorSoundPlaying = true;
 					m_PrevEntity = selectedEntity;
 				}
@@ -203,9 +154,9 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 	{
 		if (m_SelectorSoundPlaying)
 		{
-			UISounds.Instance.Sounds.Selector.SelectorStop.Play();
+			SystemSounds.Instance.Selector.Stop.Play();
 		}
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Selector.SelectorLoopStop, isButton: false, playAnyway: true);
+		UISounds.Instance.Play(SystemSounds.Instance.Selector.LoopStop, isButton: false, playAnyway: true);
 		m_SelectorSoundPlaying = false;
 	}
 
@@ -233,8 +184,8 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 	{
 		CharGenCommonPhaseRoadmapView charGenCommonPhaseRoadmapView = WidgetPool.Retain(m_PhaseRoadmapViewPrefab, m_PhaseRoadmapRoot);
 		charGenCommonPhaseRoadmapView.Bind(phaseVM);
-		charGenCommonPhaseRoadmapView.transform.SetSiblingIndex(m_PhaseViews.Count);
 		m_PhaseViews.Add(charGenCommonPhaseRoadmapView);
+		charGenCommonPhaseRoadmapView.transform.SetSiblingIndex(base.ViewModel.EntitiesCollection.IndexOf(phaseVM));
 	}
 
 	private ICharGenPhaseRoadmapView GetRoadmapPhaseView(CharGenPhaseBaseVM phaseVM)

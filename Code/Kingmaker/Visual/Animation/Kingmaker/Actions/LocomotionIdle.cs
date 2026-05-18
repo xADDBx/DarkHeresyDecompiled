@@ -28,10 +28,10 @@ public class LocomotionIdle : LocomotionState
 
 	public override void OnEnterState()
 	{
-		UnitMovementAgentBase unitMovementAgentBase = m_Handle.Unit.Or(null)?.MovementAgent;
-		if ((object)unitMovementAgentBase != null)
+		UnitMovementAgent unitMovementAgent = m_Handle.Unit.Or(null)?.MovementAgent;
+		if ((object)unitMovementAgent != null)
 		{
-			m_Handle.Manager.UpdateLocomotionParameters(unitMovementAgentBase.FaceDirection, unitMovementAgentBase.MoveDirection, 0f, base.m_MaxSpeed);
+			m_Handle.Manager.UpdateLocomotionParameters(unitMovementAgent.FaceDirection, unitMovementAgent.MoveDirection, 0f, base.m_MaxSpeed);
 		}
 		UpdateLocomotionData();
 		StartIdleAnimation(shouldRandomizeStart: true);
@@ -58,7 +58,6 @@ public class LocomotionIdle : LocomotionState
 		if (flag && manager.Animator.enabled)
 		{
 			m_Handle.ActiveAnimation?.StartTransitionOut();
-			m_Handle.ActiveAnimation?.StopEvents();
 			UpdateLocomotionData();
 			StartIdleAnimation(shouldRandomizeStart: true);
 		}
@@ -121,12 +120,13 @@ public class LocomotionIdle : LocomotionState
 	private void StartIdleAnimation(bool shouldRandomizeStart)
 	{
 		m_IsPlayingIdleAnimation = true;
-		m_Handle.Manager.NewSpeed = 0f;
+		m_Handle.Manager.Speed = 0f;
 		m_Handle.Manager.IsMoodMaskCanBeApplied = true;
 		AnimationClipWrapper idleClip = m_AnimationAction.GetIdleClip(base.m_ActualWeaponStyle, m_AnimationAction.IsForDollRoom);
 		if (idleClip == null)
 		{
 			PFLog.Animations.Error($"No idle animation for {base.m_ActualWeaponStyle}");
+			return;
 		}
 		m_Handle.StartClip(idleClip, ClipDurationType.Endless);
 		if (shouldRandomizeStart)

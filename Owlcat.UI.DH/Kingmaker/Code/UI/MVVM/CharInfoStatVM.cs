@@ -1,26 +1,23 @@
-using System.Collections.Generic;
-using Code.View.UI.UIUtils;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Localization;
-using Kingmaker.PubSubSystem.Core;
-using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.Settings;
 using Owlcat.UI;
 using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class CharInfoStatVM : ViewModel, IModifiableValueChangedHandler<EntitySubscriber>, IModifiableValueChangedHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEventTag<IModifiableValueChangedHandler, EntitySubscriber>
+public class CharInfoStatVM : ViewModel
 {
-	private readonly ReactiveProperty<ModifiableValue> m_Stat = new ReactiveProperty<ModifiableValue>();
+	private MechanicEntity m_Entity;
 
-	private readonly ReactiveProperty<ModifiableValue> m_PreviewStat = new ReactiveProperty<ModifiableValue>();
+	private MechanicEntity m_PreviewEntity;
+
+	private LocalizedString m_FlatFooted;
 
 	private readonly ReactiveProperty<string> m_Name = new ReactiveProperty<string>();
 
@@ -36,29 +33,17 @@ public class CharInfoStatVM : ViewModel, IModifiableValueChangedHandler<EntitySu
 
 	private readonly ReactiveProperty<string> m_StringValue = new ReactiveProperty<string>();
 
-	private readonly ReactiveProperty<bool> m_IsRecommended = new ReactiveProperty<bool>();
-
 	private readonly ReactiveProperty<int> m_Bonus = new ReactiveProperty<int>();
-
-	private readonly ReactiveProperty<bool> m_HighlightedBySource = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<bool> m_IsBattleSkill = new ReactiveProperty<bool>();
 
 	private readonly bool m_IsValuePermanent;
 
-	private readonly ReactiveProperty<int?> m_RaceBonus = new ReactiveProperty<int?>();
-
 	private readonly ReactiveProperty<int> m_Rank = new ReactiveProperty<int>();
 
 	private readonly ReactiveProperty<TooltipBaseTemplate> m_Tooltip = new ReactiveProperty<TooltipBaseTemplate>();
 
-	private LocalizedString m_FlatFooted;
-
-	public readonly float FontMultiplier = FontSizeMultiplier;
-
-	public StatType? SourceStatType { get; private set; }
-
-	public StatType StatType { get; private set; }
+	private SerialDisposable m_TooltipDisposable = new SerialDisposable();
 
 	public string ShortName => UIUtilityText.GetStatShortName(StatType);
 
@@ -76,141 +61,95 @@ public class CharInfoStatVM : ViewModel, IModifiableValueChangedHandler<EntitySu
 
 	public ReadOnlyReactiveProperty<string> StringValue => m_StringValue;
 
-	public ReadOnlyReactiveProperty<bool> IsRecommended => m_IsRecommended;
-
 	public ReadOnlyReactiveProperty<int> Bonus => m_Bonus;
-
-	public ReadOnlyReactiveProperty<bool> HighlightedBySource => m_HighlightedBySource;
 
 	public ReadOnlyReactiveProperty<bool> IsBattleSkill => m_IsBattleSkill;
 
 	public ReadOnlyReactiveProperty<TooltipBaseTemplate> Tooltip => m_Tooltip;
 
-	private static float FontSizeMultiplier => SettingsRoot.Accessiability.FontSizeMultiplier;
+	public StatType? SourceStatType { get; private set; }
 
-	public CharInfoStatVM([NotNull] ModifiableValue stat, bool showPermanentValue)
+	public StatType StatType { get; }
+
+	public CharInfoStatVM([NotNull] MechanicEntity entity, StatType statType, bool showPermanentValue)
 	{
-		m_Stat.Value = stat;
+		m_Entity = entity;
+		StatType = statType;
 		m_IsValuePermanent = showPermanentValue;
-		m_Stat.Subscribe(delegate
-		{
-			OnStatUpdated();
-		}).AddTo(this);
-		EventBus.Subscribe(this).AddTo(this);
-	}
-
-	public CharInfoStatVM([NotNull] ModifiableValue stat, ModifiableValue previewStat)
-		: this(stat, showPermanentValue: false)
-	{
-		m_PreviewStat.Value = previewStat;
 		OnStatUpdated();
 	}
 
-	private void OnStatValueChanged(ModifiableValue stat)
+	public CharInfoStatVM([NotNull] MechanicEntity entity, StatType statType, MechanicEntity previewEntity)
+		: this(entity, statType, showPermanentValue: false)
 	{
+		m_PreviewEntity = previewEntity;
+		OnStatUpdated();
+	}
+
+	public void UpdateEntity([NotNull] MechanicEntity entity, MechanicEntity previewEntity)
+	{
+		m_Entity = entity;
+		m_PreviewEntity = previewEntity;
 		OnStatUpdated();
 	}
 
 	private void OnStatUpdated()
 	{
-		if (m_Stat.Value == null)
+		if (m_Entity != null)
 		{
-			return;
-		}
-		StatType = m_Stat.Value.Type;
-		SourceStatType = UIUtilityUnit.GetSourceStatType(m_Stat.Value);
-		m_Name.Value = LocalizedTexts.Instance.Stats.GetText(StatType);
-		m_StatValue.Value = (m_IsValuePermanent ? m_Stat.Value.PermanentValue : m_Stat.Value.ModifiedValue);
-		m_Rank.Value = m_Stat.Value.BaseValue;
-		m_IsBattleSkill.Value = StatType.IsCombatSkill();
-		if (m_PreviewStat.Value != null)
-		{
-			m_PreviewStatValue.Value = (m_IsValuePermanent ? m_PreviewStat.Value.PermanentValue : m_PreviewStat.Value.ModifiedValue);
-		}
-		else
-		{
-			m_PreviewStatValue.Value = StatValue.CurrentValue;
-		}
-		if (!TryExtractModifiableValueAttributeStat(m_Stat.Value))
-		{
-			TryExtractModifiableValueSkill(m_Stat.Value);
-		}
-		StatTooltipData statData = null;
-		if (m_Stat.Value is ModifiableValueAttributeStat attribute)
-		{
-			statData = new StatTooltipData(attribute);
-		}
-		else if (m_Stat.Value is ModifiableValueSkill skill)
-		{
-			statData = new StatTooltipData(skill);
-		}
-		else
-		{
-			ModifiableValue value = m_Stat.Value;
-			if (value != null)
+			MechanicActorStat stat = m_Entity.Actor.Stats.GetStat(StatType);
+			SourceStatType = MechanicActor.GetStatBaseStat(StatType);
+			m_Name.Value = LocalizedTexts.Instance.Stats.GetText(StatType);
+			m_StatValue.Value = (m_IsValuePermanent ? stat.PermanentValue : stat.ModifiedValue);
+			m_Rank.Value = stat.BaseValue;
+			m_IsBattleSkill.Value = StatType.IsCombatSkill();
+			if (m_PreviewEntity != null)
 			{
-				statData = new StatTooltipData(value);
+				MechanicActorStat stat2 = m_PreviewEntity.Actor.Stats.GetStat(StatType);
+				m_PreviewStatValue.Value = (m_IsValuePermanent ? stat2.PermanentValue : stat2.ModifiedValue);
 			}
+			else
+			{
+				m_PreviewStatValue.Value = StatValue.CurrentValue;
+			}
+			if (StatType.IsAttribute())
+			{
+				ExtractAttributeStat(stat);
+			}
+			else if (StatType.IsSkill())
+			{
+				ExtractSkillStat(stat);
+			}
+			m_TooltipDisposable.Disposable = ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
+			{
+				m_Tooltip.Value = new TooltipTemplateStat(StatTooltipData.FromActor(m_Entity, StatType));
+			}).AddTo(this);
 		}
-		m_Tooltip.Value = new TooltipTemplateStat(statData);
 	}
 
-	public void UpdateRecommendedMark(List<StatType> recommendedStats)
+	private void ExtractAttributeStat(MechanicActorStat stat)
 	{
-		m_IsRecommended.Value = recommendedStats?.Contains(StatType) ?? false;
+		m_IsValueEnabled.Value = stat.Enabled;
+		m_Bonus.Value = GetModifier(stat, m_IsValuePermanent);
+		m_HasBonuses.Value = stat.HasBonuses;
+		m_HasPenalties.Value = stat.HasPenalties;
 	}
 
-	private bool TryExtractModifiableValueAttributeStat(ModifiableValue stat)
+	private void ExtractSkillStat(MechanicActorStat stat)
 	{
-		if (!(stat is ModifiableValueAttributeStat modifiableValueAttributeStat))
-		{
-			return false;
-		}
-		m_IsValueEnabled.Value = modifiableValueAttributeStat.Enabled;
-		m_Bonus.Value = GetModifier(modifiableValueAttributeStat, m_IsValuePermanent);
-		m_HasBonuses.Value = modifiableValueAttributeStat.HasBonuses;
-		m_HasPenalties.Value = modifiableValueAttributeStat.HasPenalties;
-		return true;
-	}
-
-	private bool TryExtractModifiableValueSkill(ModifiableValue stat)
-	{
-		if (!(stat is ModifiableValueSkill modifiableValueSkill))
-		{
-			return false;
-		}
 		m_IsValueEnabled.Value = true;
-		m_Bonus.Value = GetModifier(modifiableValueSkill, m_IsValuePermanent);
-		m_HasBonuses.Value = modifiableValueSkill.HasBonuses && m_Bonus.Value > 0;
-		m_HasPenalties.Value = modifiableValueSkill.HasPenalties && m_Bonus.Value < 0;
-		return true;
+		int modifier = GetModifier(stat, m_IsValuePermanent);
+		m_Bonus.Value = modifier;
+		m_HasBonuses.Value = stat.HasBonuses && modifier > 0;
+		m_HasPenalties.Value = stat.HasPenalties && modifier < 0;
 	}
 
-	private int GetModifier(ModifiableValueAttributeStat stat, bool permanent)
+	private static int GetModifier(MechanicActorStat stat, bool permanent)
 	{
 		if (!permanent)
 		{
 			return stat.ModifiedValue - stat.PermanentValue;
 		}
 		return stat.ModifiedValue - stat.BaseValue;
-	}
-
-	private int GetModifier(ModifiableValueSkill skill, bool permanent)
-	{
-		if (!permanent)
-		{
-			return skill.ModifiedValue - skill.PermanentValue;
-		}
-		return skill.ModifiedValue - skill.BaseValue;
-	}
-
-	public void HighlightBySourceType(StatType? sourceType)
-	{
-		m_HighlightedBySource.Value = sourceType.HasValue && SourceStatType == sourceType;
-	}
-
-	public void HandleModifiableValueChanged(ModifiableValue modifiableValue)
-	{
-		OnStatValueChanged(modifiableValue);
 	}
 }

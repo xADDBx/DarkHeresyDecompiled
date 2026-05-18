@@ -7,5 +7,5 @@ namespace Kingmaker.Blueprints;
 [TypeId("e93a6fcf66bc4a1b956c60cc8fad094b")]
 public abstract class BlueprintAnimationActionExternalBaseComponent : BlueprintComponent
 {
-	public abstract void Handle(AnimationManager animationManager, ClipEventType сlipEventType, int id);
+	public abstract void Handle(AnimationManager animationManager, ClipEventType сlipEventType, int id, object userData);
 }

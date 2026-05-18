@@ -7,9 +7,9 @@ using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Interaction;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
@@ -23,7 +23,7 @@ namespace Kingmaker.View.Mechanics.Interactions.Restrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class SkillUseWithoutToolRestrictionPart : InteractionRestrictionPart<SkillUseWithoutToolRestrictionSettings>, IInteractionVariantActor, IInteractionRestriction, IHashable, IOwlPackable<SkillUseWithoutToolRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "SkillUseWithoutToolRestrictionPart",
 		OldNames = null,
@@ -36,7 +36,7 @@ public class SkillUseWithoutToolRestrictionPart : InteractionRestrictionPart<Ski
 
 	public override bool ShouldCheckSourceComponent => false;
 
-	public int? InteractionDC => InteractionPart?.Settings?.GetDC();
+	public int? InteractionDC => InteractionPart?.InteractionDC;
 
 	public BlueprintAdditionalCombatObjective CombatObjective => null;
 
@@ -93,7 +93,7 @@ public class SkillUseWithoutToolRestrictionPart : InteractionRestrictionPart<Ski
 		SkillUseWithoutToolRestrictionSettings settings = base.Settings;
 		if (settings != null && settings.Type == InteractionActorType.TechUse)
 		{
-			EventBus.RaiseEvent(delegate(IVariativeInteractionUIHandler h)
+			base.EventBus.RaiseEvent(delegate(IVariativeInteractionUIHandler h)
 			{
 				h.HandleInteractionRequest(InteractionPart.Owner);
 			});
@@ -103,7 +103,7 @@ public class SkillUseWithoutToolRestrictionPart : InteractionRestrictionPart<Ski
 	public override int GetUserPriority(BaseUnitEntity user)
 	{
 		StatType skill = InteractionPart.GetSkill();
-		return user.Stats.GetStatOptional(skill)?.ModifiedValue ?? 0;
+		return user.Actor.GetStat(skill, null, default(StatContext), "GetUserPriority");
 	}
 
 	public override bool CheckRestriction(BaseUnitEntity user)
@@ -150,7 +150,7 @@ public class SkillUseWithoutToolRestrictionPart : InteractionRestrictionPart<Ski
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		SkillUseWithoutToolRestrictionPart source = new SkillUseWithoutToolRestrictionPart();
 		result = Unsafe.As<SkillUseWithoutToolRestrictionPart, TPossiblyBase>(ref source);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Kingmaker.GameCommands;
 using Kingmaker.Networking;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Logging;
@@ -82,6 +83,7 @@ public class SignalService : IService, IDisposable
 
 	private static readonly LogChannel Logger = LogChannelFactory.GetOrCreate("SignalService");
 
+	[HashCommit]
 	private readonly Dictionary<uint, SignalState> m_SignalStates = new Dictionary<uint, SignalState>();
 
 	private readonly SignalServiceState m_State = new SignalServiceState();
@@ -105,6 +107,7 @@ public class SignalService : IService, IDisposable
 
 	public int SignalsCount => m_SignalStates.Count;
 
+	[HashCommit]
 	public uint SignalKeyCounter { get; private set; }
 
 	ServiceLifetimeType IService.Lifetime => ServiceLifetimeType.GameSession;

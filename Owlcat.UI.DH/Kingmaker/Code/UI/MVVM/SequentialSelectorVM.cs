@@ -10,6 +10,7 @@ using Kingmaker.UI.Sound;
 using Kingmaker.UnitLogic.Levelup.CharGen;
 using Photon.Realtime;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -91,6 +92,27 @@ public abstract class SequentialSelectorVM<TEntity> : BaseCharGenAppearancePageC
 	{
 	}
 
+	public override void CaptureDefaults()
+	{
+		m_DefaultIndex = m_CurrentIndex.Value;
+	}
+
+	public override void Randomize()
+	{
+		if (ValueList.Count != 0)
+		{
+			SetCurrentIndex(UnityEngine.Random.Range(0, ValueList.Count));
+		}
+	}
+
+	public override void ResetToDefault()
+	{
+		if (m_DefaultIndex >= 0)
+		{
+			SetCurrentIndex(m_DefaultIndex);
+		}
+	}
+
 	protected override void DisposeImplementation()
 	{
 	}
@@ -110,7 +132,7 @@ public abstract class SequentialSelectorVM<TEntity> : BaseCharGenAppearancePageC
 		{
 			ValueList.AddRange(valueList);
 			m_CurrentIndex.Value = ((current != null && ValueList.Contains(current)) ? ValueList.FindIndex((TEntity v) => v == current) : 0);
-			m_ValuesUpdated.Execute();
+			m_ValuesUpdated.Execute(Unit.Default);
 		}
 	}
 
@@ -138,7 +160,7 @@ public abstract class SequentialSelectorVM<TEntity> : BaseCharGenAppearancePageC
 	{
 		int value = m_CurrentIndex.Value;
 		m_CurrentIndex.Value = ((value > 0) ? (value - 1) : (m_Cyclical ? (ValueList.Count - 1) : 0));
-		UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+		ButtonsSounds.Instance.Default.Hover.Play();
 	}
 
 	public void OnRight()
@@ -160,7 +182,7 @@ public abstract class SequentialSelectorVM<TEntity> : BaseCharGenAppearancePageC
 	{
 		int value = m_CurrentIndex.Value;
 		m_CurrentIndex.Value = ((value < ValueList.Count - 1) ? (value + 1) : ((!m_Cyclical) ? (ValueList.Count - 1) : 0));
-		UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+		ButtonsSounds.Instance.Default.Hover.Play();
 	}
 
 	public bool SetCurrentIndex(int index)

@@ -7,6 +7,7 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Abilities;
@@ -43,7 +44,7 @@ public class PartAbilityRestrictions : BaseUnitPart, IInterruptTurnStartHandler<
 			ForbidAbility = forbidAbility;
 		}
 
-		public bool IsRestrictionPassed([NotNull] MechanicsContext context, [NotNull] AbilityData ability, [CanBeNull] TargetWrapper target)
+		public bool IsRestrictionPassed([NotNull] IEvalContext context, [NotNull] AbilityData ability, [CanBeNull] TargetWrapper target)
 		{
 			if (!AbilityFilter.IsPassed(context, ability.Caster, target, null, ability))
 			{
@@ -103,20 +104,23 @@ public class PartAbilityRestrictions : BaseUnitPart, IInterruptTurnStartHandler<
 		{
 			return true;
 		}
-		using AbilityExecutionContext context = ability.ClaimExecutionContext(target ?? ((TargetWrapper)ability.Caster));
-		RestrictionCalculator interruptionAbilityRestrictions = _interruptionAbilityRestrictions;
-		if (interruptionAbilityRestrictions != null && !interruptionAbilityRestrictions.IsPassed(context, ability.Caster, target, null, ability))
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(ability, target ?? ((TargetWrapper)ability.Caster)).Get(out ctx))
 		{
-			return false;
-		}
-		foreach (Entry entry in _entries)
-		{
-			if (!entry.IsRestrictionPassed(context, ability, target))
+			RestrictionCalculator interruptionAbilityRestrictions = _interruptionAbilityRestrictions;
+			if (interruptionAbilityRestrictions != null && !interruptionAbilityRestrictions.IsPassed(ctx, ability.Caster, target, null, ability))
 			{
 				return false;
 			}
+			foreach (Entry entry in _entries)
+			{
+				if (!entry.IsRestrictionPassed(ctx, ability, target))
+				{
+					return false;
+				}
+			}
+			return true;
 		}
-		return true;
 	}
 
 	[Obsolete("WH2-14018")]

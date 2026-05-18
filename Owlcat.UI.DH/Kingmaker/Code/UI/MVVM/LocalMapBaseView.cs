@@ -5,13 +5,13 @@ using DG.Tweening;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Code.View.UI.Components.Camera;
 using Kingmaker.Code.View.UI.Components.Text.ScrambledTextMeshPro;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Networking;
 using Kingmaker.UI;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.Sound;
+using Kingmaker.Utility.Attributes;
 using Kingmaker.Visual.LocalMap;
 using ObservableCollections;
 using Owlcat.UI;
@@ -48,9 +48,6 @@ public class LocalMapBaseView : View<LocalMapVM>
 	protected RawImage m_Image;
 
 	[SerializeField]
-	private RawImage m_TestRawImage;
-
-	[SerializeField]
 	protected RectTransform m_FrameBlock;
 
 	[SerializeField]
@@ -64,6 +61,14 @@ public class LocalMapBaseView : View<LocalMapVM>
 	private Vector2 m_ChangedMapSize;
 
 	[Header("Markers Block")]
+	[SerializeField]
+	[Tooltip("Marker scale at minimum zoom")]
+	private float m_MarkerScaleAtMinZoom = 0.5f;
+
+	[SerializeField]
+	[Tooltip("Marker scale at maximum zoom")]
+	private float m_MarkerScaleAtMaxZoom = 1f;
+
 	[SerializeField]
 	private List<LocalMapMarkerSet> m_MarkerSets = new List<LocalMapMarkerSet>();
 
@@ -87,21 +92,9 @@ public class LocalMapBaseView : View<LocalMapVM>
 	[SerializeField]
 	private List<FadeAnimator> m_TargetPingEntities = new List<FadeAnimator>();
 
-	[Header("Debug")]
-	[SerializeField]
-	private bool m_UsePostprocess;
-
 	[Header("Values")]
 	[SerializeField]
 	protected float m_ZoomStep;
-
-	[Header("Values")]
-	[SerializeField]
-	protected float m_ZoomMaxSize;
-
-	[Header("Values")]
-	[SerializeField]
-	protected float m_ZoomMinSize;
 
 	[SerializeField]
 	private float m_MoveMapSpeed;
@@ -126,35 +119,39 @@ public class LocalMapBaseView : View<LocalMapVM>
 
 	[Header("Screen")]
 	[SerializeField]
-	[FormerlySerializedAs("UIPostProcessMember")]
-	private UIPostProcessMember m_UIPostProcessMember;
-
-	[SerializeField]
-	private FadeAnimator m_ScreenContentFadeAnimator;
-
-	[SerializeField]
-	private GameObject m_ShatteredGlass;
+	private UIServiceWindowPostProcessView m_PostProcessView;
 
 	private bool m_SaveMarkerCoords;
 
 	private Vector2 m_Size;
 
-	protected readonly ReactiveProperty<bool> MaxZoom = new ReactiveProperty<bool>();
+	protected readonly ReactiveProperty<bool> m_MaxZoom = new ReactiveProperty<bool>();
 
-	protected readonly ReactiveProperty<bool> MinZoom = new ReactiveProperty<bool>();
+	protected readonly ReactiveProperty<bool> m_MinZoom = new ReactiveProperty<bool>();
 
-	protected float CurrentZoom;
+	[Header("Debug")]
+	[SerializeField]
+	[InspectorReadOnly]
+	protected float m_CurrentZoom;
+
+	[SerializeField]
+	[InspectorReadOnly]
+	private float m_CurrentMarkerScale;
 
 	private readonly List<LocalMapMarkerPCView> m_MarkerViews = new List<LocalMapMarkerPCView>();
 
 	private readonly Dictionary<NetPlayer, PingData> m_PlayerPingData = new Dictionary<NetPlayer, PingData>();
+
+	protected float ZoomMin => base.ViewModel.ZoomMin;
+
+	protected float ZoomMax => base.ViewModel.ZoomMax;
 
 	private Vector2 MaxPos
 	{
 		get
 		{
 			Vector2 vector = m_Image.rectTransform.localScale;
-			Vector2 vector2 = vector - Vector2.one * m_ZoomMinSize;
+			Vector2 vector2 = vector - Vector2.one * ZoomMin;
 			return m_Size / 5f * vector * vector2 * m_MoveMapFrame;
 		}
 	}
@@ -162,15 +159,12 @@ public class LocalMapBaseView : View<LocalMapVM>
 	public void Initialize()
 	{
 		base.gameObject.SetActive(value: false);
+		m_PostProcessView.Initialize();
 	}
 
 	protected override void OnBind()
 	{
 		ShowWindow();
-		if (m_UsePostprocess)
-		{
-			m_UIPostProcessMember.Bind();
-		}
 		m_NoSignalTitle.text = UIStrings.Instance.LocalMapTexts.NoSignalTitle.Text;
 		foreach (FadeAnimator item in m_TargetPingEntities.Where((FadeAnimator entity) => entity != null))
 		{
@@ -210,6 +204,7 @@ public class LocalMapBaseView : View<LocalMapVM>
 		}).AddTo(this);
 		OpenLocalMapFirstZoomSettings();
 		SetMarkersVM();
+		ApplyInitialZoom();
 		m_LegendBlockView.Bind(base.ViewModel.LocalMapLegendBlockVM);
 		SetMapRotation((float)base.ViewModel.LocalMapRotation);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(), delegate
@@ -218,12 +213,13 @@ public class LocalMapBaseView : View<LocalMapVM>
 		}).AddTo(this);
 		if (RootVM.Instance.WindowsPanelVM.Value?.FoWTextureTemp != null)
 		{
-			m_TestRawImage.material.SetTexture(FowTex, RootVM.Instance.WindowsPanelVM.Value?.FoWTextureTemp);
+			m_Image.material.SetTexture(FowTex, RootVM.Instance.WindowsPanelVM.Value?.FoWTextureTemp);
 		}
 	}
 
 	protected override void OnUnbind()
 	{
+		Game.Instance.Player.UISettings.LocalMapZoomScale = m_CurrentZoom;
 		HideWindow();
 		m_MarkerViews.ForEach(WidgetFactory.DisposeWidget);
 		m_MarkerViews.Clear();
@@ -233,39 +229,15 @@ public class LocalMapBaseView : View<LocalMapVM>
 	private void ShowWindow()
 	{
 		base.gameObject.SetActive(value: true);
-		m_ShatteredGlass.SetActive(value: true);
-		UIPostProcessingAnimator.Instance.PlayState(UIPostEffectState.Default);
-		m_ScreenContentFadeAnimator.AppearAnimation();
+		m_PostProcessView.ShowFrom(RootVM.Instance.ServiceWindowsContext.HasPrevWindow ? UIPostEffectState.Default : UIPostEffectState.Off);
 	}
 
 	private void HideWindow()
 	{
-		m_ShatteredGlass.SetActive(value: false);
-		if (m_UsePostprocess)
-		{
-			if (base.ViewModel.SwitchedFromServiceWindow.Value)
-			{
-				base.gameObject.SetActive(value: false);
-				m_UIPostProcessMember?.Dispose();
-				return;
-			}
-			m_ScreenContentFadeAnimator.DisappearAnimation(delegate
-			{
-				base.gameObject.SetActive(value: false);
-				ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
-				{
-					m_UIPostProcessMember?.Dispose();
-				});
-			});
-			if ((bool)UIPostProcessingAnimator.Instance)
-			{
-				UIPostProcessingAnimator.Instance.PlayState(UIPostEffectState.Off);
-			}
-		}
-		else
+		m_PostProcessView.Hide(base.ViewModel.SwitchedFromServiceWindow.Value, delegate
 		{
 			base.gameObject.SetActive(value: false);
-		}
+		});
 	}
 
 	private void HandleUpdate()
@@ -332,9 +304,20 @@ public class LocalMapBaseView : View<LocalMapVM>
 	{
 		SetMapSize();
 		m_Image.rectTransform.sizeDelta = m_Size;
-		m_Image.rectTransform.localScale = Vector2.one * m_ZoomMinSize;
+		m_Image.rectTransform.localScale = Vector2.one * ZoomMin;
+		m_CurrentZoom = ZoomMin;
 		UpdateMapPosition(Vector2.zero);
 		InteractableRightButtons();
+	}
+
+	private void ApplyInitialZoom()
+	{
+		float localMapZoomScale = Game.Instance.Player.UISettings.LocalMapZoomScale;
+		float num = (((localMapZoomScale >= ZoomMin && localMapZoomScale <= ZoomMax) ? localMapZoomScale : ((ZoomMin + ZoomMax) / 2f)) - ZoomMin) / m_ZoomStep;
+		if (num > 0.01f)
+		{
+			SetMapScale(num);
+		}
 	}
 
 	private void SetMapRotation(float z)
@@ -356,7 +339,7 @@ public class LocalMapBaseView : View<LocalMapVM>
 
 	protected void ShowLocalMapHistory(bool state)
 	{
-		UISounds.Instance.Sounds.LocalMap.ShowHideLocalMapLegend.Play();
+		ServiceWindowsSounds.Instance.LocalMap.ShowHideLocalMapLegend.Play();
 		m_LegendBlockView.ShowHide(state);
 		m_MapHistoryLittleSquare.DOAnchorPosX(state ? 31f : (-3f), 0.1f).SetEase(Ease.Linear).SetUpdate(isIndependentUpdate: true);
 	}
@@ -440,13 +423,16 @@ public class LocalMapBaseView : View<LocalMapVM>
 		float num = m_ZoomStep * zoomDelta;
 		Vector3 vector = new Vector3(num, num, 0f);
 		Vector3 localScale = m_Image.rectTransform.localScale;
-		Vector3 vector2 = UIUtilityRect.Clamp(localScale + vector, new Vector3(m_ZoomMinSize, m_ZoomMinSize, float.MinValue), new Vector3(m_ZoomMaxSize, m_ZoomMaxSize, float.MaxValue));
+		Vector3 vector2 = UIUtilityRect.Clamp(localScale + vector, new Vector3(ZoomMin, ZoomMin, float.MinValue), new Vector3(ZoomMax, ZoomMax, float.MaxValue));
 		if (vector2 == localScale)
 		{
 			return;
 		}
 		m_Image.rectTransform.localScale = vector2;
-		CurrentZoom = vector2.x;
+		m_CurrentZoom = vector2.x;
+		float t = Mathf.Clamp01((m_CurrentZoom - ZoomMin) / (ZoomMax - ZoomMin));
+		m_CurrentMarkerScale = Mathf.Lerp(m_MarkerScaleAtMinZoom, m_MarkerScaleAtMaxZoom, t);
+		float num2 = m_CurrentMarkerScale / m_CurrentZoom;
 		foreach (RectTransform item in m_Image.transform)
 		{
 			if (item == m_FrameBlock)
@@ -455,7 +441,7 @@ public class LocalMapBaseView : View<LocalMapVM>
 			}
 			foreach (RectTransform item2 in item)
 			{
-				item2.localScale -= vector / 2f;
+				item2.localScale = Vector3.one * num2;
 			}
 		}
 		UpdateMapPosition(Vector2.zero);
@@ -468,7 +454,7 @@ public class LocalMapBaseView : View<LocalMapVM>
 
 	protected void UpdateMapPosition(Vector2 scrollDelta)
 	{
-		if (MinZoom.Value)
+		if (m_MinZoom.Value)
 		{
 			Vector2 anchoredPosition = m_Image.rectTransform.anchoredPosition;
 			Vector2 maxPos = MaxPos;

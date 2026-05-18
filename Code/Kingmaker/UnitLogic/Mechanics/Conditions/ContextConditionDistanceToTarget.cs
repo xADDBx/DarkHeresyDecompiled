@@ -17,8 +17,8 @@ public class ContextConditionDistanceToTarget : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		if (maybeCaster == null)
+		MechanicEntity caster = base.Eval.Caster;
+		if (caster == null)
 		{
 			Element.LogError(this, "Caster is missing");
 			return false;
@@ -28,10 +28,10 @@ public class ContextConditionDistanceToTarget : ContextCondition
 			Element.LogError(this, "Target unit is missing");
 			return false;
 		}
-		if (base.Target.Entity == maybeCaster)
+		if (base.Target.Entity == caster)
 		{
 			return false;
 		}
-		return base.Target.Entity.DistanceToInCells(maybeCaster) > DistanceGreater;
+		return base.Target.Entity.DistanceToInCells(caster) > DistanceGreater;
 	}
 }

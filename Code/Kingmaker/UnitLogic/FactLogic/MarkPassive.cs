@@ -18,7 +18,7 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowedOn(typeof(BlueprintUnit))]
 [AllowedOn(typeof(BlueprintUnitFact))]
 [TypeId("1038bb1095561e449b7d2df24d92441b")]
-public class MarkPassive : BlueprintComponent, IRuntimeEntityFactComponentProvider
+public class MarkPassive : BlueprintComponent, ICanBeDisabled, IRuntimeEntityFactComponentProvider
 {
 	[OwlPackable(OwlPackableMode.Generate)]
 	public class Runtime : EntityFactComponent<BaseUnitEntity, MarkPassive>, IHashable, IOwlPackable<Runtime>

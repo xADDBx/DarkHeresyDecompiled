@@ -14,14 +14,29 @@ public class CommandStopUnit : CommandBase
 	[SerializeReference]
 	public AbstractUnitEvaluator Unit;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		Unit.GetValue()?.Commands.InterruptAllInterruptible();
+		if (Unit.TryGetValue(out var value))
+		{
+			value.Commands.InterruptAllInterruptible();
+			return CommandResult.Success;
+		}
+		return CommandResult.Fail("Failed to find unit");
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -29,8 +44,9 @@ public class CommandStopUnit : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

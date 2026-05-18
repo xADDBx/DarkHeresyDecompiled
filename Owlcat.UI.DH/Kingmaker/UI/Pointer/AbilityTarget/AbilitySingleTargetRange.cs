@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Controllers.Clicks;
 using Kingmaker.Pathfinding;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -120,7 +121,7 @@ public class AbilitySingleTargetRange : AbilityRange, IShowAoEAffectedUIHandler,
 		ignoreRangesByDefault = false;
 		if (Ability.IsSingleTarget && Ability.IsRanged)
 		{
-			List<GridNodeBase> singleShotAffectedNodes = Ability.GetSingleShotAffectedNodes(target);
+			List<GridNodeBase> singleShotAffectedNodes = Ability.GetSingleShotAffectedNodes(casterPosition.GetNearestNodeXZUnwalkable(), target);
 			return new OrientedPatternData(singleShotAffectedNodes, singleShotAffectedNodes.FirstOrDefault());
 		}
 		if (Ability.IsChainLightning())

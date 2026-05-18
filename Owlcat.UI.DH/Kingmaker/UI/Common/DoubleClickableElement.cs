@@ -8,6 +8,8 @@ namespace Kingmaker.UI.Common;
 
 public class DoubleClickableElement : MonoBehaviour, IPointerClickHandler, IEventSystemHandler, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
 {
+	private readonly ReactiveCommand<Unit> m_OnDoubleClickCommand = new ReactiveCommand<Unit>();
+
 	private int m_ClickCount;
 
 	private int m_LastClickCount;
@@ -15,8 +17,6 @@ public class DoubleClickableElement : MonoBehaviour, IPointerClickHandler, IEven
 	private float m_ClearTime;
 
 	private bool m_ClickDetected;
-
-	private readonly ReactiveCommand<Unit> m_OnDoubleClickCommand = new ReactiveCommand<Unit>();
 
 	private static float ClickDelay => SettingsRoot.Controls.MouseClickDelay;
 
@@ -57,17 +57,17 @@ public class DoubleClickableElement : MonoBehaviour, IPointerClickHandler, IEven
 
 	protected virtual void OnClick()
 	{
-		UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+		ButtonsSounds.Instance.Default.Click.Play();
 	}
 
 	protected virtual void OnDoubleClick()
 	{
-		m_OnDoubleClickCommand.Execute();
+		m_OnDoubleClickCommand.Execute(Unit.Default);
 	}
 
 	protected virtual void OnRightClick()
 	{
-		UISounds.Instance.Sounds.Buttons.ButtonClick.Play();
+		ButtonsSounds.Instance.Default.Click.Play();
 	}
 
 	private void OnClicks()

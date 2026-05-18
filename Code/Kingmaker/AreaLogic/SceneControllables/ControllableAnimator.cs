@@ -36,6 +36,9 @@ public class ControllableAnimator : ControllableComponent, IUpdatable, IInterpol
 
 	private const int SubTickCount = 16;
 
+	[SerializeField]
+	private bool m_AnimateOutsideOfCameraView;
+
 	private Animator m_Animator;
 
 	private PlayableGraph m_Graph;
@@ -91,6 +94,7 @@ public class ControllableAnimator : ControllableComponent, IUpdatable, IInterpol
 		try
 		{
 			InitAnimator();
+			EnsureSubscribed();
 		}
 		catch (Exception ex)
 		{
@@ -121,15 +125,19 @@ public class ControllableAnimator : ControllableComponent, IUpdatable, IInterpol
 			m_Animator = GetComponent<Animator>();
 			m_Animator.enabled = true;
 			m_Animator.speed = 0f;
-			m_Animator.cullingMode = AnimatorCullingMode.CullCompletely;
+			m_Animator.cullingMode = ((!m_AnimateOutsideOfCameraView) ? AnimatorCullingMode.CullCompletely : AnimatorCullingMode.AlwaysAnimate);
 			m_Animator.updateMode = AnimatorUpdateMode.UnscaledTime;
 			m_Graph = PlayableGraph.Create();
 			m_Playable = AnimatorControllerPlayable.Create(m_Graph, m_Animator.runtimeAnimatorController);
 			AnimationPlayableOutput.Create(m_Graph, "Output", m_Animator).SetSourcePlayable(m_Playable);
 			m_Graph.Play();
-			Game.Instance.Controllers?.CustomUpdateBeforePhysicsController.AddUnique(this);
-			Game.Instance.Controllers?.InterpolationController.AddUnique(this);
 		}
+	}
+
+	private void EnsureSubscribed()
+	{
+		Game.Instance.Controllers?.CustomUpdateBeforePhysicsController.AddUnique(this);
+		Game.Instance.Controllers?.InterpolationController.AddUnique(this);
 	}
 
 	private void UnsubscribeAndReset()
@@ -146,6 +154,7 @@ public class ControllableAnimator : ControllableComponent, IUpdatable, IInterpol
 	{
 		base.SetState(state);
 		InitAnimator();
+		EnsureSubscribed();
 		m_StatesRequestQueue.Add(state);
 	}
 

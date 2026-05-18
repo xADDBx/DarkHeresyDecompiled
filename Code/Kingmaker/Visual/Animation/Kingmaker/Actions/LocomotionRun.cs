@@ -1,7 +1,5 @@
 using Code.Visual.Animation;
-using Kingmaker.View;
 using Kingmaker.Visual.Animation.WeaponStyles;
-using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Kingmaker.Actions;
@@ -49,7 +47,7 @@ public class LocomotionRun : LocomotionState
 		{
 			return LocomotionStateType.Out;
 		}
-		if (m_Handle.Unit != null && m_Handle.Unit.AgentASP.IsInNodeLinkQueue && !(m_Handle.Unit.MovementAgent is UnitMovementAgentContinuous))
+		if (m_Handle.Unit != null && m_Handle.Unit.AgentASP.IsInNodeLinkQueue && !m_Handle.Unit.MovementAgent.IsDirectionalMovementActive)
 		{
 			return LocomotionStateType.Traverse;
 		}
@@ -63,7 +61,6 @@ public class LocomotionRun : LocomotionState
 		if (flag && m_Handle.Manager.Animator.enabled)
 		{
 			m_Handle.ActiveAnimation?.StartTransitionOut();
-			m_Handle.ActiveAnimation?.StopEvents();
 			UpdateLocomotionData();
 		}
 		base.m_RuntimeData.Speed = m_Handle.Unit.MovementAgent.Speed;
@@ -80,7 +77,7 @@ public class LocomotionRun : LocomotionState
 		m_IsInCombat = m_Handle.Manager.IsInCombat;
 		m_WeaponStyle = m_Handle.WeaponStyle;
 		UnitAnimationActionLocomotion.WalkingTypeData walkingTypeData = GetWalkingTypeData(base.m_ActualWeaponStyle);
-		m_Handle.Manager.NewSpeed = walkingTypeData.Parameters.Speed;
+		m_Handle.Manager.Speed = walkingTypeData.Parameters.Speed;
 		LocomotionMixerAnimations locomotionMixerAnimations = m_AnimationAction.GetLocomotionMixerAnimations(m_WeaponStyle);
 		m_Handle.Manager.UpdateLocomotionMixerAnimations(locomotionMixerAnimations);
 	}
@@ -88,8 +85,7 @@ public class LocomotionRun : LocomotionState
 	private UnitAnimationActionLocomotion.WalkingTypeData GetWalkingTypeData(WeaponAnimationStyle style)
 	{
 		WeaponStyleLocomotionData locomotionData = m_AnimationAction.GetLocomotionData(style);
-		UnitAnimationActionLocomotion.CustomCombatWalkType customCombatWalkType = m_AnimationAction.GetCustomCombatWalkType(m_Handle.Unit.Or(null)?.AgentASP.PathCursor);
-		return m_AnimationAction.GetWalkingTypeData(locomotionData, m_WalkSpeedType, customCombatWalkType);
+		return m_AnimationAction.GetWalkingTypeData(locomotionData, m_WalkSpeedType);
 	}
 
 	private static Vector2 InterpolateMoveDirection(Vector2 currentDirection, Vector2 targetDirection, ref Vector2 smoothDampVelocity, float deltaTime)
@@ -100,15 +96,5 @@ public class LocomotionRun : LocomotionState
 			vector = targetDirection;
 		}
 		return vector;
-	}
-
-	private static float GetTargetSpeed(UnitAnimationActionHandle handle)
-	{
-		UnitMovementAgentBase movementAgent = handle.Unit.MovementAgent;
-		if (movementAgent.DecelerateBeforeStop && movementAgent.RemainingPathDistance < movementAgent.StoppingDistance)
-		{
-			return movementAgent.Speed;
-		}
-		return handle.Unit.Data.Movable.CurrentSpeedMps;
 	}
 }

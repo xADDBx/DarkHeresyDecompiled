@@ -1,6 +1,8 @@
+using Kingmaker.Controllers.Units;
 using Kingmaker.Designers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -21,14 +23,15 @@ public class ContextActionKill : ContextAction
 		{
 			Element.LogError(this, "Invalid target for effect '{0}'", GetType().Name);
 		}
-		else if (base.Context.MaybeCaster == null || !base.Context.MaybeCaster.IsAttackingGreenNPC(base.Target.Entity))
+		else if (base.Context.Caster == null || !base.Context.Caster.IsAttackingGreenNPC(base.Target.Entity))
 		{
 			EventBus.RaiseEvent(delegate(IUIContextActionKillHandler h)
 			{
-				h.HandleOnContextActionKill(base.Context.MaybeCaster, base.Target.Entity, base.Context.Blueprint as BlueprintMechanicEntityFact, ContextData<SavingThrowData>.Current?.Rule);
+				h.HandleOnContextActionKill(base.Context.Caster, base.Target.Entity, base.Context.Blueprint as BlueprintMechanicEntityFact, ContextData<SavingThrowData>.Current?.Rule);
 			});
 			partLifeState.MarkedForDeath = true;
 			partLifeState.ForceDismember = Dismember;
+			UnitLifeController.ForceTickOnUnit((AbstractUnitEntity)base.Target.Entity);
 		}
 	}
 

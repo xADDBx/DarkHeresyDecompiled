@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Owlcat.UI;
-using Rewired;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -18,12 +17,7 @@ public class DlcManagerTabSwitchOnDlcsConsoleView : DlcManagerTabSwitchOnDlcsBas
 		m_DlcsSelectorConsoleView.Bind(base.ViewModel.SelectionGroup);
 	}
 
-	public void Scroll(InputActionEventData _, float x)
-	{
-		Scroll(x);
-	}
-
-	private void Scroll(float x)
+	public void Scroll(float x)
 	{
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * m_ScrollRect.scrollSensitivity);

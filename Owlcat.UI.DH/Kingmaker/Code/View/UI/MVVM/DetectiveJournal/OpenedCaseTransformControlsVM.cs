@@ -1,4 +1,5 @@
 using DG.Tweening;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
@@ -22,6 +23,14 @@ public class OpenedCaseTransformControlsVM : ViewModel
 
 	public float CurrentZoom01 => ZoomTo01(m_CurrentZoom.Value);
 
+	public OpenedCaseTransformControlsVM()
+	{
+		m_CurrentZoom.Subscribe(delegate
+		{
+			AkUnitySoundEngine.SetRTPCValue("rtpc_DetectiveZoomLevel", UtilityMath.ToPercent(CurrentZoom01));
+		}).AddTo(this);
+	}
+
 	public void ChangeZoomBy(float value)
 	{
 		float value2 = m_CurrentZoom.Value + value;
@@ -39,13 +48,13 @@ public class OpenedCaseTransformControlsVM : ViewModel
 	public void ZoomInClick()
 	{
 		ChangeZoomStep(1);
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Common.ZoomInButton, isButton: true);
+		UISounds.Instance.Play(SystemSounds.Instance.Controls.ZoomInButton, isButton: true);
 	}
 
 	public void ZoomOutClick()
 	{
 		ChangeZoomStep(-1);
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Common.ZoomOutButton, isButton: true);
+		UISounds.Instance.Play(SystemSounds.Instance.Controls.ZoomOutButton, isButton: true);
 	}
 
 	private void ChangeZoomStep(int step)
@@ -55,7 +64,7 @@ public class OpenedCaseTransformControlsVM : ViewModel
 		ChangeZoomBy(num2 - m_CurrentZoom.Value);
 	}
 
-	public void SetValueFromSlider(float value)
+	public void SetZoomValue(float value)
 	{
 		m_CurrentZoom.Value = Mathf.Lerp(0.3f, 1.5f, value);
 	}

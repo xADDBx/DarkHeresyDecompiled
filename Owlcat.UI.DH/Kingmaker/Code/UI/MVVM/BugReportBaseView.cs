@@ -6,11 +6,13 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.View;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Code.View.UI;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.Utility;
 using Kingmaker.Utility.BuildModeUtils;
+using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
 using TMPro;
@@ -68,13 +70,13 @@ public abstract class BugReportBaseView : View<BugReportVM>
 
 	[Header("Other")]
 	[SerializeField]
-	private OwlcatMultiButton m_CloseButton;
+	protected OwlcatMultiButton m_CloseButton;
 
 	[SerializeField]
-	private OwlcatMultiButton m_DrawingButton;
+	protected OwlcatMultiButton m_DrawingButton;
 
 	[SerializeField]
-	private OwlcatMultiButton m_DuplicatesButton;
+	protected OwlcatMultiButton m_DuplicatesButton;
 
 	[SerializeField]
 	private OwlcatInputField m_MessageInputField;
@@ -116,7 +118,16 @@ public abstract class BugReportBaseView : View<BugReportVM>
 	private OwlcatDropdown m_FixVersionDropdown;
 
 	[SerializeField]
-	private OwlcatMultiButton m_SendButton;
+	protected OwlcatMultiButton m_SendButton;
+
+	[SerializeField]
+	private OwlcatMultiButton m_BlinkButton;
+
+	[SerializeField]
+	private BlinkWidget m_BlinkEmail;
+
+	[SerializeField]
+	private BlinkWidget m_BlinkPrivacy;
 
 	[Header("Issue Type")]
 	[SerializeField]
@@ -146,7 +157,7 @@ public abstract class BugReportBaseView : View<BugReportVM>
 	private GameObject m_LabelsGroup;
 
 	[SerializeField]
-	private OwlcatMultiButton m_LabelsButton;
+	protected OwlcatMultiButton m_LabelsButton;
 
 	[SerializeField]
 	private TextMeshProUGUI m_LabelsButtonText;
@@ -193,11 +204,9 @@ public abstract class BugReportBaseView : View<BugReportVM>
 
 	private CompositeDisposable m_LabelsDisposable;
 
-	protected InputLayer m_InputLayer;
-
 	public static string InputLayerContextName = "BugReportInput";
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
+	private ReactiveProperty<bool> m_CanSendReport = new ReactiveProperty<bool>();
 
 	private Dictionary<OwlcatToggle, string> m_IssueTypes;
 
@@ -208,6 +217,8 @@ public abstract class BugReportBaseView : View<BugReportVM>
 	private IDisposable m_AssigneeDropdownDisposable;
 
 	private IDisposable m_ManualSaveDropdownDisposable;
+
+	private IDisposable m_CannotSendReportHint;
 
 	public static string LabelsDisposableString => "m_LabelsDisposable";
 
@@ -234,13 +245,34 @@ public abstract class BugReportBaseView : View<BugReportVM>
 		base.ViewModel.BugReportDrawingVM.Subscribe(m_BugReportDrawingView.Bind).AddTo(this);
 		base.ViewModel.BugReportDuplicatesVM.Subscribe(m_BugReportDuplicatesBaseView.Bind).AddTo(this);
 		m_FeedbackToggle.IsOn.Subscribe(OnFeedbackToggleValueChanged).AddTo(this);
-		m_PrivacyToggle.IsOn.Subscribe(m_SendButton.SetInteractable).AddTo(this);
+		m_PrivacyToggle.IsOn.Subscribe(delegate
+		{
+			UpdateCanSendReport();
+		}).AddTo(this);
 		m_ContextDropdown.Index.Subscribe(delegate
 		{
 			OnContextDropdownValueChanged();
 		}).AddTo(this);
 		m_MessageInputField.SetPlaceholderText(UIStrings.Instance.UIBugReport.AdditionalPlaceholderText.Text);
-		BuildNavigation();
+		m_CanSendReport.Subscribe(delegate(bool value)
+		{
+			m_SendButton.SetInteractable(value);
+			m_BlinkButton.Or(null)?.gameObject.SetActive(!value);
+		}).AddTo(this);
+		if (m_BlinkButton != null && m_BlinkEmail != null && m_BlinkPrivacy != null)
+		{
+			ObservableSubscribeExtensions.Subscribe(m_BlinkButton.OnLeftClickAsObservable(), delegate
+			{
+				if (!m_PrivacyToggle.IsOn.CurrentValue)
+				{
+					m_BlinkPrivacy.Blink();
+				}
+				if (!IsEmailMatchRegexp() && BuildModeUtility.IsDevelopment)
+				{
+					m_BlinkEmail.Blink();
+				}
+			}).AddTo(this);
+		}
 		m_DuplicatesButton.gameObject.SetActive(value: false);
 	}
 
@@ -248,9 +280,6 @@ public abstract class BugReportBaseView : View<BugReportVM>
 	{
 		base.OnUnbind();
 		Show(state: false);
-		m_NavigationBehaviour.Clear();
-		m_NavigationBehaviour = null;
-		m_InputLayer = null;
 		m_AspectDropdownDisposable?.Dispose();
 		m_AspectDropdownDisposable = null;
 		DisposeDropdowns();
@@ -290,64 +319,13 @@ public abstract class BugReportBaseView : View<BugReportVM>
 		m_ManualSaveDropdownDisposable = null;
 	}
 
-	private void BuildNavigation()
-	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		BuildNavigationImpl(m_NavigationBehaviour);
-		m_InputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = InputLayerContextName
-		});
-		CreateInputImpl(m_InputLayer);
-		GamePad.Instance.PushLayer(m_InputLayer).AddTo(this);
-	}
-
-	protected virtual void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		List<IConsoleEntity> entities = new List<IConsoleEntity> { m_ContextDropdown, m_AspectDropdown };
-		m_NavigationBehaviour.AddRow(entities);
-		List<IConsoleEntity> entities2 = new List<IConsoleEntity> { m_EmailInputField, m_DiscordInputField };
-		m_NavigationBehaviour.AddRow(entities2);
-		List<IConsoleEntity> list = new List<IConsoleEntity> { m_LabelsButton, m_FixVersionDropdown, m_AssigneeDropdown };
-		if (m_ManualSaveDropdown != null)
-		{
-			list.Add(m_ManualSaveDropdown);
-		}
-		m_NavigationBehaviour.AddRow(list);
-		m_NavigationBehaviour.AddEntityVertical(m_MessageInputField);
-		List<IConsoleEntity> entities3 = new List<IConsoleEntity> { m_devPriorityDropdown, m_CriticalToggle, m_NormalToggle, m_SuggestionToggle, m_FeedbackToggle };
-		m_NavigationBehaviour.AddRow(entities3);
-		m_NavigationBehaviour.AddEntityVertical(m_PrivacyToggle);
-		m_NavigationBehaviour.AddEntityVertical(m_EmailUpdatesToggle);
-		m_NavigationBehaviour.AddEntityVertical(m_SendButton);
-		List<IConsoleNavigationEntity> entities4 = new List<IConsoleNavigationEntity> { m_CloseButton, m_DrawingButton, m_DuplicatesButton };
-		m_NavigationBehaviour.AddColumn(entities4);
-	}
-
-	protected virtual void CreateInputImpl(InputLayer inputLayer)
-	{
-		m_CloseButton.OnConfirmClickAsObservable().Subscribe(OnClose).AddTo(this);
-		m_DrawingButton.OnConfirmClickAsObservable().Subscribe(OnShowDrawing).AddTo(this);
-		m_DuplicatesButton.OnConfirmClickAsObservable().Subscribe(OnShowDuplicates).AddTo(this);
-		m_SendButton.OnConfirmClickAsObservable().Subscribe(OnSend).AddTo(this);
-		m_CloseButton.OnLeftClickAsObservable().Subscribe(OnClose).AddTo(this);
-		m_DrawingButton.OnLeftClickAsObservable().Subscribe(OnShowDrawing).AddTo(this);
-		m_SendButton.OnLeftClickAsObservable().Subscribe(OnSend).AddTo(this);
-		m_DuplicatesButton.OnLeftClickAsObservable().Subscribe(OnShowDuplicates).AddTo(this);
-		EscHotkeyManager.Instance.Subscribe(OnClose).AddTo(this);
-		m_LabelsButton.OnConfirmClickAsObservable().Subscribe(OnLabelsShow).AddTo(this);
-		m_LabelsButton.OnLeftClickAsObservable().Subscribe(OnLabelsShow).AddTo(this);
-	}
-
 	protected void OnShowDrawing()
 	{
-		m_NavigationBehaviour.UnFocusCurrentEntity();
 		base.ViewModel.ShowDrawing();
 	}
 
 	protected void OnShowDuplicates()
 	{
-		m_NavigationBehaviour.UnFocusCurrentEntity();
 		base.ViewModel.ShowDuplicates();
 	}
 
@@ -373,9 +351,9 @@ public abstract class BugReportBaseView : View<BugReportVM>
 		m_EmailUpdatesToggle.Set(tuple.Item1 && IsEmailMatchRegexp());
 	}
 
-	public void OnSend()
+	public async void OnSend()
 	{
-		if (!m_PrivacyToggle.IsOn.CurrentValue)
+		if (!m_CanSendReport.Value)
 		{
 			EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 			{
@@ -384,7 +362,7 @@ public abstract class BugReportBaseView : View<BugReportVM>
 			return;
 		}
 		string issueType = GetIssueType();
-		ReportingUtils.Instance.SendReport(m_MessageInputField.Text, m_EmailInputField.Text, SystemInfo.deviceUniqueIdentifier, issueType, m_DiscordInputField.Text, m_EmailUpdatesToggle.IsOn.CurrentValue);
+		await ReportingUtils.Instance.SendReport(m_MessageInputField.Text, m_EmailInputField.Text, SystemInfo.deviceUniqueIdentifier, issueType, m_DiscordInputField.Text, m_EmailUpdatesToggle.IsOn.CurrentValue);
 		EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
 		{
 			h.HandleWarning(ConfigRoot.Instance.LocalizedTexts.UserInterfacesText.CommonTexts.WarningBugReportWasSend);
@@ -477,6 +455,7 @@ public abstract class BugReportBaseView : View<BugReportVM>
 		ToggleAdditionalContactsVisibility(IsEmailMatchRegexp());
 		ExpandDescriptionOverMarket();
 		RestoreUserData(isDevelopment);
+		UpdateCanSendReport();
 	}
 
 	public void OnLabelsShow()
@@ -521,26 +500,13 @@ public abstract class BugReportBaseView : View<BugReportVM>
 		}
 		m_LabelsList.gameObject.SetActive(value: true);
 		m_LabelsListItems = new List<GameObject>();
-		InputLayer inputLayer = new InputLayer
-		{
-			ContextName = "m_LabelsDisposable"
-		};
-		GridConsoleNavigationBehaviour gridConsoleNavigationBehaviour = new GridConsoleNavigationBehaviour();
 		foreach (KeyValuePair<string, bool> item in labelsList)
 		{
 			GameObject gameObject = UnityEngine.Object.Instantiate(m_LabelsPrefab, m_LabelsListContainer);
 			gameObject.SetActive(value: true);
 			m_LabelsListItems.Add(gameObject);
-			gridConsoleNavigationBehaviour.AddEntityVertical(gameObject.GetComponent<IConsoleEntity>());
 			gameObject.GetComponent<BugReportLabelToggle>().Initiate(OnLabelSelected, item.Key, item.Value);
 		}
-		inputLayer.AddButton(delegate
-		{
-			OnLabelsShow();
-		}, 9);
-		gridConsoleNavigationBehaviour.GetInputLayer(inputLayer);
-		m_LabelsDisposable.Add(gridConsoleNavigationBehaviour);
-		m_LabelsDisposable.Add(GamePad.Instance.PushLayer(inputLayer));
 	}
 
 	public void HideLabelsButton()
@@ -556,6 +522,23 @@ public abstract class BugReportBaseView : View<BugReportVM>
 	public void OnFeedbackToggleValueChanged(bool isFeedback)
 	{
 		ReportingUtils.Instance.SelectIsFeedback(isFeedback);
+	}
+
+	private void UpdateCanSendReport()
+	{
+		bool currentValue = m_PrivacyToggle.IsOn.CurrentValue;
+		bool flag = IsEmailMatchRegexp() || !BuildModeUtility.IsDevelopment;
+		m_CanSendReport.Value = currentValue && flag;
+		m_CannotSendReportHint?.Dispose();
+		m_CannotSendReportHint = null;
+		bool num = !currentValue;
+		bool flag2 = !flag;
+		string text = (num ? ((!flag2) ? ((string)UIStrings.Instance.UIBugReport.CannotSendBecausePrivacy) : string.Concat(UIStrings.Instance.UIBugReport.CannotSendBecausePrivacy, "\n", UIStrings.Instance.UIBugReport.CannotSendBecauseEmail)) : ((!flag2) ? null : ((string)UIStrings.Instance.UIBugReport.CannotSendBecauseEmail)));
+		string text2 = text;
+		if (text2 != null)
+		{
+			m_CannotSendReportHint = m_BlinkButton.SetHint(text2).AddTo(this);
+		}
 	}
 
 	public void OnContextDropdownValueChanged()
@@ -738,6 +721,7 @@ public abstract class BugReportBaseView : View<BugReportVM>
 		if (m_PrevEmail != m_EmailInputField.Text)
 		{
 			ToggleAdditionalContactsVisibility(IsEmailMatchRegexp());
+			UpdateCanSendReport();
 			(bool, bool) tuple = ReportingUtils.Instance.PrivacyStuffGetEmailAgreements(m_EmailInputField.Text);
 			m_PrivacyToggle.Set(tuple.Item2);
 			ExpandDescriptionOverMarket();

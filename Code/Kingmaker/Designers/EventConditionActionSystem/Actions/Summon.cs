@@ -6,6 +6,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Gameplay.Features.Encounter;
 using Kingmaker.UnitLogic.Groups;
 using Kingmaker.Utility.Attributes;
 using Owlcat.QA.Validation;
@@ -26,6 +27,12 @@ public class Summon : GameAction
 
 	[ShowIf("HasSummonPool")]
 	public bool GroupBySummonPool;
+
+	public bool UseCombatCRForUnit;
+
+	[SerializeField]
+	[ShowIf("UseCombatCRForUnit")]
+	public BlueprintReference<BlueprintEncounter> m_Encounter;
 
 	[ValidateNotNull]
 	[SerializeReference]
@@ -50,24 +57,29 @@ public class Summon : GameAction
 	{
 		SceneEntitiesState mainState = Game.Instance.State.LoadedAreaState.MainState;
 		Transform value = Transform.GetValue();
-		BaseUnitEntity baseUnitEntity = ((!SummonPool) ? Game.Instance.Controllers.EntitySpawner.SpawnUnit(Unit, value.position + Offset, value.rotation, mainState) : Game.Instance.SummonPools.Summon(SummonPool, Unit, value, Offset));
-		if (baseUnitEntity == null)
+		BlueprintEncounter blueprintEncounter = (UseCombatCRForUnit ? m_Encounter.Blueprint : null);
+		using ((blueprintEncounter != null) ? ContextData<BaseUnitEntity.EncounterData>.Request().Setup(blueprintEncounter) : null)
 		{
-			return;
-		}
-		if (SummonPool != null && GroupBySummonPool)
-		{
-			ISummonPool summonPool = Game.Instance.SummonPools.Get(SummonPool);
-			if (summonPool != null && summonPool.Count > 1)
+			BaseUnitEntity baseUnitEntity = ((!SummonPool) ? Game.Instance.Controllers.EntitySpawner.SpawnUnit(Unit, value.position + Offset, value.rotation, mainState) : Game.Instance.SummonPools.Summon(SummonPool, Unit, value, Offset));
+			if (baseUnitEntity == null)
 			{
-				baseUnitEntity.CombatGroup.Id = summonPool.Units.FirstOrDefault()?.GetCombatGroupOptional()?.Id ?? baseUnitEntity.CombatGroup.Id;
+				return;
 			}
-		}
-		if (OnSummmon.HasActions)
-		{
-			using (ContextData<SpawnedUnitData>.Request().Setup(baseUnitEntity, mainState))
+			if (SummonPool != null && GroupBySummonPool)
 			{
-				OnSummmon.Run();
+				ISummonPool summonPool = Game.Instance.SummonPools.Get(SummonPool);
+				if (summonPool != null && summonPool.Count > 1)
+				{
+					baseUnitEntity.CombatGroup.Id = summonPool.Units.FirstOrDefault()?.GetCombatGroupOptional()?.Id ?? baseUnitEntity.CombatGroup.Id;
+				}
+			}
+			if (OnSummmon.HasActions)
+			{
+				using (ContextData<SpawnedUnitData>.Request().Setup(baseUnitEntity, mainState))
+				{
+					OnSummmon.Run();
+					return;
+				}
 			}
 		}
 	}

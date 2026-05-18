@@ -179,7 +179,7 @@ public class CommandLayerStack
 			layer = m_Layers[i];
 			if (commandIndex < layer.Commands.Count)
 			{
-				return layer.m_Commands[commandIndex];
+				return layer.Commands[commandIndex];
 			}
 			commandIndex -= layer.Commands.Count;
 		}

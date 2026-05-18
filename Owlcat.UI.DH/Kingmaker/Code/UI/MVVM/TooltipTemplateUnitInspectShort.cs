@@ -7,15 +7,14 @@ using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using ObservableCollections;
 using Owlcat.UI;
-using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
+[Obsolete("Unused")]
 public class TooltipTemplateUnitInspectShort : TooltipBaseTemplate
 {
 	private readonly MechanicEntityUIWrapper m_UnitUIWrapper;
@@ -43,25 +42,25 @@ public class TooltipTemplateUnitInspectShort : TooltipBaseTemplate
 	{
 		if (m_Unit == null)
 		{
-			yield return new TooltipBrickText(UIStrings.Instance.Tooltips.UnitIsNotInspected);
+			yield return new BrickTextVM(UIStrings.Instance.Tooltips.UnitIsNotInspected);
 			yield break;
 		}
 		BlueprintArmyType army = m_Unit.Blueprint.Army;
-		string title = string.Empty;
+		string text = string.Empty;
 		if (army?.IsDaemon ?? false)
 		{
-			title = UIStrings.Instance.CharacterSheet.Chaos;
+			text = UIStrings.Instance.CharacterSheet.Chaos;
 		}
 		if (army?.IsXenos ?? false)
 		{
-			title = UIStrings.Instance.CharacterSheet.Xenos;
+			text = UIStrings.Instance.CharacterSheet.Xenos;
 		}
 		if (army?.IsHuman ?? false)
 		{
-			title = UIStrings.Instance.CharacterSheet.Human;
+			text = UIStrings.Instance.CharacterSheet.Human;
 		}
 		Sprite surfaceCombatStandardPortrait = UIUtilityUnit.GetSurfaceCombatStandardPortrait(m_Unit, PortraitCombatSize.Small);
-		yield return new TooltipBrickPortraitAndName(surfaceCombatStandardPortrait, m_Unit.CharacterName, new TooltipBrickTitle(title, TooltipTitleType.H6, TextAlignmentOptions.Left), (!m_Unit.IsInPlayerParty) ? UIUtilityUnit.GetSurfaceEnemyDifficulty(m_Unit) : 0, UIUtilityUnit.UsedSubtypeIcon(m_Unit), m_Unit.IsPlayerEnemy, !m_Unit.IsInPlayerParty && !m_Unit.IsPlayerEnemy);
+		yield return new BrickPortraitAndNameVM(surfaceCombatStandardPortrait, m_Unit.CharacterName, new BrickTitleVM(new TextEntity(text, TextFieldParams.Left), TooltipTitleType.H6), (!m_Unit.IsInPlayerParty) ? UIUtilityUnit.GetSurfaceEnemyDifficulty(m_Unit) : 0, UIUtilityUnit.UsedSubtypeIcon(m_Unit), UIUtilityTooltip.GetPortraitType(m_Unit));
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -89,7 +88,7 @@ public class TooltipTemplateUnitInspectShort : TooltipBaseTemplate
 	{
 		if (InspectExtensions.TryGetWoundsText(m_UnitUIWrapper, out var woundsValue))
 		{
-			bricks.Add(new TooltipBrickIconStatValue(UIStrings.Instance.Inspect.Wounds.Text, woundsValue, null, UIConfig.Instance.UIIcons.TooltipInspectIcons.Wounds, TooltipBrickIconStatValueType.Normal, TooltipBrickIconStatValueType.Normal, null, new TooltipTemplateGlossary("HitPoints")));
+			bricks.Add(new BrickIconStatValueVM(new TextValueAddElement(UIStrings.Instance.Inspect.Wounds.Text, woundsValue), UIConfig.Instance.UIIcons.TooltipInspectIcons.Wounds, BrickElementPalette.Normal, BrickElementPalette.Normal, new TooltipTemplateGlossary("HitPoints")));
 		}
 	}
 
@@ -97,31 +96,29 @@ public class TooltipTemplateUnitInspectShort : TooltipBaseTemplate
 	{
 		if (InspectExtensions.TryGetDurabilityText(m_UnitUIWrapper, out var durabilityValue))
 		{
-			bricks.Add(new TooltipBrickIconStatValue(UIStrings.Instance.Inspect.Durability.Text, durabilityValue, null, UIConfig.Instance.UIIcons.TooltipInspectIcons.Durability, TooltipBrickIconStatValueType.Normal, TooltipBrickIconStatValueType.Normal, null, new TooltipTemplateGlossary("Durability")));
+			bricks.Add(new BrickIconStatValueVM(new TextValueAddElement(UIStrings.Instance.Inspect.Durability.Text, durabilityValue), UIConfig.Instance.UIIcons.TooltipInspectIcons.Durability, BrickElementPalette.Normal, BrickElementPalette.Normal, new TooltipTemplateGlossary("Durability")));
 		}
 	}
 
 	private void AddDefence(List<ITooltipBrick> bricks)
 	{
-		ModifiableValue statOptional = m_Unit.GetStatOptional(StatType.Defence);
-		bricks.Add(new TooltipBrickIconStatValue(UIStrings.Instance.Inspect.Defence.Text, InspectExtensions.GetDefence(m_Unit), null, tooltip: new TooltipTemplateDefence(statOptional), icon: UIConfig.Instance.UIIcons.TooltipInspectIcons.Defence));
+		bricks.Add(new BrickIconStatValueVM(new TextValueAddElement(UIStrings.Instance.Inspect.Defence.Text, InspectExtensions.GetDefence(m_Unit)), tooltip: new TooltipTemplateDefence(m_Unit, StatType.Defence), icon: UIConfig.Instance.UIIcons.TooltipInspectIcons.Defence));
 	}
 
 	private void AddDamageReduction(List<ITooltipBrick> bricks)
 	{
-		ModifiableValue statOptional = m_Unit.GetStatOptional(StatType.ArmorDamageReduction);
-		bricks.Add(new TooltipBrickIconStatValue(UIStrings.Instance.Inspect.DamageReduction.Text, InspectExtensions.GetDamageReduction(m_Unit), null, tooltip: new TooltipTemplateDamageReduction(statOptional), icon: UIConfig.Instance.UIIcons.TooltipInspectIcons.DamageReduction));
+		bricks.Add(new BrickIconStatValueVM(new TextValueAddElement(UIStrings.Instance.Inspect.DamageReduction.Text, InspectExtensions.GetDamageReduction(m_Unit)), tooltip: new TooltipTemplateDamageReduction(m_Unit, StatType.ArmorDamageReduction), icon: UIConfig.Instance.UIIcons.TooltipInspectIcons.DamageReduction));
 	}
 
 	private void AddMovePoints(List<ITooltipBrick> bricks)
 	{
-		bricks.Add(new TooltipBrickIconStatValue(UIStrings.Instance.Inspect.MovePoints.Text, InspectExtensions.GetMovementPoints(m_Unit), null, tooltip: new TooltipTemplateGlossary("MovementPoints"), icon: UIConfig.Instance.UIIcons.TooltipInspectIcons.MovePoints));
+		bricks.Add(new BrickIconStatValueVM(new TextValueAddElement(UIStrings.Instance.Inspect.MovePoints.Text, InspectExtensions.GetMovementPoints(m_Unit)), tooltip: new TooltipTemplateGlossary("MovementPoints"), icon: UIConfig.Instance.UIIcons.TooltipInspectIcons.MovePoints));
 	}
 
 	private void AddBuffsAndStatusEffects(List<ITooltipBrick> bricks)
 	{
-		bricks.Add(new TooltipBrickTitle(UIStrings.Instance.Inspect.StatusEffectsTitle.Text));
+		bricks.Add(new BrickTitleVM(UIStrings.Instance.Inspect.StatusEffectsTitle.Text));
 		ObservableList<ITooltipBrick> buffsTooltipBricks = InspectExtensions.GetBuffsTooltipBricks(m_Unit);
-		bricks.Add(new TooltipBrickWidget(buffsTooltipBricks, new TooltipBrickText(UIStrings.Instance.Inspect.NoStatusEffects.Text, TooltipTextType.Simple | TooltipTextType.BrightColor)));
+		bricks.Add(new BrickWidgetVM(buffsTooltipBricks, new BrickTextVM(UIStrings.Instance.Inspect.NoStatusEffects.Text, TooltipTextType.Simple | TooltipTextType.BrightColor)));
 	}
 }

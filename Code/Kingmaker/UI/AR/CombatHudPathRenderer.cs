@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
+using Kingmaker.Enums;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Utility.DotNetExtensions;
@@ -22,6 +23,8 @@ public sealed class CombatHudPathRenderer : MonoBehaviour, IAreaHandler, ISubscr
 
 		public PathLineSettings lineSettings;
 
+		public LineMaterialSettingsPerCreatureSize[] lineMaterialSettingsPerCreatureSize;
+
 		public bool IsValid()
 		{
 			if (normalMaterial != null && unableMaterial != null)
@@ -30,6 +33,18 @@ public sealed class CombatHudPathRenderer : MonoBehaviour, IAreaHandler, ISubscr
 			}
 			return false;
 		}
+	}
+
+	[Serializable]
+	public struct LineMaterialSettingsPerCreatureSize
+	{
+		public Size creatureSize;
+
+		public float fadeStartOffset;
+
+		public float fadeEndOffset;
+
+		public float fadeSharpness;
 	}
 
 	[Header("Components")]
@@ -91,7 +106,7 @@ public sealed class CombatHudPathRenderer : MonoBehaviour, IAreaHandler, ISubscr
 	{
 	}
 
-	public void Show(List<GraphNode> nodes, Transform progressTargetTransform, bool pathUnableStatus, bool threateningStatus, Vector3 meshOffset)
+	public void Show(List<GraphNode> nodes, Transform progressTargetTransform, bool pathUnableStatus, bool threateningStatus, Vector3 meshOffset, Size creatureSize = Size.Medium)
 	{
 		GridGraph graph = CombatHudGraphDataSource.FindGraph();
 		if (EnsurePrerequisites(graph))
@@ -110,9 +125,27 @@ public sealed class CombatHudPathRenderer : MonoBehaviour, IAreaHandler, ISubscr
 			pathServiceRequest.material = GetMaterial(pathUnableStatus, threateningStatus);
 			pathServiceRequest.positionOffset = m_MeshOffset + meshOffset;
 			pathServiceRequest.progressTrackingTransform = progressTargetTransform;
+			pathServiceRequest.FadeSettings = FindFadeSettings(creatureSize);
 			m_Service.SetPendingRequest(pathServiceRequest);
 			PathShown = !nodes.Empty();
 		}
+	}
+
+	private LineMaterialSettingsPerCreatureSize? FindFadeSettings(Size creatureSize)
+	{
+		LineMaterialSettingsPerCreatureSize[] lineMaterialSettingsPerCreatureSize = GetConfig().lineMaterialSettingsPerCreatureSize;
+		if (lineMaterialSettingsPerCreatureSize == null)
+		{
+			return null;
+		}
+		for (int i = 0; i < lineMaterialSettingsPerCreatureSize.Length; i++)
+		{
+			if (lineMaterialSettingsPerCreatureSize[i].creatureSize == creatureSize)
+			{
+				return lineMaterialSettingsPerCreatureSize[i];
+			}
+		}
+		return null;
 	}
 
 	private Material GetMaterial(bool pathUnableStatus, bool threateningStatus)

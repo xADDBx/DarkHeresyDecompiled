@@ -6,11 +6,16 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Abilities;
+using Kingmaker.Framework.ContextContract;
+using Kingmaker.Framework.Mechanics.Utility.Damage;
 using Kingmaker.Gameplay.Utility;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Mechanics.Damage;
+using Kingmaker.Utility;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.StatefulRandom;
 using Owlcat.Runtime.Core.Utility;
@@ -22,15 +27,28 @@ namespace Kingmaker.UnitLogic.Mechanics.Actions;
 [Serializable]
 [ClassInfoBox("Не наносит криты!! Для нанесения критов используй ContextActionCriticalEffectsAdd")]
 [TypeId("bdc93cbacbdc05843a933659f15c1302")]
-public class ContextActionDealDamage : ContextAction
+[ReadsContext(new ContextField[]
 {
-	public struct DamageInfo
+	ContextField.Caster,
+	ContextField.Target,
+	ContextField.Ability
+})]
+public class ContextActionDealDamage : ContextAction, IAbilityPrediction
+{
+	private readonly struct DealDamageInfo
 	{
-		public int Min;
+		public readonly MechanicEntity Caster;
 
-		public int Max;
+		public readonly MechanicEntity Target;
 
-		public int? PreRolledValue;
+		public readonly IntermediateDamage Damage;
+
+		public DealDamageInfo(MechanicEntity caster, MechanicEntity target, IntermediateDamage damage)
+		{
+			Caster = caster;
+			Target = target;
+			Damage = damage;
+		}
 	}
 
 	[Header("Damage")]
@@ -98,6 +116,12 @@ public class ContextActionDealDamage : ContextAction
 		}
 	}
 
+	public void CollectPrediction(AbilityPredictionContext context)
+	{
+		DamagePredictionData damagePrediction = GetDamagePrediction(base.Context, base.Target);
+		context.RecordDamage(damagePrediction);
+	}
+
 	public override string GetCaption()
 	{
 		string arg = (UseDiceForDamage ? Value.ToString() : string.Format("[{0} to {1}{2}]", MinDamage, MaxDamage, BonusDamage.IsZero ? "" : $" (+{BonusDamage})"));
@@ -109,6 +133,23 @@ public class ContextActionDealDamage : ContextAction
 		return text;
 	}
 
+	public DamagePredictionData GetDamagePrediction([NotNull] IEvalContext actionContext, [CanBeNull] TargetWrapper target)
+	{
+		using (ContextData<DisableStatefulRandomContext>.Request())
+		{
+			DealDamageInfo info;
+			return TryGetDamageInfo(target, actionContext, out info) ? new DamagePredictionData
+			{
+				MinDamage = Roll(1),
+				MaxDamage = Roll(100)
+			} : null;
+			int Roll(int roll)
+			{
+				return new RolledDamage(info.Caster, info.Target, info.Damage, roll).ResultDamageValue;
+			}
+		}
+	}
+
 	protected override void RunAction()
 	{
 		if (base.Target.Entity == null)
@@ -116,80 +157,72 @@ public class ContextActionDealDamage : ContextAction
 			Element.LogError(this, "Invalid target for effect '{0}'", GetType().Name);
 			return;
 		}
-		DamageInfo damageInfo = GetDamageInfo(base.Context);
-		int value = DealHitPointsDamage(damageInfo);
+		int value = DealHitPointsDamage();
 		if (WriteResultToContext)
 		{
 			base.Context[ResultPropertyName] = value;
 		}
 	}
 
-	private DamageInfo GetDamageInfo(MechanicsContext context)
+	private int DealHitPointsDamage()
 	{
-		int min = (UseDiceForDamage ? (Value.DiceCountValue.Calculate(context) + Value.BonusValue.Calculate(context)) : (MinDamage.Calculate(context) + BonusDamage.Calculate(context)));
-		int max = (UseDiceForDamage ? (Value.DiceCountValue.Calculate(context) * Value.DiceType.Sides() + Value.BonusValue.Calculate(context)) : (MaxDamage.Calculate(context) + BonusDamage.Calculate(context)));
-		DamageInfo result = default(DamageInfo);
-		result.Min = min;
-		result.Max = max;
-		result.PreRolledValue = (ReadPreRolledFromContext ? new int?(context[PreRolledValueName]) : null);
-		return result;
-	}
-
-	private int DealHitPointsDamage(DamageInfo info)
-	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		if (maybeCaster == null)
+		if (!TryGetDamageInfo(base.Target, base.Context, out var info))
 		{
-			Element.LogError(this, "Caster is missing");
 			return 0;
 		}
-		MechanicEntity entity = base.Target.Entity;
+		return DealHitPointsDamage(info.Caster, info.Target, info.Damage);
+	}
+
+	private bool TryGetDamageInfo(TargetWrapper targetWrapper, IEvalContext context, out DealDamageInfo info)
+	{
+		MechanicEntity mechanicEntity = context?.Caster;
+		if (mechanicEntity == null)
+		{
+			Element.LogError(this, "Caster is missing");
+			info = default(DealDamageInfo);
+			return false;
+		}
+		MechanicEntity entity = targetWrapper.Entity;
 		if (entity == null)
 		{
 			Element.LogError(this, "Target is missing");
-			return 0;
+			info = default(DealDamageInfo);
+			return false;
 		}
-		int min = info.Min;
-		int max = info.Max;
+		IntermediateDamage intermediateDamage = GetIntermediateDamage(mechanicEntity, entity, context);
+		info = new DealDamageInfo(mechanicEntity, entity, intermediateDamage);
+		return true;
+	}
+
+	private IntermediateDamage GetIntermediateDamage(MechanicEntity caster, MechanicEntity target, IEvalContext context)
+	{
+		int min = (UseDiceForDamage ? (Value.DiceCountValue.Calculate(context) + Value.BonusValue.Calculate(context)) : (MinDamage.Calculate(context) + BonusDamage.Calculate(context)));
+		int max = (UseDiceForDamage ? (Value.DiceCountValue.Calculate(context) * Value.DiceType.Sides() + Value.BonusValue.Calculate(context)) : (MaxDamage.Calculate(context) + BonusDamage.Calculate(context)));
 		IntermediateDamage intermediateDamage = DamageType.CreateDamage(min, max);
 		intermediateDamage.PushApplyStrategy(ApplyStrategy);
 		if (Avoidable)
 		{
 			intermediateDamage.Avoidable.Add();
 		}
-		BlueprintBodyPart bodyPart = null;
-		if (TargetBodyPart)
+		BlueprintBodyPart bodyPart = (TargetBodyPart ? BodyPartSelector.GetBodyParts(target).FirstOrDefault() : null);
+		RuleCalculateDamage ruleCalculateDamage = Rulebook.Trigger(new RuleCalculateDamage(caster, target, base.Context.Ability, null, intermediateDamage, bodyPart));
+		ruleCalculateDamage.ResultDamage.CalculatedValue = (ReadPreRolledFromContext ? new int?(context[PreRolledValueName]) : null);
+		return ruleCalculateDamage.ResultDamage;
+	}
+
+	private int DealHitPointsDamage(MechanicEntity caster, MechanicEntity target, IntermediateDamage damage)
+	{
+		if (damage == null)
 		{
-			bodyPart = BodyPartSelector.GetBodyParts(entity).FirstOrDefault();
+			return 0;
 		}
-		IntermediateDamage resultDamage = Rulebook.Trigger(new RuleCalculateDamage(maybeCaster, entity, base.AbilityContext?.Ability, null, intermediateDamage, bodyPart)).ResultDamage;
-		resultDamage.CalculatedValue = info.PreRolledValue;
-		RuleDealDamage ruleDealDamage = new RuleDealDamage(maybeCaster, entity, resultDamage)
+		RuleDealDamage ruleDealDamage = new RuleDealDamage(caster, target, damage)
 		{
 			Projectile = base.Projectile,
-			SourceAbility = (base.AbilityContext?.Ability ?? base.Context.SourceAbility)
+			SourceAbility = (base.Context.Ability ?? base.Context.SourceAbility)
 		};
 		base.Context.TriggerRule(ruleDealDamage);
 		return ruleDealDamage.ResultValue;
-	}
-
-	public DamagePredictionData GetDamagePrediction([NotNull] AbilityExecutionContext context, [CanBeNull] MechanicEntity target)
-	{
-		using (ContextData<DisableStatefulRandomContext>.Request())
-		{
-			AbilityData ability = context.Ability;
-			DamageInfo damageInfo = GetDamageInfo(context);
-			int min = damageInfo.Min;
-			int max = damageInfo.Max;
-			IntermediateDamage baseDamageOverride = DamageType.CreateDamage(min, max);
-			Penetration?.Calculate(context);
-			baseDamageOverride = Rulebook.Trigger(new RuleCalculateDamage(ability.Caster, target, ability, null, baseDamageOverride)).ResultDamage;
-			return new DamagePredictionData
-			{
-				MinDamage = baseDamageOverride.MinValue,
-				MaxDamage = baseDamageOverride.MaxValue
-			};
-		}
 	}
 
 	public void Convert()

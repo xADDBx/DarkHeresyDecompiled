@@ -44,11 +44,14 @@ public class SpawnerInteractionActions : SpawnerInteraction
 			{
 				using (ContextData<SpawnedUnitData>.Request().Setup(GetComponent<UnitSpawnerBase>().SpawnedUnit, GetComponent<UnitSpawnerBase>().SpawnedUnit.HoldingState))
 				{
-					foreach (ActionsReference actionHolder in ActionHolders)
+					using (ContextData<ActionExecutionContextData>.Request().Setup(ActionExecutionContextData.Type.Interaction))
 					{
-						if (actionHolder?.Get() != null)
+						foreach (ActionsReference actionHolder in ActionHolders)
 						{
-							actionHolder.Get().Actions.Run();
+							if (actionHolder?.Get() != null)
+							{
+								actionHolder.Get().Actions.Run();
+							}
 						}
 					}
 				}

@@ -40,7 +40,7 @@ public class ConsoleSelectableButton : MonoBehaviour, IPointerEnterHandler, IEve
 	{
 		if (m_IsInteractable && eventData.clickCount == 1)
 		{
-			m_OnClick.Execute();
+			m_OnClick.Execute(Unit.Default);
 		}
 	}
 

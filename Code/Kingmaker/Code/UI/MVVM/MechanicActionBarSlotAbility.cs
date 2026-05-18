@@ -2,12 +2,15 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Services;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Controllers.Units;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Abilities;
@@ -20,14 +23,12 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Newtonsoft.Json;
 using Owlcat.UI;
 using OwlPack.Runtime;
-using StateHasher.Core;
-using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MechanicActionBarSlotAbility : MechanicActionBarSlot, IHashable, IOwlPackable<MechanicActionBarSlotAbility>
+public class MechanicActionBarSlotAbility : MechanicActionBarSlot, IOwlPackable<MechanicActionBarSlotAbility>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -176,7 +177,7 @@ public class MechanicActionBarSlotAbility : MechanicActionBarSlot, IHashable, IO
 		MechanicsContext mechanicsContext = Ability.Fact?.Context;
 		if (component != null && mechanicsContext != null)
 		{
-			return component.Charges.Calculate(mechanicsContext);
+			return component.Charges.Calculate(EvalContext.Current);
 		}
 		if (IsVariantAbility)
 		{
@@ -264,11 +265,19 @@ public class MechanicActionBarSlotAbility : MechanicActionBarSlot, IHashable, IO
 	protected override string WarningMessage(Vector3 castPosition)
 	{
 		string text = base.WarningMessage(castPosition);
-		if (string.IsNullOrEmpty(text))
+		if (!string.IsNullOrEmpty(text))
 		{
-			return Ability?.GetUnavailableReason(castPosition);
+			return text;
 		}
-		return text;
+		if (Ability == null)
+		{
+			return LocalizedTexts.Instance.Reasons.UnavailableGeneric;
+		}
+		if (Ability.HasEnoughActionPoint)
+		{
+			return Ability.GetUnavailableReason(castPosition);
+		}
+		return UIStrings.Instance.TurnBasedTexts.NotEnoughActionsMessage;
 	}
 
 	public override IEnumerable<AbilityData> GetConvertedAbilityData()
@@ -286,7 +295,7 @@ public class MechanicActionBarSlotAbility : MechanicActionBarSlot, IHashable, IO
 		{
 			return null;
 		}
-		return CombatLogTooltipService.CreateTooltipTemplateAbility(Ability);
+		return CombatLogTooltipService.CreateTooltipTemplateAbilityForActionBar(Ability);
 	}
 
 	private bool CanActivateAbility()
@@ -306,17 +315,6 @@ public class MechanicActionBarSlotAbility : MechanicActionBarSlot, IHashable, IO
 			}
 		}
 		return true;
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		EntityFactRef<Ability> obj = m_AbilityRef;
-		Hash128 val2 = StructHasher<EntityFactRef<Kingmaker.UnitLogic.Abilities.Ability>>.GetHash128(ref obj);
-		result.Append(ref val2);
-		return result;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

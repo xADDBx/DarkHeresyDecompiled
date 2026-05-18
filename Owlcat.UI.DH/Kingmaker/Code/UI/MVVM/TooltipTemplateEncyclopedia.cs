@@ -21,7 +21,7 @@ public class TooltipTemplateEncyclopedia : TooltipBaseTemplate
 	{
 		if (m_Page != null)
 		{
-			yield return new TooltipBrickTitle(m_Page.Title);
+			yield return new BrickTitleVM(m_Page.Title);
 		}
 	}
 
@@ -55,19 +55,19 @@ public class TooltipTemplateEncyclopedia : TooltipBaseTemplate
 					}
 					foreach (BlueprintEncyclopediaPage item in list)
 					{
-						bricks.Add(new TooltipBrickTitle(item.Title, TooltipTitleType.H6));
-						bricks.Add(new TooltipBrickSeparator(TooltipBrickElementType.Medium));
+						bricks.Add(new BrickTitleVM(item.Title, TooltipTitleType.H6));
+						bricks.Add(new BrickSeparatorVM(TooltipBrickElementType.Medium));
 						AddEncyclopediaPage(bricks, item);
 					}
 				}
 				else
 				{
-					bricks.Add(new TooltipBrickPicture(blueprintEncyclopediaBlockImage.Image));
+					bricks.Add(new BrickPictureVM(blueprintEncyclopediaBlockImage.Image));
 				}
 			}
 			else
 			{
-				bricks.Add(new TooltipBrickText(blueprintEncyclopediaBlockText.GetText(), TooltipTextType.Paragraph));
+				bricks.Add(new BrickTextVM(blueprintEncyclopediaBlockText.GetText(), TooltipTextType.Paragraph));
 			}
 		}
 	}

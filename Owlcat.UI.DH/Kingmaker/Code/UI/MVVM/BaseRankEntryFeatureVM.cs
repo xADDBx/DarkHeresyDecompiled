@@ -159,7 +159,7 @@ public abstract class BaseRankEntryFeatureVM : CharInfoFeatureVM
 	public void UpdateState(LevelUpManager levelUpManager)
 	{
 		UpdateFeatureState();
-		OnUpdateState.Execute();
+		OnUpdateState.Execute(Unit.Default);
 	}
 
 	public abstract void Select();

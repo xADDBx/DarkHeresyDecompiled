@@ -26,7 +26,7 @@ public static class BlueprintPatcher
 			(JsonConverter)new AnimationCurveConverter(),
 			(JsonConverter)new GradientConverter(),
 			(JsonConverter)new OverridesConverter(),
-			(JsonConverter)new SharedStringConverter(),
+			(JsonConverter)new LocalizedStringConverter(),
 			(JsonConverter)new UnityObjectConverter(),
 			(JsonConverter)new Color32Converter(),
 			(JsonConverter)new StringOrArrayConverter()

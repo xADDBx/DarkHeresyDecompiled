@@ -32,10 +32,13 @@ public class AddendumInfo : InfoWrapper
 
 	public override void RefreshData()
 	{
-		EventBus.RaiseEvent(delegate(IClueDataChangedHandler h)
+		foreach (BlueprintClue clue in UIUtilityDetective.CollectCluesAffectedByAddendum(BlueprintAddendum))
 		{
-			h.RefreshDataFor(BlueprintAddendum.ParentClue);
-		});
+			EventBus.RaiseEvent(delegate(IClueDataChangedHandler h)
+			{
+				h.RefreshDataFor(clue);
+			});
+		}
 	}
 
 	public override AddendumState GetAddendumState()

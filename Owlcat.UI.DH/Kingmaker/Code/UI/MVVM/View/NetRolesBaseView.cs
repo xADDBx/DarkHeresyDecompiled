@@ -30,11 +30,11 @@ public class NetRolesBaseView : View<NetRolesVM>, IInitializable
 	{
 		if (state)
 		{
-			UISounds.Instance.Sounds.MessageBox.MessageBoxShow.Play();
+			ModalWindowsSounds.Instance.MessageBox.Show.Play();
 		}
 		else
 		{
-			UISounds.Instance.Sounds.MessageBox.MessageBoxHide.Play();
+			ModalWindowsSounds.Instance.MessageBox.Hide.Play();
 		}
 		EventBus.RaiseEvent(delegate(IModalWindowUIHandler h)
 		{

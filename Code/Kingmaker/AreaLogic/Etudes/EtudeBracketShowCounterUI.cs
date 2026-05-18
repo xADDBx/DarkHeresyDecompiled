@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
+using Kingmaker.Framework;
 using Kingmaker.Localization;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -40,19 +41,19 @@ public class EtudeBracketShowCounterUI : EtudeBracketTrigger
 
 	private void Show()
 	{
-		BaseUnitEntity mainCharacterEntity = Game.Instance.Player.MainCharacterEntity;
-		PropertyContext context = new PropertyContext(mainCharacterEntity, base.Context);
+		BaseUnitEntity mainCharacter = Game.Instance.Player.MainCharacterEntity;
+		IEvalContext evalContext = base.Context;
 		EventBus.RaiseEvent(delegate(IEtudeCounterHandler h)
 		{
 			h.ShowEtudeCounter(GetCounterId(), Label, ValueGetter, TargetValueGetter);
 		});
 		int TargetValueGetter()
 		{
-			return TargetValue.GetValue(context);
+			return TargetValue.GetValue(mainCharacter, evalContext);
 		}
 		int ValueGetter()
 		{
-			return Value.GetValue(context);
+			return Value.GetValue(mainCharacter, evalContext);
 		}
 	}
 

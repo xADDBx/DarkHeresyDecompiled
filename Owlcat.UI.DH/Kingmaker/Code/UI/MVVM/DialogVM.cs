@@ -5,10 +5,11 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
 using Kingmaker.Networking;
 using Kingmaker.PubSubSystem;
@@ -76,8 +77,6 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 
 	private PortraitData m_AnswererPortraitData;
 
-	private DialogController DialogController = Game.Instance.Controllers.DialogController;
-
 	private CueShowData m_CurrentCueShowData;
 
 	public ReadOnlyReactiveProperty<Sprite> SpeakerPortrait => m_SpeakerPortrait;
@@ -122,22 +121,22 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 
 	public ReadOnlyReactiveProperty<bool> VotesIsActive => m_VotesIsActive;
 
+	private DialogController DialogController => Game.Instance.Controllers.DialogController;
+
 	private BaseUnitEntity Speaker => DialogController.CurrentSpeaker;
 
 	private BlueprintUnit Listener => DialogController.CurrentCueShowData.BlueprintCue.Listener;
 
 	private BlueprintUnit SpeakerBlueprint => DialogController.CurrentCueShowData.BlueprintCue.Speaker.SpeakerPortrait;
 
-	private MapObjectView MapObjectSpeaker => DialogController.MapObject;
+	private MapObjectView MapObjectSpeaker => DialogController.MapObject?.View.AsMapObjectView();
 
 	private BaseUnitEntity MainCharacter => Game.Instance.Player.MainCharacterEntity;
 
 	public DialogVM()
 	{
-		DialogNotifications = new DialogNotificationsVM();
-		DialogNotifications.AddTo(this);
-		DialogVotesBlockVM = new DialogVotesBlockVM();
-		DialogVotesBlockVM.AddTo(this);
+		DialogNotifications = new DialogNotificationsVM(DialogUIType.Dialog).AddTo(this);
+		DialogVotesBlockVM = new DialogVotesBlockVM().AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(OnCueUpdate, delegate
 		{
 			UpdatePortrait();
@@ -152,7 +151,7 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 		}).AddTo(this);
 		UpdateCue();
 		FillHistory();
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Dialogue).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
+		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Dialogue).State(InterfaceMetricsEvent.InterfaceStates.Open).Send();
 	}
 
 	protected override void OnDispose()
@@ -164,7 +163,7 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 		ClearPortrait();
 		DisposeCue();
 		DisposeAnswers();
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.Dialogue).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Close).Send();
+		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Dialogue).State(InterfaceMetricsEvent.InterfaceStates.Close).Send();
 	}
 
 	private void FillHistory()
@@ -255,7 +254,7 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 			}
 			Game.Instance.Controllers.VoiceOverController.PlayDialogVoiceOver(blueprintCue.Text, text, target);
 		}
-		m_OnCueUpdate.Execute();
+		m_OnCueUpdate.Execute(Unit.Default);
 	}
 
 	private void SetupAnswererPortrait(BlueprintCue cue)
@@ -277,7 +276,7 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 			{
 				value = (SpeakerBlueprint.PortraitSafe.InitiativePortrait ? null : SpeakerBlueprint.PortraitSafe.HalfLengthPortrait);
 			}
-			else if (Speaker != null)
+			else if (Speaker != null && !DialogController.CurrentCueShowData.BlueprintCue.Speaker.NoSpeaker)
 			{
 				value = (Speaker.Portrait.InitiativePortrait ? null : Speaker.Portrait.HalfLengthPortrait);
 			}
@@ -338,7 +337,7 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 
 	public void HandleDialogAnswerVote(NetPlayer player, string answer)
 	{
-		m_CheckVotesActive.Execute();
+		m_CheckVotesActive.Execute(Unit.Default);
 	}
 
 	public void ShowHideBigScreenshotSpeaker(bool state)
@@ -421,6 +420,6 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 
 	public void DetachView()
 	{
-		m_OnDetachView.Execute();
+		m_OnDetachView.Execute(Unit.Default);
 	}
 }

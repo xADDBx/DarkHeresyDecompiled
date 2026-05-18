@@ -3,7 +3,6 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Localization;
 using Kingmaker.PubSubSystem;
@@ -108,14 +107,7 @@ public class BlueprintAbilityResource : BlueprintScriptableObject, IUIDataProvid
 		}
 		if (m_MaxAmount.IncreasedByStat)
 		{
-			if (baseUnitEntity.Stats.GetStat(m_MaxAmount.ResourceBonusStat) is ModifiableValueAttributeStat modifiableValueAttributeStat)
-			{
-				num += modifiableValueAttributeStat.Bonus;
-			}
-			else
-			{
-				PFLog.Default.Error("Can't use stat {0} in ability resource's count formula", m_MaxAmount.ResourceBonusStat);
-			}
+			num += baseUnitEntity.Actor.GetStatBonus(m_MaxAmount.ResourceBonusStat);
 		}
 		if (m_MaxAmount.IncreasedByLevelStartPlusDivStep)
 		{

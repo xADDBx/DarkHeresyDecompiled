@@ -100,7 +100,7 @@ public sealed class SelectionManagerPC : SelectionManagerBase, IPartyHandler, IS
 
 	public override void UpdateSelectedUnits()
 	{
-		List<UnitEntityView> views = new List<UnitEntityView>(from u in SelectionManagerBase.GetSelectableUnits(base.SelectedUnits)
+		List<IUnitEntityView> views = new List<IUnitEntityView>(from u in SelectionManagerBase.GetSelectableUnits(base.SelectedUnits)
 			select u.View);
 		MultiSelect(views);
 	}
@@ -144,7 +144,7 @@ public sealed class SelectionManagerPC : SelectionManagerBase, IPartyHandler, IS
 
 	protected override void SelectAllImpl(IEnumerable<BaseUnitEntity> units)
 	{
-		IEnumerable<UnitEntityView> views = units.Select((BaseUnitEntity c) => c.View);
+		IEnumerable<IUnitEntityView> views = units.Select((BaseUnitEntity c) => c.View);
 		MultiSelect(views, canAddToSelection: false);
 	}
 

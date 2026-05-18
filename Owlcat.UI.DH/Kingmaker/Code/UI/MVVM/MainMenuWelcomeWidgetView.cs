@@ -1,6 +1,5 @@
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
@@ -82,7 +81,7 @@ public class MainMenuWelcomeWidgetView : View<MainMenuWelcomeWidgetVM>
 		DelayedInvoker.InvokeInTime(delegate
 		{
 			m_WelcomeTextBlock.AppearAnimation();
-			UISounds.Instance.Sounds.MainMenu.MessageOfTheDayShow.Play();
+			FullScreenUniqueSounds.Instance.MainMenu.MessageOfTheDayShow.Play();
 		}, m_DelayBeforeShow);
 	}
 

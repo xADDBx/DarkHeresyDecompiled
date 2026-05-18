@@ -40,18 +40,18 @@ public class NearestInteractionAction : InteractionActionEvaluator, IOwlPackable
 		Fields = new FieldInfo[0]
 	};
 
-	protected override InteractionAction GetValueInternal()
+	protected override InteractionActionPart GetValueInternal()
 	{
 		Vector3 value = m_Position.GetValue();
-		InteractionAction result = null;
+		InteractionActionPart result = null;
 		float num = float.PositiveInfinity;
 		InteractionActionEvaluatorEntryWrapper[] interactions = m_Interactions;
 		for (int i = 0; i < interactions.Length; i++)
 		{
-			InteractionAction value2 = interactions[i].Interaction.GetValue();
-			if (!CheckInteractableOnly || value2.EnsurePart().CanInteract())
+			InteractionActionPart value2 = interactions[i].Interaction.GetValue();
+			if (!CheckInteractableOnly || value2.CanInteract())
 			{
-				float sqrMagnitude = (value - value2.gameObject.transform.position).sqrMagnitude;
+				float sqrMagnitude = (value - value2.Owner.Position).sqrMagnitude;
 				if (sqrMagnitude < num)
 				{
 					result = value2;

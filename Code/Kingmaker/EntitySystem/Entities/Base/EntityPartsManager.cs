@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Networking.Serialization;
-using Kingmaker.UI.Models.UnitSettings;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
@@ -69,7 +68,7 @@ public class EntityPartsManager : IDisposable, IHashable, IOwlPackable, IOwlPack
 		{
 			if (obj != null)
 			{
-				return !(obj is PartUnitUISettings);
+				return !obj.GetType().HasAttribute<HashNoGenerateAttribute>();
 			}
 			return false;
 		}
@@ -261,9 +260,17 @@ public class EntityPartsManager : IDisposable, IHashable, IOwlPackable, IOwlPack
 	}
 
 	[CanBeNull]
-	public TPart GetOptional<TPart>(Type type) where TPart : EntityPart
+	public TPart GetOptional<TPart>([CanBeNull] Type entityPartType) where TPart : EntityPart
 	{
-		return Get<TPart>(type);
+		if (entityPartType == null)
+		{
+			return Get<TPart>();
+		}
+		if (typeof(TPart).IsAssignableFrom(entityPartType))
+		{
+			return Get<TPart>(entityPartType);
+		}
+		throw new ArgumentException($"{Owner}: can't get part, {typeof(TPart).Name} must be assignable from {entityPartType.Name}");
 	}
 
 	[NotNull]
@@ -278,6 +285,16 @@ public class EntityPartsManager : IDisposable, IHashable, IOwlPackable, IOwlPack
 		return GetOptional<TPart>() ?? Add<TPart>();
 	}
 
+	[NotNull]
+	public TPart GetOrCreate<TPart>(Type entityPartType) where TPart : EntityPart
+	{
+		if (!typeof(TPart).IsAssignableFrom(entityPartType))
+		{
+			throw new ArgumentException($"{Owner}: can't add part, {typeof(TPart).Name} must be assignable from {entityPartType.Name}");
+		}
+		return GetOptional<TPart>(entityPartType) ?? ((TPart)Add(entityPartType));
+	}
+
 	public PartsByTypeEnumerable<TPart> GetAll<TPart>() where TPart : class
 	{
 		return new PartsByTypeEnumerable<TPart>(m_Parts);
@@ -287,7 +304,7 @@ public class EntityPartsManager : IDisposable, IHashable, IOwlPackable, IOwlPack
 	[CanBeNull]
 	[Il2CppSetOption(Option.ArrayBoundsChecks, false)]
 	[Il2CppSetOption(Option.NullChecks, false)]
-	private TPart Get<TPart>() where TPart : EntityPart, new()
+	private TPart Get<TPart>() where TPart : EntityPart
 	{
 		EntityPart[] partsCache = m_PartsCache;
 		int index = Indexer<TPart>.Index;
@@ -298,7 +315,7 @@ public class EntityPartsManager : IDisposable, IHashable, IOwlPackable, IOwlPack
 	[CanBeNull]
 	[Il2CppSetOption(Option.ArrayBoundsChecks, false)]
 	[Il2CppSetOption(Option.NullChecks, false)]
-	private TPart Get<TPart>(Type type) where TPart : EntityPart
+	private TPart Get<TPart>([NotNull] Type type) where TPart : EntityPart
 	{
 		int index = GetIndex(type);
 		if (index == -1)
@@ -310,31 +327,41 @@ public class EntityPartsManager : IDisposable, IHashable, IOwlPackable, IOwlPack
 
 	private TPart Add<TPart>() where TPart : EntityPart, new()
 	{
+		return (TPart)Add(typeof(TPart));
+	}
+
+	private EntityPart Add(Type entityPartType)
+	{
 		if (IsAddingAndRemovingProhibited)
 		{
 			throw new InvalidOperationException("Can't add parts now");
 		}
-		if (Get<TPart>() != null)
+		int index = GetIndex(entityPartType);
+		if (index < 0)
 		{
-			throw new Exception($"{Owner}: part {typeof(TPart).Name} already exists");
+			throw new ArgumentException($"{Owner}: can't add part of type {entityPartType.Name}");
+		}
+		if (m_PartsCache[index] != null)
+		{
+			throw new Exception($"{Owner}: part {entityPartType.Name} already exists");
 		}
 		if (Owner.ForbidFactsAndPartsModifications && Owner.IsInitialized)
 		{
 			throw new Exception($"Can't add part to constant entity {Owner}");
 		}
-		TPart val = new TPart();
-		m_Parts.Add(val);
-		m_PartsCache[Indexer<TPart>.Index] = val;
+		EntityPart entityPart = (EntityPart)Activator.CreateInstance(entityPartType);
+		m_Parts.Add(entityPart);
+		m_PartsCache[index] = entityPart;
 		try
 		{
-			Delegate?.OnPartAppears(val);
+			Delegate?.OnPartAppears(entityPart);
 		}
 		catch (Exception ex)
 		{
 			PFLog.Entity.Exception(ex);
 		}
-		val.Attach(Owner);
-		return val;
+		entityPart.Attach(Owner);
+		return entityPart;
 	}
 
 	public void Remove<TPart>() where TPart : EntityPart, new()

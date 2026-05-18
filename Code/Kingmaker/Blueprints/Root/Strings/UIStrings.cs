@@ -84,6 +84,12 @@ public class UIStrings : StringsContainer
 		public LocalizedString LosBlockerDescription;
 	}
 
+	public UIAreaEffectInfoTexts AreaEffectInfoTexts;
+
+	public UIDestructibleCoverInfoTexts DestructibleCoverInfoTexts;
+
+	public UICoverInfoTexts CoverInfoTexts;
+
 	public UIMeinMenuTexts MainMenu;
 
 	public UITextCharSheet CharacterSheet;
@@ -109,6 +115,8 @@ public class UIStrings : StringsContainer
 	public UIActionText ActionTexts;
 
 	public UITooltips Tooltips;
+
+	public UIMoralePressureTooltip MoralePressureTooltip;
 
 	public UITooltipElementLabels TooltipsElementLabels;
 
@@ -146,6 +154,8 @@ public class UIStrings : StringsContainer
 
 	public UICaseNotificationTexts CaseNotificationTexts;
 
+	public UICombatObjectivesTexts CombatObjectivesTexts;
+
 	public UIKeyboardTexts KeyboardTexts;
 
 	public UILoot LootWindow;
@@ -161,8 +171,6 @@ public class UIStrings : StringsContainer
 	public EncyclopediaTexts EncyclopediaTexts;
 
 	public UIControllerModeTexts ControllerModeTexts;
-
-	public UIProfitFactorTexts ProfitFactorTexts;
 
 	public UIBugReport UIBugReport;
 
@@ -209,12 +217,6 @@ public class UIStrings : StringsContainer
 	public UIAbilityModifications AbilityModifications;
 
 	public UIPreciseAttack PreciseAttack;
-
-	public UIAreaEffectInfoTexts AreaEffectInfoTexts;
-
-	public UIDestructibleCoverInfoTexts DestructibleCoverInfoTexts;
-
-	public UICoverInfoTexts CoverInfoTexts;
 
 	public static UIStrings Instance => ConfigRoot.Instance.LocalizedTexts.UserInterfacesText;
 }

@@ -76,7 +76,7 @@ public class JournalQuestObjectiveAddendumVM : ViewModel
 		IsCompleted = addendum2 != null && addendum2.State == QuestObjectiveState.Completed;
 		QuestObjective addendum3 = Addendum;
 		IsPostponed = addendum3 != null && addendum3.State == QuestObjectiveState.Postponed;
-		UpdateStatus?.Execute();
+		UpdateStatus?.Execute(Unit.Default);
 	}
 
 	private void SetCounterEtude(BlueprintQuestObjective blueprint)

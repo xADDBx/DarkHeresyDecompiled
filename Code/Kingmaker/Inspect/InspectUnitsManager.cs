@@ -5,7 +5,6 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -257,7 +256,7 @@ public class InspectUnitsManager : IHashable, IOwlPackable, IOwlPackable<Inspect
 			{
 				continue;
 			}
-			if ((item.Stats.GetStat<ModifiableValueSkill>(statType)?.BaseValue ?? 0) > 0)
+			if (item.Actor.GetStatBase(statType) > 0)
 			{
 				RulePerformSkillCheck rulePerformSkillCheck = GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(item, statType, dC, null, SkillCheckType.Inspect));
 				if (rulePerformSkillCheck.ResultIsSuccess)
@@ -299,7 +298,7 @@ public class InspectUnitsManager : IHashable, IOwlPackable, IOwlPackable<Inspect
 		{
 			return result;
 		}
-		if ((inspector.Stats.GetStat<ModifiableValueSkill>(statType)?.BaseValue ?? 0) > 0)
+		if (inspector.Actor.GetStatBase(statType) > 0)
 		{
 			RulePerformSkillCheck rulePerformSkillCheck = GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(inspector, statType, dC, null, SkillCheckType.Inspect));
 			if (rulePerformSkillCheck.ResultIsSuccess)

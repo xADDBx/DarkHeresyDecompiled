@@ -63,18 +63,19 @@ public class DifficultyPresetsController
 			m_Settings.GameDifficulty.SetTempValue(values.GameDifficulty);
 			m_Settings.RespecAllowed.SetTempValue(values.RespecAllowed);
 			m_Settings.CombatEncountersCapacity.SetTempValue(values.CombatEncountersCapacity);
-			m_Settings.EnemyDodgePercentModifier.SetTempValue(values.EnemyDodgePercentModifier);
-			m_Settings.MinPartyDamage.SetTempValue(values.MinPartyDamage);
-			m_Settings.MinPartyDamageFraction.SetTempValue(values.MinPartyDamageFraction);
-			m_Settings.NPCAttributesBaseValuePercentModifier.SetTempValue(values.NPCAttributesBaseValuePercentModifier);
-			m_Settings.HardCrowdControlOnPartyMaxDurationRounds.SetTempValue(values.HardCrowdControlOnPartyMaxDurationRounds);
+			m_Settings.EnemyDurability.SetTempValue(values.EnemyDurability);
+			m_Settings.EnemyDamage.SetTempValue(values.EnemyDamage);
 			m_Settings.SkillCheckModifier.SetTempValue(values.SkillCheckModifier);
-			m_Settings.EnemyHitPointsPercentModifier.SetTempValue(values.EnemyHitPointsPercentModifier);
-			m_Settings.AllyResolveModifier.SetTempValue(values.AllyResolveModifier);
-			m_Settings.PartyDamageDealtAfterArmorReductionPercentModifier.SetTempValue(values.PartyDamageDealtAfterArmorReductionPercentModifier);
-			m_Settings.AvoidableDamagePercentModifier.SetTempValue(values.AvoidableDamagePercentModifier);
 			m_Settings.EnemyMovementPoints.SetTempValue(values.EnemyMovementPoints);
-			m_Settings.NPCDifficulty.SetTempValue(values.NPCDifficulty);
+			m_Settings.EnemyDamageModifier.SetTempValue(values.EnemyDamageModifier);
+			m_Settings.PartyDamageModifier.SetTempValue(values.PartyDamageModifier);
+			m_Settings.EnemyDodgeModifier.SetTempValue(values.EnemyDodgeModifier);
+			m_Settings.EnemySkillModifier.SetTempValue(values.EnemySkillModifier);
+			m_Settings.PartyPositiveMoraleChangeModifier.SetTempValue(values.PartyPositiveMoraleChangeModifier);
+			m_Settings.PartyNegativeMoraleChangeModifier.SetTempValue(values.PartyNegativeMoraleChangeModifier);
+			m_Settings.EnemyPositiveMoraleChangeModifier.SetTempValue(values.EnemyPositiveMoraleChangeModifier);
+			m_Settings.EnemyNegativeMoraleChangeModifier.SetTempValue(values.EnemyNegativeMoraleChangeModifier);
+			m_Settings.AllyResolveModifier.SetTempValue(values.AllyResolveModifier);
 		}
 	}
 
@@ -88,23 +89,11 @@ public class DifficultyPresetsController
 		{
 			method();
 		};
-		m_Settings.EnemyDodgePercentModifier.OnTempValueChanged += delegate
+		m_Settings.EnemyDurability.OnTempValueChanged += delegate
 		{
 			method();
 		};
-		m_Settings.MinPartyDamage.OnTempValueChanged += delegate
-		{
-			method();
-		};
-		m_Settings.MinPartyDamageFraction.OnTempValueChanged += delegate
-		{
-			method();
-		};
-		m_Settings.NPCAttributesBaseValuePercentModifier.OnTempValueChanged += delegate
-		{
-			method();
-		};
-		m_Settings.HardCrowdControlOnPartyMaxDurationRounds.OnTempValueChanged += delegate
+		m_Settings.EnemyDamage.OnTempValueChanged += delegate
 		{
 			method();
 		};
@@ -112,27 +101,43 @@ public class DifficultyPresetsController
 		{
 			method();
 		};
-		m_Settings.EnemyHitPointsPercentModifier.OnTempValueChanged += delegate
-		{
-			method();
-		};
-		m_Settings.AllyResolveModifier.OnTempValueChanged += delegate
-		{
-			method();
-		};
-		m_Settings.PartyDamageDealtAfterArmorReductionPercentModifier.OnTempValueChanged += delegate
-		{
-			method();
-		};
-		m_Settings.AvoidableDamagePercentModifier.OnTempValueChanged += delegate
-		{
-			method();
-		};
 		m_Settings.EnemyMovementPoints.OnTempValueChanged += delegate
 		{
 			method();
 		};
-		m_Settings.NPCDifficulty.OnTempValueChanged += delegate
+		m_Settings.EnemyDamageModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.PartyDamageModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.EnemyDodgeModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.EnemySkillModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.PartyPositiveMoraleChangeModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.PartyNegativeMoraleChangeModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.EnemyPositiveMoraleChangeModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.EnemyNegativeMoraleChangeModifier.OnTempValueChanged += delegate
+		{
+			method();
+		};
+		m_Settings.AllyResolveModifier.OnTempValueChanged += delegate
 		{
 			method();
 		};
@@ -174,6 +179,10 @@ public class DifficultyPresetsController
 
 	public void ApplyCurrentDifficultyPreset()
 	{
+		if ((GameDifficultyOption)m_Settings.GameDifficulty == GameDifficultyOption.Core)
+		{
+			m_Settings.GameDifficulty.SetValueAndConfirm(GameDifficultyOption.Custom);
+		}
 		if ((GameDifficultyOption)m_Settings.GameDifficulty != GameDifficultyOption.Custom)
 		{
 			SetPreset(m_Settings.GameDifficulty);

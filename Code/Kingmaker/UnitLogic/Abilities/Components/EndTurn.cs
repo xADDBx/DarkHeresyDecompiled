@@ -2,11 +2,10 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.ElementsSystem;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.View.Covers;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -28,7 +27,7 @@ public class EndTurn : BlueprintComponent, IAbilityOnCastLogic
 
 	public void OnCast(AbilityExecutionContext context)
 	{
-		using (context.SetScope(context.Caster.ToITargetWrapper()))
+		using (EvalContext.PushContext(context, context.Caster))
 		{
 			if (Condition != null && !Condition.Check() && Condition.HasConditions)
 			{
@@ -38,11 +37,6 @@ public class EndTurn : BlueprintComponent, IAbilityOnCastLogic
 		context.Caster.Buffs.Add(BuffToCaster, context);
 		if (clearMPInsteadOfEndingTurn)
 		{
-			bool isInPlayerParty = context.Caster.IsInPlayerParty;
-			if ((LosCoverPrototype.DisableEndTurnComponentForPlayer && isInPlayerParty) || (LosCoverPrototype.DisableEndTurnComponentForNPC && !isInPlayerParty))
-			{
-				return;
-			}
 			PartUnitCombatState combatStateOptional = context.Caster.GetCombatStateOptional();
 			if (combatStateOptional != null && !(context.MaybeCaster?.Features.DoNotResetMovementPointsOnAttacks) && !context.FreeAction)
 			{

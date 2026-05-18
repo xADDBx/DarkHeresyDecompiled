@@ -19,7 +19,7 @@ public class MaterialTracker : ObjectTracker<Material>
 		m_Manager = manager;
 	}
 
-	public override void ProcessData(List<Object> changed, NativeArray<int> changedID, NativeArray<int> destroyedID)
+	public override void ProcessData(List<Object> changed, NativeArray<EntityId> changedID, NativeArray<EntityId> destroyedID)
 	{
 		m_MaterialsToUpdate.Clear();
 		m_MaterialsToRemove.Clear();
@@ -33,7 +33,7 @@ public class MaterialTracker : ObjectTracker<Material>
 		}
 		if (destroyedID.Length > 0)
 		{
-			foreach (int item in destroyedID)
+			foreach (EntityId item in destroyedID)
 			{
 				if (m_Manager.HasMaterial(item))
 				{
@@ -56,22 +56,43 @@ public class MaterialTracker : ObjectTracker<Material>
 	{
 		if (m_Manager.MaterialMetadataRepository.TryGet(material, out var metadata))
 		{
-			if (MaterialHasChanges(material, in metadata))
+			if (!MaterialHasChanges(material, in metadata))
 			{
-				m_Manager.MaterialMetadataRepository.InvalidateCache(material);
-				if (m_Manager.MaterialMetadataRepository.Get(material).SupportsVT)
-				{
-					m_MaterialsToUpdate.Add(material);
-				}
-				else if (m_Manager.HasMaterial(material.GetInstanceID()))
-				{
-					m_MaterialsToRemove.Add(material.GetInstanceID());
-				}
+				return;
+			}
+			m_Manager.MaterialMetadataRepository.InvalidateCache(material);
+			if (m_Manager.MaterialMetadataRepository.Get(material).SupportsVT)
+			{
+				m_MaterialsToUpdate.Add(material);
+				return;
+			}
+			if (m_Manager.HasMaterial(material.GetInstanceID()))
+			{
+				m_MaterialsToRemove.Add(material.GetInstanceID());
+			}
+			ApplySentinelIfNeeded(material);
+		}
+		else
+		{
+			MaterialMetadataRepository.MaterialMetadata materialMetadata = m_Manager.MaterialMetadataRepository.Get(material);
+			if (materialMetadata.SupportsVT && !m_Manager.HasMaterial(material.GetInstanceID()))
+			{
+				m_MaterialsToUpdate.Add(material);
+			}
+			else if (!materialMetadata.SupportsVT)
+			{
+				ApplySentinelIfNeeded(material);
 			}
 		}
-		else if (m_Manager.MaterialMetadataRepository.Get(material).SupportsVT && !m_Manager.HasMaterial(material.GetInstanceID()))
+	}
+
+	private void ApplySentinelIfNeeded(Material material)
+	{
+		ShaderMetadataRepository.ShaderMetadata shaderMetadata = ShaderMetadataRepository.Instance.Get(material.shader);
+		if (shaderMetadata.HasVtShaderTag && shaderMetadata.TextureStackCount == 0)
 		{
-			m_MaterialsToUpdate.Add(material);
+			Debug.LogWarning("Material " + material.name + " (shader: " + material.shader.name + ") has UseOwlcatVT tag but zero TextureStack properties. VT disabled for this material.", material);
+			VirtualTextureUtils.SetVTStackIndicesSentinel(material);
 		}
 	}
 

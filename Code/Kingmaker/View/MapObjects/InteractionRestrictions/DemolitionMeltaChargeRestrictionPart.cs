@@ -10,7 +10,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class DemolitionMeltaChargeRestrictionPart : SkillUseRestrictionPart<DemolitionMeltaChargeRestrictionSettings>, IHashable, IOwlPackable<DemolitionMeltaChargeRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "DemolitionMeltaChargeRestrictionPart",
 		OldNames = null,
@@ -38,7 +38,7 @@ public class DemolitionMeltaChargeRestrictionPart : SkillUseRestrictionPart<Demo
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		DemolitionMeltaChargeRestrictionPart source = new DemolitionMeltaChargeRestrictionPart();
 		result = Unsafe.As<DemolitionMeltaChargeRestrictionPart, TPossiblyBase>(ref source);

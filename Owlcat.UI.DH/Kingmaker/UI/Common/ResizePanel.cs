@@ -66,8 +66,8 @@ public class ResizePanel : MonoBehaviour, IPointerDownHandler, IEventSystemHandl
 	{
 		if (IsInteractable)
 		{
-			Game.Instance.CursorController.SetCursor(GetCursorType(), force: true);
 			Game.Instance.CursorController.SetLock(@lock: true);
+			Game.Instance.CursorController.SetCursor(GetCursorType(), force: true);
 		}
 	}
 

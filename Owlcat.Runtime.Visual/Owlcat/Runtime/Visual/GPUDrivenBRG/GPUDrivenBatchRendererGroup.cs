@@ -7,7 +7,6 @@ using Owlcat.Runtime.Visual.GPUDrivenBRG.BakedLighting;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Batching;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Integrations.GPUDriven;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.LOD;
-using Owlcat.Runtime.Visual.GPUDrivenBRG.Passes;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Profiling.Memory;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.Scenes;
 using Owlcat.Runtime.Visual.GPUDrivenBRG.ShaderMetadata;
@@ -77,13 +76,13 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 
 			[ReadOnly]
 			[NativeDisableContainerSafetyRestriction]
-			public NativeArray<int> InstanceIDs;
+			public NativeArray<EntityId> InstanceIDs;
 
 			[ReadOnly]
 			[NativeDisableContainerSafetyRestriction]
 			public NativeList<TransformRendererState>.ParallelWriter Result;
 
-			public NativeList<int>.ParallelWriter ActuallyChangedIDs;
+			public NativeList<EntityId>.ParallelWriter ActuallyChangedIDs;
 
 			public unsafe void Execute(int startIndex, int count)
 			{
@@ -206,7 +205,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			public int SubmeshIndex;
 		}
 
-		public static NativeList<TransformNativeData> CollectNativeData(NativeArray<int> instanceIDs, Allocator allocator)
+		public static NativeList<TransformNativeData> CollectNativeData(NativeArray<EntityId> instanceIDs, Allocator allocator)
 		{
 			if (Application.isPlaying)
 			{
@@ -215,7 +214,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			using (new ProfilingScope(Profiling.UpdateTransformJobsCollectNativeData))
 			{
 				NativeList<TransformNativeData> result = new NativeList<TransformNativeData>(instanceIDs.Length, allocator);
-				foreach (int item in instanceIDs)
+				foreach (EntityId item in instanceIDs)
 				{
 					Renderer renderer = ObjectDispatcherService.FindByInstanceId<Renderer>(item);
 					TransformNativeData value = default(TransformNativeData);
@@ -246,6 +245,29 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		}
 	}
 
+	private static class NativeDataUpdateValidator
+	{
+		public static void ValidateUnregisteredRenderers(GPUDrivenBatchRendererGroup brg, NativeArray<EntityId> changedRendererIDs)
+		{
+		}
+
+		public static void ValidateInvalidRenderers(GPUDrivenProcessor.NativeRenderersData nativeRenderersData)
+		{
+			using (new ProfilingScope(Profiling.UpdateNativeDataValidation))
+			{
+				List<UnityEngine.Object> value;
+				using (ListPool<UnityEngine.Object>.Get(out value))
+				{
+					UnityEngine.Resources.EntityIdsToObjectList(nativeRenderersData.InvalidRendererIDs, value);
+					foreach (MeshRenderer item in value)
+					{
+						RendererUtils.SetAllowGPUDrivenRendering(item, allow: false);
+					}
+				}
+			}
+		}
+	}
+
 	public enum RendererUpdateStatus
 	{
 		CouldNotRegister,
@@ -270,7 +292,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		public GPUDrivenPropertyDataWriter PropertyDataWriter;
 
 		[ReadOnly]
-		public NativeArray<int>.ReadOnly RendererIDs;
+		public NativeArray<EntityId>.ReadOnly RendererIDs;
 
 		[ReadOnly]
 		public NativeHashMap<InstanceKey, InstanceData>.ReadOnly InstanceKeyToInstanceData;
@@ -559,29 +581,6 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		}
 	}
 
-	private static class NativeDataUpdateValidator
-	{
-		public static void ValidateUnregisteredRenderers(GPUDrivenBatchRendererGroup brg, NativeArray<int> changedRendererIDs)
-		{
-		}
-
-		public static void ValidateInvalidRenderers(GPUDrivenProcessor.NativeRenderersData nativeRenderersData)
-		{
-			using (new ProfilingScope(Profiling.UpdateNativeDataValidation))
-			{
-				List<UnityEngine.Object> value;
-				using (ListPool<UnityEngine.Object>.Get(out value))
-				{
-					UnityEngine.Resources.InstanceIDToObjectList(nativeRenderersData.InvalidRendererIDs, value);
-					foreach (MeshRenderer item in value)
-					{
-						RendererUtils.SetAllowGPUDrivenRendering(item, allow: false);
-					}
-				}
-			}
-		}
-	}
-
 	private const int kInvalidTetrahedronCacheIndex = -1;
 
 	[CanBeNull]
@@ -623,15 +622,17 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 
 	private ulong m_InstanceSerialNumber;
 
-	private NativeHashSet<int> m_LastFrameMovingRendererIDs;
+	private NativeHashSet<EntityId> m_LastFrameMovingRendererIDs;
 
-	private NativeHashSet<int> m_MovingRendererIDs;
+	private NativeHashSet<EntityId> m_MovingRendererIDs;
 
 	private GPUDrivenBRGObjectTracker m_ObjectTracker;
 
 	private GPUDrivenPersistentSceneData m_PersistentSceneData;
 
 	private NativeArray<int> m_TetrahedronCacheIndices;
+
+	public bool SupressCulling;
 
 	public GPUDrivenLODGroupRepository LODGroupRepository { get; private set; }
 
@@ -713,12 +714,12 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 
 	public event Action<NativeArray<int>.ReadOnly> OnCreatedMaterials;
 
-	public void BatchUpdateRendererTransforms(NativeArray<int> instanceIDs, NativeArray<Matrix4x4> localToWorldMatrices, out NativeList<int> actuallyChangedIDs)
+	public void BatchUpdateRendererTransforms(NativeArray<EntityId> instanceIDs, NativeArray<Matrix4x4> localToWorldMatrices, out NativeList<EntityId> actuallyChangedIDs)
 	{
 		using (new ProfilingScope(Profiling.BatchUpdateRendererTransforms))
 		{
 			NativeList<UpdateTransformJobs.TransformRendererState> nativeArray = new NativeList<UpdateTransformJobs.TransformRendererState>(instanceIDs.Length, Allocator.TempJob);
-			NativeList<int> nativeList = new NativeList<int>(instanceIDs.Length, Allocator.TempJob);
+			NativeList<EntityId> nativeList = new NativeList<EntityId>(instanceIDs.Length, Allocator.TempJob);
 			UpdateTransformJobs.CollectRendererStatesJob jobData = default(UpdateTransformJobs.CollectRendererStatesJob);
 			jobData.InstanceIDToRendererState = m_InstanceIDToRendererState;
 			jobData.InstanceIDs = instanceIDs;
@@ -800,8 +801,8 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			ref NativeArray<int> tetrahedronCacheIndices = ref m_TetrahedronCacheIndices;
 			int value = -1;
 			tetrahedronCacheIndices.FillArray(in value);
-			m_MovingRendererIDs = new NativeHashSet<int>(256, Allocator.Persistent);
-			m_LastFrameMovingRendererIDs = new NativeHashSet<int>(256, Allocator.Persistent);
+			m_MovingRendererIDs = new NativeHashSet<EntityId>(256, Allocator.Persistent);
+			m_LastFrameMovingRendererIDs = new NativeHashSet<EntityId>(256, Allocator.Persistent);
 			m_InstancesCreatedThisFrame = new NativeList<int>(settings.InitialInstanceCapacity, Allocator.Persistent);
 			ObjectDispatcherService.OnUpdated += OnObjectDispatcherUpdated;
 			s_Instance = this;
@@ -825,17 +826,18 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		{
 			if (m_InstanceIDToRendererState.Count > 0)
 			{
-				NativeList<int> nativeList = new NativeList<int>(m_InstanceKeyToInstanceData.Count, Allocator.Temp);
+				NativeList<EntityId> nativeList = new NativeList<EntityId>(m_InstanceKeyToInstanceData.Count, Allocator.Temp);
 				foreach (KVPair<InstanceKey, InstanceData> instanceKeyToInstanceDatum in m_InstanceKeyToInstanceData)
 				{
 					GPUDrivenInstanceID instanceID = instanceKeyToInstanceDatum.Key.InstanceID;
 					if (instanceID.Type == GPUDrivenInstanceID.InstanceIDType.UnityObject)
 					{
-						nativeList.Add(in instanceID.RawInstanceID);
+						EntityId value = instanceID.RawInstanceID;
+						nativeList.Add(in value);
 					}
 				}
 				GPUDrivenProcessor gPUDrivenProcessor = m_GPUDrivenProcessor;
-				NativeArray<int> source = nativeList.AsArray();
+				NativeArray<EntityId> source = nativeList.AsArray();
 				gPUDrivenProcessor.DisableGPUDrivenRendering(source);
 				nativeList.Dispose();
 			}
@@ -1133,8 +1135,8 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		{
 			return;
 		}
-		NativeList<int> nativeList2 = new NativeList<int>(Allocator.Temp);
-		NativeHashSet<int> nativeHashSet = new NativeHashSet<int>(nativeList2.Length, Allocator.Temp);
+		NativeList<EntityId> nativeList2 = new NativeList<EntityId>(Allocator.Temp);
+		NativeHashSet<EntityId> nativeHashSet = new NativeHashSet<EntityId>(nativeList2.Length, Allocator.Temp);
 		foreach (GPUDrivenRendererGroupPool.RendererGroupKey item3 in nativeList)
 		{
 			GPUDrivenIndexAllocator.IndexAllocation indexAllocation = ActiveRendererGroups[item3];
@@ -1143,10 +1145,11 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 				GameObject gameObject = ObjectDispatcherService.FindByInstanceId<GameObject>(UnsafeCollectionExtensions.ElementAsRef(in m_InstanceMetadata, item4).GameObjectInstanceID);
 				if (gameObject != null && gameObject.TryGetComponent<MeshRenderer>(out var component))
 				{
-					int value2 = component.GetInstanceID();
-					if (!nativeHashSet.Contains(value2))
+					int instanceID = component.GetInstanceID();
+					if (!nativeHashSet.Contains(instanceID))
 					{
-						nativeHashSet.Add(value2);
+						nativeHashSet.Add(instanceID);
+						EntityId value2 = instanceID;
 						nativeList2.Add(in value2);
 					}
 				}
@@ -1156,16 +1159,17 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		{
 			return;
 		}
-		foreach (int item5 in nativeList2)
+		foreach (EntityId item5 in nativeList2)
 		{
-			RemoveRenderer(GPUDrivenInstanceID.UnityObject(item5));
+			int instanceID2 = item5;
+			RemoveRenderer(GPUDrivenInstanceID.UnityObject(instanceID2));
 		}
-		NativeList<int> nativeList3 = new NativeList<int>(Allocator.Temp);
+		NativeList<EntityId> nativeList3 = new NativeList<EntityId>(Allocator.Temp);
 		int num = 0;
 		while (num < nativeList2.Length)
 		{
-			int value3 = nativeList2[num];
-			MeshRenderer meshRenderer = ObjectDispatcherService.FindByInstanceId<MeshRenderer>(value3);
+			int num2 = nativeList2[num];
+			MeshRenderer meshRenderer = ObjectDispatcherService.FindByInstanceId<MeshRenderer>(num2);
 			RendererDesc rendererDesc = RendererDesc.FromMeshRenderer(meshRenderer);
 			RendererParams rendererParams = default(RendererParams);
 			if (AddOrUpdateRenderer(in rendererDesc, in changeContext, GPUDrivenRendererGroupPool.RendererUpdateFlags.ForcedUpdate, in rendererParams) == RendererUpdateStatus.Added)
@@ -1182,7 +1186,8 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			else
 			{
 				nativeList2.RemoveAtSwapBack(num);
-				nativeList3.Add(in value3);
+				EntityId value2 = num2;
+				nativeList3.Add(in value2);
 			}
 		}
 		if (nativeList2.Length > 0)
@@ -1973,7 +1978,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		{
 			return;
 		}
-		NativeList<int> nativeList = new NativeList<int>(m_InstanceIDToRendererState.Count, Allocator.Temp);
+		NativeList<EntityId> nativeList = new NativeList<EntityId>(m_InstanceIDToRendererState.Count, Allocator.Temp);
 		foreach (KVPair<GPUDrivenInstanceID, RendererState> item in m_InstanceIDToRendererState)
 		{
 			GPUDrivenInstanceID key = item.Key;
@@ -1982,17 +1987,18 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 				MeshRenderer meshRenderer = ObjectDispatcherService.FindByInstanceId<MeshRenderer>(key.RawInstanceID);
 				if (meshRenderer != null && meshRenderer.enabled && meshRenderer.gameObject.activeInHierarchy)
 				{
-					nativeList.Add(in key.RawInstanceID);
+					EntityId value = key.RawInstanceID;
+					nativeList.Add(in value);
 				}
 			}
 		}
-		NativeArray<int> changedRendererIDs = nativeList.AsArray();
+		NativeArray<EntityId> changedRendererIDs = nativeList.AsArray();
 		ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
 		EnableGPUDrivenRenderingAndLoadNativeData(changedRendererIDs, in changeContext);
 		m_CachedAmbientProbe = ambientProbe;
 	}
 
-	public void EnableGPUDrivenRenderingAndLoadNativeData(NativeArray<int> changedRendererIDs, in ChangeContext changeContext, NativeList<int> invalidRendererIDs = default(NativeList<int>))
+	public void EnableGPUDrivenRenderingAndLoadNativeData(NativeArray<EntityId> changedRendererIDs, in ChangeContext changeContext, NativeList<EntityId> invalidRendererIDs = default(NativeList<EntityId>))
 	{
 		if (changedRendererIDs.Length != 0)
 		{
@@ -2015,7 +2021,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			GPUDrivenPropertyDataWriter propertyDataWriter = PersistentData.BeginWritingProperties(autoMarkDirty: false);
 			int num = nativeRenderersData.RendererIDs.Length * 64;
 			NativeList<GPUDrivenNativeDataUpdate.Instance> nativeList = new NativeList<GPUDrivenNativeDataUpdate.Instance>(num, Allocator.TempJob);
-			NativeList<int> nativeList2 = new NativeList<int>(num, Allocator.TempJob);
+			NativeList<EntityId> nativeList2 = new NativeList<EntityId>(num, Allocator.TempJob);
 			CollectInstancesForNativeDataUpdateJob jobData = default(CollectInstancesForNativeDataUpdateJob);
 			jobData.PropertyDataWriter = propertyDataWriter;
 			jobData.ChangeContext = changeContext;
@@ -2066,7 +2072,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		}
 	}
 
-	public void DisableGPURendering(NativeArray<int> rendererIDs)
+	public void DisableGPURendering(NativeArray<EntityId> rendererIDs)
 	{
 		m_GPUDrivenProcessor.DisableGPUDrivenRendering(rendererIDs);
 	}
@@ -2084,7 +2090,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			{
 				return default(JobHandle);
 			}
-			if (ScriptableRenderer.Current is WaaaghRenderer waaaghRenderer && !waaaghRenderer.Settings.DrawViaGPUDrivenBRG)
+			if (SupressCulling)
 			{
 				return default(JobHandle);
 			}
@@ -2109,7 +2115,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			{
 				using (new ProfilingScope(Profiling.LastFrameTransformUpdates))
 				{
-					NativeArray<int> changedRendererIDs = m_LastFrameMovingRendererIDs.ToNativeArray(Allocator.Temp);
+					NativeArray<EntityId> changedRendererIDs = m_LastFrameMovingRendererIDs.ToNativeArray(Allocator.Temp);
 					ChangeContext changeContext = GPUDrivenRenderingUtils.CreateChangeContext();
 					EnableGPUDrivenRenderingAndLoadNativeData(changedRendererIDs, in changeContext);
 					m_LastFrameMovingRendererIDs.Clear();
@@ -2147,8 +2153,8 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 			m_BatchedDataUploader.PostRender();
 			m_InstancesCreatedThisFrame.Clear();
 			m_InstanceSerialNumber++;
-			NativeHashSet<int> movingRendererIDs = m_MovingRendererIDs;
-			NativeHashSet<int> lastFrameMovingRendererIDs = m_LastFrameMovingRendererIDs;
+			NativeHashSet<EntityId> movingRendererIDs = m_MovingRendererIDs;
+			NativeHashSet<EntityId> lastFrameMovingRendererIDs = m_LastFrameMovingRendererIDs;
 			m_LastFrameMovingRendererIDs = movingRendererIDs;
 			m_MovingRendererIDs = lastFrameMovingRendererIDs;
 			m_MovingRendererIDs.Clear();
@@ -2210,7 +2216,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		{
 			return;
 		}
-		NativeList<int> nativeList3 = new NativeList<int>(Allocator.Temp);
+		NativeList<EntityId> nativeList3 = new NativeList<EntityId>(Allocator.Temp);
 		foreach (int item in nativeList2)
 		{
 			ref InstanceMetadata reference = ref UnsafeCollectionExtensions.ElementAsRef(in m_InstanceMetadata, item);
@@ -2221,13 +2227,14 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 				RendererParams rendererParams = default(RendererParams);
 				if (UpdateRendererMesh(in rendererDesc, in changeContext, in rendererParams, forceUpdate: true) == RendererUpdateStatus.UpdatedRegistered)
 				{
-					nativeList3.Add(in reference.RendererInstanceID.RawInstanceID);
+					EntityId value = reference.RendererInstanceID.RawInstanceID;
+					nativeList3.Add(in value);
 				}
 			}
 		}
 		if (nativeList3.Length > 0)
 		{
-			EnableGPUDrivenRenderingAndLoadNativeData(invalidRendererIDs: new NativeList<int>(Allocator.Temp), changedRendererIDs: nativeList3.AsArray(), changeContext: in changeContext);
+			EnableGPUDrivenRenderingAndLoadNativeData(invalidRendererIDs: new NativeList<EntityId>(Allocator.Temp), changedRendererIDs: nativeList3.AsArray(), changeContext: in changeContext);
 		}
 		if (nativeList2.Length > 0)
 		{
@@ -2235,7 +2242,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		}
 	}
 
-	public void BatchProcessMaterialUpdate(List<UnityEngine.Object> changed, ReadOnlySpan<int> destroyedID, in ChangeContext changeContext)
+	public void BatchProcessMaterialUpdate(List<UnityEngine.Object> changed, ReadOnlySpan<EntityId> destroyedID, in ChangeContext changeContext)
 	{
 		foreach (Material item in changed)
 		{
@@ -2258,7 +2265,7 @@ public class GPUDrivenBatchRendererGroup : IDisposable, IGPUDrivenMemoryProfilin
 		{
 			ProcessDrasticallyChangedMaterials(drasticallyChangedMaterials.AsArray(), in changeContext);
 		}
-		ReadOnlySpan<int> readOnlySpan = destroyedID;
+		ReadOnlySpan<EntityId> readOnlySpan = destroyedID;
 		for (int i = 0; i < readOnlySpan.Length; i++)
 		{
 			int materialInstanceID = readOnlySpan[i];

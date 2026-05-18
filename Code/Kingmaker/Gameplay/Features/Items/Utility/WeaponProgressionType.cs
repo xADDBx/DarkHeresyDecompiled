@@ -43,5 +43,15 @@ public enum WeaponProgressionType
 	OneHandedMaul,
 	OneHandedPowerMaul,
 	OgrynMaul,
-	KrootRifle
+	KrootRifle,
+	LargeCreatureGeneric,
+	LargeCreatureDestructive,
+	LargeCreatureBrutal,
+	MediumCreatureGeneric,
+	MediumCreatureDestructive,
+	MediumCreatureBrutal,
+	StubCarbine,
+	LasCarbine,
+	BoltCarbine,
+	HeavyBolter
 }

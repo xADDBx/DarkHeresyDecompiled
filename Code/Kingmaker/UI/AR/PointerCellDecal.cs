@@ -17,7 +17,8 @@ public class PointerCellDecal : MonoBehaviour
 	{
 		Move,
 		Attack,
-		Unable
+		Unable,
+		MoveThreatening
 	}
 
 	[Serializable]
@@ -33,13 +34,22 @@ public class PointerCellDecal : MonoBehaviour
 
 		public MeshRenderer ApplyActionTypeToMeshRenderer(ActionType actionType, MeshRenderer meshRenderer)
 		{
-			meshRenderer.material = GetMaterialEntry(actionType).Material;
+			Material material = GetMaterialEntry(actionType).Material;
+			if (material == null)
+			{
+				return meshRenderer;
+			}
+			meshRenderer.material = material;
 			return meshRenderer;
 		}
 
 		public List<MeshRenderer> ApplyActionTypeToMeshRenderer(ActionType actionType, List<MeshRenderer> meshRendererList)
 		{
 			Material material = GetMaterialEntry(actionType).Material;
+			if (material == null)
+			{
+				return meshRendererList;
+			}
 			meshRendererList.ForEach(delegate(MeshRenderer mr)
 			{
 				mr.material = material;

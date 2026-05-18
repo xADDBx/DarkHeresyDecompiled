@@ -10,7 +10,7 @@ public class CheckEntityIsTarget : BoolPropertyGetter, PropertyContextAccessor.I
 {
 	protected override bool GetBaseValue()
 	{
-		return base.PropertyContext.GetTargetEntity(PropertyTargetType.CurrentTarget) == base.CurrentEntity;
+		return base.Context.GetEntityByType(PropertyTargetType.CurrentTarget) == base.CurrentEntity;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

@@ -1,8 +1,8 @@
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Parts;
@@ -52,10 +52,7 @@ public class CharInfoHitPointsVM : CharInfoComponentVM
 	public CharInfoHitPointsVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit)
 		: base(unit)
 	{
-		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.Update), delegate
-		{
-			UpdateValues();
-		});
+		UpdateValuesInternal();
 		UpdateTooltip();
 	}
 
@@ -64,32 +61,28 @@ public class CharInfoHitPointsVM : CharInfoComponentVM
 		base.RefreshData();
 		UpdateTooltip();
 		UpdateValues();
-		m_Refresh?.Execute();
+		m_Refresh?.Execute(R3.Unit.Default);
 	}
 
 	private void UpdateTooltip()
 	{
-		if (Unit.CurrentValue != null)
+		BaseUnitEntity currentValue = Unit.CurrentValue;
+		if (currentValue != null)
 		{
-			ModifiableValue modifiableValue = UnitUIWrapper.Stats?.GetStat(StatType.HitPoints);
-			if (modifiableValue != null)
-			{
-				m_WoundsTooltip.Value = new TooltipTemplateStat(new StatTooltipData(modifiableValue));
-			}
-			ModifiableValue modifiableValue2 = UnitUIWrapper.Stats?.GetStat(StatType.ArmorDurability);
-			if (modifiableValue2 != null)
-			{
-				m_ArmorTooltip.Value = new TooltipTemplateStat(new StatTooltipData(modifiableValue2));
-			}
-			ModifiableValue modifiableValue3 = UnitUIWrapper.Stats?.GetStat(StatType.Defence);
-			if (modifiableValue3 != null)
-			{
-				m_DefenceTooltip.Value = new TooltipTemplateStat(new StatTooltipData(modifiableValue3));
-			}
+			m_WoundsTooltip.Value = new TooltipTemplateStat(StatTooltipData.FromActor(currentValue, StatType.MaxHitPoints));
+			m_ArmorTooltip.Value = new TooltipTemplateStat(StatTooltipData.FromActor(currentValue, StatType.MaxArmorDurability));
+			StatQueryOutput output = new StatQueryOutput();
+			StatResult stat = currentValue.Actor.GetStat(StatType.Defence, output, default(StatContext), "UpdateTooltip");
+			m_DefenceTooltip.Value = new TooltipTemplateStat(StatTooltipData.FromActor(currentValue, StatType.Defence), stat.ModifiedValue);
 		}
 	}
 
 	protected virtual void UpdateValues()
+	{
+		UpdateValuesInternal();
+	}
+
+	private void UpdateValuesInternal()
 	{
 		if (Unit.CurrentValue == null || Unit.CurrentValue.IsDisposed)
 		{
@@ -110,9 +103,7 @@ public class CharInfoHitPointsVM : CharInfoComponentVM
 				m_CurrentHp.Value = Health.HitPointsLeft;
 				m_MaxHP.Value = Health.MaxHitPoints;
 				m_CurrentArmor.Value = Armor?.DurabilityLeft ?? 0;
-				ReactiveProperty<int> maxArmor = m_MaxArmor;
-				ModifiableValue modifiableValue = Armor?.Durability;
-				maxArmor.Value = ((modifiableValue != null) ? ((int)modifiableValue) : 0);
+				m_MaxArmor.Value = Armor?.DurabilityValue ?? 0;
 			}
 		}
 	}

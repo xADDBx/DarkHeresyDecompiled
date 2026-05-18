@@ -34,15 +34,11 @@ public class JournalQuestPCView : BaseJournalItemPCView
 	private ScrollRectExtended m_ScrollRect;
 
 	[SerializeField]
-	private float m_DefaultFontSize = 21f;
-
-	[SerializeField]
 	private RectTransform m_LocationGroup;
 
 	protected override void OnBind()
 	{
 		base.OnBind();
-		m_DescriptionLabel.fontSize = m_DefaultFontSize * base.ViewModel.FontMultiplier;
 		ObservableSubscribeExtensions.Subscribe(base.ViewModel.UpdateStatusCommand, delegate
 		{
 			SetupStatuses();

@@ -17,7 +17,8 @@ public abstract class UISettingsEntityBase : ScriptableObject, IUISettingsEntity
 		Console,
 		GamepadAndPC,
 		PCMouseOnly,
-		Hide
+		Hide,
+		Switch2
 	}
 
 	[SerializeField]

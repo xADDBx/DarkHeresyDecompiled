@@ -1,9 +1,10 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using JetBrains.Annotations;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
 
@@ -15,20 +16,16 @@ public abstract class PropertyGetter : Element
 {
 	public PropertyGetterSettings Settings;
 
-	protected PropertyContext PropertyContext
+	protected IEvalContext Context => EvalContext.Current;
+
+	protected MechanicEntity CurrentEntity
 	{
+		[return: NotNull]
 		get
 		{
-			if (!SimpleContextData<PropertyContext, PropertyContext.Scope>.TryGetCurrent(out var result))
-			{
-				throw new Exception("PropertyContext is missing");
-			}
-			return result;
+			return EvalContext.Current.CurrentEntity ?? throw new InvalidOperationException("CurrentEntity is null");
 		}
 	}
-
-	[NotNull]
-	protected MechanicEntity CurrentEntity => PropertyContext.CurrentEntity;
 
 	public virtual bool AddBracketsAroundInnerCaption => true;
 

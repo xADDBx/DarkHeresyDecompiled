@@ -9,8 +9,8 @@ using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -18,8 +18,9 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
 using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.UnitLogic.Parts;
+using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.Utility.CodeTimer;
+using Kingmaker.Utility.FlagCountable;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -29,7 +30,7 @@ using UnityEngine;
 namespace Kingmaker.Gameplay.Features.Cohesion;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber>, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEventTag<IUnitCombatHandler, EntitySubscriber>, IModifiableValueChangedHandler<EntitySubscriber>, IModifiableValueChangedHandler, ISubscriber<IMechanicEntity>, IEventTag<IModifiableValueChangedHandler, EntitySubscriber>, IAreaActivationHandler, IHashable, IOwlPackable<PartCohesion>
+public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber>, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEventTag<IUnitCombatHandler, EntitySubscriber>, IActorStatChangedHandler<EntitySubscriber>, IActorStatChangedHandler, ISubscriber<IMechanicEntity>, IEventTag<IActorStatChangedHandler, EntitySubscriber>, IEntitySubscriber, IAreaActivationHandler, IHashable, IOwlPackable<PartCohesion>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -43,34 +44,45 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 
 	private bool _subscribedOnAreaEffect;
 
+	[JsonProperty]
+	[OwlPackInclude]
+	private CountableFlag _isDangerous = new CountableFlag();
+
 	private AoEPattern _pattern;
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartCohesion",
 		OldNames = null,
-		Fields = new FieldInfo[1]
+		Fields = new FieldInfo[2]
 		{
-			new FieldInfo("_areaEffect", typeof(EntityRef<AreaEffectEntity>))
+			new FieldInfo("_areaEffect", typeof(EntityRef<AreaEffectEntity>)),
+			new FieldInfo("_isDangerous", typeof(CountableFlag))
 		}
 	};
 
 	private static BlueprintCombatRoot CombatRoot => ConfigRoot.Instance.CombatRoot;
 
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
-
 	[CanBeNull]
 	private AreaEffectEntity AreaEffect => _areaEffect.Entity;
 
-	private ModifiableValue RangeStat => StatsContainer.GetStat(StatType.CohesionRange);
+	private int RangeValue => base.Owner.Actor.GetStat(StatType.CohesionRange, null, default(StatContext), "RangeValue");
 
 	public int MinRange => CombatRoot.MinCohesionRange;
 
 	public int MaxRange => CombatRoot.MaxCohesionRange;
 
-	public int Range => Math.Clamp(RangeStat, MinRange, MaxRange);
+	public int Range => Math.Clamp(RangeValue, MinRange, MaxRange);
 
-	public IEnumerable<Modifier> RangeModifiers => RangeStat.Modifiers;
+	public IEnumerable<Modifier> RangeModifiers
+	{
+		get
+		{
+			StatQueryOutput statQueryOutput = new StatQueryOutput();
+			base.Owner.Actor.GetStat(StatType.CohesionRange, statQueryOutput, default(StatContext), "RangeModifiers");
+			return statQueryOutput.Modifiers.SortedModifiersList;
+		}
+	}
 
 	public int EnemiesInRangeCount => CountUnitsInRange(_enemyPredicate);
 
@@ -103,7 +115,6 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 
 	protected override void OnAttachOrPrePostLoad()
 	{
-		StatsContainer.Register(StatType.CohesionRange);
 		UnitEntity owner = base.Owner;
 		_enemyPredicate = (MechanicEntity e) => owner != e && owner.IsEnemy(e);
 		_allyPredicate = (MechanicEntity e) => owner != e && owner.IsAlly(e);
@@ -121,6 +132,10 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 		{
 			AreaEffectEntity areaEffectEntity = AreaEffectsController.CreateSpawner(CombatRoot.CohesionAreaEffect, base.Owner.MainFact.Context, base.Owner).OnUnit().Spawn();
 			areaEffectEntity.OverridePattern(AoEPattern.Circle(Range));
+			if ((bool)_isDangerous)
+			{
+				areaEffectEntity.AddFact(CombatRoot.CohesionDangerousMark);
+			}
 			_areaEffect = areaEffectEntity;
 			SubscribeOnAreaEffect();
 		}
@@ -158,7 +173,7 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 	{
 		if (entity != base.Owner)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityEnterCohesionRangeHandler>)delegate(IEntityEnterCohesionRangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityEnterCohesionRangeHandler>)delegate(IEntityEnterCohesionRangeHandler h)
 			{
 				h.HandleEntityEnterCohesionRange(entity);
 			}, isCheckRuntime: true);
@@ -169,7 +184,7 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 	{
 		if (entity != base.Owner)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityExitCohesionRangeHandler>)delegate(IEntityExitCohesionRangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityExitCohesionRangeHandler>)delegate(IEntityExitCohesionRangeHandler h)
 			{
 				h.HandleEntityExitCohesionRange(entity);
 			}, isCheckRuntime: true);
@@ -180,7 +195,7 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 	{
 		if (entity != base.Owner)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityMoveInCohesionRangeHandler>)delegate(IEntityMoveInCohesionRangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityMoveInCohesionRangeHandler>)delegate(IEntityMoveInCohesionRangeHandler h)
 			{
 				h.HandleEntityMoveInCohesionRange(entity);
 			}, isCheckRuntime: true);
@@ -191,7 +206,7 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 	{
 		if (entity != base.Owner)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityStartTurnInCohesionRangeHandler>)delegate(IEntityStartTurnInCohesionRangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityStartTurnInCohesionRangeHandler>)delegate(IEntityStartTurnInCohesionRangeHandler h)
 			{
 				h.HandleEntityStartTurnInCohesionRange(entity);
 			}, isCheckRuntime: true);
@@ -202,7 +217,7 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 	{
 		if (entity != base.Owner)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityEndTurnInCohesionRangeHandler>)delegate(IEntityEndTurnInCohesionRangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IEntityEndTurnInCohesionRangeHandler>)delegate(IEntityEndTurnInCohesionRangeHandler h)
 			{
 				h.HandleEntityEndTurnInCohesionRange(entity);
 			}, isCheckRuntime: true);
@@ -219,9 +234,9 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 		DestroyAreaEffect();
 	}
 
-	void IModifiableValueChangedHandler.HandleModifiableValueChanged(ModifiableValue modifiableValue)
+	void IActorStatChangedHandler.HandleActorStatChanged(StatChangeSet stats)
 	{
-		if (modifiableValue.Type == StatType.CohesionRange)
+		if (stats.Contains(StatType.CohesionRange))
 		{
 			_pattern = null;
 			AreaEffect?.OverridePattern(Pattern);
@@ -237,6 +252,24 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 		}
 	}
 
+	public void MarkAreaDangerous()
+	{
+		if (!_isDangerous && AreaEffect != null)
+		{
+			AreaEffect.AddFact(CombatRoot.CohesionDangerousMark);
+		}
+		_isDangerous.Retain();
+	}
+
+	public void RemoveDangerousMark()
+	{
+		_isDangerous.Release();
+		if (!_isDangerous && AreaEffect != null)
+		{
+			AreaEffect.Facts.Remove((BlueprintMechanicEntityFact?)CombatRoot.CohesionDangerousMark);
+		}
+	}
+
 	public override Hash128 GetHash128()
 	{
 		Hash128 result = default(Hash128);
@@ -245,6 +278,8 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 		EntityRef<AreaEffectEntity> obj = _areaEffect;
 		Hash128 val2 = StructHasher<EntityRef<AreaEffectEntity>>.GetHash128(ref obj);
 		result.Append(ref val2);
+		Hash128 val3 = ClassHasher<CountableFlag>.GetHash128(_isDangerous);
+		result.Append(ref val3);
 		return result;
 	}
 
@@ -266,6 +301,7 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 		ushort type = state.TypeLibrary.RegisterType<PartCohesion>(OwlPackTypeInfo);
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 		formatter.Field(0, "_areaEffect", ref _areaEffect, state);
+		formatter.Field(1, "_isDangerous", ref _isDangerous, state);
 		formatter.EndObject();
 	}
 
@@ -285,6 +321,9 @@ public sealed class PartCohesion : UnitPart, IUnitCombatHandler<EntitySubscriber
 				break;
 			case 0:
 				_areaEffect = formatter.ReadPackable<EntityRef<AreaEffectEntity>>(state);
+				break;
+			case 1:
+				_isDangerous = formatter.ReadPackable<CountableFlag>(state);
 				break;
 			}
 		}

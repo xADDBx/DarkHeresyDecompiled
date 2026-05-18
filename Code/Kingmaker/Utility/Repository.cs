@@ -65,7 +65,7 @@ internal class Repository : IDisposable
 		{
 			UseShellExecute = false,
 			RedirectStandardOutput = true,
-			FileName = (Directory.Exists(gitPath) ? gitPath : "git.exe"),
+			FileName = (File.Exists(gitPath) ? gitPath : "git.exe"),
 			CreateNoWindow = true,
 			WorkingDirectory = ((path != null && Directory.Exists(path)) ? path : Environment.CurrentDirectory)
 		};

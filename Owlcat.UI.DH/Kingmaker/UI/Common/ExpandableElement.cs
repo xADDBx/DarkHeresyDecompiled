@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using Kingmaker.UI.Common.Animations;
+using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
@@ -11,19 +12,24 @@ namespace Kingmaker.UI.Common;
 
 public class ExpandableElement : MonoBehaviour, IDisposable, IConsoleNavigationEntity, IConsoleEntity, IConfirmClickHandler, IHasTooltipTemplate
 {
+	[Header("Elements")]
 	[SerializeField]
 	private OwlcatMultiButton m_Button;
 
 	[SerializeField]
 	private Transform m_ExpandArrow;
 
-	[Tooltip("Optionally")]
+	[ShowIf("m_HasContent")]
 	[SerializeField]
 	private GameObject m_Content;
 
-	[Tooltip("Optionally")]
+	[ShowIf("m_HasContent")]
 	[SerializeField]
 	private FadeAnimator m_ContentAnimator;
+
+	[Header("Values")]
+	[SerializeField]
+	private bool m_HasContent;
 
 	private ReactiveProperty<bool> m_IsOn = new ReactiveProperty<bool>();
 
@@ -36,10 +42,6 @@ public class ExpandableElement : MonoBehaviour, IDisposable, IConsoleNavigationE
 	private Action m_OnCollapse;
 
 	private Action<bool> m_OnFocus;
-
-	public string Key;
-
-	public string ParentKey;
 
 	private bool m_CanConfirm = true;
 
@@ -62,21 +64,28 @@ public class ExpandableElement : MonoBehaviour, IDisposable, IConsoleNavigationE
 		m_OnCollapse = onCollapse;
 		m_OnFocus = onFocus;
 		m_Tooltip = tooltip;
-		Key = key;
-		ParentKey = parentKey;
 	}
 
 	private void OnChanged(bool isOn)
 	{
-		m_Content.Or(null)?.SetActive(isOn);
+		if (m_HasContent)
+		{
+			m_Content.Or(null)?.SetActive(isOn);
+		}
 		if (isOn)
 		{
-			m_ContentAnimator.Or(null)?.AppearAnimation();
+			if (m_HasContent)
+			{
+				m_ContentAnimator.Or(null)?.AppearAnimation();
+			}
 			m_OnExpand?.Invoke();
 		}
 		else
 		{
-			m_ContentAnimator.Or(null)?.DisappearAnimation();
+			if (m_HasContent)
+			{
+				m_ContentAnimator.Or(null)?.DisappearAnimation();
+			}
 			m_OnCollapse?.Invoke();
 		}
 		m_ExpandArrow.Or(null)?.DOLocalRotate(new Vector3(0f, 0f, isOn ? 0f : 90f), 0.2f).SetUpdate(isIndependentUpdate: true);

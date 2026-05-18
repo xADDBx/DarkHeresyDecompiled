@@ -1,9 +1,11 @@
 using System;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Kingmaker.ResourceLinks;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using UnityEngine;
+using UnityEngine.Scripting;
 
 namespace Kingmaker.Blueprints.Root;
 
@@ -55,48 +57,51 @@ public class UIViewConfigs : BlueprintScriptableObject
 		}
 	}
 
-	public ViewPrefabPair Common;
+	[SerializeField]
+	[UsedImplicitly]
+	[Preserve]
+	private ScriptableObject[] m_LookupTables;
 
 	public ViewPrefabPair Root;
 
 	public ViewPrefabPair LoadingScreen;
 
-	public ScriptableObject RootPCLookupTable;
-
-	public ScriptableObject RootConsoleLookupTable;
-
 	public GameObject LoadPrefab(ViewModel vm, bool isPCInterface)
 	{
-		return vm.GetType().Name switch
+		string text = vm.GetType().Name;
+		if (!(text == "RootVM"))
 		{
-			"CommonVM" => Common.Load(isPCInterface, hold: true), 
-			"RootVM" => Root.Load(isPCInterface, hold: true), 
-			"LoadingScreenRootVM" => LoadingScreen.Load(isPCInterface, hold: true), 
-			_ => null, 
-		};
+			if (text == "LoadingScreenRootVM")
+			{
+				return LoadingScreen.Load(isPCInterface, hold: true);
+			}
+			return null;
+		}
+		return Root.Load(isPCInterface, hold: true);
 	}
 
 	public async Task<GameObject> LoadPrefabAsync(ViewModel vm, bool isPCInterface)
 	{
-		return vm.GetType().Name switch
+		string text = vm.GetType().Name;
+		if (!(text == "RootVM"))
 		{
-			"CommonVM" => await Common.LoadAsync(isPCInterface), 
-			"RootVM" => await Root.LoadAsync(isPCInterface), 
-			"LoadingScreenRootVM" => await LoadingScreen.LoadAsync(isPCInterface), 
-			_ => null, 
-		};
+			if (text == "LoadingScreenRootVM")
+			{
+				return await LoadingScreen.LoadAsync(isPCInterface);
+			}
+			return null;
+		}
+		return await Root.LoadAsync(isPCInterface);
 	}
 
 	public void UnloadAll()
 	{
-		Common.Unload();
 		Root.Unload();
 		LoadingScreen.Unload();
 	}
 
 	public void DestroyAll()
 	{
-		Common.Destroy();
 		Root.Destroy();
 		LoadingScreen.Destroy();
 	}

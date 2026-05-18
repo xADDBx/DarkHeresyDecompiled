@@ -44,7 +44,7 @@ public class SoundGridMover : MonoBehaviour, IUpdatable
 				return;
 			}
 			Ray ray = CameraRig.Instance.Camera.ViewportPointToRay(m_Ray);
-			if (m_Bounds.IntersectRay(ray, out var distance))
+			if (m_Bounds.IntersectRay(ray, out float distance))
 			{
 				Vector3 point = ray.GetPoint(distance);
 				if (gridDrawer.IsPointInsidePolygon(point))
@@ -63,7 +63,7 @@ public class SoundGridMover : MonoBehaviour, IUpdatable
 			{
 				Vector3 vector = new Vector3(gridDrawer.gridPoints[i].x, gridDrawer.gridYPosition, gridDrawer.gridPoints[i].z);
 				Vector3 vector2 = new Vector3(gridDrawer.gridPoints[(i + 1) % gridDrawer.gridPoints.Count].x, gridDrawer.gridYPosition, gridDrawer.gridPoints[(i + 1) % gridDrawer.gridPoints.Count].z) - vector;
-				float num4 = Mathf.Clamp01(Vector2.Dot(point2 - vector, vector2) / vector2.sqrMagnitude);
+				float num4 = Mathf.Clamp01(Vector2.Dot((Vector2)(point2 - vector), (Vector2)vector2) / vector2.sqrMagnitude);
 				Vector3 vector3 = vector + num4 * vector2;
 				float sqrMagnitude = (vector3 - point2).sqrMagnitude;
 				if (sqrMagnitude < num3)

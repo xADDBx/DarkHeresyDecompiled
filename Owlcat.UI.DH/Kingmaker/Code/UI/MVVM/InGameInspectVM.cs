@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Inspect;
 using Kingmaker.Mechanics.Entities;
@@ -7,7 +8,7 @@ using R3;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class InGameInspectVM : InspectVM
+public sealed class InGameInspectVM : InspectVM
 {
 	private readonly ReactiveProperty<BaseUnitEntity> m_Unit = new ReactiveProperty<BaseUnitEntity>();
 
@@ -54,10 +55,11 @@ public class InGameInspectVM : InspectVM
 		UpdateDefence(unit);
 		UpdateDamageReduction(unit);
 		UpdateMovementPoints(unit);
+		UpdateMorale(unit);
 		UpdateBuffs(unit);
 	}
 
-	protected virtual void UpdateWounds()
+	private void UpdateWounds()
 	{
 		if (m_InspectInfo.DefencePart != null && InspectExtensions.TryGetWoundsText(m_UnitUIWrapper, out var woundsValue))
 		{
@@ -65,7 +67,7 @@ public class InGameInspectVM : InspectVM
 		}
 	}
 
-	protected virtual void UpdateDurability()
+	private void UpdateDurability()
 	{
 		if (m_InspectInfo.DefencePart != null && InspectExtensions.TryGetDurabilityText(m_UnitUIWrapper, out var durabilityValue))
 		{
@@ -73,24 +75,24 @@ public class InGameInspectVM : InspectVM
 		}
 	}
 
-	protected virtual void UpdateDefence(BaseUnitEntity unit)
+	private void UpdateDefence(BaseUnitEntity unit)
 	{
 		m_InspectReactiveData.DefenceValue.Value = InspectExtensions.GetDefence(unit);
 	}
 
-	protected virtual void UpdateDamageReduction(BaseUnitEntity unit)
+	private void UpdateDamageReduction(BaseUnitEntity unit)
 	{
 		m_InspectReactiveData.DamageReductionValue.Value = InspectExtensions.GetDamageReduction(unit);
 	}
 
-	protected virtual void UpdateMovementPoints(BaseUnitEntity unit)
+	private void UpdateMovementPoints(BaseUnitEntity unit)
 	{
 		m_InspectReactiveData.MovementPointsValue.Value = InspectExtensions.GetMovementPoints(unit);
 	}
 
 	private void UpdateBuffs(BaseUnitEntity unit)
 	{
-		List<TooltipBrickBuff> buffs = InspectExtensions.GetBuffs(unit);
+		List<BrickBuffVM> buffs = InspectExtensions.GetBuffs(unit);
 		bool flag = false;
 		if (m_InspectReactiveData.TooltipBrickBuffs.Count != buffs.Count)
 		{
@@ -100,9 +102,9 @@ public class InGameInspectVM : InspectVM
 		{
 			for (int i = 0; i < m_InspectReactiveData.TooltipBrickBuffs.Count; i++)
 			{
-				TooltipBrickBuff obj = m_InspectReactiveData.TooltipBrickBuffs[i] as TooltipBrickBuff;
-				TooltipBrickBuff tooltipBrickBuff = buffs[i];
-				if (obj?.Buff != tooltipBrickBuff.Buff)
+				BrickBuffVM obj = m_InspectReactiveData.TooltipBrickBuffs[i] as BrickBuffVM;
+				BrickBuffVM brickBuffVM = buffs[i];
+				if (obj?.Buff != brickBuffVM.Buff)
 				{
 					flag = true;
 					break;
@@ -112,10 +114,23 @@ public class InGameInspectVM : InspectVM
 		if (flag)
 		{
 			m_InspectReactiveData.TooltipBrickBuffs.Clear();
-			buffs.ForEach(delegate(TooltipBrickBuff buff)
+			buffs.ForEach(delegate(BrickBuffVM buff)
 			{
 				m_InspectReactiveData.TooltipBrickBuffs.Add(buff);
 			});
+		}
+	}
+
+	private void UpdateMorale(BaseUnitEntity unit)
+	{
+		IUIUnitMoraleData morale = InspectExtensions.GetMorale(unit);
+		if (morale == null)
+		{
+			m_InspectReactiveData.MoraleValue.Value = default((int, int, int));
+		}
+		else
+		{
+			m_InspectReactiveData.MoraleValue.Value = (morale.MinValue, morale.MaxValue, morale.Morale);
 		}
 	}
 }

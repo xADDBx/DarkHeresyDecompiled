@@ -32,8 +32,8 @@ public class ContextConditionCorpseNexusLegStatus : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		if (maybeCaster == null)
+		MechanicEntity caster = base.Eval.Caster;
+		if (caster == null)
 		{
 			PFLog.Default.Error("Caster is missing");
 			return false;
@@ -46,13 +46,13 @@ public class ContextConditionCorpseNexusLegStatus : ContextCondition
 		}
 		if (Master)
 		{
-			UnitPartCorpseNexusLegs optional = maybeCaster.GetOptional<UnitPartCorpseNexusLegs>();
+			UnitPartCorpseNexusLegs optional = caster.GetOptional<UnitPartCorpseNexusLegs>();
 			if (optional == null)
 			{
 				return false;
 			}
 			return optional.Legs.Count((CorpseNexusLegData p) => p.LegType == LegType) == ExpectedAmount;
 		}
-		return maybeCaster.GetOptional<UnitPartCorpseNexusLegs>()?.Legs.FirstOrDefault((CorpseNexusLegData p) => p.Unit == target)?.PretendDead == IsDead;
+		return caster.GetOptional<UnitPartCorpseNexusLegs>()?.Legs.FirstOrDefault((CorpseNexusLegData p) => p.Unit == target)?.PretendDead == IsDead;
 	}
 }

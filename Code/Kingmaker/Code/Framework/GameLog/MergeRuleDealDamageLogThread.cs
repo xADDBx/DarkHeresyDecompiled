@@ -48,8 +48,8 @@ public class MergeRuleDealDamageLogThread : LogThreadBase, IGameLogEventHandler<
 			GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.ConcreteTarget;
 			string text = LogThreadBase.Strings.DispersedDamageGroup.Message.Text;
 			TooltipBaseTemplate tooltipBaseTemplate = CombatLogTooltipService.CreateTooltipTemplateCombatLogMessage(text, string.Empty, 0f);
-			IEnumerable<ITooltipBrick> disperseDamageTooltip = GetDisperseDamageTooltip(reason.Fact, mergedEvents);
-			CombatLogTooltipService.SetTooltipTemplateCombatLogMessageExtraBricks(tooltipBaseTemplate, disperseDamageTooltip, arg3: false);
+			CombatLogTooltipService.SetTooltipTemplateCombatLogMessageExtraBricks(tooltipBaseTemplate, GetDisperseDamageTooltip(reason.Fact, mergedEvents, info: false), arg3: false);
+			CombatLogTooltipService.SetTooltipTemplateCombatLogMessageExtraBricks(tooltipBaseTemplate, GetDisperseDamageTooltip(reason.Fact, mergedEvents, info: true), arg3: true);
 			PrefixIcon icon = LogThreadBase.Strings.DispersedDamageGroup.Icon;
 			Color32 color = LogThreadBase.Strings.DispersedDamageGroup.Color;
 			CombatLogMessage newMessage = new CombatLogMessage(text, color, icon, tooltipBaseTemplate);
@@ -71,10 +71,11 @@ public class MergeRuleDealDamageLogThread : LogThreadBase, IGameLogEventHandler<
 		return null;
 	}
 
-	private static IEnumerable<ITooltipBrick> GetDisperseDamageTooltip(MechanicEntityFact sourceFact, IEnumerable<GameLogRuleEvent<RuleDealDamage>> mergedEvents)
+	private static IEnumerable<ITooltipBrick> GetDisperseDamageTooltip(MechanicEntityFact sourceFact, IEnumerable<GameLogRuleEvent<RuleDealDamage>> mergedEvents, bool info)
 	{
-		Func<CombatLogMessage, bool, ITooltipBrick> createTooltipBrickNestedMessage = CombatLogTooltipService.CreateTooltipBrickNestedMessage;
-		if (createTooltipBrickNestedMessage == null)
+		Func<CombatLogMessage, bool, ITooltipBrick> createBrickNestedMessage = CombatLogTooltipService.CreateBrickNestedMessage;
+		Func<string, ITooltipBrick> createBrickText = CombatLogTooltipService.CreateBrickText;
+		if (createBrickNestedMessage == null || createBrickText == null)
 		{
 			return null;
 		}
@@ -87,8 +88,8 @@ public class MergeRuleDealDamageLogThread : LogThreadBase, IGameLogEventHandler<
 			GameLogContext.ResultDamage = rule.ResultValue;
 			GameLogContext.DamageType = UtilityText.GetDamageTypeText(rule.ResultDamage.Type);
 			GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.ConcreteTarget;
-			CombatLogMessage arg = LogThreadBase.Strings.DispersedDamage.CreateCombatLogMessage();
-			ITooltipBrick item = createTooltipBrickNestedMessage(arg, arg2: true);
+			CombatLogMessage combatLogMessage = LogThreadBase.Strings.DispersedDamage.CreateCombatLogMessage();
+			ITooltipBrick item = (info ? createBrickText(combatLogMessage?.Message) : createBrickNestedMessage(combatLogMessage, arg2: true));
 			list.Add(item);
 		}
 		return list;

@@ -10,7 +10,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class SleightOfHandRestrictionPart : SkillUseWithoutItemRestrictionPart<SleightOfHandRestrictionSettings>, ISkillUseRestrictionWithoutItem, IHashable, IOwlPackable<SleightOfHandRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "SleightOfHandRestrictionPart",
 		OldNames = null,
@@ -36,7 +36,7 @@ public class SleightOfHandRestrictionPart : SkillUseWithoutItemRestrictionPart<S
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		SleightOfHandRestrictionPart source = new SleightOfHandRestrictionPart();
 		result = Unsafe.As<SleightOfHandRestrictionPart, TPossiblyBase>(ref source);

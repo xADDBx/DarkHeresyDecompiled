@@ -6,13 +6,14 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Designers.Mechanics.Facts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.ResourceManagement;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View;
-using Kingmaker.View.Mechanics.Entities;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Critters;
@@ -39,7 +40,7 @@ public static class FamiliarHelper
 		FamiliarSettings familiarSettings = unit.GetComponent<FamiliarSettingsOverride>()?.FamiliarSettings ?? ConfigRoot.Instance.FamiliarsRoot.DefaultFamiliarSettings;
 		if (familiarSettings.SpawnOnLocationCondition.HasConditions)
 		{
-			using (leader.Context.SetScope())
+			using (EvalContext.PushContext(leader.Context))
 			{
 				if (!familiarSettings.SpawnOnLocationCondition.Check())
 				{
@@ -59,10 +60,10 @@ public static class FamiliarHelper
 	public static void DeSpawnFamiliar(BaseUnitEntity leader, AbstractUnitEntity familiar, bool immediately)
 	{
 		FamiliarSettings familiarSettings = familiar.Blueprint.GetComponent<FamiliarSettingsOverride>()?.FamiliarSettings ?? ConfigRoot.Instance.FamiliarsRoot.DefaultFamiliarSettings;
-		AbstractUnitEntityView view = familiar.View;
-		if ((object)view != null)
+		IAbstractUnitEntityView view = familiar.View;
+		if (view != null)
 		{
-			view.enabled = false;
+			view.AsAbstractUnitEntityView().enabled = false;
 		}
 		Entity.ViewHandlingOnDisposePolicyType viewHandlingOnDisposePolicy = ((!immediately) ? familiarSettings.ViewHandlingOnDisposePolicyType : Entity.ViewHandlingOnDisposePolicyType.Destroy);
 		familiar.SetViewHandlingOnDisposePolicy(viewHandlingOnDisposePolicy);

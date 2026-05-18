@@ -14,6 +14,7 @@ using Kingmaker.Visual.Sound;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -60,15 +61,15 @@ public class CharGenVoiceSelectorVM : BaseCharGenAppearancePageComponentVM, ICha
 
 	void ICharGenAppearancePhaseVoiceHandler.HandleChangeVoice(BlueprintUnitAsksList blueprint)
 	{
-		CharGenVoiceItemVM charGenVoiceItemVM = m_VoicesList.FirstOrDefault((CharGenVoiceItemVM elem) => blueprint == elem?.Voice);
+		CharGenVoiceItemVM charGenVoiceItemVM = m_VoicesList.FirstOrDefault((CharGenVoiceItemVM elem) => blueprint == elem?.Asks);
 		if (charGenVoiceItemVM == null)
 		{
 			PFLog.UI.Error("BlueprintUnitAsksList not found! ID=" + blueprint.AssetGuid);
 			return;
 		}
 		m_SelectedVoiceVM.Value = charGenVoiceItemVM;
-		m_SelectionStateVoice?.SelectVoice(charGenVoiceItemVM.Voice);
-		m_Barks.Value = charGenVoiceItemVM.Voice;
+		m_SelectionStateVoice?.SelectVoice(charGenVoiceItemVM.Asks);
+		m_Barks.Value = charGenVoiceItemVM.Asks;
 		Barks.CurrentValue.PlayPreview();
 		Changed();
 	}
@@ -84,12 +85,8 @@ public class CharGenVoiceSelectorVM : BaseCharGenAppearancePageComponentVM, ICha
 		m_VoicesList.Clear();
 		foreach (BlueprintUnitAsksList voice in ConfigRoot.Instance.CharGenRoot.Voices)
 		{
-			CharGenVoiceItemVM charGenVoiceItemVM = new CharGenVoiceItemVM(voice);
-			AddDisposable(charGenVoiceItemVM);
-			if (!charGenVoiceItemVM.IsEmptyVoice)
-			{
-				m_VoicesList.Add(charGenVoiceItemVM);
-			}
+			CharGenVoiceItemVM item = new CharGenVoiceItemVM(voice).AddTo(this);
+			m_VoicesList.Add(item);
 		}
 		VoiceSelector = AddDisposableAndReturn(new SelectionGroupRadioVM<CharGenVoiceItemVM>(m_VoicesList, m_SelectedVoiceVM));
 	}
@@ -116,13 +113,44 @@ public class CharGenVoiceSelectorVM : BaseCharGenAppearancePageComponentVM, ICha
 		}
 	}
 
+	public override void CaptureDefaults()
+	{
+		ObservableList<CharGenVoiceItemVM> entitiesCollection = VoiceSelector.EntitiesCollection;
+		m_DefaultIndex = -1;
+		for (int i = 0; i < entitiesCollection.Count; i++)
+		{
+			if (entitiesCollection[i] == m_SelectedVoiceVM.Value)
+			{
+				m_DefaultIndex = i;
+				break;
+			}
+		}
+	}
+
+	public override void Randomize()
+	{
+		ObservableList<CharGenVoiceItemVM> entitiesCollection = VoiceSelector.EntitiesCollection;
+		if (entitiesCollection.Count != 0)
+		{
+			m_SelectedVoiceVM.Value = entitiesCollection[UnityEngine.Random.Range(0, entitiesCollection.Count)];
+		}
+	}
+
+	public override void ResetToDefault()
+	{
+		if (m_DefaultIndex >= 0 && m_DefaultIndex < VoiceSelector.EntitiesCollection.Count)
+		{
+			m_SelectedVoiceVM.Value = VoiceSelector.EntitiesCollection[m_DefaultIndex];
+		}
+	}
+
 	private void UpdateFromMechanic()
 	{
 		LevelUpManager currentValue = m_CharGenContext.LevelUpManager.CurrentValue;
 		BlueprintUnitAsksList pregenVoice = currentValue.PreviewUnit.Asks.List;
 		if (!m_CharGenContext.IsCustomCharacter.CurrentValue && pregenVoice != null)
 		{
-			m_SelectedVoiceVM.Value = VoiceSelector.EntitiesCollection.FirstOrDefault((CharGenVoiceItemVM item) => item.Voice == pregenVoice);
+			m_SelectedVoiceVM.Value = VoiceSelector.EntitiesCollection.FirstOrDefault((CharGenVoiceItemVM item) => item.Asks == pregenVoice);
 			return;
 		}
 		BlueprintCharGenRoot charGenRoot = ConfigRoot.Instance.CharGenRoot;
@@ -134,9 +162,9 @@ public class CharGenVoiceSelectorVM : BaseCharGenAppearancePageComponentVM, ICha
 
 	private void OnChooseVoice(CharGenVoiceItemVM voice)
 	{
-		if (voice?.Voice != null)
+		if (voice?.Asks != null)
 		{
-			Game.Instance.GameCommandQueue.CharGenChangeVoice(voice.Voice);
+			Game.Instance.GameCommandQueue.CharGenChangeVoice(voice.Asks);
 		}
 	}
 

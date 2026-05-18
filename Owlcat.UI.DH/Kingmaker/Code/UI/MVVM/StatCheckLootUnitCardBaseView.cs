@@ -63,15 +63,6 @@ public class StatCheckLootUnitCardBaseView : View<StatCheckLootUnitCardVM>, ICon
 		return base.isActiveAndEnabled;
 	}
 
-	public void SetInput(InputLayer inputLayer)
-	{
-		SetInputImpl(inputLayer);
-	}
-
-	protected virtual void SetInputImpl(InputLayer inputLayer)
-	{
-	}
-
 	protected void OnCheckStat()
 	{
 		base.ViewModel.CheckStat();

@@ -7,7 +7,6 @@ using Kingmaker.UI.Common;
 using Owlcat.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -25,20 +24,20 @@ public class TurnVirtualListController : MonoBehaviour
 
 	[Header("Content paddings")]
 	[SerializeField]
-	[UsedImplicitly]
 	public RectOffset Padding;
 
 	[SerializeField]
-	[UsedImplicitly]
 	public Vector2 Spacing;
 
 	[Header("Scroll")]
 	[SerializeField]
-	[UsedImplicitly]
 	private ScrollRectExtended m_ScrollRect;
 
 	[SerializeField]
 	private float m_AutoScrollDelta = 1.25f;
+
+	[SerializeField]
+	private bool m_RecycleOnlyOutsideViewport;
 
 	private ScrollBasePosition m_ForceScrollPosition;
 
@@ -55,7 +54,7 @@ public class TurnVirtualListController : MonoBehaviour
 
 	private readonly List<ITurnVirtualItemView> m_VisibleItems = new List<ITurnVirtualItemView>();
 
-	private int m_FirstItemIndex;
+	private int m_FirstItemIndex = -1;
 
 	private int m_LastItemIndex = -1;
 
@@ -72,8 +71,6 @@ public class TurnVirtualListController : MonoBehaviour
 	private bool m_ExternalUpdateLock;
 
 	private Sequence m_AnimationSequence;
-
-	private GridConsoleNavigationBehaviour m_ConsoleNavigation;
 
 	private ITurnVirtualItemView m_LastSelectedView;
 
@@ -92,18 +89,6 @@ public class TurnVirtualListController : MonoBehaviour
 	private float ContentPositionX => Content.anchoredPosition.x;
 
 	private float ScrollRectWidth => m_ScrollRect.viewport.rect.width;
-
-	public Scrollbar Scrollbar
-	{
-		get
-		{
-			if (!(m_ScrollRect.verticalScrollbar != null))
-			{
-				return m_ScrollRect.horizontalScrollbar;
-			}
-			return m_ScrollRect.verticalScrollbar;
-		}
-	}
 
 	private float m_CalculatedAnimationTime => m_AnimationTime / m_AnimationTimeDevider;
 
@@ -142,7 +127,7 @@ public class TurnVirtualListController : MonoBehaviour
 
 	public void CleanList()
 	{
-		m_FirstItemIndex = 0;
+		m_FirstItemIndex = -1;
 		m_LastItemIndex = -1;
 		List<ITurnVirtualItemView> list = new List<ITurnVirtualItemView>();
 		list.AddRange(m_VisibleItems);
@@ -193,7 +178,6 @@ public class TurnVirtualListController : MonoBehaviour
 		UpdateContentSize(contentSize);
 		UpdateScrollPosition();
 		UpdateInternal();
-		UpdateNavigation();
 		if (OnUpdatedCallback != null)
 		{
 			OnUpdatedCallback();
@@ -474,7 +458,7 @@ public class TurnVirtualListController : MonoBehaviour
 	{
 		if (dataList == null || dataList.Count == 0)
 		{
-			return 0;
+			return -1;
 		}
 		if (!m_ScrollRect)
 		{
@@ -493,8 +477,8 @@ public class TurnVirtualListController : MonoBehaviour
 		float scrollRectHeight = ScrollRectHeight;
 		for (int num = dataList.Count - 1; num >= 0; num--)
 		{
-			ITurnVirtualItemData turnVirtualItemData = dataList[num];
-			float num2 = ContentPositionY + turnVirtualItemData.VirtualPosition.y + turnVirtualItemData.VirtualSize.y;
+			ITurnVirtualItemData item = dataList[num];
+			float num2 = (m_RecycleOnlyOutsideViewport ? GetItemBottomBorder(item) : GetItemTopBorder(item));
 			if (Mathf.Abs(num2 - scrollRectHeight) < float.Epsilon || num2 < scrollRectHeight)
 			{
 				return num;
@@ -508,8 +492,8 @@ public class TurnVirtualListController : MonoBehaviour
 		float scrollRectWidth = ScrollRectWidth;
 		for (int num = dataList.Count - 1; num >= 0; num--)
 		{
-			ITurnVirtualItemData turnVirtualItemData = dataList[num];
-			float num2 = ContentPositionX + turnVirtualItemData.VirtualPosition.x + turnVirtualItemData.VirtualSize.x;
+			ITurnVirtualItemData item = dataList[num];
+			float num2 = (m_RecycleOnlyOutsideViewport ? GetItemLeftBorder(item) : GetItemRightBorder(item));
 			if (Mathf.Abs(num2 - scrollRectWidth) < float.Epsilon || num2 < scrollRectWidth)
 			{
 				return num;
@@ -522,13 +506,13 @@ public class TurnVirtualListController : MonoBehaviour
 	{
 		if (!m_ScrollRect || dataList == null || dataList.Count == 0)
 		{
-			return 0;
+			return -1;
 		}
 		return m_VirtualDirection switch
 		{
 			VirtualListDirection.Vertical => GetBottomItemIndexVertical(dataList), 
 			VirtualListDirection.Horizontal => GetLeftItemIndexHorizontal(dataList), 
-			_ => 0, 
+			_ => -1, 
 		};
 	}
 
@@ -537,8 +521,8 @@ public class TurnVirtualListController : MonoBehaviour
 		float num = 0f;
 		for (int i = 0; i < dataList.Count; i++)
 		{
-			ITurnVirtualItemData turnVirtualItemData = dataList[i];
-			float num2 = ContentPositionY + turnVirtualItemData.VirtualPosition.y + Spacing.y;
+			ITurnVirtualItemData item = dataList[i];
+			float num2 = (m_RecycleOnlyOutsideViewport ? GetItemTopBorder(item) : GetItemBottomBorder(item));
 			if (Mathf.Abs(num2 - num) < float.Epsilon || num2 > num)
 			{
 				return i;
@@ -552,14 +536,34 @@ public class TurnVirtualListController : MonoBehaviour
 		float num = 0f;
 		for (int i = 0; i < dataList.Count; i++)
 		{
-			ITurnVirtualItemData turnVirtualItemData = dataList[i];
-			float num2 = ContentPositionX + turnVirtualItemData.VirtualPosition.x + Spacing.x;
+			ITurnVirtualItemData item = dataList[i];
+			float num2 = (m_RecycleOnlyOutsideViewport ? GetItemRightBorder(item) : GetItemLeftBorder(item));
 			if (Mathf.Abs(num2 - num) < float.Epsilon || num2 > num)
 			{
 				return i;
 			}
 		}
 		return 0;
+	}
+
+	private float GetItemLeftBorder(ITurnVirtualItemData item)
+	{
+		return ContentPositionX + item.VirtualPosition.x + Spacing.x;
+	}
+
+	private float GetItemRightBorder(ITurnVirtualItemData item)
+	{
+		return ContentPositionX + item.VirtualPosition.x + item.VirtualSize.x;
+	}
+
+	private float GetItemTopBorder(ITurnVirtualItemData item)
+	{
+		return ContentPositionY + item.VirtualPosition.y + item.VirtualSize.y;
+	}
+
+	private float GetItemBottomBorder(ITurnVirtualItemData item)
+	{
+		return ContentPositionY + item.VirtualPosition.y + Spacing.y;
 	}
 
 	private ITurnVirtualItemView ClaimItemView()
@@ -599,46 +603,6 @@ public class TurnVirtualListController : MonoBehaviour
 		view.View.gameObject.SetActive(value: false);
 		m_VisibleItems.Remove(view);
 		m_ItemsPool.Enqueue(view);
-	}
-
-	public void FillNavigationBehaviour(GridConsoleNavigationBehaviour consoleNavigationBehavior)
-	{
-		if (consoleNavigationBehavior == null && m_ConsoleNavigation != null)
-		{
-			m_ConsoleNavigation.UnFocusCurrentEntity();
-		}
-		m_ConsoleNavigation = consoleNavigationBehavior;
-		UpdateNavigation();
-	}
-
-	private void UpdateNavigation()
-	{
-		if (m_ConsoleNavigation == null)
-		{
-			return;
-		}
-		m_ConsoleNavigation.SetEntitiesGrid(GetNavigationEntities(), ElementsInRow);
-		if (m_DataList != null && m_DataList.Any())
-		{
-			ITurnVirtualItemData selectedData = m_DataList.FirstOrDefault((ITurnVirtualItemData data) => data.ViewModel == m_LastSelectedVM);
-			if (selectedData == null)
-			{
-				selectedData = ((m_LastSelectedIndex >= 0 && m_LastSelectedIndex < m_DataList.Count) ? m_DataList[m_LastSelectedIndex] : m_DataList.Last());
-			}
-			IConsoleNavigationEntity entity = (IConsoleNavigationEntity)m_VisibleItems.FirstOrDefault((ITurnVirtualItemView view) => view.GetViewModel() == selectedData.ViewModel);
-			m_ConsoleNavigation.FocusOnEntityManual(entity);
-			if (!m_ConsoleNavigation.IsFocused)
-			{
-				m_ConsoleNavigation.UnFocusCurrentEntity();
-			}
-		}
-	}
-
-	private List<IConsoleNavigationEntity> GetNavigationEntities()
-	{
-		return (from view in m_VisibleItems.ToList()
-			orderby view.RectTransform.position.y, -1f * view.RectTransform.position.x
-			select view).Reverse().Cast<IConsoleNavigationEntity>().ToList();
 	}
 
 	public void ScrollTo(ITurnVirtualItemData virtualData, Action onComplete = null)
@@ -760,11 +724,6 @@ public class TurnVirtualListController : MonoBehaviour
 			{
 				m_ForceScrollPosition = ScrollBasePosition.None;
 				UpdateView();
-			}
-			if (m_LastSelectedIndex < 0)
-			{
-				m_ConsoleNavigation.FocusOnLastValidEntity();
-				m_ConsoleNavigation.UnFocusCurrentEntity();
 			}
 		}
 	}

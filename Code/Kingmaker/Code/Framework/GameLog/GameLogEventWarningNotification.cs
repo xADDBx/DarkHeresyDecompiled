@@ -8,11 +8,11 @@ public class GameLogEventWarningNotification : GameLogEvent<GameLogEventWarningN
 {
 	private class EventsHandler : GameLogController.GameEventsHandler, IWarningNotificationUIHandler, ISubscriber
 	{
-		public void HandleWarning(WarningNotificationType type, bool addToLog = true, WarningNotificationFormat? format = null, bool withSound = true)
+		public void HandleWarning(WarningNotificationType type, string overrideLabel = null, bool addToLog = true, WarningNotificationFormat? format = null, bool withSound = true)
 		{
 			if (addToLog)
 			{
-				AddEvent(new GameLogEventWarningNotification(type, null));
+				AddEvent(new GameLogEventWarningNotification(type, overrideLabel));
 			}
 		}
 

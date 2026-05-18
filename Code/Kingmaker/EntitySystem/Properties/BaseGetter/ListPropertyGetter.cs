@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
@@ -71,7 +70,7 @@ public class ListPropertyGetter : PropertyGetter
 
 	private int GetValue(MechanicEntity currentEntity)
 	{
-		return Value.GetValue(SimpleContextData<PropertyContext, PropertyContext.Scope>.Current.WithCurrentEntity(currentEntity));
+		return Value.GetValue(currentEntity);
 	}
 
 	private IEnumerable<MechanicEntity> GetList()

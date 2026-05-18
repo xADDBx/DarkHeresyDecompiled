@@ -1,14 +1,17 @@
+using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.Designers.Mechanics.Facts.Restrictions;
-using Kingmaker.ElementsSystem;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.ContextContract;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using UnityEngine;
 
 namespace Kingmaker.UnitLogic.FactLogic;
@@ -18,81 +21,82 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [AllowMultipleComponents]
 [ComponentName("Stats/AddStatModifier")]
 [TypeId("f08844ce14d498a45a9fc64582489a2a")]
-public sealed class AddStatModifier : UnitFactComponentDelegate
+[SetsContextScope(ContextEntryPointKind.BuffComponentRulebookHandler)]
+public sealed class AddStatModifier : UnitFactComponentDelegate, IStatModifier, ISerializationCallbackReceiver
 {
-	public enum StatSelectorType
-	{
-		Single,
-		AllAttributes,
-		AllSkills
-	}
+	public AddStatModifierRestrictionCalculator Restrictions = new AddStatModifierRestrictionCalculator();
 
-	public RestrictionCalculator Restrictions = new RestrictionCalculator();
+	[InfoBox("Тип зависимостей модификатора, должен соответствовать рестрикшенам. None - рестрикшенов нет, OwnerStat - рестрикшен на стат юнита получающего модификатор, External - любые другие рестрикшены.")]
+	public StatRestrictionDependency DependencyType;
+
+	[InfoBox("От каких статов юнита получающего модификатор зависит этот модификатор. Нужен для DependencyType = OwnerStat. Должен соответствовать рестрикшенам.")]
+	[ShowIf("ShowStatDependencies")]
+	public StatType[] StatDependencies = new StatType[0];
 
 	public ModifierDescriptor Descriptor;
-
-	public StatSelectorType StatSelector;
-
-	[ShowIf("IsSingleStat")]
-	public StatType Stat;
 
 	public ContextValueModifierWithType Value = new ContextValueModifierWithType
 	{
 		Enabled = true
 	};
 
-	[SerializeField]
-	private ActionList m_ActionsOnAdd = new ActionList();
+	[InfoBox("Где модификатор применяется при расчёте стата:\nOwner — стат носителя факта (по умолчанию).\nAgainst — стат оппонента, когда носитель факта — атакующая сторона.\nGlobal — стат любого юнита (через GlobalStatModifierRegistry).")]
+	public StatModifierScope Scope;
 
-	private bool IsSingleStat => StatSelector == StatSelectorType.Single;
+	[Obsolete("Serialization migration only. Moved to Restrictions.")]
+	[HideInInspector]
+	public AddStatModifierRestrictionCalculator.StatSelectorType StatSelector;
 
-	protected override void OnActivateOrPostLoad()
+	[Obsolete("Serialization migration only. Moved to Restrictions.")]
+	[HideInInspector]
+	public StatType Stat;
+
+	StatModifierScope IStatModifier.Scope => Scope;
+
+	private bool ShowStatDependencies
 	{
-		if (!Restrictions.IsPassed(base.Context))
+		get
 		{
-			return;
-		}
-		if (StatSelector == StatSelectorType.Single)
-		{
-			AddModifier(Stat);
-		}
-		else
-		{
-			StatType[] array = ((StatSelector == StatSelectorType.AllAttributes) ? StatTypeHelper.Attributes : StatTypeHelper.Skills);
-			foreach (StatType statType in array)
+			if (DependencyType != StatRestrictionDependency.OwnerStat)
 			{
-				AddModifier(statType);
+				StatType[] statDependencies = StatDependencies;
+				if (statDependencies != null)
+				{
+					return statDependencies.Length > 0;
+				}
+				return false;
 			}
-		}
-		m_ActionsOnAdd.Run();
-	}
-
-	protected override void OnDeactivate()
-	{
-		if (StatSelector == StatSelectorType.Single)
-		{
-			RemoveModifier(Stat);
-			return;
-		}
-		StatType[] array = ((StatSelector == StatSelectorType.AllAttributes) ? StatTypeHelper.Attributes : StatTypeHelper.Skills);
-		foreach (StatType statType in array)
-		{
-			RemoveModifier(statType);
+			return true;
 		}
 	}
 
-	private void AddModifier(StatType statType)
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		ModifiableValue statOptional = base.Owner.Stats.GetStatOptional(statType);
-		if (statOptional != null)
+		if (Value.Enabled && Restrictions.IsPassed(base.Context, in context, stat))
 		{
 			int value = Value.Calculate(base.Context);
-			statOptional.AddModifier(Value.ModifierType, value, base.Runtime, Descriptor);
+			collector.Modifiers.Add(Value.ModifierType, value, base.Fact, null, BonusType.None, StatType.Unknown, Descriptor);
 		}
 	}
 
-	private void RemoveModifier(StatType statType)
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
 	{
-		base.Owner.Stats.GetStatOptional(statType)?.RemoveModifiersFrom(base.Runtime);
+		if (Value.Enabled)
+		{
+			Restrictions.CollectAffectedStats(entries, (DependencyType == StatRestrictionDependency.OwnerStat) ? StatDependencies : null);
+		}
+	}
+
+	void ISerializationCallbackReceiver.OnAfterDeserialize()
+	{
+		if (Restrictions.StatSelector == AddStatModifierRestrictionCalculator.StatSelectorType.Single && Restrictions.Stat == StatType.Unknown)
+		{
+			Restrictions.StatSelector = StatSelector;
+			Restrictions.Stat = Stat;
+		}
+	}
+
+	void ISerializationCallbackReceiver.OnBeforeSerialize()
+	{
 	}
 }

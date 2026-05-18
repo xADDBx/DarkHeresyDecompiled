@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components.ProjectileAttack;
 using Owlcat.Runtime.Core.Utility;
@@ -16,7 +17,7 @@ public class CheckAbilityIsAoEGetter : BoolPropertyGetter, PropertyContextAccess
 
 	protected override bool GetBaseValue()
 	{
-		AbilityData ability = this.GetAbility();
+		AbilityData ability = EvalContext.Current.Ability;
 		if (ability == null)
 		{
 			return false;

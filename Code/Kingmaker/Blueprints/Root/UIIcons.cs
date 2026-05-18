@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.Blueprints.Base;
+using Kingmaker.Code.View.Bridge.Enums;
 using UnityEngine;
 
 namespace Kingmaker.Blueprints.Root;
@@ -8,19 +9,16 @@ namespace Kingmaker.Blueprints.Root;
 public class UIIcons
 {
 	[Header("DefaultIcons")]
-	public Sprite DefaultItemIcon;
-
-	public Sprite DefaultAbilityIcon;
-
-	public Sprite DefaultAbilityModifierIcon;
-
-	public Sprite DefaultColonyProjectIcon;
+	public DefaultIcons DefaultIcons;
 
 	[Header("Tooltips")]
 	public TooltipIcons TooltipIcons;
 
 	[Header("Tooltip Inspect")]
 	public TooltipInspectIcons TooltipInspectIcons;
+
+	[Header("Chargen")]
+	public ChargenIcons ChargenIcons;
 
 	[Header("CombatMessage")]
 	public Sprite CultAmbush;
@@ -36,6 +34,14 @@ public class UIIcons
 	public Sprite Fail;
 
 	public Sprite CantAct;
+
+	public Sprite Heal;
+
+	public Sprite ArmorRepair;
+
+	public Sprite VitalDamageBonus;
+
+	public Sprite CriticalApplied;
 
 	[Header("Cargo")]
 	public CargoIcons CargoIcons;
@@ -73,6 +79,8 @@ public class UIIcons
 	public Sprite Penetration;
 
 	public Sprite StatBackground;
+
+	public Sprite Recoil;
 
 	[Header("DamageForms")]
 	public Sprite Slashing;
@@ -136,12 +144,35 @@ public class UIIcons
 	[Header("Entity Info")]
 	public Sprite IconDOT;
 
+	[Header("Buff Groups")]
+	public Sprite CriticalEffects;
+
+	public Sprite StatusEffects;
+
+	public Sprite DotEffects;
+
+	public Sprite NegativeEffects;
+
+	public Sprite PositiveEffects;
+
 	public Sprite GetGenderIcon(Gender gender)
 	{
 		return gender switch
 		{
 			Gender.Male => Male, 
 			Gender.Female => Female, 
+			_ => null, 
+		};
+	}
+
+	public Sprite GetAppearanceIcon(CharGenAppearancePageType type)
+	{
+		return type switch
+		{
+			CharGenAppearancePageType.General => ChargenIcons.AppearanceGeneral, 
+			CharGenAppearancePageType.Hair => ChargenIcons.AppearanceHair, 
+			CharGenAppearancePageType.Tattoo => ChargenIcons.AppearanceTattoo, 
+			CharGenAppearancePageType.Implants => ChargenIcons.AppearanceImplants, 
 			_ => null, 
 		};
 	}

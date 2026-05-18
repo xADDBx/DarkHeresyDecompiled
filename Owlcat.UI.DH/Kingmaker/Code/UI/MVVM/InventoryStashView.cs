@@ -1,9 +1,10 @@
+using System;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.UI.Common;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using R3;
@@ -14,34 +15,95 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public abstract class InventoryStashView : View<InventoryStashVM>, IInitializable, IVendorBuyHandler, ISubscriber
 {
+	[Serializable]
+	protected class SlotGroupsData
+	{
+		[SerializeField]
+		private SlotGroupData<ItemSlotVM> ItemSlotGroup;
+
+		[SerializeField]
+		private SlotGroupData<InsertableLootSlotVM> InsertableItemSlotGroup;
+
+		public IScrollGroup CurrentGroup { get; private set; }
+
+		public void Initialize()
+		{
+			ItemSlotGroup.Initialize();
+			InsertableItemSlotGroup.Initialize();
+		}
+
+		public void Bind(ISlotsGroupVM<ItemSlotVM, ItemEntity> slots)
+		{
+			if (!(slots is ItemSlotsGroupVM slotsGroupVM))
+			{
+				if (slots is InsertableLootSlotsGroupVM slotsGroupVM2)
+				{
+					InsertableItemSlotGroup.Bind(slotsGroupVM2);
+					CurrentGroup = InsertableItemSlotGroup;
+				}
+				else
+				{
+					PFLog.UI.Error($"Failed to bind view to {slots.GetType()}");
+				}
+			}
+			else
+			{
+				ItemSlotGroup.Bind(slotsGroupVM);
+				CurrentGroup = ItemSlotGroup;
+			}
+		}
+	}
+
+	[Serializable]
+	protected class SlotGroupData<T> : IScrollGroup where T : ItemSlotVM
+	{
+		[SerializeField]
+		private SlotsGroupView<T> m_SlotsGroupView;
+
+		[SerializeField]
+		private ItemSlotView<T> m_ItemSlotPrefab;
+
+		public void Initialize()
+		{
+			m_SlotsGroupView.Or(null)?.Initialize(m_ItemSlotPrefab);
+		}
+
+		public void Bind(SlotsGroupVM<T> slotsGroupVM)
+		{
+			m_SlotsGroupView.Or(null)?.Bind(slotsGroupVM);
+		}
+
+		public void ForceScrollToElement(IVirtualListElementData data)
+		{
+			m_SlotsGroupView?.ForceScrollToElement(data);
+		}
+	}
+
+	protected interface IScrollGroup
+	{
+		void ForceScrollToElement(IVirtualListElementData data);
+	}
+
+	[Header("Elements")]
 	[SerializeField]
-	private GameObject m_Background;
+	private TMP_Text m_StashTitle;
+
+	[SerializeField]
+	private TMP_Text m_CoinsCounter;
 
 	[SerializeField]
 	private OwlcatMultiButton m_CoinsTooltipParent;
 
-	[SerializeField]
-	private TextMeshProUGUI m_CoinsCounter;
-
-	[SerializeField]
-	protected ItemSlotsGroupView m_ItemSlotsGroup;
-
-	[SerializeField]
-	protected InsertableLootSlotsGroupView m_InsertableSlotsGroup;
-
+	[Header("Views")]
 	[SerializeField]
 	protected ItemsFilterBaseView m_ItemsFilter;
 
 	[SerializeField]
-	private InventorySlotView m_InventorySlotPrefab;
-
-	[SerializeField]
-	private InsertableLootSlotView m_InsertableSlotPrefab;
+	protected SlotGroupsData SlotGroups;
 
 	public void Initialize()
 	{
-		m_ItemSlotsGroup.Initialize(m_InventorySlotPrefab);
-		m_InsertableSlotsGroup.Or(null)?.Initialize(m_InsertableSlotPrefab);
+		SlotGroups.Initialize();
 		m_ItemsFilter.Initialize();
 		Hide();
 	}
@@ -49,23 +111,9 @@ public abstract class InventoryStashView : View<InventoryStashVM>, IInitializabl
 	protected override void OnBind()
 	{
 		Show();
-		ISlotsGroupVM<ItemSlotVM, ItemEntity> itemSlotsGroup = base.ViewModel.ItemSlotsGroup;
-		if (!(itemSlotsGroup is ItemSlotsGroupVM source))
-		{
-			if (itemSlotsGroup is InsertableLootSlotsGroupVM source2)
-			{
-				m_InsertableSlotsGroup.Bind(source2);
-			}
-			else
-			{
-				PFLog.UI.Error($"Failed to bind view to {base.ViewModel.ItemSlotsGroup.GetType()}");
-			}
-		}
-		else
-		{
-			m_ItemSlotsGroup.Bind(source);
-		}
+		SlotGroups.Bind(base.ViewModel.ItemSlotsGroup);
 		m_ItemsFilter.Bind(base.ViewModel.ItemsFilter);
+		m_StashTitle.Or(null)?.SetText(GetStashLabel(base.ViewModel.ItemSlotsGroup));
 		base.ViewModel.Money.Subscribe(delegate(long value)
 		{
 			m_CoinsCounter.text = value.ToString();
@@ -82,13 +130,11 @@ public abstract class InventoryStashView : View<InventoryStashVM>, IInitializabl
 	private void Show()
 	{
 		base.gameObject.SetActive(value: true);
-		m_Background.Or(null)?.SetActive(value: true);
 	}
 
 	private void Hide()
 	{
 		base.gameObject.SetActive(value: false);
-		m_Background.Or(null)?.SetActive(value: false);
 	}
 
 	public void TryScrollToObject(ItemEntity element)
@@ -109,7 +155,7 @@ public abstract class InventoryStashView : View<InventoryStashVM>, IInitializabl
 		ItemSlotVM visibleCollectionElement = itemSlotsGroup.GetVisibleElementOrDefault((ItemSlotVM slot) => slot.ItemEntity?.Blueprint == element.Blueprint);
 		if (visibleCollectionElement != null)
 		{
-			m_ItemSlotsGroup.ForceScrollToElement(visibleCollectionElement);
+			SlotGroups.CurrentGroup?.ForceScrollToElement(visibleCollectionElement);
 			ObservableSubscribeExtensions.Subscribe(Observable.NextFrame(), delegate
 			{
 				visibleCollectionElement.Blink();
@@ -117,18 +163,22 @@ public abstract class InventoryStashView : View<InventoryStashVM>, IInitializabl
 		}
 	}
 
-	public void CollectionChanged()
-	{
-		base.ViewModel.CollectionChanged();
-	}
-
 	public void HandleBuyItem(ItemEntity buyingItem)
 	{
 		TryScrollToObject(buyingItem);
 	}
 
-	public void SetFilter(ItemsFilterType type)
+	private string GetStashLabel(ISlotsGroupVM<ItemSlotVM, ItemEntity> slots)
 	{
-		m_ItemsFilter.HandleFilterToggle(type);
+		if (!(slots is ItemSlotsGroupVM))
+		{
+			if (slots is InsertableLootSlotsGroupVM)
+			{
+				return UIStrings.Instance.LootWindow.LootSharedStash.Text;
+			}
+			PFLog.UI.Error($"Failed to get stash label for {slots.GetType()}");
+			return string.Empty;
+		}
+		return UIStrings.Instance.InventoryScreen.InventorySharedStash.Text;
 	}
 }

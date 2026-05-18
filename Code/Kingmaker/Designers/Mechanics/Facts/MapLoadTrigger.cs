@@ -3,7 +3,7 @@ using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.ElementsSystem;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic;
@@ -24,9 +24,9 @@ public class MapLoadTrigger : UnitFactComponentDelegate, IPartyLeaveAreaHandler,
 		{
 			return;
 		}
-		using (base.Fact.MaybeContext?.SetScope(base.Owner.ToITargetWrapper()))
+		using (EvalContext.PushContextMaybe(base.Fact.MaybeContext, base.Owner))
 		{
-			base.Fact.RunActionInContext(AreaUnloadActions, base.Owner.ToITargetWrapper());
+			base.Fact.RunActionInContext(AreaUnloadActions, base.Owner);
 		}
 	}
 }

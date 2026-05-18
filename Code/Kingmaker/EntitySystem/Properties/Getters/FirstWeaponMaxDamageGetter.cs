@@ -27,6 +27,6 @@ public class FirstWeaponMaxDamageGetter : IntPropertyGetter
 		{
 			itemEntityWeapon = unitUseAbility.Ability.Weapon;
 		}
-		return itemEntityWeapon?.Blueprint.DamageMax ?? 0;
+		return itemEntityWeapon?.DamageMax ?? 0;
 	}
 }

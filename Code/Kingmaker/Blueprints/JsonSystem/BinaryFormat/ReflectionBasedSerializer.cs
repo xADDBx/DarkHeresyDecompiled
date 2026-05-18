@@ -226,6 +226,11 @@ public class ReflectionBasedSerializer
 			ColorBlock cb = (ColorBlock)field.GetValue(obj);
 			m_Primitive.ColorBlock(ref cb);
 		}
+		else if (fieldType == typeof(Rect))
+		{
+			Rect v7 = (Rect)field.GetValue(obj);
+			m_Primitive.Rect(ref v7);
+		}
 		else if (fieldType.IsOrSubclassOf<UnityEngine.Object>())
 		{
 			UnityEngine.Object obj2 = (UnityEngine.Object)field.GetValue(obj);
@@ -285,23 +290,23 @@ public class ReflectionBasedSerializer
 		}
 		else if (fieldType == typeof(Vector2[]))
 		{
-			Vector2[] v7 = (Vector2[])field.GetValue(obj);
-			m_Primitive.VectorArray(ref v7);
+			Vector2[] v8 = (Vector2[])field.GetValue(obj);
+			m_Primitive.VectorArray(ref v8);
 		}
 		else if (fieldType == typeof(Vector3[]))
 		{
-			Vector3[] v8 = (Vector3[])field.GetValue(obj);
-			m_Primitive.VectorArray(ref v8);
+			Vector3[] v9 = (Vector3[])field.GetValue(obj);
+			m_Primitive.VectorArray(ref v9);
 		}
 		else if (fieldType == typeof(Vector4[]))
 		{
-			Vector4[] v9 = (Vector4[])field.GetValue(obj);
-			m_Primitive.VectorArray(ref v9);
+			Vector4[] v10 = (Vector4[])field.GetValue(obj);
+			m_Primitive.VectorArray(ref v10);
 		}
 		else if (fieldType == typeof(Vector2Int[]))
 		{
-			Vector2Int[] v10 = (Vector2Int[])field.GetValue(obj);
-			m_Primitive.VectorIntArray(ref v10);
+			Vector2Int[] v11 = (Vector2Int[])field.GetValue(obj);
+			m_Primitive.VectorIntArray(ref v11);
 		}
 		else
 		{
@@ -534,6 +539,12 @@ public class ReflectionBasedSerializer
 			m_Primitive.ColorBlock(ref cb);
 			field.SetValue(obj, cb);
 		}
+		else if (fieldType == typeof(Rect))
+		{
+			Rect v7 = default(Rect);
+			m_Primitive.Rect(ref v7);
+			field.SetValue(obj, v7);
+		}
 		else if (fieldType.IsOrSubclassOf<UnityEngine.Object>())
 		{
 			UnityEngine.Object obj2 = null;
@@ -607,27 +618,27 @@ public class ReflectionBasedSerializer
 		}
 		else if (fieldType == typeof(Vector2[]))
 		{
-			Vector2[] v7 = null;
-			m_Primitive.VectorArray(ref v7);
-			field.SetValue(obj, v7);
-		}
-		else if (fieldType == typeof(Vector3[]))
-		{
-			Vector3[] v8 = null;
+			Vector2[] v8 = null;
 			m_Primitive.VectorArray(ref v8);
 			field.SetValue(obj, v8);
 		}
-		else if (fieldType == typeof(Vector4[]))
+		else if (fieldType == typeof(Vector3[]))
 		{
-			Vector4[] v9 = null;
+			Vector3[] v9 = null;
 			m_Primitive.VectorArray(ref v9);
 			field.SetValue(obj, v9);
 		}
+		else if (fieldType == typeof(Vector4[]))
+		{
+			Vector4[] v10 = null;
+			m_Primitive.VectorArray(ref v10);
+			field.SetValue(obj, v10);
+		}
 		else if (fieldType == typeof(Vector2Int[]))
 		{
-			Vector2Int[] v10 = null;
-			m_Primitive.VectorIntArray(ref v10);
-			field.SetValue(obj, v10);
+			Vector2Int[] v11 = null;
+			m_Primitive.VectorIntArray(ref v11);
+			field.SetValue(obj, v11);
 		}
 		else if (fieldType.IsArray && fieldType.GetElementType().IsOrSubclassOf<UnityEngine.Object>())
 		{

@@ -11,12 +11,15 @@ using Kingmaker.Code.View.Bridge.Facades;
 using Kingmaker.Code.View.Bridge.Interfaces;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.ResourceLinks;
+using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -38,7 +41,7 @@ namespace Kingmaker.UnitLogic.Buffs;
 [Serializable]
 [ComponentName("LD/Polymorph")]
 [TypeId("d9b639356e7149c68b313198122a72a3")]
-public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubscriber>, IUnitSpawnHandler, ISubscriber<IAbstractUnitEntity>, ISubscriber, IEventTag<IUnitSpawnHandler, EntitySubscriber>
+public class Polymorph : UnitBuffComponentDelegate, IStatModifier, IUnitSpawnHandler<EntitySubscriber>, IUnitSpawnHandler, ISubscriber<IAbstractUnitEntity>, ISubscriber, IEventTag<IUnitSpawnHandler, EntitySubscriber>
 {
 	[Serializable]
 	public class VisualTransitionSettings
@@ -239,12 +242,6 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		}
 		optional = base.Owner.GetOrCreate<PartPolymorphed>();
 		optional.Setup(this);
-		int strengthBonus = StrengthBonus;
-		int agilityBonus = AgilityBonus;
-		int constitutionBonus = ConstitutionBonus;
-		base.Owner.Attributes.WarhammerStrength.AddModifier(strengthBonus, base.Runtime, ModifierDescriptor.Polymorph);
-		base.Owner.Attributes.WarhammerAgility.AddModifier(agilityBonus, base.Runtime, ModifierDescriptor.Polymorph);
-		base.Owner.Attributes.WarhammerToughness.AddModifier(constitutionBonus, base.Runtime, ModifierDescriptor.Polymorph);
 	}
 
 	protected override void OnDeactivate()
@@ -256,9 +253,6 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		{
 			base.Owner.UISettings.SetPortraitUnsafe(optional.OriginalPortrait, optional.OriginalPortraitData);
 		}
-		base.Owner.Attributes.WarhammerStrength.RemoveModifiersFrom(base.Runtime);
-		base.Owner.Attributes.WarhammerAgility.RemoveModifiersFrom(base.Runtime);
-		base.Owner.Attributes.WarhammerToughness.RemoveModifiersFrom(base.Runtime);
 		RemoveAllFactsOriginatedFromThisComponent(base.Owner);
 		base.Owner.Remove<PartPolymorphed>();
 		if ((bool)optional?.ViewReplacement)
@@ -267,10 +261,41 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		}
 	}
 
+	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
+	{
+		int num = stat switch
+		{
+			StatType.Strength => StrengthBonus, 
+			StatType.Agility => AgilityBonus, 
+			StatType.Toughness => ConstitutionBonus, 
+			_ => 0, 
+		};
+		if (num != 0)
+		{
+			collector.Modifiers.Add(ModifierType.ValAdd, num, base.Fact, null, BonusType.None, StatType.Unknown, ModifierDescriptor.Polymorph);
+		}
+	}
+
+	void IStatModifier.CollectAffectedStats(ICollection<AffectedStatEntry> entries)
+	{
+		if (StrengthBonus != 0)
+		{
+			entries.Add(new AffectedStatEntry(StatType.Strength));
+		}
+		if (AgilityBonus != 0)
+		{
+			entries.Add(new AffectedStatEntry(StatType.Agility));
+		}
+		if (ConstitutionBonus != 0)
+		{
+			entries.Add(new AffectedStatEntry(StatType.Toughness));
+		}
+	}
+
 	private void TryReplaceView(bool immediate = false)
 	{
 		PartPolymorphed optional = base.Owner.GetOptional<PartPolymorphed>();
-		if (optional == null || (bool)optional.ViewReplacement || !base.Owner.View)
+		if (optional == null || (bool)optional.ViewReplacement || base.Owner.View == null)
 		{
 			return;
 		}
@@ -283,13 +308,13 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		{
 			buff.ClearParticleEffect();
 		}
-		UnitEntityView view = base.Owner.View;
+		UnitEntityView unitEntityView2 = base.Owner.View.AsUnitEntityView();
 		UnitEntityView component = BlueprintComponent.Instantiate(unitEntityView).GetComponent<UnitEntityView>();
 		component.UniqueId = base.Owner.UniqueId;
-		UnityEngine.SceneManagement.Scene scene = view.gameObject.scene;
+		UnityEngine.SceneManagement.Scene scene = unitEntityView2.gameObject.scene;
 		SceneManager.MoveGameObjectToScene(component.gameObject, scene);
-		component.ViewTransform.position = view.ViewTransform.position;
-		component.ViewTransform.rotation = view.ViewTransform.rotation;
+		component.ViewTransform.position = unitEntityView2.ViewTransform.position;
+		component.ViewTransform.rotation = unitEntityView2.ViewTransform.rotation;
 		component.DisableSizeScaling = true;
 		component.Blueprint = base.Owner.Blueprint;
 		base.Owner.AttachToViewOnLoad(component);
@@ -298,11 +323,11 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		SelectionManagerFacade.ForceCreateMarks();
 		if (immediate)
 		{
-			UnityEngine.Object.Destroy(view.gameObject);
+			UnityEngine.Object.Destroy(unitEntityView2.gameObject);
 		}
 		else
 		{
-			MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(Transition(HasExternalTransition ? m_TransitionExternal.EnterTransition : m_EnterTransition, view, component));
+			MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(Transition(HasExternalTransition ? m_TransitionExternal.EnterTransition : m_EnterTransition, unitEntityView2, component));
 		}
 		Game.Instance.Controllers.SelectionCharacter.ReselectCurrentUnit();
 	}
@@ -313,16 +338,17 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		{
 			buff.ClearParticleEffect();
 		}
-		UnitEntityView view = base.Owner.View;
-		UnitEntityView view2 = base.Owner.ViewSettings.Instantiate(ignorePolymorph: true);
-		base.Owner.AttachView(view2);
-		UnityEngine.SceneManagement.Scene scene = view.ViewTransform.gameObject.scene;
-		SceneManager.MoveGameObjectToScene(base.Owner.View.ViewTransform.gameObject, scene);
-		base.Owner.View.ViewTransform.position = view.ViewTransform.position;
-		base.Owner.View.ViewTransform.rotation = view.ViewTransform.rotation;
+		UnitEntityView unitEntityView = base.Owner.View.AsUnitEntityView();
+		UnitEntityView unitEntityView2 = base.Owner.View.AsUnitEntityView();
+		UnitEntityView view = base.Owner.ViewSettings.Instantiate(ignorePolymorph: true);
+		base.Owner.AttachView(view);
+		UnityEngine.SceneManagement.Scene scene = unitEntityView.ViewTransform.gameObject.scene;
+		SceneManager.MoveGameObjectToScene(unitEntityView2.ViewTransform.gameObject, scene);
+		unitEntityView2.ViewTransform.position = unitEntityView.ViewTransform.position;
+		unitEntityView2.ViewTransform.rotation = unitEntityView.ViewTransform.rotation;
 		base.Owner.Commands.InterruptAll((AbstractUnitCommand cmd) => !(cmd is UnitMoveTo));
 		SelectionManagerFacade.ForceCreateMarks();
-		MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(Transition(HasExternalTransition ? m_TransitionExternal.ExitTransition : m_ExitTransition, view, base.Owner.View));
+		MonoSingleton<CoroutineRunner>.Instance.StartCoroutine(Transition(HasExternalTransition ? m_TransitionExternal.ExitTransition : m_ExitTransition, unitEntityView, unitEntityView2));
 		Game.Instance.Controllers.SelectionCharacter.ReselectCurrentUnit();
 	}
 
@@ -337,7 +363,6 @@ public class Polymorph : UnitBuffComponentDelegate, IUnitSpawnHandler<EntitySubs
 		UnitAnimationManager unitAnimationManager = ObjectExtensions.Or(oldView.AnimationManager, null);
 		if ((bool)unitAnimationManager)
 		{
-			unitAnimationManager.StopEvents();
 			unitAnimationManager.Disabled = true;
 		}
 		UnityEngine.Object.Destroy(oldView.gameObject, settings.OldPrefabVisibilityTime);

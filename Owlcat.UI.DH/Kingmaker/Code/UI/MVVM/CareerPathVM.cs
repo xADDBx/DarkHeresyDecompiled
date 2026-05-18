@@ -149,7 +149,7 @@ public class CareerPathVM : SelectionGroupEntityVM, ILevelUpManagerUIHandler, IS
 
 	public TooltipBaseTemplate CareerHintTemplate => new TooltipTemplateSimple(UIStrings.Instance.CharacterSheet.CareerPathHeader, UIStrings.Instance.CharacterSheet.CareerPathDescription);
 
-	public TooltipBaseTemplate CareerTooltip => m_CareerTooltip ?? (m_CareerTooltip = new TooltipTemplateCareer(this, isScreenView: true));
+	public TooltipBaseTemplate CareerTooltip => m_CareerTooltip ?? (m_CareerTooltip = new TooltipTemplateCareer(this, _: true));
 
 	private TooltipBaseTemplate CareerProgressionTooltip => m_CareerProgressionTooltip ?? (m_CareerProgressionTooltip = new TooltipTemplateCareerProgression(this));
 
@@ -263,7 +263,7 @@ public class CareerPathVM : SelectionGroupEntityVM, ILevelUpManagerUIHandler, IS
 		}
 		AddDisposable(ObservableSubscribeExtensions.Subscribe(RefreshView, delegate
 		{
-			m_OnUpdateSelected.Execute();
+			m_OnUpdateSelected.Execute(R3.Unit.Default);
 		}));
 		AddDisposable(IsDescriptionShowed.Skip(1).Subscribe(delegate(bool value)
 		{
@@ -575,7 +575,7 @@ public class CareerPathVM : SelectionGroupEntityVM, ILevelUpManagerUIHandler, IS
 		}
 		HasSelectionsToUpgrade = AvailableSelections.Any((RankEntrySelectionVM s) => s.NeedToSelect && !s.SelectionMade);
 		UnitProgressionVM.Commit();
-		m_OnCommit.Execute();
+		m_OnCommit.Execute(R3.Unit.Default);
 	}
 
 	private bool IsCareerInProgress(BlueprintCareerPath careerPath, bool canUsePreviewUnit)
@@ -662,7 +662,7 @@ public class CareerPathVM : SelectionGroupEntityVM, ILevelUpManagerUIHandler, IS
 			UpdateRanks();
 		}
 		SetTooltipsDirty();
-		m_OnUpdateData.Execute();
+		m_OnUpdateData.Execute(R3.Unit.Default);
 	}
 
 	private void SetTooltipsDirty()

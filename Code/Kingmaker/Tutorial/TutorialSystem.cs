@@ -14,7 +14,6 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.Settings;
 using Kingmaker.Utility.DotNetExtensions;
@@ -111,17 +110,17 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 		return !SettingsRoot.Game.Tutorial.ShouldShowTag(tag);
 	}
 
-	protected TutorialSystem(OwlPackConstructorParameter _)
-		: base(_)
-	{
-	}
-
 	public TutorialSystem()
 		: base("tutorial-system-id", isInGame: true)
 	{
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected TutorialSystem(OwlPackConstructorParameter _)
+		: base(_)
+	{
+	}
+
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -158,14 +157,14 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 		{
 			if (tutorial.IsLimitReached)
 			{
-				EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
+				base.EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
 				{
 					h.HandleLimitReached(tutorial, context);
 				});
 			}
 			if (tutorial.Owner.IsTagBanned(tutorial.Blueprint.Tag))
 			{
-				EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
+				base.EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
 				{
 					h.HandleTagBanned(tutorial, context);
 				});
@@ -181,14 +180,14 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 		{
 			if (LastCooldownTutorialPriority > tutorial.Blueprint.Priority)
 			{
-				EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
+				base.EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
 				{
 					h.HandleHigherPriorityCooldown(tutorial, context);
 				});
 			}
 			else
 			{
-				EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
+				base.EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
 				{
 					h.HandleLowerOrEqualPriorityCooldown(tutorial, context);
 				});
@@ -197,7 +196,7 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 		}
 		if (tutorial.Blueprint.Frequency > 1 && tutorial.LastShowIndex > 0 && Math.Abs(m_ShowIndex - tutorial.LastShowIndex) < tutorial.Blueprint.Frequency)
 		{
-			EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
+			base.EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
 			{
 				h.HandleFrequencyReached(tutorial, context);
 			});
@@ -205,7 +204,7 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 		}
 		if (m_CandidateForShow != null && m_CandidateForShow.Blueprint.Priority >= tutorial.Blueprint.Priority)
 		{
-			EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
+			base.EventBus.RaiseEvent(delegate(ITutorialTriggerFailedHandler h)
 			{
 				h.HandleLowerOrEqualPriorityCooldown(tutorial, context);
 			});
@@ -218,7 +217,7 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 		return true;
 	}
 
-	public void Trigger(BlueprintTutorial tutorial, [CanBeNull] TutorialTrigger trigger)
+	public void Trigger(BlueprintTutorial tutorial, [CanBeNull] TutorialTrigger trigger, float showDelaySeconds = 0f)
 	{
 		TutorialContext current = ContextData<TutorialContext>.Current;
 		if (current == null)
@@ -262,10 +261,14 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 			tutorialData.AddPage(component2);
 		}
 		m_CandidateForShow = tutorialData;
-		m_Countdown = ((trigger != null && !tutorial.IgnoreCooldown) ? new float?(ConfigRoot.Instance.SystemMechanics.TutorialDelaySeconds) : null);
+		m_Countdown = ((trigger != null && !tutorial.IgnoreCooldown) ? new float?(trigger.OverrideDelay ? trigger.DelaySecondsOverride : ConfigRoot.Instance.SystemMechanics.TutorialDelaySeconds) : null);
 		if (trigger != null && LoadingProcess.Instance.IsLoadingInProcess)
 		{
 			m_Countdown = m_Countdown.GetValueOrDefault() + ConfigRoot.Instance.SystemMechanics.TutorialDelaySecondsAfterLoading;
+		}
+		if (showDelaySeconds > m_Countdown.GetValueOrDefault())
+		{
+			m_Countdown = showDelaySeconds;
 		}
 	}
 
@@ -310,7 +313,7 @@ public class TutorialSystem : Entity, IHashable, IOwlPackable<TutorialSystem>
 
 	private void Show(TutorialData data)
 	{
-		EventBus.RaiseEvent(delegate(INewTutorialUIHandler h)
+		base.EventBus.RaiseEvent(delegate(INewTutorialUIHandler h)
 		{
 			h.ShowTutorial(data);
 		});

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Kingmaker.Code.Framework.Networking.Sync;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
@@ -109,7 +110,7 @@ public class UnitCommandHandle
 	{
 		while (!IsFinished)
 		{
-			await Task.Yield();
+			await NextTickAwaiter.New();
 		}
 	}
 

@@ -25,7 +25,7 @@ public class DialogAnswerPCView : DialogAnswerBaseView
 		m_AnswerText.OnPointerEnterAsObservable().Subscribe(delegate
 		{
 			base.ViewModel?.PingAnswerHover(hover: true);
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 		}).AddTo(this);
 		m_AnswerText.OnPointerExitAsObservable().Subscribe(delegate
 		{

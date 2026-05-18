@@ -74,7 +74,7 @@ public class ContextActionMoveDirectToPoint : ContextActionMove
 			return;
 		}
 		UnitEntity targetEntity = base.Target?.Entity as UnitEntity;
-		if (targetEntity == null || !(targetEntity.View != null) || endPoint == null || !targetEntity.CanMove || !GridAreaHelper.TryGetStandableNode(targetEntity, endPoint, num, out var targetNode))
+		if (targetEntity == null || targetEntity.View == null || endPoint == null || !targetEntity.CanMove || !GridAreaHelper.TryGetStandableNode(targetEntity, endPoint, num, out var targetNode))
 		{
 			return;
 		}

@@ -47,7 +47,7 @@ public class SetMechanicEntityListNode : BehaviourTreeNode
 		}
 		foreach (MechanicEntity entity in entities)
 		{
-			if (filter.GetBoolValue(new PropertyContext(agent, null, entity)))
+			if (filter.GetBoolValue(agent, null, entity))
 			{
 				list.Add(entity);
 			}

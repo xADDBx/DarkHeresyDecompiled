@@ -4,7 +4,7 @@ using System.Linq;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
@@ -62,7 +62,7 @@ public class AbilityTargetSelectionByDistance : AbilitySelectTarget
 		{
 			enumerable = enumerable.Where(delegate(BaseUnitEntity u)
 			{
-				using (context.SetScope(u.ToITargetWrapper()))
+				using (EvalContext.PushContext(context, u))
 				{
 					return m_Condition.Check();
 				}

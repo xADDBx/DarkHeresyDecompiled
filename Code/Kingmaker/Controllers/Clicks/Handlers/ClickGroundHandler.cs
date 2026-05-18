@@ -8,6 +8,7 @@ using Kingmaker.Networking;
 using Kingmaker.Settings;
 using Kingmaker.UI.InputSystems;
 using Kingmaker.UI.Sound;
+using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.Random;
 using Kingmaker.View;
 using ObservableCollections;
@@ -64,7 +65,7 @@ public class ClickGroundHandler : IClickEventHandler, IDragClickEventHandler
 		}
 		using (PFStatefulRandom.StartUiContext())
 		{
-			UISounds.Instance.Sounds.Combat.NotInCombatSetWaypointClick.Play();
+			CombatSounds.Instance.Combat.NotInCombatSetWaypointClick.Play();
 			switch (button)
 			{
 			case 1:
@@ -88,27 +89,23 @@ public class ClickGroundHandler : IClickEventHandler, IDragClickEventHandler
 
 	public bool OnClick(GameObject gameObject, Vector3 startDrag, Vector3 endDrag)
 	{
-		UISounds.Instance.Sounds.Combat.NotInCombatSetWaypointClick.Play();
+		CombatSounds.Instance.Combat.NotInCombatSetWaypointClick.Play();
 		UnitCommandsRunner.MoveSelectedUnitsToPointRT(startDrag, s_Direction, Game.Instance.IsControllerGamepad);
 		return true;
 	}
 
 	public bool OnDrag(GameObject gameObject, Vector3 startDrag, Vector3 endDrag)
 	{
-		Vector3 vector = endDrag - startDrag;
-		if (vector.magnitude > 0.2f)
+		using (ProfileScope.New("ClickGroundHandler.OnDrag"))
 		{
-			s_Direction = vector;
-			if (!UnitCommandsRunner.HasWaitingAgents)
+			Vector3 vector = endDrag - startDrag;
+			if (vector.magnitude > 0.2f)
 			{
+				s_Direction = vector;
 				UnitCommandsRunner.MoveSelectedUnitsToPointRT(startDrag, s_Direction, isControllerGamepad: false, preview: true);
 			}
-			else
-			{
-				UnitCommandsRunner.ClearWaitingAgents(delayed: true);
-			}
+			return true;
 		}
-		return true;
 	}
 
 	public bool OnStartDrag(GameObject gameObject, Vector3 startDrag)

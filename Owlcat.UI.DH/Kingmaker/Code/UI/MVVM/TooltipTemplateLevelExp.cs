@@ -20,7 +20,7 @@ public class TooltipTemplateLevelExp : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(m_LevelGlossaryEntry?.Title, TooltipTitleType.H1);
+		yield return new BrickTitleVM(m_LevelGlossaryEntry?.Title, TooltipTitleType.H1);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -30,15 +30,17 @@ public class TooltipTemplateLevelExp : TooltipBaseTemplate
 		int currentValue = m_ExperienceVM.CurrentExp.CurrentValue;
 		int currentValue2 = m_ExperienceVM.NextLevelExp.CurrentValue;
 		int num = currentValue2 - currentValue;
-		list.Add(new TooltipBricksGroupStart());
-		list.Add(new TooltipBrickIconStatValue(tooltips.CurrentLevelExperience, $"{currentValue}"));
-		list.Add(new TooltipBrickIconStatValue(tooltips.NextLevelExperience, $"{currentValue2}"));
+		List<TooltipBrickVM> list2 = new List<TooltipBrickVM>
+		{
+			new BrickIconStatValueVM(new TextValueAddElement(tooltips.CurrentLevelExperience, currentValue.ToString())),
+			new BrickIconStatValueVM(new TextValueAddElement(tooltips.NextLevelExperience, currentValue2.ToString()))
+		};
 		if (num > 0)
 		{
-			list.Add(new TooltipBrickIconStatValue(tooltips.TillNextLevelExperience, $"{num}"));
+			list2.Add(new BrickIconStatValueVM(new TextValueAddElement(tooltips.TillNextLevelExperience, num.ToString())));
 		}
-		list.Add(new TooltipBricksGroupEnd());
-		list.Add(new TooltipBrickText(m_LevelGlossaryEntry?.GetDescription()));
+		list.Add(new BricksGroupOneColumnVM(list2));
+		list.Add(new BrickTextVM(m_LevelGlossaryEntry?.GetDescription()));
 		return list;
 	}
 }

@@ -19,7 +19,9 @@ public class CharGenLevelUpSelectorBaseItemVM : SelectionGroupEntityVM
 
 	protected CharGenLevelUpNestedListHeaderVM m_ParentNodeVm;
 
-	protected readonly ReactiveProperty<bool> m_IsLiked = new ReactiveProperty<bool>(value: false);
+	protected readonly ReactiveProperty<bool> m_IsFavorite = new ReactiveProperty<bool>(value: false);
+
+	protected readonly ReactiveProperty<bool> m_CanShowFavorite = new ReactiveProperty<bool>(value: false);
 
 	protected readonly ReactiveProperty<bool> m_IsRecommended = new ReactiveProperty<bool>(value: false);
 
@@ -41,7 +43,9 @@ public class CharGenLevelUpSelectorBaseItemVM : SelectionGroupEntityVM
 
 	public ReadOnlyReactiveProperty<bool> IsShowed => m_IsShowed;
 
-	public ReadOnlyReactiveProperty<bool> IsLiked => m_IsLiked;
+	public ReadOnlyReactiveProperty<bool> IsFavorite => m_IsFavorite;
+
+	public ReadOnlyReactiveProperty<bool> CanShowFavorite => m_CanShowFavorite;
 
 	public ReadOnlyReactiveProperty<bool> IsRecommended => m_IsRecommended;
 
@@ -65,14 +69,15 @@ public class CharGenLevelUpSelectorBaseItemVM : SelectionGroupEntityVM
 
 	public BlueprintScriptableObject Blueprint => m_Blueprint;
 
-	public CharGenLevelUpSelectorBaseItemVM(IUIDataProvider uiData, Action<CharGenLevelUpSelectorBaseItemVM> onHover, CharGenLevelUpNestedListHeaderVM parentNodeVm = null)
-		: base(allowSwitchOff: true)
+	public CharGenLevelUpSelectorBaseItemVM(IUIDataProvider uiData, Action<CharGenLevelUpSelectorBaseItemVM> onHover, CharGenLevelUpNestedListHeaderVM parentNodeVm = null, bool allowSwitchOff = true, TooltipBaseTemplate customTooltip = null)
+		: base(allowSwitchOff)
 	{
 		m_OnHover = onHover;
 		SetParentNode(parentNodeVm);
+		Template = customTooltip;
 		m_Label.Value = uiData?.Name;
-		m_Sprite.Value = uiData?.Icon ?? UIUtilityText.GetIconByText(uiData?.NameForAcronym);
-		m_Acronym.Value = ((uiData?.Icon == null) ? UIUtilityAbilities.GetAbilityAcronym(uiData?.Name) : string.Empty);
+		m_Sprite.Value = uiData?.Icon.GetDefaultIfNull(DefaultImageType.Ability);
+		m_Acronym.Value = ((m_Sprite.Value == null) ? UIUtilityAbilities.GetAbilityAcronym(uiData?.Name) : string.Empty);
 		if (uiData is BlueprintFeature blueprintFeature)
 		{
 			m_TalentIconInfo.Value = blueprintFeature?.TalentIconInfo;
@@ -102,6 +107,17 @@ public class CharGenLevelUpSelectorBaseItemVM : SelectionGroupEntityVM
 	public virtual void UpdateAccessibility(LEVEL_UP_ITEM_STATE value)
 	{
 		m_State.Value = value;
+	}
+
+	public void SetFavorite(bool canShowFavorite, bool isFavorite)
+	{
+		m_CanShowFavorite.Value = canShowFavorite;
+		m_IsFavorite.Value = isFavorite;
+	}
+
+	public void ToggleFavorite()
+	{
+		m_IsFavorite.Value = !m_IsFavorite.Value;
 	}
 
 	protected override void DoSelectMe()

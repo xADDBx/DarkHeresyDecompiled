@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Gameplay.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -54,5 +56,16 @@ public class AbilityCasterHasFacts : BlueprintComponent, IAbilityCasterRestricti
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		return LocalizedTexts.Instance.Reasons.UnavailableGeneric;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		CasterRestrictionsStrings restrictionsStrings = ConfigRoot.Instance.LocalizedTexts.CasterRestrictionsStrings;
+		BlueprintUnitFactReference[] facts = m_Facts;
+		foreach (BlueprintUnitFactReference blueprintUnitFactReference in facts)
+		{
+			bool hasFact = caster.Facts.Contains((BlueprintUnitFact)blueprintUnitFactReference);
+			yield return restrictionsStrings.GetHasFactRestrictionText(blueprintUnitFactReference, hasFact);
+		}
 	}
 }

@@ -20,6 +20,8 @@ public class DialogAnswerGraphicConfig
 
 	public Color32 DialogExchangeSpriteColor;
 
+	public Color32 DialogCloseCaseSpriteColor;
+
 	public Color32 DiceSpriteColor;
 
 	public string ConditionSuccessSpriteID => "UI_Dialog_ConditionSuccess";
@@ -29,6 +31,8 @@ public class DialogAnswerGraphicConfig
 	public string DialogExchangeSpriteID => "UI_DialogExchange";
 
 	public string DialogDetectiveRelatedItemsSpriteID => "UI_DialogDetective";
+
+	public string DialogDetectiveCloseCaseSpriteID => "UI_Dialog_CloseCase";
 
 	public string DiceSpriteID => "UI_Dice";
 }

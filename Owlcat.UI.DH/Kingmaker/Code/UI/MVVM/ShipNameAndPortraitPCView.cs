@@ -79,7 +79,7 @@ public class ShipNameAndPortraitPCView : CharInfoComponentView<ShipNameAndPortra
 
 	protected override void OnHide(UnityAction onHideCallback = null)
 	{
-		UISounds.Instance.Sounds.Character.CharacterStatsHide.Play();
+		ServiceWindowsSounds.Instance.Character.StatsHide.Play();
 		m_ShipPartAnimator.DisappearAnimation();
 	}
 }

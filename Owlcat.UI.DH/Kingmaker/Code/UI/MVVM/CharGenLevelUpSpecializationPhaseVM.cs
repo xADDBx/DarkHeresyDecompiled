@@ -6,39 +6,33 @@ using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.DotNetExtensions;
 using R3;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenLevelUpSpecializationPhaseVM : CharGenLevelUpBaseSelectionPhaseVM<CharGenLevelUpSelectorBaseItemVM>
 {
-	public CharGenLevelUpSpecializationPhaseVM(CharGenContext charGenContext, SelectionStateFeature selectionFeature, InfoSectionVM infoSectionVM, int rank = 0)
-		: base(charGenContext, CharGenPhaseType.LevelUpSpecialization, selectionFeature, infoSectionVM, rank)
+	public CharGenLevelUpSpecializationPhaseVM(CharGenContext charGenContext, SelectionStateFeature selectionFeature, InfoSectionVM infoSectionVM, int rank = 0, CharGenPhaseType phaseType = CharGenPhaseType.LevelUpSpecialization)
+		: base(charGenContext, phaseType, selectionFeature, infoSectionVM, rank)
 	{
 	}
 
 	protected override void CreateItemList()
 	{
-		if (CareerPath == null || base.Unit == null)
-		{
-			Debug.LogError("CareerPath or Unit is null");
-			return;
-		}
 		List<CharGenLevelUpSelectorSpecializationItemVM> list = (from x in SelectionFeature.Items
 			group x by x.Feature into g
 			select g.First() into f
-			select new CharGenLevelUpSelectorSpecializationItemVM(f, OnItemHovered)).ToList();
+			select new CharGenLevelUpSelectorSpecializationItemVM(f, OnItemHovered, m_CharGenContext.LevelUpManager.CurrentValue)).ToList();
 		list.ForEach(delegate(CharGenLevelUpSelectorSpecializationItemVM i)
 		{
 			UpdateItem(i);
 		});
 		(from i in list
-			orderby i.State.CurrentValue, i.Label.CurrentValue
+			orderby i.State.CurrentValue, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.Label.CurrentValue
 			select i).ForEach(delegate(CharGenLevelUpSelectorSpecializationItemVM i)
 		{
 			AddItem(i);
 		});
-		if (base.SelectedItem.CurrentValue != null)
+		if (base.SelectedItem.CurrentValue != null && !list.Contains(base.SelectedItem.CurrentValue))
 		{
 			SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
 		}
@@ -79,6 +73,7 @@ public class CharGenLevelUpSpecializationPhaseVM : CharGenLevelUpBaseSelectionPh
 		itemVM.RefreshView.Execute(default(Unit));
 		if (itemVM is CharGenLevelUpSelectorSpecializationItemVM charGenLevelUpSelectorSpecializationItemVM)
 		{
+			charGenLevelUpSelectorSpecializationItemVM.SetFavorite(m_CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp, UnitSaveData.FavoriteFeatures.Contains(charGenLevelUpSelectorSpecializationItemVM.Blueprint.AssetGuidThreadSafe));
 			if (SelectionFeature.CanSelect(charGenLevelUpSelectorSpecializationItemVM.FeatureSelectionItem))
 			{
 				charGenLevelUpSelectorSpecializationItemVM.UpdateAccessibility(LEVEL_UP_ITEM_STATE.Available);
@@ -87,5 +82,10 @@ public class CharGenLevelUpSpecializationPhaseVM : CharGenLevelUpBaseSelectionPh
 			bool flag = SelectionFeature.GetCalculatedPrerequisite(charGenLevelUpSelectorSpecializationItemVM.FeatureSelectionItem) is CalculatedPrerequisiteMaxRankNotReached;
 			charGenLevelUpSelectorSpecializationItemVM.UpdateAccessibility((!flag) ? LEVEL_UP_ITEM_STATE.NotAvailable : LEVEL_UP_ITEM_STATE.AlreadyExist);
 		}
+	}
+
+	protected void TrySelectFirstValidItem()
+	{
+		Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM x) => x is CharGenLevelUpSelectorSpecializationItemVM charGenLevelUpSelectorSpecializationItemVM && SelectionFeature.CanSelect(charGenLevelUpSelectorSpecializationItemVM.FeatureSelectionItem))?.SetSelected(state: true);
 	}
 }

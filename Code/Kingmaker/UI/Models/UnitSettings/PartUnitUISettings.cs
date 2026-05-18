@@ -6,31 +6,45 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.StateHasher.Hashers;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
-using StateHasher.Core.Hashers;
-using UnityEngine;
 
 namespace Kingmaker.UI.Models.UnitSettings;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnitUISettings>
+[HashNoGenerate]
+public class PartUnitUISettings : BaseUnitPart, IOwlPackable<PartUnitUISettings>
 {
 	[JsonProperty]
 	[OwlPackInclude]
-	private bool m_ShowHelm = true;
+	private bool m_ShowHelmet = true;
 
 	[JsonProperty]
 	[OwlPackInclude]
-	private bool m_ShowHelmAboveAll;
+	private bool m_ShowArmor = true;
 
 	[JsonProperty]
 	[OwlPackInclude]
 	private bool m_ShowBackpack = true;
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_ShowCloak = true;
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_ShowGloves = true;
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_ShowBoots = true;
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private bool m_ShowHelmAboveAll;
 
 	[JsonProperty]
 	[CanBeNull]
@@ -46,11 +60,15 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 	{
 		Name = "PartUnitUISettings",
 		OldNames = null,
-		Fields = new FieldInfo[5]
+		Fields = new FieldInfo[9]
 		{
-			new FieldInfo("m_ShowHelm", typeof(bool)),
-			new FieldInfo("m_ShowHelmAboveAll", typeof(bool)),
+			new FieldInfo("m_ShowHelmet", typeof(bool)),
+			new FieldInfo("m_ShowArmor", typeof(bool)),
 			new FieldInfo("m_ShowBackpack", typeof(bool)),
+			new FieldInfo("m_ShowCloak", typeof(bool)),
+			new FieldInfo("m_ShowGloves", typeof(bool)),
+			new FieldInfo("m_ShowBoots", typeof(bool)),
+			new FieldInfo("m_ShowHelmAboveAll", typeof(bool)),
 			new FieldInfo("m_Portrait", typeof(BlueprintPortrait)),
 			new FieldInfo("m_CustomPortrait", typeof(PortraitData))
 		}
@@ -60,14 +78,94 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 	{
 		get
 		{
-			return m_ShowHelm;
+			return m_ShowHelmet;
 		}
 		set
 		{
-			if (m_ShowHelm != value)
+			if (m_ShowHelmet != value)
 			{
-				m_ShowHelm = value;
+				m_ShowHelmet = value;
 				this.OnChangedHelmetVisibility?.Invoke();
+			}
+		}
+	}
+
+	public bool ShowArmor
+	{
+		get
+		{
+			return m_ShowArmor;
+		}
+		set
+		{
+			if (m_ShowArmor != value)
+			{
+				m_ShowArmor = value;
+				this.OnChangedArmorVisibility?.Invoke();
+			}
+		}
+	}
+
+	public bool ShowBackpack
+	{
+		get
+		{
+			return m_ShowBackpack;
+		}
+		set
+		{
+			if (m_ShowBackpack != value)
+			{
+				m_ShowBackpack = value;
+				this.OnChangedBackpackVisibility?.Invoke();
+			}
+		}
+	}
+
+	public bool ShowCloak
+	{
+		get
+		{
+			return m_ShowCloak;
+		}
+		set
+		{
+			if (m_ShowCloak != value)
+			{
+				m_ShowCloak = value;
+				this.OnChangedCloakVisibility?.Invoke();
+			}
+		}
+	}
+
+	public bool ShowGloves
+	{
+		get
+		{
+			return m_ShowGloves;
+		}
+		set
+		{
+			if (m_ShowGloves != value)
+			{
+				m_ShowGloves = value;
+				this.OnChangedGlovesVisibility?.Invoke();
+			}
+		}
+	}
+
+	public bool ShowBoots
+	{
+		get
+		{
+			return m_ShowBoots;
+		}
+		set
+		{
+			if (m_ShowBoots != value)
+			{
+				m_ShowBoots = value;
+				this.OnChangedBootsVisibility?.Invoke();
 			}
 		}
 	}
@@ -88,19 +186,27 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 		}
 	}
 
-	public bool ShowBackpack
+	public bool ShowHood
 	{
 		get
 		{
-			return m_ShowBackpack;
+			return false;
 		}
 		set
 		{
-			if (m_ShowBackpack != value)
-			{
-				m_ShowBackpack = value;
-				this.OnChangedBackpackVisibility?.Invoke();
-			}
+			this.OnChangedHoodVisibility?.Invoke();
+		}
+	}
+
+	public bool ShowBaseHeadwear
+	{
+		get
+		{
+			return false;
+		}
+		set
+		{
+			this.OnChangedBaseHeadwearVisibility?.Invoke();
 		}
 	}
 
@@ -144,11 +250,23 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 		}
 	}
 
-	private event Action OnChangedBackpackVisibility;
-
 	private event Action OnChangedHelmetVisibility;
 
+	private event Action OnChangedArmorVisibility;
+
+	private event Action OnChangedBackpackVisibility;
+
+	private event Action OnChangedCloakVisibility;
+
+	private event Action OnChangedGlovesVisibility;
+
+	private event Action OnChangedBootsVisibility;
+
 	private event Action OnChangedHelmetVisibilityAboveAll;
+
+	private event Action OnChangedHoodVisibility;
+
+	private event Action OnChangedBaseHeadwearVisibility;
 
 	public void SetPortrait(BlueprintPortrait portrait)
 	{
@@ -162,7 +280,7 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 			m_Portrait = portrait;
 			m_CustomPortrait = null;
 		}
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitPortraitChangedHandler>)delegate(IUnitPortraitChangedHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitPortraitChangedHandler>)delegate(IUnitPortraitChangedHandler h)
 		{
 			h.HandlePortraitChanged();
 		}, isCheckRuntime: true);
@@ -174,7 +292,7 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 		m_Portrait = null;
 		if (raiseEvent)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitPortraitChangedHandler>)delegate(IUnitPortraitChangedHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitPortraitChangedHandler>)delegate(IUnitPortraitChangedHandler h)
 			{
 				h.HandlePortraitChanged();
 			}, isCheckRuntime: true);
@@ -185,15 +303,10 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 	{
 		m_CustomPortrait = portraitData;
 		m_Portrait = portrait;
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitPortraitChangedHandler>)delegate(IUnitPortraitChangedHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUnitPortraitChangedHandler>)delegate(IUnitPortraitChangedHandler h)
 		{
 			h.HandlePortraitChanged();
 		}, isCheckRuntime: true);
-	}
-
-	public void SubscribeOnBackpackVisibilityChange(Action subscriber)
-	{
-		OnChangedBackpackVisibility += subscriber;
 	}
 
 	public void SubscribeOnHelmetVisibilityChange(Action subscriber)
@@ -201,9 +314,24 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 		OnChangedHelmetVisibility += subscriber;
 	}
 
-	public void SubscribeOnHelmetVisibilityAboveAllChange(Action subscriber)
+	public void UnsubscribeFromHelmetVisibilityChange(Action subscriber)
 	{
-		OnChangedHelmetVisibilityAboveAll += subscriber;
+		OnChangedHelmetVisibility -= subscriber;
+	}
+
+	public void SubscribeOnArmorVisibilityChange(Action subscriber)
+	{
+		OnChangedArmorVisibility += subscriber;
+	}
+
+	public void UnsubscribeFromArmorVisibilityChange(Action subscriber)
+	{
+		OnChangedArmorVisibility -= subscriber;
+	}
+
+	public void SubscribeOnBackpackVisibilityChange(Action subscriber)
+	{
+		OnChangedBackpackVisibility += subscriber;
 	}
 
 	public void UnsubscribeFromBackpackVisibilityChange(Action subscriber)
@@ -211,29 +339,44 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 		OnChangedBackpackVisibility -= subscriber;
 	}
 
-	public void UnsubscribeFromHelmetVisibilityChange(Action subscriber)
+	public void SubscribeOnCloakVisibilityChange(Action subscriber)
 	{
-		OnChangedHelmetVisibility -= subscriber;
+		OnChangedCloakVisibility += subscriber;
+	}
+
+	public void UnsubscribeFromCapeVisibilityChange(Action subscriber)
+	{
+		OnChangedCloakVisibility -= subscriber;
+	}
+
+	public void SubscribeOnGlovesVisibilityChange(Action subscriber)
+	{
+		OnChangedGlovesVisibility += subscriber;
+	}
+
+	public void UnsubscribeFromGlovesVisibilityChange(Action subscriber)
+	{
+		OnChangedGlovesVisibility -= subscriber;
+	}
+
+	public void SubscribeOnBootsVisibilityChange(Action subscriber)
+	{
+		OnChangedBootsVisibility += subscriber;
+	}
+
+	public void UnsubscribeFromBootsVisibilityChange(Action subscriber)
+	{
+		OnChangedBootsVisibility -= subscriber;
+	}
+
+	public void SubscribeOnHelmetVisibilityAboveAllChange(Action subscriber)
+	{
+		OnChangedHelmetVisibilityAboveAll += subscriber;
 	}
 
 	public void UnsubscribeFromHelmetVisibilityAboveAllChange(Action subscriber)
 	{
 		OnChangedHelmetVisibilityAboveAll -= subscriber;
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		result.Append(ref m_ShowHelm);
-		result.Append(ref m_ShowHelmAboveAll);
-		result.Append(ref m_ShowBackpack);
-		Hash128 val2 = SimpleBlueprintHasher.GetHash128(m_Portrait);
-		result.Append(ref val2);
-		Hash128 val3 = ClassHasher<PortraitData>.GetHash128(m_CustomPortrait);
-		result.Append(ref val3);
-		return result;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
@@ -253,11 +396,15 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 		}
 		ushort type = state.TypeLibrary.RegisterType<PartUnitUISettings>(OwlPackTypeInfo);
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
-		formatter.UnmanagedField(0, "m_ShowHelm", ref m_ShowHelm, state);
-		formatter.UnmanagedField(1, "m_ShowHelmAboveAll", ref m_ShowHelmAboveAll, state);
+		formatter.UnmanagedField(0, "m_ShowHelmet", ref m_ShowHelmet, state);
+		formatter.UnmanagedField(1, "m_ShowArmor", ref m_ShowArmor, state);
 		formatter.UnmanagedField(2, "m_ShowBackpack", ref m_ShowBackpack, state);
-		formatter.Field(3, "m_Portrait", ref m_Portrait, state);
-		formatter.Field(4, "m_CustomPortrait", ref m_CustomPortrait, state);
+		formatter.UnmanagedField(3, "m_ShowCloak", ref m_ShowCloak, state);
+		formatter.UnmanagedField(4, "m_ShowGloves", ref m_ShowGloves, state);
+		formatter.UnmanagedField(5, "m_ShowBoots", ref m_ShowBoots, state);
+		formatter.UnmanagedField(6, "m_ShowHelmAboveAll", ref m_ShowHelmAboveAll, state);
+		formatter.Field(7, "m_Portrait", ref m_Portrait, state);
+		formatter.Field(8, "m_CustomPortrait", ref m_CustomPortrait, state);
 		formatter.EndObject();
 	}
 
@@ -276,18 +423,30 @@ public class PartUnitUISettings : BaseUnitPart, IHashable, IOwlPackable<PartUnit
 				formatter.SkipField(size);
 				break;
 			case 0:
-				m_ShowHelm = formatter.ReadUnmanaged<bool>(state);
+				m_ShowHelmet = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 1:
-				m_ShowHelmAboveAll = formatter.ReadUnmanaged<bool>(state);
+				m_ShowArmor = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 2:
 				m_ShowBackpack = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 3:
-				m_Portrait = formatter.ReadPackable<BlueprintPortrait>(state);
+				m_ShowCloak = formatter.ReadUnmanaged<bool>(state);
 				break;
 			case 4:
+				m_ShowGloves = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 5:
+				m_ShowBoots = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 6:
+				m_ShowHelmAboveAll = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 7:
+				m_Portrait = formatter.ReadPackable<BlueprintPortrait>(state);
+				break;
+			case 8:
 				m_CustomPortrait = formatter.ReadPackable<PortraitData>(state);
 				break;
 			}

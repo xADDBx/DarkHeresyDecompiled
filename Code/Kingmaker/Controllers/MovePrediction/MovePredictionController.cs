@@ -1,9 +1,8 @@
-using System;
-using Code.Visual.Animation;
 using Core.Cheats;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Controllers.Net;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
@@ -14,7 +13,6 @@ using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.GeometryExtensions;
 using Kingmaker.View;
 using Kingmaker.Visual.Animation.Kingmaker;
-using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
@@ -49,19 +47,7 @@ public class MovePredictionController : IControllerTick, IController, IControlle
 
 		public void Predict(OutputData previousOutput, ref Parameters parameters, float deltaTime)
 		{
-			UnitMovementAgentContinuous unitMovementAgentContinuous = Input.Unit.ToBaseUnitEntity().View.MovementAgent as UnitMovementAgentContinuous;
-			if (unitMovementAgentContinuous != null)
-			{
-				parameters.Acceleration = unitMovementAgentContinuous.Acceleration;
-				parameters.AngularSpeed = unitMovementAgentContinuous.AngularSpeedWhenMove;
-				parameters.Corpulence = unitMovementAgentContinuous.Corpulence;
-			}
-			else
-			{
-				parameters.Acceleration = 10f;
-				parameters.AngularSpeed = 220f;
-				parameters.Corpulence = 0.5f * GraphParamsMechanicsCache.GridCellSize * 0.55f;
-			}
+			parameters.AngularSpeed = 220f;
 			Output = previousOutput;
 			TickMovementStatic(Input, ref Output, parameters, deltaTime);
 			Predicted = true;
@@ -263,8 +249,14 @@ public class MovePredictionController : IControllerTick, IController, IControlle
 		oldOutput = new OutputData
 		{
 			Position = unit.Position,
-			Direction = ((unit.MovementAgent != null && unit.MovementAgent.IsReallyMoving) ? unit.MovementAgent.FaceDirection : unit.OrientationDirection.To2D())
+			Direction = ((unit.MovementAgent != null && unit.IsReallyMoving) ? unit.MovementAgent.FaceDirection : unit.OrientationDirection.To2D())
 		};
+		UnitMovementAgent movementAgent = unit.MovementAgent;
+		if (movementAgent != null)
+		{
+			m_LastParameters.Acceleration = movementAgent.Acceleration;
+			m_LastParameters.Corpulence = movementAgent.Corpulence;
+		}
 		int num3 = 0;
 		for (int j = 0; j < num; j++)
 		{
@@ -335,15 +327,15 @@ public class MovePredictionController : IControllerTick, IController, IControlle
 		}
 		Data value2 = m_InputDataBuffer[num];
 		BaseUnitEntity baseUnitEntity = value2.Input.Unit.ToBaseUnitEntity();
-		UnitMovementAgentContinuous unitMovementAgentContinuous = baseUnitEntity.MovementAgent as UnitMovementAgentContinuous;
+		UnitMovementAgent movementAgent = baseUnitEntity.MovementAgent;
 		OutputData outputData = default(OutputData);
 		outputData.Position = baseUnitEntity.Position;
-		outputData.Direction = ((baseUnitEntity.MovementAgent != null && baseUnitEntity.MovementAgent.IsReallyMoving) ? baseUnitEntity.MovementAgent.FaceDirection : baseUnitEntity.OrientationDirection.To2D());
+		outputData.Direction = ((baseUnitEntity.MovementAgent != null && baseUnitEntity.IsReallyMoving) ? baseUnitEntity.MovementAgent.FaceDirection : baseUnitEntity.OrientationDirection.To2D());
 		outputData.Speed = ((baseUnitEntity.MovementAgent != null) ? baseUnitEntity.MovementAgent.Speed : 0f);
-		outputData.EnableSlidingAssist = unitMovementAgentContinuous != null && unitMovementAgentContinuous.EnableSlidingAssist;
-		outputData.CurrentSlidingAngle = ((unitMovementAgentContinuous != null) ? unitMovementAgentContinuous.CurrentSlidingAngle : 0f);
-		outputData.SlidingAssistDirection = ((unitMovementAgentContinuous != null) ? unitMovementAgentContinuous.SlidingAssistDirection : 0);
-		outputData.CurrentNode = ((unitMovementAgentContinuous != null) ? unitMovementAgentContinuous.CurrentNode : null);
+		outputData.EnableSlidingAssist = movementAgent != null && movementAgent.EnableSlidingAssist;
+		outputData.CurrentSlidingAngle = ((movementAgent != null) ? movementAgent.CurrentSlidingAngle : 0f);
+		outputData.SlidingAssistDirection = ((movementAgent != null) ? movementAgent.SlidingAssistDirection : 0);
+		outputData.CurrentNode = ((movementAgent != null) ? movementAgent.CurrentNode : null);
 		outputData.Time = value2.Output.Time;
 		outputData.StickDeflection = value2.Output.StickDeflection;
 		OutputData outputData2 = outputData;
@@ -385,7 +377,7 @@ public class MovePredictionController : IControllerTick, IController, IControlle
 			return;
 		}
 		BaseUnitEntity baseUnitEntity = inputData.Unit.ToBaseUnitEntity();
-		UnitEntityView view = baseUnitEntity.View;
+		IUnitEntityView view = baseUnitEntity.View;
 		UnitAnimationManager unitAnimationManager = view.AnimationManager.Or(null);
 		if (((object)unitAnimationManager != null && unitAnimationManager.IsPreventingMovement) || (view.MovementAgent.Or(null)?.NodeLinkTraverser?.IsTraverseNow).GetValueOrDefault() || view.IsCommandsPreventMovement)
 		{
@@ -403,23 +395,13 @@ public class MovePredictionController : IControllerTick, IController, IControlle
 				outputData.StickDeflection = 0f;
 				return;
 			}
-			float maxSpeed = GetMaxSpeed(baseUnitEntity, inputData.Deflection, outputData.Time);
-			maxSpeed = UnitMovementAgentContinuous.GetSpeedByControllerStickDeflection(inputData.Deflection, maxSpeed);
-			Vector2 direction = inputData.Direction;
-			Vector2 vector = direction;
-			float speed = ((Mathf.Abs(maxSpeed - outputData.Speed) < parameters.Acceleration * deltaTime) ? maxSpeed : (outputData.Speed + Mathf.Sign(maxSpeed - outputData.Speed) * parameters.Acceleration * deltaTime));
-			if (outputData.EnableSlidingAssist)
-			{
-				UnitMovementAgentContinuous.UpdateSliding(outputData.Position, vector, deltaTime, ref outputData.SlidingAssistDirection, ref outputData.CurrentSlidingAngle);
-				vector = vector.RotateAroundPoint(Vector2.zero, outputData.CurrentSlidingAngle);
-			}
-			vector = Vector2.Lerp(direction, vector, 0.5f);
-			float angularSpeed = parameters.AngularSpeed;
-			direction = Vector3.RotateTowards(direction, vector, angularSpeed * deltaTime * (MathF.PI / 180f), 1f);
+			float speedByControllerStickDeflection = DirectionalMovementStrategy.GetSpeedByControllerStickDeflection(baseUnitEntity.View.AsAbstractUnitEntityView(), inputData.Deflection);
+			Vector2 vector = CalcMoveDirection(outputData);
+			float speed = ((Mathf.Abs(speedByControllerStickDeflection - outputData.Speed) < parameters.Acceleration * deltaTime) ? speedByControllerStickDeflection : (outputData.Speed + Mathf.Sign(speedByControllerStickDeflection - outputData.Speed) * parameters.Acceleration * deltaTime));
 			outputData.Speed = speed;
-			Vector3 vector2 = direction.To3D() * outputData.Speed;
+			Vector3 vector2 = vector.To3D() * outputData.Speed;
 			GridNodeBase targetNode;
-			Vector3 vector3 = UnitMovementAgentBase.Move(outputData.Position, vector2 * deltaTime, parameters.Corpulence, out targetNode);
+			Vector3 vector3 = UnitMovementAgent.Move(outputData.Position, vector2 * deltaTime, parameters.Corpulence, out targetNode);
 			Vector3 vector4 = vector3 - (outputData.Position + vector2 * deltaTime);
 			if (Mathf.Abs(vector4.x) < 0.01f && Mathf.Abs(vector4.z) < 0.01f)
 			{
@@ -436,39 +418,21 @@ public class MovePredictionController : IControllerTick, IController, IControlle
 				outputData.Position = vector3;
 				outputData.CurrentNode = targetNode;
 			}
-			outputData.Direction = direction;
-			bool flag = GetMovementType(outputData.StickDeflection) != GetMovementType(inputData.Deflection) && GetMovementType(inputData.Deflection) != WalkSpeedType.Sprint;
-			flag = false;
+			outputData.Direction = vector;
+			bool flag = false;
 			outputData.Time = (flag ? 0f : Mathf.Min(outputData.Time + deltaTime, 9f));
 			outputData.StickDeflection = inputData.Deflection;
 		}
-		static float GetMaxSpeed(BaseUnitEntity unit, float stickDeflection, float time)
+		Vector2 CalcMoveDirection(OutputData outputData)
 		{
-			UnitAnimationManager maybeAnimationManager = unit.MaybeAnimationManager;
-			if (maybeAnimationManager == null)
+			if (!outputData.EnableSlidingAssist)
 			{
-				return 0f;
+				return outputData.Direction;
 			}
-			UnitAnimationActionLocomotion unitAnimationActionLocomotion = maybeAnimationManager.GetAction(UnitAnimationType.LocoMotion) as UnitAnimationActionLocomotion;
-			if (unitAnimationActionLocomotion == null)
-			{
-				return 0f;
-			}
-			UnitAnimationActionLocomotion.WalkingTypeData walkingTypeData = unitAnimationActionLocomotion.GetWalkingTypeData(unitAnimationActionLocomotion.NonCombatLocomotionData, GetMovementType(stickDeflection));
-			float b = ((time > 0f) ? walkingTypeData.Parameters.Speed : 0f);
-			return Mathf.Max(0.01f, b);
-		}
-		static WalkSpeedType GetMovementType(float multiplier)
-		{
-			if (multiplier > 0.95f)
-			{
-				return WalkSpeedType.Sprint;
-			}
-			if (multiplier > 0.7f)
-			{
-				return WalkSpeedType.Run;
-			}
-			return WalkSpeedType.Walk;
+			Vector2 direction = outputData.Direction;
+			DirectionalMovementStrategy.UpdateSliding(outputData.Position, direction, deltaTime, ref outputData.SlidingAssistDirection, ref outputData.CurrentSlidingAngle);
+			direction = direction.RotateAroundPoint(Vector2.zero, outputData.CurrentSlidingAngle);
+			return Vector2.Lerp(outputData.Direction, direction, 0.5f);
 		}
 	}
 }

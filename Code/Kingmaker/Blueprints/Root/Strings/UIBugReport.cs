@@ -63,4 +63,8 @@ public class UIBugReport
 	public LocalizedString OpenJiraTask;
 
 	public LocalizedString OpenMet;
+
+	public LocalizedString CannotSendBecauseEmail;
+
+	public LocalizedString CannotSendBecausePrivacy;
 }

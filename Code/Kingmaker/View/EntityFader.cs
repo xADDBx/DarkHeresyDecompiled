@@ -36,6 +36,8 @@ public class EntityFader : LateUpdateableBehaviour
 
 	public bool AnimationDisabled { get; private set; }
 
+	public bool IsFading => m_CompleteEventRoutine != null;
+
 	public EntityViewBase Entity
 	{
 		get

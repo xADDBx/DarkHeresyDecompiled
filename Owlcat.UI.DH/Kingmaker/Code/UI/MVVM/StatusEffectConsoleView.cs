@@ -3,10 +3,10 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
-public class StatusEffectConsoleView : StatusEffectBaseView, IConsoleNavigationEntity, IConsoleEntity, IHasTooltipTemplate
+public sealed class StatusEffectConsoleView : StatusEffectBaseView, IConsoleNavigationEntity, IConsoleEntity, IHasTooltipTemplate
 {
 	[SerializeField]
-	protected OwlcatMultiSelectable m_Selectable;
+	private OwlcatMultiSelectable m_Selectable;
 
 	public void SetFocus(bool value)
 	{

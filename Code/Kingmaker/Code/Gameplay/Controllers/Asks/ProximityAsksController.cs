@@ -47,7 +47,7 @@ public class ProximityAsksController : IControllerTick, IController, IController
 				abstractUnitEntity.View.Asks?.DetectiveSearch.Schedule();
 				break;
 			case ProximityAskType.DetectiveReconstructionFind:
-				abstractUnitEntity.View.Asks?.DetectiveReconstructionFind.Schedule();
+				abstractUnitEntity.View.Asks?.DetectiveReconstructionFound.Schedule();
 				break;
 			}
 		}

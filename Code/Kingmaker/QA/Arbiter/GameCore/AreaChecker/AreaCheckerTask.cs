@@ -20,11 +20,12 @@ public class AreaCheckerTask : ArbiterCheckerTask
 	{
 		m_Arguments = arguments;
 		m_AreaCheckerComponent = areaCheckerComponent;
-		base.Status = "Loading " + areaCheckerComponent.OwnerBlueprint.name;
+		base.Status = "Processing " + areaCheckerComponent.OwnerBlueprint.name;
 	}
 
 	protected override IEnumerable<ArbiterTask> CheckerRoutine(GeneralProbeData probeData)
 	{
+		yield return new WaitForAvailabilityTask(this);
 		ArbiterService.Instance.MeasureProvider.StartProfilerRecorders();
 		yield return new SetScreenResolutionTask(m_Arguments, this);
 		yield return new ResetToMainMenuTask(this);

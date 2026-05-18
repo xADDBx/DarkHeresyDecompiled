@@ -12,7 +12,7 @@ public class ContextActionRequestEndTurn : ContextAction
 
 	protected override void RunAction()
 	{
-		if (Game.Instance.Controllers.TurnController.CurrentUnit == base.Context.MaybeCaster)
+		if (Game.Instance.Controllers.TurnController.CurrentUnit == base.Context.Caster)
 		{
 			Game.Instance.Controllers.TurnController.RequestEndTurn();
 		}

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Kingmaker.Code.Framework.Settings.UISettings;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Networking;
 using Kingmaker.Settings.Difficulty;
@@ -59,6 +60,8 @@ public class SettingsController : ISettingsController
 
 	public GameSettingsController GameSettingsController { get; private set; }
 
+	public SwitchJCMSSettingsController SwitchJCMSSettingsController { get; private set; }
+
 	public ISettingsProvider GeneralSettingsProvider { get; private set; }
 
 	public ISettingsProvider InSaveSettingsProvider
@@ -97,6 +100,7 @@ public class SettingsController : ISettingsController
 		DisplaySettingsController = new DisplaySettingsController();
 		AccessiabilitySettingsController = new AccessiabilitySettingsController();
 		GameSettingsController = new GameSettingsController();
+		SwitchJCMSSettingsController = new SwitchJCMSSettingsController();
 		if (m_CanInitializeSoundController && SoundSettingsController == null)
 		{
 			SoundSettingsController = new SoundSettingsController();
@@ -250,6 +254,8 @@ public class SettingsController : ISettingsController
 			{
 				ISettingsEntity settingsEntity = s_SettingsEntitiesForConfirmation[s_SettingsEntitiesForConfirmation.Count - 1];
 				s_SettingsEntitiesForConfirmation.RemoveAt(s_SettingsEntitiesForConfirmation.Count - 1);
+				Metrics.Settings.SettingKey(settingsEntity.Key).From(settingsEntity.GetStringValue()).To(settingsEntity.GetTempStringValue())
+					.Send();
 				settingsEntity.ConfirmTempValue();
 				num++;
 				if (num >= 10000)

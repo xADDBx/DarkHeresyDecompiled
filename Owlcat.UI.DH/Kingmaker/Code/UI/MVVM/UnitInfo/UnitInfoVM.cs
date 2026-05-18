@@ -1,17 +1,26 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Code.View.UI.UIUtils;
+using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Gameplay.Blueprints;
+using Kingmaker.Code.Gameplay.Components;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.Gameplay.Parts;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
+using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules.Damage;
+using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
@@ -25,8 +34,14 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.UnitInfo;
 
-public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUnitInfoDetailsUIHandler, IAbilityTargetSelectionUIHandler, IDamageHandler, IHealingHandler, IModifiableValueChangedHandler, ISubscriber<IMechanicEntity>
+public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUnitInfoDetailsUIHandler, IAbilityTargetSelectionUIHandler, IDamageHandler, IHealingHandler, IActorStatChangedHandler, ISubscriber<IMechanicEntity>
 {
+	private HashSet<AbilityUIGroup> m_AbilityUIGroups = new HashSet<AbilityUIGroup>();
+
+	private readonly List<UnitInfoAbilityVM> m_AbilitiesList = new List<UnitInfoAbilityVM>();
+
+	private readonly ReactiveProperty<IReadOnlyList<UnitInfoAbilityVM>> m_Abilities;
+
 	private readonly ReactiveProperty<bool> m_IsHover = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<bool> m_IsPreciseAttack = new ReactiveProperty<bool>();
@@ -39,11 +54,15 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 
 	private readonly ReactiveProperty<Vector3> m_Position = new ReactiveProperty<Vector3>(Vector3.zero);
 
+	private readonly ReactiveProperty<bool> m_HasMorale = new ReactiveProperty<bool>();
+
 	private readonly PreciseAttackController m_PreciseAttackController;
 
 	private readonly CasterBuffsInfoBaseVM<UnitBuffUIInfo> m_CasterDamageBuffs;
 
 	private MechanicEntityUIState m_MechanicEntityUIState;
+
+	private UnitUIInspectSettings m_InspectSettings;
 
 	private IDisposable m_CollectAbilityPropertySubscription;
 
@@ -57,15 +76,17 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 
 	private Vector3 m_EntityPosition;
 
-	public readonly UnitBuffBlockVM BuffBlockVM;
+	public readonly string ConcentrationTitle;
 
-	public readonly ObservableList<(Sprite sprite, AbilityUIGroup group)> Abilities = new ObservableList<(Sprite, AbilityUIGroup)>();
+	public readonly UnitInfoBuffBlockVM BuffBlockVM;
 
 	public readonly UnitInfoReactiveData Data = new UnitInfoReactiveData(isCompareData: false);
 
 	public readonly UnitInfoReactiveData CompareData = new UnitInfoReactiveData(isCompareData: true);
 
 	public readonly Observable<Unit> BodyPartChanged;
+
+	public ReadOnlyReactiveProperty<IReadOnlyList<UnitInfoAbilityVM>> Abilities => m_Abilities;
 
 	public MechanicEntity Unit => m_MechanicEntityUIState?.MechanicEntity.MechanicEntity;
 
@@ -85,6 +106,8 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 
 	public ReadOnlyReactiveProperty<Vector3> Position => m_Position;
 
+	public ReadOnlyReactiveProperty<bool> HasMorale => m_HasMorale;
+
 	public Observable<CollectionAddEvent<UnitBuffUIInfo>> DamageBuffOnCasterAdded => m_CasterDamageBuffs.ObserveBuffAdded();
 
 	public Observable<Unit> DamageBuffsOnCasterCleared => m_CasterDamageBuffs.ObserveBuffsCleared();
@@ -101,6 +124,8 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 		}
 	}
 
+	public bool IsCountHpAsArmor => m_MechanicEntityUIState?.IsCountHpAsArmor ?? false;
+
 	public int HealthDamage
 	{
 		get
@@ -115,18 +140,25 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 
 	public UnitInfoVM(PreciseAttackController preciseAttackController)
 	{
+		m_Abilities = new ReactiveProperty<IReadOnlyList<UnitInfoAbilityVM>>(m_AbilitiesList).AddTo(this);
+		ConcentrationTitle = UIStrings.Instance.UnitInfo.ConcentrationTitle;
 		m_PreciseAttackController = preciseAttackController;
 		m_PreciseAttackController.Target.Subscribe(UpdatePreciseAttackTarget).AddTo(this);
 		m_PreciseAttackController.SelectedBodyPart.Subscribe(UpdatePreciseAttackSelectedBodyPart).AddTo(this);
 		m_PreciseAttackController.HoveredBodyPart.Subscribe(UpdatePreciseAttackHoveredBodyPart).AddTo(this);
 		BodyPartChanged = m_PreciseAttackController.SelectedBodyPart.AsUnitObservable();
-		BuffBlockVM = new UnitBuffBlockVM(null).AddTo(this);
+		BuffBlockVM = new UnitInfoBuffBlockVM(null).AddTo(this);
 		m_CasterDamageBuffs = new CasterDamageBuffsInfoVM().AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 		OwlcatR3UnitExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.PreLateUpdate), delegate
 		{
 			m_Position.Value = GetEntityPosition();
 		}).AddTo(this);
+	}
+
+	public bool HasSettingsFlags(UnitInspectUIFlags flags)
+	{
+		return m_InspectSettings?.HasFlags(flags) ?? false;
 	}
 
 	public int GetCritsThroughArmor()
@@ -163,6 +195,33 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 	public void SetDirtyContent(bool isDirty)
 	{
 		m_IsDirtyContent.Value = isDirty;
+	}
+
+	public void CollectAdditionalEffects(BlueprintBodyPart bodyPart, List<string> output)
+	{
+		output.Clear();
+		if (bodyPart == null)
+		{
+			return;
+		}
+		if (bodyPart.CanBreakTargetConcentrationIfHit(Unit, checkTargetHasConcentration: false))
+		{
+			output.Add(LocalizedTexts.Instance.PreciseAttack.CanBreakTargetConcentrationIfHit);
+		}
+		if (bodyPart.CanChangeTargetTurnOrderIfHit())
+		{
+			output.Add(LocalizedTexts.Instance.PreciseAttack.CanChangeTargetTurnOrderIfHit);
+		}
+		LocalizedString description = bodyPart.Description;
+		if (description == null || description.Empty)
+		{
+			return;
+		}
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Unit;
+			output.Add(bodyPart.Description.Text);
+		}
 	}
 
 	public void HandleHoverChange(AbstractUnitEntityView unitEntityView, bool isHover, bool isDirect)
@@ -210,12 +269,17 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 		Data.UpdateHealth(m_MechanicEntityUIState);
 	}
 
-	public void HandleModifiableValueChanged(ModifiableValue modifiableValue)
+	public void HandleActorStatChanged(StatChangeSet stats)
 	{
-		if (modifiableValue.Owner == Unit && modifiableValue is ModifiableValueHitPoints)
+		if (EventInvokerExtensions.MechanicEntity == Unit && stats.Contains(StatType.MaxHitPoints))
 		{
 			Data.UpdateHealth(m_MechanicEntityUIState);
 		}
+	}
+
+	public bool HasAbilityGroup(AbilityUIGroup group)
+	{
+		return m_AbilityUIGroups.Contains(group);
 	}
 
 	protected override void OnDispose()
@@ -232,18 +296,20 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 		if (mechanicEntity == null)
 		{
 			m_MechanicEntityUIState = null;
+			m_InspectSettings = null;
 			m_CollectAbilityPropertySubscription = null;
 			m_MoraleSubscription = null;
 			m_MoralePredictionSubscription = null;
 			m_ConcentrationSubscription = null;
 			Data.ClearFields();
 			CompareData.ClearFields();
-			ClearAbilities();
-			BuffBlockVM?.ClearBuffs();
+			ClearAbilities(notify: true);
+			BuffBlockVM.SetUnitData(null);
 			m_CasterDamageBuffs.SetTargetEntity(null);
 			return;
 		}
 		m_MechanicEntityUIState = UnitUIStateHolder.Instance.GetOrCreateUnitState(mechanicEntity);
+		m_InspectSettings = m_MechanicEntityUIState.GetBlueprintComponent<UnitUISettings>()?.InspectSettings;
 		m_CasterDamageBuffs.SetTargetEntity(m_MechanicEntityUIState);
 		BuffBlockVM.SetUnitData(Unit);
 		UpdateAbilities();
@@ -254,7 +320,7 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 		m_CollectAbilityPropertySubscription = m_MechanicEntityUIState.IsInCombat.CombineLatest(m_MechanicEntityUIState.IsVisibleForPlayer, m_MechanicEntityUIState.IsDeadOrUnconsciousIsDead, m_MechanicEntityUIState.Ability, m_MechanicEntityUIState.IsMouseOverUnit, m_MechanicEntityUIState.IsAoETarget, m_MechanicEntityUIState.AbilityTargetUIData, m_PreciseAttackController.SelectedBodyPart, (bool isInCombat, bool isVisibleForPlayer, bool isDead, AbilityData ability, bool isHover, bool isAoETarget, AbilityTargetUIData abilityTargetUIData, PreciseAttackController.BodyPartUIData _) => new { isInCombat, isVisibleForPlayer, isDead, ability, isHover, isAoETarget, abilityTargetUIData }).DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(value =>
 		{
 			bool show = value.isInCombat && value.ability != null && (value.isVisibleForPlayer || value.ability.IsPrecise) && !value.isDead && (value.isHover || value.isAoETarget || value.ability.IsPrecise);
-			Data.CollectAbilityProperty(m_MechanicEntityUIState, value.ability, HUDContext.PointerWorldPosition, value.ability?.IsPrecise ?? false, show);
+			Data.CollectAbilityProperty(m_MechanicEntityUIState, value.ability, value.ability?.IsPrecise ?? false, show);
 		});
 	}
 
@@ -297,15 +363,19 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 
 	private void UpdateMorale()
 	{
-		m_MoraleSubscription = ObservableSubscribeExtensions.Subscribe(m_MechanicEntityUIState.MoraleChanged.DebounceFrame(1, UnityFrameProvider.PreLateUpdate), delegate
+		m_HasMorale.Value = Unit is BaseUnitEntity baseUnitEntity && !baseUnitEntity.Features.DoNotUseMoraleAndPowerBalance;
+		if (m_HasMorale.CurrentValue)
 		{
+			m_MoraleSubscription = ObservableSubscribeExtensions.Subscribe(m_MechanicEntityUIState.MoraleChanged.DebounceFrame(1, UnityFrameProvider.PreLateUpdate), delegate
+			{
+				Data.UpdateMorale(m_MechanicEntityUIState);
+			}).AddTo(this);
+			m_MoralePredictionSubscription = m_MechanicEntityUIState.MoralePrediction.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate(IUIUnitMoraleData prediction)
+			{
+				Data.UpdateMoralePrediction(m_MechanicEntityUIState, prediction);
+			}).AddTo(this);
 			Data.UpdateMorale(m_MechanicEntityUIState);
-		}).AddTo(this);
-		m_MoralePredictionSubscription = m_MechanicEntityUIState.MoralePrediction.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate(IUIUnitMoraleData prediction)
-		{
-			Data.UpdateMoralePrediction(m_MechanicEntityUIState, prediction);
-		}).AddTo(this);
-		Data.UpdateMorale(m_MechanicEntityUIState);
+		}
 	}
 
 	private void UpdateConcentration()
@@ -319,6 +389,7 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 		{
 			return m_EntityPosition;
 		}
+		Vector3 vector = m_MechanicEntityUIState.MechanicEntity.MechanicEntity.Blueprint.GetComponent<UnitUISettings>()?.InspectSettings.UnitInfoOffset ?? Vector3.zero;
 		Transform bone = m_MechanicEntityUIState.GetBone();
 		if (bone != null && !m_MechanicEntityUIState.MechanicEntity.IsDeadOrUnconscious)
 		{
@@ -347,30 +418,43 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 				m_EntityPosition = Vector3.zero;
 			}
 		}
+		m_EntityPosition += vector;
 		return m_EntityPosition;
 	}
 
 	private void UpdateAbilities()
 	{
-		ClearAbilities();
+		ClearAbilities(notify: false);
 		if (Unit is BaseUnitEntity { IsInPlayerParty: false } baseUnitEntity)
 		{
 			BlueprintAbility[] array = (from a in UIUtilityUnit.CollectAbilities(baseUnitEntity)
 				select a.Blueprint).ToArray();
-			foreach (BlueprintAbility blueprintAbility in array)
+			foreach (BlueprintAbility abilityBlueprint in array)
 			{
-				Abilities.Add((blueprintAbility.Icon, AbilityUIGroup.Active));
+				m_AbilitiesList.Add(new UnitInfoAbilityVM(abilityBlueprint, AbilityUIGroup.Active));
+				m_AbilityUIGroups.Add(AbilityUIGroup.Active);
 			}
 			UIFeature[] array2 = UIUtilityUnit.CollectFeats(baseUnitEntity).ToArray();
 			foreach (UIFeature uIFeature in array2)
 			{
-				Abilities.Add((uIFeature.Icon, AbilityUIGroup.Passive));
+				m_AbilitiesList.Add(new UnitInfoAbilityVM(uIFeature.Feature, AbilityUIGroup.Passive));
+				m_AbilityUIGroups.Add(AbilityUIGroup.Passive);
 			}
+			m_Abilities.ForceNotify();
+		}
+		else
+		{
+			m_Abilities.ForceNotify();
 		}
 	}
 
-	private void ClearAbilities()
+	private void ClearAbilities(bool notify)
 	{
-		Abilities.Clear();
+		m_AbilitiesList.Clear();
+		m_AbilityUIGroups.Clear();
+		if (notify && !m_Abilities.IsDisposed)
+		{
+			m_Abilities.ForceNotify();
+		}
 	}
 }

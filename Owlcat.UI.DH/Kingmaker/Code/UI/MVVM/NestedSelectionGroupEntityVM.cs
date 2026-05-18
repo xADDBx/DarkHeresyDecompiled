@@ -57,7 +57,7 @@ public abstract class NestedSelectionGroupEntityVM : VirtualListElementVMBase, I
 	public void SetSelected(bool state)
 	{
 		m_IsSelected.Value = state;
-		m_RefreshView.Execute();
+		m_RefreshView.Execute(Unit.Default);
 		if (state)
 		{
 			DoSelectMe();

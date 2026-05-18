@@ -9,8 +9,8 @@ using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Items.Slots;
 using Kingmaker.RuleSystem.Rules.Modifiers;
@@ -135,40 +135,45 @@ public static class UnitDescriptionHelper
 		return new UnitDescription.SkillsData();
 	}
 
-	private static int ExtractSkillValue(this ModifiableValueSkill skill)
+	private static int ExtractSkillValue(this BaseUnitEntity unit, StatType skillType)
 	{
-		if (skill.BaseValue <= 0)
+		MechanicActorStat stat = unit.Actor.Stats.GetStat(skillType);
+		if (stat.BaseValue <= 0)
 		{
 			return 0;
 		}
-		return skill.ModifiedValue;
+		return stat.ModifiedValue;
 	}
 
 	private static UnitDescription.StatsData ExtractStats(BaseUnitEntity unit)
 	{
 		return new UnitDescription.StatsData
 		{
-			WarhammerBallisticSkill = PrepareStats(unit.Stats.GetAttribute(StatType.BallisticSkill)),
-			WarhammerWeaponSkill = PrepareStats(unit.Stats.GetAttribute(StatType.WeaponSkill)),
-			WarhammerStrength = PrepareStats(unit.Stats.GetAttribute(StatType.Strength)),
-			WarhammerToughness = PrepareStats(unit.Stats.GetAttribute(StatType.Toughness)),
-			WarhammerAgility = PrepareStats(unit.Stats.GetAttribute(StatType.Agility)),
-			WarhammerIntelligence = PrepareStats(unit.Stats.GetAttribute(StatType.Intelligence)),
-			WarhammerWillpower = PrepareStats(unit.Stats.GetAttribute(StatType.Willpower)),
-			WarhammerPerception = PrepareStats(unit.Stats.GetAttribute(StatType.Perception)),
-			WarhammerFellowship = PrepareStats(unit.Stats.GetAttribute(StatType.Fellowship))
+			WarhammerBallisticSkill = PrepareStats(unit, StatType.BallisticSkill),
+			WarhammerWeaponSkill = PrepareStats(unit, StatType.WeaponSkill),
+			WarhammerStrength = PrepareStats(unit, StatType.Strength),
+			WarhammerToughness = PrepareStats(unit, StatType.Toughness),
+			WarhammerAgility = PrepareStats(unit, StatType.Agility),
+			WarhammerIntelligence = PrepareStats(unit, StatType.Intelligence),
+			WarhammerWillpower = PrepareStats(unit, StatType.Willpower),
+			WarhammerPerception = PrepareStats(unit, StatType.Perception),
+			WarhammerFellowship = PrepareStats(unit, StatType.Fellowship)
 		};
 	}
 
-	private static string PrepareStats(ModifiableValueAttributeStat stat)
+	private static string PrepareStats(BaseUnitEntity unit, StatType statType)
 	{
+		StatQueryOutput statQueryOutput = new StatQueryOutput();
+		StatResult stat = unit.Actor.GetStat(statType, statQueryOutput, default(StatContext), "PrepareStats");
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.AppendLine($"{stat.Type}: {stat.ModifiedValue.ToString()}");
-		foreach (Modifier modifier in stat.Modifiers)
+		object arg = statType;
+		int modifiedValue = stat.ModifiedValue;
+		stringBuilder.AppendLine($"{arg}: {modifiedValue.ToString()}");
+		foreach (Modifier sortedModifiers in statQueryOutput.Modifiers.SortedModifiersList)
 		{
-			object arg = modifier.Descriptor;
-			int value = modifier.Value;
-			stringBuilder.AppendLine($"\t\t\t\tModifier Descriptor[{arg}]:{value.ToString()}");
+			object arg2 = sortedModifiers.Descriptor;
+			modifiedValue = sortedModifiers.Value;
+			stringBuilder.AppendLine($"\t\t\t\tModifier Descriptor[{arg2}]:{modifiedValue.ToString()}");
 		}
 		return stringBuilder.ToString();
 	}

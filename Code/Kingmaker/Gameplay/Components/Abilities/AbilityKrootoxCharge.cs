@@ -107,7 +107,7 @@ public class AbilityKrootoxCharge : AbilityCustomLogic, IAbilityAoEPatternProvid
 	{
 		MechanicEntity caster = context.Caster;
 		BaseUnitEntity casterUnit = caster as BaseUnitEntity;
-		UnitMovementAgentBase movementAgent = caster.MaybeMovementAgent;
+		UnitMovementAgent movementAgent = caster.MaybeMovementAgent;
 		GraphNode lastNode = path.path.Last();
 		if (path.vectorPath.Count == 0)
 		{
@@ -116,7 +116,6 @@ public class AbilityKrootoxCharge : AbilityCustomLogic, IAbilityAoEPatternProvid
 		float distanceToHandle = Mathf.Sqrt(2f) * 1.Cells().Meters * 1.1f;
 		HashSet<AbilityDeliveryTarget> handledTargets = new HashSet<AbilityDeliveryTarget>(targets.Length * 2);
 		movementAgent.MaxSpeedOverride = 10f;
-		movementAgent.IsCharging = true;
 		casterUnit?.Features.IsCharging.Retain(context.Ability.Fact);
 		bool failedToStartPath = false;
 		try
@@ -150,7 +149,6 @@ public class AbilityKrootoxCharge : AbilityCustomLogic, IAbilityAoEPatternProvid
 			}
 		}
 		context.Caster.Position = lastNode.Vector3Position();
-		movementAgent.IsCharging = false;
 		movementAgent.MaxSpeedOverride = null;
 		casterUnit?.Features.IsCharging.Release(context.Ability.Fact);
 		EventBus.RaiseEvent((IMechanicEntity)caster, (Action<IDirectMovementHandler>)delegate(IDirectMovementHandler h)

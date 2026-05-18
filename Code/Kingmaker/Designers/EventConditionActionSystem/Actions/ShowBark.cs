@@ -1,13 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using Code.Editor;
+using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Framework.VO;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Controllers;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.ElementsSystem.Interfaces;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Localization;
 using Kingmaker.Localization.Shared;
@@ -22,7 +25,7 @@ namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
 [ComponentName("Actions/ShowBark")]
 [AllowMultipleComponents]
 [TypeId("e164ef6758f918a4abcc3889472a2a3c")]
-public class ShowBark : GameAction, IBarkSource
+public class ShowBark : GameAction, IBarkSource, IInitializableElement
 {
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
 	public LocalizedString WhatToBark;
@@ -34,13 +37,16 @@ public class ShowBark : GameAction, IBarkSource
 
 	public bool IsSpammable;
 
+	[Tooltip("Play bark for hidden units")]
+	public bool ForceShow;
+
 	public VoiceOverActAs ActAs;
 
 	[HideInInspector]
-	public SharedStringAsset WhatToBarkShared;
+	public LocalizedString WhatToBarkShared;
 
 	[Tooltip("Bark duration depends on text length")]
-	public bool BarkDurationByText;
+	public bool BarkDurationByText = true;
 
 	[FormerlySerializedAs("Target")]
 	[SerializeReference]
@@ -76,9 +82,9 @@ public class ShowBark : GameAction, IBarkSource
 	{
 		get
 		{
-			if ((bool)WhatToBarkShared)
+			if (!WhatToBarkShared.Empty)
 			{
-				return new LocalizedString[1] { WhatToBarkShared.String };
+				return new LocalizedString[1] { WhatToBarkShared };
 			}
 			return new LocalizedString[1] { WhatToBark };
 		}
@@ -92,20 +98,35 @@ public class ShowBark : GameAction, IBarkSource
 
 	protected override void RunAction()
 	{
+		Entity target;
+		LocalizedString str;
+		float barkDuration;
 		if (TargetUnit == null || TargetUnit.GetValue().LifeState.IsConscious)
 		{
-			Entity target = Target;
-			LocalizedString localizedString = (WhatToBarkShared ? WhatToBarkShared.String : WhatToBark);
-			float duration = UtilityBark.DefaultBarkTime;
+			target = Target;
+			str = ((!WhatToBarkShared.Empty) ? WhatToBarkShared : WhatToBark);
+			barkDuration = UtilityBark.DefaultBarkTime;
 			if (BarkDurationByText)
 			{
-				duration = UtilityBark.GetBarkDuration(localizedString);
+				barkDuration = UtilityBark.GetBarkDuration(str);
 			}
 			if (OverrideBarkDuration)
 			{
-				duration = BarkDuration;
+				barkDuration = BarkDuration;
 			}
-			BarkPlayer.Bark(voGuid: VoiceOverController.GetVoGuidBySourceAndTarget(this, Target), entity: target, text: localizedString, voiceOverType: (VoiceOverType)ActAs, duration: duration, interactUser: ContextData<InteractingUnitData>.Current?.Unit);
+			DoBark();
+		}
+		void DoBark()
+		{
+			if (target != null && Game.Instance.Controllers.EntitySpawner.IsEntityInCreationQueue(target))
+			{
+				Game.Instance.Controllers.CoroutinesController.InvokeInTicks(DoBark, 2);
+			}
+			else
+			{
+				string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, target);
+				BarkPlayer.Bark(target, str, (VoiceOverType)ActAs, voGuidBySourceAndTarget, barkDuration, ContextData<InteractingUnitData>.Current?.Unit, synced: true, ForceShow);
+			}
 		}
 	}
 
@@ -113,5 +134,9 @@ public class ShowBark : GameAction, IBarkSource
 	{
 		Element arg = ((TargetUnit != null) ? ((MechanicEntityEvaluator)TargetUnit) : ((MechanicEntityEvaluator)TargetMapObject));
 		return $"Show Bark (on {arg})";
+	}
+
+	public void InitInEditor(string propertyPath, SimpleBlueprint ownerBlueprint)
+	{
 	}
 }

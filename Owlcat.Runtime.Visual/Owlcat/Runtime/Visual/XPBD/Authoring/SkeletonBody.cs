@@ -164,7 +164,7 @@ public class SkeletonBody : AuthoringBase<SkeletonLayout>
 			Aabb bodyAabb = m_BodyAabb;
 			Matrix4x4 worldToLocalMatrix = renderer.transform.worldToLocalMatrix;
 			bodyAabb.Transform(in worldToLocalMatrix);
-			bounds.Encapsulate(new Bounds(bodyAabb.Center, bodyAabb.Size));
+			bounds.Encapsulate(new Bounds((Vector3)bodyAabb.Center, (Vector3)bodyAabb.Size));
 			renderer.localBounds = bounds;
 		}
 	}

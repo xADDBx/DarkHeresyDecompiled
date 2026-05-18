@@ -1,4 +1,3 @@
-using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -18,13 +17,6 @@ public class NetLobbyConsoleView : NetLobbyBaseView
 
 	[SerializeField]
 	private NetLobbyTutorialPartConsoleView m_TutorialBlock;
-
-	[SerializeField]
-	private ConsoleHintsWidget m_CommonHintsWidget;
-
-	private InputLayer m_InputLayer;
-
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
 
 	public static readonly string InputLayerName = "NetLobby";
 
@@ -50,37 +42,7 @@ public class NetLobbyConsoleView : NetLobbyBaseView
 		base.ViewModel.NetLobbyTutorialPartVM.Subscribe(m_TutorialBlock.Bind).AddTo(this);
 	}
 
-	protected override void OnUnbind()
-	{
-		m_NavigationBehaviour.UnFocusCurrentEntity();
-		m_NavigationBehaviour.Clear();
-		m_NavigationBehaviour = null;
-		m_InputLayer = null;
-		base.OnUnbind();
-	}
-
 	private void CreateInput()
 	{
-		m_NavigationBehaviour = new GridConsoleNavigationBehaviour().AddTo(this);
-		m_InputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = InputLayerName
-		});
-		BuildNavigationImpl(m_NavigationBehaviour);
-		CreateInputImpl(m_InputLayer);
-		GamePad.Instance.PushLayer(m_InputLayer).AddTo(this);
-	}
-
-	protected virtual void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		m_CreateJoinBlock.BuildNavigationImpl(navigationBehaviour);
-		m_LobbyBlock.BuildNavigationImpl(navigationBehaviour);
-	}
-
-	private void CreateInputImpl(InputLayer inputLayer)
-	{
-		m_CreateJoinBlock.CreateInputImpl(inputLayer, m_CommonHintsWidget);
-		m_WaitingBlock.CreateInputImpl(inputLayer, m_CommonHintsWidget);
-		m_LobbyBlock.CreateInputImpl(inputLayer, m_CommonHintsWidget);
 	}
 }

@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Owlcat.Runtime.Core.Utility;
 
@@ -13,7 +14,7 @@ public class CheckAbilityParamsSourceGetter : BoolPropertyGetter, PropertyContex
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetAbility()?.Blueprint.AbilityParamsSource == ParamsStouce;
+		return EvalContext.Current.Ability?.Blueprint.AbilityParamsSource == ParamsStouce;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

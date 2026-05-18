@@ -7,15 +7,17 @@ using Kingmaker.Blueprints.Classes.Experience;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Controllers.TurnBased;
 using Kingmaker.Designers.EventConditionActionSystem.Actions;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UI.Common.UIConfigComponents;
 using Kingmaker.UI.Models.UnitSettings;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.FactLogic;
+using Kingmaker.UnitLogic.Interaction;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Parts;
 using UnityEngine;
@@ -44,17 +46,9 @@ public static class UtilityUnit
 		return enumerable;
 	}
 
-	public static StatType? GetSourceStatType(ModifiableValue stat)
+	public static StatType? GetSourceStatType(StatType statType)
 	{
-		if (stat == null)
-		{
-			return null;
-		}
-		if (stat is ModifiableValueSkill modifiableValueSkill)
-		{
-			return modifiableValueSkill.BaseStat.Type;
-		}
-		return null;
+		return MechanicActor.GetStatBaseStat(statType);
 	}
 
 	public static int GetSurfaceEnemyDifficulty([CanBeNull] BaseUnitEntity unit)
@@ -68,12 +62,21 @@ public static class UtilityUnit
 
 	public static bool UsedSubtypeIcon(MechanicEntity mechanicEntityEntity)
 	{
-		return mechanicEntityEntity?.GetUnitUISettingsOptional()?.Portrait.SmallPortrait == null;
+		if (!(mechanicEntityEntity is BaseUnitEntity baseUnitEntity))
+		{
+			return true;
+		}
+		PartUnitUISettings unitUISettingsOptional = baseUnitEntity.GetUnitUISettingsOptional();
+		if ((unitUISettingsOptional != null && (unitUISettingsOptional.CustomPortraitRaw != null || unitUISettingsOptional.PortraitBlueprintRaw != null)) ? true : false)
+		{
+			return false;
+		}
+		return !baseUnitEntity.Blueprint.HasCustomPortrait;
 	}
 
 	public static Sprite GetSurfaceCombatStandardPortrait(MechanicEntity mechanicEntityEntity, PortraitCombatSize size)
 	{
-		PortraitData portraitData = mechanicEntityEntity?.GetUnitUISettingsOptional()?.Portrait;
+		PortraitData portraitData = (UsedSubtypeIcon(mechanicEntityEntity) ? null : mechanicEntityEntity?.GetUnitUISettingsOptional()?.Portrait);
 		UnitSubtype val = (mechanicEntityEntity as UnitEntity)?.Blueprint.Subtype ?? UnitSubtype.Default;
 		return size switch
 		{
@@ -114,5 +117,33 @@ public static class UtilityUnit
 	public static bool IsViewActiveUnit(BaseUnitEntity unit)
 	{
 		return unit.IsViewActive;
+	}
+
+	public static IUnitInteraction GetUnitInteractionFrom(MechanicEntity entity)
+	{
+		if (entity == null || entity.IsDisposed)
+		{
+			return null;
+		}
+		TurnController turnController = Game.Instance.Controllers.TurnController;
+		BaseUnitEntity baseUnitEntity2;
+		if (turnController != null)
+		{
+			MechanicEntity currentUnit = turnController.CurrentUnit;
+			if (currentUnit is BaseUnitEntity baseUnitEntity && currentUnit.IsPlayerFaction)
+			{
+				baseUnitEntity2 = baseUnitEntity;
+				goto IL_004b;
+			}
+		}
+		baseUnitEntity2 = Game.Instance.Player.MainCharacterEntity;
+		goto IL_004b;
+		IL_004b:
+		BaseUnitEntity baseUnitEntity3 = baseUnitEntity2;
+		if (baseUnitEntity3 == null)
+		{
+			return null;
+		}
+		return entity.SelectClickInteraction(baseUnitEntity3);
 	}
 }

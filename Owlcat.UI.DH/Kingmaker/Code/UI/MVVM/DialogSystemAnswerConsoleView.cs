@@ -1,4 +1,3 @@
-using Kingmaker.Blueprints.Root;
 using Owlcat.UI;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,7 +12,6 @@ public class DialogSystemAnswerConsoleView : DialogSystemAnswerBaseView, IConfir
 	protected override void OnBind()
 	{
 		base.OnBind();
-		m_Image.sprite = ConsoleRoot.Instance.Icons.GetIcon(RewiredActionType.Confirm);
 	}
 
 	public override void SetFocus(bool value)

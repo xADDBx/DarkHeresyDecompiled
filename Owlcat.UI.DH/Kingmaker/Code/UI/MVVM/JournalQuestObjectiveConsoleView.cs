@@ -19,9 +19,6 @@ public class JournalQuestObjectiveConsoleView : JournalQuestObjectiveBaseView
 	[UsedImplicitly]
 	private JournalQuestObjectiveAddendumConsoleView m_AddendumViewPrefab;
 
-	[SerializeField]
-	private float m_DefaultConsoleFontSize = 21f;
-
 	protected override void OnBind()
 	{
 		SetupHeader();

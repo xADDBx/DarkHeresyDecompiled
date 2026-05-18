@@ -7,11 +7,11 @@ namespace Kingmaker.UI.Events;
 
 public interface ITooltipHandler : ISubscriber
 {
-	void HandleInfoRequest(TooltipBaseTemplate template, ConsoleNavigationBehaviour ownerNavigationBehaviour = null, bool shouldNotHideLittleTooltip = false);
+	void HandleInfoRequest(TooltipBaseTemplate template, bool shouldNotHideLittleTooltip = false);
 
-	void HandleMultipleInfoRequest(IEnumerable<TooltipBaseTemplate> templates, ConsoleNavigationBehaviour ownerNavigationBehaviour = null);
+	void HandleMultipleInfoRequest(IEnumerable<TooltipBaseTemplate> templates);
 
-	void HandleGlossaryInfoRequest(TooltipTemplateGlossary template, ConsoleNavigationBehaviour ownerNavigationBehaviour = null);
+	void HandleGlossaryInfoRequest(TooltipTemplateGlossary template);
 
 	void HandleHintRequest(HintData data, bool shouldShow);
 }

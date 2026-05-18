@@ -1,6 +1,8 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Framework;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components;
@@ -13,6 +15,7 @@ namespace Kingmaker.Designers.Mechanics.Facts;
 [AllowedOn(typeof(BlueprintAbility))]
 [ComponentName("Caster Restriction/AbilityResourceBuff")]
 [TypeId("ce26e27212da4e27bc9c90fc239153e0")]
+[SetsContextScope(ContextEntryPointKind.AbilityOnCast)]
 public class AbilityResourceBuff : BlueprintComponent, IAbilityResourceLogic, IAbilityRestriction
 {
 	public ContextValue Cost;
@@ -42,7 +45,11 @@ public class AbilityResourceBuff : BlueprintComponent, IAbilityResourceLogic, IA
 
 	public int CalculateCost(AbilityData ability)
 	{
-		return Cost.Calculate(ability.ClaimExecutionContext(ability.Caster));
+		IEvalContext ctx;
+		using (EvalContext.PushAbility(ability, ability.Caster).Get(out ctx))
+		{
+			return Cost.Calculate(ctx);
+		}
 	}
 
 	public int CalculateResourceAmount(AbilityData ability)

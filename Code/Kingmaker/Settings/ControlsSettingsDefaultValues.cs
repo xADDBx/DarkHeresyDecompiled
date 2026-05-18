@@ -27,6 +27,8 @@ public class ControlsSettingsDefaultValues : IValidatable
 
 	public bool CameraFollowsUnit;
 
+	public HighlightObjectsMode HighlightObjectsMode;
+
 	public ControlsKeybindingsSettingsDefaultValues Keybindings;
 
 	public void OnValidate()

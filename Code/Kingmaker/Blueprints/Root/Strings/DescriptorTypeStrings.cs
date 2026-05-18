@@ -81,6 +81,8 @@ public class DescriptorTypeStrings : StringsContainer
 
 	public LocalizedString CanNotGainMorale;
 
+	public LocalizedString EnemyCombatVeterancy;
+
 	public string GetText(ModifierDescriptor type)
 	{
 		return type switch
@@ -122,6 +124,7 @@ public class DescriptorTypeStrings : StringsContainer
 			ModifierDescriptor.EnemyLeaderDead => EnemyLeaderDead, 
 			ModifierDescriptor.MoraleChangeLocked => MoraleChangeLocked, 
 			ModifierDescriptor.CanNotGainMorale => CanNotGainMorale, 
+			ModifierDescriptor.EnemyCombatVeterancy => EnemyCombatVeterancy, 
 			_ => $"[ModifierDescriptor] {type}", 
 		};
 	}

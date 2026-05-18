@@ -28,18 +28,6 @@ public class WarhammerAbilityCostChangeContextValue : UnitFactComponentDelegate,
 
 	public void OnEventAboutToTrigger(RuleCalculateAbilityActionPointCost evt)
 	{
-		if (evt.Blueprint.SameAbility(Ability))
-		{
-			int num = Value.Calculate(base.Context);
-			if (num > 0)
-			{
-				evt.AddCostIncrease(num);
-			}
-			else
-			{
-				evt.AddCostDecrease(num, -1);
-			}
-		}
 	}
 
 	public void OnEventDidTrigger(RuleCalculateAbilityActionPointCost evt)

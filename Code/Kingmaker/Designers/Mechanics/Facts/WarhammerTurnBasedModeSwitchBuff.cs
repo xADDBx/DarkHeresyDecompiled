@@ -33,14 +33,5 @@ public class WarhammerTurnBasedModeSwitchBuff : MechanicEntityFactComponentDeleg
 
 	public void HandleTurnBasedModeSwitched(bool isTurnBased)
 	{
-		TimeSpan seconds = DurationValue.Calculate(base.Context).Seconds;
-		if (isTurnBased)
-		{
-			base.Owner.Buffs.Add(BuffAtTBStart, base.Owner, null, seconds);
-		}
-		else
-		{
-			base.Owner.Buffs.Add(BuffAtTBEnd, base.Owner);
-		}
 	}
 }

@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Core.Async;
 using JetBrains.Annotations;
+using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.Networking.Settings;
 using Kingmaker.Settings;
@@ -35,11 +36,13 @@ public static class ThreadedGameLoader
 				array[i] = ReadFiles(saveInfo, mainSaver, allFiles2, isSmokeTest);
 			}
 			Task<string> statisticsStateTask = LoadStatisticsAsync(saveInfo, mainSaver, "statistic");
-			string text = LoadJson(saveInfo, mainThreadLoader, "settings");
+			string text = LoadJson(saveInfo, mainThreadLoader, "fogIndex");
+			string text2 = LoadJson(saveInfo, mainThreadLoader, "knownAreas");
+			string text3 = LoadJson(saveInfo, mainThreadLoader, "settings");
 			string json = LoadJson(saveInfo, mainThreadLoader, "coop");
 			byte[] array2 = LoadBin(saveInfo, mainThreadLoader, SaveConsts.PlayerFileName(saveInfo.Format));
 			byte[] array3 = LoadBin(saveInfo, mainThreadLoader, SaveConsts.PartyFileName(saveInfo.Format));
-			if (text == null)
+			if (text3 == null)
 			{
 				throw new Exception("Save is broken: settings.json was not found");
 			}
@@ -51,13 +54,47 @@ public static class ThreadedGameLoader
 			{
 				throw new Exception("Save is broken: " + SaveConsts.PartyFileName(saveInfo.Format) + " was not found");
 			}
-			Task<InGameSettings> deserializeSettingsTask = DeserializeInGameSettings(text);
+			Task<string[]> deserializeKnownAreaListJson = ((text2 != null) ? DeserializeJson<string[]>(text2, "known areas") : Task.FromResult(Array.Empty<string>()));
+			Task<SavedFogMasks[]> deserializeFogIndexJson = ((text != null) ? DeserializeJson<SavedFogMasks[]>(text, "fog data") : Task.FromResult(Array.Empty<SavedFogMasks>()));
+			Task<InGameSettings> deserializeSettingsTask = DeserializeInGameSettings(text3);
 			Task<SceneEntitiesState> deserializePlayerTask = DeserializeSceneState(array2, saveInfo.Format);
 			Task<SceneEntitiesState> deserializeCrossSceneStateTask = DeserializeSceneState(array3, saveInfo.Format);
 			Task<CoopData> deserializeCoopTask = DeserializeCoopSettings(json);
 			await Task.WhenAll(array);
 			string statistics = await statisticsStateTask;
-			CreateStateData(allFiles);
+			string[] array4 = await deserializeKnownAreaListJson;
+			if (array4.Length != 0)
+			{
+				string[] array5 = array4;
+				for (int j = 0; j < array5.Length; j++)
+				{
+					AreaPersistentState state = GetState(array5[j]);
+					state.ShouldLoad = true;
+					PopulateAdditionalSceneStates(state, allFiles);
+				}
+			}
+			else
+			{
+				CreateStateData(allFiles);
+			}
+			SavedFogMasks[] array6 = await deserializeFogIndexJson;
+			if (array6.Length != 0)
+			{
+				SavedFogMasks.AllMasks = array6;
+			}
+			else
+			{
+				foreach (string item in allFiles)
+				{
+					if (item.EndsWith(".fog") && item.Length > 32 + ".fog".Length)
+					{
+						string areaId = item.Substring(0, 32);
+						string text4 = item;
+						string sceneName = text4.Substring(32, text4.Length - 4 - 32);
+						SavedFogMasks.Get(areaId).Register(sceneName);
+					}
+				}
+			}
 			await Task.WhenAll(deserializeSettingsTask, deserializeCrossSceneStateTask, deserializePlayerTask, deserializeCoopTask);
 			Game.Instance.State.InGameSettings = deserializeSettingsTask.Result;
 			Game.Instance.State.CrossSceneState = deserializeCrossSceneStateTask.Result;
@@ -75,6 +112,11 @@ public static class ThreadedGameLoader
 			await Awaiters.ThreadPoolYield;
 			return LoadJson(saveInfo, saver, fileName);
 		}
+	}
+
+	private static Task<T> DeserializeJson<T>([NotNull] string json, string displayName) where T : class
+	{
+		return Deserialize<T>("Restore " + displayName, json, SaveSystemJsonSerializer.Serializer);
 	}
 
 	private static Task<SceneEntitiesState> DeserializeSceneState(byte[] data, SaveInfo.SaveFormat format)
@@ -139,11 +181,33 @@ public static class ThreadedGameLoader
 				continue;
 			}
 			string sceneName = ((fileNameWithoutExtension.Length > 32) ? fileNameWithoutExtension.Substring(32, fileNameWithoutExtension.Length - 32) : null);
-			AreaPersistentState state = GetState(allFile);
-			if (state != null)
+			AreaPersistentState areaPersistentState = ((allFile.Length >= 32) ? GetState(allFile.Substring(0, 32)) : null);
+			if (areaPersistentState != null)
 			{
-				state.ShouldLoad = true;
-				if (sceneName != null && state.GetAdditionalSceneStates().FirstOrDefault((SceneEntitiesState s) => s.SceneName == sceneName) == null)
+				areaPersistentState.ShouldLoad = true;
+				if (sceneName != null && areaPersistentState.GetAdditionalSceneStates().FirstOrDefault((SceneEntitiesState s) => s.SceneName == sceneName) == null)
+				{
+					areaPersistentState.GetAdditionalSceneStates().Add(new SceneEntitiesState(sceneName));
+				}
+			}
+		}
+	}
+
+	private static void PopulateAdditionalSceneStates(AreaPersistentState state, List<string> allFiles)
+	{
+		string areaGuid = state.AreaGuid;
+		foreach (string allFile in allFiles)
+		{
+			if (!allFile.EndsWith(".json") && !allFile.EndsWith(".owl"))
+			{
+				continue;
+			}
+			string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(allFile);
+			if (fileNameWithoutExtension.Length > 32 && !(fileNameWithoutExtension.Substring(0, 32) != areaGuid))
+			{
+				string text = fileNameWithoutExtension;
+				string sceneName = text.Substring(32, text.Length - 32);
+				if (state.GetAdditionalSceneStates().FirstOrDefault((SceneEntitiesState s) => s.SceneName == sceneName) == null)
 				{
 					state.GetAdditionalSceneStates().Add(new SceneEntitiesState(sceneName));
 				}
@@ -209,7 +273,6 @@ public static class ThreadedGameLoader
 
 	private static AreaPersistentState GetState(string guid)
 	{
-		guid = guid.Substring(0, 32);
 		AreaPersistentState areaPersistentState = Game.Instance.State.SavedAreaStates.FirstOrDefault((AreaPersistentState s) => s.AreaGuid == guid);
 		if (areaPersistentState == null)
 		{

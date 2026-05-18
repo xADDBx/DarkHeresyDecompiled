@@ -29,6 +29,6 @@ public readonly struct WarhammerPathChargeCell
 
 	public override string ToString()
 	{
-		return $"{Node} ({Position}) [Len={Length}, CanStand={IsCanStand}, DiagCount={DiagonalsCount}]";
+		return $"{Node.AsString()} ({Position}) [Len={Length}, CanStand={IsCanStand}, DiagCount={DiagonalsCount}]";
 	}
 }

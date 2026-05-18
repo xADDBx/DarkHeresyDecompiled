@@ -19,10 +19,10 @@ public class ContextActionOnContextOwner : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity maybeOwner = base.Context.MaybeOwner;
-		if (maybeOwner != null)
+		MechanicEntity owner = base.Context.Owner;
+		if (owner != null)
 		{
-			using (base.Context.SetScope(maybeOwner, null))
+			using (base.Context.PushTarget(owner))
 			{
 				Actions.Run();
 			}

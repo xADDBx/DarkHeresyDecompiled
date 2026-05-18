@@ -4,6 +4,7 @@ using System.Linq;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
@@ -12,6 +13,7 @@ using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.Covers;
 using Owlcat.Runtime.Core.Utility;
+using UnityEngine;
 
 namespace Kingmaker.View.MapObjects.Traps.Simple.Strategies;
 
@@ -50,7 +52,7 @@ public static class SimpleTrapCastSpell
 		switch (data.Info.SpellAnchor)
 		{
 		case TrapSpellAnchor.Point:
-			list.Add(data.Settings.TargetPoint.transform.position);
+			list.Add(data.Config.TargetPosition);
 			break;
 		case TrapSpellAnchor.Victim:
 		{
@@ -86,11 +88,13 @@ public static class SimpleTrapCastSpell
 		float secondsBetweenAbilityActions = data.Info.SecondsBetweenAbilityActions;
 		SimpleCaster free = SimpleCaster.GetFree();
 		free.IsTrap = true;
-		free.TrapParentObject = data.View.gameObject.transform.parent.gameObject;
-		free.NameInLog = data.View.NameInLog;
-		if (data.Settings.ActorPosition != null)
+		free.TrapParentObject = data.View.AsEntityView()?.gameObject.transform.parent.gameObject;
+		free.NameInLog = data.Config.NameInLog;
+		Vector3? actorPosition = data.Config.ActorPosition;
+		if (actorPosition.HasValue)
 		{
-			free.Position = data.Settings.ActorPosition.transform.position;
+			Vector3 valueOrDefault = actorPosition.GetValueOrDefault();
+			free.Position = valueOrDefault;
 		}
 		AbilityData ability2 = new AbilityData(ability, free);
 		foreach (TargetWrapper target in targets)

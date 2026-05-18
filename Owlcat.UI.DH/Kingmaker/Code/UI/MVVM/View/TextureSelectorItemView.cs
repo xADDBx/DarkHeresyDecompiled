@@ -38,7 +38,13 @@ public class TextureSelectorItemView : SelectionGroupEntityView<TextureSelectorI
 
 	private void SetTexture(Texture2D texture)
 	{
-		m_Image.sprite = ((texture == null) ? null : GetSprite(texture));
+		if (texture != null)
+		{
+			m_Image.sprite = GetSprite(texture);
+			return;
+		}
+		DefaultImageType type = ((base.ViewModel != null && base.ViewModel.IsEmpty) ? DefaultImageType.AppearanceEmpty : DefaultImageType.Appearance);
+		m_Image.sprite = UIUtilityImage.GetDefault(type);
 	}
 
 	protected virtual Sprite GetSprite(Texture2D texture)
@@ -52,7 +58,7 @@ public class TextureSelectorItemView : SelectionGroupEntityView<TextureSelectorI
 		base.OnChangeSelectedState(value);
 		if (value)
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 		}
 		m_Button.CanConfirm = !value;
 	}
@@ -62,7 +68,7 @@ public class TextureSelectorItemView : SelectionGroupEntityView<TextureSelectorI
 		base.SetFocus(value);
 		if (value)
 		{
-			UISounds.Instance.Sounds.Buttons.ButtonHover.Play();
+			ButtonsSounds.Instance.Default.Hover.Play();
 			base.ViewModel.DoFocusMe();
 		}
 	}

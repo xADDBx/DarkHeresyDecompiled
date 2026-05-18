@@ -114,6 +114,8 @@ public class CommandUnitAttack : CommandBase
 
 	public override bool IsContinuous => Continuous;
 
+	public override bool ShouldHaveControlledUnit => true;
+
 	public override IAbstractUnitEntity GetControlledUnit()
 	{
 		if (Unit == null || !Unit.TryGetValue(out var value))
@@ -123,10 +125,16 @@ public class CommandUnitAttack : CommandBase
 		return value;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		AbstractUnitEntity unit = Unit.GetValue();
-		MechanicEntity target = Target.GetValue();
+		if (!Unit.TryGetValue(out var unit))
+		{
+			return CommandResult.Fail("Unit not found");
+		}
+		if (!Target.TryGetValue(out var target))
+		{
+			return CommandResult.Fail("Target not found");
+		}
 		GetAttackData(out var weaponBlueprint, out var abilityData, out var weapon, out var cutsceneWeaponSet, out var needApproach);
 		IAbilityCustomAnimation abilityCustomAnimation = weaponBlueprint.WeaponAbilities.FirstOrDefault()?.Ability?.GetComponent<IAbilityCustomAnimation>();
 		Data data = player.GetCommandData<Data>(this);
@@ -176,12 +184,24 @@ public class CommandUnitAttack : CommandBase
 		{
 			AkUnitySoundEngine.SetRTPCValue("MuteEntity", 0f, Unit.GetValue().View.gameObject);
 		}
+		return CommandResult.Success;
 	}
 
-	private void GetAttackData(out BlueprintItemWeapon weaponBlueprint, out AbilityData abilityData, out ItemEntityWeapon weapon, out bool cutsceneWeaponSet, out bool needApproach)
+	private CommandResult GetAttackData(out BlueprintItemWeapon weaponBlueprint, out AbilityData abilityData, out ItemEntityWeapon weapon, out bool cutsceneWeaponSet, out bool needApproach)
 	{
-		AbstractUnitEntity value = Unit.GetValue();
-		MechanicEntity value2 = Target.GetValue();
+		weaponBlueprint = null;
+		abilityData = null;
+		weapon = null;
+		cutsceneWeaponSet = false;
+		needApproach = false;
+		if (!Unit.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Unit not found");
+		}
+		if (!Target.TryGetValue(out var value2))
+		{
+			return CommandResult.Fail("Target not found");
+		}
 		AttackType attackType = Type;
 		if (Type == AttackType.Custom && CustomWeapon != null)
 		{
@@ -208,7 +228,7 @@ public class CommandUnitAttack : CommandBase
 		}
 		if (weaponBlueprint == null)
 		{
-			throw new Exception("Can't find suitable weapon");
+			return CommandResult.FailWithReport("Can't find suitable weapon");
 		}
 		BlueprintAbility abilityBlueprint = GetAbilityBlueprint(attackType, weaponBlueprint, Type);
 		cutsceneWeaponSet = false;
@@ -220,6 +240,7 @@ public class CommandUnitAttack : CommandBase
 		};
 		float distanceToTarget = value.DistanceToInCells(value2);
 		needApproach = CalculateNeedForApproach(distanceToTarget, weapon, abilityBlueprint);
+		return CommandResult.Success;
 	}
 
 	private bool CalculateNeedForApproach(float distanceToTarget, ItemEntityWeapon weapon, BlueprintAbility abilityBlueprint)
@@ -281,7 +302,7 @@ public class CommandUnitAttack : CommandBase
 		return itemEntityWeapon;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.MoveCmdHandle != null && commandData.MoveCmdHandle.Cmd != null && commandData.MoveCmdHandle.Result != AbstractUnitCommand.ResultType.Success)
@@ -301,13 +322,19 @@ public class CommandUnitAttack : CommandBase
 		{
 			AkUnitySoundEngine.SetRTPCValue("MuteEntity", 1f, Unit.GetValue().View.gameObject);
 		}
-		base.OnStop(player);
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		AbstractUnitEntity unit = Unit.GetValue();
-		MechanicEntity value = Target.GetValue();
+		if (!Unit.TryGetValue(out var unit))
+		{
+			return CommandResult.Fail("Unit not found");
+		}
+		if (!Target.TryGetValue(out var value))
+		{
+			return CommandResult.Fail("Target not found");
+		}
 		GetAttackData(out var _, out var _, out var weapon, out var _, out var needApproach);
 		if (needApproach)
 		{
@@ -321,6 +348,7 @@ public class CommandUnitAttack : CommandBase
 		{
 			value.GetLifeStateOptional().MarkedForDeath = true;
 		}
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -351,7 +379,7 @@ public class CommandUnitAttack : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		UnitUseAbility unitUseAbility = (UnitUseAbility)(commandData.AttackCmdHandle?.Cmd);
@@ -370,11 +398,11 @@ public class CommandUnitAttack : CommandBase
 		{
 			commandData.AttackCmdHandle = commandData.Unit.Commands.Run(unitUseAbilityParams);
 		}
+		return CommandResult.Success;
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
 		Data commandData = player.GetCommandData<Data>(this);
 		UnitCommandHandle moveCmdHandle = commandData.MoveCmdHandle;
 		if (moveCmdHandle != null && !moveCmdHandle.IsFinished)
@@ -387,6 +415,7 @@ public class CommandUnitAttack : CommandBase
 			attackCmdHandle.Interrupt();
 		}
 		commandData.IsInterrupted = true;
+		return CommandResult.Success;
 	}
 
 	private UnitUseAbilityParams CreateAttackCommandParams(AbilityData ability, MechanicEntity target, IAbilityCustomAnimation customAnimationOverride = null)
@@ -489,14 +518,5 @@ public class CommandUnitAttack : CommandBase
 	public override string GetCaption()
 	{
 		return Unit?.GetCaptionShort() + " <b>attacks</b> " + (Target ? Target.GetCaptionShort() : "???");
-	}
-
-	protected override void OnRunException()
-	{
-		if (MuteAttacker)
-		{
-			AkUnitySoundEngine.SetRTPCValue("MuteEntity", 1f, Unit.GetValue().View.gameObject);
-		}
-		base.OnRunException();
 	}
 }

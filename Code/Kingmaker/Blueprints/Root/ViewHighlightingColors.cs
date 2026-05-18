@@ -1,3 +1,4 @@
+using Kingmaker.ResourceLinks;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -34,6 +35,11 @@ public class ViewHighlightingColors : BlueprintScriptableObject
 
 	[Header("Target")]
 	public ViewHighlightingColorStates AdditionalCombatObjective;
+
+	[Header("Precise Attack")]
+	public ViewHighlightingColorStates PreciseAttackTarget;
+
+	public PrefabLink PreciseAttackTargetFx;
 
 	[Header("Interact")]
 	public ViewHighlightingColorStates Default;

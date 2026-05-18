@@ -12,8 +12,4 @@ public interface ITurnVirtualItemData
 	Vector2 VirtualSize { get; }
 
 	Vector2 VirtualPosition { get; }
-
-	void SetBoundView(ITurnVirtualItemView view);
-
-	void SetViewParameters(Vector2 virtualPosition, Vector2 size);
 }

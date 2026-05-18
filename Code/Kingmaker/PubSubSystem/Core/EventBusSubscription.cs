@@ -1,18 +1,23 @@
 using System;
+using JetBrains.Annotations;
 
 namespace Kingmaker.PubSubSystem.Core;
 
-public class EventBusSubscription : IDisposable
+public readonly struct EventBusSubscription : IDisposable
 {
+	[NotNull]
+	private readonly EventBusInstance m_EventBus;
+
 	private readonly object m_Subscriber;
 
-	public EventBusSubscription(object subscriber)
+	public EventBusSubscription([NotNull] EventBusInstance eventBus, object subscriber)
 	{
+		m_EventBus = eventBus;
 		m_Subscriber = subscriber;
 	}
 
 	public void Dispose()
 	{
-		EventBus.Unsubscribe(m_Subscriber);
+		m_EventBus.Unsubscribe(m_Subscriber);
 	}
 }

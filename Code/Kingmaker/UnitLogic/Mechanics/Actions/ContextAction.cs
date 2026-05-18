@@ -6,6 +6,7 @@ using Kingmaker.Controllers.Projectiles;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.Utility;
@@ -17,18 +18,18 @@ namespace Kingmaker.UnitLogic.Mechanics.Actions;
 [TypeId("e45eddecc6b973948aa0f785b8954827")]
 public abstract class ContextAction : GameAction
 {
-	[CanBeNull]
-	protected AbilityExecutionContext AbilityContext => Context as AbilityExecutionContext;
-
-	protected MechanicsContext Context => SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
+	protected EvalContext Context => EvalContext.Current;
 
 	[NotNull]
-	protected MechanicEntity Caster => Context.MaybeCaster ?? throw new Exception("Caster is missing");
+	protected MechanicEntity Caster => Context.Caster ?? throw new Exception("Caster is missing");
 
-	protected TargetWrapper Target => SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current;
+	protected TargetWrapper Target => Context.Target;
 
 	[NotNull]
 	protected MechanicEntity TargetEntity => Target.Entity ?? throw new Exception("Target entity is missing");
+
+	[CanBeNull]
+	protected AbilityExecutionContext AbilityContext => Context.AbilityExecution;
 
 	[CanBeNull]
 	protected Projectile Projectile => ContextData<AbilityExecutionContext.Data>.Current?.Projectile;
@@ -46,10 +47,10 @@ public abstract class ContextAction : GameAction
 		if (ElementsDebugger.IsContextDebugEnabled)
 		{
 			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.Append($"current = {SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current?.Entity}\n");
-			stringBuilder.Append($"clicked target = {SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.ClickedTarget?.Entity}\n");
-			stringBuilder.Append($"caster  = {SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.MaybeCaster}\n");
-			stringBuilder.Append($"owner   = {SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current?.MaybeOwner}");
+			stringBuilder.Append($"current = {Context.Target?.Entity}\n");
+			stringBuilder.Append($"clicked target = {Context.ClickedTarget?.Entity}\n");
+			stringBuilder.Append($"caster  = {Context.Caster}\n");
+			stringBuilder.Append($"owner   = {Context.Owner}");
 			debug.ContextDebugData = new ContextDebugData
 			{
 				StringData = stringBuilder.ToString()

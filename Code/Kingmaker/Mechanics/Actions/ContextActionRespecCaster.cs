@@ -17,13 +17,13 @@ public class ContextActionRespecCaster : ContextAction
 
 	protected override void RunAction()
 	{
-		if (base.Context?.MaybeCaster is UnitEntity { Progression: not null } unitEntity && PartUnitProgression.CanRespec(unitEntity))
+		if (base.Context.Caster is UnitEntity { Progression: not null } unitEntity && PartUnitProgression.CanRespec(unitEntity))
 		{
 			Game.Instance.GameCommandQueue.FinishRespec(unitEntity, forFree: true);
 		}
 		else
 		{
-			Element.LogError(this, $"Can't force respec {base.Context?.MaybeCaster}");
+			Element.LogError(this, $"Can't force respec {base.Context.Caster}");
 		}
 	}
 }

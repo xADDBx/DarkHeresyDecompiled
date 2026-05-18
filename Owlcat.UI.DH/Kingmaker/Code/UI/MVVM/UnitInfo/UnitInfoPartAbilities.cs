@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Root.Strings;
-using ObservableCollections;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -43,43 +42,31 @@ public class UnitInfoPartAbilities : UnitInfoPart
 	protected override void OnBind()
 	{
 		base.OnBind();
-		DrawAbilities();
-		base.ViewModel.Abilities.ObserveAdd().Subscribe(delegate
-		{
-			DrawAbilities();
-		}).AddTo(this);
-		base.ViewModel.Abilities.ObserveRemove().Subscribe(delegate
-		{
-			DrawAbilities();
-		}).AddTo(this);
-		ObservableSubscribeExtensions.Subscribe(base.ViewModel.Abilities.ObserveReset(), delegate
-		{
-			Clear();
-		}).AddTo(this);
+		base.ViewModel.Abilities.Subscribe(DrawAbilities).AddTo(this);
 	}
 
-	private void DrawAbilities()
+	private void DrawAbilities(IReadOnlyList<UnitInfoAbilityVM> abilities)
 	{
-		DrawAbilitiesInternal(base.ViewModel.Abilities.ToList(), m_AbilitiesList);
+		DrawAbilitiesInternal(abilities);
 		int num = m_Groups.Length;
 		for (int i = 0; i < num; i++)
 		{
-			UnitInfoAbilityGroupView groupView = m_Groups[i];
-			groupView.SetActive(m_AbilitiesList.Any((UnitInfoAbilityView b) => b.Group == groupView.Group));
-			groupView.SetSeparator(i + 1 < num);
+			UnitInfoAbilityGroupView unitInfoAbilityGroupView = m_Groups[i];
+			unitInfoAbilityGroupView.SetActive(base.ViewModel.HasAbilityGroup(unitInfoAbilityGroupView.Group));
+			unitInfoAbilityGroupView.SetSeparator(i + 1 < num);
 		}
 	}
 
-	private void DrawAbilitiesInternal(List<(Sprite sprite, AbilityUIGroup group)> abilities, List<UnitInfoAbilityView> views)
+	private void DrawAbilitiesInternal(IReadOnlyList<UnitInfoAbilityVM> abilities)
 	{
 		Clear();
-		foreach (var ability in abilities)
+		foreach (UnitInfoAbilityVM ability in abilities)
 		{
 			UnitInfoAbilityView widget = WidgetFactory.GetWidget(m_AbilityView);
-			widget.Initialize(ability);
-			RectTransform abilityParent = GetAbilityParent(ability.group);
+			widget.Bind(ability);
+			RectTransform abilityParent = GetAbilityParent(ability.Group);
 			widget.transform.SetParent(abilityParent, worldPositionStays: false);
-			views.Add(widget);
+			m_AbilitiesList.Add(widget);
 		}
 	}
 

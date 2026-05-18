@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.Code.View.UI.UIUtils;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
-using Kingmaker.Items;
 using Kingmaker.Networking;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Replay;
+using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.View;
 using Kingmaker.View.MapObjects;
 using Owlcat.UI;
@@ -21,26 +21,18 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber, IGameModeHandler, ITurnBasedModeHandler, ITurnBasedModeStartHandler, IAreaHandler, IAdditiveAreaSwitchHandler, ILootInteractionHandler, ISubscriber<IBaseUnitEntity>, IBugReportUIHandler
 {
-	private readonly ReactiveProperty<MessageBoxVM> m_MessageBoxVM = new ReactiveProperty<MessageBoxVM>();
+	private readonly ReactiveProperty<MessageBoxVM> m_MessageBoxVM;
 
-	private readonly ReactiveProperty<BugReportVM> m_BugReportVM = new ReactiveProperty<BugReportVM>();
-
-	private readonly ReactiveProperty<SubtitleVM> m_SubtitleVM = new ReactiveProperty<SubtitleVM>();
+	private readonly ReactiveProperty<BugReportVM> m_BugReportVM;
 
 	private readonly Queue<MessageBoxVM> m_MessageQueue = new Queue<MessageBoxVM>();
-
-	public ReadOnlyReactiveProperty<MessageBoxVM> MessageBoxVM => m_MessageBoxVM;
-
-	public ReadOnlyReactiveProperty<BugReportVM> BugReportVM => m_BugReportVM;
-
-	public ReadOnlyReactiveProperty<SubtitleVM> SubtitleVM => m_SubtitleVM;
 
 	public CommonContext(ReactiveProperty<MessageBoxVM> messageBoxVM, ReactiveProperty<BugReportVM> bugReportVM, ReactiveProperty<SubtitleVM> subtitleVM, ReactiveProperty<TutorialVM> tutorialVM)
 	{
 		m_MessageBoxVM = messageBoxVM;
 		m_BugReportVM = bugReportVM;
-		m_SubtitleVM = subtitleVM;
-		m_SubtitleVM.Value = new SubtitleVM().AddTo(this);
+		tutorialVM.Value = new TutorialVM().AddTo(this);
+		subtitleVM.Value = new SubtitleVM().AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
@@ -49,7 +41,7 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 		if (!RootUIContext.Instance.IsLoadingScreen)
 		{
 			MessageBoxVM messageBoxVM = new MessageBoxVM(messageText, boxType, onClose, onLinkInvoke, yesLabel, noLabel, onTextResult, inputText, inputPlaceholder, waitTime, DisposeMessageBox, loadingProgress, loadingProgressCloseTrigger);
-			if (MessageBoxVM.CurrentValue == null)
+			if (m_MessageBoxVM.CurrentValue == null)
 			{
 				m_MessageBoxVM.Value = messageBoxVM;
 			}
@@ -67,7 +59,7 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 
 	public void OnGameModeStart(GameModeType gameMode)
 	{
-		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.GameOver || gameMode == GameModeType.CutsceneGlobalMap || gameMode == GameModeType.StarSystem || gameMode == GameModeType.Dialog)
+		if (gameMode == GameModeType.Cutscene || gameMode == GameModeType.GameOver || gameMode == GameModeType.CutsceneGlobalMap || gameMode == GameModeType.Dialog)
 		{
 			ForceDisposeAllFullscreen();
 		}
@@ -97,7 +89,11 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 
 	public void HandleTurnBasedModeSwitched(bool isTurnBased)
 	{
-		if (isTurnBased)
+		if (!isTurnBased)
+		{
+			TryResetWidgetFactoryStash();
+		}
+		else
 		{
 			ForceDisposeAllFullscreen();
 		}
@@ -109,10 +105,6 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 	}
 
 	public void HandleLootInteraction(EntityViewBase[] objects, LootContainerType containerType, Action closeCallback)
-	{
-	}
-
-	public void HandleSpaceLootInteraction(ILootable[] objects, LootContainerType containerType, Action closeCallback, SkillCheckResult skillCheckResult = null)
 	{
 	}
 
@@ -140,8 +132,7 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 
 	public void HandleBugReportHide()
 	{
-		BugReportVM.CurrentValue?.Dispose();
-		m_BugReportVM.Value = null;
+		m_BugReportVM.ClearDisposableValue();
 		Game.Instance.StopMode(GameModeType.BugReport);
 	}
 
@@ -163,8 +154,7 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 
 	private void DisposeMessageBox()
 	{
-		MessageBoxVM.CurrentValue?.Dispose();
-		m_MessageBoxVM.Value = null;
+		m_MessageBoxVM.ClearDisposableValue();
 		if (m_MessageQueue.Count > 0)
 		{
 			MessageBoxVM value = m_MessageQueue.Dequeue();
@@ -184,5 +174,14 @@ public class CommonContext : ViewModel, IDialogMessageBoxUIHandler, ISubscriber,
 	{
 		DisposeMessageBox();
 		HandleBugReportHide();
+		TooltipsDataCache.Instance?.Clear();
+	}
+
+	private static void TryResetWidgetFactoryStash()
+	{
+		if ((BuildModeUtility.Data?.Loading?.WidgetStashCleanup).GetValueOrDefault())
+		{
+			WidgetFactoryStash.ResetStash();
+		}
 	}
 }

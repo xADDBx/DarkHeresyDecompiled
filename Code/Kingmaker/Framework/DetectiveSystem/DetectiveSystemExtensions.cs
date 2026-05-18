@@ -10,7 +10,7 @@ public static class DetectiveSystemExtensions
 
 	public static bool IsRefuted(this BlueprintConclusion conclusion)
 	{
-		if (!conclusion.Refutations.Dereference().Any(DetectiveSystem.HasItem))
+		if (!conclusion.Refutations.Dereference().Any(DetectiveSystem.HasItemExcludingHidden))
 		{
 			return conclusion.Sources.HasItem((BlueprintConclusion.Source i) => (i.Item1.Blueprint is BlueprintConclusion conclusion2 && conclusion2.IsRefuted()) || (i.Item2.Blueprint is BlueprintConclusion conclusion3 && conclusion3.IsRefuted()));
 		}

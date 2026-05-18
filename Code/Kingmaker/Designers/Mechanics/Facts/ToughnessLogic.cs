@@ -19,23 +19,17 @@ public class ToughnessLogic : UnitFactComponentDelegate, IUnitGainPathRankHandle
 {
 	protected override void OnActivateOrPostLoad()
 	{
-		UpdateModifier();
 	}
 
 	protected override void OnDeactivate()
 	{
-		base.Owner.Health.HitPoints.RemoveModifiersFrom(base.Runtime);
 	}
 
 	public void HandleUnitGainPathRank(BlueprintPath path)
 	{
-		UpdateModifier();
 	}
 
 	private void UpdateModifier()
 	{
-		base.Owner.Health.HitPoints.RemoveModifiersFrom(base.Runtime);
-		int value = (base.Owner.Progression.CharacterLevel + 1) / 2;
-		base.Owner.Health.HitPoints.AddModifier(value, base.Runtime);
 	}
 }

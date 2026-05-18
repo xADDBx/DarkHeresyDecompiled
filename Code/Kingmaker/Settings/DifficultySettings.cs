@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using Kingmaker.Enums;
 using Kingmaker.Settings.Difficulty;
 using Kingmaker.Settings.Entities;
 using Kingmaker.Settings.Interfaces;
@@ -17,39 +16,31 @@ public class DifficultySettings
 
 	public readonly SettingsEntityBool RespecAllowed;
 
-	public readonly SettingsEntityInt EnemyDodgePercentModifier;
+	public readonly SettingsEntityEnum<EnemyDifficultyOption> EnemyDurability;
 
-	[Obsolete]
-	public readonly SettingsEntityInt MinPartyDamage;
-
-	[Obsolete]
-	public readonly SettingsEntityInt MinPartyDamageFraction;
-
-	public readonly SettingsEntityInt NPCAttributesBaseValuePercentModifier;
-
-	public readonly SettingsEntityEnum<HardCrowdControlDurationLimit> HardCrowdControlOnPartyMaxDurationRounds;
+	public readonly SettingsEntityEnum<EnemyDifficultyOption> EnemyDamage;
 
 	public readonly SettingsEntityInt SkillCheckModifier;
 
-	public readonly SettingsEntityInt EnemyHitPointsPercentModifier;
-
-	public readonly SettingsEntityInt AllyResolveModifier;
-
-	public readonly SettingsEntityInt PartyDamageDealtAfterArmorReductionPercentModifier;
-
 	public readonly SettingsEntityInt EnemyMovementPoints;
 
-	public readonly SettingsEntityInt AvoidableDamagePercentModifier;
+	public readonly SettingsEntityInt EnemyDamageModifier;
 
-	public readonly SettingsEntityInt MinCRScaling;
+	public readonly SettingsEntityInt PartyDamageModifier;
 
-	public readonly SettingsEntityInt MaxCRScaling;
+	public readonly SettingsEntityInt EnemyDodgeModifier;
 
-	public readonly SettingsEntityEnum<NPCDifficultyOption> NPCDifficulty;
+	public readonly SettingsEntityInt EnemySkillModifier;
 
-	private const int MinCRScalingFixed = 0;
+	public readonly SettingsEntityInt PartyPositiveMoraleChangeModifier;
 
-	private const int MaxCRScalingFixed = 15;
+	public readonly SettingsEntityInt PartyNegativeMoraleChangeModifier;
+
+	public readonly SettingsEntityInt EnemyPositiveMoraleChangeModifier;
+
+	public readonly SettingsEntityInt EnemyNegativeMoraleChangeModifier;
+
+	public readonly SettingsEntityInt AllyResolveModifier;
 
 	public DifficultySettings(ISettingsController settingsController, SettingsValues settingsValues)
 	{
@@ -63,19 +54,18 @@ public class DifficultySettings
 		OnlyOneSave = new SettingsEntityBool(settingsController, "only-one-save", defaultValues.OnlyOneSave, saveDependent: true);
 		CombatEncountersCapacity = new SettingsEntityEnum<CombatEncountersCapacity>(settingsController, "combat-encounters-capacity", difficultyPreset.CombatEncountersCapacity, saveDependent: true);
 		RespecAllowed = new SettingsEntityBool(settingsController, "respec-allowed", difficultyPreset.RespecAllowed, saveDependent: true);
-		EnemyDodgePercentModifier = new SettingsEntityInt(settingsController, "enemy-dodge-percent-modifier", difficultyPreset.EnemyDodgePercentModifier, saveDependent: true);
-		MinPartyDamage = new SettingsEntityInt(settingsController, "min-party-damage", difficultyPreset.MinPartyDamage, saveDependent: true);
-		MinPartyDamageFraction = new SettingsEntityInt(settingsController, "min-party-damage-fraction", difficultyPreset.MinPartyDamageFraction, saveDependent: true);
-		NPCAttributesBaseValuePercentModifier = new SettingsEntityInt(settingsController, "npc-attributes-base-value-percent-modifier", difficultyPreset.NPCAttributesBaseValuePercentModifier, saveDependent: true);
-		HardCrowdControlOnPartyMaxDurationRounds = new SettingsEntityEnum<HardCrowdControlDurationLimit>(settingsController, "hard-crowd-control-on-party-max-duration-rounds", difficultyPreset.HardCrowdControlOnPartyMaxDurationRounds, saveDependent: true);
+		EnemyDurability = new SettingsEntityEnum<EnemyDifficultyOption>(settingsController, "enemy-durability", difficultyPreset.EnemyDurability, saveDependent: true);
+		EnemyDamage = new SettingsEntityEnum<EnemyDifficultyOption>(settingsController, "enemy-damage", difficultyPreset.EnemyDamage, saveDependent: true);
 		SkillCheckModifier = new SettingsEntityInt(settingsController, "skill-check-modifier", difficultyPreset.SkillCheckModifier, saveDependent: true);
-		EnemyHitPointsPercentModifier = new SettingsEntityInt(settingsController, "enemy-hit-points-percent-modifier", difficultyPreset.EnemyHitPointsPercentModifier, saveDependent: true);
-		AllyResolveModifier = new SettingsEntityInt(settingsController, "party-resolve-modifier", difficultyPreset.AllyResolveModifier, saveDependent: true);
-		PartyDamageDealtAfterArmorReductionPercentModifier = new SettingsEntityInt(settingsController, "party-damage-dealt-after-armor-reduction-percent-modifier", difficultyPreset.PartyDamageDealtAfterArmorReductionPercentModifier, saveDependent: true);
-		AvoidableDamagePercentModifier = new SettingsEntityInt(settingsController, "avoidable-damage-percent-modifier", difficultyPreset.AvoidableDamagePercentModifier, saveDependent: true);
 		EnemyMovementPoints = new SettingsEntityInt(settingsController, "enemy-movement-points", difficultyPreset.EnemyMovementPoints, saveDependent: true);
-		MinCRScaling = new SettingsEntityInt(settingsController, "min-cr-for-scaling", 0, saveDependent: true);
-		MaxCRScaling = new SettingsEntityInt(settingsController, "max-cr-for-scaling", 15, saveDependent: true);
-		NPCDifficulty = new SettingsEntityEnum<NPCDifficultyOption>(settingsController, "npc-difficulty", difficultyPreset.NPCDifficulty, saveDependent: true);
+		EnemyDamageModifier = new SettingsEntityInt(settingsController, "enemy-damage-modifier", difficultyPreset.EnemyDamageModifier, saveDependent: true);
+		PartyDamageModifier = new SettingsEntityInt(settingsController, "party-damage-modifier", difficultyPreset.PartyDamageModifier, saveDependent: true);
+		EnemyDodgeModifier = new SettingsEntityInt(settingsController, "enemy-dodge-modifier", difficultyPreset.EnemyDodgeModifier, saveDependent: true);
+		EnemySkillModifier = new SettingsEntityInt(settingsController, "enemy-skill-modifier", difficultyPreset.EnemySkillModifier, saveDependent: true);
+		PartyPositiveMoraleChangeModifier = new SettingsEntityInt(settingsController, "party-positive-morale-change-modifier", difficultyPreset.PartyPositiveMoraleChangeModifier, saveDependent: true);
+		PartyNegativeMoraleChangeModifier = new SettingsEntityInt(settingsController, "party-negative-morale-change-modifier", difficultyPreset.PartyNegativeMoraleChangeModifier, saveDependent: true);
+		EnemyPositiveMoraleChangeModifier = new SettingsEntityInt(settingsController, "enemy-positive-morale-change-modifier", difficultyPreset.EnemyPositiveMoraleChangeModifier, saveDependent: true);
+		EnemyNegativeMoraleChangeModifier = new SettingsEntityInt(settingsController, "enemy-negative-morale-change-modifier", difficultyPreset.EnemyNegativeMoraleChangeModifier, saveDependent: true);
+		AllyResolveModifier = new SettingsEntityInt(settingsController, "party-resolve-modifier", difficultyPreset.AllyResolveModifier, saveDependent: true);
 	}
 }

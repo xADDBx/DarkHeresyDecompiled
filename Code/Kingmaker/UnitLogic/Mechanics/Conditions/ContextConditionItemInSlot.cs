@@ -34,7 +34,7 @@ public class ContextConditionItemInSlot : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		PartUnitBody partUnitBody = ((!IsCaster) ? base.Target.Entity?.GetBodyOptional() : base.Context.MaybeOwner?.GetBodyOptional());
+		PartUnitBody partUnitBody = ((!IsCaster) ? base.Target.Entity?.GetBodyOptional() : base.Eval.Owner?.GetBodyOptional());
 		return partUnitBody?.GetEquipSlot(EquipmentSlot, partUnitBody.CurrentHandEquipmentSetIndex).MaybeItem?.Blueprint == Item;
 	}
 }

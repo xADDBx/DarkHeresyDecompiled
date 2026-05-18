@@ -8,6 +8,7 @@ using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
+using Kingmaker.Predictions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -88,7 +89,7 @@ public class CharacterUnitMark : BaseSurfaceUnitMark, INetRoleSetHandler, ISubsc
 		return new List<UnitMarkDecal>
 		{
 			m_ExplorationSelectedDecal, m_ExplorationSignalSelectedDecal, m_ExplorationOtherPlayerDecal, m_ExplorationDialogCurrentSpeakerDecal, m_ExplorationDialogCurrentSpeakerDecal, m_CombatDecal, m_CombatSelectedDecal, m_CombatCurrentTurnDecal, m_CombatHeroicDecal, m_CombatSelectedHeroicDecal,
-			m_CombatBrokenDecal, m_CombatSelectedBrokenDecal, m_CombatOtherPlayerDecal, m_CombatSelectedOtherPlayerDecal, m_CombatCurrentTurnOtherPlayerDecal, m_CombatIsInAoeDecal, m_GamepadSelectedDecal
+			m_CombatBrokenDecal, m_CombatSelectedBrokenDecal, m_CombatOtherPlayerDecal, m_CombatSelectedOtherPlayerDecal, m_CombatCurrentTurnOtherPlayerDecal, m_GamepadSelectedDecal
 		};
 	}
 
@@ -105,6 +106,7 @@ public class CharacterUnitMark : BaseSurfaceUnitMark, INetRoleSetHandler, ISubsc
 		Selected(isSelected);
 		m_SignalSource = (unit as BaseUnitEntity)?.IsMainCharacter ?? false;
 		m_PingTarget?.SetActive(state: false);
+		m_CombatIsInAoeDecal?.SetActive(state: false);
 	}
 
 	public override void HandleStateChanged()
@@ -123,22 +125,22 @@ public class CharacterUnitMark : BaseSurfaceUnitMark, INetRoleSetHandler, ISubsc
 			bool flag9 = Game.Instance.Controllers.DetectiveRadarController.SignalState == DetectiveRadarState.Activated;
 			bool flag10 = base.Unit.IsMyNetRole();
 			bool inLobbyAndPlaying = UtilityNet.InLobbyAndPlaying;
-			m_ExplorationOtherPlayerDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && !flag2 && !flag4 && !flag10 && inLobbyAndPlaying);
-			m_ExplorationSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && !flag && !flag2 && flag3 && !flag4 && isDirectlyControllable);
-			m_ExplorationSignalSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && !flag && !flag2 && flag3 && !flag4 && isDirectlyControllable && m_SignalSource && flag9);
-			m_ExplorationDialogCurrentSpeakerDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag2);
-			m_CombatDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag4 && !flag && flag10 && !flag8);
-			m_CombatSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag4 && flag3 && flag && flag10 && !flag8);
-			m_CombatHeroicDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag4 && !flag && flag10 && flag6);
-			m_CombatSelectedHeroicDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && flag10 && flag6);
-			m_CombatBrokenDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag4 && !flag && flag10 && flag7);
-			m_CombatSelectedBrokenDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && flag10 && flag7);
-			m_CombatCurrentTurnDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && flag10);
-			m_CombatOtherPlayerDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag4 && !flag && !flag10 && inLobbyAndPlaying && !flag8);
-			m_CombatSelectedOtherPlayerDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag4 && flag && !flag10 && Game.Instance.Controllers.TurnController?.CurrentUnit == base.Unit && inLobbyAndPlaying && !flag8);
-			m_CombatCurrentTurnOtherPlayerDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag && !flag10 && inLobbyAndPlaying);
-			m_CombatIsInAoeDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && base.State.HasFlag(UnitMarkState.IsInAoEPattern));
-			m_GamepadSelectedDecal.SetActive(!BaseUnitMark.IsHideAllUI && !BaseUnitMark.IsCutscene && flag5);
+			bool flag11 = BaseUnitMark.IsHideAllUI || IsHiddenBySettings();
+			m_ExplorationOtherPlayerDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && !flag2 && !flag4 && !flag10 && inLobbyAndPlaying);
+			m_ExplorationSelectedDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && !flag && !flag2 && flag3 && !flag4 && isDirectlyControllable);
+			m_ExplorationSignalSelectedDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && !flag && !flag2 && flag3 && !flag4 && isDirectlyControllable && m_SignalSource && flag9);
+			m_ExplorationDialogCurrentSpeakerDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag2);
+			m_CombatDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag4 && !flag && flag10 && !flag8);
+			m_CombatSelectedDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag4 && flag3 && flag && flag10 && !flag8);
+			m_CombatHeroicDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag4 && !flag && flag10 && flag6);
+			m_CombatSelectedHeroicDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag && flag10 && flag6);
+			m_CombatBrokenDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag4 && !flag && flag10 && flag7);
+			m_CombatSelectedBrokenDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag && flag10 && flag7);
+			m_CombatCurrentTurnDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag && flag10);
+			m_CombatOtherPlayerDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag4 && !flag && !flag10 && inLobbyAndPlaying && !flag8);
+			m_CombatSelectedOtherPlayerDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag4 && flag && !flag10 && Game.Instance.Controllers.TurnController?.CurrentUnit == base.Unit && inLobbyAndPlaying && !flag8);
+			m_CombatCurrentTurnOtherPlayerDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag && !flag10 && inLobbyAndPlaying);
+			m_GamepadSelectedDecal.SetActive(!flag11 && !BaseUnitMark.IsCutscene && flag5);
 		}
 	}
 

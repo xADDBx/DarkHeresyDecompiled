@@ -9,9 +9,14 @@ using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.Gameplay.Controllers.Combat;
 using Kingmaker.Code.UI.MVVM.PreciseAttackOvertip;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.InputSystems;
+using Kingmaker.UI.Sound;
+using Kingmaker.View;
+using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Particles;
 using Owlcat.UI;
 using R3;
@@ -70,6 +75,10 @@ public class PreciseAttackPCView : View<PreciseAttackVM>
 
 	private bool m_CanConfirm;
 
+	private AbstractUnitEntityView m_HighlightedTargetView;
+
+	private GameObject m_TargetFx;
+
 	private List<FxLocatorPair> fxLocatorPairs = new List<FxLocatorPair>();
 
 	protected override void OnBind()
@@ -79,17 +88,21 @@ public class PreciseAttackPCView : View<PreciseAttackVM>
 		m_BackgroundButton.OnRightClickAsObservable().Subscribe(OnCloseClick).AddTo(this);
 		base.ViewModel.PointsUpdated.Subscribe(CreateBodyParts).AddTo(this);
 		CreateBodyParts();
+		base.ViewModel.TargetChanged.Subscribe(SetTargetHighlight).AddTo(this);
 		m_ConfirmButton.OnLeftClickAsObservable().Subscribe(OnConfirmClick).AddTo(this);
+		m_ConfirmButton.SetClickSound(ButtonSoundsEnum.NoSound);
 		EscHotkeyManager.Instance.Subscribe(OnCloseClick).AddTo(this);
-		Game.Instance.Keyboard.Bind(UISettingsRoot.Instance.UIKeybindPreciseAttackSettings.PreciseAttackConfirm.name, OnConfirmClick).AddTo(this);
-		Game.Instance.Keyboard.Bind(UISettingsRoot.Instance.UIKeybindPreciseAttackSettings.PreciseAttackPrevTarget.name, base.ViewModel.SelectPrev).AddTo(this);
-		Game.Instance.Keyboard.Bind(UISettingsRoot.Instance.UIKeybindPreciseAttackSettings.PreciseAttackNextTarget.name, base.ViewModel.SelectNext).AddTo(this);
+		UIKeybindPreciseAttackSettings uIKeybindPreciseAttackSettings = UISettingsRoot.Instance.UIKeybindPreciseAttackSettings;
+		Game.Instance.Keyboard.Bind(uIKeybindPreciseAttackSettings.PreciseAttackConfirm.name, OnConfirmClick).AddTo(this);
+		Game.Instance.Keyboard.Bind(uIKeybindPreciseAttackSettings.PreciseAttackPrevTarget.name, base.ViewModel.SelectPrev).AddTo(this);
+		Game.Instance.Keyboard.Bind(uIKeybindPreciseAttackSettings.PreciseAttackNextTarget.name, base.ViewModel.SelectNext).AddTo(this);
 		m_ConfirmButtonBindText.text = GetConfirmButtonBindText();
 		m_OvertipView.Bind(base.ViewModel.OvertipVM);
 	}
 
 	protected override void OnUnbind()
 	{
+		SetTargetHighlight(null);
 		ClearBodyParts();
 		m_OvertipView.Unbind();
 	}
@@ -165,6 +178,7 @@ public class PreciseAttackPCView : View<PreciseAttackVM>
 		{
 			base.ViewModel.Accept();
 			ClearBodyParts();
+			CombatSounds.Instance.Combat.PreciseAttackConfirm.Play();
 		}
 	}
 
@@ -217,6 +231,27 @@ public class PreciseAttackPCView : View<PreciseAttackVM>
 		base.ViewModel.SetHoveredBodyPart(hoveredBodyPart);
 	}
 
+	private void SetTargetHighlight(MechanicEntity target)
+	{
+		if (m_HighlightedTargetView != null)
+		{
+			m_HighlightedTargetView.PreciseAttackTargeting = false;
+			m_HighlightedTargetView = null;
+		}
+		if (m_TargetFx != null)
+		{
+			FxHelper.Destroy(m_TargetFx);
+			m_TargetFx = null;
+		}
+		if (target?.View is AbstractUnitEntityView abstractUnitEntityView)
+		{
+			abstractUnitEntityView.PreciseAttackTargeting = true;
+			m_HighlightedTargetView = abstractUnitEntityView;
+			GameObject prefab = ConfigRoot.Instance.UIConfig.ViewHighlightingColors.PreciseAttackTargetFx.Load();
+			m_TargetFx = FxHelper.SpawnFxOnEntity(prefab, abstractUnitEntityView);
+		}
+	}
+
 	private void DrawVisual(PreciseAttackController.BodyPartUIData bodyPartData)
 	{
 		List<FxLocator> bodyPartBone = base.ViewModel.GetBodyPartBone(bodyPartData);
@@ -230,7 +265,8 @@ public class PreciseAttackPCView : View<PreciseAttackVM>
 		PreciseAttackBodyPartView preciseAttackBodyPartView = m_BodyParts.FirstOrDefault((PreciseAttackBodyPartView b) => b.BodyPartData == bodyPartData);
 		if (preciseAttackBodyPartView == null)
 		{
-			PFLog.UI.Error("PreciseAttackPCView.DrawLine: cant find body part " + bodyPartData.BodyPart.Name.Text + " for unit " + base.ViewModel.Unit.View.ViewTransform.name + " in scene " + base.ViewModel.Unit.View.gameObject.scene.name);
+			EntityViewBase entityViewBase = (EntityViewBase)base.ViewModel.Unit.View;
+			PFLog.UI.Error("PreciseAttackPCView.DrawLine: cant find body part " + bodyPartData.BodyPart.Name.Text + " for unit " + entityViewBase.transform.name + " in scene " + entityViewBase.gameObject.scene.name);
 		}
 		else
 		{

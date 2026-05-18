@@ -10,7 +10,7 @@ namespace Kingmaker.Visual.Animation.WeaponStyles;
 public class WeaponStyleAttackData : IWeaponStyleAnimationClipsProvider
 {
 	[Serializable]
-	public class WeaponTypeData
+	public class AttackDataContainer
 	{
 		[Serializable]
 		public class AttackAbilityTypeDataPair
@@ -19,8 +19,6 @@ public class WeaponStyleAttackData : IWeaponStyleAnimationClipsProvider
 
 			public AttackAnimationData Data;
 		}
-
-		public WeaponType WeaponType;
 
 		[SerializeField]
 		[ProvideNameWithProperty("Type")]
@@ -69,6 +67,18 @@ public class WeaponStyleAttackData : IWeaponStyleAnimationClipsProvider
 		}
 	}
 
+	[Serializable]
+	public class WeaponTypeData : AttackDataContainer
+	{
+		public WeaponType WeaponType;
+	}
+
+	[Serializable]
+	public class MechadendriteAttackData : AttackDataContainer
+	{
+		public MechadendriteAttackAnimationType MechadendriteAttackType;
+	}
+
 	[SerializeField]
 	private WeaponAnimationStyle m_WeaponStyle;
 
@@ -80,6 +90,14 @@ public class WeaponStyleAttackData : IWeaponStyleAnimationClipsProvider
 	[ProvideNameWithProperty("WeaponType")]
 	[ShowIf("m_IsDualWielding")]
 	private List<WeaponTypeData> m_Off;
+
+	[SerializeField]
+	private bool m_HasMechadendrite;
+
+	[SerializeField]
+	[ProvideNameWithProperty("MechadendriteAttackType")]
+	[ShowIf("m_HasMechadendrite")]
+	private List<MechadendriteAttackData> m_Mechadendrite;
 
 	private bool m_IsDualWielding => m_WeaponStyle.IsDualWielding();
 
@@ -126,8 +144,27 @@ public class WeaponStyleAttackData : IWeaponStyleAnimationClipsProvider
 		return (m_Off?.SingleOrDefault((WeaponTypeData x) => x.WeaponType == weaponType))?[attackType];
 	}
 
+	public AttackAnimationData GetMechadendriteAttackData(WeaponType weaponType, AttackAnimationType attackType)
+	{
+		MechadendriteAttackAnimationType mechadendriteAttackType = weaponType.GetMechadendriteAttackAnimationType();
+		return (m_Mechadendrite?.SingleOrDefault((MechadendriteAttackData x) => x.MechadendriteAttackType == mechadendriteAttackType))?[attackType];
+	}
+
 	public IEnumerable<AnimationClipWrapper> EnumerateClips()
 	{
-		return m_Main.SelectMany((WeaponTypeData data) => data.CollectClipWrappers()).Concat(m_Off.SelectMany((WeaponTypeData data) => data.CollectClipWrappers()));
+		List<AnimationClipWrapper> list = new List<AnimationClipWrapper>();
+		if (m_Main != null)
+		{
+			list.AddRange(m_Main.SelectMany((WeaponTypeData data) => data.CollectClipWrappers()));
+		}
+		if (m_Off != null)
+		{
+			list.AddRange(m_Off.SelectMany((WeaponTypeData data) => data.CollectClipWrappers()));
+		}
+		if (m_HasMechadendrite && m_Mechadendrite != null)
+		{
+			list.AddRange(m_Mechadendrite.SelectMany((MechadendriteAttackData data) => data.CollectClipWrappers()));
+		}
+		return list;
 	}
 }

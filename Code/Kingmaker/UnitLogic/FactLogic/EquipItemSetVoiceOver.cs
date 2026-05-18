@@ -6,6 +6,7 @@ using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.View.Mechanics;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.UnitLogic.FactLogic;
@@ -17,7 +18,7 @@ public class EquipItemSetVoiceOver : EntityFactComponentDelegate<ItemEntity>, IE
 {
 	public int RTPCValue;
 
-	private const string RTPC_EVENT_NAME = "RTPC_VO_Processing";
+	public const string RTPC_EVENT_NAME = "RTPC_VO_Processing";
 
 	private bool m_WasSet;
 
@@ -35,8 +36,16 @@ public class EquipItemSetVoiceOver : EntityFactComponentDelegate<ItemEntity>, IE
 	{
 		if (base.Owner.Wielder != null && base.Owner.Wielder.View != null)
 		{
-			AkUnitySoundEngine.SetRTPCValue("RTPC_VO_Processing", RTPCValue, base.Owner.Wielder.View.gameObject, 0);
-			PFLog.VO.Log($"Setting RTPC_VO_Processing to {RTPCValue} on {base.Owner.Wielder.View.gameObject.name}");
+			TrySetRTPC(base.Owner.Wielder.View.AsMechanicEntityView(), RTPCValue);
+		}
+	}
+
+	public static void TrySetRTPC(MechanicEntityView view, int value)
+	{
+		if (!(view == null))
+		{
+			AkUnitySoundEngine.SetRTPCValue("RTPC_VO_Processing", value, view.gameObject, 0);
+			PFLog.VO.Log($"Setting RTPC_VO_Processing to {value} on {view.gameObject.name}");
 		}
 	}
 
@@ -44,12 +53,11 @@ public class EquipItemSetVoiceOver : EntityFactComponentDelegate<ItemEntity>, IE
 	{
 		if (base.Owner.Wielder != null && base.Owner.Wielder.View != null)
 		{
-			AkUnitySoundEngine.SetRTPCValue("RTPC_VO_Processing", 0f, base.Owner.Wielder.View.gameObject, 0);
-			PFLog.VO.Log($"Setting RTPC_VO_Processing to {0} on {base.Owner.Wielder.View.gameObject.name}");
+			TrySetRTPC(base.Owner.Wielder.View.AsMechanicEntityView(), 0);
 		}
 	}
 
-	public void OnViewAttached(IEntityViewBase view)
+	public void OnViewAttached(IEntityView view)
 	{
 		if (base.Owner.Wielder == view.Data)
 		{
@@ -57,7 +65,7 @@ public class EquipItemSetVoiceOver : EntityFactComponentDelegate<ItemEntity>, IE
 		}
 	}
 
-	public void OnViewDetached(IEntityViewBase view)
+	public void OnViewDetached(IEntityView view)
 	{
 		if (base.Owner.Wielder == view.Data)
 		{

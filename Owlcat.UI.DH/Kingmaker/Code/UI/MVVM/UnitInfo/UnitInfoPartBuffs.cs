@@ -1,3 +1,4 @@
+using Kingmaker.Code.Gameplay.Components;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.UnitInfo;
@@ -15,7 +16,7 @@ public class UnitInfoPartBuffs : UnitInfoPart
 
 	protected override void ShowImpl(UnitInfoPartState state)
 	{
-		bool active = !base.ViewModel.IsPreciseAttack.CurrentValue && m_UnitInfoBuffBlockView.HasBuffs && !state.IsDeadOrUnconscious;
+		bool active = !base.ViewModel.IsPreciseAttack.CurrentValue && base.ViewModel.BuffBlockVM.HasBuffs && !base.ViewModel.HasSettingsFlags(UnitInspectUIFlags.HideStatusEffects) && !state.IsDeadOrUnconscious;
 		base.gameObject.SetActive(active);
 	}
 }

@@ -7,7 +7,7 @@ public class PartyGainExperienceLogThread : LogThreadBase, IGameLogEventHandler<
 {
 	public void HandleEvent(GameLogEventPartyGainExperience evt)
 	{
-		if (!(Game.Instance.CurrentModeType != GameModeType.SpaceCombat) || !evt.IsExperienceForDeath)
+		if ((!(Game.Instance.CurrentModeType != GameModeType.SpaceCombat) || !evt.IsExperienceForDeath) && evt.Experience != 0)
 		{
 			GameLogContext.Count = evt.Experience * Game.Instance.Player.ExperienceRatePercent / 100;
 			AddMessage(new CombatLogMessage(LogThreadBase.Strings.XpGain.CreateCombatLogMessage(), null, hasTooltip: false));

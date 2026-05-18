@@ -5,6 +5,7 @@ using Kingmaker.Controllers.Projectiles;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Sound;
+using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.Utility;
 using Kingmaker.Visual.HitSystem;
 using Kingmaker.Visual.Particles;
@@ -95,15 +96,24 @@ public class SurfaceHitController : IAreaHandler, ISubscriber
 		AkUnitySoundEngine.SetSwitch("HitMainType", "Normal", gameObject2);
 		try
 		{
-			AkSwitchReference akSwitchReference = projectile.Ability?.Weapon?.Blueprint.VisualParameters.SoundTypeSwitch;
+			BlueprintAbilityFXSettings blueprintAbilityFXSettings = projectile.Ability?.FXSettings;
+			AkSwitchReference akSwitchReference = blueprintAbilityFXSettings?.ProjectileTypeSwitch;
 			if (akSwitchReference != null)
 			{
 				AkUnitySoundEngine.SetSwitch(akSwitchReference.Group, akSwitchReference.Value, gameObject2);
 			}
-			AkSwitchReference akSwitchReference2 = projectile.Ability?.Weapon?.Blueprint.VisualParameters.MuffledTypeSwitch;
+			AkSwitchReference akSwitchReference2 = blueprintAbilityFXSettings?.MuffledTypeSwitch;
 			if (akSwitchReference2 != null)
 			{
 				AkUnitySoundEngine.SetSwitch(akSwitchReference2.Group, akSwitchReference2.Value, gameObject2);
+			}
+			if (blueprintAbilityFXSettings != null && blueprintAbilityFXSettings.OverrideDamageType)
+			{
+				AkSwitchReference damageSoundSwitch = ConfigRoot.Instance.HitSystemRoot.GetDamageSoundSwitch(blueprintAbilityFXSettings.DamageType);
+				if (damageSoundSwitch != null)
+				{
+					AkUnitySoundEngine.SetSwitch(damageSoundSwitch.Group, damageSoundSwitch.Value, gameObject2);
+				}
 			}
 		}
 		catch

@@ -50,7 +50,6 @@ using Owlcat.Runtime.Core.Utility.Locator;
 using Owlcat.UI;
 using OwlPack.Runtime;
 using UnityEngine;
-using UnityEngine.CrashReportHandler;
 
 namespace Kingmaker.Utility;
 
@@ -175,8 +174,9 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 	public ReportingUtils()
 	{
 		EventBus.Subscribe(this);
-		m_ReportCombatLogManager = new ReportCombatLogManager(ApplicationPaths.persistentDataPath, "combatLog.txt", this);
-		Owlcat.Runtime.Core.Logging.Logger.Instance.AddLogger(new ReportingUberLoggerFilter(new UberLoggerFile(GetPlatform().ToLower() + "_reporting_util.txt", null, includeCallStacks: false, 5248000, append: true)));
+		string persistentDataPath = ApplicationPaths.persistentDataPath;
+		m_ReportCombatLogManager = new ReportCombatLogManager(persistentDataPath, "combatLog.txt", this);
+		Owlcat.Runtime.Core.Logging.Logger.Instance.AddLogger(new ReportingUberLoggerFilter(new UberLoggerFile(GetPlatform().ToLower() + "_reporting_util.txt", persistentDataPath, includeCallStacks: false, 5248000, append: true)));
 		Logger.Log("");
 		Logger.Log("Instantiate ReportingUtils");
 		m_ReportFilesMd5Manager = new ReportFilesMd5Manager();
@@ -184,7 +184,6 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 		reportFilesMd5Manager.ReportError = (Action<string>)Delegate.Combine(reportFilesMd5Manager.ReportError, new Action<string>(LogReporterError));
 		m_ReportPrivacyManager = new ReportPrivacyManager();
 		m_GameVersion = GameVersion.GetVersion();
-		CrashReportHandler.SetUserMetadata("Store", StoreManager.Store.ToString());
 		_bugreportService = CreateBugreportService();
 	}
 
@@ -576,7 +575,7 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 
 	private static Gender GetGender()
 	{
-		return (Game.Instance?.Player.MainCharacterEntity)?.Blueprint.Gender ?? Gender.Male;
+		return (Game.Instance?.Player.MainCharacterEntity)?.Gender ?? Gender.Male;
 	}
 
 	private void SaveScreenshot(Texture2D screenShot)
@@ -745,8 +744,12 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 			{
 				try
 				{
-					List<string> source = m_UiFeatureName.Split(' ').ToList();
-					m_ContextVariants.AddRange(source.Select(CreateUIContextFromFeature));
+					IEnumerable<BugContext> collection = from f in (from s in m_UiFeatureName.Split(' ')
+							where !string.IsNullOrEmpty(s)
+							select s).ToList().Select(CreateUIContextFromFeature)
+						where m_ContextVariants.FirstOrDefault((BugContext v) => v.Type == f.Type && v.UiFeature == f.UiFeature) == null
+						select f;
+					m_ContextVariants.AddRange(collection);
 				}
 				catch
 				{
@@ -829,7 +832,7 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 			m_ContextVariants.Sort();
 			if (!flag && blueprintUnit != null)
 			{
-				List<BugContext> collection = new List<BugContext>(m_ContextVariants);
+				List<BugContext> collection2 = new List<BugContext>(m_ContextVariants);
 				try
 				{
 					BugContext bugContext = m_ContextVariants.FirstOrDefault((BugContext x) => x.Type == "Area");
@@ -862,7 +865,7 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 				catch
 				{
 					m_ContextVariants.Clear();
-					m_ContextVariants.AddRange(collection);
+					m_ContextVariants.AddRange(collection2);
 				}
 			}
 			if (m_ContextVariants.Count((BugContext x) => x.Type == "Unit" && x.ContextObject != null) > 1)
@@ -938,10 +941,15 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 
 	public IEnumerator MakeNewReport(bool withScreenshot, bool withSave, bool withCrashDump)
 	{
-		TooltipData tooltipData = MouseHoverBlueprintSystem.Instance.TooltipData;
+		TooltipData tooltip = MouseHoverBlueprintSystem.Instance.TooltipData;
 		string otherUiFeatureName = ReportingRaycaster.Instance.GetOtherUiFeatureName();
-		Texture2D screenshot = (withScreenshot ? CreateScreenshotSafe() : null);
-		using NewReportOptions options = new NewReportOptions(tooltipData, screenshot, otherUiFeatureName, withSave, withCrashDump);
+		Texture2D screenshot = null;
+		if (withScreenshot)
+		{
+			yield return new WaitForEndOfFrame();
+			screenshot = CreateScreenshotSafe();
+		}
+		using NewReportOptions options = new NewReportOptions(tooltip, screenshot, otherUiFeatureName, withSave, withCrashDump);
 		yield return MakeNewReport(options);
 	}
 
@@ -992,7 +1000,7 @@ public class ReportingUtils : IDisposable, IFullScreenUIHandler, ISubscriber, IP
 		}
 	}
 
-	public async void SendReport(string message, string email, string uniqueIdentifier, string issueType, string additionalContacts = "", bool isSendMarketing = false, string id = null)
+	public async Task SendReport(string message, string email, string uniqueIdentifier, string issueType, string additionalContacts = "", bool isSendMarketing = false, string id = null)
 	{
 		if (id == null && NetworkingManager.IsMultiplayer)
 		{

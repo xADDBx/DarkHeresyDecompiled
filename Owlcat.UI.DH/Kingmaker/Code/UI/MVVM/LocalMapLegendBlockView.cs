@@ -23,6 +23,7 @@ public class LocalMapLegendBlockView : View<LocalMapLegendBlockVM>
 
 	protected override void OnBind()
 	{
+		base.gameObject.SetActive(value: false);
 		m_BlockCanvasGroup.alpha = 0f;
 		AddItems();
 	}
@@ -63,6 +64,17 @@ public class LocalMapLegendBlockView : View<LocalMapLegendBlockVM>
 
 	public void ShowHide(bool state)
 	{
-		m_BlockCanvasGroup.DOFade(state ? 1 : 0, 0.1f).SetEase(Ease.Linear).SetUpdate(isIndependentUpdate: true);
+		if (state)
+		{
+			base.gameObject.SetActive(value: true);
+		}
+		m_BlockCanvasGroup.DOFade(state ? 1 : 0, 0.1f).SetEase(Ease.Linear).SetUpdate(isIndependentUpdate: true)
+			.OnComplete(delegate
+			{
+				if (!state)
+				{
+					base.gameObject.SetActive(value: false);
+				}
+			});
 	}
 }

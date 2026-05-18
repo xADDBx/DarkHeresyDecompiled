@@ -14,7 +14,9 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Persistence.Scenes;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.UI.InputSystems;
+using Kingmaker.UI.Pointer;
 using Kingmaker.Utility;
 using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.Utility.Reporting.Base;
@@ -26,7 +28,6 @@ using Owlcat.UI;
 using TMPro;
 using Unity.Profiling.Memory;
 using UnityEngine;
-using UnityEngine.Analytics;
 using UnityEngine.Diagnostics;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -97,7 +98,6 @@ internal class CheatsDebug
 			SmartConsole.RegisterCommand("heap_dump", HeapDump);
 			SmartConsole.RegisterCommand("sleep_every_frame", SleepEveryFrame);
 			SmartConsole.RegisterCommand("log_graphics_hardware", LogGraphicsHardware);
-			SmartConsole.RegisterCommand("unity_analytics", UnityAnalytics);
 			SmartConsole.RegisterCommand("entity_dump", DumpState);
 			SmartConsole.RegisterCommand("set_fov", SetCameraFov);
 			SmartConsole.RegisterCommand("set_fov_min_max", SetCameraFovMinMax);
@@ -187,7 +187,7 @@ internal class CheatsDebug
 	private static void Raycast(string parameters)
 	{
 		Camera camera = Game.Instance.GetCamera();
-		RaycastHit[] array = Physics.RaycastAll(camera.ScreenPointToRay(Input.mousePosition), camera.farClipPlane, 70014209);
+		RaycastHit[] array = Physics.RaycastAll(camera.ScreenPointToRay(CursorController.CursorPosition), camera.farClipPlane, 70014209);
 		foreach (RaycastHit raycastHit in array)
 		{
 			Collider collider = raycastHit.collider;
@@ -327,15 +327,6 @@ internal class CheatsDebug
 		foreach (Entity allEntityDatum2 in Game.Instance.State.LoadedAreaState.AllEntityData)
 		{
 			PFLog.Default.Log(string.Format("Entity {0} {1} in {2} View {3} ({4})", allEntityDatum2.GetType().Name, allEntityDatum2.UniqueId, allEntityDatum2.HoldingState?.SceneName ?? "NULL", allEntityDatum2.View, allEntityDatum2.View != null));
-		}
-	}
-
-	private static void UnityAnalytics(string parameters)
-	{
-		bool? paramBool = Utilities.GetParamBool(parameters, 1, "Can't parse bool from given parameters");
-		if (paramBool.HasValue)
-		{
-			PerformanceReporting.enabled = paramBool.Value;
 		}
 	}
 
@@ -890,6 +881,32 @@ internal class CheatsDebug
 	public static void TakeSnapshotNativeOnly()
 	{
 		TakeSnapshotInternal(CaptureFlags.NativeObjects);
+	}
+
+	[Cheat(Name = "freeze_outside_camera_all", ExecutionPolicy = ExecutionPolicy.PlayMode, Description = "Sets FreezeOutsideCamera to the given value on every unit not in the MainCharacter party roster")]
+	public static void FreezeOutsideCameraAll(bool value)
+	{
+		List<BaseUnitEntity> allCharacters = Game.Instance.Player.AllCharacters;
+		int num = 0;
+		int num2 = 0;
+		int num3 = 0;
+		foreach (AbstractUnitEntity allUnit in Game.Instance.EntityPools.AllUnits)
+		{
+			if (allUnit is BaseUnitEntity item && allCharacters.Contains(item))
+			{
+				num2++;
+			}
+			else if (allUnit.FreezeOutsideCamera != value)
+			{
+				allUnit.FreezeOutsideCamera = value;
+				num++;
+			}
+			else
+			{
+				num3++;
+			}
+		}
+		PFLog.SmartConsole.Log($"freeze_outside_camera_all: set FreezeOutsideCamera={value} on {num} units, {num3} already had this value, skipped {num2} party members");
 	}
 
 	[Cheat(Name = "debug_spam_exceptions", ExecutionPolicy = ExecutionPolicy.PlayMode)]

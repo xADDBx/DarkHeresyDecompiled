@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.View.Spawners;
 using Kingmaker.View.Spawners.Components;
 using Owlcat.QA.Validation;
@@ -33,7 +32,7 @@ public class CorpseInteractionEvaluator : MapObjectEvaluator, IOwlPackable<Corps
 
 	protected override MapObjectEntity GetMapObjectInternal()
 	{
-		return (((m_UnitSpawner.FindData() as UnitSpawnerBase.MyData)?.SpawnedUnit)?.Entity.ToAbstractUnitEntity().Parts.GetOptional<SpawnerCorpseInteraction.CorpseInteractionPart>())?.InteractionObjectRef.Entity;
+		return (((m_UnitSpawner.FindData() as AbstractUnitSpawnerEntity)?.SpawnedUnit)?.Parts.GetOptional<SpawnerCorpseInteraction.CorpseInteractionPart>())?.InteractionObjectRef.Entity;
 	}
 
 	public override string GetCaption()

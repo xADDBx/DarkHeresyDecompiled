@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Code.Framework.CutsceneSystem;
 using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
@@ -11,7 +12,6 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.QA;
-using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -65,27 +65,24 @@ public class CommandStartDialog : CommandBase, IDialogReference
 
 	public BlueprintDialog Dialog => m_Dialog?.Get();
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
-		BlueprintDialog blueprintDialog = (Dialog ? Dialog : (DialogEvaluator ? (DialogEvaluator.GetValue() as BlueprintDialog) : null));
+		BlueprintDialog blueprintDialog = Dialog;
+		if (blueprintDialog == null && DialogEvaluator != null && DialogEvaluator.TryGetValue(out var value) && value is BlueprintDialog blueprintDialog2)
+		{
+			blueprintDialog = blueprintDialog2;
+		}
 		if (blueprintDialog == null)
 		{
 			OnStop(player);
 			player.GetCommandData<Finisher>(this).Finished = true;
-			PFLog.Default.Error(this, $"Cutscene command {this} in {player.Cutscene} unable to start dialog: no dialog found");
-			QAModeExceptionReporter.MaybeShowError($"Cutscene command {this} in {player.Cutscene} unable to start dialog: no dialog found");
-			return;
+			return CommandResult.FailWithReport($"Cutscene command {this} in {player.Cutscene} unable to start dialog: no dialog found");
 		}
 		if (Speaker != null)
 		{
-			if (!(Speaker.GetValue() is BaseUnitEntity unit))
+			if (!Speaker.TryGetValue(out var value2) || !(value2 is BaseUnitEntity unit))
 			{
-				string message = $"[IS NOT BASE UNIT ENTITY] Cutscene command {this}, {Speaker} is not BaseUnitEntity";
-				if (!QAModeExceptionReporter.MaybeShowError(message))
-				{
-					UberDebug.LogError(message);
-				}
-				return;
+				return CommandResult.FailWithReport("Dialog speaker is set to invalid Unit");
 			}
 			DialogData data = DialogController.SetupDialogWithUnit(blueprintDialog, unit);
 			Game.Instance.Controllers.DialogController.StartDialog(data);
@@ -96,6 +93,7 @@ public class CommandStartDialog : CommandBase, IDialogReference
 			Game.Instance.Controllers.DialogController.StartDialog(data2);
 		}
 		player.GetCommandData<Finisher>(this).Subscribe(blueprintDialog, player.Cutscene);
+		return CommandResult.Success;
 	}
 
 	public override bool TrySkip(CutscenePlayerData player)
@@ -103,8 +101,19 @@ public class CommandStartDialog : CommandBase, IDialogReference
 		return false;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -112,8 +121,9 @@ public class CommandStartDialog : CommandBase, IDialogReference
 		return player.GetCommandData<Finisher>(this).Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

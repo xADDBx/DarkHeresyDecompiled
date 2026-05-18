@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -13,7 +14,7 @@ public class ContextConditionGetter : BoolPropertyGetter, PropertyContextAccesso
 
 	protected override bool GetBaseValue()
 	{
-		using (this.GetMechanicContext().SetScope(base.CurrentEntity, null))
+		using (EvalContext.Current.PushTarget(base.CurrentEntity))
 		{
 			return Conditions.Check();
 		}

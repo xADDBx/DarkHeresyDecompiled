@@ -1,11 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Kingmaker.Cheats;
 using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Utility.CodeTimer;
-using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
 using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Visual.FogOfWar;
@@ -61,13 +59,12 @@ internal class AreaDataStash
 		if (state.MainState.SkipSerialize && dispose)
 		{
 			state.Dispose();
+			foreach (SceneEntitiesState allSceneState in state.GetAllSceneStates())
 			{
-				foreach (SceneEntitiesState allSceneState in state.GetAllSceneStates())
-				{
-					ClearDataForArea(state.Blueprint.AssetGuidThreadSafe, (allSceneState == state.MainState) ? "" : allSceneState.SceneName, forceJsonSaves);
-				}
-				return;
+				ClearDataForArea(state.Blueprint.AssetGuidThreadSafe, (allSceneState == state.MainState) ? "" : allSceneState.SceneName, forceJsonSaves);
 			}
+			SavedFogMasks.Get(state.AreaGuid).Wipe();
+			return;
 		}
 		state.ShouldLoad = true;
 		if (forceJsonSaves)
@@ -97,7 +94,6 @@ internal class AreaDataStash
 				}
 			}
 		}
-		SaveFogBytesForArea(state, state.SavedFogOfWarMasks);
 		if (dispose)
 		{
 			state.Dispose();
@@ -120,8 +116,6 @@ internal class AreaDataStash
 		{
 			(SaveInfo.SaveFormat, byte[])? dataForArea = GetDataForArea(area, area.MainState);
 			AreaPersistentState areaPersistentState = Deserialize<AreaPersistentState>(dataForArea.Value.Item1, dataForArea.Value.Item2);
-			areaPersistentState.SavedFogOfWarMasks.Clear();
-			UnstashFogBytesForArea(area, areaPersistentState.SavedFogOfWarMasks);
 			foreach (SceneEntitiesState additionalSceneState in area.GetAdditionalSceneStates())
 			{
 				if (!additionalSceneState.IsSceneLoaded)
@@ -175,57 +169,17 @@ internal class AreaDataStash
 		return null;
 	}
 
-	private static void UnstashFogBytesForArea(AreaPersistentState area, SavedFogMasks stateSavedFogOfWarMasks)
+	public static string Encode(string filename, bool doNotEncode = false)
 	{
-		string assetGuidThreadSafe = area.Blueprint.AssetGuidThreadSafe;
-		try
-		{
-			string[] files = Directory.GetFiles(Folder);
-			foreach (string text in files)
-			{
-				string fileName = System.IO.Path.GetFileName(text);
-				if (!fileName.StartsWith(assetGuidThreadSafe) || !fileName.EndsWith(".fog"))
-				{
-					continue;
-				}
-				string text2 = fileName.Split('.').Get(1);
-				if (!string.IsNullOrEmpty(text2))
-				{
-					try
-					{
-						stateSavedFogOfWarMasks.Add(text2, text);
-					}
-					catch (Exception ex)
-					{
-						LogChannel.Default.Exception(ex);
-						LogChannel.Default.Error("No fog state for " + assetGuidThreadSafe + " (" + text2 + ")");
-					}
-				}
-			}
-		}
-		catch (Exception ex2)
-		{
-			LogChannel.Default.Exception(ex2);
-			LogChannel.Default.Error("No fog state for " + assetGuidThreadSafe);
-		}
+		return filename;
 	}
 
-	public static void SaveFogBytesForArea(AreaPersistentState area, SavedFogMasks fowMasks)
-	{
-		if (!Directory.Exists(Folder))
-		{
-			Directory.CreateDirectory(Folder);
-		}
-		string assetGuidThreadSafe = area.Blueprint.AssetGuidThreadSafe;
-		fowMasks.SaveAll(Folder, assetGuidThreadSafe);
-	}
-
-	public static string FileName(string areaId, string sceneName, SaveInfo.SaveFormat format)
+	public static string FileName(string areaId, string sceneName, SaveInfo.SaveFormat format, bool doNotEncode = false)
 	{
 		return format switch
 		{
-			SaveInfo.SaveFormat.JSON => areaId + sceneName + ".json", 
-			SaveInfo.SaveFormat.OwlPack => areaId + sceneName + ".owl", 
+			SaveInfo.SaveFormat.JSON => Encode(areaId + sceneName, doNotEncode) + ".json", 
+			SaveInfo.SaveFormat.OwlPack => Encode(areaId + sceneName, doNotEncode) + ".owl", 
 			_ => throw new ArgumentException($"Unsupported format {format}"), 
 		};
 	}
@@ -235,19 +189,14 @@ internal class AreaDataStash
 		return FileName(areaId, sceneName, (!useJson) ? SaveInfo.SaveFormat.OwlPack : SaveInfo.SaveFormat.JSON);
 	}
 
-	public static IEnumerable<string> EnumerateFogMasks(string areaId)
+	private static string Path(AreaPersistentState area, SceneEntitiesState state, SaveInfo.SaveFormat format, bool doNotEncode = false)
 	{
-		return Directory.EnumerateFiles(Folder, areaId + ".*.fog");
+		return System.IO.Path.Combine(Folder, FileName(area.Blueprint.AssetGuidThreadSafe, (state == area.MainState) ? "" : state.SceneName, format, doNotEncode));
 	}
 
-	private static string Path(AreaPersistentState area, SceneEntitiesState state, SaveInfo.SaveFormat format)
+	public static string Path(string areaId, string sceneName, bool useJson, bool doNotEncode = false)
 	{
-		return System.IO.Path.Combine(Folder, FileName(area.Blueprint.AssetGuidThreadSafe, (state == area.MainState) ? "" : state.SceneName, format));
-	}
-
-	public static string Path(string areaId, string sceneName, bool useJson)
-	{
-		return System.IO.Path.Combine(Folder, FileName(areaId, sceneName, (!useJson) ? SaveInfo.SaveFormat.OwlPack : SaveInfo.SaveFormat.JSON));
+		return System.IO.Path.Combine(Folder, FileName(areaId, sceneName, (!useJson) ? SaveInfo.SaveFormat.OwlPack : SaveInfo.SaveFormat.JSON, doNotEncode));
 	}
 
 	public static bool HasData(string areaId, string sceneName, bool useJson)
@@ -255,23 +204,12 @@ internal class AreaDataStash
 		return File.Exists(Path(areaId, sceneName, useJson));
 	}
 
-	public static void ClearDataForArea(string areaId, string sceneName, bool useJson)
+	public static void ClearDataForArea(string areaId, string sceneName, bool useJson, bool doNotEncode = false)
 	{
-		string path = Path(areaId, sceneName, useJson);
+		string path = Path(areaId, sceneName, useJson, doNotEncode);
 		if (File.Exists(path))
 		{
 			File.Delete(path);
-		}
-		if (!(sceneName == ""))
-		{
-			return;
-		}
-		foreach (string item in EnumerateFogMasks(areaId))
-		{
-			if (File.Exists(item))
-			{
-				File.Delete(item);
-			}
 		}
 	}
 
@@ -282,7 +220,7 @@ internal class AreaDataStash
 		{
 			string sceneName = active.gameObject.scene.name;
 			byte[] data = await active.RequestData();
-			state.SavedFogOfWarMasks.Add(sceneName, data);
+			await SavedFogMasks.Get(state.AreaGuid).Save(sceneName, data);
 		}
 	}
 

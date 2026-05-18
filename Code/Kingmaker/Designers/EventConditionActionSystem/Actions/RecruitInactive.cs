@@ -2,86 +2,69 @@ using System;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Code.Gameplay.Actions;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence.Versioning;
-using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Parts;
-using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
-using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
 
 [AllowMultipleComponents]
 [PlayerUpgraderAllowed(false)]
 [TypeId("857993ffeba11124699997a531336700")]
-public class RecruitInactive : GameAction
+public class RecruitInactive : CompanionActionBase
 {
-	[ValidateNotNull]
-	[SerializeField]
-	[FormerlySerializedAs("CompanionBlueprint")]
-	private BlueprintUnitReference m_CompanionBlueprint;
+	public ActionList? OnRecruit;
 
-	public ActionList OnRecruit;
-
-	public BlueprintUnit CompanionBlueprint
+	protected override void RunAction(BlueprintUnit unit)
 	{
-		get
-		{
-			return m_CompanionBlueprint?.Get();
-		}
-		set
-		{
-			m_CompanionBlueprint = value.ToReference<BlueprintUnitReference>();
-		}
+		RecruitInactiveUnit(unit, OnRecruit);
 	}
 
-	protected override void RunAction()
+	public static void RecruitInactiveUnit(BlueprintUnit unit, ActionList? onRecruit)
 	{
-		RecruitInactiveUnit(CompanionBlueprint, OnRecruit);
-	}
-
-	public static void RecruitInactiveUnit(BlueprintUnit unit, ActionList onRecruit)
-	{
-		BaseUnitEntity baseUnitEntity = Game.Instance.Player.AllCharacters.FirstOrDefault((BaseUnitEntity c) => c.Blueprint == unit);
-		if (baseUnitEntity != null && baseUnitEntity.GetOptional<UnitPartCompanion>() != null && baseUnitEntity.GetOptional<UnitPartCompanion>().State != CompanionState.ExCompanion)
+		BlueprintUnit unit = unit;
+		BaseUnitEntity mainCharacter = Game.Instance.Player.MainCharacterEntity;
+		BaseUnitEntity baseUnitEntity = Game.Instance.Player.AllCharacters.Where((BaseUnitEntity u) => u != mainCharacter).FirstOrDefault((BaseUnitEntity u) => unit == u.Blueprint);
+		if (baseUnitEntity == null)
 		{
-			Element.LogError($"Attempted to double-recruit {unit}");
-			return;
+			throw new Exception($"RecruitInactive failed. Companion is not in roster yet: {unit}");
 		}
-		BaseUnitEntity baseUnitEntity2 = ((baseUnitEntity != null && baseUnitEntity.GetOptional<UnitPartCompanion>()?.State == CompanionState.ExCompanion) ? baseUnitEntity : null);
-		if (baseUnitEntity2 == null)
+		UnitPartCompanion unitPartCompanion = baseUnitEntity.GetOptional<UnitPartCompanion>();
+		if (unitPartCompanion == null)
 		{
-			baseUnitEntity2 = Game.Instance.Controllers.EntitySpawner.SpawnUnit(unit, Vector3.zero, Quaternion.identity, Game.Instance.Player.CrossSceneState);
-			baseUnitEntity2.IsInGame = false;
-			baseUnitEntity2.GetOrCreate<UnitPartCompanion>().SetState(CompanionState.Remote);
-			int experience = Game.Instance.Player.MainCharacterEntity.ToBaseUnitEntity().Progression.Experience;
-			baseUnitEntity2.Progression.AdvanceExperienceTo(experience, log: false);
+			Element.LogError("Actual companion with no UnitPartCompanion: " + baseUnitEntity.Name);
+			unitPartCompanion = baseUnitEntity.GetOrCreate<UnitPartCompanion>();
 		}
-		else
+		else if (unitPartCompanion.State != CompanionState.ExCompanion)
 		{
-			baseUnitEntity2.GetOrCreate<UnitPartCompanion>().SetState(CompanionState.Remote);
+			throw new Exception("Attempted to double-recruit " + baseUnitEntity.Name);
 		}
-		baseUnitEntity2.CombatGroup.Id = "<directly-controllable-unit>";
-		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity2, (Action<IPartyHandler>)delegate(IPartyHandler h)
+		if (unitPartCompanion.IsExForever)
+		{
+			throw new Exception($"Trying to recruit inactive companion {baseUnitEntity.Name} that is {unitPartCompanion.ExState}");
+		}
+		unitPartCompanion.SetState(CompanionState.Remote);
+		baseUnitEntity.CombatGroup.Id = "<directly-controllable-unit>";
+		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity, (Action<IPartyHandler>)delegate(IPartyHandler h)
 		{
 			h.HandleAddCompanion();
 		}, isCheckRuntime: true);
-		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity2, (Action<IPartyHandler>)delegate(IPartyHandler h)
+		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity, (Action<IPartyHandler>)delegate(IPartyHandler h)
 		{
 			h.HandleCompanionRemoved(stayInGame: false);
 		}, isCheckRuntime: true);
-		using (ContextData<RecruitedUnitData>.Request().Setup(baseUnitEntity2))
+		using (ContextData<RecruitedUnitData>.Request().Setup(baseUnitEntity))
 		{
-			onRecruit.Run();
+			onRecruit?.Run();
 		}
-		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity2, (Action<ICompanionChangeHandler>)delegate(ICompanionChangeHandler h)
+		EventBus.RaiseEvent((IBaseUnitEntity)baseUnitEntity, (Action<ICompanionChangeHandler>)delegate(ICompanionChangeHandler h)
 		{
 			h.HandleRecruit();
 		}, isCheckRuntime: true);
@@ -89,6 +72,6 @@ public class RecruitInactive : GameAction
 
 	public override string GetCaption()
 	{
-		return $"Recruit ({CompanionBlueprint}) to capital";
+		return "Recruit to capital (" + base.CaptionName + ")";
 	}
 }

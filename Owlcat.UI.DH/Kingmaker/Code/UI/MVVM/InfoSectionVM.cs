@@ -15,10 +15,7 @@ public class InfoSectionVM : ViewModel
 
 	public InfoSectionVM()
 	{
-		m_TooltipTemplate.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(delegate(TooltipBaseTemplate temp)
-		{
-			SetTemplate(temp);
-		}).AddTo(this);
+		m_TooltipTemplate.DebounceFrame(1, UnityFrameProvider.PreLateUpdate).Subscribe(SetTemplate).AddTo(this);
 	}
 
 	protected override void OnDispose()

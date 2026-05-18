@@ -21,13 +21,13 @@ public class ContextConditionProperty : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		MechanicEntity mechanicEntity = base.Target.Entity ?? base.Context.MaybeCaster;
+		MechanicEntity mechanicEntity = base.Target.Entity ?? base.Eval.Caster;
 		if (mechanicEntity == null)
 		{
 			PFLog.Default.ErrorWithReport("CurrentEntity is missing");
 			return false;
 		}
-		int value = Property.GetValue(mechanicEntity, base.Context);
+		int value = Property.GetValue(mechanicEntity, base.Eval);
 		if (!NegativeDoesNotCount)
 		{
 			return value != 0;

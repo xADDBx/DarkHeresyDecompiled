@@ -3,7 +3,9 @@ using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Mechanics.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Abilities;
+using Kingmaker.Framework.ContextContract;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
@@ -17,7 +19,13 @@ namespace Kingmaker.UnitLogic.Mechanics.Actions;
 
 [Serializable]
 [TypeId("5d13a597de91e4746b804f8233518523")]
-public class ContextActionApplyBuff : ContextAction
+[ReadsContext(new ContextField[]
+{
+	ContextField.Caster,
+	ContextField.Target
+})]
+[SetsContext(ContextField.Target, Availability.Definitely)]
+public class ContextActionApplyBuff : ContextAction, IAbilityPrediction
 {
 	[SerializeField]
 	private BlueprintBuffReference m_Buff;
@@ -64,6 +72,20 @@ public class ContextActionApplyBuff : ContextAction
 
 	public BlueprintBuff Buff => m_Buff?.Get();
 
+	public void CollectPrediction(AbilityPredictionContext context)
+	{
+		MechanicEntity buffTarget = GetBuffTarget(base.Context);
+		if (buffTarget != null && Buff != null)
+		{
+			int num = ((!Buff.HasRanks) ? 1 : Ranks.Calculate(base.Context));
+			if (!DoNotApplyZeroRanks || num > 0)
+			{
+				num = Math.Max(1, num);
+				context.RecordBuff(duration: new BuffDuration(CalculateDuration(), BuffEndCondition, BuffExpireMoment), target: buffTarget, blueprint: Buff, rank: num, parentContext: base.Context);
+			}
+		}
+	}
+
 	public override string GetCaption()
 	{
 		string text = "Apply" + (AsChild ? " child" : "") + " Buff" + (ToCaster ? " to caster" : "") + ": " + (Buff.NameSafe() ?? "???");
@@ -77,24 +99,23 @@ public class ContextActionApplyBuff : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicsContext context = base.Context;
-		MechanicEntity buffTarget = GetBuffTarget(context);
+		MechanicEntity buffTarget = GetBuffTarget(base.Context);
 		if (buffTarget == null)
 		{
 			Element.LogError(this, "Can't apply buff: target is null");
 			return;
 		}
-		int num = ((!Buff.HasRanks) ? 1 : Ranks.Calculate(context));
+		int num = ((!Buff.HasRanks) ? 1 : Ranks.Calculate(base.Context));
 		if (DoNotApplyZeroRanks && num <= 0)
 		{
 			return;
 		}
 		num = Math.Max(1, num);
-		BuffDuration duration = new BuffDuration(CalculateDuration(context), BuffEndCondition, BuffExpireMoment);
-		Buff buff = buffTarget.Buffs.Add(Buff, context, duration, num);
+		BuffDuration duration = new BuffDuration(CalculateDuration(), BuffEndCondition, BuffExpireMoment);
+		Buff buff = buffTarget.Buffs.Add(Buff, base.Context, duration, num);
 		if (buff == null)
 		{
-			using (base.Context.SetScope(buffTarget.ToITargetWrapper()))
+			using (base.Context.PushTarget(buffTarget))
 			{
 				ActionsOnImmune?.Run();
 				return;
@@ -102,10 +123,10 @@ public class ContextActionApplyBuff : ContextAction
 		}
 		if (buff.FirstSource == null && !TryAddAbilitySource(buff))
 		{
-			AreaEffectEntity current = SimpleContextData<AreaEffectEntity, MechanicsContext.Scope.AreaEffect>.Current;
-			if (current != null)
+			AreaEffectEntity areaEffect = base.Context.AreaEffect;
+			if (areaEffect != null)
 			{
-				buff.AddSource(current);
+				buff.AddSource(areaEffect);
 			}
 			else
 			{
@@ -116,7 +137,7 @@ public class ContextActionApplyBuff : ContextAction
 		{
 			(SimpleContextData<MechanicEntityFact, Kingmaker.UnitLogic.Buffs.Buff.Scope.Parent>.Current ?? base.Context.Fact)?.AddChildFact(buff);
 		}
-		using (base.Context.SetScope(buffTarget.ToITargetWrapper()))
+		using (base.Context.PushTarget(buffTarget))
 		{
 			ActionsOnApply?.Run();
 		}
@@ -132,11 +153,12 @@ public class ContextActionApplyBuff : ContextAction
 		{
 			return false;
 		}
-		if (!(SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current is AbilityExecutionContext abilityExecutionContext))
+		AbilityExecutionContext abilityContext = base.AbilityContext;
+		if (abilityContext == null)
 		{
 			return false;
 		}
-		Ability fact = abilityExecutionContext.Ability.Fact;
+		Ability fact = abilityContext.Ability.Fact;
 		if (fact == null)
 		{
 			return false;
@@ -145,16 +167,16 @@ public class ContextActionApplyBuff : ContextAction
 		return true;
 	}
 
-	public MechanicEntity GetBuffTarget(MechanicsContext context)
+	public MechanicEntity GetBuffTarget(IEvalContext context)
 	{
 		if (!ToCaster)
 		{
 			return base.Target.Entity;
 		}
-		return context.MaybeCaster;
+		return context.Caster;
 	}
 
-	private Rounds? CalculateDuration(MechanicsContext context)
+	private Rounds? CalculateDuration()
 	{
 		if (Permanent)
 		{
@@ -169,6 +191,6 @@ public class ContextActionApplyBuff : ContextAction
 			}
 			return null;
 		}
-		return DurationValue.Calculate(context);
+		return DurationValue.Calculate(base.Context);
 	}
 }

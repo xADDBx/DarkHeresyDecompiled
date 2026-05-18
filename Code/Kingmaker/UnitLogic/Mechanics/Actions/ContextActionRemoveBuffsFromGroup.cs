@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.Utility.DotNetExtensions;
@@ -38,13 +36,7 @@ public class ContextActionRemoveBuffsFromGroup : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicsContext current = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current == null)
-		{
-			Element.LogError(this, "Unable to remove buff: no context found");
-			return;
-		}
-		MechanicEntity mechanicEntity = (ToCaster ? current.MaybeCaster : base.Target.Entity);
+		MechanicEntity mechanicEntity = (ToCaster ? base.Context.Caster : base.Target.Entity);
 		if (mechanicEntity == null)
 		{
 			return;

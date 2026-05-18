@@ -2,6 +2,7 @@ using Code.Visual.Animation;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -10,7 +11,6 @@ using Kingmaker.View;
 using Kingmaker.View.Covers;
 using Kingmaker.View.Equipment;
 using Kingmaker.View.Mechadendrites;
-using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Owlcat.Runtime.Core.Utility;
@@ -26,10 +26,10 @@ public class UnitAnimationController : BaseUnitController, IControllerStart, ICo
 			if (!allUnit.IsSleeping)
 			{
 				TickOnUnit(allUnit);
-				AbstractUnitEntityView abstractUnitEntityView = allUnit.View.Or(null);
-				if ((object)abstractUnitEntityView != null)
+				IAbstractUnitEntityView view = allUnit.View;
+				if (view != null)
 				{
-					abstractUnitEntityView.AnimationManager.Or(null)?.CustomUpdate(allUnit.Random.Range(0.5f, 1.5f));
+					view.AnimationManager.Or(null)?.CustomUpdate(allUnit.Random.Range(0.5f, 1.5f));
 				}
 			}
 		}
@@ -37,7 +37,7 @@ public class UnitAnimationController : BaseUnitController, IControllerStart, ICo
 
 	protected override void TickOnUnit(AbstractUnitEntity unit)
 	{
-		UnitAnimationManager unitAnimationManager = unit.View.Or(null)?.AnimationManager;
+		UnitAnimationManager unitAnimationManager = unit.View?.AnimationManager;
 		if ((object)unitAnimationManager != null)
 		{
 			TickManagerOnUnit(unitAnimationManager, unit, isMechadendrite: false);
@@ -76,35 +76,34 @@ public class UnitAnimationController : BaseUnitController, IControllerStart, ICo
 					manager.WalkSpeedType = WalkSpeedType.Walk;
 				}
 				manager.IsWaitingForIncomingAttackOfOpportunity = unit.IsWaitingForIncomingAttackOfOpportunity();
-				manager.Speed = 1f;
-				manager.IsStopping = unit.View.MovementAgent.IsStopping;
 				UnitEntityView unitEntityView = unit.View as UnitEntityView;
 				manager.IsInCombat = unit.IsInCombat || (unitEntityView != null && (unitEntityView.HandsEquipment?.InCombat ?? false));
 				manager.IsMechadendrite = isMechadendrite;
 				bool flag = manager.IsInCombat && unitEntityView != null && unitEntityView.HandsEquipment != null;
+				int num;
+				int num2;
 				if (unit.GetOptional<UnitPartMechadendrites>() != null)
 				{
-					bool flag2 = flag && unitEntityView.HandsEquipment.Sets.Count > 0;
-					if (isMechadendrite)
+					if (flag)
 					{
-						WeaponType activeMainHandWeaponType = ((flag2 && HasAppropriateWeapon(unitEntityView, isMainHand: true, isMelee: false)) ? unitEntityView.HandsEquipment.ActiveMainHandWeaponType : WeaponType.Fist);
-						WeaponType activeOffHandWeaponType = ((flag2 && HasAppropriateWeapon(unitEntityView, isMainHand: false, isMelee: false)) ? unitEntityView.HandsEquipment.ActiveOffHandWeaponType : WeaponType.Fist);
-						manager.ActiveMainHandWeaponType = activeMainHandWeaponType;
-						manager.ActiveOffHandWeaponType = activeOffHandWeaponType;
+						num = ((unitEntityView.HandsEquipment.Sets.Count > 0) ? 1 : 0);
+						if (num != 0 && HasAppropriateWeapon(unitEntityView, isMainHand: true, isMelee: true))
+						{
+							num2 = (int)unitEntityView.HandsEquipment.ActiveMainHandWeaponType;
+							goto IL_016d;
+						}
 					}
 					else
 					{
-						WeaponType activeMainHandWeaponType2 = ((flag2 && HasAppropriateWeapon(unitEntityView, isMainHand: true, isMelee: true)) ? unitEntityView.HandsEquipment.ActiveMainHandWeaponType : WeaponType.Fist);
-						WeaponType activeOffHandWeaponType2 = ((flag2 && HasAppropriateWeapon(unitEntityView, isMainHand: false, isMelee: true)) ? unitEntityView.HandsEquipment.ActiveOffHandWeaponType : WeaponType.Fist);
-						manager.ActiveMainHandWeaponType = activeMainHandWeaponType2;
-						manager.ActiveOffHandWeaponType = activeOffHandWeaponType2;
+						num = 0;
 					}
+					num2 = 0;
+					goto IL_016d;
 				}
-				else
-				{
-					manager.ActiveMainHandWeaponType = (flag ? unitEntityView.HandsEquipment.ActiveMainHandWeaponType : WeaponType.Fist);
-					manager.ActiveOffHandWeaponType = (flag ? unitEntityView.HandsEquipment.ActiveOffHandWeaponType : WeaponType.Fist);
-				}
+				manager.ActiveMainHandWeaponType = (flag ? unitEntityView.HandsEquipment.ActiveMainHandWeaponType : WeaponType.Fist);
+				manager.ActiveOffHandWeaponType = (flag ? unitEntityView.HandsEquipment.ActiveOffHandWeaponType : WeaponType.Fist);
+				goto IL_01d1;
+				IL_01d1:
 				manager.Orientation = unit.Orientation;
 				manager.DesiredOrientation = unit.DesiredOrientation;
 				manager.IsDead = unit.LifeState.IsFinallyDead;
@@ -115,6 +114,14 @@ public class UnitAnimationController : BaseUnitController, IControllerStart, ICo
 				manager.IsUnconscious = unit.LifeState.IsUnconscious;
 				manager.CoverType = ((manager.IsInCombat && unit is BaseUnitEntity baseUnitEntity) ? baseUnitEntity.GetCoverType() : LosCalculations.CoverType.Obstacle);
 				manager.CombatMicroIdle = (unit.Commands.Empty ? CombatMicroIdle.Weapon : CombatMicroIdle.None);
+				goto end_IL_0018;
+				IL_016d:
+				WeaponType activeMainHandWeaponType = (WeaponType)num2;
+				WeaponType activeOffHandWeaponType = ((num != 0 && HasAppropriateWeapon(unitEntityView, isMainHand: false, isMelee: true)) ? unitEntityView.HandsEquipment.ActiveOffHandWeaponType : WeaponType.Fist);
+				manager.ActiveMainHandWeaponType = activeMainHandWeaponType;
+				manager.ActiveOffHandWeaponType = activeOffHandWeaponType;
+				goto IL_01d1;
+				end_IL_0018:;
 			}
 			float gameDeltaTime = Game.Instance.Controllers.TimeController.GameDeltaTime;
 			manager.Tick(gameDeltaTime);

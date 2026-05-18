@@ -6,15 +6,7 @@ namespace Kingmaker.Blueprints.Root.Strings;
 [Serializable]
 public class UIGameOverScreen
 {
-	public LocalizedString MaleDeadLabel;
-
-	public LocalizedString FemaleDeadLabel;
-
-	public LocalizedString PartyIsDefeatedLabel;
-
-	public LocalizedString QuestIsFailedLabel;
-
-	public LocalizedString GameOverIronManDescription;
+	public LocalizedString Title;
 
 	public LocalizedString QuickLoadLabel;
 
@@ -25,6 +17,4 @@ public class UIGameOverScreen
 	public LocalizedString IronManDeleteSaveLabel;
 
 	public LocalizedString IronManContinueGameLabel;
-
-	public static UIGameOverScreen Instance => UIStrings.Instance.GameOverScreen;
 }

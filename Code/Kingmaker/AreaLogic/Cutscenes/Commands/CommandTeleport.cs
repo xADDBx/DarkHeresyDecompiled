@@ -13,15 +13,18 @@ public class CommandTeleport : CommandBase
 	[InfoBox("If this command is used to teleport to a different area, the cutscene would be stopped completely.\nDo not do this unless this is the last command in the cutscene.")]
 	public BlueprintAreaEnterPointReference TargetPoint;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		if (TargetPoint.Get().Area == Game.Instance.CurrentlyLoadedArea)
 		{
 			Game.Instance.Teleport(TargetPoint.Get());
-			return;
 		}
-		player.Stop();
-		Game.Instance.LoadArea(TargetPoint, AutoSaveMode.None);
+		else
+		{
+			player.Stop();
+			Game.Instance.LoadArea(TargetPoint, AutoSaveMode.None);
+		}
+		return CommandResult.Success;
 	}
 
 	public override bool TrySkip(CutscenePlayerData player)
@@ -29,8 +32,14 @@ public class CommandTeleport : CommandBase
 		return false;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -38,12 +47,14 @@ public class CommandTeleport : CommandBase
 		return !LoadingProcess.Instance.IsLoadingInProcess;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

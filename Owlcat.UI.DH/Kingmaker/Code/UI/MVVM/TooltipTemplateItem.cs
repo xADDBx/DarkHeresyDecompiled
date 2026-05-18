@@ -5,14 +5,9 @@ using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Armors;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Blueprints.Items.Weapons;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.Items;
-using Kingmaker.Localization;
-using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Owlcat.UI;
-using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -33,6 +28,8 @@ public class TooltipTemplateItem : TooltipBaseTemplate
 	private readonly bool m_ForceUpdateCache;
 
 	private readonly bool m_Replenishing;
+
+	private readonly ItemTooltipData m_PrecomputedTooltipData;
 
 	private ItemTooltipData m_ItemTooltipData;
 
@@ -88,6 +85,16 @@ public class TooltipTemplateItem : TooltipBaseTemplate
 		}
 	}
 
+	public TooltipTemplateItem(BlueprintItem blueprintItem, ItemTooltipData precomputedTooltipData)
+	{
+		if (blueprintItem != null)
+		{
+			m_BlueprintItem = blueprintItem;
+			m_PrecomputedTooltipData = precomputedTooltipData;
+			ContentSpacing = 5f;
+		}
+	}
+
 	public override void Prepare(TooltipTemplateType type)
 	{
 		if (m_BlueprintItem == null && (m_FewBlueprintsItems == null || !m_FewBlueprintsItems.Any()))
@@ -95,21 +102,30 @@ public class TooltipTemplateItem : TooltipBaseTemplate
 			return;
 		}
 		m_Comparative = m_BaseItem != null || m_BaseBlueprintItem != null;
-		ItemTooltipData itemTooltipData = ((m_BaseItem != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_BaseItem, m_ForceUpdateCache, m_Replenishing) : ((m_BaseBlueprintItem != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_BaseBlueprintItem, m_ForceUpdateCache) : null));
+		bool forceUpdateCache = m_ForceUpdateCache;
+		ItemTooltipData itemTooltipData = ((m_BaseItem != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_BaseItem, forceUpdateCache, m_Replenishing) : ((m_BaseBlueprintItem != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_BaseBlueprintItem, forceUpdateCache) : null));
 		if (!m_IsFewItems)
 		{
-			m_ItemTooltipData = ((m_Item != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_Item, m_ForceUpdateCache, m_Replenishing) : TooltipsDataCache.Instance.GetItemTooltipData(m_BlueprintItem, m_ForceUpdateCache));
-			m_ItemPart = ((m_Item != null) ? ((BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(), m_Item, m_ItemTooltipData, itemTooltipData, m_IsScreenTooltip)) : ((BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(), m_BlueprintItem, m_ItemTooltipData, itemTooltipData, m_IsScreenTooltip)));
+			if (m_PrecomputedTooltipData != null)
+			{
+				m_ItemTooltipData = m_PrecomputedTooltipData;
+				m_ItemPart = (BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(), m_BlueprintItem, m_ItemTooltipData, itemTooltipData, m_IsScreenTooltip);
+			}
+			else
+			{
+				m_ItemTooltipData = ((m_Item != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_Item, forceUpdateCache, m_Replenishing) : TooltipsDataCache.Instance.GetItemTooltipData(m_BlueprintItem, forceUpdateCache));
+				m_ItemPart = ((m_Item != null) ? ((BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(), m_Item, m_ItemTooltipData, itemTooltipData, m_IsScreenTooltip)) : ((BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(), m_BlueprintItem, m_ItemTooltipData, itemTooltipData, m_IsScreenTooltip)));
+			}
 		}
 		else
 		{
 			for (int i = 0; i < m_FewItems.Count; i++)
 			{
-				m_FewItemsTooltipDatas.Add((m_FewItems[i] != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_FewItems[i], m_ForceUpdateCache, m_Replenishing) : TooltipsDataCache.Instance.GetItemTooltipData(m_FewBlueprintsItems[i], m_ForceUpdateCache));
+				m_FewItemsTooltipDatas.Add((m_FewItems[i] != null) ? TooltipsDataCache.Instance.GetItemTooltipData(m_FewItems[i], forceUpdateCache, m_Replenishing) : TooltipsDataCache.Instance.GetItemTooltipData(m_FewBlueprintsItems[i], forceUpdateCache));
 				m_FewItemsParts.Add((m_FewItems[i] != null) ? ((BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(m_FewBlueprintsItems[i]), m_FewItems[i], m_FewItemsTooltipDatas[i], itemTooltipData, m_IsScreenTooltip)) : ((BaseItemPart)Activator.CreateInstance(GetItemPartTemplateType(m_FewBlueprintsItems[i]), m_FewBlueprintsItems[i], m_FewItemsTooltipDatas[i], itemTooltipData, m_IsScreenTooltip)));
 			}
 		}
-		if (m_Item != null && type == TooltipTemplateType.Info)
+		if (m_Item != null && !m_Item.IsDisposed && type == TooltipTemplateType.Info)
 		{
 			m_Item.OnOpenDescription();
 		}
@@ -218,7 +234,7 @@ public class TooltipTemplateItem : TooltipBaseTemplate
 			(string, ItemHeaderType) itemHeaderText = UIUtilityItem.GetItemHeaderText(m_FewItems[i]);
 			if (!string.IsNullOrEmpty(itemHeaderText.Item1))
 			{
-				yield return new TooltipBrickItemHeader(itemHeaderText.Item1, itemHeaderText.Item2);
+				yield return new BrickItemHeaderVM(itemHeaderText.Item1, itemHeaderText.Item2);
 			}
 			foreach (ITooltipBrick item2 in m_FewItemsParts[i].GetHeader(type))
 			{
@@ -228,14 +244,14 @@ public class TooltipTemplateItem : TooltipBaseTemplate
 			{
 				yield return item3;
 			}
-			yield return new TooltipBrickSeparator(TooltipBrickElementType.Small);
+			yield return new BrickSeparatorVM(TooltipBrickElementType.Small);
 			foreach (ITooltipBrick item4 in m_FewItemsParts[i].GetFooter(type))
 			{
 				yield return item4;
 			}
 			if (i != m_FewItems.Count - 1)
 			{
-				yield return new TooltipBrickSeparator(TooltipBrickElementType.Medium);
+				yield return new BrickSeparatorVM(TooltipBrickElementType.Medium);
 			}
 		}
 	}
@@ -248,28 +264,7 @@ public class TooltipTemplateItem : TooltipBaseTemplate
 		}
 		foreach (ITooltipBrick item in m_ItemPart.GetFooter(type))
 		{
-			if (!(item is TooltipBrickItemFooter))
-			{
-				yield return item;
-			}
+			yield return item;
 		}
-		if (Item == null)
-		{
-			yield break;
-		}
-		LocalizedString localizedString = (Item.IsFromVendorSlot() ? UIStrings.Instance.InventoryScreen.Buy : UIStrings.Instance.InventoryScreen.Sell);
-		int num = Mathf.Max(1, Item.Count);
-		int itemCost = Game.Instance.TradeLogic.GetItemCost(Item);
-		string additionalLine = string.Empty;
-		if (num > 1)
-		{
-			using (GameLogContext.Scope)
-			{
-				GameLogContext.Count = num;
-				GameLogContext.Price = itemCost;
-				additionalLine = UIStrings.Instance.InventoryScreen.StackPrice.Text;
-			}
-		}
-		yield return new TooltipBrickItemFooter(localizedString, (itemCost * num).ToString(), null, additionalLine);
 	}
 }

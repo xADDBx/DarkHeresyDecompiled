@@ -10,6 +10,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Gameplay.ContextActions;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -19,7 +20,6 @@ using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Components;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
@@ -163,7 +163,7 @@ public sealed class RepeatAbilityCastNextTurn : UnitBuffComponentDelegate, IUnit
 				abilityData.IgnoreRestrictions = true;
 				componentData.Ability = abilityData;
 				componentData.Target = target;
-				using (SimpleContextData<AbilityData, MechanicsContext.Scope.SourceAbility>.Set(executionProcess.Context.Ability))
+				using (EvalContext.Current.PushSourceAbility(executionProcess.Context.Ability))
 				{
 					OnSchedule.Run();
 				}
@@ -204,7 +204,7 @@ public sealed class RepeatAbilityCastNextTurn : UnitBuffComponentDelegate, IUnit
 		{
 			base.Buff.MarkExpired();
 		}
-		using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(target))
+		using (EvalContext.Current.PushTarget(target))
 		{
 			OnRepeated.Run();
 		}

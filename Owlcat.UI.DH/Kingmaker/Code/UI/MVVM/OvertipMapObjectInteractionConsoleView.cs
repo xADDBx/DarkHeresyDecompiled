@@ -1,4 +1,5 @@
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using R3;
@@ -88,7 +89,7 @@ public class OvertipMapObjectInteractionConsoleView : OvertipMapObjectInteractio
 		{
 			base.ViewModel.MapObjectEntity.View.ForceHighlightExternal(value: true);
 			base.ViewModel.SetMouseOverUI(isOverUI: true);
-			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View, isHighlighted: true);
+			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View.AsMapObjectView(), isHighlighted: true);
 		}
 	}
 
@@ -98,7 +99,7 @@ public class OvertipMapObjectInteractionConsoleView : OvertipMapObjectInteractio
 		{
 			base.ViewModel.MapObjectEntity.View.ForceHighlightExternal(value: false);
 			base.ViewModel.SetMouseOverUI(isOverUI: false);
-			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View, isHighlighted: false);
+			Game.Instance.CursorController.SetMapObjectCursor(base.ViewModel.MapObjectEntity.View.AsMapObjectView(), isHighlighted: false);
 		}
 	}
 }

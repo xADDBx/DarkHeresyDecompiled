@@ -115,6 +115,8 @@ public sealed class IntermediateDamage : IDamageTypeHolder
 
 	public int BonusDamageToHealth => HealthDamageModifiers.Apply(0);
 
+	public int BonusDamageToArmour => ArmorDamageModifiers.Apply(0);
+
 	public IntermediateDamage(DamageType type, int min, int max)
 	{
 		Type = type;

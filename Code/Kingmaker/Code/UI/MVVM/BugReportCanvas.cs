@@ -16,7 +16,6 @@ using Kingmaker.Utility.Reporting.Base;
 using Owlcat.Runtime.Core.Utility;
 using TMPro;
 using UnityEngine;
-using UnityEngine.CrashReportHandler;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -230,12 +229,11 @@ public class BugReportCanvas : MonoBehaviour, IBugReportUIHandler, ISubscriber, 
 		IsShowReportButton = true;
 		try
 		{
-			string text = string.Empty;
+			_ = string.Empty;
 			if (Application.isPlaying)
 			{
-				text = Game.Instance?.CurrentlyLoadedArea.NameSafe();
+				Game.Instance?.CurrentlyLoadedArea.NameSafe();
 			}
-			CrashReportHandler.SetUserMetadata("CurrentArea", text ?? "");
 		}
 		catch
 		{

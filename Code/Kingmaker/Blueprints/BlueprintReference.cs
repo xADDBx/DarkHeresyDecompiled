@@ -1,4 +1,5 @@
 using System;
+using MemoryPack;
 using Newtonsoft.Json;
 
 namespace Kingmaker.Blueprints;
@@ -7,6 +8,7 @@ namespace Kingmaker.Blueprints;
 public class BlueprintReference<T> : BlueprintReferenceBase where T : BlueprintScriptableObject
 {
 	[JsonIgnore]
+	[MemoryPackIgnore]
 	public new T Blueprint => GetBlueprint() as T;
 
 	public T Get()

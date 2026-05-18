@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Damage;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics;
@@ -9,12 +10,8 @@ namespace Kingmaker.Code.UI.MVVM.UnitInfo;
 
 public class CasterDamageBuffsInfoVM : CasterBuffsInfoBaseVM<UnitBuffUIInfo>
 {
-	protected override void AddBuffIfRelevant(Buff buff, MechanicsContext abilityContext, ICollection<UnitBuffUIInfo> buffInfos)
+	protected override void AddBuffIfRelevant(Buff buff, IEvalContext abilityContext, ICollection<UnitBuffUIInfo> buffInfos)
 	{
-		if (buff.Hidden)
-		{
-			return;
-		}
 		BlueprintBuff blueprint = buff.Blueprint;
 		DamageModifierInitiator damageModifierInitiator = null;
 		BlueprintComponent[] componentsArray = blueprint.ComponentsArray;

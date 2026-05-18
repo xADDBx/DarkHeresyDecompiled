@@ -1,5 +1,6 @@
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
 using Kingmaker.Items;
 using Owlcat.Runtime.Core.Utility;
 
@@ -15,7 +16,7 @@ public class CheckIsHeavyWeaponGetter : BoolPropertyGetter, PropertyContextAcces
 
 	protected override bool GetBaseValue()
 	{
-		ItemEntityWeapon abilityWeapon = this.GetAbilityWeapon();
+		ItemEntityWeapon? abilityWeapon = EvalContext.Current.AbilityWeapon;
 		if (abilityWeapon == null)
 		{
 			return false;

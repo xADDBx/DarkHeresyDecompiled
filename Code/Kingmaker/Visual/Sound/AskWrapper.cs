@@ -5,7 +5,9 @@ namespace Kingmaker.Visual.Sound;
 
 public class AskWrapper
 {
-	public readonly AsksSet Bark;
+	public readonly AsksSet AsksSet;
+
+	public readonly string Type;
 
 	public readonly UnitAsksManager UnitAsksManager;
 
@@ -13,13 +15,15 @@ public class AskWrapper
 
 	public bool IsPlaying;
 
+	private readonly int[] m_ExclusionCounters;
+
 	public bool IsOnCooldown
 	{
 		get
 		{
 			if (!IsPlaying)
 			{
-				return Game.Instance.Controllers.TimeController.RealTime.TotalSeconds < (double)(LastPlayTime + Bark.GetCooldown());
+				return Game.Instance.Controllers.TimeController.RealTime.TotalSeconds < (double)(LastPlayTime + AsksSet.GetCooldown());
 			}
 			return true;
 		}
@@ -29,26 +33,54 @@ public class AskWrapper
 	{
 		get
 		{
-			if (Bark.Chance > 0f)
+			if (AsksSet.Chance > 0f)
 			{
-				return Bark.Entries.Any((AskEntry e) => !e.IsEmpty);
+				return AsksSet.Entries.Any((AskEntry e) => e.IsExist);
 			}
 			return false;
 		}
 	}
 
-	public AskWrapper(AsksSet bark, UnitAsksManager asksManager)
+	public int GetExclusionCounter(int entryIndex)
 	{
-		Bark = bark;
+		if ((uint)entryIndex >= (uint)m_ExclusionCounters.Length)
+		{
+			return 0;
+		}
+		return m_ExclusionCounters[entryIndex];
+	}
+
+	public void SetExclusionCounter(int entryIndex, int value)
+	{
+		if ((uint)entryIndex < (uint)m_ExclusionCounters.Length)
+		{
+			m_ExclusionCounters[entryIndex] = value;
+		}
+	}
+
+	public void DecrementExclusionCounter(int entryIndex)
+	{
+		if ((uint)entryIndex < (uint)m_ExclusionCounters.Length && m_ExclusionCounters[entryIndex] > 0)
+		{
+			m_ExclusionCounters[entryIndex]--;
+		}
+	}
+
+	public AskWrapper(AsksSet asksSet, UnitAsksManager asksManager, string askType = "")
+	{
+		AsksSet = asksSet;
+		Type = askType;
 		UnitAsksManager = asksManager;
+		m_ExclusionCounters = new int[(asksSet?.Entries?.Length).GetValueOrDefault()];
 	}
 
 	[Obsolete]
 	public AskWrapper(Bark bark, UnitAsksManager asksManager)
 	{
-		Bark = new AsksSet();
-		CopyBarkToAskSet(Bark, bark);
+		AsksSet = new AsksSet();
+		CopyBarkToAskSet(AsksSet, bark);
 		UnitAsksManager = asksManager;
+		m_ExclusionCounters = new int[AsksSet.Entries?.Length ?? 0];
 	}
 
 	public static void CopyBarkToAskSet(AsksSet askSetBp, Bark askSet)
@@ -56,14 +88,12 @@ public class AskWrapper
 		askSetBp.Cooldown = askSet.Cooldown;
 		askSetBp.OverrideCooldownOnGamepad = askSet.OverrideCooldownOnGamepad;
 		askSetBp.CooldownGamepad = askSet.CooldownGamepad;
-		askSetBp.InterruptOthers = askSet.InterruptOthers;
+		askSetBp.InterruptCurrent = askSet.InterruptOthers;
 		askSetBp.DelayMin = askSet.DelayMin;
 		askSetBp.DelayMax = askSet.DelayMax;
 		askSetBp.Chance = askSet.Chance;
 		askSetBp.ShowOnScreen = askSet.ShowOnScreen;
 		askSetBp.DoNotPlayWhileAlone = askSet.DoNotPlayWhileAlone;
-		askSetBp.EnablePrioritization = askSet.EnablePrioritization;
-		askSetBp.PrioritizationGroup = askSet.PrioritizationGroup;
 		askSetBp.Priority = askSet.Priority;
 		if (askSet.Entries != null)
 		{

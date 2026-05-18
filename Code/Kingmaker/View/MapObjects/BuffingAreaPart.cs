@@ -12,7 +12,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class BuffingAreaPart : InteractionPart<BuffingAreaSettings>, IHashable, IOwlPackable<BuffingAreaPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "BuffingAreaPart",
 		OldNames = null,
@@ -45,7 +45,7 @@ public class BuffingAreaPart : InteractionPart<BuffingAreaSettings>, IHashable, 
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		BuffingAreaPart source = new BuffingAreaPart();
 		result = Unsafe.As<BuffingAreaPart, TPossiblyBase>(ref source);

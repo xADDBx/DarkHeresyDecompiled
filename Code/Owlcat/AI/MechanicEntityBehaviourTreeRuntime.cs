@@ -85,7 +85,7 @@ public class MechanicEntityBehaviourTreeRuntime
 		}
 		if (IsReady && m_TurnStartTimeDelay <= TimeSpan.Zero)
 		{
-			using (ContextData<BehaviourTreeContext>.Request().Setup(RuntimeBridge.Blackboard))
+			using (ContextData<BehaviourTreeContext>.Request().Setup(RuntimeBridge.BehaviourTree.Blackboard))
 			{
 				RuntimeBridge.BehaviourTree.Tick();
 			}
@@ -114,7 +114,7 @@ public class MechanicEntityBehaviourTreeRuntime
 
 	public void StoreRuntimeState()
 	{
-		ActiveEncounter.Current?.StoreParticipantRuntimeState(Agent.Ref, new MechanicEntityBehaviourTreeRuntimeState(RuntimeBridge.BehaviourTreeData, RuntimeBridge.Blackboard, RuntimeBridge.BehaviourTree));
+		ActiveEncounter.Current?.StoreParticipantRuntimeState(Agent.Ref, new MechanicEntityBehaviourTreeRuntimeState(RuntimeBridge));
 	}
 
 	public void RestoreRuntimeState()
@@ -122,7 +122,7 @@ public class MechanicEntityBehaviourTreeRuntime
 		ActiveEncounter current = ActiveEncounter.Current;
 		if (current != null)
 		{
-			MechanicEntityBehaviourTreeRuntimeState.Restore(current.GetParticipantRuntimeState(Agent.Ref), RuntimeBridge.Blackboard, RuntimeBridge.BehaviourTree);
+			MechanicEntityBehaviourTreeRuntimeState.Restore(current.GetParticipantRuntimeState(Agent.Ref), RuntimeBridge);
 		}
 	}
 }

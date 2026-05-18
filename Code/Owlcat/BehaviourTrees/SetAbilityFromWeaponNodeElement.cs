@@ -11,10 +11,12 @@ public class SetAbilityFromWeaponNodeElement : BehaviourTreeNodeElement<SetAbili
 
 	public WeaponHandType WeaponHand;
 
+	public AbilityType AbilityType;
+
 	protected override SetAbilityFromWeaponNode CreateTypedNode(Blackboard blackboard)
 	{
 		EntityVariable agentVariable = blackboard.GetAgentVariable();
 		AbilityVariable runtimeVariable = Variable.GetRuntimeVariable(blackboard);
-		return new SetAbilityFromWeaponNode(agentVariable, runtimeVariable, WeaponHand);
+		return new SetAbilityFromWeaponNode(agentVariable, runtimeVariable, WeaponHand, AbilityType);
 	}
 }

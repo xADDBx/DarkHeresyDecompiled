@@ -42,10 +42,6 @@ public class CharInfoLevelClassScoresPCView : CharInfoComponentView<CharInfoLeve
 		m_AdditionalStatsView.Or(null)?.Bind(base.ViewModel.AdditionalStatsVM);
 		m_CohesionStatView.Or(null)?.Bind(base.ViewModel.CohesionStatVM);
 		m_CharacterStatsLabel.text = UIStrings.Instance.CharacterSheet.Stats;
-	}
-
-	protected override void RefreshView()
-	{
 		m_AbilityScores.Or(null)?.Bind(base.ViewModel.AbilityScores);
 		m_Classes.Or(null)?.Bind(base.ViewModel.Classes);
 	}

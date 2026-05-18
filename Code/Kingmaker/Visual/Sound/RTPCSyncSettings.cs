@@ -1,4 +1,6 @@
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -19,9 +21,9 @@ public class RTPCSyncSettings : GameSyncSettings
 		return $"[RTPC] {rtpc} set to {bindingProperty}";
 	}
 
-	public override void Sync(PropertyContext context, uint playingId)
+	public override void Sync(MechanicEntity entity, IEvalContext context, uint playingId)
 	{
-		float in_value = (float)bindingProperty.GetValue(context) / 100f;
+		float in_value = (float)bindingProperty.GetValue(entity, context) / 100f;
 		AkUnitySoundEngine.SetRTPCValueByPlayingID(rtpc, in_value, playingId);
 	}
 }

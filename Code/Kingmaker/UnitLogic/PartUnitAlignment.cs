@@ -82,6 +82,26 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 	[OwlPackInclude]
 	public List<AlignmentShiftHistoryEntry> ShiftHistory = new List<AlignmentShiftHistoryEntry>();
 
+	private static Dictionary<AlignmentAxis, AlignmentAxis> s_OppositeAxisMap = new Dictionary<AlignmentAxis, AlignmentAxis>
+	{
+		{
+			AlignmentAxis.Monodominance,
+			AlignmentAxis.Torian
+		},
+		{
+			AlignmentAxis.Torian,
+			AlignmentAxis.Monodominance
+		},
+		{
+			AlignmentAxis.Xanthite,
+			AlignmentAxis.Xenophilia
+		},
+		{
+			AlignmentAxis.Xenophilia,
+			AlignmentAxis.Xanthite
+		}
+	};
+
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "PartUnitAlignment",
@@ -95,40 +115,26 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 		}
 	};
 
-	public bool CanHaveMarkInAxis(AlignmentAxis axis, int mark)
+	public bool CanHaveMarkInAxis(AlignmentAxis axis, int mark, out ReasonCannotHaveMark reason)
 	{
+		reason = ReasonCannotHaveMark.None;
+		AlignmentAxis key = s_OppositeAxisMap[axis];
 		if (mark >= 4 && m_AxisToMarkMap.Any((KeyValuePair<AlignmentAxis, int> x) => x.Key != axis && x.Value >= 4))
 		{
+			reason = ((m_AxisToMarkMap[key] < 2) ? ReasonCannotHaveMark.MainG3 : ReasonCannotHaveMark.OppositeG1);
 			return false;
 		}
-		switch (axis)
+		if (mark >= 2)
 		{
-		case AlignmentAxis.Monodominance:
-			if (mark >= 2)
-			{
-				return m_AxisToMarkMap[AlignmentAxis.Torian] < 2;
-			}
-			break;
-		case AlignmentAxis.Torian:
-			if (mark >= 2)
-			{
-				return m_AxisToMarkMap[AlignmentAxis.Monodominance] < 2;
-			}
-			break;
-		case AlignmentAxis.Xanthite:
-			if (mark >= 2)
-			{
-				return m_AxisToMarkMap[AlignmentAxis.Xenophilia] < 2;
-			}
-			break;
-		case AlignmentAxis.Xenophilia:
-			if (mark >= 2)
-			{
-				return m_AxisToMarkMap[AlignmentAxis.Xanthite] < 2;
-			}
-			break;
+			reason = ((m_AxisToMarkMap[key] >= 2) ? ReasonCannotHaveMark.OppositeG1 : ReasonCannotHaveMark.None);
+			return m_AxisToMarkMap[key] < 2;
 		}
 		return true;
+	}
+
+	public AlignmentAxis GetMainAxis()
+	{
+		return m_AxisToMarkMap.FirstOrDefault((KeyValuePair<AlignmentAxis, int> x) => x.Value > 3).Key;
 	}
 
 	public AlignmentMix GetAlignmentMix()
@@ -166,7 +172,7 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 		if (m_Mix != alignmentMix)
 		{
 			m_Mix = alignmentMix;
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IAlignmentReachMixHandler>)delegate(IAlignmentReachMixHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IAlignmentReachMixHandler>)delegate(IAlignmentReachMixHandler h)
 			{
 				h.HandleAlignmentReachedMix(m_Mix);
 			}, isCheckRuntime: true);
@@ -183,9 +189,17 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 		return m_AxisToRankMap[axis];
 	}
 
+	public IEnumerable<int> GetAlignmentRanks()
+	{
+		yield return m_AxisToRankMap[AlignmentAxis.Xenophilia];
+		yield return m_AxisToRankMap[AlignmentAxis.Xanthite];
+		yield return m_AxisToRankMap[AlignmentAxis.Monodominance];
+		yield return m_AxisToRankMap[AlignmentAxis.Torian];
+	}
+
 	public void SetMark(AlignmentAxis axis, int mark, BlueprintScriptableObject source)
 	{
-		if (CanHaveMarkInAxis(axis, mark))
+		if (CanHaveMarkInAxis(axis, mark, out var _))
 		{
 			int rankForMark = ConfigRoot.Instance.AlignmentMarksRoot.GetRankForMark(axis, mark);
 			AlignmentShiftExtension.ApplyShiftTo(new AlignmentShift
@@ -205,14 +219,15 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 			Source = source
 		};
 		PFLog.Alignment.Log($"{base.Owner} had alignment shift: {shift.Axis} {shift.Value}");
-		Metrics.Alignment.Type(shift.Axis).Value(shift.Value).CharacterLevel(base.Owner.Progression.CharacterLevel)
+		Metrics.Alignment.Id(base.Owner.Blueprint.AssetGuid).Axis(shift.Axis).Value(shift.Value)
+			.CharacterLevel(base.Owner.Progression.CharacterLevel)
 			.Send();
 		int num = GetAlignmentRank(shift.Axis) + shift.Value;
 		int alignmentRank = GetAlignmentRank(shift.Axis);
 		m_AxisToRankMap[shift.Axis] = num;
 		int currentMark = ConfigRoot.Instance.AlignmentMarksRoot.GetMarkForRank(shift.Axis, num);
-		int markForRank = ConfigRoot.Instance.AlignmentMarksRoot.GetMarkForRank(shift.Axis, alignmentRank);
-		if (currentMark != markForRank && CanHaveMarkInAxis(shift.Axis, currentMark))
+		int previousMark = ConfigRoot.Instance.AlignmentMarksRoot.GetMarkForRank(shift.Axis, alignmentRank);
+		if (currentMark != previousMark && CanHaveMarkInAxis(shift.Axis, currentMark, out var _))
 		{
 			alignmentShiftHistoryEntry.AchievedNewMark = true;
 			List<BlueprintMechanicEntityFact> factsOnMark = ConfigRoot.Instance.AlignmentMarksRoot.GetFactsOnMark(shift.Axis, currentMark);
@@ -231,14 +246,14 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 					entityFact.AddSource(ConfigRoot.Instance.AlignmentMarksRoot, currentMark);
 				}
 			}
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IAlignmentReachMarkHandler>)delegate(IAlignmentReachMarkHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IAlignmentReachMarkHandler>)delegate(IAlignmentReachMarkHandler h)
 			{
-				h.HandleAlignmentMarkShift(shift.Axis, currentMark);
+				h.HandleAlignmentMarkShift(shift.Axis, previousMark, currentMark);
 			}, isCheckRuntime: true);
 		}
 		ShiftHistory.Add(alignmentShiftHistoryEntry);
 		TryUpdateMix();
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IAlignmentRankShiftHandler>)delegate(IAlignmentRankShiftHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IAlignmentRankShiftHandler>)delegate(IAlignmentRankShiftHandler h)
 		{
 			h.HandleAlignmentRankShift(shift);
 		}, isCheckRuntime: true);

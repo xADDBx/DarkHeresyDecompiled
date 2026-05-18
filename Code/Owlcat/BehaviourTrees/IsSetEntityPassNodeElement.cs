@@ -2,7 +2,7 @@ using Owlcat.Runtime.Core.Utility;
 
 namespace Owlcat.BehaviourTrees;
 
-[NodeMenuItem("Add Node/Variables/Entity/Is Set Entity Pass Node", "Is Set Entity Pass Node")]
+[NodeMenuItem("Add Node/Variables/MechanicEntity/Is Set Entity Pass Node", "Is Set Entity Pass Node")]
 [TypeId("e292b04aad074078ac83e4dbbf9f6eed")]
 public class IsSetEntityPassNodeElement : ConditionPassNodeElement<IsSetEntityPassNode>
 {

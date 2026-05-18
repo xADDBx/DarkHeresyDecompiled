@@ -17,6 +17,8 @@ namespace Owlcat.AI;
 
 public class BehaviourTreeTickController : IControllerTick, IController, IControllerReset, ITurnStartHandler, ISubscriber<IMechanicEntity>, ISubscriber, IInterruptTurnStartHandler
 {
+	public static bool SuppressInTests;
+
 	public readonly BehaviourTreeRuntimeStorage Storage = new BehaviourTreeRuntimeStorage();
 
 	private TurnController TurnController => Game.Instance.Controllers.TurnController;
@@ -36,7 +38,7 @@ public class BehaviourTreeTickController : IControllerTick, IController, IContro
 
 	public void Tick()
 	{
-		if (!TurnController.IsAiTurn || IsChannelingLogicInterruptTurn)
+		if ((Game.IsTestRun && SuppressInTests) || !TurnController.IsAiTurn || IsChannelingLogicInterruptTurn)
 		{
 			return;
 		}
@@ -144,6 +146,10 @@ public class BehaviourTreeTickController : IControllerTick, IController, IContro
 
 	private void EndUnitTurn(MechanicEntity unit)
 	{
+		if (Game.IsTestRun && !SuppressInTests)
+		{
+			SuppressInTests = true;
+		}
 		TurnController.RequestEndTurn();
 		if (Storage.TryGetRuntime(unit, out var runtime))
 		{

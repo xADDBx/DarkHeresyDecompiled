@@ -7,16 +7,21 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.EntityInfo;
 
-public class DestructibleCoverInfoProvider : IEntityInfoProvider<GameObject>
+public class DestructibleCoverInfoProvider : IEntityInfoProvider<GameObjectInfo>
 {
-	public bool TryGetEntityInfo(GameObject gameObject, out IEntityInfo entityInfo)
+	public bool TryGetEntityInfo(GameObjectInfo info, out IEntityInfo entityInfo)
 	{
-		if (gameObject.TryGetComponent<AbstractDestructibleEntityView>(out var component))
+		if (!info.GameObject || !info.IsHighlighted || !info.IsTurnBasedMode)
+		{
+			entityInfo = null;
+			return false;
+		}
+		if (info.GameObject.TryGetComponent<AbstractDestructibleEntityView>(out var component))
 		{
 			entityInfo = GetCoverInfo(component);
 			return entityInfo != null;
 		}
-		if (gameObject.TryGetComponent<GridObstacle>(out var component2))
+		if (info.GameObject.TryGetComponent<GridObstacle>(out var component2))
 		{
 			entityInfo = GetCoverInfo(component2);
 			return entityInfo != null;

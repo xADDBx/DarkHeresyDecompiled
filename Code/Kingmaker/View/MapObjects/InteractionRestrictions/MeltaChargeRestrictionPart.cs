@@ -9,7 +9,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class MeltaChargeRestrictionPart : NeedItemRestrictionPart<MeltaChargeRestrictionSettings>, IHashable, IOwlPackable<MeltaChargeRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "MeltaChargeRestrictionPart",
 		OldNames = null,
@@ -30,7 +30,7 @@ public class MeltaChargeRestrictionPart : NeedItemRestrictionPart<MeltaChargeRes
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		MeltaChargeRestrictionPart source = new MeltaChargeRestrictionPart();
 		result = Unsafe.As<MeltaChargeRestrictionPart, TPossiblyBase>(ref source);

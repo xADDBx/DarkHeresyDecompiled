@@ -1,8 +1,9 @@
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Framework;
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UI.UIUtils;
 using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic;
@@ -35,6 +36,10 @@ public class CharInfoFeatureVM : SelectionGroupEntityVM, IHasTooltipTemplate, IU
 	public Ability Ability;
 
 	public TalentIconInfo TalentIconsInfo;
+
+	public readonly string SourceName;
+
+	public readonly string StacksText;
 
 	protected ReactiveProperty<TooltipBaseTemplate> m_Tooltip;
 
@@ -84,8 +89,14 @@ public class CharInfoFeatureVM : SelectionGroupEntityVM, IHasTooltipTemplate, IU
 		Icon = buff.Icon;
 		DisplayName = buff.Name;
 		IsActive = buff.Active;
-		FactDescription = UIUtilityText.UpdateDescriptionWithUIProperties(buff.Description, unit);
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)unit;
+			FactDescription = buff.Description;
+		}
 		Acronym = UIUtilityAbilities.GetAbilityAcronym(buff.Blueprint.Name);
+		SourceName = buff.Caster?.Name ?? string.Empty;
+		StacksText = buff.GetStacksText();
 		FillTimeLeft(buff);
 		FillDescription();
 		m_TooltipSource = buff;
@@ -97,9 +108,15 @@ public class CharInfoFeatureVM : SelectionGroupEntityVM, IHasTooltipTemplate, IU
 		Icon = feature.Icon;
 		DisplayName = feature.Name;
 		IsActive = feature.Active;
-		FactDescription = UIUtilityText.UpdateDescriptionWithUIProperties(feature.Description, unit);
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)unit;
+			FactDescription = feature.Description;
+		}
 		Rank = feature.Rank;
 		Acronym = UIUtilityAbilities.GetAbilityAcronym(feature.Blueprint);
+		SourceName = feature.Caster?.Name ?? string.Empty;
+		StacksText = string.Empty;
 		FillDescription();
 		m_TooltipSource = feature;
 		TalentIconsInfo = feature.Blueprint.TalentIconInfo;
@@ -112,8 +129,14 @@ public class CharInfoFeatureVM : SelectionGroupEntityVM, IHasTooltipTemplate, IU
 		Icon = ability.Icon;
 		DisplayName = ability.Name;
 		IsActive = ability.Data.Fact?.Active ?? true;
-		FactDescription = UIUtilityText.UpdateDescriptionWithUIProperties(ability.Description, unit);
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)unit;
+			FactDescription = ability.Description;
+		}
 		Acronym = UIUtilityAbilities.GetAbilityAcronym(ability.Blueprint.Name);
+		SourceName = string.Empty;
+		StacksText = string.Empty;
 		FillDescription();
 		m_TooltipSource = ability;
 	}
@@ -124,8 +147,14 @@ public class CharInfoFeatureVM : SelectionGroupEntityVM, IHasTooltipTemplate, IU
 		BlueprintAbility abilityFromFeature = RankEntrySelectionFeaturesUtils.GetAbilityFromFeature(uiFeature.Feature);
 		Icon = ((abilityFromFeature != null) ? abilityFromFeature.Icon : uiFeature.Icon);
 		DisplayName = ((abilityFromFeature != null) ? abilityFromFeature.Name : uiFeature.Name);
-		FactDescription = UIUtilityText.UpdateDescriptionWithUIProperties(uiFeature.Description, unit);
+		using (GameLogContext.Scope)
+		{
+			GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)unit;
+			FactDescription = uiFeature.Description;
+		}
 		Rank = uiFeature.Rank;
+		SourceName = string.Empty;
+		StacksText = string.Empty;
 		Acronym = UIUtilityAbilities.GetAbilityAcronym(uiFeature.Feature);
 		FillDescription();
 		m_TooltipSource = uiFeature;

@@ -144,7 +144,7 @@ public class ActionBarMoraleVM : ActionBarBasePartVM
 				}
 			}
 		}
-		m_AbilitiesListUpdated.Execute();
+		m_AbilitiesListUpdated.Execute(R3.Unit.Default);
 	}
 
 	private void UpdateSlots()

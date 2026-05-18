@@ -9,7 +9,8 @@ namespace Owlcat.AI;
 [TypeId("eb8a2069b9d7499a8c3b45a383401c60")]
 public class ShowBarkNodeElement : BehaviourTreeNodeElement<ShowBarkNode>
 {
-	public SharedStringAsset BarkString;
+	[LocalizedStringParam(Kind = "ask")]
+	public LocalizedString BarkString;
 
 	public ShowBarkNode.BarkDurationType DurationType;
 

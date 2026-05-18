@@ -8,7 +8,6 @@ using Kingmaker.Controllers;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.GameCommands;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View;
@@ -53,26 +52,17 @@ public class FogOfWarRevealerTrigger : EntityViewBase, IUpdatable
 
 		public new FogOfWarRevealerTrigger View => (FogOfWarRevealerTrigger)base.View;
 
-		public EntityData(JsonConstructorMark _)
-			: base(_)
-		{
-		}
-
 		public EntityData(EntityViewBase view)
 			: base(view.UniqueId, view.IsInGameBySettings)
 		{
 		}
 
-		public EntityData(string uniqueId, bool isInGame)
-			: base(uniqueId, isInGame)
+		public EntityData(OwlPackConstructorParameter _)
+			: base(_)
 		{
 		}
 
-		protected EntityData()
-		{
-		}
-
-		protected override IEntityViewBase CreateViewForData()
+		protected override IEntityView CreateViewForData()
 		{
 			return null;
 		}
@@ -94,7 +84,7 @@ public class FogOfWarRevealerTrigger : EntityViewBase, IUpdatable
 
 		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 		{
-			EntityData source = new EntityData();
+			EntityData source = new EntityData(default(OwlPackConstructorParameter));
 			result = Unsafe.As<EntityData, TPossiblyBase>(ref source);
 		}
 
@@ -418,7 +408,7 @@ public class FogOfWarRevealerTrigger : EntityViewBase, IUpdatable
 		}
 		foreach (FogOfWarRevealerSettings revealer in revealers)
 		{
-			Debug.DrawLine(revealer.transform.position, base.ViewTransform.position, Color.cyan);
+			Debug.DrawLine(revealer.transform.position, base.transform.position, Color.cyan);
 		}
 	}
 }

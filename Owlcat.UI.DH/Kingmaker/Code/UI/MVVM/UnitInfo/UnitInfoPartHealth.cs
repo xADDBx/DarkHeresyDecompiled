@@ -1,4 +1,5 @@
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.Gameplay.Components;
 using R3;
 using UnityEngine;
 
@@ -40,6 +41,12 @@ public class UnitInfoPartHealth : UnitInfoPart
 
 	private void SetWounds((int left, int max) wounds)
 	{
+		if (base.ViewModel.IsCountHpAsArmor)
+		{
+			m_Wounds.gameObject.SetActive(value: false);
+			return;
+		}
+		m_Wounds.gameObject.SetActive(value: true);
 		if (base.ViewModel.HideRealHealthInUI)
 		{
 			m_Wounds.SetValue("???");
@@ -52,22 +59,25 @@ public class UnitInfoPartHealth : UnitInfoPart
 
 	private void SetDurability((int left, int max) durability)
 	{
-		if (durability.max <= 0)
+		if (!base.ViewModel.IsCountHpAsArmor && durability.max <= 0)
 		{
 			m_Durability.gameObject.SetActive(value: false);
-			return;
 		}
-		if (base.ViewModel.HideRealHealthInUI)
+		else if (base.ViewModel.HideRealHealthInUI)
 		{
 			m_Durability.SetValue("???");
-			return;
+			m_Durability.gameObject.SetActive(value: true);
 		}
-		m_Durability.SetValue($"{durability.left}/<size=74%>{durability.max}</size>");
-		m_Durability.gameObject.SetActive(value: true);
+		else
+		{
+			m_Durability.SetValue($"{durability.left}/<size=74%>{durability.max}</size>");
+			m_Durability.gameObject.SetActive(value: true);
+		}
 	}
 
 	protected override void ShowImpl(UnitInfoPartState state)
 	{
-		base.gameObject.SetActive(!state.HasHit && !state.PreciseAttackHasNoTarget);
+		bool active = !state.HasHit && !state.PreciseAttackHasNoTarget && !base.ViewModel.HasSettingsFlags(UnitInspectUIFlags.HideUnitInfo);
+		base.gameObject.SetActive(active);
 	}
 }

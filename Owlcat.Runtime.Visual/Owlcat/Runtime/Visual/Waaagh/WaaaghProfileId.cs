@@ -55,6 +55,10 @@ public enum WaaaghProfileId
 	LightCookieSetup,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Shadows)]
 	ShadowsSetup,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Shadows)]
+	ColoredShadowsSetup,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Shadows)]
+	ColoredShadowsCleanup,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
 	[DisplayInfo(name = "GPUDrivenCullingPass.Prepare")]
 	GPUDrivenCullingPass_Prepare,
@@ -73,6 +77,16 @@ public enum WaaaghProfileId
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
 	[DisplayInfo(name = "GPUDrivenCullingPass.HDB")]
 	GPUDrivenCullingPass_HDB,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
+	DepthPrePass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
+	GBufferPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
+	[DisplayInfo(name = "GpuDriven.DepthHistory")]
+	GpuDrivenDepthHistory,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
+	[DisplayInfo(name = "GpuDriven.ReprojectDepth")]
+	GpuDrivenDepthReprojection,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
 	[DisplayInfo(name = "DepthPrePass.OpaqueBase")]
 	DepthPrePass_OpaqueBase,
@@ -97,16 +111,36 @@ public enum WaaaghProfileId
 	TerrainPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Decals)]
 	DrawDecalsPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Decals)]
+	InitializeDBuffer,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Decals)]
+	ResolveDBuffer,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Decals)]
+	DrawDeferredDecals,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Decals)]
+	DrawForwardDecals,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Decals)]
+	TerrainBlending,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
 	MotionVectorsPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
 	MotionVectors,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	TilesMinMaxZPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	SetupLightDataPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
 	LightCullingPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
 	DeferredLightingPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
 	DeferredLightingBuildVariantsPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	[DisplayInfo(name = "DeferredLighting.Compute")]
+	LightingPassCompute,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	[DisplayInfo(name = "DeferredFog")]
+	DeferredFogPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
 	DrawSkyboxPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
@@ -115,6 +149,14 @@ public enum WaaaghProfileId
 	DeferredReflectionsPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
 	GPUDrivenForwardReflectionProbesPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueDistortion)]
+	OpaqueDistortionGBuffer,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueDistortion)]
+	OpaqueDistortionDepth,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueDistortion)]
+	OpaqueDistortionColor,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueDistortion)]
+	TransparentDistortion,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueDistortion)]
 	[DisplayInfo(name = "DrawObjectsPass.OpaqueDistortionForward")]
 	DrawObjects_OpaqueDistortionForward,
@@ -130,6 +172,9 @@ public enum WaaaghProfileId
 	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_Transparent)]
 	[DisplayInfo(name = "DrawColorPyramidPass.TransparentDistortion")]
 	DrawColorPyramidPass_TransparentDistortion,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_Transparent)]
+	[DisplayInfo(name = "Build Color Pyramid")]
+	BuildColorPyramid,
 	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
 	FogPass,
 	[WaaaghProfileCategory(WaaaghProfileCategory.UI)]
@@ -198,12 +243,80 @@ public enum WaaaghProfileId
 	FinalPostBlit,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
 	SSR,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
+	[DisplayInfo(name = "SSR.RayTrace")]
+	SSR_RayTrace,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
+	[DisplayInfo(name = "SSR.Reprojection")]
+	SSR_Reprojection,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
+	[DisplayInfo(name = "SSR.Accumulation")]
+	SSR_Accumulation,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
+	[DisplayInfo(name = "SSR.Blur")]
+	SSR_Blur,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Reflections)]
+	[DisplayInfo(name = "SSR.Pyramid")]
+	SSR_Pyramid,
 	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
 	RenderBeforeTransparentPostProcess,
 	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
 	SSAO,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	HBAO,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	SetupProbeVolumesPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	VolumetricLighting,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	VolumetricLightingApplyOpaque,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	LocalVolumetricFogCulling,
 	[WaaaghProfileCategory(WaaaghProfileCategory.AntiAliasing)]
 	TAA,
 	[WaaaghProfileCategory(WaaaghProfileCategory.AntiAliasing)]
-	TAACopyHistory
+	TAACopyHistory,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	FullscreenBlur,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	RadialBlur,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	BloomEnhanced,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	FogOfWarDrawShadowMap,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	FogOfWarSetup,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	FogOfWarCleanup,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	FogOfWarPostProcess,
+	[WaaaghProfileCategory(WaaaghProfileCategory.UI)]
+	DrawHighlight,
+	[WaaaghProfileCategory(WaaaghProfileCategory.UI)]
+	OccludedObjectHighlight,
+	[WaaaghProfileCategory(WaaaghProfileCategory.UI)]
+	[DisplayInfo(name = "UIOverlay.UGUI")]
+	UIOverlayUGUI,
+	[WaaaghProfileCategory(WaaaghProfileCategory.UI)]
+	[DisplayInfo(name = "UIOverlay.IMGUI")]
+	UIOverlayIMGUI,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Geometry_OpaqueBase)]
+	[DisplayInfo(name = "IRS.CullingPass")]
+	IRSCullingPass,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	MaskedColorTransform,
+	[WaaaghProfileCategory(WaaaghProfileCategory.Lighting)]
+	ScreenSpaceCloudShadows,
+	[WaaaghProfileCategory(WaaaghProfileCategory.PostProcessing)]
+	[DisplayInfo(name = "CustomPP.StencilMask")]
+	CustomPPStencilMask,
+	SetupCamera,
+	UpdateCameraResolution,
+	ClearCameraTargets,
+	CopyDepthToDepthCopy,
+	CopyDepthToFinalTarget,
+	CopyColorToFinalTarget,
+	SetupShaderGlobals,
+	CameraObjectClipSetup,
+	CameraObjectClipDrawMask
 }

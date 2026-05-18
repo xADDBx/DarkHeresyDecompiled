@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Code.Enums.Helper;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
@@ -249,18 +251,19 @@ public class PathCursor
 		{
 			m_NextWaypointIndex = 2;
 		}
-		PathfindingService.Instance.TraversalProviderWithBusyLinkPenalties.RegisterPath(path, unit.View.GetInstanceID());
+		PathfindingService.Instance.TraversalProviderWithBusyLinkPenalties.RegisterPath(path, unit.View.AsEntityView().GetInstanceID());
 		m_HasPath = true;
 	}
 
 	public void ClearPath()
 	{
-		foreach (Waypoint waypoint in m_Waypoints)
+		if (m_Unit?.View != null)
 		{
-			if (waypoint.LinkNode != null)
-			{
-				PathfindingService.Instance.TraversalProviderWithBusyLinkPenalties.UnregisterNode(waypoint.LinkNode, m_Unit.View.GetInstanceID());
-			}
+			IEnumerable<LinkNode> nodes = from w in m_Waypoints
+				select w.LinkNode into ln
+				where ln != null
+				select ln;
+			PathfindingService.Instance.TraversalProviderWithBusyLinkPenalties.UnregisterNodes(nodes, m_Unit.View.AsEntityView().GetInstanceID());
 		}
 		m_Waypoints.Clear();
 		m_HasPath = false;

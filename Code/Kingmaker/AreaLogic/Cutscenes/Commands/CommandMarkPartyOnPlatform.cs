@@ -4,11 +4,9 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.QA;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View.Mechanics.Entities;
 using Owlcat.QA.Validation;
-using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -35,24 +33,20 @@ public class CommandMarkPartyOnPlatform : CommandBase
 
 	public override bool IsContinuous => true;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.Platform = PlatformReference.FindData() as PlatformObjectEntity;
 		List<BaseUnitEntity> list = new List<BaseUnitEntity>();
 		foreach (AbstractUnitEvaluator item2 in ElementExtendAsObject.Valid(ExceptThese))
 		{
-			if (!(item2.GetValue() is BaseUnitEntity item))
+			if (item2.TryGetValue(out var value) && value is BaseUnitEntity item)
 			{
-				string message = $"[IS NOT BASE UNIT ENTITY] Cutscene command {this}, {item2} is not BaseUnitEntity";
-				if (!QAModeExceptionReporter.MaybeShowError(message))
-				{
-					UberDebug.LogError(message);
-				}
+				list.Add(item);
 			}
 			else
 			{
-				list.Add(item);
+				PFLog.Cutscene.Error($"[IS NOT BASE UNIT ENTITY] Cutscene command {this}, {item2} is not BaseUnitEntity");
 			}
 		}
 		foreach (BaseUnitEntity characters in Game.Instance.Player.GetCharactersList(m_UnitsList))
@@ -62,22 +56,15 @@ public class CommandMarkPartyOnPlatform : CommandBase
 				characters.GetOrCreate<EntityPartStayOnPlatform>().SetOnPlatform(commandData.Platform);
 			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnStop(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
 		List<BaseUnitEntity> list = new List<BaseUnitEntity>();
 		foreach (AbstractUnitEvaluator item2 in ElementExtendAsObject.Valid(ExceptThese))
 		{
-			if (!(item2.GetValue() is BaseUnitEntity item))
-			{
-				string message = $"[IS NOT BASE UNIT ENTITY] Cutscene command {this}, {item2} is not BaseUnitEntity";
-				if (!QAModeExceptionReporter.MaybeShowError(message))
-				{
-					UberDebug.LogError(message);
-				}
-			}
-			else
+			if (item2.TryGetValue(out var value) && value is BaseUnitEntity item)
 			{
 				list.Add(item);
 			}
@@ -89,10 +76,17 @@ public class CommandMarkPartyOnPlatform : CommandBase
 				characters?.GetOrCreate<EntityPartStayOnPlatform>().ReleaseFromPlatform();
 			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	public override CommandResult Interrupt(CutscenePlayerData player)
 	{
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnSkip(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -100,8 +94,9 @@ public class CommandMarkPartyOnPlatform : CommandBase
 		return false;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

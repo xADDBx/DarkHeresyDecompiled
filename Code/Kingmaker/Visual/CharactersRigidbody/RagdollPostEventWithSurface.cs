@@ -10,9 +10,6 @@ public class RagdollPostEventWithSurface : MonoBehaviour
 	private UnitEntityView m_View;
 
 	[SerializeField]
-	private UnitAnimationCallbackReceiver m_Receiver;
-
-	[SerializeField]
 	private RigidbodyCreatureController m_Controller;
 
 	public string SoundString = "BodyfallsRagDoll_Play";
@@ -20,26 +17,18 @@ public class RagdollPostEventWithSurface : MonoBehaviour
 	public void GetInfoAboutCharacter()
 	{
 		m_View = GetComponentInParent<UnitEntityView>();
-		if (m_View == null)
+		if (!(m_View == null))
 		{
-			return;
-		}
-		m_Controller = m_View.GetComponentInChildren<RigidbodyCreatureController>();
-		if (!(m_Controller == null))
-		{
-			m_Receiver = m_View.GetComponentInChildren<UnitAnimationCallbackReceiver>();
-			if (m_Receiver == null)
-			{
-				m_Receiver = m_Controller.gameObject.AddComponent<UnitAnimationCallbackReceiver>();
-			}
+			m_Controller = m_View.GetComponentInChildren<RigidbodyCreatureController>();
+			_ = m_Controller == null;
 		}
 	}
 
 	private void OnCollisionEnter(Collision collision)
 	{
-		if (collision.gameObject.layer != 29 && !(m_View == null) && !(m_Receiver == null) && !(m_Controller == null) && m_Controller.PostEventWithSurface)
+		if (collision.gameObject.layer != 29 && !(m_View == null) && !(m_Controller == null) && m_Controller.PostEventWithSurface)
 		{
-			m_Receiver.PlayBodyFall(SoundString);
+			m_View.PlayBodyFall(SoundString);
 			m_Controller.PostEventWithSurface = false;
 		}
 	}

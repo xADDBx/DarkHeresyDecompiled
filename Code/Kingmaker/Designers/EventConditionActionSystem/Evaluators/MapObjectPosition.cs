@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.View.MapObjects;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -19,12 +20,11 @@ public class MapObjectPosition : PositionEvaluator
 
 	protected override Vector3 GetValueInternal()
 	{
-		MapObjectView mapObjectView = MapObject.FindView() as MapObjectView;
-		if ((bool)mapObjectView)
+		if (!(MapObject.FindData() is MapObjectEntity mapObjectEntity))
 		{
-			return ObjectExtensions.Or(mapObjectView, null).gameObject.transform.position;
+			return Vector3.zero;
 		}
-		return Vector3.zero;
+		return mapObjectEntity.Position;
 	}
 
 	public override string GetCaption()

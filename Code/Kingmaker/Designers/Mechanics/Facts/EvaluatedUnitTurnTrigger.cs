@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.ElementsSystem;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
@@ -128,7 +129,7 @@ public class EvaluatedUnitTurnTrigger : EntityFactComponentDelegate, ITurnStartH
 
 	void ITurnStartHandler.HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (!TriggerOnEndTurn)
+		if (!ContextData<TurnController.InterruptTurnEndMark>.Current && !TriggerOnEndTurn)
 		{
 			EventHandler(EventInvokerExtensions.MechanicEntity);
 		}

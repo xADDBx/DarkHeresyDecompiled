@@ -1,6 +1,7 @@
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
+using Kingmaker.Framework;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
 using Owlcat.Runtime.Core.Utility;
@@ -23,7 +24,7 @@ public class AbilityExecuteActionOnCast : BlueprintComponent, IAbilityOnCastLogi
 		{
 			return;
 		}
-		using (context.SetScope())
+		using (EvalContext.PushContext(context))
 		{
 			Actions.Run();
 		}

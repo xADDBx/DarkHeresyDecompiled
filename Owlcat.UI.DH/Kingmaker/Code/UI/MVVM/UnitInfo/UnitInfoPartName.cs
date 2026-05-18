@@ -56,7 +56,8 @@ public class UnitInfoPartName : UnitInfoPart
 		if (m_UnitName.fontSharedMaterial != material)
 		{
 			m_UnitName.fontSharedMaterial = material;
-			m_UnitName.SetMaterialDirty();
+			m_UnitName.SetAllDirty();
+			m_UnitName.ForceMeshUpdate();
 		}
 		TextStyle textStyle = (base.ViewModel.Data.IsAdditionalCombatObjective.CurrentValue ? m_AdditionalCombatObjectiveTextStyle : m_DefaultTextStyle);
 		try

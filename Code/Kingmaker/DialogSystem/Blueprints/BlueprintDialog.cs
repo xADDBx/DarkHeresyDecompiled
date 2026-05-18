@@ -2,12 +2,13 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.Code.Gameplay.Enums.Stats;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.Interfaces;
 using Kingmaker.Localization;
-using Kingmaker.Localization.Shared;
+using MemoryPack;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using OwlPack.Runtime;
 using UnityEngine;
 
@@ -16,9 +17,11 @@ namespace Kingmaker.DialogSystem.Blueprints;
 [NonOverridable]
 [TypeId("c8ff73feae580b142a9f43e0c61d7f32")]
 [OwlPackable(OwlPackableMode.NoGenerate)]
+[MemoryPackable(GenerateType.NoGenerate)]
 public class BlueprintDialog : BlueprintScriptableObject, IConditionDebugContext, IEditorCommentHolder
 {
-	public VOComments VoComments;
+	[LocalizedStringParam(Kind = "meta", Group = LocalizedStringGroup.Voice_Comments)]
+	public LocalizedString VoComment;
 
 	public CueSelection FirstCue;
 
@@ -49,6 +52,11 @@ public class BlueprintDialog : BlueprintScriptableObject, IConditionDebugContext
 	public DialogType Type;
 
 	public LocalizedString Description;
+
+	[InfoBox("Этот блок настроек - meta информация для статистики")]
+	public Chapter Chapter;
+
+	public Cluster Cluster;
 
 	[HideInInspector]
 	[SerializeField]

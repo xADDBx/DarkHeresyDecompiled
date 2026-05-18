@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
+using Code.View.UI.MVVM;
 using Kingmaker.Blueprints;
+using Kingmaker.Blueprints.Base;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.GameCommands;
 using Kingmaker.PubSubSystem;
@@ -13,48 +15,40 @@ using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.CharGen;
 using Kingmaker.UnitLogic.Levelup.Selections.CharacterName;
-using Kingmaker.UnitLogic.Parts;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Owlcat.UI;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHandler, ISubscriber
 {
-	public CharGenNameVM CharGenNameVM;
+	private readonly ReactiveProperty<TooltipBaseTemplate> m_ReactiveTooltipTemplate = new ReactiveProperty<TooltipBaseTemplate>();
 
-	public CharInfoSkillsBlockVM CharInfoSkillsBlockVM;
+	private readonly AutoDisposingList<CareerPathVM> m_UnitCareers = new AutoDisposingList<CareerPathVM>();
 
 	private readonly ReactiveCommand<Action> m_InterruptHandler = new ReactiveCommand<Action>();
-
-	public CharInfoLevelClassScoresVM LevelClassScoresVM;
-
-	private readonly ReactiveProperty<TooltipBaseTemplate> m_ReactiveTooltipTemplate = new ReactiveProperty<TooltipBaseTemplate>();
 
 	private SelectionStateCharacterName m_SelectionStateCharacterName;
 
 	private bool m_Subscribed;
 
-	private readonly AutoDisposingList<CareerPathVM> m_UnitCareers = new AutoDisposingList<CareerPathVM>();
+	public CharGenNameVM CharGenNameVM { get; private set; }
+
+	public SummaryBackgroundFeaturesVM BackgroundFeaturesVM { get; private set; }
 
 	public Observable<Action> InterruptHandler => m_InterruptHandler;
 
-	public CharGenSummaryPhaseVM(CharGenContext charGenContext)
+	public CharGenSummaryPhaseVM(CharGenContext charGenContext, SelectionStateCharacterName selectionStateName)
 		: base(charGenContext, CharGenPhaseType.Summary)
 	{
-		base.HasPantograph = false;
-		base.CanInterruptChargen = true;
+		base.DisplayMode = CharGenDisplayMode.Both;
+		base.DollPosition = CharacterDollPosition.Result;
+		base.HasSmallPortrait = true;
+		m_SelectionStateCharacterName = selectionStateName;
+		m_PhaseName.Value = ((BlueprintCharacterNameSelection)selectionStateName.Blueprint).Title;
 		CreateTooltipSystem();
-	}
-
-	void ICharGenSummaryPhaseHandler.HandleSetName(string characterName)
-	{
-		if (!CharGenNameVM.UnitName.CurrentValue.Equals(characterName, StringComparison.Ordinal))
-		{
-			CharGenNameVM.SetName(characterName);
-		}
-		SetNameUI(characterName);
 	}
 
 	protected override void DisposeImplementation()
@@ -63,24 +57,34 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 		m_UnitCareers.Clear();
 	}
 
+	void ICharGenSummaryPhaseHandler.HandleSetName(string characterName)
+	{
+		if (!CharGenNameVM.CurrentDisplayName.CurrentValue.Equals(characterName, StringComparison.Ordinal))
+		{
+			SetName(characterName, force: false);
+		}
+		SetNameUI(characterName);
+	}
+
 	protected override bool CheckIsCompleted()
 	{
-		return CharGenContext.LevelUpManager.CurrentValue?.IsAllSelectionsMadeAndValid ?? false;
+		return m_CharGenContext.LevelUpManager.CurrentValue?.IsAllSelectionsMadeAndValid ?? false;
 	}
 
 	protected override void OnBeginDetailedView()
 	{
-		SetupTooltipTemplate();
 		if (m_Subscribed)
 		{
-			SetDefaultNameIfNeeded();
+			BackgroundFeaturesVM.UpdateFeatures();
 			return;
 		}
-		AddDisposable(CharGenNameVM = new CharGenNameVM(CharGenContext.CurrentUnit, CharGenContext.LevelUpManager, GetRandomName, SetName));
-		AddDisposable(LevelClassScoresVM = new CharInfoLevelClassScoresVM(CharGenNameVM.PreviewUnit));
-		AddDisposable(CharInfoSkillsBlockVM = new CharInfoSkillsBlockVM(CharGenNameVM.PreviewUnit, null));
-		AddDisposable(CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager));
-		AddDisposable(CharGenContext.CurrentUnit.Subscribe(delegate(BaseUnitEntity unit)
+		CharGenNameVM = new CharGenNameVM(m_CharGenContext.CurrentUnit, m_CharGenContext.LevelUpManager, GetRandomName, SetName).AddTo(this);
+		BackgroundFeaturesVM = new SummaryBackgroundFeaturesVM(m_CharGenContext.CurrentUnit, m_CharGenContext.LevelUpManager).AddTo(this);
+		CharGenNameVM.CurrentDisplayName.Subscribe(delegate
+		{
+			UpdateHint();
+		}).AddTo(this);
+		m_CharGenContext.CurrentUnit.Subscribe(delegate(BaseUnitEntity unit)
 		{
 			PregenUnitComponent component = unit.Blueprint.GetComponent<PregenUnitComponent>();
 			if (component != null)
@@ -91,26 +95,12 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 			{
 				SetNameUI(string.Empty);
 			}
-		}));
-		AddDisposable(EventBus.Subscribe(this));
-		SetDefaultNameIfNeeded();
+		}).AddTo(this);
+		EventBus.Subscribe(this).AddTo(this);
 		m_Subscribed = true;
 	}
 
-	private void HandleLevelUpManager(LevelUpManager manager)
-	{
-		if (manager != null)
-		{
-			BlueprintCharacterNameSelection selectionByType = UtilityChargen.GetSelectionByType<BlueprintCharacterNameSelection>(manager.Path);
-			if (selectionByType != null)
-			{
-				m_SelectionStateCharacterName = manager.GetSelectionState(manager.Path, selectionByType, 0) as SelectionStateCharacterName;
-				UpdateIsCompleted();
-			}
-		}
-	}
-
-	private void SetName(string characterName)
+	public void SetName(string characterName)
 	{
 		SetName(characterName, force: false);
 	}
@@ -132,19 +122,19 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 
 	private string GetRandomName()
 	{
-		if (CharGenContext.Doll.Race == null)
-		{
-			return string.Empty;
-		}
-		return BlueprintCharGenRoot.Instance.PregenCharacterNames.GetRandomName(CharGenContext.Doll.Race.RaceId, CharGenContext.Doll.Gender, CharGenContext.CharGenConfig.Mode, CharGenNameVM.UnitName.CurrentValue);
+		Gender gender = ((UnityEngine.Random.Range(0, 2) != 0) ? Gender.Female : Gender.Male);
+		return BlueprintCharGenRoot.Instance.PregenCharacterNames.GetRandomName(Race.Human, gender, m_CharGenContext.CharGenConfig.Mode, CharGenNameVM.CurrentDisplayName.CurrentValue);
 	}
 
-	private void SetDefaultNameIfNeeded()
+	private void UpdateHint()
 	{
-		if (CharGenContext.IsCustomCharacter.CurrentValue && CharGenContext.LevelUpManager.CurrentValue.PreviewUnit.GetDescriptionOptional()?.CustomName == null && CharGenContext.Doll?.Race != null)
+		if (!string.IsNullOrEmpty(CharGenNameVM.CurrentDisplayName.CurrentValue))
 		{
-			string defaultName = BlueprintCharGenRoot.Instance.PregenCharacterNames.GetDefaultName(CharGenContext.Doll.Race.RaceId, CharGenContext.Doll.Gender, CharGenContext.CharGenConfig.Mode, CharGenNameVM.UnitName.CurrentValue);
-			SetName(defaultName);
+			SetPhaseHint(string.Empty);
+		}
+		else
+		{
+			SetPhaseHint(UIStrings.Instance.CharGen.ChooseName.Text);
 		}
 	}
 
@@ -155,9 +145,6 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 
 	private void CreateTooltipSystem()
 	{
-		AddDisposable(InfoVM = new InfoSectionVM());
-		AddDisposable(SecondaryInfoVM = new InfoSectionVM());
-		AddDisposable(m_ReactiveTooltipTemplate.Subscribe(InfoVM.SetTemplate));
 	}
 
 	private void SetupTooltipTemplate()
@@ -167,7 +154,7 @@ public class CharGenSummaryPhaseVM : CharGenPhaseBaseVM, ICharGenSummaryPhaseHan
 
 	private TooltipBaseTemplate GetTooltipTemplate()
 	{
-		LevelUpManager currentValue = CharGenContext.LevelUpManager.CurrentValue;
+		LevelUpManager currentValue = m_CharGenContext.LevelUpManager.CurrentValue;
 		m_UnitCareers.Clear();
 		if (currentValue?.PreviewUnit != null)
 		{

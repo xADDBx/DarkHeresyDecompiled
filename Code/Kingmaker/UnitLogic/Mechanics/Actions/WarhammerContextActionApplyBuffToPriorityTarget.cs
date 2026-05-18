@@ -1,11 +1,6 @@
 using System;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Parts;
-using Kingmaker.Utility;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
 
@@ -31,20 +26,6 @@ public class WarhammerContextActionApplyBuffToPriorityTarget : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicsContext current = SimpleContextData<MechanicsContext, MechanicsContext.Scope>.Current;
-		if (current == null)
-		{
-			Element.LogError(this, "Unable to apply buff: no context found");
-			return;
-		}
-		BaseUnitEntity baseUnitEntity = current.MaybeCaster?.GetOptional<UnitPartPriorityTarget>()?.GetPriorityTarget(TargetBuff);
-		if (baseUnitEntity == null)
-		{
-			Element.LogError(this, "Can't apply buff: target is null");
-			return;
-		}
-		Rounds? rounds = (Permanent ? null : new Rounds?(DurationValue.Calculate(current)));
-		baseUnitEntity.Buffs.Add(Buff, current, rounds);
 	}
 
 	public override string GetCaption()

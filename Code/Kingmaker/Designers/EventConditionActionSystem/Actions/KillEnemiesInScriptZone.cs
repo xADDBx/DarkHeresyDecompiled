@@ -139,9 +139,13 @@ public class KillEnemiesInScriptZone : GameAction
 		{
 			RemoveHealthGuardBuffs(unit);
 		}
-		if (ForceKillMechanisms && unit.IsMechanism)
+		if (ForceKillMechanisms)
 		{
-			unit.GetOptional<PartArmor>()?.SetDurabilityLeft(0);
+			PartHealth healthOptional = unit.GetHealthOptional();
+			if (healthOptional != null && healthOptional.IsCountHpAsArmor)
+			{
+				unit.GetOptional<PartArmor>()?.SetDurabilityLeft(0);
+			}
 		}
 	}
 
@@ -165,7 +169,7 @@ public class KillEnemiesInScriptZone : GameAction
 		List<Buff> list = new List<Buff>();
 		foreach (Buff rawFact in unit.Buffs.RawFacts)
 		{
-			if (rawFact.Blueprint.GetComponent<UnitHealthGuard>() != null)
+			if (rawFact.Blueprint.GetComponent<HealthGuard>() != null)
 			{
 				list.Add(rawFact);
 			}

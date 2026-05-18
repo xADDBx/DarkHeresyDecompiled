@@ -1,5 +1,4 @@
 using Kingmaker.Blueprints.Root.Strings;
-using Owlcat.UI;
 using TMPro;
 using UnityEngine;
 
@@ -39,12 +38,5 @@ public class FirstLaunchDisplayPagePCView : FirstLaunchSettingsPageBaseView<Firs
 		m_DisplayImageText_3.text = settingsUI.DisplayImageBrights;
 		m_InfoView.Bind(base.ViewModel.InfoVM);
 		base.OnBind();
-	}
-
-	protected override void BuildNavigationImpl(GridConsoleNavigationBehaviour navigationBehaviour)
-	{
-		navigationBehaviour.SetEntitiesVertical<SettingsEntitySliderGammaCorrectionPCView>(m_SettingsEntitySliderGammaCorrectionPCView, m_SettingsEntitySliderBrightnessPCView, m_SettingsEntitySliderContrastPCView);
-		navigationBehaviour.AddRow(AdditionalEntities);
-		navigationBehaviour.FocusOnFirstValidEntity();
 	}
 }

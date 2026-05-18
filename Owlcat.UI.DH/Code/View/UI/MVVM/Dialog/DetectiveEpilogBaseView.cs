@@ -95,8 +95,6 @@ public class DetectiveEpilogBaseView : View<DetectiveEpilogVM>
 
 	private string m_ChoosedAnswer;
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	private IDisposable m_ChooseAnswerDisposable;
 
 	protected ReadOnlyReactiveProperty<bool> IsShowHistory => m_IsShowHistory;
@@ -119,15 +117,16 @@ public class DetectiveEpilogBaseView : View<DetectiveEpilogVM>
 			using (GameLogContext.Scope)
 			{
 				GameLogContext.TextStyle = m_TextStyle;
-				GameLogContext.Case = base.ViewModel.DetectiveCasePage.CurrentValue?.BlueprintCase.Blueprint;
+				GameLogContext.Case = base.ViewModel.DetectiveCasePage.CurrentValue?.BlueprintCase.MaybeBlueprint;
 				m_ReportWithNumber.text = UIStrings.Instance.DetectiveDecor.ReportNumberLabel.Text;
 				GameLogContext.TextStyle = UIConfig.Instance.DefaultTextStyle;
 			}
 		}).AddTo(this);
 		base.ViewModel.TrueAnswerVM.Subscribe(delegate(EpilogTrueAnswerVM value)
 		{
-			m_ShowTrueAnswerButtonLabel.text = ((value == null) ? UIStrings.Instance.BookEvent.ToArchives.Text : ((string)UIStrings.Instance.CommonTexts.CloseWindow));
-			m_ShowTrueAnswerButton.SetActiveLayer((value != null) ? 1 : 0);
+			bool flag = value != null;
+			m_ShowTrueAnswerButtonLabel.text = (flag ? UIStrings.Instance.CommonTexts.Back : UIStrings.Instance.BookEvent.ToArchives);
+			m_ShowTrueAnswerButton.SetActiveLayer(flag ? 1 : 0);
 		}).AddTo(this);
 		m_ShowTrueAnswerButton.OnLeftClickAsObservable().Subscribe(base.ViewModel.ToggleTrueAnswer).AddTo(this);
 		base.ViewModel.IsLastAnswer.Subscribe(delegate(bool value)
@@ -191,14 +190,14 @@ public class DetectiveEpilogBaseView : View<DetectiveEpilogVM>
 	{
 		m_IsShown = true;
 		m_WindowAnimator.AppearAnimation();
-		UISounds.Instance.Sounds.Dialogue.BookOpen.Play();
+		FullScreenSounds.Instance.Dialogue.BookOpen.Play();
 	}
 
 	private void Hide()
 	{
 		m_IsShown = false;
 		m_WindowAnimator.DisappearAnimation();
-		UISounds.Instance.Sounds.Dialogue.BookClose.Play();
+		FullScreenSounds.Instance.Dialogue.BookClose.Play();
 	}
 
 	private void SetCues()
@@ -274,7 +273,7 @@ public class DetectiveEpilogBaseView : View<DetectiveEpilogVM>
 			TooltipHelper.HideTooltip();
 			m_ContentAnimator.DisappearAnimation(delegate
 			{
-				UISounds.Instance.Sounds.Dialogue.BookPageTurn.Play();
+				FullScreenSounds.Instance.Dialogue.BookPageTurn.Play();
 				m_ContentAnimator.AppearAnimation();
 				SetCues();
 				SetAnswers();

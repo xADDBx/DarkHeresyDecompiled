@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
@@ -6,36 +7,62 @@ using Kingmaker.Blueprints;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Networking;
 using Kingmaker.PubSubSystem.Core;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class CharGenSetPortraitGameCommand : GameCommand, IOwlPackable<CharGenSetPortraitGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class CharGenSetPortraitGameCommand : GameCommand, IMemoryPackable<CharGenSetPortraitGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<CharGenSetPortraitGameCommand>
 {
+	[Preserve]
+	private sealed class CharGenSetPortraitGameCommandFormatter : MemoryPackFormatter<CharGenSetPortraitGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CharGenSetPortraitGameCommand value)
+		{
+			CharGenSetPortraitGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref CharGenSetPortraitGameCommand value)
+		{
+			CharGenSetPortraitGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref CharGenSetPortraitGameCommand value)
+		{
+			CharGenSetPortraitGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref CharGenSetPortraitGameCommand value)
+		{
+			CharGenSetPortraitGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly BlueprintPortraitReference m_Blueprint;
 
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private readonly Guid m_CustomPortraitGuid;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "CharGenSetPortraitGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[2]
-		{
-			new FieldInfo("m_Blueprint", typeof(BlueprintPortraitReference)),
-			new FieldInfo("m_CustomPortraitGuid", typeof(Guid))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	private CharGenSetPortraitGameCommand([NotNull] BlueprintPortraitReference m_blueprint, Guid m_customPortraitGuid)
 	{
 		if (m_blueprint == null)
@@ -99,6 +126,182 @@ public sealed class CharGenSetPortraitGameCommand : GameCommand, IOwlPackable<Ch
 		{
 			h.HandleSetPortrait(blueprint);
 		});
+	}
+
+	static CharGenSetPortraitGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "CharGenSetPortraitGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[2]
+			{
+				new FieldInfo("m_Blueprint", typeof(BlueprintPortraitReference)),
+				new FieldInfo("m_CustomPortraitGuid", typeof(Guid))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<CharGenSetPortraitGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new CharGenSetPortraitGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<CharGenSetPortraitGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<CharGenSetPortraitGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref CharGenSetPortraitGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(2);
+		writer.WritePackable(in value.m_Blueprint);
+		writer.WriteUnmanaged(in value.m_CustomPortraitGuid);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref CharGenSetPortraitGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		BlueprintPortraitReference value2;
+		Guid value3;
+		if (memberCount == 2)
+		{
+			if (value == null)
+			{
+				value2 = reader.ReadPackable<BlueprintPortraitReference>();
+				reader.ReadUnmanaged<Guid>(out value3);
+			}
+			else
+			{
+				value2 = value.m_Blueprint;
+				value3 = value.m_CustomPortraitGuid;
+				reader.ReadPackable(ref value2);
+				reader.ReadUnmanaged<Guid>(out value3);
+			}
+		}
+		else
+		{
+			if (memberCount > 2)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(CharGenSetPortraitGameCommand), 2, memberCount);
+				return;
+			}
+			if (value == null)
+			{
+				value2 = null;
+				value3 = default(Guid);
+			}
+			else
+			{
+				value2 = value.m_Blueprint;
+				value3 = value.m_CustomPortraitGuid;
+			}
+			if (memberCount != 0)
+			{
+				reader.ReadPackable(ref value2);
+				if (memberCount != 1)
+				{
+					reader.ReadUnmanaged<Guid>(out value3);
+					_ = 2;
+				}
+			}
+			_ = value;
+		}
+		value = new CharGenSetPortraitGameCommand(value2, value3);
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref CharGenSetPortraitGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Blueprint");
+		writer.WritePackable(value.m_Blueprint);
+		writer.WriteProperty("m_CustomPortraitGuid");
+		writer.WriteUnmanaged(value.m_CustomPortraitGuid);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref CharGenSetPortraitGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		BlueprintPortraitReference val;
+		Guid v;
+		if (value == null)
+		{
+			val = null;
+			v = default(Guid);
+		}
+		else
+		{
+			val = value.m_Blueprint;
+			v = value.m_CustomPortraitGuid;
+		}
+		bool[] array = new bool[2];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (!(text == "m_Blueprint"))
+				{
+					if (text == "m_CustomPortraitGuid")
+					{
+						reader.ReadUnmanaged<Guid>(out v);
+						array[1] = true;
+					}
+				}
+				else
+				{
+					val = reader.ReadPackable<BlueprintPortraitReference>();
+					array[0] = true;
+				}
+			}
+			else if (!(text == "m_Blueprint"))
+			{
+				if (text == "m_CustomPortraitGuid")
+				{
+					reader.ReadUnmanaged<Guid>(out v);
+				}
+			}
+			else
+			{
+				reader.ReadPackable(ref val);
+			}
+		}
+		_ = value;
+		value = new CharGenSetPortraitGameCommand(val, v);
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

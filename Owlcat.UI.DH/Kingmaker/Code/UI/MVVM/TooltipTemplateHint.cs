@@ -14,6 +14,6 @@ public class TooltipTemplateHint : TooltipBaseTemplate
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickText(Text);
+		yield return new BrickTextVM(Text);
 	}
 }

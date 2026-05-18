@@ -18,7 +18,7 @@ public class MenuEntityVM : SelectionGroupEntityVM
 
 	public void SetAvailable(bool value)
 	{
-		m_IsAvailable.Value = value;
+		m_IsAvailable.Value = value && EnumId != 5;
 	}
 
 	protected override void DoSelectMe()

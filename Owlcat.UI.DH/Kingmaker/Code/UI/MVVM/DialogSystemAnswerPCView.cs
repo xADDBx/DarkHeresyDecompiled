@@ -35,7 +35,7 @@ public class DialogSystemAnswerPCView : DialogSystemAnswerBaseView
 
 	private void ButtonClickWithSound()
 	{
-		UISounds.Instance.Play(UISounds.Instance.Sounds.Buttons.MajorPaperButtonClick, isButton: true);
+		UISounds.Instance.Play(ButtonsSounds.Instance.MajorPaperButton.Click, isButton: true);
 		base.ViewModel.OnChooseAnswer();
 	}
 

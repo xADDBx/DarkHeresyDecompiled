@@ -6,7 +6,7 @@ public abstract class ViewModel : IDisposable
 {
 	private DisposableBag m_Disposables;
 
-	private bool m_Disposed;
+	internal bool IsDisposed => m_Disposables.IsDisposed;
 
 	public ViewModel()
 	{
@@ -21,9 +21,8 @@ public abstract class ViewModel : IDisposable
 
 	public void Dispose()
 	{
-		if (!m_Disposed)
+		if (!m_Disposables.IsDisposed)
 		{
-			m_Disposed = true;
 			m_Disposables.Dispose();
 			GC.SuppressFinalize(this);
 		}

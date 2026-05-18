@@ -27,7 +27,7 @@ public class AbilityDeliverAttackWithWeapon : AbilityDeliverEffect
 		ItemEntityWeapon weapon = context.Ability.Weapon;
 		RulePerformAttack rulePerformAttack = new RulePerformAttack(maybeCaster, target, context.Ability, 0);
 		context.TriggerRule(rulePerformAttack);
-		if (maybeCaster is BaseUnitEntity attacker && target is BaseUnitEntity baseUnitEntity && baseUnitEntity.View != null && baseUnitEntity.View.HitFxManager != null)
+		if (maybeCaster is BaseUnitEntity attacker && target is BaseUnitEntity { View: not null } baseUnitEntity && baseUnitEntity.View.HitFxManager != null)
 		{
 			baseUnitEntity.View.HitFxManager.HandleMeleeAttackHit(attacker, AttackResult.Hit, crit: false, weapon);
 		}

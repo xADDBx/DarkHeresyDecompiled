@@ -6,7 +6,6 @@ using Kingmaker.Blueprints.Facts;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Properties;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -34,12 +33,13 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 		{
 			Name = "BonusAbilityData",
 			OldNames = null,
-			Fields = new FieldInfo[4]
+			Fields = new FieldInfo[5]
 			{
 				new FieldInfo("Count", typeof(int)),
 				new FieldInfo("CostBonus", typeof(int)),
 				new FieldInfo("Source", typeof(EntityFactSource)),
-				new FieldInfo("Restrictions", typeof(RestrictionsHolder.Reference))
+				new FieldInfo("Restrictions", typeof(RestrictionsHolder.Reference)),
+				new FieldInfo("IgnoreAbilityRestrictionForUsage", typeof(bool))
 			}
 		};
 
@@ -59,13 +59,18 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 		[OwlPackInclude]
 		public RestrictionsHolder.Reference Restrictions { get; private set; }
 
+		[JsonProperty]
+		[OwlPackInclude]
+		public bool IgnoreAbilityRestrictionForUsage { get; private set; }
+
 		[JsonConstructor]
-		public BonusAbilityData(int count, EntityFactSource source, int costBonus, RestrictionsHolder.Reference restrictions)
+		public BonusAbilityData(int count, EntityFactSource source, int costBonus, RestrictionsHolder.Reference restrictions, bool ignoreAbilityRestrictionForUsage)
 		{
 			Count = count;
 			Source = source;
 			CostBonus = costBonus;
 			Restrictions = restrictions;
+			IgnoreAbilityRestrictionForUsage = ignoreAbilityRestrictionForUsage;
 		}
 
 		public BonusAbilityData()
@@ -74,12 +79,20 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 
 		public bool IsCorrectAbility(AbilityData data)
 		{
-			return Restrictions?.Get()?.IsPassed(new PropertyContext(data.Caster, null, null, null, data)) ?? true;
+			if (Restrictions?.Get()?.IsPassed(data.Caster, null, null, null, data) ?? true)
+			{
+				if (!IgnoreAbilityRestrictionForUsage)
+				{
+					return !data.IsRestricted;
+				}
+				return true;
+			}
+			return false;
 		}
 
 		public override string ToString()
 		{
-			return $"Source={Source}, count={Count}, costBonus={CostBonus}, restrictions={Restrictions}";
+			return $"Source={Source}, count={Count}, costBonus={CostBonus}, restrictions={Restrictions}, ignorePartAbilityRestrictions={IgnoreAbilityRestrictionForUsage}";
 		}
 
 		public virtual Hash128 GetHash128()
@@ -93,6 +106,8 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 			result.Append(ref val3);
 			Hash128 val4 = BlueprintReferenceHasher.GetHash128(Restrictions);
 			result.Append(ref val4);
+			bool val5 = IgnoreAbilityRestrictionForUsage;
+			result.Append(ref val5);
 			return result;
 		}
 
@@ -121,6 +136,8 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 			formatter.Field(2, "Source", ref value3, state);
 			RestrictionsHolder.Reference value4 = Restrictions;
 			formatter.Field(3, "Restrictions", ref value4, state);
+			bool value5 = IgnoreAbilityRestrictionForUsage;
+			formatter.UnmanagedField(4, "IgnoreAbilityRestrictionForUsage", ref value5, state);
 			formatter.EndObject();
 		}
 
@@ -149,6 +166,9 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 					break;
 				case 3:
 					Restrictions = formatter.ReadPackable<RestrictionsHolder.Reference>(state);
+					break;
+				case 4:
+					IgnoreAbilityRestrictionForUsage = formatter.ReadUnmanaged<bool>(state);
 					break;
 				}
 			}
@@ -192,9 +212,9 @@ public class UnitPartBonusAbility : BaseUnitPart, IInitiatorRulebookHandler<Rule
 		return bonusAbilityData;
 	}
 
-	public void AddBonusAbility(EntityFactSource source, int count, int costBonus, RestrictionsHolder.Reference restrictions)
+	public void AddBonusAbility(EntityFactSource source, int count, int costBonus, RestrictionsHolder.Reference restrictions, bool ignoreAbilityRestrictionForUsage)
 	{
-		BonusAbilityData bonusAbilityData = new BonusAbilityData(count, source, costBonus, restrictions);
+		BonusAbilityData bonusAbilityData = new BonusAbilityData(count, source, costBonus, restrictions, ignoreAbilityRestrictionForUsage);
 		m_Bonuses.Add(bonusAbilityData);
 		Logger.Log($"Add bonus ability usage. {bonusAbilityData}. Owner={base.Owner}");
 	}

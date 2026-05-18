@@ -49,7 +49,7 @@ public class UnitJumpAsideDodge : UnitCommand<UnitJumpAsideDodgeParams>
 		{
 			ForceFinish(ResultType.Fail);
 		}
-		if (!base.Executor.View.MovementAgent.IsReallyMoving)
+		if (!base.Executor.IsReallyMoving)
 		{
 			base.Executor.Position = base.ForcedPath.vectorPath.Last();
 			ForceFinish(ResultType.Success);

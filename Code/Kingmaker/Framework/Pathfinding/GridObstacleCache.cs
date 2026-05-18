@@ -12,31 +12,32 @@ using Pathfinding;
 using Pathfinding.Util;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using UnityEngine.Pool;
 using UnityEngine.Rendering;
 
 namespace Kingmaker.Framework.Pathfinding;
 
 public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IEnumerable, IDisposable
 {
-	public sealed class Entry
+	public readonly struct Entry
 	{
-		public readonly GridNodeIndex Node;
-
-		public readonly GridNodeDirection Direction;
-
-		public readonly HashSet<GridObstacle> Sources = new HashSet<GridObstacle>();
-
 		public readonly GridConnectionIndex ConnectionIndex;
 
-		public GridObstacle? Source;
+		public readonly GridObstacle? Source;
 
-		public LosCalculations.CoverType Type;
+		public readonly LosCalculations.CoverType Type;
 
-		public int Top;
+		public readonly int Top;
 
-		public int Bottom;
+		public readonly int Bottom;
 
-		public bool ZAligned;
+		public readonly bool ZAligned;
+
+		public GridNodeIndex Node => ConnectionIndex.from;
+
+		public GridNodeDirection Direction => ConnectionIndex.direction;
+
+		public bool Exists => (object)Source != null;
 
 		public int DirectionMask => 1 << (int)Direction;
 
@@ -55,37 +56,62 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 			}
 		}
 
+		public ReadonlyList<GridObstacle> Sources => Instance?.GetSourcesForConnection(ConnectionIndex.from, ConnectionIndex.direction) ?? ReadonlyList<GridObstacle>.Empty;
+
 		public Entry(GridNodeIndex node, GridNodeDirection direction)
+			: this(node, direction, null, LosCalculations.CoverType.Obstacle, 0, 0, zAligned: false)
 		{
-			Node = node;
-			Direction = direction;
-			ConnectionIndex = new GridConnectionIndex(Node, Direction);
 		}
 
-		public void Clear()
+		public Entry(GridNodeIndex node, GridNodeDirection direction, GridObstacle? source, LosCalculations.CoverType type, int top, int bottom, bool zAligned)
 		{
-			Source = null;
-			Type = LosCalculations.CoverType.Obstacle;
-			Top = 0;
-			Bottom = 0;
-			ZAligned = false;
-			Sources.Clear();
+			ConnectionIndex = new GridConnectionIndex(node, direction);
+			Source = source;
+			Type = type;
+			Top = top;
+			Bottom = bottom;
+			ZAligned = zAligned;
+		}
+
+		public Entry Cleared()
+		{
+			return new Entry(Node, Direction);
 		}
 	}
 
-	private readonly Dictionary<GridObstacle, List<GridConnectionIndex>> _affectedConnections = new Dictionary<GridObstacle, List<GridConnectionIndex>>();
+	private readonly Dictionary<GridObstacle, List<GridConnectionIndex>> _obstacleToConnections = new Dictionary<GridObstacle, List<GridConnectionIndex>>();
+
+	private readonly Dictionary<int, List<GridObstacle>> _connectionToObstacles = new Dictionary<int, List<GridObstacle>>();
 
 	private readonly GridGraph _graph;
+
+	private readonly int _width;
+
+	private readonly int _depth;
 
 	private Entry[] _connections;
 
 	private NativeArray<int> _connectionCuts;
 
-	private bool _dirty = true;
+	private bool _allDirty = true;
 
-	public static GridObstacleCache? Instance => AdditionalGraphDataManager.Instance.GetGridDataOptional()?.Obstacles;
+	private readonly HashSet<GridObstacle> _dirtyObstacles = new HashSet<GridObstacle>();
 
-	public int Version { get; private set; }
+	public static GridObstacleCache? Instance
+	{
+		get
+		{
+			GridObstacleCache obj = AdditionalGraphDataManager.Instance.GetGridDataOptional()?.Obstacles;
+			if (obj != null)
+			{
+				obj.Update();
+				return obj;
+			}
+			return obj;
+		}
+	}
+
+	public long Version { get; private set; }
 
 	public NativeArray<int> ConnectionCuts
 	{
@@ -103,7 +129,9 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 	public GridObstacleCache(GridGraph graph)
 	{
 		_graph = graph;
-		int num = graph.width * graph.depth;
+		_width = graph.width;
+		_depth = graph.depth;
+		int num = _width * _depth;
 		_connections = new Entry[num * 8];
 		_connectionCuts = new NativeArray<int>(num, Allocator.Persistent);
 		InitConnections();
@@ -111,11 +139,11 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 
 	private void InitConnections()
 	{
-		for (int i = 0; i < _graph.width; i++)
+		for (int i = 0; i < _width; i++)
 		{
-			for (int j = 0; j < _graph.depth; j++)
+			for (int j = 0; j < _depth; j++)
 			{
-				int num = i + j * _graph.width;
+				int num = i + j * _width;
 				for (int k = 0; k < 8; k++)
 				{
 					GridNodeDirection direction = (GridNodeDirection)k;
@@ -125,42 +153,47 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 		}
 	}
 
-	public Entry? GetObstacle(GridNodeIndex from, GridNodeIndex to)
+	public Entry GetObstacle(GridNodeIndex from, GridNodeIndex to)
 	{
 		return GetObstacle(from, from.GetDirection(to));
 	}
 
-	public Entry? GetObstacle(GridConnectionIndex connection)
+	public Entry GetObstacle(GridConnectionIndex connection)
 	{
 		return GetObstacle(connection.from, connection.direction);
 	}
 
-	public Entry? GetObstacle(GridNodeBase node, GridNodeDirection direction)
+	public Entry GetObstacle(GridNodeBase node, GridNodeDirection direction)
 	{
 		return GetObstacle(new GridNodeIndex(node.XCoordinateInGrid, node.ZCoordinateInGrid), direction);
 	}
 
-	public Entry? GetObstacle(GridNodeIndex node, GridNodeDirection direction)
+	private Entry GetObstacle(GridNodeIndex node, GridNodeDirection direction)
 	{
 		Update();
-		int num = (int)((node.x + node.z * _graph.width) * 8 + direction);
-		Entry entry = _connections[num];
-		if (!(entry.Source != null))
+		int num = (int)((node.x + node.z * _width) * 8 + direction);
+		Entry result = _connections[num];
+		if (!(result.Source != null))
 		{
-			return null;
+			return default(Entry);
 		}
-		return entry;
+		return result;
 	}
 
 	public ReadonlyList<GridConnectionIndex> GetAffectedConnections(GridObstacle obstacle)
 	{
 		Update();
-		return _affectedConnections.GetValueOrDefault(obstacle);
+		return _obstacleToConnections.GetValueOrDefault(obstacle);
+	}
+
+	private ReadonlyList<GridObstacle> GetSourcesForConnection(GridNodeIndex node, GridNodeDirection direction)
+	{
+		return _connectionToObstacles.GetValueOrDefault(GetConnectionIndex(node, direction));
 	}
 
 	public void Invalidate()
 	{
-		_dirty = true;
+		_allDirty = true;
 	}
 
 	public void ForceUpdate()
@@ -168,51 +201,109 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 		Update(force: true);
 	}
 
+	public void OnObstacleChanged(GridObstacle obstacle)
+	{
+		_dirtyObstacles.Add(obstacle);
+	}
+
 	private void Update(bool force = false)
 	{
-		if (!_dirty && !force)
+		using (ProfileScope.NewScope("Update"))
 		{
-			return;
-		}
-		using (ProfileScope.New("GridObstacleCache.Update"))
-		{
-			_affectedConnections.Clear();
-			int num = _graph.width * _graph.depth;
-			Entry[] connections;
-			if (_connections.Length >= num * 8)
+			if (_allDirty || force)
 			{
-				connections = _connections;
-				for (int j = 0; j < connections.Length; j++)
+				RecalculateAll();
+			}
+			else
+			{
+				if (_dirtyObstacles.Count == 0)
 				{
-					connections[j].Clear();
+					return;
+				}
+				bool flag = false;
+				try
+				{
+					foreach (GridObstacle dirtyObstacle in _dirtyObstacles)
+					{
+						bool flag2 = dirtyObstacle != null && dirtyObstacle.gameObject.activeInHierarchy && dirtyObstacle.enabled;
+						bool flag3 = _obstacleToConnections.ContainsKey(dirtyObstacle);
+						if (flag2 && !flag3)
+						{
+							AddObstacle(dirtyObstacle);
+							flag = true;
+						}
+						else if (!flag2 && flag3)
+						{
+							RemoveObstacle(dirtyObstacle);
+							flag = true;
+						}
+						else if (flag2 && flag3)
+						{
+							UpdateObstacle(dirtyObstacle);
+							flag = true;
+						}
+					}
+				}
+				finally
+				{
+					_dirtyObstacles.Clear();
+				}
+				if (flag)
+				{
+					Version++;
+					EventBus.RaiseEvent(delegate(IGridObstacleCacheHandler h)
+					{
+						h.HandleGridObstacleCacheUpdated();
+					});
 				}
 			}
-			else
+		}
+	}
+
+	private void RecalculateAll()
+	{
+		using (ProfileScope.New("GridObstacleCache.Update"))
+		{
+			_obstacleToConnections.Clear();
+			_connectionToObstacles.Clear();
+			_dirtyObstacles.Clear();
+			int num = _width * _depth;
+			int num2 = num * 8;
+			if (_connections.Length < num2)
 			{
-				_connections = new Entry[num * 8];
+				_connections = new Entry[num2];
 				InitConnections();
 			}
-			if (_connectionCuts.Length >= num)
-			{
-				ref NativeArray<int> connectionCuts = ref _connectionCuts;
-				int j = 0;
-				connectionCuts.FillArray(in j, 0, _connectionCuts.Length);
-			}
 			else
+			{
+				for (int i = 0; i < num2; i++)
+				{
+					_connections[i] = _connections[i].Cleared();
+				}
+			}
+			if (_connectionCuts.Length < num)
 			{
 				_connectionCuts.Dispose();
 				_connectionCuts = new NativeArray<int>(num, Allocator.Persistent);
 			}
-			foreach (GridObstacle item in Obstacles.Where((GridObstacle i) => (bool)i && i.enabled))
+			else
 			{
-				Add(item);
+				ref NativeArray<int> connectionCuts = ref _connectionCuts;
+				int value = 0;
+				connectionCuts.FillArray(in value, 0, num);
 			}
-			connections = _connections;
-			foreach (Entry entry in connections)
+			foreach (GridObstacle obstacle in Obstacles)
 			{
-				Recalculate(entry);
+				if (obstacle != null && obstacle.gameObject.activeInHierarchy && obstacle.enabled)
+				{
+					AddObstacle(obstacle);
+				}
 			}
-			_dirty = false;
+			for (int j = 0; j < num2; j++)
+			{
+				RecalculateConnectionData(j);
+			}
+			_allDirty = false;
 			Version++;
 			EventBus.RaiseEvent(delegate(IGridObstacleCacheHandler h)
 			{
@@ -221,60 +312,169 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 		}
 	}
 
-	private void Add(GridObstacle obstacle)
+	private void AddObstacle(GridObstacle obstacle)
 	{
 		GridObstacle obstacle = obstacle;
-		List<GridConnectionIndex> connections;
-		using (ProfileScope.New("GridObstacleCollection.Update"))
-		{
-			List<GridConnectionIndex> list2 = (_affectedConnections[obstacle] = new List<GridConnectionIndex>(10));
-			connections = list2;
-			(GridNodeIndex forwardNode, GridNodeIndex backwardNode) affectedNodes = obstacle.GetAffectedNodes(GraphTransform);
-			GridNodeIndex item = affectedNodes.forwardNode;
-			GridNodeIndex item2 = affectedNodes.backwardNode;
-			GridNodeIndex gridNodeIndex = (obstacle.ZAligned ? new GridNodeIndex(0, 1) : new GridNodeIndex(1, 0));
-			AddConnection(item, item2);
-			AddConnection(item2, item);
-			AddConnection(item, item2 - gridNodeIndex);
-			AddConnection(item2 - gridNodeIndex, item);
-			AddConnection(item2, item - gridNodeIndex);
-			AddConnection(item - gridNodeIndex, item2);
-			AddConnection(item, item2 + gridNodeIndex);
-			AddConnection(item2 + gridNodeIndex, item);
-			AddConnection(item2, item + gridNodeIndex);
-			AddConnection(item + gridNodeIndex, item2);
-		}
+		List<GridConnectionIndex> connections = new List<GridConnectionIndex>(10);
+		_obstacleToConnections[obstacle] = connections;
+		(GridNodeIndex forwardNode, GridNodeIndex backwardNode) affectedNodes = obstacle.GetAffectedNodes(GraphTransform);
+		GridNodeIndex item = affectedNodes.forwardNode;
+		GridNodeIndex item2 = affectedNodes.backwardNode;
+		GridNodeIndex gridNodeIndex = (obstacle.ZAligned ? new GridNodeIndex(0, 1) : new GridNodeIndex(1, 0));
+		AddConnection(item, item2);
+		AddConnection(item2, item);
+		AddConnection(item, item2 - gridNodeIndex);
+		AddConnection(item2 - gridNodeIndex, item);
+		AddConnection(item2, item - gridNodeIndex);
+		AddConnection(item - gridNodeIndex, item2);
+		AddConnection(item, item2 + gridNodeIndex);
+		AddConnection(item2 + gridNodeIndex, item);
+		AddConnection(item2, item + gridNodeIndex);
+		AddConnection(item + gridNodeIndex, item2);
+		Version++;
 		void AddConnection(GridNodeIndex from, GridNodeIndex to)
 		{
-			if (from.x >= 0 && from.x < _graph.width && from.z >= 0 && from.z < _graph.depth)
+			if (from.x >= 0 && from.x < _width && from.z >= 0 && from.z < _depth)
 			{
 				GridConnectionIndex item3 = new GridConnectionIndex(from, from.GetDirection(to));
+				int connectionIndex = GetConnectionIndex(from, item3.direction);
 				connections.Add(item3);
-				_connections[(int)((from.x + from.z * _graph.width) * 8 + item3.direction)].Sources.Add(obstacle);
+				if (!_connectionToObstacles.TryGetValue(connectionIndex, out List<GridObstacle> value))
+				{
+					value = new List<GridObstacle>(2);
+					_connectionToObstacles[connectionIndex] = value;
+				}
+				value.Add(obstacle);
 			}
 		}
 	}
 
-	private unsafe void Recalculate(Entry entry)
+	private void RemoveObstacle(GridObstacle obstacle)
 	{
-		if (entry.Node.x >= 0 && entry.Node.x < _graph.width && entry.Node.z >= 0 && entry.Node.z < _graph.depth)
+		if (!_obstacleToConnections.Remove(obstacle, out List<GridConnectionIndex> value))
 		{
-			int index = entry.Node.x + entry.Node.z * _graph.width;
-			GetConnectionData(entry, out GridObstacle obstacle, out int top, out int bottom);
-			entry.Source = obstacle;
-			ref int reference = ref UnsafeUtility.ArrayElementAsRef<int>(_connectionCuts.GetUnsafePtr(), index);
-			if (entry.Source == null)
-			{
-				reference &= ~entry.DirectionMask;
-				entry.Clear();
-				return;
-			}
-			entry.ZAligned = entry.Source.ZAligned;
-			entry.Type = (entry.Backward ? entry.Source.TypeBackward : entry.Source.Type);
-			entry.Top = top;
-			entry.Bottom = bottom;
-			reference = (entry.Source.KeepConnections ? (reference & ~entry.DirectionMask) : (reference | entry.DirectionMask));
+			return;
 		}
+		foreach (GridConnectionIndex item in value)
+		{
+			int connectionIndex = GetConnectionIndex(item.from, item.direction);
+			if (_connectionToObstacles.TryGetValue(connectionIndex, out List<GridObstacle> value2))
+			{
+				value2.Remove(obstacle);
+				if (value2.Count == 0)
+				{
+					_connectionToObstacles.Remove(connectionIndex);
+				}
+			}
+			RecalculateConnectionData(connectionIndex);
+		}
+		Version++;
+	}
+
+	private void UpdateObstacle(GridObstacle obstacle)
+	{
+		if (!_obstacleToConnections.TryGetValue(obstacle, out List<GridConnectionIndex> value))
+		{
+			return;
+		}
+		HashSet<int> value2;
+		using (CollectionPool<HashSet<int>, int>.Get(out value2))
+		{
+			foreach (GridConnectionIndex item in value)
+			{
+				value2.Add(GetConnectionIndex(item.from, item.direction));
+			}
+			_obstacleToConnections.Remove(obstacle);
+			foreach (int item2 in value2)
+			{
+				if (_connectionToObstacles.TryGetValue(item2, out List<GridObstacle> value3))
+				{
+					value3.Remove(obstacle);
+					if (value3.Count == 0)
+					{
+						_connectionToObstacles.Remove(item2);
+					}
+				}
+			}
+			AddObstacle(obstacle);
+			List<GridConnectionIndex> valueOrDefault = _obstacleToConnections.GetValueOrDefault(obstacle);
+			if (valueOrDefault != null)
+			{
+				foreach (GridConnectionIndex item3 in valueOrDefault)
+				{
+					value2.Add(GetConnectionIndex(item3.from, item3.direction));
+				}
+			}
+			foreach (int item4 in value2)
+			{
+				RecalculateConnectionData(item4);
+			}
+		}
+	}
+
+	private void RecalculateConnectionData(int connIndex)
+	{
+		if (!_connectionToObstacles.TryGetValue(connIndex, out List<GridObstacle> value) || value.Count == 0)
+		{
+			ClearConnectionData(connIndex);
+			return;
+		}
+		GridObstacle gridObstacle = null;
+		int num = int.MinValue;
+		ref Entry reference = ref _connections[connIndex];
+		foreach (GridObstacle item in value)
+		{
+			if (!(item == null))
+			{
+				int priority = GetPriority(reference.ConnectionIndex, item);
+				if (priority > num)
+				{
+					num = priority;
+					gridObstacle = item;
+				}
+			}
+		}
+		if (gridObstacle == null)
+		{
+			ClearConnectionData(connIndex);
+			return;
+		}
+		GridObstacle source = gridObstacle;
+		bool zAligned = gridObstacle.ZAligned;
+		LosCalculations.CoverType type = (reference.Backward ? gridObstacle.TypeBackward : gridObstacle.Type);
+		int num2 = (int)(gridObstacle.transform.position.y * 1000f);
+		int top = num2 + (reference.Backward ? gridObstacle.HeightBackward : gridObstacle.Height);
+		int bottom = num2;
+		_connections[connIndex] = new Entry(reference.Node, reference.Direction, source, type, top, bottom, zAligned);
+		UpdateConnectionCut(connIndex, gridObstacle.KeepConnections);
+	}
+
+	private unsafe void ClearConnectionData(int connIndex)
+	{
+		_connections[connIndex] = _connections[connIndex].Cleared();
+		int index = connIndex / 8;
+		int num = 1 << connIndex % 8;
+		UnsafeUtility.ArrayElementAsRef<int>(_connectionCuts.GetUnsafePtr(), index) &= ~num;
+	}
+
+	private unsafe void UpdateConnectionCut(int connIndex, bool keepConnections)
+	{
+		int index = connIndex / 8;
+		int num = 1 << connIndex % 8;
+		ref int reference = ref UnsafeUtility.ArrayElementAsRef<int>(_connectionCuts.GetUnsafePtr(), index);
+		if (keepConnections)
+		{
+			reference &= ~num;
+		}
+		else
+		{
+			reference |= num;
+		}
+	}
+
+	private int GetConnectionIndex(GridNodeIndex node, GridNodeDirection direction)
+	{
+		return (int)((node.x + node.z * _width) * 8 + direction);
 	}
 
 	private static int GetPriority(GridConnectionIndex connection, GridObstacle obstacle)
@@ -292,32 +492,6 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 		}
 		int num2 = ((num != 0) ? obstacle.HeightBackward : obstacle.Height);
 		return (int)(obstacle.transform.position.y * 1000f) + num2;
-	}
-
-	private static void GetConnectionData(Entry entry, out GridObstacle? obstacle, out int top, out int bottom)
-	{
-		if (entry.Sources.Count == 0)
-		{
-			obstacle = null;
-			top = (bottom = 0);
-			return;
-		}
-		int num = int.MinValue;
-		obstacle = null;
-		top = 0;
-		bottom = int.MaxValue;
-		foreach (GridObstacle source in entry.Sources)
-		{
-			int priority = GetPriority(entry.ConnectionIndex, source);
-			if (priority > num)
-			{
-				num = priority;
-				obstacle = source;
-				int num2 = (int)(obstacle.transform.position.y * 1000f);
-				top = num2 + (entry.Backward ? obstacle.HeightBackward : obstacle.Height);
-				bottom = Math.Min(bottom, num2);
-			}
-		}
 	}
 
 	public IEnumerator<Entry> GetEnumerator()
@@ -338,6 +512,9 @@ public sealed class GridObstacleCache : IEnumerable<GridObstacleCache.Entry>, IE
 
 	public void Dispose()
 	{
-		_connectionCuts.Dispose();
+		if (_connectionCuts.IsCreated)
+		{
+			_connectionCuts.Dispose();
+		}
 	}
 }

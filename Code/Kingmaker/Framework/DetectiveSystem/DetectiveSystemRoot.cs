@@ -34,6 +34,14 @@ public sealed class DetectiveSystemRoot : BlueprintScriptableObject, IBlueprintS
 		[ShowIf("AlternateOffset")]
 		[Range(0f, 1f)]
 		public float OffsetValue = 0.3f;
+
+		public bool UseCustomColors;
+
+		[ShowIf("UseCustomColors")]
+		public Color FoundColor = Color.magenta;
+
+		[ShowIf("UseCustomColors")]
+		public Color FollowedBySkullColor = Color.cyan;
 	}
 
 	[ValidateNoNullEntries]
@@ -49,6 +57,10 @@ public sealed class DetectiveSystemRoot : BlueprintScriptableObject, IBlueprintS
 	public PrefabLink ClueHighlightFx;
 
 	public PrefabLink DetectiveObjectHighlight;
+
+	public Color DefaultFoundTraceColor = new Color(0.2321184f, 95f / 106f, 0.08032215f);
+
+	public Color DefaultFollowedBySkullTraceColor = new Color(0.8980392f, 0.3190215f, 0.07843137f);
 
 	public static DetectiveSystemRoot Instance => ConfigRoot.Instance.DetectiveSystem;
 

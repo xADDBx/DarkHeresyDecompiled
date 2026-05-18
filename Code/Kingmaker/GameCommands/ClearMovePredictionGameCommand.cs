@@ -1,22 +1,52 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Controllers.Units;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public sealed class ClearMovePredictionGameCommand : GameCommandWithSynchronized, IOwlPackable<ClearMovePredictionGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public sealed class ClearMovePredictionGameCommand : GameCommandWithSynchronized, IMemoryPackable<ClearMovePredictionGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<ClearMovePredictionGameCommand>
 {
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	[Preserve]
+	private sealed class ClearMovePredictionGameCommandFormatter : MemoryPackFormatter<ClearMovePredictionGameCommand>
 	{
-		Name = "ClearMovePredictionGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[0]
-	};
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ClearMovePredictionGameCommand value)
+		{
+			ClearMovePredictionGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref ClearMovePredictionGameCommand value)
+		{
+			ClearMovePredictionGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref ClearMovePredictionGameCommand value)
+		{
+			ClearMovePredictionGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref ClearMovePredictionGameCommand value)
+		{
+			ClearMovePredictionGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	[JsonConstructor]
+	[MemoryPackConstructor]
 	private ClearMovePredictionGameCommand()
 	{
 	}
@@ -29,6 +59,114 @@ public sealed class ClearMovePredictionGameCommand : GameCommandWithSynchronized
 	protected override void ExecuteInternal()
 	{
 		UnitCommandsRunner.CancelMoveCommandLocal();
+	}
+
+	static ClearMovePredictionGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "ClearMovePredictionGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[0]
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<ClearMovePredictionGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new ClearMovePredictionGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<ClearMovePredictionGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<ClearMovePredictionGameCommand>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ClearMovePredictionGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+		}
+		else
+		{
+			writer.WriteObjectHeader(0);
+		}
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref ClearMovePredictionGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		if (memberCount == 0)
+		{
+			if (value != null)
+			{
+				return;
+			}
+		}
+		else
+		{
+			if (memberCount > 0)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(ClearMovePredictionGameCommand), 0, memberCount);
+				return;
+			}
+			_ = value;
+			if (value != null)
+			{
+				return;
+			}
+		}
+		value = new ClearMovePredictionGameCommand();
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref ClearMovePredictionGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+		}
+		else
+		{
+			writer.WriteEmptyObject();
+		}
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref ClearMovePredictionGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		_ = value;
+		_ = new bool[0];
+		while (reader.ReadPropertyName() != null)
+		{
+			_ = value;
+		}
+		if (value == null)
+		{
+			value = new ClearMovePredictionGameCommand();
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

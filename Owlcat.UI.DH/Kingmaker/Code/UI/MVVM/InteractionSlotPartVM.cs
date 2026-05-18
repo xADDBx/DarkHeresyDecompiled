@@ -24,13 +24,16 @@ public class InteractionSlotPartVM : ViewModel
 
 	private readonly Action m_Close;
 
+	private readonly Action m_Confirm;
+
 	public ReadOnlyReactiveProperty<ItemSlotVM> ItemSlot => m_ItemSlot;
 
 	public ReadOnlyReactiveProperty<InsertableLootSlotsGroupVM> SlotsGroup => m_SlotsGroup;
 
-	public InteractionSlotPartVM(LootObjectVM lootObject, Func<ItemEntity, bool> canInsertItem, Action close)
+	public InteractionSlotPartVM(LootObjectVM lootObject, Func<ItemEntity, bool> canInsertItem, Action confirm, Action close)
 	{
 		m_Close = close;
+		m_Confirm = confirm;
 		Name = lootObject.DisplayName;
 		Description = lootObject.Description;
 		m_CanInsertItem = canInsertItem;
@@ -82,6 +85,11 @@ public class InteractionSlotPartVM : ViewModel
 		itemsSortingContext.RemoveEmptySlots = true;
 		ItemsSortingContext sortingCtx = itemsSortingContext;
 		m_SlotsGroup.Value = new InsertableLootSlotsGroupVM(Game.Instance.PartySharedInventory.Collection, m_CanInsertItem, 3, 12, sortingCtx, showUnavailableItems: true, showSlotHoldItemsInSlots: false, ItemSlotsGroupType.Loot).AddTo(this);
+	}
+
+	public void Confirm()
+	{
+		m_Confirm?.Invoke();
 	}
 
 	public void Close()

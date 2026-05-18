@@ -23,7 +23,7 @@ public class ConsoleBindingTemplate : TextTemplate
 		TrimSpaces(parameters);
 		if (Enum.TryParse<RewiredActionType>(parameters[0], ignoreCase: true, out var result))
 		{
-			if (GamePadIcons.Instance.GetIcon(result) == null)
+			if (!UIConfig.Instance.ConsoleConfig.HintGamepadIconProvider.TryGetIcon(result.ToString(), out var _))
 			{
 				return "<b><unknown binding></b>";
 			}
@@ -39,7 +39,7 @@ public class ConsoleBindingTemplate : TextTemplate
 					num = 100;
 				}
 			}
-			string arg = GamePad.Instance.Type switch
+			string arg = PlatformManager.Instance.Type switch
 			{
 				ConsoleType.PS4 => "UI_PS4_", 
 				ConsoleType.PS5 => "UI_PS5_", 

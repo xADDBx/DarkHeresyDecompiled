@@ -311,7 +311,7 @@ public class Projectile : IInterpolatable
 		if (Blueprint.FollowTerrain)
 		{
 			GridNodeBase targetNode;
-			Vector3 corePosition2 = UnitMovementAgentBase.Move(corePosition, CorePosition - corePosition, 0.3f, out targetNode);
+			Vector3 corePosition2 = UnitMovementAgent.Move(corePosition, CorePosition - corePosition, 0.3f, out targetNode);
 			corePosition2.y += LaunchHeight;
 			CorePosition = corePosition2;
 			Vector3 from = corePosition + LosCalculations.EyeShift;
@@ -432,7 +432,7 @@ public class Projectile : IInterpolatable
 			throw new Exception("Target entity is missing");
 		}
 		StarshipFxHitMask starshipFxHitMask = starShipViewTarget.starshipFxHitMask;
-		Vector3 forward = Target.Entity.View.ViewTransform.forward;
+		Vector3 forward = Target.Entity.Forward;
 		Vector3 normalized = (Launcher.Entity.Position - Target.Entity.Position).normalized;
 		float num = Vector2.Dot(new Vector2(normalized.x, normalized.z).normalized, new Vector2(forward.x, forward.z).normalized);
 		List<Vector3> result = new List<Vector3>();

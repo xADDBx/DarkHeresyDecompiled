@@ -9,6 +9,8 @@ namespace Kingmaker.Blueprints.Encyclopedia;
 
 public class ChapterList : ScriptableObject, IEnumerable<BlueprintEncyclopediaChapter>, IEnumerable
 {
+	private static LogChannel Logger = LogChannelFactory.GetOrCreate("Encyclopedia");
+
 	[SerializeField]
 	protected List<BlueprintEncyclopediaChapterReference> m_List = new List<BlueprintEncyclopediaChapterReference>();
 
@@ -133,7 +135,7 @@ public class ChapterList : ScriptableObject, IEnumerable<BlueprintEncyclopediaCh
 				BlueprintEncyclopediaPage blueprintEncyclopediaPage2 = childPage.Get();
 				if (blueprintEncyclopediaPage2 == null)
 				{
-					UberDebug.LogError("Error: BlueprintEncyclopediaNode [" + node.name + "] has empty links, please delete them");
+					Logger.Error("Error: BlueprintEncyclopediaNode [" + node.name + "] has empty links, please delete them");
 					continue;
 				}
 				blueprintEncyclopediaPage2.ParentAsset = node;
@@ -159,7 +161,7 @@ public class ChapterList : ScriptableObject, IEnumerable<BlueprintEncyclopediaCh
 				BlueprintEncyclopediaEntry blueprintEncyclopediaEntry = encyclopediaEntry.Get();
 				if (blueprintEncyclopediaEntry == null)
 				{
-					UberDebug.LogError("Error: BlueprintEncyclopediaEntry [" + node.name + "] has empty links, please delete them");
+					Logger.Error("Error: BlueprintEncyclopediaEntry [" + node.name + "] has empty links, please delete them");
 				}
 				else if (!m_AllEntries.ContainsKey(blueprintEncyclopediaEntry.name))
 				{

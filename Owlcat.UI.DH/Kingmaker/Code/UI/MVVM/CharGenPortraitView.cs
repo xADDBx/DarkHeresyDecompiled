@@ -31,12 +31,6 @@ public class CharGenPortraitView : View<PortraitVM>
 	[UsedImplicitly]
 	private bool m_IsShown;
 
-	private Sprite PortraitSmall => base.ViewModel.PortraitSmall;
-
-	private Sprite PortraitHalf => base.ViewModel.PortraitHalf;
-
-	private Sprite PortraitFull => base.ViewModel.PortraitFull;
-
 	public void Initialize(Action<bool> hoverAction = null)
 	{
 		if (!m_IsInit)
@@ -77,9 +71,9 @@ public class CharGenPortraitView : View<PortraitVM>
 	{
 		return m_Size switch
 		{
-			PortraitVM.PortraitSize.Small => PortraitSmall != null, 
-			PortraitVM.PortraitSize.Middle => PortraitHalf != null, 
-			PortraitVM.PortraitSize.Full => PortraitFull != null, 
+			PortraitVM.PortraitSize.Small => base.ViewModel.PortraitSmall != null, 
+			PortraitVM.PortraitSize.Middle => base.ViewModel.PortraitHalf != null, 
+			PortraitVM.PortraitSize.Full => base.ViewModel.PortraitFull != null, 
 			_ => false, 
 		};
 	}
@@ -93,13 +87,13 @@ public class CharGenPortraitView : View<PortraitVM>
 		switch (m_Size)
 		{
 		case PortraitVM.PortraitSize.Small:
-			m_Portrait.SetNewPortrait(PortraitSmall, playAnimation: true, playSound: true);
+			m_Portrait.SetNewPortrait(base.ViewModel.PortraitSmall, playAnimation: true, playSound: true);
 			break;
 		case PortraitVM.PortraitSize.Middle:
-			m_Portrait.SetNewPortrait(PortraitHalf, playAnimation: true, playSound: true);
+			m_Portrait.SetNewPortrait(base.ViewModel.PortraitHalf, playAnimation: true, playSound: true);
 			break;
 		case PortraitVM.PortraitSize.Full:
-			m_Portrait.SetNewPortrait(PortraitFull, playAnimation: true, playSound: true);
+			m_Portrait.SetNewPortrait(base.ViewModel.PortraitFull, playAnimation: true, playSound: true);
 			break;
 		}
 	}

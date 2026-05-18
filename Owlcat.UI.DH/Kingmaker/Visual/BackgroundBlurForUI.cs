@@ -9,7 +9,7 @@ namespace Kingmaker.Visual;
 [RequireComponent(typeof(Camera))]
 public class BackgroundBlurForUI : MonoBehaviour
 {
-	public FullscreenBlurFeature BlurFeature;
+	public FullscreenBlurRendererFeatureAsset BlurFeature;
 
 	private readonly HashSet<BackgroundBlur> m_BlurObjects = new HashSet<BackgroundBlur>();
 

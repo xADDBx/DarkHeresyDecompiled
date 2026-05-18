@@ -1,9 +1,14 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Kingmaker.Blueprints.Items;
+using Kingmaker.Code.Gameplay.Blueprints;
+using Kingmaker.Controllers;
 using Kingmaker.Designers.EventConditionActionSystem.ContextData;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Interaction;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -12,9 +17,9 @@ using UnityEngine;
 namespace Kingmaker.View.MapObjects;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class InteractionActionPart : InteractionPart<InteractionActionSettings>, IHashable, IOwlPackable<InteractionActionPart>
+public class InteractionActionPart : InteractionPart<InteractionActionSettings>, IInteractionVariantActor, IInteractionRestriction, IHashable, IOwlPackable<InteractionActionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionActionPart",
 		OldNames = null,
@@ -28,6 +33,30 @@ public class InteractionActionPart : InteractionPart<InteractionActionSettings>,
 		}
 	};
 
+	public int? InteractionDC => null;
+
+	InteractionActorType IInteractionVariantActor.Type => InteractionActorType.Default;
+
+	public UIInteractionType UIType => base.Settings.UIType;
+
+	public AbstractInteractionPart InteractionPart => this;
+
+	public BlueprintAdditionalCombatObjective CombatObjective => null;
+
+	public bool ShowInteractFx => false;
+
+	public int? RequiredItemsCount => null;
+
+	public BlueprintItem RequiredItem => null;
+
+	public StatType Skill => StatType.Unknown;
+
+	public bool CheckOnlyOnce => false;
+
+	public bool CanUse => Enabled;
+
+	public bool AlreadyUsed => false;
+
 	protected override UIInteractionType GetDefaultUIType()
 	{
 		return UIInteractionType.Action;
@@ -35,6 +64,14 @@ public class InteractionActionPart : InteractionPart<InteractionActionSettings>,
 
 	public override bool CanInteract()
 	{
+		if (base.Settings.UseGlobalCooldown)
+		{
+			InteractionGlobalCooldownController controller = Game.Instance.GetController<InteractionGlobalCooldownController>();
+			if (controller != null && !controller.CheckGlobalCooldown())
+			{
+				return false;
+			}
+		}
 		ConditionsHolder conditionsHolder = base.Settings.Condition.Get();
 		if ((bool)conditionsHolder && conditionsHolder.Conditions.HasConditions)
 		{
@@ -52,17 +89,57 @@ public class InteractionActionPart : InteractionPart<InteractionActionSettings>,
 	protected override void OnInteract(BaseUnitEntity user)
 	{
 		ActionsHolder actionsHolder = base.Settings.Actions?.Get();
-		if (actionsHolder == null || !actionsHolder.HasActions)
+		if (actionsHolder != null && actionsHolder.HasActions)
 		{
-			return;
-		}
-		using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
-		{
-			using (ContextData<InteractingUnitData>.Request().Setup(user))
+			using (ContextData<MechanicEntityData>.Request().Setup(base.Owner))
 			{
-				actionsHolder.Run();
+				using (ContextData<InteractingUnitData>.Request().Setup(user))
+				{
+					actionsHolder.Run();
+				}
 			}
 		}
+		if (base.Settings.UseGlobalCooldown)
+		{
+			Game.Instance.GetController<InteractionGlobalCooldownController>()?.UpdateGlobalCooldown(base.Owner);
+		}
+	}
+
+	public override string ToString()
+	{
+		return string.Format("{0}[{1}]", "InteractionActionPart", base.Owner);
+	}
+
+	public string GetInteractionName()
+	{
+		return base.Settings.DisplayName?.Text;
+	}
+
+	public bool CheckRestriction(BaseUnitEntity user)
+	{
+		return CanInteract();
+	}
+
+	public void ShowSuccessBark(BaseUnitEntity user)
+	{
+	}
+
+	public void ShowRestrictionBark(BaseUnitEntity user)
+	{
+	}
+
+	void IInteractionVariantActor.OnDidInteract(BaseUnitEntity user)
+	{
+		OnDidInteract(user);
+	}
+
+	public void OnFailedInteract(BaseUnitEntity user)
+	{
+	}
+
+	bool IInteractionVariantActor.TryInteract(BaseUnitEntity user)
+	{
+		return true;
 	}
 
 	public override Hash128 GetHash128()
@@ -73,7 +150,7 @@ public class InteractionActionPart : InteractionPart<InteractionActionSettings>,
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionActionPart source = new InteractionActionPart();
 		result = Unsafe.As<InteractionActionPart, TPossiblyBase>(ref source);

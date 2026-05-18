@@ -1,3 +1,4 @@
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
 using TMPro;
@@ -10,10 +11,11 @@ public class CharGenPortraitTabView : SelectionGroupEntityView<CharGenPortraitTa
 	[SerializeField]
 	private TextMeshProUGUI m_Label;
 
-	protected override void BindViewImplementation()
+	protected override void OnBind()
 	{
-		base.BindViewImplementation();
+		base.OnBind();
 		m_Label.text = UtilityChargen.GetCharGenPortraitTabLabel(base.ViewModel.Tab);
+		m_Button.Interactable = base.ViewModel.Tab != CharGenPortraitTab.Custom;
 	}
 
 	public override void OnChangeSelectedState(bool value)

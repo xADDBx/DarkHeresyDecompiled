@@ -22,6 +22,7 @@ public sealed class AbilitySpawnAreaEffectSettings
 
 	public ContextDurationValue DurationValue;
 
+	[Obsolete("Unused")]
 	[InspectorReadOnly]
 	[InfoBox("В данный момент не поддерживается (и непонятно, для каких кейсов это нужно). Если понадобится - пишите программистам.")]
 	public bool GetOrientationFromCaster;

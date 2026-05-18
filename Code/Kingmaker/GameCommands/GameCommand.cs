@@ -1,13 +1,20 @@
 using System;
+using CodeGenerators.MemoryPackUnionGenerator;
+using Kingmaker.Plugins.CoopDesyncAnalyzer.Attributes;
+using MemoryPack;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
+[MemoryPackable(GenerateType.NoGenerate)]
+[MemoryPackDynamicUnion]
 public abstract class GameCommand : IOwlPackable, IOwlPackable<GameCommand>
 {
+	[MemoryPackIgnore]
 	public virtual bool IsSynchronized => false;
 
+	[MemoryPackIgnore]
 	public virtual bool IsForcedSynced => false;
 
 	public void Execute()
@@ -22,6 +29,7 @@ public abstract class GameCommand : IOwlPackable, IOwlPackable<GameCommand>
 		}
 	}
 
+	[ValidCommitPoint]
 	protected abstract void ExecuteInternal();
 
 	public virtual void AfterDeserialization()

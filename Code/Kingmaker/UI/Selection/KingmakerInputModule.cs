@@ -1,6 +1,4 @@
-using System.Collections;
 using Kingmaker.UI.Common;
-using Owlcat.Runtime.Core.Logging;
 using UnityEngine.EventSystems;
 
 namespace Kingmaker.UI.Selection;
@@ -36,23 +34,5 @@ public class KingmakerInputModule : StandaloneInputModule
 	protected override void Start()
 	{
 		base.Start();
-		StartCoroutine(CheckEventSystem());
-	}
-
-	protected IEnumerator CheckEventSystem()
-	{
-		EventSystem eventSystem = GetComponent<EventSystem>();
-		while (EventSystem.current != eventSystem)
-		{
-			LogChannel.System.Log("Await event system");
-			yield return null;
-			EventSystem.current = eventSystem;
-		}
-		while (!eventSystem.currentInputModule)
-		{
-			LogChannel.System.Log("Await input module");
-			eventSystem.UpdateModules();
-			yield return null;
-		}
 	}
 }

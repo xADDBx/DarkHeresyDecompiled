@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Items;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
@@ -45,6 +46,10 @@ public class RulePerformAttackRoll : RulebookTargetEvent, IRuleWithChanceRoll, I
 	public RuleRollChance ResultChanceRule { get; private set; }
 
 	public RuleRollD100 ResultOverpenetrationRoll { get; private set; }
+
+	public StatQueryOutput ResultTargetDefenceOutput { get; private set; }
+
+	public int ResultTargetDefenceBase { get; private set; }
 
 	public AttackResult Result { get; private set; }
 
@@ -93,7 +98,7 @@ public class RulePerformAttackRoll : RulebookTargetEvent, IRuleWithChanceRoll, I
 		BurstIndex = burstIndex;
 		HitChanceRule = new RuleCalculateHitChances(initiator, target, ability, burstIndex, effectiveCasterPosition ?? initiator.Position, abilityTargetPosition ?? target.Position);
 		RollPerformBodyPartHitRule = new RulePerformBodyPartHitRoll(target);
-		RollPerformDefenceRule = new RulePerformDefenceRoll(initiator, target);
+		RollPerformDefenceRule = new RulePerformDefenceRoll(initiator, target, ability);
 	}
 
 	public RulePerformAttackRoll([NotNull] IMechanicEntity initiator, [NotNull] IMechanicEntity target, [NotNull] AbilityData ability, int burstIndex, Vector3? effectiveCasterPosition, Vector3? abilityTargetPosition)
@@ -103,6 +108,7 @@ public class RulePerformAttackRoll : RulebookTargetEvent, IRuleWithChanceRoll, I
 
 	public override void OnTrigger(RulebookEventContext context)
 	{
+		ProcessTargetStats();
 		Rulebook.Trigger(HitChanceRule);
 		Rulebook.Trigger(RollPerformBodyPartHitRule);
 		AttackHitPolicyType attackHitPolicyType = (OverrideAttackHitPolicy ? AttackHitPolicyType : (IsControlledScatterAutoMiss ? AttackHitPolicyType.AutoMiss : ((IsOverpenetration || (!Game.Instance.Controllers.TurnController.TurnBasedModeActive && !(Target is BaseUnitEntity))) ? AttackHitPolicyType.AutoHit : AttackHitPolicyContextData.Current)));
@@ -142,6 +148,14 @@ public class RulePerformAttackRoll : RulebookTargetEvent, IRuleWithChanceRoll, I
 			MissCausedByCritOnSelf = true;
 		}
 		Result = CalculateResult(flag, flag2, RollPerformDefenceRule.IsDefended);
+	}
+
+	private void ProcessTargetStats()
+	{
+		ResultTargetDefenceOutput = new StatQueryOutput();
+		StatContext ctx = new StatContext(null, base.Initiator?.Actor);
+		Target.Actor.GetStat(StatType.Defence, ResultTargetDefenceOutput, ctx, "ProcessTargetStats");
+		ResultTargetDefenceBase = Target.Actor.GetStatBase(StatType.Defence);
 	}
 
 	private static AttackResult CalculateResult(bool isHit, bool isCoverHit, bool isDefended)

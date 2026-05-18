@@ -12,6 +12,8 @@ public class MaterialParametersOverrideController
 		public ParametersOverrideMaterial Material;
 
 		public ParametersOverrideMaterial.Snapshot Snapshot;
+
+		public int RendererId;
 	}
 
 	private bool m_Resetted;
@@ -20,13 +22,19 @@ public class MaterialParametersOverrideController
 
 	public List<MaterialParametersOverrideSettings> Entries = new List<MaterialParametersOverrideSettings>();
 
-	public void AddMaterial(ParametersOverrideMaterial material)
+	public void AddMaterial(ParametersOverrideMaterial material, int rendererId)
 	{
 		m_MaterialEntries.Add(new Entry
 		{
 			Material = material,
-			Snapshot = material.TakeSnapshot()
+			Snapshot = material.TakeSnapshot(),
+			RendererId = rendererId
 		});
+	}
+
+	public void ClearMaterial(int rendererId)
+	{
+		m_MaterialEntries.RemoveAll((Entry entry) => entry.RendererId == rendererId);
 	}
 
 	public void ClearMaterials()

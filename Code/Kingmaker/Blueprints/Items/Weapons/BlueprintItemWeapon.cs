@@ -59,6 +59,8 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 
 	public WeaponClassification Classification;
 
+	public ItemFaction Faction;
+
 	[Space]
 	[SerializeField]
 	private WeaponHoldingType m_HoldingType;
@@ -82,7 +84,17 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 	[SerializeField]
 	private LocalizedString m_DescriptionText;
 
+	[HideIf("IsDoubleHanded")]
+	[Tooltip("Двуручное оружие, если true, то нельзя сделать его Double (двойным)")]
 	public bool IsTwoHanded;
+
+	[HideIf("IsTwoHanded")]
+	[Tooltip("Двойное оружие, во вторую руку экипируется SecondWeapon, не может быть двуручным (IsTwoHanded)")]
+	public bool IsDoubleHanded;
+
+	[ShowIf("IsDoubleHanded")]
+	[SerializeField]
+	private BpRef<BlueprintItemWeapon> m_SecondWeapon;
 
 	[SerializeField]
 	private bool m_OverrideDamage;
@@ -121,15 +133,7 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 
 	[SerializeField]
 	[ShowIf("OverrideAdditionalHitChance")]
-	private int m_SingleAdditionalHitChance;
-
-	[SerializeField]
-	[ShowIf("OverrideAdditionalHitChance")]
-	private int m_BurstAdditionalHitChance;
-
-	[SerializeField]
-	[ShowIf("OverrideAdditionalHitChance")]
-	private int m_AoeAdditionalHitChance;
+	private int m_AdditionalHitChance;
 
 	[SerializeField]
 	private bool m_OverrideOverpenetrationChance;
@@ -138,6 +142,16 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 	[ShowIf("OverrideOverpenetrationChance")]
 	[Range(0f, 100f)]
 	private int m_OverpenetrationChance;
+
+	[SerializeField]
+	private bool m_OverrideRateOfFire;
+
+	[SerializeField]
+	[ShowIf("OverrideRateOfFire")]
+	private int m_RateOfFire;
+
+	[SerializeField]
+	private bool m_OverrideRecoil;
 
 	[Obsolete("WH2")]
 	public int WarhammerPenetration;
@@ -152,9 +166,7 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 
 	public int WarhammerMaxDistance;
 
-	public int RateOfFire = 1;
-
-	[Tooltip("При стрельбе очередью шанс попадания умножается на (100 - Recoil) / 100")]
+	[ShowIf("OverrideRecoil")]
 	public int Recoil;
 
 	[SerializeField]
@@ -167,6 +179,8 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 	private DamageStatBonusFactor m_DamageStatBonusFactor;
 
 	private static BlueprintItemProgressionRoot Progression => ConfigRoot.Instance.ItemProgressionRoot;
+
+	public BlueprintItemWeapon SecondWeapon => m_SecondWeapon?.Blueprint;
 
 	private bool OverrideDamage
 	{
@@ -240,123 +254,39 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 		}
 	}
 
-	public int DamageMin
+	private bool OverrideRateOfFire
 	{
 		get
 		{
-			if (!OverrideDamage)
+			if (!m_OverrideRateOfFire)
 			{
-				return Progression.Get(ProgressionType, PowerLevel).DamageMin;
+				return !Progression.EnableForWeapons;
 			}
-			return m_MinDamage;
+			return true;
 		}
 	}
 
-	public int DamageMax
+	private bool OverrideRecoil
 	{
 		get
 		{
-			if (!OverrideDamage)
+			if (!m_OverrideRecoil)
 			{
-				return Progression.Get(ProgressionType, PowerLevel).DamageMax;
+				return !Progression.EnableForWeapons;
 			}
-			return m_MaxDamage;
+			return true;
 		}
 	}
 
-	public int DamageVital
+	public bool IsAnyProgressionOverride
 	{
 		get
 		{
-			if (!OverrideVitalDamage)
+			if (!m_OverrideDamage && !m_OverrideVitalDamage && !m_OverrideBrutalDamage && !m_OverrideDestructiveDamage && !m_OverrideAdditionalHitChance)
 			{
-				return Progression.Get(ProgressionType, PowerLevel).DamageVital;
+				return m_OverrideOverpenetrationChance;
 			}
-			return m_VitalDamage;
-		}
-	}
-
-	public int BrutalDamage
-	{
-		get
-		{
-			if (!OverrideBrutalDamage)
-			{
-				return Progression.Get(ProgressionType, PowerLevel).BrutalDamage;
-			}
-			return m_BrutalDamage;
-		}
-	}
-
-	public int DestructiveDamage
-	{
-		get
-		{
-			if (!OverrideDestructiveDamage)
-			{
-				return Progression.Get(ProgressionType, PowerLevel).DestructiveDamage;
-			}
-			return m_DestructiveDamage;
-		}
-	}
-
-	public int AdditionalHitChanceSingle
-	{
-		get
-		{
-			if (!OverrideAdditionalHitChance)
-			{
-				if (WeaponAbilities.Contains(WeaponAbilityType.Burst) || WeaponAbilities.Contains(WeaponAbilityType.AOE))
-				{
-					return 0;
-				}
-				return Progression.Get(ProgressionType, PowerLevel).HitChanceBonus;
-			}
-			return m_SingleAdditionalHitChance;
-		}
-	}
-
-	public int AdditionalHitChanceBurst
-	{
-		get
-		{
-			if (!OverrideAdditionalHitChance)
-			{
-				if (!WeaponAbilities.Contains(WeaponAbilityType.Burst))
-				{
-					return 0;
-				}
-				return Progression.Get(ProgressionType, PowerLevel).HitChanceBonus;
-			}
-			return m_BurstAdditionalHitChance;
-		}
-	}
-
-	public int AdditionalHitChanceAoe
-	{
-		get
-		{
-			if (!OverrideAdditionalHitChance)
-			{
-				if (!WeaponAbilities.Contains(WeaponAbilityType.AOE))
-				{
-					return 0;
-				}
-				return Progression.Get(ProgressionType, PowerLevel).HitChanceBonus;
-			}
-			return m_AoeAdditionalHitChance;
-		}
-	}
-
-	public int _OverpenetrationChance
-	{
-		get
-		{
-			if (!OverrideOverpenetrationChance)
-			{
-				return Progression.Get(ProgressionType, PowerLevel).OverpenetrationChance;
-			}
-			return m_OverpenetrationChance;
+			return true;
 		}
 	}
 
@@ -424,12 +354,12 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 			{
 				return m_TypeNameText;
 			}
-			string text2 = LocalizedTexts.Instance.Stats.GetText(Category);
-			if (string.IsNullOrEmpty(text2))
+			string weaponCategoryLabel = UIStrings.Instance.WeaponCategories.GetWeaponCategoryLabel(Category);
+			if (string.IsNullOrEmpty(weaponCategoryLabel))
 			{
 				return UIStrings.Instance.CharacterSheet.Attack;
 			}
-			return text2;
+			return weaponCategoryLabel;
 		}
 	}
 
@@ -490,7 +420,95 @@ public class BlueprintItemWeapon : BlueprintItemEquipmentHand
 
 	public WeaponHeaviness Heaviness => m_Heaviness;
 
-	public bool HasNoDamage => DamageMax == 0;
-
 	public DamageStatBonusFactor DamageStatBonusFactor => m_DamageStatBonusFactor;
+
+	public int GetDamageMin(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideDamage)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).DamageMin;
+		}
+		return m_MinDamage;
+	}
+
+	public int GetDamageMax(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideDamage)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).DamageMax;
+		}
+		return m_MaxDamage;
+	}
+
+	public int GetDamageVital(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideVitalDamage)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).DamageVital;
+		}
+		return m_VitalDamage;
+	}
+
+	public int GetBrutalDamage(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideBrutalDamage)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).BrutalDamage;
+		}
+		return m_BrutalDamage;
+	}
+
+	public int GetDestructiveDamage(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideDestructiveDamage)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).DestructiveDamage;
+		}
+		return m_DestructiveDamage;
+	}
+
+	public int GetAdditionalHitChance(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideAdditionalHitChance)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).HitChanceBonus;
+		}
+		return m_AdditionalHitChance;
+	}
+
+	public int GetOverpenetrationChance(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideOverpenetrationChance)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).OverpenetrationChance;
+		}
+		return m_OverpenetrationChance;
+	}
+
+	public int GetRateOfFire(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideRateOfFire)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).RateOfFire;
+		}
+		return m_RateOfFire;
+	}
+
+	public int GetRecoil(ItemPowerLevel powerLevel = ItemPowerLevel.Undefined)
+	{
+		if (!OverrideRecoil)
+		{
+			return Progression.Get(ProgressionType, ResolvePowerLevel(powerLevel)).Recoil;
+		}
+		return Recoil;
+	}
+
+	internal ItemPowerLevel ResolvePowerLevel(ItemPowerLevel powerLevel)
+	{
+		if (powerLevel == ItemPowerLevel.Undefined)
+		{
+			return PowerLevel;
+		}
+		return powerLevel;
+	}
 }

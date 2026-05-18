@@ -26,6 +26,10 @@ public class TimeController : IControllerEnable, IController, IControllerDisable
 
 	private float m_SlowMoTimeScale = 1f;
 
+	private bool m_IsLocalMapFastMove;
+
+	private float m_LocalMapFastMoveScale = 1f;
+
 	public float DebugTimeScale = 1f;
 
 	private const long SimulationStepMs = 50L;
@@ -102,7 +106,7 @@ public class TimeController : IControllerEnable, IController, IControllerDisable
 		}
 	}
 
-	public float TimeScale => PlayerTimeScale * CameraFollowTimeScale * DebugTimeScale * SlowMoTimeScale;
+	public float TimeScale => (m_IsLocalMapFastMove ? m_LocalMapFastMoveScale : PlayerTimeScale) * CameraFollowTimeScale * DebugTimeScale * SlowMoTimeScale;
 
 	public TimeSpan GameTime => Game.Instance.Player.GameTime;
 
@@ -152,6 +156,12 @@ public class TimeController : IControllerEnable, IController, IControllerDisable
 			value = (flag ? value : Mathf.Min(m_CameraFollowTimeScale, value));
 		}
 		CameraFollowTimeScale = value;
+	}
+
+	public void SetLocalMapFastMove(bool active, float scale = 1f)
+	{
+		m_IsLocalMapFastMove = active;
+		m_LocalMapFastMoveScale = scale;
 	}
 
 	public bool CanTick(IControllerTick controller)
@@ -277,6 +287,8 @@ public class TimeController : IControllerEnable, IController, IControllerDisable
 		m_SlowMoTimeScale = 1f;
 		DebugTimeScale = 1f;
 		m_LastSimulationTick = -1;
+		m_IsLocalMapFastMove = false;
+		m_LocalMapFastMoveScale = 1f;
 	}
 
 	public void SetDeltaTime(float value)

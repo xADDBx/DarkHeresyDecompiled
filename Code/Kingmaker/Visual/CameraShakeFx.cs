@@ -63,7 +63,7 @@ public class CameraShakeFx : MonoBehaviour
 		}
 	}
 
-	public Vector2 CalculateDelta(Vector3 camPos)
+	public virtual Vector2 CalculateDelta(Vector3 camPos)
 	{
 		float time = Vector3.Distance(camPos, base.transform.position);
 		float num = FreqOverLifetime.Evaluate(m_Time) * FreqOverDistance.Evaluate(time) * FreqMultiplier;

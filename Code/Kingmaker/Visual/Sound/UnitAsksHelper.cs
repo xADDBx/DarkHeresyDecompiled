@@ -39,7 +39,25 @@ public static class UnitAsksHelper
 		{
 			context = UnitAsksManager.CreateAsksContext();
 		}
-		return askWrapper?.UnitAsksManager.Schedule(askWrapper, is2D, callback, context) ?? false;
+		if (askWrapper == null || !askWrapper.HasBarks)
+		{
+			PFLog.VO.Error("Trying Scheduling Empty Ask " + (askWrapper.Type ?? "unknown") + " Caster: " + context.Caster?.Name + " Target: " + context.Target?.Entity?.Name);
+			callback?.Invoke(context);
+			return false;
+		}
+		AskSchedulingEntry schedulingEntry = new AskSchedulingEntry(askWrapper, is2D, callback, context);
+		string reason;
+		bool flag = askWrapper.UnitAsksManager.TrySchedule(schedulingEntry, out reason);
+		if (flag)
+		{
+			PFLog.VO.Log("[VO] Scheduling Ask " + (askWrapper.Type ?? "unknown") + " \n Caster: " + context.Caster?.Name + " Target: " + context.Target?.Entity?.Name);
+			askWrapper.UnitAsksManager.TryPlayNextAsk();
+		}
+		else
+		{
+			PFLog.VO.Log("[VO] Ask " + (askWrapper.Type ?? "unknown") + " was NOT scheduled because of: " + reason + " \n Caster: " + context.Caster?.Name + " Target: " + context.Target?.Entity?.Name);
+		}
+		return flag;
 	}
 
 	public static BaseUnitEntity GetRandomPartyEntity(Func<BaseUnitEntity, bool> predicate)

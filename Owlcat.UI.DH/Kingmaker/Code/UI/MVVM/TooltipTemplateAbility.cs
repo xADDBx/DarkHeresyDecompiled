@@ -1,74 +1,55 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Code.View.UI.MVVM.Tooltip.Bricks.Items;
 using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints;
-using Kingmaker.Blueprints.Encyclopedia;
-using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
+using Kingmaker.Code.Gameplay.Components.Features;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Bricks;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Enums;
+using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework;
 using Kingmaker.Framework.Abilities.Blueprints;
-using Kingmaker.GameModes;
-using Kingmaker.Gameplay.Parts;
 using Kingmaker.Items;
+using Kingmaker.Localization;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UI.UIUtils;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components;
-using Kingmaker.UnitLogic.Abilities.Components.CasterCheckers;
-using Kingmaker.UnitLogic.FactLogic;
-using Kingmaker.UnitLogic.UI;
-using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.Utility.StatefulRandom;
-using Kingmaker.Utility.UnitDescription;
 using Owlcat.Fmw.Blueprints;
 using Owlcat.UI;
-using TMPro;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class TooltipTemplateAbility : TooltipBaseTemplate
 {
-	public readonly AbilityData AbilityData;
+	private const float BrickBigSpaceHeight = 25f;
 
-	public readonly BlueprintAbility BlueprintAbility;
+	private const float BrickSmallSpaceHeight = 10f;
 
-	public readonly BlueprintItem SourceItem;
+	private readonly AbilityData m_AbilityData;
 
-	public readonly MechanicEntity Caster;
+	private readonly BlueprintItem m_SourceItem;
+
+	private readonly string m_AutoCastHint = string.Empty;
 
 	private string m_Name = string.Empty;
 
-	private Sprite m_Icon;
-
 	private string m_Type = string.Empty;
 
-	private string m_Cost = string.Empty;
-
-	private readonly string m_Level = string.Empty;
+	private IReadOnlyList<string> m_Tags;
 
 	private string m_Veil = string.Empty;
 
 	private string m_Target = string.Empty;
-
-	private Sprite m_TargetIcon;
-
-	private string m_Cooldown = string.Empty;
 
 	private string m_EndTurn = string.Empty;
 
@@ -78,39 +59,45 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private string m_LongDescriptionText = string.Empty;
 
-	private string m_SpellDescriptor = string.Empty;
+	private bool m_HasCasterRestrictions;
 
-	private string m_ActionTime = string.Empty;
+	private bool m_CasterRestrictionsPassed;
 
-	private readonly UnitDescription.UIDamageInfo[] m_DamageInfo;
+	private Sprite m_Icon;
 
-	private readonly string m_AutoCastHint = string.Empty;
+	private Sprite m_TargetIcon;
 
 	private UIUtilityItem.UIAbilityData m_UIAbilityData;
 
+	private int m_ActionPointsCost;
+
 	private int m_AttackCount;
 
-	private bool m_IsReload;
+	private int m_AttackRangeCells;
+
+	private IEnumerable<StatType> m_ScalingStats;
 
 	private readonly ItemEntityWeapon m_Weapon;
 
-	private bool m_IsOnTimeInBattleAbility;
+	private BlueprintItemWeapon m_BlueprintItemWeapon;
 
-	private bool m_IsScreenWindowTooltip;
+	private IReadOnlyList<BlueprintAbilityModifier> m_AppliedModifiers;
 
-	private List<BlueprintAbilityModifier> m_ApliedModifiers = new List<BlueprintAbilityModifier>();
+	private BlueprintAbilityModifier m_ManualModifier;
 
 	private List<Ability> m_AbilitiesWillBeLost = new List<Ability>();
 
-	private bool IsWeaponAbility => SourceItem is BlueprintItemWeapon;
+	private readonly bool m_ShowModifiedAPCost;
 
-	private bool IsSpaceCombatAbility => Game.Instance.CurrentModeType == GameModeType.SpaceCombat;
+	protected readonly MechanicEntity m_Caster;
+
+	public readonly BlueprintAbility BlueprintAbility;
 
 	public override void Prepare(TooltipTemplateType type)
 	{
-		if (AbilityData != null)
+		if (m_AbilityData != null)
 		{
-			FillAbilityDataInfo(AbilityData);
+			FillAbilityDataInfo(m_AbilityData);
 		}
 		else if (BlueprintAbility != null)
 		{
@@ -118,46 +105,106 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		}
 	}
 
-	public TooltipTemplateAbility(BlueprintAbility blueprintAbility, BlueprintItem sourceItem = null, MechanicEntity caster = null, bool isScreenWindowTooltip = false)
+	public TooltipTemplateAbility(BlueprintAbility blueprintAbility, BlueprintItem sourceItem = null, MechanicEntity caster = null)
 	{
 		BlueprintAbility = blueprintAbility;
-		SourceItem = sourceItem;
-		Caster = caster;
-		m_IsScreenWindowTooltip = isScreenWindowTooltip;
+		m_SourceItem = sourceItem;
+		m_Caster = caster;
 	}
 
-	public TooltipTemplateAbility(AbilityData abilityData, bool isScreenWindowTooltip = false)
+	public TooltipTemplateAbility(AbilityData abilityData, bool showModifiedAPCost = false)
 	{
-		AbilityData = abilityData;
-		m_DamageInfo = null;
+		ContentSpacing = 0f;
+		m_AbilityData = abilityData;
 		BlueprintAbility = abilityData.Blueprint.OriginalBlueprint;
-		Caster = abilityData.Caster;
-		SourceItem = abilityData.SourceItem?.Blueprint;
+		m_Caster = abilityData.Caster;
+		m_SourceItem = abilityData.SourceItem?.Blueprint;
 		m_Weapon = abilityData.SourceItem as ItemEntityWeapon;
-		m_IsScreenWindowTooltip = isScreenWindowTooltip;
+		m_ShowModifiedAPCost = showModifiedAPCost;
+	}
+
+	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
+	{
+		if (!m_CasterRestrictionsPassed)
+		{
+			ITooltipBrick casterRestrictionsBrick = GetCasterRestrictionsBrick();
+			if (casterRestrictionsBrick != null)
+			{
+				yield return casterRestrictionsBrick;
+			}
+		}
+		yield return GetAbilityHeaderBrick();
+	}
+
+	private ITooltipBrick GetCasterRestrictionsBrick()
+	{
+		if (BlueprintAbility == null || m_Caster == null || !m_HasCasterRestrictions)
+		{
+			return null;
+		}
+		return new BrickAbilityRestrictionsVM(BlueprintAbility, m_Caster);
+	}
+
+	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
+	{
+		List<ITooltipBrick> list = new List<ITooltipBrick>();
+		if (m_Tags.Count > 0)
+		{
+			list.Add(new BrickAbilityTagsVM(m_Tags));
+		}
+		list.Add(new BrickAbilitySeparatorVM());
+		AddDamageInfo(list);
+		AddAbilityRange(list);
+		AddAttacksCount(list);
+		AddTargetInfo(list);
+		AddScalingCharacteristics(list);
+		AddBodyWeaponTags(list);
+		AddDescription(list, type);
+		AddAppliedModifiers(list);
+		AddEndTurnInfo(list);
+		AddAttackAbilityGroupCooldown(list);
+		AddVeilDegradation(list);
+		AddAbilitiesWillBeLost(list);
+		if (m_HasCasterRestrictions && m_CasterRestrictionsPassed)
+		{
+			ITooltipBrick casterRestrictionsBrick = GetCasterRestrictionsBrick();
+			if (casterRestrictionsBrick != null)
+			{
+				list.Add(new BrickSpaceVM(25f));
+				list.Add(casterRestrictionsBrick);
+			}
+		}
+		return list;
 	}
 
 	private void FillBlueprintAbilityData(BlueprintAbility blueprintAbility)
 	{
 		try
 		{
-			BlueprintItemWeapon blueprintItem = SourceItem as BlueprintItemWeapon;
+			m_BlueprintItemWeapon = m_SourceItem as BlueprintItemWeapon;
 			m_Name = blueprintAbility.Name;
 			m_Icon = blueprintAbility.Icon;
 			m_Type = GetAbilityType(blueprintAbility);
-			m_Target = UIUtilityAbilities.GetAbilityTarget(blueprintAbility, blueprintItem);
-			m_TargetIcon = UIUtilityAbilities.GetTargetImage(blueprintAbility);
-			m_Cooldown = blueprintAbility.CooldownRounds.ToString();
-			m_IsOnTimeInBattleAbility = CheckOneTimeInBattleAbility(blueprintAbility);
+			m_Tags = (from t in blueprintAbility.Tags
+				where !t.Blueprint.Name.IsEmpty()
+				select t.Blueprint.Name.Text).ToList();
+			m_Target = UIUtilityAbilities.GetAbilityTarget(blueprintAbility, m_BlueprintItemWeapon);
 			m_EndTurn = GetEndTurn(blueprintAbility);
 			m_AttackAbilityGroupCooldown = GetAttackAbilityGroupCooldown(blueprintAbility);
-			m_ShortDescriptionText = blueprintAbility.GetShortenedDescription();
-			m_LongDescriptionText = blueprintAbility.Description;
-			m_SpellDescriptor = UIUtilityAbilities.GetSpellDescriptorsText(blueprintAbility);
-			m_ActionTime = UIUtilityAbilities.GetAbilityActionText(blueprintAbility);
-			m_UIAbilityData = UIUtilityItem.GetUIAbilityData(blueprintAbility, blueprintItem, Caster);
-			m_IsReload = UIUtilityItem.IsReload(blueprintAbility);
-			FindAppliedModifiers(blueprintAbility);
+			using (GameLogContext.Scope)
+			{
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+				m_ShortDescriptionText = blueprintAbility.GetShortenedDescription();
+				m_LongDescriptionText = blueprintAbility.Description;
+			}
+			m_UIAbilityData = UIUtilityItem.GetUIAbilityData(blueprintAbility, m_BlueprintItemWeapon, m_Caster);
+			m_ScalingStats = blueprintAbility.GetScalingStats();
+			m_HasCasterRestrictions = blueprintAbility.HasCasterRestrictions(m_Caster, out m_CasterRestrictionsPassed);
+			if (m_BlueprintItemWeapon != null)
+			{
+				m_AttackRangeCells = m_BlueprintItemWeapon.AttackRange;
+			}
+			m_AppliedModifiers = blueprintAbility.GetAppliedModifiers(m_Caster, out m_ManualModifier);
 		}
 		catch (Exception arg)
 		{
@@ -171,27 +218,36 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		{
 			using (GameLogContext.Scope)
 			{
-				GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
-				m_Name = abilityData.Name;
-				m_Icon = abilityData.Icon;
-				m_Type = GetAbilityType(abilityData.Blueprint.OriginalBlueprint);
-				m_Cost = GetCost(abilityData);
-				m_Veil = GetVeil(abilityData);
-				m_EndTurn = GetEndTurn(abilityData.Blueprint.OriginalBlueprint);
-				m_AttackAbilityGroupCooldown = GetAttackAbilityGroupCooldown(abilityData.Blueprint.OriginalBlueprint);
-				m_Target = UIUtilityAbilities.GetAbilityTarget(abilityData);
-				m_TargetIcon = UIUtilityAbilities.GetTargetImage(abilityData.Blueprint.OriginalBlueprint);
-				m_Cooldown = abilityData.Blueprint.CooldownRounds.ToString();
-				m_IsOnTimeInBattleAbility = CheckOneTimeInBattleAbility(abilityData.Blueprint.OriginalBlueprint);
-				m_ShortDescriptionText = abilityData.ShortenedDescription;
-				m_LongDescriptionText = abilityData.Description;
-				m_SpellDescriptor = UIUtilityAbilities.GetSpellDescriptorsText(abilityData.Blueprint.OriginalBlueprint);
-				m_ActionTime = UIUtilityAbilities.GetAbilityActionText(abilityData);
-				m_UIAbilityData = UIUtilityItem.GetUIAbilityData(abilityData.Blueprint.OriginalBlueprint, abilityData.Weapon);
-				m_IsReload = UIUtilityItem.IsReload(abilityData);
-				m_AbilitiesWillBeLost = UIUtilityAbilities.TryGetAbilitiesWillBeLost(abilityData);
-				m_AttackCount = abilityData.BurstAttacksCount;
-				FindAppliedModifiers(abilityData.Blueprint.OriginalBlueprint);
+				using (EvalContext.Build().Ability(abilityData).Push())
+				{
+					GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+					m_Name = abilityData.Name;
+					m_Icon = abilityData.Icon;
+					m_Type = GetAbilityType(abilityData.Blueprint.OriginalBlueprint);
+					m_Tags = (from t in abilityData.Blueprint.Tags
+						where !t.Blueprint.Name.IsEmpty()
+						select t.Blueprint.Name.Text).ToList();
+					m_ActionPointsCost = (m_ShowModifiedAPCost ? abilityData.CalculateActionPointCost() : abilityData.GetBaseActionPointCost());
+					m_Veil = GetVeil(abilityData);
+					m_EndTurn = GetEndTurn(abilityData.Blueprint.OriginalBlueprint);
+					m_AttackAbilityGroupCooldown = GetAttackAbilityGroupCooldown(abilityData.Blueprint.OriginalBlueprint);
+					m_Target = UIUtilityAbilities.GetAbilityTarget(abilityData);
+					m_TargetIcon = UIUtilityAbilities.GetTargetImage(abilityData.Blueprint.OriginalBlueprint);
+					m_ShortDescriptionText = abilityData.ShortenedDescription;
+					m_LongDescriptionText = abilityData.Description;
+					m_UIAbilityData = UIUtilityItem.GetUIAbilityData(abilityData.Blueprint.OriginalBlueprint, abilityData.Weapon);
+					m_AbilitiesWillBeLost = UIUtilityAbilities.TryGetAbilitiesWillBeLost(abilityData);
+					m_AttackCount = abilityData.BurstAttacksCount;
+					m_ScalingStats = abilityData.Blueprint.OriginalBlueprint.GetScalingStats();
+					m_HasCasterRestrictions = abilityData.Blueprint.OriginalBlueprint.HasCasterRestrictions(m_Caster, out m_CasterRestrictionsPassed);
+					if (abilityData.Weapon != null)
+					{
+						m_BlueprintItemWeapon = abilityData.Weapon.Blueprint;
+						m_AttackRangeCells = m_BlueprintItemWeapon.AttackRange;
+					}
+					m_AppliedModifiers = abilityData.Blueprint.OriginalBlueprint.GetAppliedModifiers(m_Caster, out m_ManualModifier);
+				}
 			}
 		}
 		catch (Exception arg)
@@ -200,116 +256,30 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		}
 	}
 
-	private void AddCantUseInfo(List<ITooltipBrick> result)
+	private void AddAppliedModifiers(List<ITooltipBrick> bricks)
 	{
-		if (BlueprintAbility == null || Caster == null)
+		if (m_AppliedModifiers != null && m_AppliedModifiers.Count >= 1)
 		{
-			return;
+			bricks.Add(new BrickSpaceVM(25f));
+			bricks.Add(new BrickAbilityModifiersVM(m_AppliedModifiers, m_ManualModifier, m_Caster));
 		}
-		foreach (AbilityCasterHasNoFacts component3 in BlueprintAbility.GetComponents<AbilityCasterHasNoFacts>())
-		{
-			if (component3 == null || component3.HideInUI)
-			{
-				continue;
-			}
-			foreach (BlueprintUnitFact fact in component3.Facts)
-			{
-				if (Caster.Facts.Contains(fact))
-				{
-					string arg = GenerateLink(fact);
-					string cantUseLabel = string.Format(ReasonStrings.Instance.CantUseRemove, arg);
-					result.Add(new TooltipBrickCantUse(cantUseLabel));
-				}
-			}
-		}
-		foreach (AbilityCasterHasFacts component4 in BlueprintAbility.GetComponents<AbilityCasterHasFacts>())
-		{
-			if (component4 == null || component4.HideInUI)
-			{
-				continue;
-			}
-			foreach (BlueprintUnitFact fact2 in component4.Facts)
-			{
-				if (!Caster.Facts.Contains(fact2))
-				{
-					string arg2 = GenerateLink(fact2);
-					string cantUseLabel2 = string.Format(ReasonStrings.Instance.CantUseNeed, arg2);
-					result.Add(new TooltipBrickCantUse(cantUseLabel2));
-				}
-			}
-		}
-		AbilityCasterStatGreaterOrEqual10 component = BlueprintAbility.GetComponent<AbilityCasterStatGreaterOrEqual10>();
-		if (component != null && !component.IsCasterRestrictionPassed(Caster))
-		{
-			string text = LocalizedTexts.Instance.Stats.GetText(component.Stat);
-			string cantUseLabel3 = string.Format(ConfigRoot.Instance.LocalizedTexts.Reasons.NotEnoughStat, text);
-			result.Add(new TooltipBrickCantUse(cantUseLabel3));
-		}
-		AbilitySpecialMoraleAction component2 = BlueprintAbility.GetComponent<AbilitySpecialMoraleAction>();
-		if (component2 != null)
-		{
-			BlueprintEncyclopediaGlossaryEntry blueprintEncyclopediaGlossaryEntry = component2.MoralePhaseType switch
-			{
-				MoraleAbilityType.Heroic => UIUtilityEncyclopedy.GetGlossaryEntry("MoraleHeroic"), 
-				MoraleAbilityType.Broken => UIUtilityEncyclopedy.GetGlossaryEntry("MoraleBroken"), 
-				MoraleAbilityType.Both => null, 
-				_ => throw new ArgumentOutOfRangeException(), 
-			};
-			if (blueprintEncyclopediaGlossaryEntry != null)
-			{
-				string arg3 = "<b><color=#" + UIConfig.Instance.LinkColor.HTML() + "><link=\"Encyclopedia:" + blueprintEncyclopediaGlossaryEntry.name + "\">" + blueprintEncyclopediaGlossaryEntry.Title.Text + "</link></color></b>";
-				string cantUseLabel4 = string.Format(ConfigRoot.Instance.LocalizedTexts.Reasons.MoraleShouldBe, arg3);
-				result.Add(new TooltipBrickCantUse(cantUseLabel4));
-			}
-		}
-	}
-
-	private string GenerateLink(BlueprintUnitFact fact)
-	{
-		return "<b><color=#" + UIConfig.Instance.LinkColor.HTML() + "><link=\"f:" + fact.AssetGuid + "\">" + fact.LocalizedName.Text + "</link></color></b>";
-	}
-
-	private bool CheckOneTimeInBattleAbility(BlueprintAbility blueprintAbility)
-	{
-		return blueprintAbility.GetComponent<Cooldown>()?.UntilEndOfCombat ?? false;
-	}
-
-	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
-	{
-		yield return AddAbilityHeader();
-	}
-
-	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
-	{
-		List<ITooltipBrick> list = new List<ITooltipBrick>();
-		AddCantUseInfo(list);
-		AddDamageInfo(list);
-		TryAddAttacksCount(list);
-		AddTarget(list);
-		AddCooldown(list);
-		AddHitChances(list);
-		AddDescription(list, type);
-		AddMovementActionVeil(list, type);
-		AddAbilityModificationsDescription(list);
-		List<Ability> abilitiesWillBeLost = m_AbilitiesWillBeLost;
-		if (abilitiesWillBeLost != null && Enumerable.Any(abilitiesWillBeLost))
-		{
-			AddAbilitiesWillBeLost(list);
-		}
-		return list;
 	}
 
 	private void AddAbilitiesWillBeLost(List<ITooltipBrick> bricks)
 	{
-		if (m_AbilitiesWillBeLost == null || m_AbilitiesWillBeLost.Empty())
+		if (m_AbilitiesWillBeLost == null || m_AbilitiesWillBeLost.Count < 1)
 		{
 			return;
 		}
-		bricks.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.AbilitiesWillBeLostHeader, TooltipTitleType.H4));
-		bricks.Add(new TooltipBrickText(UIStrings.Instance.Tooltips.AbilitiesWillBeLostDescription));
+		LocalizedString abilitiesWillBeLostDescription = UIStrings.Instance.Tooltips.AbilitiesWillBeLostDescription;
+		Sprite abilityRestrictionIcon = UIConfig.Instance.AbilityTooltipConfig.AbilityRestrictionIcon;
+		Color restrictionColor = UIConfig.Instance.AbilityTooltipConfig.RestrictionColor;
+		bricks.Add(new BrickSpaceVM(25f));
+		bricks.Add(new BrickAbilityDescriptionVM(abilitiesWillBeLostDescription, abilityRestrictionIcon, restrictionColor));
+		bricks.Add(new BrickSpaceVM(10f));
 		foreach (Ability item in m_AbilitiesWillBeLost)
 		{
-			bricks.Add(new TooltipBrickFeature(item));
+			bricks.Add(new BrickAbilityFeatureVM(item, m_Caster));
 		}
 	}
 
@@ -317,66 +287,47 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 	{
 		if (type == TooltipTemplateType.Tooltip && !string.IsNullOrEmpty(m_AutoCastHint))
 		{
-			yield return new TooltipBrickSeparator(TooltipBrickElementType.Medium);
-			yield return new TooltipBrickText(m_AutoCastHint, TooltipTextType.Italic);
+			yield return new BrickSeparatorVM(TooltipBrickElementType.Medium);
+			yield return new BrickTextVM(m_AutoCastHint, TooltipTextType.Italic);
 		}
 	}
 
-	private ITooltipBrick AddAbilityHeader()
+	private ITooltipBrick GetAbilityHeaderBrick()
 	{
-		TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
+		if (m_AbilityData != null)
 		{
-			Text = m_UIAbilityData.Name,
-			TextParams = new TextFieldParams
-			{
-				FontStyles = TMPro.FontStyles.Bold
-			}
-		};
+			return new BrickAbilityHeaderVM((!string.IsNullOrEmpty(m_Name)) ? m_Name : (m_UIAbilityData?.Weapon?.Name ?? string.Empty), m_Type, m_Icon, m_ActionPointsCost).SetModifierIcon(m_ManualModifier?.Tags?.FirstOrDefault()?.AbilityIcon);
+		}
+		return GetAbilityBlueprintHeader();
+	}
+
+	private ITooltipBrick GetAbilityBlueprintHeader()
+	{
+		TextEntity title = new TextEntity(BlueprintAbility.Name, TextFieldParams.Bold);
 		List<string> values = BlueprintAbility.Tags.Select((BpRef<BlueprintAbilityTag> tag) => tag.Blueprint.Reference().Blueprint.Name.Text).ToList();
-		TooltipBrickIconPattern.TextFieldValues secondaryValues = new TooltipBrickIconPattern.TextFieldValues
-		{
-			Text = string.Join(", ", values),
-			TextParams = new TextFieldParams()
-		};
-		TooltipBrickIconPattern.TextFieldValues tertiaryValues = null;
+		TextValueElement secondaryValuesElement = new TextValueElement(string.Join(", ", values));
+		TextValueElement tertiaryValuesElement = null;
 		if (m_UIAbilityData.BurstAttacksCount > 1)
 		{
-			tertiaryValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = string.Format(UIStrings.Instance.Tooltips.ShotsCount, m_UIAbilityData.BurstAttacksCount.ToString())
-			};
+			tertiaryValuesElement = new TextValueElement(string.Format(UIStrings.Instance.Tooltips.ShotsCount, m_UIAbilityData.BurstAttacksCount.ToString()));
 		}
-		return new TooltipBrickIconPattern(m_UIAbilityData.Icon, null, titleValues, secondaryValues, tertiaryValues);
+		return new BrickIconPatternVM(BlueprintAbility.Icon, null, title, secondaryValuesElement, tertiaryValuesElement);
 	}
 
-	private string GetCost(BlueprintAbility blueprintAbility)
+	private int GetVeilDamage(AbilityData abilityData)
 	{
-		int actionPointCost = blueprintAbility.ActionPointCost;
-		return GetCost(actionPointCost, blueprintAbility.AbilityParamsSource, blueprintAbility.GetVeilDamage());
-	}
-
-	private string GetCost(AbilityData abilityData)
-	{
-		int cost = abilityData.CalculateActionPointCost();
-		return GetCost(cost, abilityData.Blueprint.AbilityParamsSource, abilityData.Blueprint.GetVeilDamage());
+		return abilityData.GetPredictedVeilDelta();
 	}
 
 	private string GetVeil(AbilityData abilityData)
 	{
-		if (abilityData.Blueprint.AbilityParamsSource != WarhammerAbilityParamsSource.PsychicPower)
+		int veilDamage = GetVeilDamage(abilityData);
+		if (veilDamage == 0)
 		{
 			return string.Empty;
 		}
-		return UIStrings.Instance.Tooltips.MajorVeilDegradation.Text;
-	}
-
-	private string GetCost(int cost, WarhammerAbilityParamsSource warhammerAbilityParamsSource, int veilDamage)
-	{
-		if (warhammerAbilityParamsSource != WarhammerAbilityParamsSource.PsychicPower)
-		{
-			return string.Format(UIStrings.Instance.Tooltips.CostAP, cost);
-		}
-		return string.Format(UIStrings.Instance.Tooltips.PsychicPowerCostAP, cost, veilDamage);
+		GameLogContext.Count = veilDamage;
+		return UIStrings.Instance.Tooltips.VeilDegradation;
 	}
 
 	private string GetAbilityType(BlueprintAbility blueprintAbility)
@@ -415,176 +366,50 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		return UIStrings.Instance.Tooltips.AttackAbilityGroupCooldown;
 	}
 
-	private void AddTarget(List<ITooltipBrick> bricks)
+	private void AddTargetInfo(List<ITooltipBrick> bricks)
 	{
-		if (!m_IsReload && !string.IsNullOrEmpty(m_Target) && !(m_TargetIcon == null))
+		if (!string.IsNullOrEmpty(m_Target) || !(m_TargetIcon == null) || m_UIAbilityData.PatternData != null)
 		{
-			TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = string.Empty
-			};
-			TooltipBrickIconPattern.TextFieldValues secondaryValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = m_Target
-			};
-			bricks.Add(new TooltipBrickIconPattern(m_TargetIcon, m_UIAbilityData.PatternData, titleValues, secondaryValues, null, null, IconPatternMode.IconMode));
+			bricks.Add(new BrickAbilityPatternVM(m_TargetIcon, m_Target, m_UIAbilityData.PatternData));
 		}
 	}
 
-	private void AddCooldown(List<ITooltipBrick> bricks)
+	private void AddScalingCharacteristics(List<ITooltipBrick> bricks)
 	{
-		if ((!string.IsNullOrEmpty(m_Cooldown) && !(m_Cooldown == "0")) || m_IsOnTimeInBattleAbility)
+		if (m_Caster != null && m_ScalingStats != null && m_ScalingStats.Any())
 		{
-			TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = UIStrings.Instance.TooltipsElementLabels.GetLabel(TooltipElement.Cooldown)
-			};
-			TooltipBrickIconPattern.TextFieldValues textFieldValues = new TooltipBrickIconPattern.TextFieldValues();
-			if (m_IsOnTimeInBattleAbility)
-			{
-				textFieldValues.Text = UIUtilityText.WrapWithWeight(UIStrings.Instance.TurnBasedTexts.CanUseOneTimeInCombat, TextFontWeight.SemiBold);
-			}
-			else
-			{
-				textFieldValues.Text = UIStrings.Instance.TurnBasedTexts.Rounds;
-				textFieldValues.Value = m_Cooldown;
-			}
-			bricks.Add(new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.Cooldown, null, titleValues, textFieldValues, null, null, IconPatternMode.IconMode));
-		}
-	}
-
-	private void AddHitChances(List<ITooltipBrick> bricks)
-	{
-		if (m_IsReload || !IsWeaponAbility || IsSpaceCombatAbility)
-		{
-			return;
-		}
-		if (m_UIAbilityData.IsRange)
-		{
-			if (m_UIAbilityData.IsScatter)
-			{
-				AddScatterHitChances(bricks);
-			}
-			else
-			{
-				AddRangeHitChances(bricks);
-			}
-		}
-		else if (m_UIAbilityData.HitChance.HasValue)
-		{
-			bricks.Add(new TooltipBrickIconStatValue(UIStrings.Instance.Tooltips.HitChances, UIUtilityText.AddPercentTo(m_UIAbilityData.HitChance.Value)));
-		}
-	}
-
-	private void AddRangeHitChances(List<ITooltipBrick> bricks)
-	{
-		if (m_UIAbilityData.HitChance.HasValue)
-		{
-			TextFieldParams textParams = new TextFieldParams
-			{
-				FontStyles = TMPro.FontStyles.Bold
-			};
-			TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = UIStrings.Instance.Tooltips.HitChances
-			};
-			TooltipBrickIconPattern.TextFieldValues secondaryValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = UIStrings.Instance.Tooltips.HitChancesEffectiveDistance,
-				Value = UIUtilityText.AddPercentTo(m_UIAbilityData.HitChance.Value),
-				TextParams = textParams
-			};
-			TooltipBrickIconPattern.TextFieldValues tertiaryValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = UIStrings.Instance.Tooltips.HitChancesMaxDistance,
-				Value = UIUtilityText.AddPercentTo(m_UIAbilityData.HitChance.Value / 2),
-				TextParams = textParams
-			};
-			bricks.Add(new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.HitChances, null, titleValues, secondaryValues, tertiaryValues, null, IconPatternMode.IconMode));
-		}
-	}
-
-	private void AddScatterHitChances(List<ITooltipBrick> bricks)
-	{
-		UIUtilityItem.UIScatterHitChanceData scatterHitChanceData = m_UIAbilityData.ScatterHitChanceData;
-		UITooltips tooltips = UIStrings.Instance.Tooltips;
-		bricks.Add(new TooltipBrickTitle(UIStrings.Instance.Tooltips.HitChances, TooltipTitleType.H1));
-		bricks.Add(new TooltipBricksGroupStart());
-		bricks.Add(new TooltipBrickText(UIStrings.Instance.Tooltips.HitChancesEffectiveDistance, TooltipTextType.Bold));
-		bricks.Add(new TooltipBrickIconStatValue(tooltips.ScatterMainLineClose, UIUtilityText.AddPercentTo(scatterHitChanceData.MainLineClose)));
-		bricks.Add(new TooltipBrickIconStatValue(tooltips.ScatterClose, UIUtilityText.AddPercentTo(scatterHitChanceData.ScatterClose)));
-		bricks.Add(new TooltipBricksGroupEnd());
-		bricks.Add(new TooltipBricksGroupStart());
-		bricks.Add(new TooltipBrickText(UIStrings.Instance.Tooltips.HitChancesMaxDistance, TooltipTextType.Bold));
-		bricks.Add(new TooltipBrickIconStatValue(tooltips.ScatterMainLine, UIUtilityText.AddPercentTo(scatterHitChanceData.MainLine)));
-		bricks.Add(new TooltipBrickIconStatValue(tooltips.ScatterNear, UIUtilityText.AddPercentTo(scatterHitChanceData.ScatterNear)));
-		bricks.Add(new TooltipBrickIconStatValue(tooltips.ScatterFar, UIUtilityText.AddPercentTo(scatterHitChanceData.ScatterFar)));
-		bricks.Add(new TooltipBricksGroupEnd());
-	}
-
-	private void AddUIProperties(List<ITooltipBrick> bricks)
-	{
-		using (ContextData<DisableStatefulRandomContext>.Request())
-		{
-			if (!m_UIAbilityData.UIProperties.Any())
-			{
-				return;
-			}
-			bricks.Add(new TooltipBricksGroupStart());
-			foreach (UIProperty uIProperty in m_UIAbilityData.UIProperties)
-			{
-				string title = ((!string.IsNullOrEmpty(uIProperty.Name)) ? uIProperty.Name : uIProperty.NameType.GetLocalizedName());
-				bricks.Add(new TooltipBrickCalculatedFormula(title, uIProperty.Description, uIProperty.PropertyValue?.ToString() ?? ((string)UIStrings.Instance.SettingsUI.Value), !uIProperty.PropertyValue.HasValue));
-			}
-			bricks.Add(new TooltipBricksGroupEnd());
+			bricks.Add(new BrickAbilityScalingStatsVM(m_ScalingStats, m_Caster));
 		}
 	}
 
 	private void AddDamageInfo(List<ITooltipBrick> bricks)
 	{
-		if (!m_IsReload)
+		if (m_BlueprintItemWeapon != null)
 		{
-			string baseDamageText = m_UIAbilityData.BaseDamageText;
-			string value = UIUtilityText.AddPercentTo(m_UIAbilityData.Penetration);
-			if (!string.IsNullOrEmpty(baseDamageText))
-			{
-				Sprite damage = UIConfig.Instance.UIIcons.Damage;
-				Sprite penetration = UIConfig.Instance.UIIcons.Penetration;
-				StatData leftStat = new StatData(baseDamageText, TooltipElement.Damage, damage, ComparisonResult.Equal, StatData.StatHighlight.Default);
-				StatData rightStat = new StatData(value, TooltipElement.Penetration, penetration, ComparisonResult.Equal, StatData.StatHighlight.Default);
-				bricks.Add(new TooltipBrickTwoColumnsStat(leftStat, rightStat));
-			}
+			BrickAbilityWeaponDamageVM item = new BrickAbilityWeaponDamageVM(m_BlueprintItemWeapon, m_UIAbilityData.MinDamage, m_UIAbilityData.MaxDamage, m_Weapon);
+			bricks.Add(item);
 		}
 	}
 
-	private void TryAddAttacksCount(List<ITooltipBrick> bricks)
+	private void AddAttacksCount(List<ITooltipBrick> bricks)
 	{
-		if (m_Weapon == null || m_AttackCount <= 0)
+		if (m_Weapon != null && m_AttackCount > 0)
 		{
-			return;
+			bool num = !m_Weapon.Blueprint.IsRanged;
+			string statName = (num ? UIUtilityTooltip.GetTooltipElementLabel(TooltipElement.RateOfFireMelee) : UIUtilityTooltip.GetTooltipElementLabel(TooltipElement.RateOfFire));
+			Sprite statIcon = (num ? ConfigRoot.Instance.UIConfig.AbilityTooltipConfig.MeleeAttackRateIcon : ConfigRoot.Instance.UIConfig.AbilityTooltipConfig.RangedAttackRateIcon);
+			bricks.Add(new BrickAbilityWeaponStatVM(statName, statIcon, m_AttackCount.ToString()));
 		}
-		ItemEntityWeapon weapon = m_Weapon;
-		int num;
-		string tooltipElementLabel;
-		if (weapon != null)
+	}
+
+	private void AddAbilityRange(List<ITooltipBrick> bricks)
+	{
+		if (!(m_AbilityData == null) && m_AttackRangeCells >= 1)
 		{
-			num = ((!weapon.Blueprint.IsRanged) ? 1 : 0);
-			if (num != 0)
-			{
-				tooltipElementLabel = UIUtilityTooltip.GetTooltipElementLabel(TooltipElement.RateOfFireMelee);
-				goto IL_0041;
-			}
+			Sprite attackDistanceIcon = ConfigRoot.Instance.UIConfig.AbilityTooltipConfig.AttackDistanceIcon;
+			LocalizedString abilityDistance = UIStrings.Instance.Tooltips.AbilityDistance;
+			bricks.Add(new BrickAbilityWeaponStatVM(abilityDistance, attackDistanceIcon, m_AttackRangeCells.ToString()));
 		}
-		else
-		{
-			num = 0;
-		}
-		tooltipElementLabel = UIUtilityTooltip.GetTooltipElementLabel(TooltipElement.RateOfFire);
-		goto IL_0041;
-		IL_0041:
-		string name = tooltipElementLabel;
-		Sprite icon = ((num != 0) ? ConfigRoot.Instance.UIConfig.WeaponStatIcons.GetSprite(WeaponStat.AttacksCount) : ConfigRoot.Instance.UIConfig.WeaponStatIcons.GetSprite(WeaponStat.AmmoCount));
-		bricks.Add(new TooltipBrickIconStatValue(name, m_AttackCount.ToString(), null, icon));
 	}
 
 	private void AddDescription(List<ITooltipBrick> bricks, TooltipTemplateType type)
@@ -602,58 +427,8 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		description = TooltipTemplateUtils.AggregateDescription(description, TooltipTemplateUtils.GetAdditionalDescription(BlueprintAbility));
 		if (!string.IsNullOrEmpty(description))
 		{
-			description = UIUtilityText.UpdateDescriptionWithUIProperties(description, Caster);
-			description = UIUtilityText.UpdateDescriptionWithUICommonProperties(description, Caster);
-			bricks.Add(new TooltipBrickText(description, TooltipTextType.Paragraph));
-		}
-	}
-
-	private void AddMovementActionVeil(List<ITooltipBrick> bricks, TooltipTemplateType type)
-	{
-		List<ITooltipBrick> list = new List<ITooltipBrick>();
-		if (type == TooltipTemplateType.Info)
-		{
-			AddEndTurnInfo(list);
-			AddAttckAbilityGroupCooldown(list);
-			AddVeilDegradation(list);
-		}
-		else
-		{
-			string leftLine = string.Empty;
-			Sprite sprite = null;
-			if (!string.IsNullOrEmpty(m_EndTurn))
-			{
-				sprite = UIConfig.Instance.UIIcons.TooltipIcons.MoveEndPoints;
-				leftLine = UIStrings.Instance.Tooltips.SpendAllMovementPointsShort;
-			}
-			string middleLine = string.Empty;
-			Sprite sprite2 = null;
-			if (!string.IsNullOrEmpty(m_AttackAbilityGroupCooldown))
-			{
-				sprite2 = UIConfig.Instance.UIIcons.TooltipIcons.ActionEndPoints;
-				middleLine = UIStrings.Instance.Tooltips.AttackAbilityGroupCooldownShort;
-			}
-			string rightLine = string.Empty;
-			Sprite sprite3 = null;
-			if (!string.IsNullOrEmpty(m_Veil))
-			{
-				rightLine = UIStrings.Instance.Tooltips.IncreaseVeilDegradationShort;
-				sprite3 = UIConfig.Instance.UIIcons.TooltipIcons.Vail;
-			}
-			if (sprite != null || sprite2 != null || sprite3 != null)
-			{
-				TextFieldParams textFieldParams = new TextFieldParams
-				{
-					FontColor = UIConfig.Instance.TooltipColors.Default,
-					FontStyles = TMPro.FontStyles.Strikethrough
-				};
-				list.Add(new TooltipBrickTripleText(leftLine, middleLine, rightLine, sprite, sprite2, sprite3, textFieldParams, textFieldParams, textFieldParams));
-			}
-		}
-		if (list.Count > 0)
-		{
-			bricks.Add(new TooltipBrickSeparator(TooltipBrickElementType.Medium));
-			bricks.AddRange(list);
+			bricks.Add(new BrickSpaceVM(25f));
+			bricks.Add(new BrickFormattedDescriptionVM(description, m_Caster));
 		}
 	}
 
@@ -661,19 +436,21 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 	{
 		if (!string.IsNullOrEmpty(m_EndTurn))
 		{
-			bricks.Add(new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.MoveEndPoints, null, m_EndTurn, null, null, null, IconPatternMode.IconMode));
+			Sprite abilityRestrictionIcon = UIConfig.Instance.AbilityTooltipConfig.AbilityRestrictionIcon;
+			Color restrictionColor = UIConfig.Instance.AbilityTooltipConfig.RestrictionColor;
+			bricks.Add(new BrickSpaceVM(25f));
+			bricks.Add(new BrickAbilityDescriptionVM(m_EndTurn, abilityRestrictionIcon, restrictionColor));
 		}
 	}
 
-	private void AddAttckAbilityGroupCooldown(List<ITooltipBrick> bricks)
+	private void AddAttackAbilityGroupCooldown(List<ITooltipBrick> bricks)
 	{
 		if (!string.IsNullOrEmpty(m_AttackAbilityGroupCooldown))
 		{
-			if (bricks.Count > 0)
-			{
-				bricks.Add(new TooltipBrickSeparator(TooltipBrickElementType.Small));
-			}
-			bricks.Add(new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.ActionEndPoints, null, m_AttackAbilityGroupCooldown, null, null, null, IconPatternMode.IconMode));
+			Sprite abilityRestrictionIcon = UIConfig.Instance.AbilityTooltipConfig.AbilityRestrictionIcon;
+			Color restrictionColor = UIConfig.Instance.AbilityTooltipConfig.RestrictionColor;
+			bricks.Add(new BrickSpaceVM(25f));
+			bricks.Add(new BrickAbilityDescriptionVM(m_AttackAbilityGroupCooldown, abilityRestrictionIcon, restrictionColor));
 		}
 	}
 
@@ -681,41 +458,34 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 	{
 		if (!string.IsNullOrEmpty(m_Veil))
 		{
-			if (bricks.Count > 0)
-			{
-				bricks.Add(new TooltipBrickSeparator(TooltipBrickElementType.Small));
-			}
-			bricks.Add(new TooltipBrickIconPattern(UIConfig.Instance.UIIcons.TooltipIcons.Vail, null, m_Veil, null, null, null, IconPatternMode.IconMode));
+			Sprite abilityPsykerIcon = UIConfig.Instance.AbilityTooltipConfig.AbilityPsykerIcon;
+			Color psykerColor = UIConfig.Instance.AbilityTooltipConfig.PsykerColor;
+			bricks.Add(new BrickSpaceVM(25f));
+			bricks.Add(new BrickAbilityDescriptionVM(m_Veil, abilityPsykerIcon, psykerColor));
 		}
 	}
 
-	private void FindAppliedModifiers(BlueprintAbility blueprintAbility)
+	private void AddBodyWeaponTags(List<ITooltipBrick> bricks)
 	{
-		if (Caster != null)
+		if (!UIConfig.Instance.FeatureTagsConfig.ShowTagsDescriptions || m_BlueprintItemWeapon == null)
 		{
-			PartAbilityModifiers orCreate = Caster.GetOrCreate<PartAbilityModifiers>();
-			m_ApliedModifiers = (from modifier in orCreate.AddedModifiers
-				where (modifier.Ability == null) ? blueprintAbility.Tags.Contains(modifier.AbilityTag) : (modifier.Ability == blueprintAbility)
-				select modifier into m
-				select m.Modifier).ToList();
+			return;
 		}
-	}
-
-	private void AddAbilityModificationsDescription(List<ITooltipBrick> bricks)
-	{
-		foreach (BlueprintAbilityModifier apliedModifier in m_ApliedModifiers)
+		foreach (WeaponTagUISettings weaponTag in m_BlueprintItemWeapon.WeaponTags)
 		{
-			TooltipTemplateLevelUpModifier tooltipTemplateLevelUpModifier = new TooltipTemplateLevelUpModifier(apliedModifier, null, (BaseUnitEntity)Caster);
-			tooltipTemplateLevelUpModifier.Prepare(TooltipTemplateType.Tooltip);
-			foreach (ITooltipBrick item in tooltipTemplateLevelUpModifier.GetHeader(TooltipTemplateType.Tooltip))
+			if (!weaponTag.IsBodyIgnoreTag())
 			{
-				bricks.Add(item);
+				Sprite weaponTagIcon = UIConfig.Instance.FeatureTagsConfig.GetWeaponTagIcon(weaponTag);
+				Color weaponMountColor = UIConfig.Instance.FeatureTagsConfig.GetWeaponMountColor(weaponTag);
+				using (GameLogContext.Scope)
+				{
+					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)(m_Weapon?.Owner ?? m_Caster);
+					string tagName = UIUtilityItem.GetTagName(weaponTag);
+					string tagDescription = UIUtilityItem.GetTagDescription(weaponTag);
+					bricks.Add(new BrickSpaceVM(25f));
+					bricks.Add(new BrickTagDescriptionVM(weaponTagIcon, weaponMountColor, tagName, tagDescription));
+				}
 			}
-			foreach (ITooltipBrick item2 in tooltipTemplateLevelUpModifier.GetBody(TooltipTemplateType.Tooltip))
-			{
-				bricks.Add(item2);
-			}
-			bricks.Add(new TooltipBrickSeparator(TooltipBrickElementType.Small));
 		}
 	}
 }

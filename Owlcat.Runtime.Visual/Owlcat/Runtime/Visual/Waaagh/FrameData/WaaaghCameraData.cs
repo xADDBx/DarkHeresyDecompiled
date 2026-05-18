@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using Owlcat.Runtime.Visual.Waaagh.Data;
 using Owlcat.Runtime.Visual.Waaagh.History;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.FrameData;
 
-public class WaaaghCameraData : ContextItem
+public sealed class WaaaghCameraData
 {
 	private Matrix4x4 m_ViewMatrix;
 
@@ -22,8 +23,6 @@ public class WaaaghCameraData : ContextItem
 	public CameraRenderType renderType;
 
 	public RenderTexture targetTexture;
-
-	public RenderTexture TargetDepthTexture;
 
 	public RenderTextureDescriptor cameraTargetDescriptor;
 
@@ -44,6 +43,8 @@ public class WaaaghCameraData : ContextItem
 	public float renderScale;
 
 	internal ImageScalingMode imageScalingMode;
+
+	internal StackInfo StackInfo;
 
 	internal ImageUpscalingFilter upscalingFilter;
 
@@ -81,8 +82,6 @@ public class WaaaghCameraData : ContextItem
 
 	public bool postProcessEnabled;
 
-	internal bool stackAnyPostProcessingEnabled;
-
 	public IEnumerator<Action<RenderTargetIdentifier, CommandBuffer>> captureActions;
 
 	public LayerMask volumeLayerMask;
@@ -97,7 +96,7 @@ public class WaaaghCameraData : ContextItem
 
 	public AntialiasingQuality antialiasingQuality;
 
-	public ScriptableRenderer renderer;
+	public IPipelineRenderer renderer;
 
 	public Vector3 worldSpaceCameraPos;
 
@@ -119,12 +118,6 @@ public class WaaaghCameraData : ContextItem
 
 	internal CullingDepthHistory CullingDepthHistory;
 
-	internal CameraRenderTargetType CameraRenderTargetBufferType;
-
-	internal CameraResolveTargetType CameraResolveTargetBufferType;
-
-	internal bool CameraResolveRequired;
-
 	internal bool IsSSREnabled;
 
 	internal bool IsDepthPyramidNeed;
@@ -133,11 +126,9 @@ public class WaaaghCameraData : ContextItem
 
 	internal bool IsSceneViewInPrefabEditMode;
 
-	internal WaaaghCameraStackBuffer Buffer;
+	public int scaledWidth => Mathf.Max(1, (int)((float)pixelWidth * renderScale));
 
-	public int scaledWidth => Mathf.Max(1, (int)((float)camera.pixelWidth * renderScale));
-
-	public int scaledHeight => Mathf.Max(1, (int)((float)camera.pixelHeight * renderScale));
+	public int scaledHeight => Mathf.Max(1, (int)((float)pixelHeight * renderScale));
 
 	public WaaaghCameraHistory historyManager
 	{
@@ -185,7 +176,7 @@ public class WaaaghCameraData : ContextItem
 	{
 		get
 		{
-			if (CameraResolveRequired && CameraResolveTargetBufferType == CameraResolveTargetType.Backbuffer)
+			if (StackInfo.IsLastCamera)
 			{
 				if (cameraType != CameraType.Game)
 				{
@@ -283,6 +274,15 @@ public class WaaaghCameraData : ContextItem
 		return GL.GetGPUProjectionMatrix(GetProjectionMatrix(viewIndex), renderIntoTexture);
 	}
 
+	public bool TargetTextureHasDepthBuffer()
+	{
+		if (targetTexture != null)
+		{
+			return targetTexture.depthStencilFormat != GraphicsFormat.None;
+		}
+		return false;
+	}
+
 	public bool IsHandleYFlipped(RTHandle handle)
 	{
 		if (!SystemInfo.graphicsUVStartsAtTop)
@@ -299,7 +299,7 @@ public class WaaaghCameraData : ContextItem
 
 	public bool IsCameraProjectionMatrixFlipped()
 	{
-		if (ScriptableRenderer.Current != null)
+		if (renderer != null)
 		{
 			bool flag = true;
 			return SystemInfo.graphicsUVStartsAtTop && flag;
@@ -325,7 +325,7 @@ public class WaaaghCameraData : ContextItem
 		camera.TryGetComponent<WaaaghAdditionalCameraData>(out var _);
 		if (antialiasing == AntialiasingMode.TemporalAntialiasing && postProcessEnabled && taaHistory != null && cameraTargetDescriptor.msaaSamples == 1 && !camera.allowDynamicResolution)
 		{
-			return renderer.SupportsMotionVectors();
+			return renderer.SupportsPipelineFeature(PipelineFeature.MotionVectors);
 		}
 		return false;
 	}
@@ -339,7 +339,7 @@ public class WaaaghCameraData : ContextItem
 		return false;
 	}
 
-	public override void Reset()
+	public void Reset()
 	{
 		m_ViewMatrix = default(Matrix4x4);
 		m_ProjectionMatrix = default(Matrix4x4);
@@ -357,6 +357,7 @@ public class WaaaghCameraData : ContextItem
 		aspectRatio = 0f;
 		renderScale = 1f;
 		imageScalingMode = ImageScalingMode.None;
+		StackInfo = default(StackInfo);
 		upscalingFilter = ImageUpscalingFilter.Point;
 		fsrOverrideSharpness = false;
 		fsrSharpness = 0f;
@@ -386,20 +387,14 @@ public class WaaaghCameraData : ContextItem
 		taaHistory = null;
 		stpHistory = null;
 		taaSettings = default(TemporalAA.Settings);
-		stackAnyPostProcessingEnabled = false;
 		stackLastCameraOutputToHDR = false;
 		IrsData = default(IrsData);
 		SupportsProbeVolumes = false;
 		CullingDepthHistory = null;
-		CameraResolveTargetBufferType = CameraResolveTargetType.None;
-		CameraRenderTargetBufferType = CameraRenderTargetType.Scaled;
-		CameraResolveRequired = false;
 		IsSSREnabled = false;
 		IsDepthPyramidNeed = false;
 		IsFogEnabled = false;
 		IsSceneViewInPrefabEditMode = false;
 		SsrHistory = null;
-		TargetDepthTexture = null;
-		Buffer = null;
 	}
 }

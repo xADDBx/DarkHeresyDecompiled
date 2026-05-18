@@ -53,7 +53,7 @@ public sealed class UnitMoveTo : AbstractUnitCommand<UnitMoveToParams>
 			ForceFinish(ResultType.Fail);
 			return;
 		}
-		base.Executor.View.MoveTo(base.Params.ForcedPath, base.Params.Target.Point, ApproachRadiusForAgentASP);
+		base.Executor.MoveTo(base.Params.ForcedPath, base.Params.Target.Point, ApproachRadiusForAgentASP);
 		using (ProfileScope.New("HandleUnitCommandDidAct"))
 		{
 			EventBus.RaiseEvent((IMechanicEntity)base.Executor, (Action<IUnitCommandActHandler>)delegate(IUnitCommandActHandler h)
@@ -70,7 +70,7 @@ public sealed class UnitMoveTo : AbstractUnitCommand<UnitMoveToParams>
 		{
 			ForceFinish(ResultType.Fail);
 		}
-		else if (!base.Executor.View.MovementAgent.IsReallyMoving)
+		else if (!base.Executor.IsReallyMoving)
 		{
 			ForceFinish(((base.Executor.Position - Target).To2D().magnitude > MaxApproachForAgentASP) ? ResultType.Fail : ResultType.Success);
 		}
@@ -84,7 +84,7 @@ public sealed class UnitMoveTo : AbstractUnitCommand<UnitMoveToParams>
 	protected override void OnEnded()
 	{
 		base.OnEnded();
-		base.Executor.View.StopMoving();
+		base.Executor.StopMoving();
 		if (Orientation.HasValue)
 		{
 			base.Executor.DesiredOrientation = Orientation.Value;

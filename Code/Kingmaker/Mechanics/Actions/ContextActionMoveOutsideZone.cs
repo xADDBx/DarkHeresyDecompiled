@@ -78,7 +78,7 @@ public class ContextActionMoveOutsideZone : ContextAction
 			return;
 		}
 		UnitEntity targetEntity = base.Target?.Entity as UnitEntity;
-		if (targetEntity == null || !(targetEntity.View != null) || randomCell == null || !targetEntity.CanMove)
+		if (targetEntity == null || targetEntity.View == null || randomCell == null || !targetEntity.CanMove)
 		{
 			return;
 		}
@@ -90,7 +90,6 @@ public class ContextActionMoveOutsideZone : ContextAction
 			{
 				unitMoveToProperParams.DisableAttackOfOpportunity.Release();
 			}
-			base.AbilityContext?.TemporarilyBlockLastPathNode(warhammerPathPlayer, targetEntity);
 			targetEntity?.Commands.Run(unitMoveToProperParams);
 			EventBus.RaiseEvent(delegate(IUnitAbilityNonPushForceMoveHandler h)
 			{

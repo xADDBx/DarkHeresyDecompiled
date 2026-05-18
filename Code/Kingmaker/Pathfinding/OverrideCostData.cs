@@ -1,7 +1,6 @@
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Properties;
 
 namespace Kingmaker.Pathfinding;
 
@@ -34,8 +33,7 @@ public class OverrideCostData
 
 	public bool IsCorrectUnit(BaseUnitEntity unitEntity)
 	{
-		PropertyContext context = new PropertyContext(unitEntity, null, Source.Entity as AreaEffectEntity);
-		return m_Restrictions?.Get()?.IsPassed(context) ?? true;
+		return m_Restrictions?.Get()?.IsPassed(unitEntity, null, Source.Entity as AreaEffectEntity) ?? true;
 	}
 
 	public override string ToString()

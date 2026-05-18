@@ -104,6 +104,10 @@ public sealed class CohesionRangeBuff : UnitFactComponentDelegate, IEntityEnterC
 	[Tooltip("Накладывать/снимать бафф в начале хода если условие начало/перестало выполняться")]
 	public bool UpdateAtTurnStart;
 
+	public bool TriggerOnEnterWhenActivated = true;
+
+	public bool TriggerOnExitWhenDeactivated = true;
+
 	[SerializeField]
 	public BpRef<BlueprintBuff> Buff;
 
@@ -194,5 +198,39 @@ public sealed class CohesionRangeBuff : UnitFactComponentDelegate, IEntityEnterC
 			return Restriction.IsPassed(base.Context, entity);
 		}
 		return false;
+	}
+
+	protected override void OnActivate()
+	{
+		if (!TriggerOnEnterWhenActivated)
+		{
+			return;
+		}
+		PartCohesion optional = base.Owner.GetOptional<PartCohesion>();
+		if (optional == null)
+		{
+			return;
+		}
+		foreach (UnitEntity item in optional.UnitsInRange)
+		{
+			TryApplyBuff(item);
+		}
+	}
+
+	protected override void OnDeactivate()
+	{
+		if (!TriggerOnExitWhenDeactivated)
+		{
+			return;
+		}
+		PartCohesion optional = base.Owner.GetOptional<PartCohesion>();
+		if (optional == null)
+		{
+			return;
+		}
+		foreach (UnitEntity item in optional.UnitsInRange)
+		{
+			TryRemoveBuff(item);
+		}
 	}
 }

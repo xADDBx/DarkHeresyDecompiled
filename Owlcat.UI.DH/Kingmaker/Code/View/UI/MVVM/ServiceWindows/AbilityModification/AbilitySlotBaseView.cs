@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
@@ -41,13 +43,21 @@ public class AbilitySlotBaseView : View<AbilitySlotVM>
 	protected Sprite m_LockedModifierIcon;
 
 	[SerializeField]
-	protected Sprite m_HoverModifierIcon;
-
-	[SerializeField]
 	protected OwlcatMultiButton m_AbilityButton;
 
 	[SerializeField]
+	protected OwlcatMultiButton m_ModifierButton;
+
+	[SerializeField]
+	protected OwlcatButton m_ModifierRemoveButton;
+
+	[SerializeField]
 	protected GameObject m_ToggleAbilityMark;
+
+	[SerializeField]
+	protected GameObject m_HasModifierOnHoverObject;
+
+	private IDisposable m_tooltipDisposable;
 
 	[SerializeField]
 	protected DragNDropHandler m_DragNDropHandler;
@@ -56,23 +66,31 @@ public class AbilitySlotBaseView : View<AbilitySlotVM>
 	{
 		m_AbilityName.text = base.ViewModel.Name;
 		m_AbilityIcon.sprite = base.ViewModel.Icon;
+		m_tooltipDisposable = m_ModifierIcon.SetTooltip(base.ViewModel.ModifierTooltip).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_AbilityButton.OnLeftClickAsObservable(), delegate
 		{
 			base.ViewModel.OnClick();
 		}).AddTo(this);
 		m_AbilityButton.OnHoverAsObservable().Subscribe(base.ViewModel.OnHover).AddTo(this);
+		m_ModifierButton.OnHoverAsObservable().Subscribe(OnModifierHover).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(m_ModifierRemoveButton.OnLeftClickAsObservable(), delegate
+		{
+			base.ViewModel.SetModifier(null);
+		}).AddTo(this);
+		m_ModifierRemoveButton.SetHint(UIStrings.Instance.ContextMenu.Remove).AddTo(this);
 		base.ViewModel.IsSelected.Subscribe(UpdateSlotVisual).AddTo(this);
 		base.ViewModel.AppliedModifier.Subscribe(delegate
 		{
 			UpdateModifierState();
 		}).AddTo(this);
-		base.ViewModel.CanApplyModifier.Subscribe(delegate
+		base.ViewModel.CanApplyModifierOnSelect.Subscribe(delegate
 		{
 			UpdateModifierState();
 		}).AddTo(this);
-		base.ViewModel.HasThisModifier.Subscribe(UpdateSlotVisual).AddTo(this);
+		base.ViewModel.CanApplyModifierOnHover.Subscribe(UpdateSlotVisual).AddTo(this);
+		base.ViewModel.HasThisModifier.Subscribe(OnHasModifierOnHover).AddTo(this);
 		m_ToggleAbilityMark.SetActive(base.ViewModel.ToggleAbility != null);
-		m_AbilityIcon.SetTooltip(base.ViewModel.Tooltip);
+		m_AbilityIcon.SetTooltip(base.ViewModel.Tooltip).AddTo(this);
 		m_AbilityIcon.OnPointerClickAsObservable().Subscribe(delegate
 		{
 			base.ViewModel.OnClick();
@@ -97,24 +115,43 @@ public class AbilitySlotBaseView : View<AbilitySlotVM>
 		{
 			base.ViewModel.OnClick();
 		}).AddTo(this);
+		if (base.ViewModel.IsBrokenOrHeroic)
+		{
+			m_ModifierIcon.SetHint(UIStrings.Instance.CharacterSheet.NoModificationsHint).AddTo(this);
+		}
 		SetupDragNDrop();
 	}
 
 	private void UpdateModifierState()
 	{
-		if (base.ViewModel.CanApplyModifier.CurrentValue == true)
+		if (base.ViewModel.IsBrokenOrHeroic)
+		{
+			m_ModifierIcon.sprite = m_LockedModifierIcon;
+			return;
+		}
+		if (base.ViewModel.CanApplyModifierOnSelect.CurrentValue == true)
 		{
 			m_AvailableModifierAnimation.SetActive(value: true);
 			return;
 		}
 		m_AvailableModifierAnimation.SetActive(value: false);
-		m_ModifierIcon.SetTooltip(base.ViewModel.ModifierTooltip);
-		m_ModifierIcon.sprite = ((base.ViewModel.AppliedModifier.CurrentValue == null) ? m_EmptyModifierIcon : base.ViewModel.AppliedModifier.CurrentValue.Tags.FirstOrDefault().AbilityIcon);
+		m_tooltipDisposable?.Dispose();
+		m_tooltipDisposable = m_ModifierIcon.SetTooltip(base.ViewModel.ModifierTooltip).AddTo(this);
+		m_ModifierIcon.sprite = ((base.ViewModel.AppliedModifier.CurrentValue == null) ? m_EmptyModifierIcon : base.ViewModel.AppliedModifier.CurrentValue.Tags.FirstOrDefault()?.AbilityIcon);
+		if (base.ViewModel.AppliedModifier.CurrentValue == null)
+		{
+			m_ModifierRemoveButton.gameObject.SetActive(value: false);
+		}
 	}
 
 	private void UpdateSlotVisual(bool isSelected)
 	{
 		m_AbilityButton.SetActiveLayer(isSelected ? "Selected" : "Normal");
+	}
+
+	private void OnHasModifierOnHover(bool hasModifier)
+	{
+		m_HasModifierOnHoverObject.SetActive(hasModifier);
 	}
 
 	private void SetupDragNDrop()
@@ -142,5 +179,11 @@ public class AbilitySlotBaseView : View<AbilitySlotVM>
 				h.SetSlot(fact, targetSlot.Index);
 			});
 		}
+	}
+
+	public void OnModifierHover(bool value)
+	{
+		base.ViewModel.OnHover(value);
+		m_ModifierRemoveButton.gameObject.SetActive(value && base.ViewModel.AppliedModifier.CurrentValue != null);
 	}
 }

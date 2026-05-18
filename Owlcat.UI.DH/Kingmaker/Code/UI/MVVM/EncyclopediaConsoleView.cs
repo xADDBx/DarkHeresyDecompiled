@@ -1,15 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.UI.Common;
 using Kingmaker.UI.Events;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 
@@ -19,24 +15,9 @@ public class EncyclopediaConsoleView : EncyclopediaBaseView
 {
 	[Header("Console")]
 	[SerializeField]
-	[UsedImplicitly]
-	private ConsoleHintsWidget m_ConsoleHintsWidget;
-
-	[SerializeField]
 	private CanvasSortingComponent m_CanvasSortingComponent;
 
-	private InputLayer m_InputLayer;
-
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	private readonly ReactiveProperty<bool> m_IsChaptersNavigation = new ReactiveProperty<bool>(value: true);
-
-	private InputLayer m_GlossaryInputLayer;
-
-	private FloatConsoleNavigationBehaviour m_GlossaryNavigationBehavior;
-
-	[SerializeField]
-	private FloatConsoleNavigationBehaviour.NavigationParameters m_NavigationParameters;
 
 	[SerializeField]
 	private OwlcatMultiButton m_FirstGlossaryFocus;
@@ -57,99 +38,49 @@ public class EncyclopediaConsoleView : EncyclopediaBaseView
 
 	private const string GlossaryInputLayerContextName = "DialogGlossary";
 
-	private void UpdateNavigation(bool fromGlossary = false)
-	{
-		m_InputLayer.Unbind();
-		m_NavigationBehaviour.Clear();
-		m_NavigationBehaviour.SetEntitiesVertical(m_Navigation.GetNavigationEntities(m_IsChaptersNavigation.Value));
-		m_InputLayer.Bind();
-		if (fromGlossary)
-		{
-			foreach (IConsoleEntity entity in m_NavigationBehaviour.Entities)
-			{
-				if (entity is EncyclopediaNavigationElementBaseView encyclopediaNavigationElementBaseView && entity.IsValid() && encyclopediaNavigationElementBaseView.IsSelected)
-				{
-					m_NavigationBehaviour.FocusOnEntityManual(entity);
-					m_NavigationBehaviour.Focus.Value = entity;
-					m_Navigation.ScrollMenu(m_NavigationBehaviour.Focus.Value, m_IsChaptersNavigation.Value);
-					return;
-				}
-			}
-		}
-		foreach (IConsoleEntity entity2 in m_NavigationBehaviour.Entities)
-		{
-			if (entity2 is EncyclopediaNavigationElementBaseView encyclopediaNavigationElementBaseView2 && entity2.IsValid() && encyclopediaNavigationElementBaseView2.IsSelected)
-			{
-				m_NavigationBehaviour.FocusOnEntityManual(entity2);
-				return;
-			}
-		}
-		m_NavigationBehaviour.FocusOnFirstValidEntity();
-	}
-
 	private void OpenGlossaryLink()
 	{
-		UpdateNavigation(fromGlossary: true);
 		CalculateGlossary();
 	}
 
-	private void ShowGlossary(InputActionEventData data)
+	private void ShowGlossary()
 	{
-		m_NavigationBehaviour.UnFocusCurrentEntity();
-		(m_NavigationBehaviour.CurrentEntity as ExpandableElement)?.SetCustomLayer("On");
-		m_GlossaryMode.Value = true;
-		CalculateGlossary();
-		m_GlossaryNavigationBehavior.FocusOnFirstValidEntity();
 	}
 
 	private void CloseGlossary()
 	{
 		TooltipHelper.HideTooltip();
-		m_GlossaryNavigationBehavior.UnFocusCurrentEntity();
-		GamePad.Instance.PopLayer(m_GlossaryInputLayer);
 		m_GlossaryMode.Value = false;
 		m_CanOpenGlossaryPage.Value = false;
-		m_NavigationBehaviour.FocusOnCurrentEntity();
 	}
 
 	private void CalculateGlossary()
 	{
 		m_CanOpenGlossaryPage.Value = false;
-		m_GlossaryNavigationBehavior.Clear();
 		if (m_Page.WidgetList.Entries == null)
 		{
 			m_HasGlossary.Value = false;
 			return;
 		}
-		List<IFloatConsoleNavigationEntity> list = new List<IFloatConsoleNavigationEntity>();
-		if (m_Page.PageAdditionText != null && !string.IsNullOrWhiteSpace(m_Page.PageAdditionText.text) && m_Page.PageAdditionText.gameObject.activeInHierarchy)
-		{
-			List<IFloatConsoleNavigationEntity> collection = TMPLinkNavigationGenerator.GenerateEntityList(m_Page.PageAdditionText, m_FirstGlossaryFocus, m_SecondGlossaryFocus, OnClickLink, OnFocusLink, TooltipHelper.GetLinkTooltipTemplate);
-			list.AddRange(collection);
-		}
+		List<IFloatConsoleNavigationEntity> source = new List<IFloatConsoleNavigationEntity>();
 		foreach (MonoBehaviour entry in m_Page.WidgetList.Entries)
 		{
 			if (!entry.gameObject.activeInHierarchy)
 			{
 				continue;
 			}
-			List<TextMeshProUGUI> list2 = ((entry is EncyclopediaPageBlockAstropathBriefPCView encyclopediaPageBlockAstropathBriefPCView) ? encyclopediaPageBlockAstropathBriefPCView.GetLinksTexts() : ((entry is EncyclopediaPageBlockBookEventPCView encyclopediaPageBlockBookEventPCView) ? encyclopediaPageBlockBookEventPCView.GetLinksTexts() : ((entry is EncyclopediaPageBlockGlossaryEntryPCView encyclopediaPageBlockGlossaryEntryPCView) ? encyclopediaPageBlockGlossaryEntryPCView.GetLinksTexts() : ((!(entry is EncyclopediaPageBlockTextPCView encyclopediaPageBlockTextPCView)) ? null : encyclopediaPageBlockTextPCView.GetLinksTexts()))));
-			List<TextMeshProUGUI> list3 = list2;
-			if (list3 == null || !list3.Any())
+			List<TextMeshProUGUI> list = ((entry is EncyclopediaPageBlockAstropathBriefPCView encyclopediaPageBlockAstropathBriefPCView) ? encyclopediaPageBlockAstropathBriefPCView.GetLinksTexts() : ((entry is EncyclopediaPageBlockBookEventPCView encyclopediaPageBlockBookEventPCView) ? encyclopediaPageBlockBookEventPCView.GetLinksTexts() : ((entry is EncyclopediaPageBlockGlossaryEntryPCView encyclopediaPageBlockGlossaryEntryPCView) ? encyclopediaPageBlockGlossaryEntryPCView.GetLinksTexts() : ((!(entry is EncyclopediaPageBlockTextPCView encyclopediaPageBlockTextPCView)) ? null : encyclopediaPageBlockTextPCView.GetLinksTexts()))));
+			List<TextMeshProUGUI> list2 = list;
+			if (list2 == null || !list2.Any())
 			{
 				continue;
 			}
-			foreach (TextMeshProUGUI item in list3)
+			foreach (TextMeshProUGUI item in list2)
 			{
-				List<IFloatConsoleNavigationEntity> collection2 = TMPLinkNavigationGenerator.GenerateEntityList(item, m_FirstGlossaryFocus, m_SecondGlossaryFocus, OnClickLink, OnFocusLink, TooltipHelper.GetLinkTooltipTemplate);
-				list.AddRange(collection2);
+				_ = item;
 			}
 		}
-		m_HasGlossary.Value = list.Any();
-		if (m_HasGlossary.Value)
-		{
-			m_GlossaryNavigationBehavior.AddEntities(list);
-		}
+		m_HasGlossary.Value = source.Any();
 		if (m_GlossaryMode.Value)
 		{
 			TooltipHelper.HideTooltip();
@@ -171,11 +102,8 @@ public class EncyclopediaConsoleView : EncyclopediaBaseView
 
 	protected virtual void OnFocusLink(string key)
 	{
-		if (!(GamePad.Instance.CurrentInputLayer.ContextName != "DialogGlossary"))
-		{
-			m_Key = key;
-			DelEnsure();
-		}
+		m_Key = key;
+		DelEnsure();
 	}
 
 	private void DelEnsure()
@@ -198,14 +126,14 @@ public class EncyclopediaConsoleView : EncyclopediaBaseView
 		}
 	}
 
-	private void Scroll(InputActionEventData obj, float value)
+	private void Scroll(float value)
 	{
-		m_Page.Scroll(obj, value);
+		m_Page.Scroll(value);
 	}
 
 	public void OnFocusedChanged(IConsoleEntity entity)
 	{
-		bool value = m_IsChaptersNavigation.Value;
+		_ = m_IsChaptersNavigation.Value;
 		if (entity is EncyclopediaNavigationElementBaseView encyclopediaNavigationElementBaseView)
 		{
 			encyclopediaNavigationElementBaseView.SelectPage();
@@ -218,16 +146,11 @@ public class EncyclopediaConsoleView : EncyclopediaBaseView
 				CalculateGlossary();
 			}
 		}
-		if (value != m_IsChaptersNavigation.Value)
-		{
-			UpdateNavigation();
-		}
 	}
 
 	private void StepBack()
 	{
 		m_IsChaptersNavigation.Value = true;
-		UpdateNavigation();
 	}
 
 	private void CloseWindow()

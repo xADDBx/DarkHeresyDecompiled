@@ -21,14 +21,13 @@ public sealed class StatsContainer
 
 	static StatsContainer()
 	{
-		BaseTypes = new StatType?[EnumUtils.GetMaxValuePlusOne<StatType>() + 1];
+		BaseTypes = new StatType?[StatTypeHelper.AllStatsArraySize];
 		RegisterBaseTypes();
 	}
 
 	public StatsContainer(MechanicEntity owner)
 	{
-		int num = EnumUtils.GetMaxValuePlusOne<StatType>() + 1;
-		m_Container = new ModifiableValue[num];
+		m_Container = new ModifiableValue[StatTypeHelper.AllStatsArraySize];
 		m_Owner = owner;
 	}
 

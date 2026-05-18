@@ -1,36 +1,41 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Animancer;
 using Code.Visual.Animation;
 using JetBrains.Annotations;
 using Kingmaker.AreaLogic.Cutscenes;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.GameModes;
+using Kingmaker.Gameplay.Parts;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
-using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.CodeTimer;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.FlagCountable;
+using Kingmaker.Utility.Random;
+using Kingmaker.Utility.StatefulRandom;
 using Kingmaker.View;
-using Kingmaker.View.Animation;
 using Kingmaker.View.Covers;
 using Kingmaker.View.Equipment;
+using Kingmaker.View.Mechadendrites;
 using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.Animation.Actions;
 using Kingmaker.Visual.Animation.CustomIdleComponents;
+using Kingmaker.Visual.Animation.Decorators;
 using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using Kingmaker.Visual.CharacterSystem.Dismemberment;
 using Owlcat.Runtime.Core.Logging;
+using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
-using UnityEngine.Playables;
 
 namespace Kingmaker.Visual.Animation.Kingmaker;
 
-public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCombatHandler<EntitySubscriber>, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, ISubscriber, IEventTag<IUnitCombatHandler, EntitySubscriber>
+public class UnitAnimationManager : AnimationManager
 {
 	private enum ExclusiveStateType
 	{
@@ -46,7 +51,15 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 
 	private static readonly LogChannel Logger = PFLog.Animations;
 
-	public Queue<Transform> AimIKTargetsQueue = new Queue<Transform>();
+	[NonSerialized]
+	public bool IsInDollRoom;
+
+	[SerializeField]
+	private AnimationSet m_AnimationSet;
+
+	private DirectionalMixerState m_LocomotionMixerState;
+
+	public List<Vector3> AimIKTargets = new List<Vector3>();
 
 	private bool m_NecessaryHandlesInitialized;
 
@@ -65,35 +78,49 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 	[CanBeNull]
 	private UnitAnimationActionHandle m_WeaponWieldingHandle;
 
-	[CanBeNull]
-	private UnitAnimationActionHandle m_CurrentMainHandAttackForPrepare;
-
 	private ExclusiveStateType m_ExclusiveState;
 
-	[CanBeNull]
-	private UnitAnimationActionHandle m_ExclusiveHandle;
-
 	private UnitAnimationDecoratorManager m_DecoratorManager;
+
+	private List<IDecoratorVisibilityRequest> m_DecoratorVisibilityRequests = new List<IDecoratorVisibilityRequest>();
 
 	private bool m_IsAnimating = true;
 
 	private bool m_InCutsceneCoverAvailable;
 
-	private bool m_BlockAttackAnimation;
-
-	private Playable m_OldSource;
-
 	private WeaponType m_MainHandWeaponType;
 
 	private WeaponType m_OffHandWeaponType;
-
-	private WeaponAnimationStyle m_ActiveWeaponStyle;
 
 	private bool m_IsInCombat;
 
 	public readonly CountableFlag HitAnimationIsActive = new CountableFlag();
 
-	private LosCalculations.CoverType m_CoverType;
+	public override StatefulRandom StatefulRandom
+	{
+		get
+		{
+			if (!IsInDollRoom)
+			{
+				return PFStatefulRandom.Visuals.Animation3;
+			}
+			return PFStatefulRandom.Visuals.DollRoom;
+		}
+	}
+
+	private AnimancerLayer m_LocomotionLayer => m_Animancer.Layers[0];
+
+	public AnimationSet AnimationSet
+	{
+		get
+		{
+			return m_AnimationSet;
+		}
+		set
+		{
+			UpdateAnimationSet(value);
+		}
+	}
 
 	public AbstractUnitEntityView View { get; private set; }
 
@@ -114,6 +141,14 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 			if (m_IsInCombat != value)
 			{
 				m_IsInCombat = value;
+				if (m_IsInCombat)
+				{
+					ReleaseDecorators();
+				}
+				else
+				{
+					AddDecorators();
+				}
 				UpdateActiveWeaponStyle();
 			}
 		}
@@ -151,11 +186,9 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		}
 	}
 
-	public WeaponAnimationStyle ActiveWeaponStyle => m_ActiveWeaponStyle;
+	public WeaponAnimationStyle ActiveWeaponStyle { get; private set; }
 
 	public float Speed { get; set; }
-
-	public float NewSpeed { get; set; }
 
 	public float Orientation { get; set; }
 
@@ -185,39 +218,9 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 
 	public bool IsMoodMaskCanBeApplied { get; set; }
 
-	public bool BlockAttackAnimation
-	{
-		get
-		{
-			if (!Mathf.Approximately(DesiredOrientation, Orientation))
-			{
-				return true;
-			}
-			if (m_CoverHandle != null && NeedStepOut)
-			{
-				return m_BlockAttackAnimation;
-			}
-			return false;
-		}
-		set
-		{
-			m_BlockAttackAnimation = value;
-		}
-	}
+	public bool BlockAttackAnimation => !Mathf.Approximately(DesiredOrientation, Orientation);
 
-	public LosCalculations.CoverType CoverType
-	{
-		get
-		{
-			return m_CoverType;
-		}
-		set
-		{
-			m_CoverType = value;
-		}
-	}
-
-	public UnitAnimationActionCover.StepOutDirectionAnimationType StepOutDirectionAnimationType { get; set; }
+	public LosCalculations.CoverType CoverType { get; set; }
 
 	public bool AbilityIsSpell { get; set; }
 
@@ -246,25 +249,13 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 	{
 		get
 		{
-			if (IsInCombat && InCutsceneCoverAvailable && HasView && View is UnitEntityView unitEntityView && (unitEntityView.Data == null || unitEntityView.Data != Game.Instance.Controllers.TurnController.CurrentUnit || unitEntityView.Data.IsInPlayerParty) && !unitEntityView.AgentASP.IsCharging)
+			if (IsInCombat && InCutsceneCoverAvailable && HasView && View is UnitEntityView unitEntityView && (unitEntityView.Data == null || unitEntityView.Data != Game.Instance.Controllers.TurnController.CurrentUnit || unitEntityView.Data.IsInPlayerParty))
 			{
 				UnitViewHandsEquipment handsEquipment = unitEntityView.HandsEquipment;
 				if (handsEquipment == null || !handsEquipment.AreHandsBusyWithAnimation.Value)
 				{
 					return CoverType != LosCalculations.CoverType.Obstacle;
 				}
-			}
-			return false;
-		}
-	}
-
-	public bool NeedStepOut
-	{
-		get
-		{
-			if (IsInCombat && InCutsceneCoverAvailable && HasView && View.Data?.Commands.Current is UnitUseAbility unitUseAbility && unitUseAbility.Target != unitUseAbility.Executor)
-			{
-				return CoverType == LosCalculations.CoverType.LosBlocker;
 			}
 			return false;
 		}
@@ -294,17 +285,16 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 	{
 		get
 		{
-			if (m_ExclusiveHandle?.Action is UnitAnimationActionProne unitAnimationActionProne)
+			if (ExclusiveHandle?.Action is UnitAnimationActionProne unitAnimationActionProne)
 			{
-				return !unitAnimationActionProne.IsActuallyProne(m_ExclusiveHandle);
+				return !unitAnimationActionProne.IsActuallyProne(ExclusiveHandle);
 			}
 			return false;
 		}
 	}
 
-	public UnitAnimationActionHandle ExclusiveHandle => m_ExclusiveHandle;
-
-	public UnitAnimationActionHandle CurrentMainHandAttackForPrepare => m_CurrentMainHandAttackForPrepare;
+	[CanBeNull]
+	public UnitAnimationActionHandle ExclusiveHandle { get; private set; }
 
 	public bool IsGoingCover => ((UnitAnimationActionCover)(m_CoverHandle?.Action))?.IsCoverForceExitingFinished(m_CoverHandle) ?? false;
 
@@ -342,36 +332,129 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 
 	public UnitAnimationActionHandle CurrentEquipHandle { get; set; }
 
+	public bool HasBallisticMechadendrite { get; set; }
+
 	public bool IsStandUp => m_ExclusiveState == ExclusiveStateType.StandUp;
 
-	public UnitAnimationActionHandle LocoMotionHandle => m_LocoMotionHandle;
+	protected override void OnInitialize()
+	{
+		CreateLayers();
+		InitializeAnimationSet();
+	}
+
+	protected override void OnBeforeDisabled()
+	{
+		if (View is UnitEntityView unitEntityView)
+		{
+			unitEntityView.HandsEquipment?.ForceEndChangeEquipment();
+		}
+	}
+
+	private void CreateLayers()
+	{
+		int num = 11;
+		for (int i = 0; i < num; i++)
+		{
+			_ = m_Animancer.Layers[i];
+		}
+		m_LocomotionLayer.SetWeight(1f);
+		m_LocomotionMixerState = new DirectionalMixerState();
+		m_LocomotionLayer.Play(m_LocomotionMixerState);
+		m_Animancer.Layers[4].IsAdditive = true;
+		m_Animancer.Layers[9].IsAdditive = true;
+	}
+
+	private void UpdateAnimationSet(AnimationSet animationSet)
+	{
+		if (!(m_AnimationSet == animationSet))
+		{
+			ReleaseDecorators();
+			m_AnimationSet = animationSet;
+			AddDecorators();
+			ResetTransitionsAndActions();
+			if (!(m_AnimationSet == null))
+			{
+				m_NecessaryHandlesInitialized = false;
+				InitializeAnimationSet();
+				TryInitNecessaryHandles();
+				RestartBuffLoopActions();
+			}
+		}
+	}
+
+	private void AddDecorators()
+	{
+		UnitAnimationDecoratorObject[] array = m_AnimationSet.Decorators.EmptyIfNull();
+		foreach (UnitAnimationDecoratorObject decorator in array)
+		{
+			IDecoratorVisibilityRequest item = DecoratorManager.ShowDecorator(decorator, m_AnimationSet);
+			m_DecoratorVisibilityRequests.Add(item);
+		}
+	}
+
+	private void ReleaseDecorators()
+	{
+		foreach (IDecoratorVisibilityRequest decoratorVisibilityRequest in m_DecoratorVisibilityRequests)
+		{
+			decoratorVisibilityRequest.Release();
+		}
+		m_DecoratorVisibilityRequests.Clear();
+	}
+
+	private void InitializeAnimationSet()
+	{
+		if (m_AnimationSet == null)
+		{
+			return;
+		}
+		m_Animancer.Transitions = m_AnimationSet.TransitionLibrary;
+		foreach (AnimationActionBase item in m_AnimationSet.Actions.Where((AnimationActionBase a) => a))
+		{
+			if (item is UnitAnimationActionLocomotion unitAnimationActionLocomotion)
+			{
+				unitAnimationActionLocomotion.PreloadWeaponStyles();
+			}
+		}
+	}
+
+	private void RestartBuffLoopActions()
+	{
+		(View?.Data?.GetOptional<PartBuffAnimation>())?.RestartAnimations();
+	}
 
 	public void AttachToView(AbstractUnitEntityView view, BlueprintRace animationRace)
 	{
 		View = view;
 		AnimationRace = animationRace;
-		if (View != null)
+		PreviousInCombat = IsInCombat;
+		if (View == null)
 		{
-			CustomIdleAnimationBlueprintComponent component = View.Blueprint.GetComponent<CustomIdleAnimationBlueprintComponent>();
-			if (component != null)
+			return;
+		}
+		CustomIdleAnimationBlueprintComponent component = View.Blueprint.GetComponent<CustomIdleAnimationBlueprintComponent>();
+		if (component != null)
+		{
+			List<AnimationClipWrapper> idleClips = component.IdleClips;
+			if (idleClips != null && idleClips.Count > 0)
 			{
-				List<AnimationClipWrapper> idleClips = component.IdleClips;
-				if (idleClips != null && idleClips.Count > 0)
-				{
-					CustomIdleWrappers = component.IdleClips;
-				}
+				CustomIdleWrappers = component.IdleClips;
 			}
 		}
-		PreviousInCombat = IsInCombat;
+		UpdateBallisticMechadendriteAvailability();
 	}
 
-	protected override void OnAnimationSetChanged()
+	public void UpdateBallisticMechadendriteAvailability()
 	{
-		m_NecessaryHandlesInitialized = false;
+		if (!IsMechadendrite && !(View == null) && View.Data != null)
+		{
+			HasBallisticMechadendrite = View.Data.HasMechadendriteOfType(MechadendritesType.Ballistic);
+			UpdateActiveWeaponStyle();
+		}
 	}
 
 	public void ChangeLocoMotion(UnitAnimationActionLocomotion action)
 	{
+		ResetLocoMotion();
 		m_LocoMotionHandle = (UnitAnimationActionHandle)CreateHandle(action);
 		if (m_LocoMotionHandle != null)
 		{
@@ -388,6 +471,35 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 			RemoveActionHandle(m_LocoMotionHandle);
 			m_LocoMotionHandle = null;
 		}
+	}
+
+	public void UpdateLocomotionMixerAnimations([NotNull] LocomotionMixerAnimations animations)
+	{
+		m_LocomotionMixerState.DestroyChildren();
+		foreach (var item in animations.Where(((AnimationClipWrapper ClipWrapper, Vector2 Threshold) entry) => ObjectExtensions.Or(entry.ClipWrapper, null)?.AnimationClip != null))
+		{
+			m_LocomotionMixerState.Add(item.ClipWrapper.AnimationClip, item.Threshold);
+		}
+		if (animations.ClipWithFootstepEvents != null)
+		{
+			SetupAnimationEvents(animations.ClipWithFootstepEvents, ClipDurationType.Endless, m_LocomotionMixerState);
+		}
+		m_LocomotionMixerState.DontSynchronize(m_LocomotionMixerState.GetChild(0));
+	}
+
+	public void UpdateLocomotionParameters(Vector2 faceDirection, Vector2 moveDirection, float speed, float maxSpeed)
+	{
+		Vector2 normalized = faceDirection.normalized;
+		Vector2 normalized2 = moveDirection.normalized;
+		float x = Vector2.Dot(normalized, normalized2);
+		float y = Vector2.Dot(Vector2.Perpendicular(normalized), normalized2);
+		float num = ((maxSpeed > 0f) ? (speed / maxSpeed) : 0f);
+		m_LocomotionMixerState.Parameter = new Vector2(x, y) * num;
+	}
+
+	public void PlayLocomotionMixer(float fadeDuration = 0.2f)
+	{
+		m_LocomotionLayer.Play(m_LocomotionMixerState, fadeDuration);
 	}
 
 	private void TryInitNecessaryHandles()
@@ -481,7 +593,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 
 	private void TickInternal(float deltaTime)
 	{
-		if (base.AnimationSet == null)
+		if (AnimationSet == null)
 		{
 			return;
 		}
@@ -522,7 +634,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 			SetExclusiveAnimation(ExclusiveStateType.Leap);
 			return;
 		}
-		UnitAnimationActionHandle exclusiveHandle = m_ExclusiveHandle;
+		UnitAnimationActionHandle exclusiveHandle = ExclusiveHandle;
 		if (exclusiveHandle == null || exclusiveHandle.IsReleased)
 		{
 			SetExclusiveAnimation(ExclusiveStateType.None);
@@ -536,10 +648,6 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 			if (!InCover)
 			{
 				unitAnimationActionCover.ExitCover(m_CoverHandle);
-			}
-			else if (NeedStepOut && !HasMovingCommand(View.Data) && StepOutDirectionAnimationType != 0)
-			{
-				unitAnimationActionCover.DoSideStep(m_CoverHandle);
 			}
 			else if (HasMovingCommand(View.Data))
 			{
@@ -565,7 +673,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		}
 		if (m_ExclusiveState == ExclusiveStateType.StandUp)
 		{
-			UnitAnimationActionHandle exclusiveHandle = m_ExclusiveHandle;
+			UnitAnimationActionHandle exclusiveHandle = ExclusiveHandle;
 			if (exclusiveHandle != null && !exclusiveHandle.IsReleased)
 			{
 				return;
@@ -573,34 +681,33 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		}
 		if (state != ExclusiveStateType.StandUp && state != ExclusiveStateType.ExitingDisabled)
 		{
-			m_ExclusiveHandle?.Release();
+			ExclusiveHandle?.Release();
 		}
 		switch (state)
 		{
 		case ExclusiveStateType.Prone:
-			m_ExclusiveHandle = Execute(UnitAnimationType.Prone);
+			ExclusiveHandle = Execute(UnitAnimationType.Prone);
 			break;
 		case ExclusiveStateType.StandUp:
 		{
-			UnitAnimationActionProne unitAnimationActionProne = m_ExclusiveHandle?.Action as UnitAnimationActionProne;
+			UnitAnimationActionProne unitAnimationActionProne = ExclusiveHandle?.Action as UnitAnimationActionProne;
 			if ((bool)unitAnimationActionProne)
 			{
-				unitAnimationActionProne.SwitchToExit(m_ExclusiveHandle);
+				unitAnimationActionProne.SwitchToExit(ExclusiveHandle);
 				break;
 			}
-			m_ExclusiveHandle?.Release();
+			ExclusiveHandle?.Release();
 			state = ExclusiveStateType.None;
 			break;
 		}
 		case ExclusiveStateType.Disabled:
-			m_ExclusiveHandle = Execute(UnitAnimationType.Disabled);
+			ExclusiveHandle = Execute(UnitAnimationType.Disabled);
 			break;
 		case ExclusiveStateType.Dead:
-			ResetTransitionsAndActions();
-			m_ExclusiveHandle = CreateHandle(UnitAnimationType.Death);
-			if (m_ExclusiveHandle != null)
+			ExclusiveHandle = CreateHandle(UnitAnimationType.Death);
+			if (ExclusiveHandle != null)
 			{
-				Execute(m_ExclusiveHandle);
+				Execute(ExclusiveHandle);
 			}
 			else
 			{
@@ -609,21 +716,21 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 			break;
 		case ExclusiveStateType.ExitingDisabled:
 		{
-			UnitAnimationActionDisabled unitAnimationActionDisabled = m_ExclusiveHandle?.Action as UnitAnimationActionDisabled;
+			UnitAnimationActionDisabled unitAnimationActionDisabled = ExclusiveHandle?.Action as UnitAnimationActionDisabled;
 			if ((bool)unitAnimationActionDisabled)
 			{
-				unitAnimationActionDisabled.SwitchToExit(m_ExclusiveHandle);
+				unitAnimationActionDisabled.SwitchToExit(ExclusiveHandle);
 				break;
 			}
-			m_ExclusiveHandle?.Release();
+			ExclusiveHandle?.Release();
 			state = ExclusiveStateType.None;
 			break;
 		}
 		case ExclusiveStateType.Climb:
-			m_ExclusiveHandle = Execute(UnitAnimationType.Climb);
+			ExclusiveHandle = Execute(UnitAnimationType.Climb);
 			break;
 		case ExclusiveStateType.Leap:
-			m_ExclusiveHandle = Execute(UnitAnimationType.Leap);
+			ExclusiveHandle = Execute(UnitAnimationType.Leap);
 			break;
 		default:
 			throw new ArgumentOutOfRangeException("state", state, null);
@@ -641,7 +748,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 	[CanBeNull]
 	public UnitAnimationAction GetAction(UnitAnimationType type)
 	{
-		return base.AnimationSet.GetAction(type);
+		return AnimationSet.GetAction(type);
 	}
 
 	protected override void UpdateAnimations(float dt)
@@ -653,7 +760,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		}
 	}
 
-	public override AnimationActionHandle CreateHandle(AnimationActionBase animationAction)
+	protected override AnimationActionHandle CreateHandle(AnimationActionBase animationAction)
 	{
 		if (!animationAction)
 		{
@@ -669,7 +776,59 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		return new UnitAnimationActionHandle(unitAnimationAction, this);
 	}
 
-	public UnitAnimationActionHandle CreateHandle(UnitAnimationType type, bool errorOnEmpty = true)
+	public override bool TryExecute(AnimationActionBase animationAction, Action<AnimationActionHandle> initializer, out AnimationActionHandle handle)
+	{
+		handle = CreateHandle(animationAction);
+		return TryExecuteInternal((UnitAnimationActionHandle)handle, initializer);
+	}
+
+	public bool TryExecute(UnitAnimationType type)
+	{
+		UnitAnimationActionHandle handle = CreateHandle(type);
+		return TryExecuteInternal(handle, null);
+	}
+
+	public bool TryExecute(UnitAnimationType type, Action<UnitAnimationActionHandle> initializer, out UnitAnimationActionHandle handle)
+	{
+		handle = CreateHandle(type);
+		return TryExecuteInternal(handle, initializer);
+	}
+
+	private bool TryExecuteInternal(UnitAnimationActionHandle handle, Action<UnitAnimationActionHandle> initializer)
+	{
+		if (handle == null)
+		{
+			return false;
+		}
+		initializer?.Invoke(handle);
+		Execute(handle);
+		if (IsMechadendrite)
+		{
+			return true;
+		}
+		if (!(View is UnitEntityView { Data: not null } unitEntityView))
+		{
+			return true;
+		}
+		UnitPartMechadendrites optional = unitEntityView.Data.GetOptional<UnitPartMechadendrites>();
+		if (optional == null)
+		{
+			return true;
+		}
+		bool flag = true;
+		UnitAnimationType type = handle.Action.Type;
+		foreach (MechadendriteSettings value in optional.Mechadendrites.Values)
+		{
+			UnitAnimationManager animationManager = value.AnimationManager;
+			if ((object)animationManager != null)
+			{
+				flag &= animationManager.TryExecute(type, initializer, out var _);
+			}
+		}
+		return flag;
+	}
+
+	private UnitAnimationActionHandle CreateHandle(UnitAnimationType type)
 	{
 		UnitAnimationAction action = GetAction(type);
 		if (!action)
@@ -681,7 +840,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 
 	public UnitAnimationActionHandle Execute(UnitAnimationType type)
 	{
-		UnitAnimationActionHandle unitAnimationActionHandle = CreateHandle(type, errorOnEmpty: false);
+		UnitAnimationActionHandle unitAnimationActionHandle = CreateHandle(type);
 		if (unitAnimationActionHandle != null)
 		{
 			Execute(unitAnimationActionHandle);
@@ -689,19 +848,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		return unitAnimationActionHandle;
 	}
 
-	public void CreateMainHandAttackHandlerForPrepare()
-	{
-		m_CurrentMainHandAttackForPrepare?.Release();
-		m_CurrentMainHandAttackForPrepare = CreateHandle(UnitAnimationType.Attack);
-		if (m_CurrentMainHandAttackForPrepare != null)
-		{
-			m_CurrentMainHandAttackForPrepare.NeedPreparingForShooting = true;
-			m_CurrentMainHandAttackForPrepare.IsPreparingForShooting = true;
-			base.Execute(m_CurrentMainHandAttackForPrepare);
-		}
-	}
-
-	public override void Execute(AnimationActionHandle handle)
+	protected override void Execute(AnimationActionHandle handle)
 	{
 		TryInitNecessaryHandles();
 		if (CanExecute(handle))
@@ -735,7 +882,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 
 	public bool CanRunIdleAction()
 	{
-		if (NewSpeed > 0f)
+		if (Speed > 0f)
 		{
 			return false;
 		}
@@ -747,7 +894,7 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		{
 			return false;
 		}
-		return base.ActiveActions.All((AnimationActionHandle h) => h == m_LocoMotionHandle || h == m_CoverHandle || h.IsAdditive || h.IsReleased);
+		return base.ActiveActions.All((AnimationActionHandle h) => h == m_LocoMotionHandle || h == m_CoverHandle || h.IsReleased);
 	}
 
 	public void OnCommandActEvent()
@@ -775,14 +922,14 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		{
 			SetExclusiveAnimation(ExclusiveStateType.Prone);
 		}
-		if (forceDeadFromProne && m_ExclusiveHandle != null)
+		if (forceDeadFromProne && ExclusiveHandle != null)
 		{
-			m_ExclusiveHandle.DeathFromProne = true;
+			ExclusiveHandle.DeathFromProne = true;
 		}
-		UnitAnimationActionProne unitAnimationActionProne = m_ExclusiveHandle?.Action as UnitAnimationActionProne;
+		UnitAnimationActionProne unitAnimationActionProne = ExclusiveHandle?.Action as UnitAnimationActionProne;
 		if ((bool)unitAnimationActionProne)
 		{
-			unitAnimationActionProne.FastForward(m_ExclusiveHandle);
+			unitAnimationActionProne.FastForward(ExclusiveHandle);
 		}
 		else
 		{
@@ -796,27 +943,27 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		{
 			SetExclusiveAnimation(ExclusiveStateType.Dead);
 		}
-		UnitAnimationActionDeath unitAnimationActionDeath = m_ExclusiveHandle?.Action as UnitAnimationActionDeath;
+		UnitAnimationActionDeath unitAnimationActionDeath = ExclusiveHandle?.Action as UnitAnimationActionDeath;
 		if ((bool)unitAnimationActionDeath)
 		{
-			unitAnimationActionDeath.FastForward(m_ExclusiveHandle);
+			unitAnimationActionDeath.FastForward(ExclusiveHandle);
 			return;
 		}
 		Logger.Warning(this, "{0} cannot fast-forward prone animation: not prone ({1})", this, m_ExclusiveState);
 	}
 
-	private void HandleDeathWithoutAnimation()
+	public void HandleDeathWithoutAnimation()
 	{
-		base.Animator.enabled = false;
-		StopEvents();
+		base.Disabled = true;
 		DismembermentHandler.UseWithoutAnimationDeath(View.Data);
+		base.Animator.enabled = false;
 	}
 
 	public void StandUpImmediately()
 	{
 		if (m_ExclusiveState == ExclusiveStateType.Prone || m_ExclusiveState == ExclusiveStateType.Dead || m_ExclusiveState == ExclusiveStateType.StandUp)
 		{
-			m_ExclusiveHandle?.Release(0f);
+			ExclusiveHandle?.Release(0f);
 			SetExclusiveAnimation(ExclusiveStateType.None);
 		}
 	}
@@ -843,31 +990,14 @@ public class UnitAnimationManager : AnimationManager, IEntitySubscriber, IUnitCo
 		IsLeaping = false;
 	}
 
-	protected override void OnDisable()
-	{
-		if (View is UnitEntityView unitEntityView)
-		{
-			unitEntityView.HandsEquipment?.ForceEndChangeEquipment();
-		}
-		base.OnDisable();
-	}
-
 	public IEntity GetSubscribingEntity()
 	{
 		return View.EntityData;
 	}
 
-	public void HandleUnitJoinCombat()
-	{
-		PrepareForCombat();
-	}
-
-	public void HandleUnitLeaveCombat()
-	{
-	}
-
 	public void UpdateActiveWeaponStyle()
 	{
-		m_ActiveWeaponStyle = (m_IsInCombat ? (m_MainHandWeaponType.IsTwoHanded() ? WeaponAnimationStyleHelper.DetectTwoHandedWeaponStyle(m_MainHandWeaponType) : WeaponAnimationStyleHelper.DetectDualWieldingStyle(m_MainHandWeaponType, m_OffHandWeaponType)) : WeaponAnimationStyle.NonCombat);
+		WeaponType offHandWeapon = ((!HasBallisticMechadendrite) ? m_OffHandWeaponType : WeaponType.Fist);
+		ActiveWeaponStyle = (m_IsInCombat ? (m_MainHandWeaponType.IsTwoHanded() ? WeaponAnimationStyleHelper.DetectTwoHandedWeaponStyle(m_MainHandWeaponType) : WeaponAnimationStyleHelper.DetectDualWieldingStyle(m_MainHandWeaponType, offHandWeapon)) : WeaponAnimationStyle.NonCombat);
 	}
 }

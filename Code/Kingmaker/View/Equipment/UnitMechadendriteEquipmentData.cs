@@ -34,6 +34,8 @@ public class UnitMechadendriteEquipmentData
 		}
 	}
 
+	private const string MechadendriteRootBone = "C_back_weapon_slot_08_ADJ";
+
 	public readonly AbstractUnitEntityView View;
 
 	public readonly Character Character;
@@ -94,8 +96,9 @@ public class UnitMechadendriteEquipmentData
 					DestroyModelIfExists();
 					return;
 				}
-				VisualModel.transform.SetParent(boneTransform, worldPositionStays: true);
+				VisualModel.transform.SetParent(boneTransform);
 				VisualModel.transform.localPosition = Vector3.zero;
+				VisualModel.transform.localRotation = Quaternion.Euler(0f, -90f, 90f);
 				if (VisualModel.GetComponent<UnitAnimationManager>() != null)
 				{
 					Character.MechsAnimationManagers.Add(VisualModel.GetComponent<UnitAnimationManager>());
@@ -111,6 +114,7 @@ public class UnitMechadendriteEquipmentData
 		if ((bool)fxPrefab)
 		{
 			VisualModel = UnityEngine.Object.Instantiate(fxPrefab);
+			VisualModel.name = fxPrefab.name;
 		}
 	}
 

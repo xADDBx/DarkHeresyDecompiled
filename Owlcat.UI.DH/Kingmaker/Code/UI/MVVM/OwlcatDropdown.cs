@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
-using Kingmaker.UI.InputSystems;
 using Kingmaker.UI.Sound;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Pool;
@@ -59,8 +57,6 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 
 	public static readonly string InputLayerContextName = "OwlcatDropdownInput";
 
-	private GridConsoleNavigationBehaviour m_NavigationBehaviour;
-
 	private GameObject m_Blocker;
 
 	private bool m_IsEnteredWithMouse;
@@ -74,8 +70,6 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 	public ReadOnlyReactiveProperty<int> Index => base.ViewModel.Index;
 
 	public int VMCollectionCount => base.ViewModel.VMCollection.Count;
-
-	public InputLayer InputLayer { get; private set; }
 
 	protected override void OnBind()
 	{
@@ -171,9 +165,7 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 			SetIndex(index);
 			SetState(value: false);
 		}));
-		BuildNavigation();
-		CreatePanelInput();
-		UISounds.Instance.Sounds.DropdownMenu.DropdownMenuShow.Play();
+		SystemSounds.Instance.DropdownMenu.Show.Play();
 	}
 
 	private void Hide(bool immediately = false)
@@ -185,7 +177,7 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 			Clear();
 			CreateInput();
 			m_ScrollRect.gameObject.SetActive(value: false);
-			UISounds.Instance.Sounds.DropdownMenu.DropdownMenuHide.Play();
+			SystemSounds.Instance.DropdownMenu.Hide.Play();
 			return;
 		}
 		m_FadeAnimator.DisappearAnimation(delegate
@@ -193,7 +185,7 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 			Clear();
 			CreateInput();
 			m_ScrollRect.gameObject.SetActive(value: false);
-			UISounds.Instance.Sounds.DropdownMenu.DropdownMenuHide.Play();
+			SystemSounds.Instance.DropdownMenu.Hide.Play();
 		});
 	}
 
@@ -205,38 +197,11 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 		m_Subscriptions = null;
 		m_PanelSubscriptions?.Dispose();
 		m_PanelSubscriptions = null;
-		InputLayer = null;
 		m_WidgetList.Clear();
 		if (m_Blocker != null)
 		{
 			UnityEngine.Object.Destroy(m_Blocker);
 		}
-	}
-
-	private void BuildNavigation()
-	{
-		m_NavigationBehaviour = m_ToggleGroup.GetNavigationBehaviour();
-		m_NavigationBehaviour.FocusOnEntityManual(m_ToggleGroup.ActiveToggle.Value);
-		m_ScrollRect.SnapToCenter(m_ToggleGroup.ActiveToggle.Value.transform as RectTransform);
-		m_PanelSubscriptions.Add(m_NavigationBehaviour.DeepestFocusAsObservable.Subscribe(OnFocusChanged));
-	}
-
-	private void CreatePanelInput()
-	{
-		InputLayer = m_NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = InputLayerContextName
-		});
-		m_PanelSubscriptions.Add(EscHotkeyManager.Instance.Subscribe(delegate
-		{
-			SetState(value: false);
-		}));
-		m_PanelSubscriptions.Add(InputLayer.AddButton(delegate
-		{
-			SetState(value: false);
-		}, 9));
-		m_PanelSubscriptions.Add(InputLayer.AddAxis(Scroll, 3));
-		m_PanelSubscriptions.Add(GamePad.Instance.PushLayer(InputLayer));
 	}
 
 	private GameObject CreateBlocker()
@@ -324,7 +289,7 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 		}
 	}
 
-	private void Scroll(InputActionEventData obj, float value)
+	private void Scroll(float value)
 	{
 		m_ScrollRect.Scroll(value, smooth: true);
 	}
@@ -332,10 +297,5 @@ public class OwlcatDropdown : View<OwlcatDropdownVM>, IConsoleEntityProxy, ICons
 	public void OnDisable()
 	{
 		SetState(value: false, immediately: true);
-	}
-
-	public GridConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		return m_NavigationBehaviour;
 	}
 }

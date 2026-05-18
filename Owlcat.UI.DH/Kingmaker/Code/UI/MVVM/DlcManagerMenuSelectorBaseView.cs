@@ -1,4 +1,3 @@
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UI.Sound;
 using Kingmaker.Utility.DotNetExtensions;
@@ -87,8 +86,8 @@ public class DlcManagerMenuSelectorBaseView : View<SelectionGroupRadioVM<DlcMana
 
 	protected override void OnUnbind()
 	{
-		UISounds.Instance.Sounds.Selector.SelectorStop.Play();
-		UISounds.Instance.Sounds.Selector.SelectorLoopStop.Play();
+		SystemSounds.Instance.Selector.Stop.Play();
+		SystemSounds.Instance.Selector.LoopStop.Play();
 	}
 
 	private void ResetLensPosition()

@@ -11,7 +11,6 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.View.MapObjects.Traps;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Newtonsoft.Json;
-using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -67,9 +66,9 @@ public abstract class NewInteractionPart : AbstractInteractionPart, IHashable, I
 			{
 				m_Enabled = value;
 				m_Enabled = Enabled;
-				base.View.Or(null)?.UpdateHighlight();
+				base.View?.UpdateHighlight();
 				OnEnabledChanged();
-				EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
+				base.EventBus.RaiseEvent((IMapObjectEntity)base.Owner, (Action<IInteractionObjectUIHandler>)delegate(IInteractionObjectUIHandler h)
 				{
 					h.HandleObjectInteractChanged();
 				}, isCheckRuntime: true);
@@ -122,10 +121,10 @@ public abstract class NewInteractionPart<TSettings> : NewInteractionPart, IHasha
 	protected TSettings Settings { get; private set; } = new TSettings();
 
 
-	public override void SetSource(IAbstractEntityPartComponent source)
+	public override void SetConfig(IEntityPartConfig source)
 	{
-		IAbstractEntityPartComponent source2 = base.Source;
-		base.SetSource(source);
+		IEntityPartConfig source2 = base.Source;
+		base.SetConfig(source);
 		Settings = source.GetSettings() as TSettings;
 		OnSettingsDidSet(source2 != source);
 		ConfigureRestrictions();

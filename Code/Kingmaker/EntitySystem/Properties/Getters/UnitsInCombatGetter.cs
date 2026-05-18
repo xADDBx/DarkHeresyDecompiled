@@ -4,6 +4,7 @@ using System.Linq;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -20,7 +21,7 @@ public class UnitsInCombatGetter : IntPropertyGetter, PropertyContextAccessor.IM
 		List<BaseUnitEntity> list2 = new List<BaseUnitEntity>();
 		foreach (BaseUnitEntity item in list)
 		{
-			using (this.GetMechanicContext().SetScope(item))
+			using (EvalContext.Current.PushTarget(item))
 			{
 				if (Conditions.Check())
 				{

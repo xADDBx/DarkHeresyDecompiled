@@ -15,7 +15,7 @@ public abstract class MechanicEntityFactsCollection<TFact> : EntityFactsProcesso
 
 	protected override void OnFactDidAttach(TFact fact)
 	{
-		EventBus.RaiseEvent((IMechanicEntity)(MechanicEntity)base.Manager.Owner, (Action<IEntityGainFactHandler>)delegate(IEntityGainFactHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)(MechanicEntity)base.Manager.Owner, (Action<IEntityGainFactHandler>)delegate(IEntityGainFactHandler h)
 		{
 			h.HandleEntityGainFact(fact);
 		}, isCheckRuntime: true);
@@ -27,7 +27,7 @@ public abstract class MechanicEntityFactsCollection<TFact> : EntityFactsProcesso
 
 	protected override void OnFactDidDetached(TFact fact)
 	{
-		EventBus.RaiseEvent((IMechanicEntity)(MechanicEntity)base.Manager.Owner, (Action<IEntityLostFactHandler>)delegate(IEntityLostFactHandler h)
+		base.EventBus.RaiseEvent((IMechanicEntity)(MechanicEntity)base.Manager.Owner, (Action<IEntityLostFactHandler>)delegate(IEntityLostFactHandler h)
 		{
 			h.HandleEntityLostFact(fact);
 		}, isCheckRuntime: true);

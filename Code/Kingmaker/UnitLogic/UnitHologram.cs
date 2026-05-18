@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Blueprints.Root.Fx;
 using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core;
@@ -11,6 +12,7 @@ using Kingmaker.Visual.Animation;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.Particles;
+using Owlcat.Runtime.Visual.OccludedObjectHighlighting;
 using UnityEngine;
 
 namespace Kingmaker.UnitLogic;
@@ -83,12 +85,16 @@ public class UnitHologram : MonoBehaviour
 	{
 		m_OriginalBaseUnit = originalUnit.EntityData;
 		m_HologramEntityView = hologramUnit;
+		m_AvatarHands = originalUnit.HandsEquipment;
 		Character characterAvatar = hologramUnit.CharacterAvatar;
 		m_OriginalAvatar = characterAvatar;
 		m_HologramAvatar = SetupAvatar(m_OriginalAvatar);
-		m_AvatarHands = originalUnit.HandsEquipment;
 		hologramUnit.Blueprint = originalUnit.Blueprint;
 		SetupShading(ConfigRoot.Instance.FxRoot.Hologram.MainFx);
+		OccludedObjectHighlighter component = hologramUnit.GetComponent<OccludedObjectHighlighter>();
+		Color color = component.Color;
+		color.a = 0f;
+		component.Color = color;
 	}
 
 	[NotNull]
@@ -101,6 +107,7 @@ public class UnitHologram : MonoBehaviour
 		component.AnimatorPrefab = originalAvatar.AnimatorPrefab;
 		component.AnimationSet = originalAvatar.AnimationSet;
 		component.SavedEquipmentEntities = originalAvatar.SavedEquipmentEntities;
+		component.InitAnimator();
 		if (component.Animator != null)
 		{
 			if (!component.Animator.gameObject.GetComponent<UnitAnimationCallbackReceiver>())
@@ -112,13 +119,11 @@ public class UnitHologram : MonoBehaviour
 		if (component.AnimationManager != null)
 		{
 			component.AnimationManager.AttachToView(m_HologramEntityView, m_OriginalBaseUnit?.Progression.Race);
-			if ((bool)component.AnimationManager)
-			{
-				component.AnimationManager.IsInCombat = true;
-				component.AnimationManager.Tick(RealTimeController.SystemStepDurationSeconds);
-			}
+			component.AnimationManager.ActiveMainHandWeaponType = m_AvatarHands.ActiveMainHandWeaponType;
+			component.AnimationManager.ActiveOffHandWeaponType = m_AvatarHands.ActiveOffHandWeaponType;
+			component.AnimationManager.IsInCombat = true;
+			component.AnimationManager.Tick(RealTimeController.SystemStepDurationSeconds);
 		}
-		component.InitAnimator();
 		return component;
 	}
 
@@ -152,7 +157,7 @@ public class UnitHologram : MonoBehaviour
 		LookAt(entity.Position);
 	}
 
-	public void SetupShading(PrefabLink fx = null)
+	public void SetupShading(PrefabLink fx = null, bool threatening = false)
 	{
 		if (m_Shading != null)
 		{
@@ -163,11 +168,24 @@ public class UnitHologram : MonoBehaviour
 		{
 			m_Shading = FxHelper.SpawnFxOnEntity(prefab, m_HologramEntityView);
 		}
-		Material material = ConfigRoot.Instance.FxRoot.Hologram.HoloMaterial.Load();
-		MeshRenderer[] componentsInChildren = m_HologramEntityView.GetComponentsInChildren<MeshRenderer>();
+		HologramEntry hologram = ConfigRoot.Instance.FxRoot.Hologram;
+		Material material = null;
+		if (threatening)
+		{
+			MaterialLink threateningHoloMaterial = hologram.ThreateningHoloMaterial;
+			if ((object)threateningHoloMaterial != null && threateningHoloMaterial.Exists())
+			{
+				material = hologram.ThreateningHoloMaterial.Load();
+			}
+		}
+		if ((object)material == null)
+		{
+			material = hologram.HoloMaterial.Load();
+		}
+		Renderer[] componentsInChildren = m_HologramEntityView.GetComponentsInChildren<Renderer>();
 		for (int i = 0; i < componentsInChildren.Length; i++)
 		{
-			componentsInChildren[i].material = material;
+			componentsInChildren[i].sharedMaterials = new Material[1] { material };
 		}
 	}
 }

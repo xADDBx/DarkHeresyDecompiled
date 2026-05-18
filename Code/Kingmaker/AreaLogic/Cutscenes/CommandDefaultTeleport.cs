@@ -1,4 +1,3 @@
-using System;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.View;
@@ -12,27 +11,38 @@ public class CommandDefaultTeleport : CommandBase
 {
 	private const string ParamName = "TeleportDestination";
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		if (!(player.Parameters.Params["TeleportDestination"] is BlueprintAreaEnterPoint blueprintAreaEnterPoint))
 		{
-			throw new InvalidOperationException("Cant find teleport target");
+			return CommandResult.Fail("Cant find teleport destination TeleportDestination");
 		}
 		if (blueprintAreaEnterPoint.Area != Game.Instance.CurrentlyLoadedArea)
 		{
-			throw new InvalidOperationException($"Cant teleport to another map. Target map {blueprintAreaEnterPoint.Area}, current map {Game.Instance.CurrentlyLoadedArea}");
+			return CommandResult.Fail($"Cant teleport to another map. Target map {blueprintAreaEnterPoint.Area}, current map {Game.Instance.CurrentlyLoadedArea}");
 		}
 		AreaEnterPoint areaEnterPoint = AreaEnterPoint.FindAreaEnterPointOnScene(blueprintAreaEnterPoint);
 		if (areaEnterPoint == null)
 		{
-			throw new InvalidOperationException($"Cant find position of enter point {blueprintAreaEnterPoint}");
+			return CommandResult.Fail($"Cant find area enter point {blueprintAreaEnterPoint}");
 		}
 		Game.Instance.Player.MoveCharacters(areaEnterPoint, moveFollowers: false, moveCamera: false);
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -40,8 +50,9 @@ public class CommandDefaultTeleport : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

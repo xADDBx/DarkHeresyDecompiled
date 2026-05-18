@@ -24,9 +24,9 @@ public class FogOfWarScheduleController : IControllerTick, IController, IControl
 {
 	private bool? m_IsFogOfWarPreviouslyEnabled;
 
-	private static PerFrameVar<FogOfWarFeature> m_FowFeature = new PerFrameVar<FogOfWarFeature>();
+	private static PerFrameVar<FogOfWarRendererFeatureAsset> m_FowFeature = new PerFrameVar<FogOfWarRendererFeatureAsset>();
 
-	private static FogOfWarFeature FowFeature
+	private static FogOfWarRendererFeatureAsset FowFeature
 	{
 		get
 		{
@@ -100,7 +100,7 @@ public class FogOfWarScheduleController : IControllerTick, IController, IControl
 
 	void IControllerTick.Tick()
 	{
-		FogOfWarFeature fogOfWarFeature = FogOfWarControllerData.GetFogOfWarFeature();
+		FogOfWarRendererFeatureAsset fogOfWarFeature = FogOfWarControllerData.GetFogOfWarFeature();
 		if ((fogOfWarFeature == null && Application.isPlaying) || (bool)FogOfWarControllerData.Suppressed)
 		{
 			return;
@@ -151,7 +151,7 @@ public class FogOfWarScheduleController : IControllerTick, IController, IControl
 		m_IsFogOfWarPreviouslyEnabled = null;
 	}
 
-	private static void CollectRevealers(FogOfWarFeature fowFeature, NativeList<RevealerProperties> results, IEnumerable<Transform> additionalRevealers)
+	private static void CollectRevealers(FogOfWarRendererFeatureAsset fowFeature, NativeList<RevealerProperties> results, IEnumerable<Transform> additionalRevealers)
 	{
 		using (ProfileScope.New("Collect Revealers"))
 		{

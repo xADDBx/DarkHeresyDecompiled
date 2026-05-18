@@ -29,8 +29,6 @@ public class RestServer : IDisposable
 
 	private readonly IRestServerPlugin[] m_Plugins;
 
-	public int Port { get; set; }
-
 	public RestServer(IRestServerPlugin[] plugins)
 	{
 		m_Plugins = plugins;

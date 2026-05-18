@@ -214,8 +214,8 @@ public class UnitPartJump : BaseUnitPart, IHashable, IOwlPackable<UnitPartJump>
 			PFLog.Default.Error("Push time is zero");
 			return null;
 		}
-		base.Owner.View.MovementAgent.Blocker.Unblock();
-		base.Owner.View.MovementAgent.Blocker.Block(targetNode);
+		base.Owner.MovementAgent.Blocker.Unblock();
+		base.Owner.MovementAgent.Blocker.Block(targetNode);
 		Chunk chunk = new Chunk
 		{
 			MaxTime = num,
@@ -225,18 +225,16 @@ public class UnitPartJump : BaseUnitPart, IHashable, IOwlPackable<UnitPartJump>
 			PrepareForJump = true,
 			Speed = 5f
 		};
-		UnitAnimationActionHandle unitAnimationActionHandle = base.Owner?.View?.EntityData?.MaybeAnimationManager?.CreateHandle(UnitAnimationType.Jump, errorOnEmpty: false);
-		if (base.Owner?.View?.AnimationManager?.GetAction(UnitAnimationType.Jump) is UnitAnimationActionJump unitAnimationActionJump)
+		if (base.Owner.AnimationManager?.GetAction(UnitAnimationType.Jump) is UnitAnimationActionJump unitAnimationActionJump)
 		{
 			chunk.InClipTime = unitAnimationActionJump.GetInClipLenght();
 			chunk.MaxTime = unitAnimationActionJump.GetFlyClipLenght() + unitAnimationActionJump.GetInClipLenght();
 			chunk.Speed = vector.magnitude / unitAnimationActionJump.GetFlyClipLenght();
 		}
-		if (unitAnimationActionHandle != null)
+		base.Owner.MaybeUnitAnimationManager?.TryExecute(UnitAnimationType.Jump, delegate(UnitAnimationActionHandle handle)
 		{
-			unitAnimationActionHandle.NeedAttackAfterJump = useAttack;
-			base.Owner.View.EntityData.MaybeAnimationManager.Execute(unitAnimationActionHandle);
-		}
+			handle.NeedAttackAfterJump = useAttack;
+		}, out var _);
 		m_Chunks.Enqueue(chunk);
 		return chunk;
 	}

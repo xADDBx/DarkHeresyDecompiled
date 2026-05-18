@@ -6,6 +6,7 @@ using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Framework.Abilities.Components;
+using Kingmaker.PubSubSystem;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.UnitLogic.Mechanics.Facts;
@@ -69,7 +70,15 @@ public sealed class PartNearUnitsProvideCover : BaseUnitPart, IHashable, IOwlPac
 
 	public void Add(TargetType filter, EntityFact sourceFact, BlueprintComponent sourceComponent)
 	{
+		bool num = _entries.Empty();
 		_entries.Add(new Entry(filter, sourceFact, sourceComponent));
+		if (num)
+		{
+			base.EventBus.RaiseEvent(delegate(INearUnitsCoverChangedHandler h)
+			{
+				h.HandleNearUnitsCoverProviderRegistered(base.Owner);
+			});
+		}
 	}
 
 	public void Remove(EntityFact sourceFact, BlueprintComponent sourceComponent)
@@ -77,6 +86,10 @@ public sealed class PartNearUnitsProvideCover : BaseUnitPart, IHashable, IOwlPac
 		_entries.RemoveAll((Entry i) => i.SourceFact == sourceFact && i.SourceComponent == sourceComponent);
 		if (_entries.Empty())
 		{
+			base.EventBus.RaiseEvent(delegate(INearUnitsCoverChangedHandler h)
+			{
+				h.HandleNearUnitsCoverProviderUnregistered(base.Owner);
+			});
 			RemoveSelf();
 		}
 	}

@@ -17,10 +17,10 @@ public class CharInfoSummaryVM : CharInfoComponentVM
 
 	public ReadOnlyReactiveProperty<CharInfoStatusEffectsVM> StatusEffects => m_StatusEffects;
 
-	public CharInfoSummaryVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit)
+	public CharInfoSummaryVM(ReadOnlyReactiveProperty<BaseUnitEntity> unit, BuffGroupsVM buffGroupsVM)
 		: base(unit)
 	{
-		m_StatusEffects.Value = new CharInfoStatusEffectsVM(unit).AddTo(this);
+		m_StatusEffects.Value = new CharInfoStatusEffectsVM(unit, buffGroupsVM).AddTo(this);
 	}
 
 	protected override void RefreshData()

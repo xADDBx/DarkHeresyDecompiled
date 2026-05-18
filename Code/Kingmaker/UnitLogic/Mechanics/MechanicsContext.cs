@@ -8,22 +8,26 @@ using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Properties;
 using Kingmaker.Enums;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Utility;
+using Kingmaker.Items;
 using Kingmaker.Networking.Serialization;
 using Kingmaker.Pathfinding;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.RuleSystem;
 using Kingmaker.StateHasher.Hashers;
 using Kingmaker.UIDataProvider;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
+using Kingmaker.UnitLogic.Abilities.Components.Patterns;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility;
+using Kingmaker.View.Covers;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
+using Pathfinding;
 using StateHasher.Core;
 using StateHasher.Core.Hashers;
 using UnityEngine;
@@ -31,27 +35,8 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Mechanics;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPackable, IOwlPackable<MechanicsContext>
+public class MechanicsContext : IUIDataProvider, IDisposable, IEvalContext, IHashable, IOwlPackable, IOwlPackable<MechanicsContext>
 {
-	public class Scope : SimpleContextData<MechanicsContext, Scope>
-	{
-		public class Target : SimpleContextData<TargetWrapper, Target>
-		{
-		}
-
-		public class Rule : SimpleContextData<IRulebookEvent, Rule>
-		{
-		}
-
-		public class AreaEffect : SimpleContextData<AreaEffectEntity, AreaEffect>
-		{
-		}
-
-		public class SourceAbility : SimpleContextData<AbilityData, SourceAbility>
-		{
-		}
-	}
-
 	[OwlPackable(OwlPackableMode.Generate)]
 	public struct SourceInfo : IHashable, IOwlPackable, IOwlPackable<SourceInfo>
 	{
@@ -86,16 +71,13 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 		public Vector3? CastPosition { get; set; }
 
 		[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-		[CanBeNull]
 		[OwlPackInclude]
 		public BlueprintScriptableObject Blueprint { get; set; }
 
 		[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-		[CanBeNull]
 		[OwlPackInclude]
 		public AbilityData Ability { get; set; }
 
-		[CanBeNull]
 		public NodeList? Nodes { get; set; }
 
 		[CanBeNull]
@@ -124,6 +106,7 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 			}
 		}
 
+		[CanBeNull]
 		public IUIDataProvider SelectUIData(UIDataType type)
 		{
 			return (Blueprint as IUIDataProvider)?.SelectUIData(type);
@@ -237,7 +220,6 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 	protected EntityFactRef<MechanicEntityFact> m_FactRef;
 
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-	[CanBeNull]
 	[OwlPackInclude]
 	protected AbilityData m_Ability;
 
@@ -246,13 +228,23 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 	protected SourceInfo m_Source;
 
 	[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-	[CanBeNull]
 	[OwlPackInclude]
 	protected TargetWrapper m_ClickedTarget;
 
-	[NotNull]
 	[GameStateInclude]
 	private readonly int[] m_Properties = new int[CountOfProperties];
+
+	private ScopedStack<TargetWrapper> m_ScopeTarget;
+
+	private ScopedStack<RulebookEvent> m_ScopeRule;
+
+	private ScopedStack<MechanicEntity> m_ScopeCurrentEntity;
+
+	private ScopedStack<AreaEffectEntity> m_ScopeAreaEffect;
+
+	private ScopedStack<AbilityData> m_ScopeSourceAbility;
+
+	private static readonly Dictionary<string, ContextPropertyName> _NameToProperty = BuildNameToPropertyMap();
 
 	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
@@ -274,7 +266,6 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 	};
 
 	[JsonProperty]
-	[NotNull]
 	[OwlPackInclude]
 	public BlueprintScriptableObject Blueprint { get; protected set; }
 
@@ -284,11 +275,11 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
 	[OwlPackInclude]
-	public bool DisableFx { get; set; }
+	public bool DisableFx { get; protected set; }
 
+	[CanBeNull]
 	[GameStateIgnore]
 	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-	[CanBeNull]
 	[OwlPackInclude]
 	protected Dictionary<ContextPropertyName, int> PropertiesConverter
 	{
@@ -321,6 +312,8 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 			}
 		}
 	}
+
+	internal int[] PropertiesArray => m_Properties;
 
 	public int this[ContextPropertyName propertyName]
 	{
@@ -355,7 +348,6 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 	[CanBeNull]
 	public MechanicEntity MaybeOwner => m_OwnerRef.Entity;
 
-	[NotNull]
 	public virtual TargetWrapper ClickedTarget
 	{
 		get
@@ -366,16 +358,9 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 				MechanicEntity entity = m_OwnerRef.Entity;
 				if (entity == null)
 				{
-					targetWrapper = m_ClickedTarget;
-					if ((object)targetWrapper == null)
-					{
-						return m_ClickedTarget = new TargetWrapper(Vector3.zero);
-					}
+					return new TargetWrapper(Vector3.zero);
 				}
-				else
-				{
-					targetWrapper = entity;
-				}
+				targetWrapper = entity;
 			}
 			return targetWrapper;
 		}
@@ -406,34 +391,31 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 	[CanBeNull]
 	public BlueprintAbility AbilityBlueprint => Ability?.Blueprint.OriginalBlueprint;
 
-	[NotNull]
 	public BlueprintScriptableObject SourceBlueprint => m_Source.Blueprint ?? Blueprint;
 
 	[CanBeNull]
 	public BlueprintAbility SourceAbilityBlueprint => m_Source.Ability?.Blueprint.OriginalBlueprint ?? AbilityBlueprint;
 
 	[CanBeNull]
-	public AbilityData SourceAbility => m_Source.Ability ?? Ability;
+	public AbilityData SourceAbility => m_ScopeSourceAbility.Peek() ?? m_Source.Ability ?? Ability;
 
 	[CanBeNull]
 	public MechanicEntity SourceCaster => m_Source.Caster ?? MaybeCaster;
 
-	[NotNull]
 	public TargetWrapper SourceClickedTarget => m_Source.ClickedTarget ?? ClickedTarget;
 
-	[CanBeNull]
-	public NodeList? SourcePatternNodes => m_Source.Nodes ?? AsAbilityContext?.Pattern.Nodes;
+	public NodeList SourcePatternNodes => m_Source.Nodes ?? AsAbilityContext?.Pattern.Nodes ?? NodeList.Empty;
 
 	[CanBeNull]
 	public MechanicEntityFact SourceFact => m_Source.Fact ?? Fact;
 
-	[CanBeNull]
 	public virtual Vector3? SourceCastPosition => m_Source.CastPosition;
 
 	public string Name => SelectUIData(UIDataType.Name)?.Name ?? "";
 
 	public string Description => SelectUIData(UIDataType.Description)?.Description ?? "";
 
+	[CanBeNull]
 	public Sprite Icon => SelectUIData(UIDataType.Icon)?.Icon;
 
 	public string NameForAcronym => SelectUIData(UIDataType.NameForAcronym)?.NameForAcronym ?? "";
@@ -441,23 +423,87 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 	[CanBeNull]
 	public AbilityExecutionContext AsAbilityContext => this as AbilityExecutionContext;
 
-	[JsonConstructor]
-	protected MechanicsContext()
+	[CanBeNull]
+	MechanicEntity IEvalContext.Caster => MaybeCaster;
+
+	[CanBeNull]
+	MechanicEntity IEvalContext.Owner => MaybeOwner;
+
+	TargetWrapper IEvalContext.Target => m_ScopeTarget.Peek() ?? ClickedTarget;
+
+	[CanBeNull]
+	TargetWrapper IEvalContext.ClickedTarget => m_ClickedTarget;
+
+	[CanBeNull]
+	RulebookEvent IEvalContext.Rule => m_ScopeRule.Peek();
+
+	BlueprintScriptableObject IEvalContext.SourceBlueprint => SourceBlueprint;
+
+	TargetWrapper IEvalContext.SourceClickedTarget => SourceClickedTarget;
+
+	Vector3? IEvalContext.SourceCastPosition => SourceCastPosition;
+
+	int[] IEvalContext.PropertiesArray => m_Properties;
+
+	[CanBeNull]
+	public virtual MechanicEntity CurrentEntity => null;
+
+	[CanBeNull]
+	public virtual AreaEffectEntity AreaEffect => m_ScopeAreaEffect.Peek() ?? (MaybeOwner as AreaEffectEntity);
+
+	[CanBeNull]
+	AbilityExecutionContext IEvalContext.AbilityExecution => AsAbilityContext;
+
+	public virtual OrientedPatternData Pattern => OrientedPatternData.Empty;
+
+	[CanBeNull]
+	public ItemEntityWeapon AbilityWeapon => Ability?.Weapon;
+
+	[CanBeNull]
+	public MechanicEntity RuleInitiator => m_ScopeRule.Peek()?.Initiator;
+
+	[CanBeNull]
+	public MechanicEntity RuleTarget => m_ScopeRule.Peek()?.Target;
+
+	[CanBeNull]
+	public MechanicEntity CurrentTargetEntity => ((IEvalContext)this).Target?.Entity;
+
+	[CanBeNull]
+	public TargetWrapper ContextMainTarget => m_ClickedTarget;
+
+	public Vector3 ContextMainTargetPosition => m_ClickedTarget?.Point ?? default(Vector3);
+
+	[CanBeNull]
+	public MechanicEntity ContextOwner => MaybeOwner;
+
+	[CanBeNull]
+	public MechanicEntity ContextCaster => MaybeCaster;
+
+	public virtual LosDescription LosToClickedTarget => default(LosDescription);
+
+	public int this[string key]
 	{
+		get
+		{
+			if (!_NameToProperty.TryGetValue(key, out var value))
+			{
+				return 0;
+			}
+			return this[value];
+		}
+		set
+		{
+			if (_NameToProperty.TryGetValue(key, out var value2))
+			{
+				this[value2] = value;
+			}
+		}
 	}
 
-	protected void Setup(BlueprintScriptableObject blueprint, MechanicEntity caster, MechanicEntity owner = null, MechanicsContext parent = null, TargetWrapper clickedTarget = null, MechanicEntityFact fact = null, AbilityData ability = null)
+	protected void Setup(BlueprintScriptableObject blueprint, [CanBeNull] MechanicEntity caster, [CanBeNull] MechanicEntity owner = null, [CanBeNull] IEvalContext parent = null, [CanBeNull] TargetWrapper clickedTarget = null, [CanBeNull] MechanicEntityFact fact = null, [CanBeNull] AbilityData ability = null)
 	{
-		if (!blueprint)
-		{
-			throw new ArgumentNullException("blueprint");
-		}
-		if (caster == null && owner == null)
-		{
-			throw new Exception("caster and owner both null");
-		}
-		Blueprint = blueprint;
-		m_CasterRef = caster ?? owner;
+		Blueprint = blueprint ?? throw new ArgumentNullException("blueprint");
+		m_CasterRef = caster ?? owner ?? throw new NullReferenceException("MechanicsContext: caster and owner are null");
 		m_OwnerRef = owner ?? caster;
 		m_FactRef = fact ?? ability?.Fact;
 		m_Ability = ability;
@@ -476,7 +522,11 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 		if (parent != null)
 		{
 			Direction = parent.Direction;
-			Array.Copy(parent.m_Properties, m_Properties, CountOfProperties);
+			int[] propertiesArray = parent.PropertiesArray;
+			if (propertiesArray != null)
+			{
+				Array.Copy(propertiesArray, m_Properties, CountOfProperties);
+			}
 		}
 		m_Source = new SourceInfo
 		{
@@ -490,7 +540,7 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 		};
 	}
 
-	public static MechanicsContext Claim(BlueprintScriptableObject blueprint, MechanicEntity caster, MechanicEntity owner = null, MechanicsContext parent = null, TargetWrapper clickedTarget = null, MechanicEntityFact fact = null, AbilityData ability = null)
+	public static MechanicsContext Claim(BlueprintScriptableObject blueprint, MechanicEntity caster, [CanBeNull] MechanicEntity owner = null, [CanBeNull] IEvalContext parent = null, [CanBeNull] TargetWrapper clickedTarget = null, [CanBeNull] MechanicEntityFact fact = null, [CanBeNull] AbilityData ability = null)
 	{
 		if (!Pool.TryPop(out var result))
 		{
@@ -514,7 +564,7 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 		Array.Fill(m_Properties, 0);
 	}
 
-	public void ReplaceClickedTarget([NotNull] TargetWrapper newTarget)
+	public void ReplaceClickedTarget(TargetWrapper newTarget)
 	{
 		m_ClickedTarget = newTarget;
 	}
@@ -565,37 +615,80 @@ public class MechanicsContext : IUIDataProvider, IDisposable, IHashable, IOwlPac
 		return Rulebook.Trigger(rule);
 	}
 
-	public DisposableBag SetScope(TargetWrapper target = null, RulebookEvent rule = null)
+	private static Dictionary<string, ContextPropertyName> BuildNameToPropertyMap()
 	{
-		IDisposable[] obj = new IDisposable[5]
+		Dictionary<string, ContextPropertyName> dictionary = new Dictionary<string, ContextPropertyName>();
+		foreach (ContextPropertyName value in Enum.GetValues(typeof(ContextPropertyName)))
 		{
-			SimpleContextData<MechanicsContext, Scope>.Set(this),
-			null,
-			null,
-			null,
-			null
-		};
-		object obj2 = target;
-		if (obj2 == null)
-		{
-			MechanicEntity mechanicEntity = rule?.Target;
-			obj2 = ((mechanicEntity != null) ? ((TargetWrapper)mechanicEntity) : ClickedTarget);
+			dictionary[value.ToString()] = value;
 		}
-		obj[1] = SimpleContextData<TargetWrapper, Scope.Target>.Set((TargetWrapper)obj2);
-		obj[2] = SimpleContextData<IRulebookEvent, Scope.Rule>.SetIfNotNull(rule);
-		obj[3] = SimpleContextData<AreaEffectEntity, Scope.AreaEffect>.SetIfNotNull(MaybeOwner as AreaEffectEntity);
-		obj[4] = SimpleContextData<AbilityData, Scope.SourceAbility>.SetIfNotNull(SourceAbility);
-		return DisposableBag.Claim(obj);
+		return dictionary;
 	}
 
-	public DisposableBag SetScope(MechanicEntity target)
+	[CanBeNull]
+	public MechanicEntity GetEntityByType(PropertyTargetType type)
 	{
-		return SetScope(target, null);
+		return type switch
+		{
+			PropertyTargetType.CurrentEntity => CurrentEntity, 
+			PropertyTargetType.CurrentTarget => CurrentTargetEntity, 
+			PropertyTargetType.ContextCaster => ContextCaster, 
+			PropertyTargetType.ContextOwner => ContextOwner, 
+			PropertyTargetType.ContextMainTarget => ContextMainTarget?.Entity, 
+			PropertyTargetType.RuleInitiator => RuleInitiator, 
+			PropertyTargetType.RuleTarget => RuleTarget, 
+			_ => throw new ArgumentOutOfRangeException("type", type, null), 
+		};
 	}
 
-	public DisposableBag SetScope(ITargetWrapper target)
+	public Vector3 GetEntityPositionByType(PropertyTargetType type)
 	{
-		return SetScope((TargetWrapper)target);
+		MechanicEntity entityByType = GetEntityByType(type);
+		if (entityByType != null)
+		{
+			return entityByType.Position;
+		}
+		if (type == PropertyTargetType.ContextMainTarget)
+		{
+			return ContextMainTargetPosition;
+		}
+		return default(Vector3);
+	}
+
+	public IntRect GetEntityRectByType(PropertyTargetType type)
+	{
+		return GetEntityByType(type)?.SizeRect ?? default(IntRect);
+	}
+
+	[CanBeNull]
+	public T Get<T>() where T : ContextData<T>, new()
+	{
+		return ContextData<T>.Current;
+	}
+
+	public ScopedStackFrame PushTarget(TargetWrapper target)
+	{
+		return m_ScopeTarget.Push(target);
+	}
+
+	public ScopedStackFrame PushRule(RulebookEvent rule)
+	{
+		return m_ScopeRule.Push(rule);
+	}
+
+	public ScopedStackFrame PushCurrentEntity(MechanicEntity entity)
+	{
+		return m_ScopeCurrentEntity.Push(entity);
+	}
+
+	public ScopedStackFrame PushAreaEffect(AreaEffectEntity ae)
+	{
+		return m_ScopeAreaEffect.Push(ae);
+	}
+
+	public ScopedStackFrame PushSourceAbility(AbilityData ability)
+	{
+		return m_ScopeSourceAbility.Push(ability);
 	}
 
 	public virtual Hash128 GetHash128()

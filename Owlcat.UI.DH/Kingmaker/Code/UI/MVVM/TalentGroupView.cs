@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.UnitLogic.Levelup.Selections;
 using Owlcat.Runtime.Core.Utility;
@@ -41,7 +42,7 @@ public class TalentGroupView : MonoBehaviour
 
 	private List<GroupViewUnit> Groups => new List<GroupViewUnit> { OneIconGroup, TwoIconGroup, ThreeIconGroup };
 
-	public void SetupView(TalentIconInfo iconsInfo)
+	public void SetupView([CanBeNull] TalentIconInfo iconsInfo)
 	{
 		if (iconsInfo == null)
 		{
@@ -81,8 +82,8 @@ public class TalentGroupView : MonoBehaviour
 		}
 		for (int i = 0; i < num; i++)
 		{
-			TalentGroups.TalentGroupConfig config = UIConfig.Instance.TalentGroups.GetConfig(valuesFromFlags[i]);
-			groupViewUnit.Icons[i].sprite = config.Icon;
+			TalentGroupData entity = UIConfig.Instance.TooltipsConfig.TalentGroupsData.GetEntity(valuesFromFlags[i]);
+			groupViewUnit.Icons[i].sprite = entity.Icon;
 		}
 		foreach (GroupViewUnit group in Groups)
 		{
@@ -91,7 +92,7 @@ public class TalentGroupView : MonoBehaviour
 		if ((bool)BackgroundImage)
 		{
 			BackgroundImage.sprite = UIConfig.Instance.UIIcons.EmptyAbilityIcon;
-			BackgroundImage.color = UIConfig.Instance.TalentGroups.GetConfig(valuesFromFlags[0]).BgrColor;
+			BackgroundImage.color = UIConfig.Instance.TooltipsConfig.TalentGroupsData.GetEntity(valuesFromFlags[0]).BgrColor;
 		}
 		SetActiveState(state: true);
 	}

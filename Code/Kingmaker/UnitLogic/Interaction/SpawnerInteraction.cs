@@ -2,6 +2,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Commands.Base;
 using Kingmaker.Utility.Attributes;
@@ -15,6 +16,7 @@ namespace Kingmaker.UnitLogic.Interaction;
 [KnowledgeDatabaseID("95d03dcfa566f5a4cadd0988cd234972")]
 public abstract class SpawnerInteraction : EntityPartComponent<SpawnerInteractionPart>
 {
+	[Header("General")]
 	public int OverrideDistance;
 
 	[ShowCreator]
@@ -29,6 +31,11 @@ public abstract class SpawnerInteraction : EntityPartComponent<SpawnerInteractio
 
 	[ShowIf("TriggerOnApproach")]
 	public float Cooldown = 5f;
+
+	public LocalizedString DisplayName;
+
+	[ShowIf("TriggerOnApproach")]
+	public GlobalCooldownSettings GlobalCooldown;
 
 	public abstract bool IsDialog { get; }
 

@@ -1,6 +1,7 @@
 using System;
 using Kingmaker.Controllers.Enums;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem.Rules;
@@ -21,7 +22,7 @@ public class PsychicPhenomenaAsksController : BaseAsksController, IGlobalRuleboo
 
 	public AskWrapper GetPhenomenaBark(BaseUnitEntity unit, EffectsState effectsState)
 	{
-		if (!(unit?.View == null) && unit.View.Asks != null)
+		if (unit?.View != null && unit.View.Asks != null)
 		{
 			switch (effectsState)
 			{
@@ -56,7 +57,10 @@ public class PsychicPhenomenaAsksController : BaseAsksController, IGlobalRuleboo
 		});
 		if (randomPartyEntity != null && randomPartyEntity.View.Asks != null)
 		{
-			GetPhenomenaBark(randomPartyEntity, phenomenaState)?.Schedule();
+			using (EvalContext.PushAsksContext(randomPartyEntity, randomPartyEntity))
+			{
+				GetPhenomenaBark(randomPartyEntity, phenomenaState)?.Schedule();
+			}
 		}
 	}
 }

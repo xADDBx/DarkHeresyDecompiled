@@ -1,8 +1,6 @@
 using System;
-using Kingmaker.Designers;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Stats.Base;
-using Kingmaker.RuleSystem.Rules;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -46,52 +44,6 @@ public class ContextActionSkillCheck_Obsolete : ContextAction
 
 	protected override void RunAction()
 	{
-		if (base.Target.Entity == null)
-		{
-			Element.LogError(this, "Target unit is missing");
-			return;
-		}
-		int num = 0;
-		if (m_ConditionalDCIncrease != null)
-		{
-			ConditionalDCIncrease[] conditionalDCIncrease = m_ConditionalDCIncrease;
-			for (int i = 0; i < conditionalDCIncrease.Length; i++)
-			{
-				ConditionalDCIncrease conditionalDCIncrease2 = conditionalDCIncrease[i];
-				if (conditionalDCIncrease2.Condition.Check())
-				{
-					num += conditionalDCIncrease2.Value.Calculate(base.Context);
-				}
-			}
-		}
-		int num2 = (UseCustomDC ? CustomDC.Calculate(base.Context) : 0);
-		RulePerformSkillCheck rulePerformSkillCheck = GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(base.Target.Entity, Stat, num2 + num)
-		{
-			ShowAnyway = true
-		}, base.Context);
-		if (CalculateDCDifference)
-		{
-			if (rulePerformSkillCheck.ResultIsSuccess)
-			{
-				Success.Run();
-			}
-			else if (num2 - rulePerformSkillCheck.RollResult >= 5 && num2 - rulePerformSkillCheck.RollResult < 10)
-			{
-				FailureDiffMoreOrEqual5Less10.Run();
-			}
-			else if (num2 - rulePerformSkillCheck.RollResult >= 10)
-			{
-				FailureDiffMoreOrEqual10.Run();
-			}
-		}
-		else if (rulePerformSkillCheck.ResultIsSuccess)
-		{
-			Success.Run();
-		}
-		else
-		{
-			Failure.Run();
-		}
 	}
 
 	public override string GetCaption()

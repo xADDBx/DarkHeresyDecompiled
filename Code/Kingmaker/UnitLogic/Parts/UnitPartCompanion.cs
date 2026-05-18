@@ -30,9 +30,10 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 	{
 		Name = "UnitPartCompanion",
 		OldNames = null,
-		Fields = new FieldInfo[2]
+		Fields = new FieldInfo[3]
 		{
 			new FieldInfo("State", typeof(CompanionState)),
+			new FieldInfo("ExState", typeof(CompanionExState)),
 			new FieldInfo("m_Spawner", typeof(EntityRef))
 		}
 	};
@@ -40,6 +41,10 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 	[JsonProperty]
 	[OwlPackInclude]
 	public CompanionState State { get; private set; }
+
+	[JsonProperty]
+	[OwlPackInclude]
+	public CompanionExState ExState { get; private set; }
 
 	public bool IsCompanion
 	{
@@ -62,6 +67,18 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 		}
 	}
 
+	public bool IsExForever
+	{
+		get
+		{
+			if (State == CompanionState.ExCompanion)
+			{
+				return ExState != CompanionExState.InReserve;
+			}
+			return false;
+		}
+	}
+
 	public void SetState(CompanionState s)
 	{
 		State = s;
@@ -72,10 +89,15 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 		}
 		base.Owner.GetOrCreate<UnitPartNonStackBonuses>();
 		Game.Instance.Player.InvalidateCharacterLists();
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<ICompanionStateChanged>)delegate(ICompanionStateChanged h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<ICompanionStateChanged>)delegate(ICompanionStateChanged h)
 		{
 			h.HandleCompanionStateChanged();
 		}, isCheckRuntime: true);
+	}
+
+	public void SetExState(CompanionExState s)
+	{
+		ExState = s;
 	}
 
 	public bool IsControllableInParty()
@@ -108,19 +130,19 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 		});
 	}
 
-	public void SetSpawner([CanBeNull] CompanionSpawner spawner)
+	public void SetSpawner([CanBeNull] CompanionSpawnerEntity spawner)
 	{
-		CompanionSpawner currentSpawner = GetCurrentSpawner();
-		if (!(currentSpawner == spawner))
+		CompanionSpawnerEntity currentSpawner = GetCurrentSpawner();
+		if (currentSpawner != spawner)
 		{
 			currentSpawner?.ReleaseCompanion();
-			m_Spawner = new EntityRef(spawner?.UniqueId);
+			m_Spawner = new EntityRef(spawner);
 		}
 	}
 
-	public CompanionSpawner GetCurrentSpawner()
+	public CompanionSpawnerEntity GetCurrentSpawner()
 	{
-		return m_Spawner.Entity?.View as CompanionSpawner;
+		return m_Spawner.Entity as CompanionSpawnerEntity;
 	}
 
 	public override Hash128 GetHash128()
@@ -130,9 +152,11 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 		result.Append(ref val);
 		CompanionState val2 = State;
 		result.Append(ref val2);
-		EntityRef obj = m_Spawner;
-		Hash128 val3 = EntityRefHasher.GetHash128(ref obj);
+		CompanionExState val3 = ExState;
 		result.Append(ref val3);
+		EntityRef obj = m_Spawner;
+		Hash128 val4 = EntityRefHasher.GetHash128(ref obj);
+		result.Append(ref val4);
 		return result;
 	}
 
@@ -155,7 +179,9 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
 		CompanionState value = State;
 		formatter.EnumField(0, "State", ref value, state);
-		formatter.Field(1, "m_Spawner", ref m_Spawner, state);
+		CompanionExState value2 = ExState;
+		formatter.EnumField(1, "ExState", ref value2, state);
+		formatter.Field(2, "m_Spawner", ref m_Spawner, state);
 		formatter.EndObject();
 	}
 
@@ -177,6 +203,9 @@ public class UnitPartCompanion : BaseUnitPart, IHashable, IOwlPackable<UnitPartC
 				State = formatter.ReadEnum<CompanionState>(state);
 				break;
 			case 1:
+				ExState = formatter.ReadEnum<CompanionExState>(state);
+				break;
+			case 2:
 				m_Spawner = formatter.ReadPackable<EntityRef>(state);
 				break;
 			}

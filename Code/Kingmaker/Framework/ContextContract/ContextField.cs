@@ -1,0 +1,35 @@
+namespace Kingmaker.Framework.ContextContract;
+
+public enum ContextField
+{
+	Caster,
+	Owner,
+	ClickedTarget,
+	Ability,
+	Blueprint,
+	Fact,
+	FactComponent,
+	Pattern,
+	Direction,
+	SourceCastPosition,
+	Target,
+	CurrentEntity,
+	Rule,
+	AreaEffect,
+	SourceAbility,
+	SourceCaster,
+	SourceBlueprint,
+	SourceFact,
+	SourceAbilityBlueprint,
+	SourceClickedTarget,
+	AbilityWeapon,
+	AbilityBlueprint,
+	RuleInitiator,
+	RuleTarget,
+	CurrentTargetEntity,
+	ContextMainTarget,
+	ContextCaster,
+	ContextOwner,
+	LosToClickedTarget,
+	SourcePatternNodes
+}

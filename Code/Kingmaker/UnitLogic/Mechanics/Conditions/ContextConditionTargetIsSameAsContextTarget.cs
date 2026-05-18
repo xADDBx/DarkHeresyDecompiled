@@ -9,7 +9,7 @@ public class ContextConditionTargetIsSameAsContextTarget : ContextCondition
 {
 	protected override bool CheckCondition()
 	{
-		if (base.Context.ClickedTarget.Entity == null)
+		if (base.Eval.ClickedTarget?.Entity == null)
 		{
 			PFLog.Default.Error("Context target unit is missing");
 			return false;
@@ -19,7 +19,7 @@ public class ContextConditionTargetIsSameAsContextTarget : ContextCondition
 			PFLog.Default.Error("Target unit is missing");
 			return false;
 		}
-		return base.Target.Entity.Blueprint == base.Context.ClickedTarget.Entity.Blueprint;
+		return base.Target.Entity.Blueprint == base.Eval.ClickedTarget?.Entity?.Blueprint;
 	}
 
 	protected override string GetConditionCaption()

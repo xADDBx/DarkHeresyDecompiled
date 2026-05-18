@@ -2,22 +2,19 @@ using System;
 using System.Linq;
 using Kingmaker.Controllers;
 using Kingmaker.Visual.Animation.Kingmaker;
-using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using UnityEngine;
 
 namespace Kingmaker.Visual.Animation.Actions;
 
 public class AnimationActionHandle
 {
-	private readonly bool m_IsUnitAnimationActionCover;
-
 	private float m_Time;
 
 	private float m_NextTime;
 
 	private float m_SpeedScale = 1f;
 
-	private bool m_IsAdditive;
+	private TimeSpan m_StartTime;
 
 	private bool m_IsReleaseInProgress;
 
@@ -31,24 +28,8 @@ public class AnimationActionHandle
 
 	public bool IsStarted { get; private set; }
 
-	public AnimationLayerType AnimationLayer { get; set; } = AnimationLayerType.Actions;
+	public UnitAnimationLayerType AnimationLayer { get; set; } = UnitAnimationLayerType.Actions;
 
-
-	public bool IsAdditive
-	{
-		get
-		{
-			if (!m_IsUnitAnimationActionCover)
-			{
-				return Action.IsAdditive;
-			}
-			return m_IsAdditive;
-		}
-		set
-		{
-			m_IsAdditive = value;
-		}
-	}
 
 	public bool IsFinished { get; private set; }
 
@@ -89,10 +70,14 @@ public class AnimationActionHandle
 		}
 		set
 		{
-			m_SpeedScale = value;
-			if (ActiveAnimation != null && !Mathf.Approximately(ActiveAnimation.GetSpeed(), m_SpeedScale))
+			float num = Mathf.Clamp(value, 0f, 100f);
+			if (!Mathf.Approximately(m_SpeedScale, num))
 			{
-				ActiveAnimation.SetSpeed(m_SpeedScale);
+				m_SpeedScale = num;
+				if (ActiveAnimation != null && !Mathf.Approximately(ActiveAnimation.GetSpeed(), m_SpeedScale))
+				{
+					ActiveAnimation.SetSpeed(m_SpeedScale);
+				}
 			}
 		}
 	}
@@ -101,7 +86,6 @@ public class AnimationActionHandle
 	{
 		Manager = manager;
 		Action = action;
-		m_IsUnitAnimationActionCover = Action is UnitAnimationActionCover;
 	}
 
 	internal void StartInternal()
@@ -121,6 +105,7 @@ public class AnimationActionHandle
 		}
 		IsStarted = true;
 		m_Time = 0f;
+		m_StartTime = Game.Instance.Controllers.TimeController.RealTime;
 		m_NextTime = m_Time + RealTimeController.SystemStepDurationSeconds * SpeedScale;
 	}
 
@@ -143,6 +128,10 @@ public class AnimationActionHandle
 
 	internal void UpdateInternal(float deltaTime)
 	{
+		if (IsJustStarted())
+		{
+			return;
+		}
 		m_Time = m_NextTime;
 		m_NextTime += deltaTime * SpeedScale;
 		try
@@ -153,6 +142,11 @@ public class AnimationActionHandle
 		{
 			PFLog.Default.Exception(ex);
 		}
+	}
+
+	private bool IsJustStarted()
+	{
+		return m_StartTime == Game.Instance.Controllers.TimeController.RealTime;
 	}
 
 	public float GetTime()
@@ -179,7 +173,6 @@ public class AnimationActionHandle
 			if (ActiveAnimation != null && ActiveAnimation.State != AnimationState.TransitioningOut && ActiveAnimation.State != AnimationState.Finished)
 			{
 				ActiveAnimation.StartTransitionOut();
-				ActiveAnimation.StopEvents();
 			}
 			m_IsReleaseInProgress = false;
 			IsReleased = true;

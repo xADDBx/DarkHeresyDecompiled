@@ -1,9 +1,12 @@
 using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
-using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Code.Gameplay.Predictions.PredictionProviders;
+using Kingmaker.ElementsSystem.ContextData;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence.Versioning;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Kingmaker.Utility.Attributes;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
@@ -43,21 +46,26 @@ public class FactRankGetter : IntPropertyGetter, PropertyContextAccessor.IOption
 
 	protected override int GetBaseValue()
 	{
-		Entity entity = (BuffWithCasterFromTargetType ? this.GetTargetByType(Target) : null);
-		int num = 0;
+		MechanicEntity mechanicEntity = (BuffWithCasterFromTargetType ? EvalContext.Current.GetEntityByType(Target) : null);
+		int result = 0;
 		foreach (EntityFact item in base.CurrentEntity.Facts.GetAll<EntityFact>())
 		{
-			if (item.Blueprint == Fact && (!BuffWithCasterFromTargetType || item.MaybeContext?.MaybeCaster == entity))
+			if (item.Blueprint == Fact && (!BuffWithCasterFromTargetType || item.MaybeContext?.MaybeCaster == mechanicEntity))
 			{
-				int rank = item.GetRank();
-				num = Aggregation switch
-				{
-					AggregationMode.Max => Math.Max(num, rank), 
-					AggregationMode.Sum => num + rank, 
-					_ => throw new ArgumentOutOfRangeException(), 
-				};
+				int rank2 = item.GetRank() + ContextData<PredictionHackContext>.Current.GetPredictedRank(item.Blueprint);
+				result = GetResult(rank2);
 			}
 		}
-		return num;
+		result = GetResult(ContextData<PredictionHackContext>.Current.GetPredictedRank(Fact));
+		return result;
+		int GetResult(int rank)
+		{
+			return Aggregation switch
+			{
+				AggregationMode.Max => Math.Max(result, rank), 
+				AggregationMode.Sum => result + rank, 
+				_ => throw new ArgumentOutOfRangeException(), 
+			};
+		}
 	}
 }

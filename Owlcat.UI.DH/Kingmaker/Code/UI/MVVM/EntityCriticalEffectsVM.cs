@@ -46,6 +46,11 @@ public class EntityCriticalEffectsVM : ViewModel
 		};
 	}
 
+	public void HandleCriticalEffectsCleared()
+	{
+		m_CriticalEffectsData.Value = default(CriticalEffectsUIData);
+	}
+
 	private void CollectCriticalEffects(MechanicEntity target)
 	{
 		m_StagesByBodyPart.Clear();

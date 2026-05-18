@@ -18,7 +18,7 @@ public class SystemNotificatorVM : ViewModel, IWarningNotificationUIHandler, ISu
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
-	public void HandleWarning(WarningNotificationType type, bool addToLog, WarningNotificationFormat? format, bool withSound = true)
+	public void HandleWarning(WarningNotificationType type, string overrideLabel, bool addToLog, WarningNotificationFormat? format, bool withSound = true)
 	{
 		WarningNotificationFormat valueOrDefault = format.GetValueOrDefault();
 		if (!format.HasValue)
@@ -26,7 +26,7 @@ public class SystemNotificatorVM : ViewModel, IWarningNotificationUIHandler, ISu
 			valueOrDefault = GetFormatByType(type);
 			format = valueOrDefault;
 		}
-		m_CurrentNotification.Value = new SystemNotificationVM(type, withSound, format.Value);
+		m_CurrentNotification.Value = new SystemNotificationVM(type, overrideLabel, withSound, format.Value);
 	}
 
 	public void HandleWarning(string str, bool addToLog, WarningNotificationFormat format, bool withSound = true)

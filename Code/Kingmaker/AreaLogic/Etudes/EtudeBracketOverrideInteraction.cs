@@ -8,6 +8,7 @@ using UnityEngine;
 namespace Kingmaker.AreaLogic.Etudes;
 
 [Serializable]
+[Obsolete]
 [TypeId("781c3882fb08d5445b1588a4b0f4d9c7")]
 public abstract class EtudeBracketOverrideInteraction : EtudeBracketTrigger, IEtudeBracketOverrideInteraction
 {

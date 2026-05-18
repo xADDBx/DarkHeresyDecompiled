@@ -11,18 +11,19 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Buffs;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Enums;
 using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.Utility.FlagCountable;
 using Kingmaker.View.Mechanics.Entities;
 using Newtonsoft.Json;
 using Owlcat.Fmw.Blueprints;
@@ -149,6 +150,18 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 
 	[JsonProperty]
 	[OwlPackInclude]
+	private readonly CountableFlag _forbidDirectHpDamage = new CountableFlag();
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private readonly CountableFlag _countHpAsArmor = new CountableFlag();
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private readonly CountableFlag _countAsDestructible = new CountableFlag();
+
+	[JsonProperty]
+	[OwlPackInclude]
 	private int m_DamageReceivedThisTurn;
 
 	[JsonProperty]
@@ -177,8 +190,11 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 	{
 		Name = "PartHealth",
 		OldNames = null,
-		Fields = new FieldInfo[5]
+		Fields = new FieldInfo[8]
 		{
+			new FieldInfo("_forbidDirectHpDamage", typeof(CountableFlag)),
+			new FieldInfo("_countHpAsArmor", typeof(CountableFlag)),
+			new FieldInfo("_countAsDestructible", typeof(CountableFlag)),
 			new FieldInfo("m_DamageReceivedThisTurn", typeof(int)),
 			new FieldInfo("m_LastTurnWhenReceiveDamage", typeof(int)),
 			new FieldInfo("m_ConsecutiveOutOfCombatTurnsWithoutDamage", typeof(int)),
@@ -186,6 +202,12 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 			new FieldInfo("m_MissingHpFraction", typeof(float))
 		}
 	};
+
+	public bool IsForbidDirectHpDamage => _forbidDirectHpDamage;
+
+	public bool IsCountHpAsArmor => _countHpAsArmor;
+
+	public bool IsCountAsDestructible => _countAsDestructible;
 
 	public int Damage
 	{
@@ -195,32 +217,38 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		}
 		private set
 		{
-			m_MissingHpFraction = (float)value / (float)MaxHitPoints;
+			float num = (float)value / (float)MaxHitPoints;
+			if (!Mathf.Approximately(num, m_MissingHpFraction))
+			{
+				base.Owner.Actor.NotifyStatChanged(StatType.CurrentHitPoints, "Damage");
+			}
+			m_MissingHpFraction = num;
 		}
 	}
 
-	private StatsContainer StatsContainer => base.Owner.GetRequired<PartStatsContainer>().Container;
+	public bool HasDamage => m_MissingHpFraction > 0f;
 
-	public ModifiableValueAttributeStat Toughness => StatsContainer.GetAttribute(StatType.Toughness);
+	public bool IsFullyDamaged => m_MissingHpFraction >= 1f;
 
-	public ModifiableValueHitPoints HitPoints => StatsContainer.GetStat<ModifiableValueHitPoints>(StatType.HitPoints);
+	public MechanicActorStat Toughness => base.Owner.Actor.Stats.GetStat(StatType.Toughness);
 
 	[CanBeNull]
 	public RuleDealDamage LastHandledDamage { get; set; }
 
-	public int HitPointsLeft => (int)HitPoints - Damage;
+	public int HitPointsLeft
+	{
+		get
+		{
+			int maxHitPoints = MaxHitPoints;
+			return maxHitPoints - Mathf.FloorToInt(m_MissingHpFraction * (float)maxHitPoints);
+		}
+	}
 
 	public float HitPointsLeftFraction => (float)HitPointsLeft / (float)MaxHitPoints;
 
-	public int MaxHitPoints => HitPoints;
+	public int MaxHitPoints => base.Owner.Actor.GetStat(StatType.MaxHitPoints, null, default(StatContext), "MaxHitPoints");
 
 	public int TemporaryHitPoints => CalculateTemporaryHitPoints();
-
-	protected override void OnAttachOrPrePostLoad()
-	{
-		StatsContainer.RegisterAttribute(StatType.Toughness);
-		StatsContainer.Register<ModifiableValueHitPoints>(StatType.HitPoints);
-	}
 
 	void IInGameHandler.HandleObjectInGameChanged()
 	{
@@ -236,18 +264,18 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		}
 		int damage2 = Damage;
 		int num;
-		if (base.Owner.IsMechanism)
+		if (IsCountHpAsArmor)
 		{
 			PartArmor required = base.Owner.GetRequired<PartArmor>();
 			if (required != null)
 			{
 				num = required.Damage;
-				goto IL_0046;
+				goto IL_0041;
 			}
 		}
 		num = ClampDamage(damage);
-		goto IL_0046;
-		IL_0046:
+		goto IL_0041;
+		IL_0041:
 		int num2 = num;
 		if (num2 != damage2)
 		{
@@ -257,7 +285,7 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 				m_LastTurnWhenReceiveDamage = Game.Instance.Controllers.TurnController.GameRound;
 				m_ConsecutiveOutOfCombatTurnsWithoutDamage = 0;
 			}
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IEntityDamageChanged>)delegate(IEntityDamageChanged h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<IEntityDamageChanged>)delegate(IEntityDamageChanged h)
 			{
 				h.HandleDamageChanged(this);
 			}, isCheckRuntime: true);
@@ -421,7 +449,7 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 				m_TemporaryHitPoints = new List<TemporaryHitPointsData>();
 			}
 			m_TemporaryHitPoints.Add(item);
-			EventBus.RaiseEvent((IEntity)base.Owner, (Action<ITemporaryHitPoints>)delegate(ITemporaryHitPoints h)
+			base.EventBus.RaiseEvent((IEntity)base.Owner, (Action<ITemporaryHitPoints>)delegate(ITemporaryHitPoints h)
 			{
 				h.HandleOnAddTemporaryHitPoints(amount, sourceBuff);
 			}, isCheckRuntime: true);
@@ -432,7 +460,7 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 	{
 		if (!m_TemporaryHitPoints.Empty() && sourceBuff != null)
 		{
-			EventBus.RaiseEvent((IEntity)base.Owner, (Action<ITemporaryHitPoints>)delegate(ITemporaryHitPoints h)
+			base.EventBus.RaiseEvent((IEntity)base.Owner, (Action<ITemporaryHitPoints>)delegate(ITemporaryHitPoints h)
 			{
 				h.HandleOnRemoveTemporaryHitPoints(GetTemporaryHitPointFromBuff(sourceBuff.Blueprint), sourceBuff);
 			}, isCheckRuntime: true);
@@ -488,13 +516,14 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		if (newStage == maxRank)
 		{
 			MoraleRoot moraleRoot = ConfigRoot.Instance.MoraleRoot;
-			using MechanicsContext mechanicsContext = MechanicsContext.Claim(moraleRoot, caster, null, null, base.Owner);
-			using (mechanicsContext.SetScope())
+			using (EvalContext.Build().Blueprint(moraleRoot).Caster(caster)
+				.ClickedTarget(base.Owner)
+				.Push())
 			{
 				moraleRoot.MaxCriticalStageActions.Run();
 			}
 		}
-		EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<ICriticalEffectStageChanged>)delegate(ICriticalEffectStageChanged h)
+		base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<ICriticalEffectStageChanged>)delegate(ICriticalEffectStageChanged h)
 		{
 			h.HandleCriticalEffectStageChanged(damageBodyPart, currentStage, newStage);
 		}, isCheckRuntime: true);
@@ -510,7 +539,7 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		int currentStage = GetCriticalStage(damageBodyPart);
 		if (currentStage < damageBodyPart.CriticalEffectStagesCount)
 		{
-			EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<ICriticalEffectStageChangeFailed>)delegate(ICriticalEffectStageChangeFailed h)
+			base.EventBus.RaiseEvent((IMechanicEntity)base.Owner, (Action<ICriticalEffectStageChangeFailed>)delegate(ICriticalEffectStageChangeFailed h)
 			{
 				h.HandleCriticalEffectStageChangeFailed(damageBodyPart, currentStage + 1);
 			}, isCheckRuntime: true);
@@ -543,38 +572,42 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		return base.Owner.Buffs.Get((BlueprintBuff?)criticalEffect)?.Rank ?? 0;
 	}
 
-	public static void RestUnit(BaseUnitEntity unit)
+	public void RetainForbidDirectHpDamage()
 	{
-		if (unit.LifeState.IsDead)
-		{
-			unit.LifeState.Resurrect();
-			unit.Position = Game.Instance.Player.MainCharacter.Entity.Position;
-		}
-		Rulebook.Trigger(RuleHealDamage.Setup(unit, unit).Base(unit.Health.HitPoints.ModifiedValue).Create());
-		unit.CombatState.LastStraightMoveLength = 0;
-		unit.CombatState.LastDiagonalCount = 0;
-		unit.CombatState.ResetActionAndMovementPoints();
-		unit.CombatState.AttackInRoundCount = 0;
-		unit.CombatState.AttackedInRoundCount = 0;
-		unit.CombatState.HitInRoundCount = 0;
-		unit.CombatState.GotHitInRoundCount = 0;
-		unit.GetAbilityCooldownsOptional()?.Clear();
-		unit.GetTwoWeaponFightingOptional()?.ResetAttacks();
-		TryResetDebuffs(unit);
-		foreach (ModifiableValueAttributeStat attribute in unit.Attributes)
-		{
-			attribute.Damage = 0;
-			attribute.Drain = 0;
-		}
-		unit.Health.HealAll();
+		_forbidDirectHpDamage.Retain();
 	}
 
-	private static void TryResetDebuffs(BaseUnitEntity unit)
+	public void ReleaseForbidDirectHpDamage()
 	{
-		SkillCheckRoot skillCheckRoot = ConfigRoot.Instance.SkillCheckRoot;
-		unit.Buffs.Remove(skillCheckRoot.Fatigued);
-		unit.Buffs.Remove(skillCheckRoot.Disturbed);
-		unit.Buffs.Remove(skillCheckRoot.Perplexed);
+		_forbidDirectHpDamage.Release();
+	}
+
+	public void RetainCountAsDestructible()
+	{
+		_countAsDestructible.Retain();
+	}
+
+	public void ReleaseCountAsDestructible()
+	{
+		_countAsDestructible.Release();
+	}
+
+	public void RetainCountHpAsArmor()
+	{
+		_countHpAsArmor.Retain();
+		if (_countHpAsArmor.Count == 1)
+		{
+			base.Owner.GetRequired<PartArmor>().ActivateHpAsArmor();
+		}
+	}
+
+	public void ReleaseCountHpAsArmor()
+	{
+		_countHpAsArmor.Release();
+		if (_countHpAsArmor.Count == 0)
+		{
+			base.Owner.GetRequired<PartArmor>().DeactivateHpAsArmor(Damage);
+		}
 	}
 
 	public override Hash128 GetHash128()
@@ -582,6 +615,12 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		Hash128 result = default(Hash128);
 		Hash128 val = base.GetHash128();
 		result.Append(ref val);
+		Hash128 val2 = ClassHasher<CountableFlag>.GetHash128(_forbidDirectHpDamage);
+		result.Append(ref val2);
+		Hash128 val3 = ClassHasher<CountableFlag>.GetHash128(_countHpAsArmor);
+		result.Append(ref val3);
+		Hash128 val4 = ClassHasher<CountableFlag>.GetHash128(_countAsDestructible);
+		result.Append(ref val4);
 		result.Append(ref m_DamageReceivedThisTurn);
 		result.Append(ref m_LastTurnWhenReceiveDamage);
 		result.Append(ref m_ConsecutiveOutOfCombatTurnsWithoutDamage);
@@ -590,8 +629,8 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		{
 			for (int i = 0; i < temporaryHitPoints.Count; i++)
 			{
-				Hash128 val2 = ClassHasher<TemporaryHitPointsData>.GetHash128(temporaryHitPoints[i]);
-				result.Append(ref val2);
+				Hash128 val5 = ClassHasher<TemporaryHitPointsData>.GetHash128(temporaryHitPoints[i]);
+				result.Append(ref val5);
 			}
 		}
 		result.Append(ref m_MissingHpFraction);
@@ -615,11 +654,17 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 		}
 		ushort type = state.TypeLibrary.RegisterType<PartHealth>(OwlPackTypeInfo);
 		formatter.StartObject(type, OwlPackTypeInfo.Name, objectId);
-		formatter.UnmanagedField(0, "m_DamageReceivedThisTurn", ref m_DamageReceivedThisTurn, state);
-		formatter.UnmanagedField(1, "m_LastTurnWhenReceiveDamage", ref m_LastTurnWhenReceiveDamage, state);
-		formatter.UnmanagedField(2, "m_ConsecutiveOutOfCombatTurnsWithoutDamage", ref m_ConsecutiveOutOfCombatTurnsWithoutDamage, state);
-		formatter.Field(3, "m_TemporaryHitPoints", ref m_TemporaryHitPoints, state);
-		formatter.UnmanagedField(4, "m_MissingHpFraction", ref m_MissingHpFraction, state);
+		CountableFlag value = _forbidDirectHpDamage;
+		formatter.Field(0, "_forbidDirectHpDamage", ref value, state);
+		CountableFlag value2 = _countHpAsArmor;
+		formatter.Field(1, "_countHpAsArmor", ref value2, state);
+		CountableFlag value3 = _countAsDestructible;
+		formatter.Field(2, "_countAsDestructible", ref value3, state);
+		formatter.UnmanagedField(3, "m_DamageReceivedThisTurn", ref m_DamageReceivedThisTurn, state);
+		formatter.UnmanagedField(4, "m_LastTurnWhenReceiveDamage", ref m_LastTurnWhenReceiveDamage, state);
+		formatter.UnmanagedField(5, "m_ConsecutiveOutOfCombatTurnsWithoutDamage", ref m_ConsecutiveOutOfCombatTurnsWithoutDamage, state);
+		formatter.Field(6, "m_TemporaryHitPoints", ref m_TemporaryHitPoints, state);
+		formatter.UnmanagedField(7, "m_MissingHpFraction", ref m_MissingHpFraction, state);
 		formatter.EndObject();
 	}
 
@@ -638,18 +683,27 @@ public class PartHealth : MechanicEntityPart, IInGameHandler<EntitySubscriber>, 
 				formatter.SkipField(size);
 				break;
 			case 0:
-				m_DamageReceivedThisTurn = formatter.ReadUnmanaged<int>(state);
+				Unsafe.AsRef(in _forbidDirectHpDamage) = formatter.ReadPackable<CountableFlag>(state);
 				break;
 			case 1:
-				m_LastTurnWhenReceiveDamage = formatter.ReadUnmanaged<int>(state);
+				Unsafe.AsRef(in _countHpAsArmor) = formatter.ReadPackable<CountableFlag>(state);
 				break;
 			case 2:
-				m_ConsecutiveOutOfCombatTurnsWithoutDamage = formatter.ReadUnmanaged<int>(state);
+				Unsafe.AsRef(in _countAsDestructible) = formatter.ReadPackable<CountableFlag>(state);
 				break;
 			case 3:
-				m_TemporaryHitPoints = formatter.ReadPackable<List<TemporaryHitPointsData>>(state);
+				m_DamageReceivedThisTurn = formatter.ReadUnmanaged<int>(state);
 				break;
 			case 4:
+				m_LastTurnWhenReceiveDamage = formatter.ReadUnmanaged<int>(state);
+				break;
+			case 5:
+				m_ConsecutiveOutOfCombatTurnsWithoutDamage = formatter.ReadUnmanaged<int>(state);
+				break;
+			case 6:
+				m_TemporaryHitPoints = formatter.ReadPackable<List<TemporaryHitPointsData>>(state);
+				break;
+			case 7:
 				m_MissingHpFraction = formatter.ReadUnmanaged<float>(state);
 				break;
 			}

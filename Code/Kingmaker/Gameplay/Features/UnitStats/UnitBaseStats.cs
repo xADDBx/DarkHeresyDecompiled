@@ -13,7 +13,7 @@ public sealed class UnitBaseStats
 
 	private readonly BlueprintUnit _blueprint;
 
-	private readonly NPCDifficultyOption _npcDifficulty;
+	private readonly EnemyDifficultyOption _enemyDurability;
 
 	private readonly int _cr;
 
@@ -27,29 +27,29 @@ public sealed class UnitBaseStats
 
 	public StatBaseValue this[SkillType skill] => _values.GetValueOrDefault(skill.ToStatType());
 
-	private UnitBaseStats(BlueprintUnit blueprint, NPCDifficultyOption npcDifficulty, int cr)
+	private UnitBaseStats(BlueprintUnit blueprint, EnemyDifficultyOption enemyDurability, int cr)
 	{
 		_blueprint = blueprint;
-		_npcDifficulty = npcDifficulty;
+		_enemyDurability = enemyDurability;
 		_cr = cr;
 		_attributeCategories = UnitBaseStatsHelper.CalculateAttributeCategories(blueprint);
-		_values = UnitBaseStatsHelper.CalculateStats(blueprint, npcDifficulty, cr, GetAttributeCategoryType);
+		_values = UnitBaseStatsHelper.CalculateStats(blueprint, enemyDurability, cr, GetAttributeCategoryType);
 	}
 
-	public static UnitBaseStats Get(BlueprintUnit blueprint, NPCDifficultyOption npcDifficulty, int cr)
+	public static UnitBaseStats Get(BlueprintUnit blueprint, EnemyDifficultyOption enemyDurability, int cr)
 	{
 		if (!Application.isPlaying)
 		{
-			return new UnitBaseStats(blueprint, npcDifficulty, cr);
+			return new UnitBaseStats(blueprint, enemyDurability, cr);
 		}
 		if (!_Cache.TryGetValue(blueprint, out Dictionary<int, UnitBaseStats> value))
 		{
 			Dictionary<int, UnitBaseStats> dictionary2 = (_Cache[blueprint] = new Dictionary<int, UnitBaseStats>());
 			value = dictionary2;
 		}
-		if (!value.TryGetValue(cr, out var value2) || value2._npcDifficulty != npcDifficulty)
+		if (!value.TryGetValue(cr, out var value2) || value2._enemyDurability != enemyDurability)
 		{
-			return value[cr] = new UnitBaseStats(blueprint, npcDifficulty, cr);
+			return value[cr] = new UnitBaseStats(blueprint, enemyDurability, cr);
 		}
 		return value2;
 	}

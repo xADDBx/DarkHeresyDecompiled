@@ -3,6 +3,7 @@ using DG.Tweening;
 using Kingmaker.AreaLogic.Cutscenes;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.Framework.Settings.UISettings;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.GameCommands;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
@@ -47,6 +48,8 @@ public class SkipCutscenePCView : View<SkipCutsceneVM>
 
 	private IEnumerator m_FillSkipCutsceneCoroutine;
 
+	private bool m_CanSkipCutscene;
+
 	private bool m_IsFillingSkipCutscene;
 
 	private const float FillTarget = 100f;
@@ -55,6 +58,7 @@ public class SkipCutscenePCView : View<SkipCutsceneVM>
 
 	protected override void OnBind()
 	{
+		m_CanSkipCutscene = false;
 		_ = UISettingsRoot.Instance.UIKeybindGeneralSettings;
 		SetSkipCutsceneSettings();
 		m_SkipText.text = UIStrings.Instance.CommonTexts.Skip.Text;
@@ -68,10 +72,13 @@ public class SkipCutscenePCView : View<SkipCutsceneVM>
 			OnCutSceneDecline();
 		}).AddTo(this);
 		m_ButtonCanvasGroup.DOFade(1f, m_ButtonShowTime).SetDelay(m_ButtonShowDelay).SetUpdate(isIndependentUpdate: true)
-			.OnComplete(delegate
-			{
-				m_Button.Interactable = true;
-			});
+			.OnComplete(ActivateSkipCutscene);
+	}
+
+	private void ActivateSkipCutscene()
+	{
+		m_CanSkipCutscene = true;
+		m_Button.Interactable = true;
 	}
 
 	protected override void OnUnbind()
@@ -85,6 +92,7 @@ public class SkipCutscenePCView : View<SkipCutsceneVM>
 		m_Button.Interactable = false;
 		DOTween.Kill(m_ButtonCanvasGroup);
 		m_ButtonCanvasGroup.alpha = 0f;
+		m_CanSkipCutscene = false;
 	}
 
 	private void SetSkipCutsceneSettings()
@@ -127,12 +135,17 @@ public class SkipCutscenePCView : View<SkipCutsceneVM>
 			});
 			m_IsFillingSkipCutscene = false;
 			Game.Instance.GameCommandQueue.SkipCutscene();
+			if (Game.Instance.EntityPools.Cutscenes.TryFind((CutscenePlayerData p) => p.HasActiveLockControl, out var result))
+			{
+				Metrics.Cutscene.Id(result.Cutscene.AssetGuid).Skipped(skipped: true).SkipTime(result.PlayingTime)
+					.Send();
+			}
 		}
 	}
 
 	public void TrySkipCutscene(bool state)
 	{
-		if (!(Game.Instance.CurrentModeType != GameModeType.Cutscene))
+		if (!(Game.Instance.CurrentModeType != GameModeType.Cutscene) && m_CanSkipCutscene)
 		{
 			if (state && !m_IsFillingSkipCutscene)
 			{

@@ -1,9 +1,6 @@
 using System;
-using System.Linq;
-using Kingmaker.Blueprints.Root.Strings;
 using Owlcat.UI;
 using R3;
-using Rewired;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -52,40 +49,14 @@ public class NewGamePhaseDifficultyConsoleView : NewGamePhaseDifficultyBaseView
 		base.OnBind();
 	}
 
-	public void UpdateFirstFocus()
-	{
-		GridConsoleNavigationBehaviour navigationBehaviour = m_VirtualList.GetNavigationBehaviour();
-		if (navigationBehaviour != null)
-		{
-			IConsoleEntity consoleEntity = navigationBehaviour.Entities.FirstOrDefault((IConsoleEntity e) => !((e as VirtualListElement)?.ConsoleEntityProxy is SettingsEntityHeaderConsoleView));
-			if (consoleEntity != null)
-			{
-				navigationBehaviour.FocusOnEntityManual(consoleEntity);
-			}
-			else
-			{
-				navigationBehaviour.FocusOnFirstValidEntity();
-			}
-		}
-	}
-
-	public void Scroll(InputActionEventData arg1, float x)
-	{
-		Scroll(x);
-	}
-
-	private void Scroll(float x)
+	public void Scroll(float x)
 	{
 		PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
 		pointerEventData.scrollDelta = new Vector2(0f, x * base.InfoView.ScrollRectExtended.scrollSensitivity);
 		base.InfoView.ScrollRectExtended.OnSmoothlyScroll(pointerEventData);
 	}
 
-	public void CreateInputImpl(InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
+	public void CreateInputImpl()
 	{
-		hintsWidget.BindHint(inputLayer.AddButton(delegate
-		{
-			base.ViewModel.OpenDefaultSettingsDialog();
-		}, 11, base.ViewModel.IsEnabled.And(base.ViewModel.IsDefaultButtonInteractable).ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustLongPressed), UIStrings.Instance.SettingsUI.ResetToDefaultHold).AddTo(this);
 	}
 }

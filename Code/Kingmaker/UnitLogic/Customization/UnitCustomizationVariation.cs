@@ -36,7 +36,7 @@ public class UnitCustomizationVariation : IEquatable<UnitCustomizationVariation>
 	public BlueprintRace Race => m_Race?.Get();
 
 	[UsedImplicitly]
-	private UnitCustomizationVariation()
+	public UnitCustomizationVariation()
 	{
 	}
 

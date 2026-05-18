@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.UI;
 using R3;

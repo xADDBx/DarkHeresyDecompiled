@@ -1,6 +1,5 @@
+using System.Collections.Generic;
 using Code.View.UI.Helpers;
-using JetBrains.Annotations;
-using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Common.Animations;
 using Owlcat.UI;
@@ -14,27 +13,24 @@ public class CharInfoStatusEffectsView : CharInfoComponentView<CharInfoStatusEff
 	[SerializeField]
 	private TextMeshProUGUI m_StatusEffectsTitle;
 
-	[Header("No Status Effects")]
 	[SerializeField]
-	[UsedImplicitly]
 	private FadeAnimator m_NoStatusContainer;
 
 	[SerializeField]
 	private TextMeshProUGUI m_NoStatusEffectsLabel;
 
-	[Header("Widget Collection")]
 	[SerializeField]
-	protected ScrollRectExtended m_Scroll;
+	private ScrollRectExtended m_Scroll;
 
 	[SerializeField]
-	protected WidgetList m_WidgetList;
+	private WidgetList m_WidgetList;
 
 	[SerializeField]
-	private StatusEffectBaseView m_WidgetEntityView;
+	private CharInfoBuffGroupView m_GroupViewPrefab;
 
 	private AccessibilityTextHelper m_TextHelper;
 
-	private UIStrings t => UIStrings.Instance;
+	protected IReadOnlyList<IBindable> Widgets => m_WidgetList.Entries;
 
 	public override void Initialize()
 	{
@@ -51,19 +47,24 @@ public class CharInfoStatusEffectsView : CharInfoComponentView<CharInfoStatusEff
 	protected override void OnUnbind()
 	{
 		base.OnUnbind();
+		m_WidgetList.Clear();
 		m_TextHelper.Dispose();
+	}
+
+	protected void EnsureScrollRect(RectTransform rectTransform)
+	{
+		m_Scroll.EnsureVisibleVertical(rectTransform);
 	}
 
 	private void SetupLabels()
 	{
-		m_StatusEffectsTitle.text = t.CharacterSheet.StatusEffects;
-		m_NoStatusEffectsLabel.text = t.CharacterSheet.NoBuffText;
+		m_StatusEffectsTitle.text = base.ViewModel.StatusEffectsTitleText;
+		m_NoStatusEffectsLabel.text = base.ViewModel.NoEffectsText;
 		m_TextHelper.UpdateTextSize();
 	}
 
 	protected override void RefreshView()
 	{
-		base.RefreshView();
 		DrawEntities();
 		DrawNoBuffsLabel();
 		m_Scroll.ScrollToTop();
@@ -71,10 +72,7 @@ public class CharInfoStatusEffectsView : CharInfoComponentView<CharInfoStatusEff
 
 	private void DrawEntities()
 	{
-		if (base.ViewModel.BuffsGroup != null)
-		{
-			m_WidgetList.DrawEntries(base.ViewModel.BuffsGroup.FeatureList, m_WidgetEntityView, unused: true);
-		}
+		m_WidgetList.DrawEntries(base.ViewModel.BuffGroups, m_GroupViewPrefab);
 	}
 
 	private void DrawNoBuffsLabel()

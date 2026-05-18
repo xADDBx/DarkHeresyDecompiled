@@ -1,31 +1,59 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Items;
+using MemoryPack;
+using MemoryPack.Formatters;
+using MemoryPack.Internal;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 
 namespace Kingmaker.GameCommands;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class TransferItemToInventoryGameCommand : GameCommand, IOwlPackable<TransferItemToInventoryGameCommand>
+[MemoryPackable(GenerateType.Object)]
+public class TransferItemToInventoryGameCommand : GameCommand, IMemoryPackable<TransferItemToInventoryGameCommand>, IMemoryPackFormatterRegister, IOwlPackable<TransferItemToInventoryGameCommand>
 {
+	[Preserve]
+	private sealed class TransferItemToInventoryGameCommandFormatter : MemoryPackFormatter<TransferItemToInventoryGameCommand>
+	{
+		[Preserve]
+		public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref TransferItemToInventoryGameCommand value)
+		{
+			TransferItemToInventoryGameCommand.Serialize(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void SerializeJson(ref MemoryPackJsonWriter writer, ref TransferItemToInventoryGameCommand value)
+		{
+			TransferItemToInventoryGameCommand.SerializeJson(ref writer, ref value);
+		}
+
+		[Preserve]
+		public override void Deserialize(ref MemoryPackReader reader, ref TransferItemToInventoryGameCommand value)
+		{
+			TransferItemToInventoryGameCommand.Deserialize(ref reader, ref value);
+		}
+
+		[Preserve]
+		public override void DeserializeJson(ref MemoryPackJsonReader reader, ref TransferItemToInventoryGameCommand value)
+		{
+			TransferItemToInventoryGameCommand.DeserializeJson(ref reader, ref value);
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
+	[MemoryPackInclude]
 	private List<EntityRef<ItemEntity>> m_Items;
 
-	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
-	{
-		Name = "TransferItemToInventoryGameCommand",
-		OldNames = null,
-		Fields = new FieldInfo[1]
-		{
-			new FieldInfo("m_Items", typeof(List<EntityRef<ItemEntity>>))
-		}
-	};
+	public static readonly TypeInfo OwlPackTypeInfo;
 
 	public override bool IsSynchronized => true;
 
+	[MemoryPackConstructor]
 	private TransferItemToInventoryGameCommand()
 	{
 	}
@@ -38,6 +66,155 @@ public class TransferItemToInventoryGameCommand : GameCommand, IOwlPackable<Tran
 
 	protected override void ExecuteInternal()
 	{
+	}
+
+	static TransferItemToInventoryGameCommand()
+	{
+		OwlPackTypeInfo = new TypeInfo
+		{
+			Name = "TransferItemToInventoryGameCommand",
+			OldNames = null,
+			Fields = new FieldInfo[1]
+			{
+				new FieldInfo("m_Items", typeof(List<EntityRef<ItemEntity>>))
+			}
+		};
+		RegisterFormatter();
+	}
+
+	[Preserve]
+	public static void RegisterFormatter()
+	{
+		if (!MemoryPackFormatterProvider.IsRegistered<TransferItemToInventoryGameCommand>())
+		{
+			MemoryPackFormatterProvider.Register(new TransferItemToInventoryGameCommandFormatter());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<TransferItemToInventoryGameCommand[]>())
+		{
+			MemoryPackFormatterProvider.Register(new ArrayFormatter<TransferItemToInventoryGameCommand>());
+		}
+		if (!MemoryPackFormatterProvider.IsRegistered<List<EntityRef<ItemEntity>>>())
+		{
+			MemoryPackFormatterProvider.Register(new ListFormatter<EntityRef<ItemEntity>>());
+		}
+	}
+
+	[Preserve]
+	public static void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref TransferItemToInventoryGameCommand? value) where TBufferWriter : class, IBufferWriter<byte>
+	{
+		if (value == null)
+		{
+			writer.WriteNullObjectHeader();
+			return;
+		}
+		writer.WriteObjectHeader(1);
+		ListFormatter.SerializePackable(ref writer, value.m_Items);
+	}
+
+	[Preserve]
+	public static void Deserialize(ref MemoryPackReader reader, ref TransferItemToInventoryGameCommand? value)
+	{
+		if (!reader.TryReadObjectHeader(out var memberCount))
+		{
+			value = null;
+			return;
+		}
+		List<EntityRef<ItemEntity>> value2;
+		if (memberCount == 1)
+		{
+			if (value != null)
+			{
+				value2 = value.m_Items;
+				ListFormatter.DeserializePackable(ref reader, ref value2);
+				goto IL_006a;
+			}
+			value2 = ListFormatter.DeserializePackable<EntityRef<ItemEntity>>(ref reader);
+		}
+		else
+		{
+			if (memberCount > 1)
+			{
+				MemoryPackSerializationException.ThrowInvalidPropertyCount(typeof(TransferItemToInventoryGameCommand), 1, memberCount);
+				return;
+			}
+			value2 = ((value != null) ? value.m_Items : null);
+			if (memberCount != 0)
+			{
+				ListFormatter.DeserializePackable(ref reader, ref value2);
+				_ = 1;
+			}
+			if (value != null)
+			{
+				goto IL_006a;
+			}
+		}
+		value = new TransferItemToInventoryGameCommand
+		{
+			m_Items = value2
+		};
+		return;
+		IL_006a:
+		value.m_Items = value2;
+	}
+
+	[Preserve]
+	public static void SerializeJson(ref MemoryPackJsonWriter writer, ref TransferItemToInventoryGameCommand? value)
+	{
+		if (value == null)
+		{
+			writer.WriteNull();
+			return;
+		}
+		writer.WriteObjectHeader();
+		writer.WriteProperty("m_Items");
+		ListFormatter.SerializePackableJson(ref writer, value.m_Items);
+		writer.WriteObjectFooter();
+	}
+
+	[Preserve]
+	public static void DeserializeJson(ref MemoryPackJsonReader reader, ref TransferItemToInventoryGameCommand? value)
+	{
+		if (!reader.CheckObjectStart())
+		{
+			value = null;
+			reader.Advance();
+			return;
+		}
+		reader.Advance();
+		List<EntityRef<ItemEntity>> value2 = ((value != null) ? value.m_Items : null);
+		bool[] array = new bool[1];
+		string text = null;
+		while ((text = reader.ReadPropertyName()) != null)
+		{
+			if (value == null)
+			{
+				if (text == "m_Items")
+				{
+					value2 = ListFormatter.DeserializePackableJson<EntityRef<ItemEntity>>(ref reader);
+					array[0] = true;
+				}
+			}
+			else if (text == "m_Items")
+			{
+				ListFormatter.DeserializePackableJson(ref reader, ref value2);
+			}
+		}
+		if (value != null)
+		{
+			value.m_Items = value2;
+		}
+		else
+		{
+			value = new TransferItemToInventoryGameCommand
+			{
+				m_Items = value2
+			};
+		}
+		if (!reader.CheckObjectEnd())
+		{
+			throw new Exception("Expected object end");
+		}
+		reader.Advance();
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

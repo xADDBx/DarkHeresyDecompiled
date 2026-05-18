@@ -8,7 +8,6 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -77,25 +76,19 @@ public class DetailedTrapObjectData : TrapObjectData, IHashable, IOwlPackable<De
 
 	public override bool IsHiddenWhenInactive => Blueprint.IsHiddenWhenInactive;
 
-	public new DetailedTrapObjectView View => (DetailedTrapObjectView)base.View;
-
 	protected override StatType DisarmSkill => Blueprint.DisarmSkill;
 
-	public DetailedTrapObjectData(DetailedTrapObjectView trapView)
-		: base(trapView.UniqueId, trapView.IsInGameBySettings, trapView.Blueprint)
+	public DetailedTrapObjectData(ITrapEntityConfig config)
+		: base(config)
 	{
 	}
 
-	protected DetailedTrapObjectData(JsonConstructorMark _)
+	protected DetailedTrapObjectData(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	protected DetailedTrapObjectData()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return DetailedTrapObjectView.CreateView(Blueprint, base.UniqueId, base.ScriptZoneId);
 	}
@@ -118,7 +111,7 @@ public class DetailedTrapObjectData : TrapObjectData, IHashable, IOwlPackable<De
 
 	public override bool CanUnitDisable(BaseUnitEntity unit)
 	{
-		using (ContextData<BlueprintTrap.ElementsData>.Request().Setup(unit, View))
+		using (ContextData<BlueprintTrap.ElementsData>.Request().Setup(unit, this))
 		{
 			return Blueprint.DisableConditions.Check();
 		}
@@ -139,7 +132,7 @@ public class DetailedTrapObjectData : TrapObjectData, IHashable, IOwlPackable<De
 
 	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		DetailedTrapObjectData source = new DetailedTrapObjectData();
+		DetailedTrapObjectData source = new DetailedTrapObjectData(default(OwlPackConstructorParameter));
 		result = Unsafe.As<DetailedTrapObjectData, TPossiblyBase>(ref source);
 	}
 

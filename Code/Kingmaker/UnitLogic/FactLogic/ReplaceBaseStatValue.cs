@@ -1,6 +1,5 @@
 using System;
 using Kingmaker.Blueprints.Attributes;
-using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.UnitLogic.Progression.Features;
 using Owlcat.Runtime.Core.Utility;
 
@@ -13,8 +12,6 @@ namespace Kingmaker.UnitLogic.FactLogic;
 [TypeId("547decea8a90414eb6dedb6ac9053ec9")]
 public class ReplaceBaseStatValue : ReplaceStat
 {
-	private StatType m_OriginalBaseStat;
-
 	protected override void OnActivateOrPostLoad()
 	{
 	}

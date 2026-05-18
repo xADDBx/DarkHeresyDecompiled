@@ -20,6 +20,8 @@ public class DamageSettings
 
 	public bool CausedByCheckFail;
 
+	public bool CanApplyCriticalEffects;
+
 	private int m_BonusWithSource;
 
 	public IntermediateDamage CreateDamage()
@@ -31,6 +33,7 @@ public class DamageSettings
 		}
 		IntermediateDamage intermediateDamage = TypeDescription.CreateDamage(num);
 		intermediateDamage.CausedByCheckFail = CausedByCheckFail;
+		intermediateDamage.CanApplyCriticalEffects = CanApplyCriticalEffects;
 		return intermediateDamage;
 	}
 

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
@@ -28,17 +29,39 @@ public class CommandAction : CommandBase
 
 	public ActionList Action;
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		using (ContextData<PlayerData>.Request().Setup(player))
 		{
-			Action.Run(ActionList.ExceptionHandlingMode.ThrowAfterListIsComplete);
+			try
+			{
+				Action.Run(ActionList.ExceptionHandlingMode.ThrowAfterListIsComplete);
+			}
+			catch (AggregateException ex)
+			{
+				return CommandResult.FromException(ex.InnerException);
+			}
+			catch (Exception e)
+			{
+				return CommandResult.FromException(e);
+			}
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
-		OnRun(player, skipping: true);
+		return OnRun(player, skipping: true);
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -46,8 +69,9 @@ public class CommandAction : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()

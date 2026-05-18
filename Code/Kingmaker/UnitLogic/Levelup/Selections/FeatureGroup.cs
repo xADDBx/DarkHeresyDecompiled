@@ -36,5 +36,7 @@ public enum FeatureGroup
 	SoldierSecondKeystone = 36,
 	KeystoneFeature = 37,
 	ChargenAstraMilitarum = 40,
-	ChargenNoble = 41
+	ChargenNoble = 41,
+	ChargenDeathWorld = 42,
+	ChargenMystic = 43
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Enums;
 using Kingmaker.Enums.Sound;
 using Kingmaker.Items;
@@ -112,12 +113,12 @@ public static class FXPlayer
 		case FXTarget.CasterWeapon:
 		{
 			WeaponSlot weaponSlot2 = (ability?.Weapon?.HoldingSlot ?? caster.GetFirstWeapon()?.HoldingSlot) as WeaponSlot;
-			return new GameObject[1] { FxHelper.SpawnFxOnWeapon(gameObject, caster.View, weaponSlot2?.FxSnapMap) };
+			return new GameObject[1] { FxHelper.SpawnFxOnWeapon(gameObject, caster.View.AsMechanicEntityView(), weaponSlot2?.FxSnapMap) };
 		}
 		case FXTarget.CasterOffHandWeapon:
 		{
 			WeaponSlot weaponSlot = caster.GetSecondWeapon()?.HoldingSlot as WeaponSlot;
-			return new GameObject[1] { FxHelper.SpawnFxOnWeapon(gameObject, caster.View, weaponSlot?.FxSnapMap) };
+			return new GameObject[1] { FxHelper.SpawnFxOnWeapon(gameObject, caster.View.AsMechanicEntityView(), weaponSlot?.FxSnapMap) };
 		}
 		case FXTarget.CasterAllWeapon:
 			if (caster is UnitEntity unitEntity)
@@ -129,7 +130,7 @@ public static class FXPlayer
 					{
 						if (hand?.FxSnapMap != null)
 						{
-							list.Add(FxHelper.SpawnFxOnWeapon(gameObject, caster.View, hand.FxSnapMap));
+							list.Add(FxHelper.SpawnFxOnWeapon(gameObject, caster.View.AsMechanicEntityView(), hand.FxSnapMap));
 						}
 					}
 				}

@@ -85,11 +85,6 @@ public abstract class SelectionGroupView<TToggleGroupVM, TEntityVM, TEntityView>
 		return TryScrollToEntity(base.ViewModel.LastChangedEntity.Value);
 	}
 
-	public ConsoleNavigationBehaviour GetNavigationBehaviour()
-	{
-		return VirtualList.GetNavigationBehaviour();
-	}
-
 	private bool TryScrollToEntity(TEntityVM entityVM)
 	{
 		VirtualList.ScrollController.ForceScrollToElement(entityVM);

@@ -47,11 +47,12 @@ public class CapitalCompanionLogic : EtudeBracketTrigger
 		}
 		foreach (BaseUnitEntity allCrossSceneUnit in Game.Instance.Player.AllCrossSceneUnits)
 		{
+			UnitPartCompanion companionOptional = allCrossSceneUnit.GetCompanionOptional();
 			BaseUnitEntity baseUnitEntity = allCrossSceneUnit;
-			baseUnitEntity.IsInGame = allCrossSceneUnit.GetCompanionOptional()?.State switch
+			baseUnitEntity.IsInGame = companionOptional?.State switch
 			{
 				CompanionState.InParty => true, 
-				CompanionState.Remote => false, 
+				CompanionState.Remote => companionOptional.GetCurrentSpawner() != null && allCrossSceneUnit.IsInGame, 
 				_ => allCrossSceneUnit.IsInGame, 
 			};
 		}
@@ -72,7 +73,7 @@ public class CapitalCompanionLogic : EtudeBracketTrigger
 			if (item != null && item != Game.Instance.Player.MainCharacterEntity)
 			{
 				BaseUnitEntity master = item.Master;
-				if ((master == null || (!master.IsMainCharacter && !(master.GetOptional<UnitPartCompanion>()?.GetCurrentSpawner()))) && !(item.GetOptional<UnitPartCompanion>()?.GetCurrentSpawner()))
+				if ((master == null || (!master.IsMainCharacter && master.GetOptional<UnitPartCompanion>()?.GetCurrentSpawner() != null)) && item.GetOptional<UnitPartCompanion>()?.GetCurrentSpawner() == null)
 				{
 					item.IsInGame = false;
 				}

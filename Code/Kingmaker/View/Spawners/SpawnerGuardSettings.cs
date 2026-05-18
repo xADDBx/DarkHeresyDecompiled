@@ -20,9 +20,9 @@ namespace Kingmaker.View.Spawners;
 public class SpawnerGuardSettings : EntityPartComponent<SpawnerGuardSettings.Part>
 {
 	[OwlPackable(OwlPackableMode.Generate)]
-	public class Part : ViewBasedPart, IUnitInitializer, IHashable, IOwlPackable<Part>
+	public class Part : EntityPartWithConfig, IUnitInitializer, IHashable, IOwlPackable<Part>
 	{
-		public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 		{
 			Name = "Part",
 			OldNames = null,
@@ -46,7 +46,7 @@ public class SpawnerGuardSettings : EntityPartComponent<SpawnerGuardSettings.Par
 				PartVision visionOptional = unit.GetVisionOptional();
 				if (visionOptional != null)
 				{
-					visionOptional.ExtendedVisionArea = Source.ExtendedVisionArea;
+					visionOptional.ExtendedVisionArea = Source.ExtendedVisionArea.Data;
 				}
 			}
 		}
@@ -63,7 +63,7 @@ public class SpawnerGuardSettings : EntityPartComponent<SpawnerGuardSettings.Par
 			return result;
 		}
 
-		public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+		public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 		{
 			Part source = new Part();
 			result = Unsafe.As<Part, TPossiblyBase>(ref source);

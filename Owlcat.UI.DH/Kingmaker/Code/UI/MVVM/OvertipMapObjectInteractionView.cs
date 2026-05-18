@@ -167,7 +167,7 @@ public abstract class OvertipMapObjectInteractionView : BaseOvertipMapObjectView
 		bool flag = base.ViewModel.ActiveCharacterIsNear || CheckVisibleTrigger;
 		float value2;
 		float value;
-		if (OvertipUtils.IsDetectiveInteract(base.ViewModel.Type) && (base.ViewModel.MapObjectEntity is DetectiveTraceEntity || (base.ViewModel.MapObjectEntity is DetectiveClueEntity detectiveClueEntity && !detectiveClueEntity.View.Signal.IsJammer)))
+		if (OvertipUtils.GetInteractionCategory(base.ViewModel.Type) == InteractionCategory.Detective && (base.ViewModel.MapObjectEntity is DetectiveTraceEntity || (base.ViewModel.MapObjectEntity is DetectiveClueEntity detectiveClueEntity && !detectiveClueEntity.Config.IsJammer)))
 		{
 			value = (base.ViewModel.ActiveCharacterIsNear ? 1f : 0f);
 			value2 = (base.ViewModel.ActiveCharacterIsNear ? 1f : 0f);
@@ -256,11 +256,7 @@ public abstract class OvertipMapObjectInteractionView : BaseOvertipMapObjectView
 		{
 			return "AdditionalCombat";
 		}
-		if (!OvertipUtils.IsDetectiveInteract(uiInteractionType))
-		{
-			return "Default";
-		}
-		return "Detective";
+		return OvertipUtils.GetInteractionCategory(uiInteractionType).ToString();
 	}
 
 	protected void SetInteractable(bool interactable)

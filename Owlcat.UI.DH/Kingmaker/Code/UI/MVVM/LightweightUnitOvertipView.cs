@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.UI.Sound;
 using R3;
 using UnityEngine;
@@ -136,7 +135,7 @@ public class LightweightUnitOvertipView : BaseOvertipView<LightweightUnitOvertip
 
 	private void DoDeath()
 	{
-		UISounds.Instance.Sounds.Combat.UnitDeath.Play();
+		CombatSounds.Instance.Combat.UnitDeath.Play();
 	}
 
 	private void DoVisibility(UnitOvertipVisibility unitOvertipVisibility)
@@ -148,7 +147,7 @@ public class LightweightUnitOvertipView : BaseOvertipView<LightweightUnitOvertip
 		m_FadeAnimator = m_InnerCanvasGroup.DOFade(alpha, 0.2f).SetUpdate(isIndependentUpdate: true).SetAutoKill(autoKillOnCompletion: true);
 		m_ScaleAnimator?.Kill();
 		m_ScaleAnimator = m_RectTransform.DOScale(scale, 0.2f).SetUpdate(isIndependentUpdate: true).SetAutoKill(autoKillOnCompletion: true);
-		PositionCorrectionFromView = new Vector2(0f, 0f - m_StandardOvertipPositionYCorrection);
+		m_PositionCorrectionFromView = new Vector2(0f, 0f - m_StandardOvertipPositionYCorrection);
 	}
 
 	private void UpdateVisibility()

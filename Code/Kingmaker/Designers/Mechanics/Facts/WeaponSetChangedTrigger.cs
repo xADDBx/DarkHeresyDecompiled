@@ -5,6 +5,7 @@ using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -30,7 +31,7 @@ public class WeaponSetChangedTrigger : EntityFactComponentDelegate, IUnitActiveE
 		{
 			return;
 		}
-		using (baseUnitEntity.Context.SetScope())
+		using (EvalContext.PushContextMaybe(base.Fact?.MaybeContext))
 		{
 			m_ActionList?.Run();
 		}

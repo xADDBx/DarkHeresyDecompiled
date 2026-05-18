@@ -1,4 +1,5 @@
 using System;
+using Owlcat.UI;
 using R3;
 using TMPro;
 using UnityEngine;
@@ -12,7 +13,10 @@ public class UnitInfoPartConcentration : UnitInfoPart
 	private Image m_ConcentrationIcon;
 
 	[SerializeField]
-	private TextMeshProUGUI m_ConcentrationName;
+	private TMP_Text m_ConcentrationName;
+
+	[SerializeField]
+	private TMP_Text m_ConcentrationTitle;
 
 	private IDisposable m_TooltipIDisposable;
 
@@ -28,6 +32,7 @@ public class UnitInfoPartConcentration : UnitInfoPart
 			m_ConcentrationName.text = n;
 		}).AddTo(this);
 		base.ViewModel.Data.ConcentrationAbilityTooltip.Subscribe(UpdateTooltip).AddTo(this);
+		m_ConcentrationTitle.SetText(base.ViewModel.ConcentrationTitle);
 	}
 
 	protected override void ShowImpl(UnitInfoPartState state)
@@ -35,7 +40,7 @@ public class UnitInfoPartConcentration : UnitInfoPart
 		base.gameObject.SetActive(!state.HasHit && !state.PreciseAttackHasNoTarget && state.HasConcentration);
 	}
 
-	private void UpdateTooltip(TooltipTemplateBuff template)
+	private void UpdateTooltip(TooltipBaseTemplate template)
 	{
 		if (template != null)
 		{

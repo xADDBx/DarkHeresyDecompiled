@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
+using Kingmaker.Framework.DetectiveSystem;
 using Owlcat.UI;
 using TMPro;
 using UnityEngine;
@@ -35,9 +36,10 @@ public class NotificationCaseBodyView : View<NotificationCaseBodyVM>
 		}
 		else
 		{
-			m_Icon.sprite = base.ViewModel.Case.Icon;
-			m_Description.text = base.ViewModel.Case.Description.Text;
-			TooltipTemplateSimple template2 = new TooltipTemplateSimple(base.ViewModel.Case.Name.Text, base.ViewModel.Case.Description.Text);
+			DetectiveSystem.CaseDisplayData caseDisplay = Game.Instance.DetectiveSystem.GetCaseDisplay(base.ViewModel.Case);
+			m_Icon.sprite = caseDisplay.Icon;
+			m_Description.text = caseDisplay.Description;
+			TooltipTemplateSimple template2 = new TooltipTemplateSimple(caseDisplay.Name, caseDisplay.Description);
 			m_Description.SetTooltip(template2, config);
 			m_Icon.SetTooltip(template2, config);
 		}

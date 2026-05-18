@@ -1,3 +1,4 @@
+using Code.View.UI.MVVM;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -11,40 +12,21 @@ public class CharGenSummaryPhaseDetailedView : CharGenPhaseDetailedView<CharGenS
 	private CharGenNameBaseView m_CharGenNameView;
 
 	[SerializeField]
-	private CharInfoLevelClassScoresPCView m_LevelClassScoresView;
+	private SummaryBackgroundFeaturesView m_BackgroundFeaturesView;
 
 	[SerializeField]
-	protected CharInfoSkillsBlockCommonView m_SkillsBlockView;
-
-	[Header("Description")]
-	[SerializeField]
-	protected InfoSectionView m_InfoView;
+	private OwlcatMultiButton m_TogglePlaningModeButton;
 
 	protected override bool HasYScrollBindInternal => false;
-
-	public override void Initialize()
-	{
-		base.Initialize();
-		m_LevelClassScoresView.Initialize();
-		m_SkillsBlockView.Initialize();
-	}
 
 	protected override void OnBind()
 	{
 		base.OnBind();
 		m_CharGenNameView.Bind(base.ViewModel.CharGenNameVM);
-		m_LevelClassScoresView.Bind(base.ViewModel.LevelClassScoresVM);
-		m_SkillsBlockView.Bind(base.ViewModel.CharInfoSkillsBlockVM);
-		m_InfoView.Bind(base.ViewModel.InfoVM);
-		base.ViewModel.InterruptHandler.Subscribe(base.ViewModel.CharGenNameVM.ShowChangeNameMessageBox).AddTo(this);
-	}
-
-	public override void AddInput(ref InputLayer inputLayer, ref GridConsoleNavigationBehaviour navigationBehaviour, ConsoleHintsWidget hintsWidget, ReadOnlyReactiveProperty<bool> isMainCharacter)
-	{
-	}
-
-	public InputLayer GetInputLayer(InputLayer inputLayer, ConsoleHintsWidget hintsWidget)
-	{
-		return inputLayer;
+		m_BackgroundFeaturesView.Bind(base.ViewModel.BackgroundFeaturesVM);
+		ObservableSubscribeExtensions.Subscribe(m_TogglePlaningModeButton.OnLeftClickAsObservable(), delegate
+		{
+			RootVM.Instance.CharGenContext.CharGenVM?.CurrentValue.TogglePlaningMode();
+		}).AddTo(this);
 	}
 }

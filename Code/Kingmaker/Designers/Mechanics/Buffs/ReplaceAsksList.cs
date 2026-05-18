@@ -26,12 +26,12 @@ public class ReplaceAsksList : UnitBuffComponentDelegate
 	protected override void OnActivate()
 	{
 		base.Owner.Asks.SetOverride(Asks);
-		ObjectExtensions.Or(base.Owner.View, null)?.UpdateAsks();
+		base.Owner.View?.UpdateAsks();
 	}
 
 	protected override void OnDeactivate()
 	{
 		base.Owner.Asks.SetOverride(null);
-		ObjectExtensions.Or(base.Owner.View, null)?.UpdateAsks();
+		base.Owner.View?.UpdateAsks();
 	}
 }

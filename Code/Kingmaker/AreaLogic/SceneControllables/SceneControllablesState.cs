@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -48,12 +47,8 @@ public class SceneControllablesState : Entity, IHashable, IOwlPackable<SceneCont
 	{
 	}
 
-	public SceneControllablesState(JsonConstructorMark _)
+	public SceneControllablesState(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected SceneControllablesState()
 	{
 	}
 
@@ -67,7 +62,7 @@ public class SceneControllablesState : Entity, IHashable, IOwlPackable<SceneCont
 		return m_States.TryGetValue(id, out state);
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -97,7 +92,7 @@ public class SceneControllablesState : Entity, IHashable, IOwlPackable<SceneCont
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		SceneControllablesState source = new SceneControllablesState();
+		SceneControllablesState source = new SceneControllablesState(default(OwlPackConstructorParameter));
 		result = Unsafe.As<SceneControllablesState, TPossiblyBase>(ref source);
 	}
 

@@ -24,9 +24,13 @@ public class CaseCardIconView : View<CaseCardVM>
 	[SerializeField]
 	private OwlcatMultiSelectable m_StateSelectable;
 
+	[Header("Values")]
+	[SerializeField]
+	private Sprite m_DefaultIcon;
+
 	protected override void OnBind()
 	{
-		m_Icon.sprite = ((base.ViewModel.BlueprintCase == null) ? UIConfig.Instance.DetectiveConfig.UnknownCluesIcon : base.ViewModel.BlueprintCase.Icon);
+		m_Icon.sprite = ((base.ViewModel.BlueprintCase == null) ? UIConfig.Instance.DetectiveConfig.UnknownCluesIcon : (Game.Instance.DetectiveSystem.GetCaseDisplay(base.ViewModel.BlueprintCase).Icon ?? m_DefaultIcon));
 		m_TierLabel.text = UtilityDetectiveDecor.GetCaseTier(base.ViewModel.BlueprintCase).ToString();
 		DetectiveCaseIssueType issuingType = UtilityDetectiveDecor.GetIssuingType(base.ViewModel.BlueprintCase);
 		m_IssueIcon.sprite = UIConfig.Instance.DetectiveConfig.GetIssuingTypeIcon(issuingType);

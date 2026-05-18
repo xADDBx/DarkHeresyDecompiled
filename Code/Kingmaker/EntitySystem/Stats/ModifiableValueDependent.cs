@@ -17,26 +17,37 @@ public class ModifiableValueDependent<TBaseStat> : ModifiableValue where TBaseSt
 
 	public TBaseStat BaseStat { get; private set; }
 
+	public StatOverride? CurrentBaseStatOverride { get; private set; }
+
 	public virtual int BaseStatBonus => BaseStat.ModifiedValue;
 
-	private TBaseStat GetBestBaseStat()
+	private (StatOverride?, TBaseStat) GetBestBaseStat()
 	{
 		StatType defaultBaseStatType = base.Container.GetDefaultBaseStatType(base.Type);
 		TBaseStat val = base.Container.GetStat<TBaseStat>(defaultBaseStatType);
 		List<StatOverride> baseStatOverridesStack = m_BaseStatOverridesStack;
 		if (baseStatOverridesStack == null || baseStatOverridesStack.Count <= 0)
 		{
-			return val;
+			return (null, val);
 		}
-		foreach (StatOverride item in m_BaseStatOverridesStack)
+		StatOverride? item = null;
+		for (int num = m_BaseStatOverridesStack.Count - 1; num >= 0; num--)
 		{
-			TBaseStat stat = base.Container.GetStat<TBaseStat>(item.Type);
+			StatOverride value = m_BaseStatOverridesStack[num];
+			TBaseStat stat = base.Container.GetStat<TBaseStat>(value.Type);
+			if (!value.OnlyIfHigher)
+			{
+				val = stat;
+				item = value;
+				break;
+			}
 			if (stat.ModifiedValue > val.ModifiedValue)
 			{
 				val = stat;
+				item = value;
 			}
 		}
-		return val;
+		return (item, val);
 	}
 
 	protected override void UpdateInternalModifiers()
@@ -46,7 +57,8 @@ public class ModifiableValueDependent<TBaseStat> : ModifiableValue where TBaseSt
 			BaseStat = base.Container.GetStat<TBaseStat>(base.Container.GetDefaultBaseStatType(base.Type));
 			BaseStat.AddDependentValue(this);
 		}
-		BaseStat = GetBestBaseStat();
+		(StatOverride?, TBaseStat) bestBaseStat = GetBestBaseStat();
+		(CurrentBaseStatOverride, BaseStat) = bestBaseStat;
 		if (m_BaseStatBonus?.Value != BaseStatBonus)
 		{
 			RemoveModifier(m_BaseStatBonus);
@@ -61,7 +73,7 @@ public class ModifiableValueDependent<TBaseStat> : ModifiableValue where TBaseSt
 
 	public void RemoveBaseStatOverride(EntityFactComponent source)
 	{
-		RemoveBaseStatOverride((StatOverride i) => i.Fact == source.Fact && i.Component == source.SourceBlueprintComponent);
+		RemoveBaseStatOverride((StatOverride i) => i.SourceFact == source.Fact && i.SourceComponent == source.SourceBlueprintComponent);
 	}
 
 	private void AddBaseStatOverride(StatOverride @override)

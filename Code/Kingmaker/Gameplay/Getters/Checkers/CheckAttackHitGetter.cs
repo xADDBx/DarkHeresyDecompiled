@@ -1,5 +1,7 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
+using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
 using Owlcat.Runtime.Core.Utility;
 
@@ -16,11 +18,12 @@ public sealed class CheckAttackHitGetter : BoolPropertyGetter, PropertyContextAc
 
 	protected override bool GetBaseValue()
 	{
-		if (this.GetRule() is RulePerformAttack rulePerformAttack)
+		RulebookEvent rule = EvalContext.Current.Rule;
+		if (rule is RulePerformAttack rulePerformAttack)
 		{
 			return rulePerformAttack.ResultIsHit;
 		}
-		if (this.GetRule() is RulePerformAttackRoll rulePerformAttackRoll)
+		if (rule is RulePerformAttackRoll rulePerformAttackRoll)
 		{
 			return rulePerformAttackRoll.ResultIsHit;
 		}

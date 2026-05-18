@@ -46,6 +46,6 @@ public class CursorNotificationVM : ViewModel, ICursorNotificationUIHandler, ISu
 	void ICursorNotificationUIHandler.HandleNotification(string text, WarningNotificationFormat format)
 	{
 		m_ShowNotification.Execute((text, m_Duration));
-		UISounds.Instance.Sounds.Combat.CursorNotificationMessage.Play();
+		CombatSounds.Instance.Combat.CursorNotificationMessage.Play();
 	}
 }

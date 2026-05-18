@@ -1,20 +1,16 @@
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 public class CombatTextMoraleView : CombatTextEntityBaseView<CombatMessageMorale>
 {
 	[SerializeField]
-	private Image m_IconArrowUp;
-
-	[SerializeField]
-	private Image m_IconArrowDown;
-
-	[SerializeField]
 	private TextMeshProUGUI m_Text;
+
+	[SerializeField]
+	private TMP_Text m_SignText;
 
 	[SerializeField]
 	private Color m_TextPositiveColor;
@@ -36,15 +32,17 @@ public class CombatTextMoraleView : CombatTextEntityBaseView<CombatMessageMorale
 		bool flag = combatMessage.Amount > 0;
 		m_Text.text = combatMessage.GetText();
 		m_Text.color = (flag ? m_TextPositiveColor : m_TextNegativeColor);
-		SetArrows(flag);
+		SetSign(flag);
 		SetupSize();
 	}
 
 	private void SetupSize()
 	{
 		m_Text.ForceMeshUpdate();
-		TextRectTransform.sizeDelta = new Vector2(m_Text.textBounds.size.x, TextRectTransform.sizeDelta.y);
-		RectTransform.sizeDelta = new Vector2(m_Text.textBounds.size.x + (m_IconArrowUp.transform as RectTransform).sizeDelta.x, RectTransform.sizeDelta.y);
+		m_SignText.ForceMeshUpdate();
+		Vector3 size = m_Text.textBounds.size;
+		TextRectTransform.sizeDelta = new Vector2(size.x, m_Text.textBounds.size.y);
+		RectTransform.sizeDelta = new Vector2(size.x + m_SignText.rectTransform.sizeDelta.x, RectTransform.sizeDelta.y);
 	}
 
 	protected override void DoShow()
@@ -53,9 +51,9 @@ public class CombatTextMoraleView : CombatTextEntityBaseView<CombatMessageMorale
 		base.CanvasGroup.DOFade(1f, ShowFadeTime).SetUpdate(isIndependentUpdate: true);
 	}
 
-	private void SetArrows(bool isPositive)
+	private void SetSign(bool isPositive)
 	{
-		m_IconArrowUp.color = new Color(1f, 1f, 1f, isPositive ? 1f : 0f);
-		m_IconArrowDown.color = new Color(1f, 1f, 1f, isPositive ? 0f : 1f);
+		m_SignText.color = (isPositive ? m_TextPositiveColor : m_TextNegativeColor);
+		m_SignText.text = (isPositive ? "+" : "-");
 	}
 }

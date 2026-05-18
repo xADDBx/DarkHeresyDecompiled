@@ -71,6 +71,8 @@ public class BlueprintItem : BlueprintMechanicEntityFact
 	[AkEventReference]
 	private string m_InventoryTakeSound;
 
+	[Obsolete]
+	[HideInInspector]
 	public bool ToCargoAutomatically;
 
 	public virtual float Weight => m_Weight;
@@ -108,6 +110,8 @@ public class BlueprintItem : BlueprintMechanicEntityFact
 	}
 
 	public virtual int IdentifyDC => 0;
+
+	public virtual bool IsLootable => true;
 
 	public virtual string InventoryPutSound
 	{

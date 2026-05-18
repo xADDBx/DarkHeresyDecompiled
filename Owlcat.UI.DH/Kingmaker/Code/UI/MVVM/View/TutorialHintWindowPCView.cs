@@ -54,14 +54,14 @@ public class TutorialHintWindowPCView : TutorialWindowPCView<TutorialHintWindowV
 	protected override void OnShow()
 	{
 		base.OnShow();
-		UISounds.Instance.Sounds.Tutorial.ShowSmallTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.ShowSmallTutorial.Play();
 		StartCoroutine(SetSizeDelayed());
 	}
 
 	protected override void OnHide()
 	{
 		base.OnHide();
-		UISounds.Instance.Sounds.Tutorial.HideSmallTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.HideSmallTutorial.Play();
 	}
 
 	private void SetContent()

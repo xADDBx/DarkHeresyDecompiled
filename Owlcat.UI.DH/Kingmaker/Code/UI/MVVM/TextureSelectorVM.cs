@@ -1,3 +1,4 @@
+using System;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.PubSubSystem.Core;
@@ -5,6 +6,7 @@ using Kingmaker.ResourceLinks;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -26,11 +28,14 @@ public class TextureSelectorVM : BaseCharGenAppearancePageComponentVM, IVirtualL
 
 	public ReadOnlyReactiveProperty<string> NoItemsDesc => m_NoItemsDesc;
 
+	public int GroupIndex { get; private set; }
+
 	public int VirtualListTypeId { get; }
 
-	public TextureSelectorVM(SelectionGroupRadioVM<TextureSelectorItemVM> selectionGroup, TextureSelectorType typeId, bool hideIfNoElements = true)
+	public TextureSelectorVM(SelectionGroupRadioVM<TextureSelectorItemVM> selectionGroup, TextureSelectorType typeId, bool hideIfNoElements = true, int groupIndex = 0)
 	{
 		m_HideIfNoElements = hideIfNoElements;
+		GroupIndex = groupIndex;
 		AddDisposable(SelectionGroup = selectionGroup);
 		AddDisposable(SelectionGroup.SelectedEntity.Subscribe(delegate
 		{
@@ -82,6 +87,37 @@ public class TextureSelectorVM : BaseCharGenAppearancePageComponentVM, IVirtualL
 	public void SetActiveState(bool state)
 	{
 		Active.Value = state;
+	}
+
+	public override void CaptureDefaults()
+	{
+		m_DefaultIndex = SelectionGroup.SelectedEntity.CurrentValue?.Number ?? (-1);
+	}
+
+	public override void Randomize()
+	{
+		ObservableList<TextureSelectorItemVM> entitiesCollection = SelectionGroup.EntitiesCollection;
+		if (entitiesCollection.Count != 0)
+		{
+			SelectionGroup.TrySelectEntity(entitiesCollection[UnityEngine.Random.Range(0, entitiesCollection.Count)]);
+		}
+	}
+
+	public override void ResetToDefault()
+	{
+		m_DefaultIndex = Math.Max(0, m_DefaultIndex);
+		if (m_DefaultIndex < SelectionGroup.EntitiesCollection.Count)
+		{
+			SelectionGroup.TrySelectEntity(SelectionGroup.EntitiesCollection[m_DefaultIndex]);
+		}
+	}
+
+	public void SelectFirst()
+	{
+		if (SelectionGroup.EntitiesCollection.Count > 0)
+		{
+			SelectionGroup.TrySelectEntity(SelectionGroup.EntitiesCollection[0]);
+		}
 	}
 
 	protected override void SetSelectUISkinColor(int index)
@@ -140,9 +176,17 @@ public class TextureSelectorVM : BaseCharGenAppearancePageComponentVM, IVirtualL
 		}
 	}
 
+	protected override void SetUITattoo(EquipmentEntityLink equipmentEntityLink, int index, int tattooTabIndex)
+	{
+		if (base.Type == CharGenAppearancePageComponent.Tattoo || GroupIndex == index)
+		{
+			SelectEntityImpl(index);
+		}
+	}
+
 	protected override void SetUITattooColor(int rampIndex, int index)
 	{
-		if (base.Type == CharGenAppearancePageComponent.TattooColor)
+		if (base.Type == CharGenAppearancePageComponent.TattooColor || GroupIndex == index)
 		{
 			SelectEntityImpl(rampIndex);
 		}
@@ -150,7 +194,7 @@ public class TextureSelectorVM : BaseCharGenAppearancePageComponentVM, IVirtualL
 
 	protected override void SetUIPort(EquipmentEntityLink equipmentEntityLink, int index, int portNumber)
 	{
-		if ((portNumber == 0 && base.Type == CharGenAppearancePageComponent.PortType1) || (portNumber == 1 && base.Type == CharGenAppearancePageComponent.PortType2))
+		if (base.Type == CharGenAppearancePageComponent.PortType1 || base.Type == CharGenAppearancePageComponent.PortType2 || GroupIndex == index)
 		{
 			SelectEntityImpl(index);
 		}

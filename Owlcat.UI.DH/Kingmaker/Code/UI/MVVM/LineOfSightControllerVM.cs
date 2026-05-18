@@ -30,7 +30,7 @@ public class LineOfSightControllerVM : ViewModel, ITurnBasedModeHandler, ISubscr
 		{
 			SetNewUnit();
 		}).AddTo(this);
-		m_UnitsListIsDirty.Execute();
+		m_UnitsListIsDirty.Execute(Unit.Default);
 	}
 
 	protected override void OnDispose()
@@ -70,13 +70,13 @@ public class LineOfSightControllerVM : ViewModel, ITurnBasedModeHandler, ISubscr
 	{
 		if (isTurnBased)
 		{
-			m_UnitsListIsDirty.Execute();
+			m_UnitsListIsDirty.Execute(Unit.Default);
 		}
 	}
 
 	public void HandleUnitStartInterruptTurn(InterruptionData interruptionData)
 	{
-		m_UnitsListIsDirty.Execute();
+		m_UnitsListIsDirty.Execute(Unit.Default);
 	}
 
 	private void SetNewUnit()
@@ -118,7 +118,7 @@ public class LineOfSightControllerVM : ViewModel, ITurnBasedModeHandler, ISubscr
 	{
 		if (command.Executor.IsInCombat && TurnController.IsInTurnBasedCombat())
 		{
-			m_UnitsListIsDirty.Execute();
+			m_UnitsListIsDirty.Execute(Unit.Default);
 		}
 	}
 
@@ -149,7 +149,7 @@ public class LineOfSightControllerVM : ViewModel, ITurnBasedModeHandler, ISubscr
 
 	public void HandleTurnBasedModeResumed()
 	{
-		m_UnitsListIsDirty.Execute();
+		m_UnitsListIsDirty.Execute(Unit.Default);
 	}
 
 	public void OnAreaBeginUnloading()
@@ -159,11 +159,11 @@ public class LineOfSightControllerVM : ViewModel, ITurnBasedModeHandler, ISubscr
 
 	public void OnAreaDidLoad()
 	{
-		m_UnitsListIsDirty.Execute();
+		m_UnitsListIsDirty.Execute(Unit.Default);
 	}
 
 	public void OnAreaActivated()
 	{
-		m_UnitsListIsDirty.Execute();
+		m_UnitsListIsDirty.Execute(Unit.Default);
 	}
 }

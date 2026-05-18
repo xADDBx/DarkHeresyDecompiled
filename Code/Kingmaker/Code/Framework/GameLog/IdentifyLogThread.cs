@@ -28,7 +28,7 @@ public class IdentifyLogThread : LogThreadBase, IGameLogEventHandler<GameLogEven
 				GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)actor;
 				GameLogContext.Tooltip = itemEntity;
 				GameLogContext.Description = targetItem.Description;
-				AddMessage(new CombatLogMessage(LogThreadBase.Strings.ItemIdentified.CreateCombatLogMessage(), CombatLogTooltipService.CreateTooltipTemplateItemBlueprint(itemEntity.Blueprint)));
+				AddMessage(new CombatLogMessage(LogThreadBase.Strings.ItemIdentified.CreateCombatLogMessage(), CombatLogTooltipService.CreateTooltipTemplateItemForLog(itemEntity, actor)));
 				break;
 			}
 			case GameLogEventIdentify.ResultType.Fail:

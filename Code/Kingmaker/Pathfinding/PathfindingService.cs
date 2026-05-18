@@ -357,7 +357,7 @@ public class PathfindingService : IService
 		PostProcess(path, null, options);
 	}
 
-	private ABPath ConstructPath([NotNull] UnitMovementAgentBase agent, Vector3 destination, float approachRadiusMeters, ICustomDistanceCheck customCondition = null)
+	private ABPath ConstructPath([NotNull] UnitMovementAgent agent, Vector3 destination, float approachRadiusMeters, ICustomDistanceCheck customCondition = null)
 	{
 		Vector3 start = agent.Position;
 		if (agent.IsTraverseInProgress)
@@ -384,12 +384,12 @@ public class PathfindingService : IService
 		return warhammerABPath;
 	}
 
-	public ABPath FindPathRT([NotNull] UnitMovementAgentBase agent, Vector3 destination, float approachRadiusMeters, [NotNull] Action<ForcedPath> callback, ICustomDistanceCheck customCondition = null)
+	public ABPath FindPathRT([NotNull] UnitMovementAgent agent, Vector3 destination, float approachRadiusMeters, [NotNull] Action<ForcedPath> callback, ICustomDistanceCheck customCondition = null)
 	{
 		return FindPathRT_Delayed(agent, destination, approachRadiusMeters, 1, callback, customCondition);
 	}
 
-	public ABPath FindPathRT_Delayed([NotNull] UnitMovementAgentBase agent, Vector3 destination, float approachRadiusMeters, int delaySteps, [NotNull] Action<ForcedPath> callback, ICustomDistanceCheck customCondition = null)
+	public ABPath FindPathRT_Delayed([NotNull] UnitMovementAgent agent, Vector3 destination, float approachRadiusMeters, int delaySteps, [NotNull] Action<ForcedPath> callback, ICustomDistanceCheck customCondition = null)
 	{
 		ABPath aBPath = ConstructPath(agent, destination, approachRadiusMeters, customCondition);
 		aBPath.Claim(this);
@@ -409,7 +409,7 @@ public class PathfindingService : IService
 		return aBPath;
 	}
 
-	public Task<ForcedPath> FindPathRT_Async([NotNull] UnitMovementAgentBase agent, Vector3 destination, float approachRadiusMeters, int delaySteps)
+	public Task<ForcedPath> FindPathRT_Async([NotNull] UnitMovementAgent agent, Vector3 destination, float approachRadiusMeters, int delaySteps)
 	{
 		TaskCompletionSource<ForcedPath> tcs = new TaskCompletionSource<ForcedPath>();
 		FindPathRT_Delayed(agent, destination, approachRadiusMeters, delaySteps, delegate(ForcedPath path)
@@ -419,7 +419,7 @@ public class PathfindingService : IService
 		return tcs.Task;
 	}
 
-	public PathDisposable<WarhammerPathPlayer> FindPathTB_Delayed([NotNull] UnitMovementAgentBase agent, Vector3 destination, bool limitRangeByActionPoints, int delaySteps, object owner)
+	public PathDisposable<WarhammerPathPlayer> FindPathTB_Delayed([NotNull] UnitMovementAgent agent, Vector3 destination, bool limitRangeByActionPoints, int delaySteps, object owner)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, agent.Unit.Data.Position, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), destination, null, ignoreThreateningAreaCost: false, oneWayLinksAreForbidden: false);
 		FindPathWithType(warhammerPathPlayer, null, agent.TurnBasedOptions, null);
@@ -427,7 +427,7 @@ public class PathfindingService : IService
 		return PathDisposable<WarhammerPathPlayer>.Get(warhammerPathPlayer, owner);
 	}
 
-	public PathDisposable<WarhammerPathPlayer> FindPathTB_Delayed([NotNull] UnitMovementAgentBase agent, MechanicEntity targetEntity, bool limitRangeByActionPoints, int delaySteps, object owner)
+	public PathDisposable<WarhammerPathPlayer> FindPathTB_Delayed([NotNull] UnitMovementAgent agent, MechanicEntity targetEntity, bool limitRangeByActionPoints, int delaySteps, object owner)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, agent.Unit.Data.Position, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), null, targetEntity, ignoreThreateningAreaCost: false, oneWayLinksAreForbidden: false);
 		FindPathWithType(warhammerPathPlayer, null, agent.TurnBasedOptions, null);
@@ -435,7 +435,7 @@ public class PathfindingService : IService
 		return PathDisposable<WarhammerPathPlayer>.Get(warhammerPathPlayer, owner);
 	}
 
-	public PathDisposable<WarhammerPathPlayer> FindPathTB_Delayed([NotNull] UnitMovementAgentBase agent, TargetWrapper target, bool limitRangeByActionPoints, int delaySteps, object owner)
+	public PathDisposable<WarhammerPathPlayer> FindPathTB_Delayed([NotNull] UnitMovementAgent agent, TargetWrapper target, bool limitRangeByActionPoints, int delaySteps, object owner)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, agent.Unit.Data.Position, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), target.Point, target.Entity, ignoreThreateningAreaCost: false, oneWayLinksAreForbidden: false);
 		FindPathWithType(warhammerPathPlayer, null, agent.TurnBasedOptions, null);
@@ -443,7 +443,7 @@ public class PathfindingService : IService
 		return PathDisposable<WarhammerPathPlayer>.Get(warhammerPathPlayer, owner);
 	}
 
-	public ForcedPath FindPathRT_Blocking([NotNull] UnitMovementAgentBase agent, Vector3 destination, float approachRadiusMeters, ICustomDistanceCheck customCondition = null)
+	public ForcedPath FindPathRT_Blocking([NotNull] UnitMovementAgent agent, Vector3 destination, float approachRadiusMeters, ICustomDistanceCheck customCondition = null)
 	{
 		ABPath aBPath = ConstructPath(agent, destination, approachRadiusMeters, customCondition);
 		aBPath.Claim(this);
@@ -474,7 +474,7 @@ public class PathfindingService : IService
 		return result;
 	}
 
-	private WarhammerPathPlayer ConstructWhPlayerPath([NotNull] UnitMovementAgentBase agent, Vector3 start, float maxLength, Vector3? destination, MechanicEntity targetEntity, bool ignoreThreateningAreaCost, bool oneWayLinksAreForbidden, bool ignoreBlockers = false)
+	private WarhammerPathPlayer ConstructWhPlayerPath([NotNull] UnitMovementAgent agent, Vector3 start, float maxLength, Vector3? destination, MechanicEntity targetEntity, bool ignoreThreateningAreaCost, bool oneWayLinksAreForbidden, bool ignoreBlockers = false)
 	{
 		ignoreBlockers |= (bool)agent.Unit?.Data.Features.CanMoveThroughEnemies;
 		GridNode targetNode = ((targetEntity != null) ? null : (destination.HasValue ? ObstacleAnalyzer.GetNearestNodeXZUnwalkable(destination.Value) : null));
@@ -487,7 +487,7 @@ public class PathfindingService : IService
 		return warhammerPathPlayer;
 	}
 
-	private WarhammerPathCharge ConstructWhChargePath([NotNull] UnitMovementAgentBase agent, Vector3 start, Vector3 destination, float maxLength, bool ignoreBlockers, [CanBeNull] MechanicEntity targetEntity)
+	private WarhammerPathCharge ConstructWhChargePath([NotNull] UnitMovementAgent agent, Vector3 start, Vector3 destination, float maxLength, bool ignoreBlockers, [CanBeNull] MechanicEntity targetEntity)
 	{
 		BaseUnitEntity unit = (agent.Unit.Data as BaseUnitEntity) ?? throw new Exception("Only an entity based on BaseUnitEntity can use ConstructWhChargePath.");
 		GridNodeBase nearestNodeXZUnwalkable = start.GetNearestNodeXZUnwalkable();
@@ -500,7 +500,7 @@ public class PathfindingService : IService
 		return obj;
 	}
 
-	private WarhammerPathAi ConstructWarhammerPathAi([NotNull] UnitMovementAgentBase agent, Vector3 start, float maxLength, WarhammerPathAiMetric initialLength, ITraversalCostProvider<WarhammerPathAiMetric> traversalCostProvider)
+	private WarhammerPathAi ConstructWarhammerPathAi([NotNull] UnitMovementAgent agent, Vector3 start, float maxLength, WarhammerPathAiMetric initialLength, ITraversalCostProvider<WarhammerPathAiMetric> traversalCostProvider)
 	{
 		WarhammerPathAi warhammerPathAi = WarhammerPathAi.Construct(agent.Unit.Data, start, maxLength, null, null, agent.Unit.BlockMode, agent.Unit.Data.Features.PassThroughSmallUnits, initialLength, traversalCostProvider);
 		warhammerPathAi.nnConstraint = new ConstraintWithRespectToTraversalProvider(agent.Blocker);
@@ -509,16 +509,7 @@ public class PathfindingService : IService
 		return warhammerPathAi;
 	}
 
-	private WarhammerPathAi ConstructWarhammerPathAiForGatherDeviationNodes([NotNull] UnitMovementAgentBase agent, Vector3 start, float maxLength, WarhammerPathAiMetric initialLength, ITraversalCostProvider<WarhammerPathAiMetric> traversalCostProvider)
-	{
-		WarhammerPathAi warhammerPathAi = WarhammerPathAi.ConstructForGatherDeviationNodes(agent.Unit.Data, start, maxLength, null, null, agent.Unit.BlockMode, agent.Unit.Data.Features.PassThroughSmallUnits, initialLength, traversalCostProvider);
-		warhammerPathAi.nnConstraint = new ConstraintWithRespectToTraversalProvider(agent.Blocker);
-		warhammerPathAi.traversalProvider = agent.TraversalProvider;
-		warhammerPathAi.LinkTraversalProvider = agent.NodeLinkTraverser;
-		return warhammerPathAi;
-	}
-
-	public WarhammerPathPlayer FindPathTB_Blocking([NotNull] UnitMovementAgentBase agent, Vector3 destination, bool limitRangeByActionPoints = true, bool ignoreThreateningAreaCost = false)
+	public WarhammerPathPlayer FindPathTB_Blocking([NotNull] UnitMovementAgent agent, Vector3 destination, bool limitRangeByActionPoints = true, bool ignoreThreateningAreaCost = false)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, agent.Unit.Data.Position, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), destination, null, ignoreThreateningAreaCost, oneWayLinksAreForbidden: false);
 		using (ProfileScope.New("FindPathTB"))
@@ -528,7 +519,7 @@ public class PathfindingService : IService
 		}
 	}
 
-	public WarhammerPathPlayer FindPathTB_Blocking([NotNull] UnitMovementAgentBase agent, MechanicEntity targetEntity, bool limitRangeByActionPoints = true)
+	public WarhammerPathPlayer FindPathTB_Blocking([NotNull] UnitMovementAgent agent, MechanicEntity targetEntity, bool limitRangeByActionPoints = true)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, agent.Unit.Data.Position, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), null, targetEntity, ignoreThreateningAreaCost: false, oneWayLinksAreForbidden: false);
 		using (ProfileScope.New("FindPathTB"))
@@ -538,9 +529,9 @@ public class PathfindingService : IService
 		}
 	}
 
-	public WarhammerPathPlayer FindPathTB_Blocking(UnitMovementAgentBase agent, Vector3 origin, Vector3 destination, bool limitRangeByActionPoints = true, bool ignoreThreateningAreaCost = false, bool ignoreBlockers = false)
+	public WarhammerPathPlayer FindPathTB_Blocking(UnitMovementAgent agent, Vector3 origin, Vector3 destination, bool limitRangeByActionPoints = true, bool ignoreThreateningAreaCost = false, bool ignoreBlockers = false)
 	{
-		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, origin, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), destination, null, ignoreThreateningAreaCost, ignoreBlockers);
+		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, origin, limitRangeByActionPoints ? ((int)(agent.Unit.Data.GetCombatStateOptional()?.MovementPoints ?? (-1f))) : (-1), destination, null, ignoreThreateningAreaCost, oneWayLinksAreForbidden: false, ignoreBlockers);
 		using (ProfileScope.New("FindPathTB"))
 		{
 			FindPath_Blocking(warhammerPathPlayer, agent.TurnBasedOptions);
@@ -548,7 +539,7 @@ public class PathfindingService : IService
 		}
 	}
 
-	public WarhammerPathCharge FindPathChargeTB_Blocking(UnitMovementAgentBase agent, Vector3 origin, Vector3 destination, float maxLength, bool ignoreBlockers, [CanBeNull] MechanicEntity targetEntity)
+	public WarhammerPathCharge FindPathChargeTB_Blocking(UnitMovementAgent agent, Vector3 origin, Vector3 destination, float maxLength, bool ignoreBlockers, [CanBeNull] MechanicEntity targetEntity)
 	{
 		WarhammerPathCharge warhammerPathCharge = ConstructWhChargePath(agent, origin, destination, maxLength, ignoreBlockers, targetEntity);
 		foreach (WarhammerPathChargeCacheEntry item in m_ChargePathCache)
@@ -582,7 +573,7 @@ public class PathfindingService : IService
 		}
 	}
 
-	public Task<PathDisposable<WarhammerPathPlayer>> FindPathTB_Task(UnitMovementAgentBase agent, Vector3 destination, int maxTiles, object pathOwner)
+	public Task<PathDisposable<WarhammerPathPlayer>> FindPathTB_Task(UnitMovementAgent agent, Vector3 destination, int maxTiles, object pathOwner)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = null;
 		try
@@ -604,7 +595,7 @@ public class PathfindingService : IService
 		}
 	}
 
-	public Dictionary<GraphNode, WarhammerPathPlayerCell> FindAllReachableTiles_Blocking(UnitMovementAgentBase agent, Vector3 start, float maxLength, bool ignoreThreateningAreaCost = false, bool oneWayLinksAreForbidden = false)
+	public Dictionary<GraphNode, WarhammerPathPlayerCell> FindAllReachableTiles_Blocking(UnitMovementAgent agent, Vector3 start, float maxLength, bool ignoreThreateningAreaCost = false, bool oneWayLinksAreForbidden = false)
 	{
 		WarhammerPathPlayer warhammerPathPlayer = ConstructWhPlayerPath(agent, start, maxLength, null, null, ignoreThreateningAreaCost, oneWayLinksAreForbidden);
 		using (ProfileScope.New("AFindPathTB"))
@@ -617,42 +608,19 @@ public class PathfindingService : IService
 		}
 	}
 
-	public Task<Dictionary<GraphNode, WarhammerPathAiCell>> FindAllReachableTiles_Delayed_Task(UnitMovementAgentBase agent, GraphNode startNode, int maxTiles, Dictionary<GraphNode, AiBrainHelper.IThreatsInfo> threateningAreaCells)
+	public Task<Dictionary<GraphNode, WarhammerPathAiCell>> FindAllReachableTiles_Delayed_Task(UnitMovementAgent agent, GraphNode startNode, int maxTiles, Dictionary<GraphNode, AiBrainHelper.IThreatsInfo> threateningAreaCells, AiThreatsHandlingStrategy threatsHandlingStrategy = AiThreatsHandlingStrategy.AvoidIfPossible)
 	{
 		TaskCompletionSource<Dictionary<GraphNode, WarhammerPathAiCell>> tcs = new TaskCompletionSource<Dictionary<GraphNode, WarhammerPathAiCell>>();
-		if (!UnitMovementAgentBase.AllAgents.Contains(agent))
+		if (!UnitMovementAgent.AllAgents.Contains(agent))
 		{
-			PFLog.Default.Error($"Cant find reachable tiles for disabled UnitMovementAgentBase: {agent}");
+			PFLog.Default.Error($"Cant find reachable tiles for disabled UnitMovementAgent: {agent}");
 			tcs.SetResult(null);
 			return tcs.Task;
 		}
 		AiBrainHelper.IThreatsInfo threatsData = AiBrainHelper.GetThreatsData((BaseUnitEntity)agent.Unit.Data, startNode);
-		WarhammerPathAiMetricCostProvider traversalCostProvider = new WarhammerPathAiMetricCostProvider(agent.Unit.Data, threateningAreaCells, null);
+		WarhammerPathAiMetricCostProvider traversalCostProvider = new WarhammerPathAiMetricCostProvider(agent.Unit.Data, threateningAreaCells, null, threatsHandlingStrategy);
 		WarhammerPathAiMetric initialLength = new WarhammerPathAiMetric(agent.Unit.Data.GetCombatStateOptional()?.LastDiagonalCount ?? 0, 0f, 0f, threatsData.AreaEffects.Count, 0, 0, 0);
 		WarhammerPathAi warhammerPathAi = ConstructWarhammerPathAi(agent, startNode.Vector3Position(), maxTiles, initialLength, traversalCostProvider);
-		warhammerPathAi.Claim(this);
-		Action<Path> item = delegate(Path p)
-		{
-			Dictionary<GraphNode, WarhammerPathAiCell> result = ((p != null && !p.error && p is WarhammerPathAi warhammerPathAi2) ? warhammerPathAi2.GetAllNodesAndReset() : null);
-			tcs.SetResult(result);
-		};
-		FindPathWithType(warhammerPathAi, null, agent.TurnBasedOptions, null);
-		AddDelayedPath((path: warhammerPathAi, callback: item, delayToStep: Game.Instance.RealTimeController.CurrentSystemStepIndex + 1));
-		return tcs.Task;
-	}
-
-	public Task<Dictionary<GraphNode, WarhammerPathAiCell>> FindAllDeviationNodesForTargetNode(UnitMovementAgentBase agent, Vector3 start, GraphNode targetNode, int maxTiles, Dictionary<GraphNode, AiBrainHelper.IThreatsInfo> threateningAreaCells)
-	{
-		TaskCompletionSource<Dictionary<GraphNode, WarhammerPathAiCell>> tcs = new TaskCompletionSource<Dictionary<GraphNode, WarhammerPathAiCell>>();
-		if (!UnitMovementAgentBase.AllAgents.Contains(agent))
-		{
-			PFLog.Default.Error($"UnitMovementAgentBase is disabled: {agent}");
-			tcs.SetResult(null);
-			return tcs.Task;
-		}
-		WarhammerPathAiMetricCostProvider traversalCostProvider = new WarhammerPathAiMetricCostProvider(agent.Unit.Data, threateningAreaCells, targetNode);
-		WarhammerPathAiMetric initialLength = new WarhammerPathAiMetric(agent.Unit.Data.GetCombatStateOptional()?.LastDiagonalCount ?? 0, 0f, 0f, 0, 0, 0, 0);
-		WarhammerPathAi warhammerPathAi = ConstructWarhammerPathAiForGatherDeviationNodes(agent, start, maxTiles, initialLength, traversalCostProvider);
 		warhammerPathAi.Claim(this);
 		Action<Path> item = delegate(Path p)
 		{

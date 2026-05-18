@@ -1,6 +1,7 @@
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.View.Covers;
 using Owlcat.UI;
 using R3;
@@ -51,11 +52,29 @@ public class EntityCoverUIState : ViewModel
 					valueOrDefault = GetShootingPosition(currentUnit);
 					shootingPosition = valueOrDefault;
 				}
-				m_CoverType.Value = LosCalculations.GetWarhammerLos(shootingPosition.Value, currentUnit.SizeRect, m_Entity);
+				if (IsMeleeAction(currentUnit))
+				{
+					bool flag = LosCalculations.HasMeleeLos(shootingPosition.Value, currentUnit.SizeRect, m_Entity.Entity.Position, m_Entity.Entity.SizeRect);
+					m_CoverType.Value = ((!flag) ? LosCalculations.CoverType.LosBlocker : LosCalculations.CoverType.Obstacle);
+				}
+				else
+				{
+					m_CoverType.Value = LosCalculations.GetWarhammerLos(shootingPosition.Value, currentUnit.SizeRect, m_Entity);
+				}
 				return;
 			}
 		}
 		m_CoverType.Value = LosCalculations.CoverType.Obstacle;
+	}
+
+	private static bool IsMeleeAction(MechanicEntity currentUnit)
+	{
+		AbilityData abilityData = Game.Instance.Controllers.SelectedAbilityHandler?.Ability;
+		if (abilityData != null)
+		{
+			return abilityData.IsMelee;
+		}
+		return ((currentUnit as UnitEntity)?.Body.CurrentHandsEquipmentSet?.PrimaryHand.MaybeWeapon)?.Blueprint.IsMelee ?? false;
 	}
 
 	private bool TryGetCurrentPlayerCharacter(out MechanicEntity currentUnit)

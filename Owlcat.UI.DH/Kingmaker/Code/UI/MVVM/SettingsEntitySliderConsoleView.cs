@@ -84,7 +84,7 @@ public class SettingsEntitySliderConsoleView : SettingsEntityWithValueConsoleVie
 
 	private void SetValueFromUI(float sliderValue)
 	{
-		UISounds.Instance.Sounds.Settings.SettingsSliderMove.Play();
+		FullScreenUniqueSounds.Instance.Settings.SliderMove.Play();
 		float settingValueFromSlider = GetSettingValueFromSlider(sliderValue);
 		using (m_ChangingFromUI.Retain())
 		{

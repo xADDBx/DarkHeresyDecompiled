@@ -1,4 +1,5 @@
 using System;
+using Code.Utility.Attributes;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
 using Owlcat.QA.Validation;
@@ -11,6 +12,7 @@ namespace Kingmaker.EntitySystem.Properties.Getters;
 [TypeId("c10cf729af04472a900528c00b86b0fd")]
 public class BlueprintPropertyGetter : IntPropertyGetter
 {
+	[InlineBlueprint]
 	[SerializeField]
 	[ValidateNotNull]
 	private BlueprintEntityPropertyReference m_Property;
@@ -24,6 +26,6 @@ public class BlueprintPropertyGetter : IntPropertyGetter
 
 	protected override int GetBaseValue()
 	{
-		return Property.GetValue(base.PropertyContext);
+		return Property.GetValue(base.CurrentEntity, base.Context);
 	}
 }

@@ -17,6 +17,8 @@ public class DismembermentBoneView : ViewBase<DismembermentBoneVM>, IWidgetView
 
 	public Slider SliderOrientationZ;
 
+	public Toggle ToggleIncludeDescendants;
+
 	public Button RemoveButton;
 
 	public MonoBehaviour MonoBehaviour => this;
@@ -50,6 +52,11 @@ public class DismembermentBoneView : ViewBase<DismembermentBoneVM>, IWidgetView
 		SliderOrientationZ.maxValue = 30f;
 		SliderOrientationZ.value = base.ViewModel.DismembermentBone.SliceOrientationEuler.z;
 		SliderOrientationZ.onValueChanged.AddListener(base.ViewModel.OnSliceOrientationZChanged);
+		if (ToggleIncludeDescendants != null)
+		{
+			ToggleIncludeDescendants.isOn = base.ViewModel.DismembermentBone.IncludeDescendants;
+			ToggleIncludeDescendants.onValueChanged.AddListener(base.ViewModel.OnIncludeDescendantsChanged);
+		}
 		RemoveButton.onClick.AddListener(base.ViewModel.OnRemove);
 	}
 
@@ -59,6 +66,10 @@ public class DismembermentBoneView : ViewBase<DismembermentBoneVM>, IWidgetView
 		SliderOrientationX.onValueChanged.RemoveAllListeners();
 		SliderOrientationY.onValueChanged.RemoveAllListeners();
 		SliderOrientationZ.onValueChanged.RemoveAllListeners();
+		if (ToggleIncludeDescendants != null)
+		{
+			ToggleIncludeDescendants.onValueChanged.RemoveAllListeners();
+		}
 		RemoveButton.onClick.RemoveAllListeners();
 	}
 }

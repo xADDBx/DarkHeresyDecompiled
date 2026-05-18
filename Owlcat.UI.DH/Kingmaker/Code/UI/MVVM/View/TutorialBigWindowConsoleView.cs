@@ -3,9 +3,7 @@ using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.Common.PageNavigation;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Sound;
-using Owlcat.UI;
 using R3;
-using Rewired;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -32,16 +30,13 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 
 	[Space]
 	[SerializeField]
-	private ConsoleHint m_ConfirmHint;
+	private HintView m_ConfirmHint;
 
 	[SerializeField]
-	private ConsoleHint m_PreviousHint;
+	private HintView m_PreviousHint;
 
 	[SerializeField]
-	private ConsoleHint m_CloseWindowHint;
-
-	[SerializeField]
-	private FloatConsoleNavigationBehaviour.NavigationParameters m_NavigationParameters;
+	private HintView m_CloseWindowHint;
 
 	public static readonly string InputLayerContextName = "BigTutorialWindow";
 
@@ -71,65 +66,6 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 
 	private void CreateInput()
 	{
-		GamePad.Instance.BaseLayer?.Unbind();
-		NavigationBehaviour = new FloatConsoleNavigationBehaviour(m_NavigationParameters).AddTo(this);
-		InputLayer = new InputLayer
-		{
-			ContextName = InputLayerContextName
-		};
-		GlossaryInputLayer = NavigationBehaviour.GetInputLayer(new InputLayer
-		{
-			ContextName = GlossaryContextName
-		});
-		m_PageNavigation.AddInput(InputLayer, IsGlossaryMode.Not().ToReadOnlyReactiveProperty(initialValue: false), addDpad: true, showHints: false);
-		InputBindStruct inputBindStruct = InputLayer.AddButton(base.SelectDeselectToggle, 10, IsGlossaryMode.Not().ToReadOnlyReactiveProperty(initialValue: false));
-		m_ToggleHint.Bind(inputBindStruct).AddTo(this);
-		inputBindStruct.AddTo(this);
-		InputBindStruct inputBindStruct2 = InputLayer.AddButton(delegate
-		{
-			OnPrev();
-		}, 9, m_PageNavigation.HasPrevious, InputActionEventType.ButtonJustReleased);
-		m_PreviousHint.Bind(inputBindStruct2).AddTo(this);
-		inputBindStruct2.AddTo(this);
-		m_PreviousHint.SetLabel(UIStrings.Instance.Tutorial.Previous.Text);
-		InputBindStruct inputBindStruct3 = InputLayer.AddButton(delegate
-		{
-			OnNext();
-		}, 8, IsGlossaryMode.Not().ToReadOnlyReactiveProperty(initialValue: false));
-		m_ConfirmHint.Bind(inputBindStruct3).AddTo(this);
-		inputBindStruct3.AddTo(this);
-		InputBindStruct inputBindStruct4 = InputLayer.AddButton(delegate
-		{
-			base.ViewModel.Hide();
-		}, 9, IsGlossaryMode.Not().ToReadOnlyReactiveProperty(initialValue: false), InputActionEventType.ButtonJustLongPressed);
-		m_CloseWindowHint.Bind(inputBindStruct4).AddTo(this);
-		inputBindStruct4.AddTo(this);
-		m_CloseWindowHint.SetLabel(UIStrings.Instance.CommonTexts.CloseWindow.Text);
-		InputBindStruct inputBindStruct5 = InputLayer.AddButton(delegate
-		{
-			ShowGlossary();
-		}, 11, IsGlossaryMode.Not().And(HasGlossaryPoints).ToReadOnlyReactiveProperty(initialValue: false));
-		m_GlossaryHint.Bind(inputBindStruct5).AddTo(this);
-		inputBindStruct5.AddTo(this);
-		m_GlossaryHint.SetLabel(UIStrings.Instance.Dialog.OpenGlossary.Text);
-		InputBindStruct inputBindStruct6 = GlossaryInputLayer.AddButton(delegate
-		{
-			CloseGlossary();
-		}, 9, IsGlossaryMode, InputActionEventType.ButtonJustReleased);
-		m_CloseGlossaryHint.Bind(inputBindStruct6).AddTo(this);
-		inputBindStruct6.AddTo(this);
-		m_CloseGlossaryHint.SetLabel(UIStrings.Instance.Dialog.CloseGlossary.Text);
-		InputBindStruct inputBindStruct7 = GlossaryInputLayer.AddButton(delegate
-		{
-			GoToEncyclopedia();
-		}, 10);
-		m_EncyclopediaHint.Bind(inputBindStruct7).AddTo(this);
-		inputBindStruct7.AddTo(this);
-		m_EncyclopediaHint.SetLabel(UIStrings.Instance.EncyclopediaTexts.EncyclopediaGlossaryButton.Text);
-		ReadOnlyReactiveProperty<bool> readOnlyReactiveProperty = IsGlossaryMode.Not().ToReadOnlyReactiveProperty(initialValue: false);
-		InputLayer.AddAxis(Scroll, 3, readOnlyReactiveProperty).AddTo(this);
-		GamePad.Instance.PushLayer(InputLayer).AddTo(this);
-		GamePad.Instance.OnLayerPushed.Subscribe(OnCurrentInputLayerChanged).AddTo(this);
 	}
 
 	private void OnNext()
@@ -137,7 +73,7 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 		if (base.ViewModel.CurrentPageIndex.CurrentValue < base.ViewModel.PageCount - 1)
 		{
 			m_PageNavigation.OnNextClick();
-			UISounds.Instance.Sounds.Tutorial.ChangeTutorialPage.Play();
+			ModalWindowsSounds.Instance.Tutorial.ChangeTutorialPage.Play();
 		}
 		else
 		{
@@ -148,7 +84,7 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 	private void OnPrev()
 	{
 		m_PageNavigation.OnPreviousClick();
-		UISounds.Instance.Sounds.Tutorial.ChangeTutorialPage.Play();
+		ModalWindowsSounds.Instance.Tutorial.ChangeTutorialPage.Play();
 	}
 
 	protected override void OnFocusLink(string key)
@@ -173,10 +109,7 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 	{
 		if (IsGlossaryMode.Value)
 		{
-			OwlcatMultiButton firstGlossaryFocus = m_FirstGlossaryFocus;
-			TooltipBaseTemplate linkTooltipTemplate = TooltipHelper.GetLinkTooltipTemplate(LinkKey);
-			ConsoleNavigationBehaviour navigationBehaviour = NavigationBehaviour;
-			firstGlossaryFocus.ShowTooltip(linkTooltipTemplate, default(TooltipConfig), null, navigationBehaviour);
+			m_FirstGlossaryFocus.ShowTooltip(TooltipHelper.GetLinkTooltipTemplate(LinkKey));
 		}
 	}
 
@@ -202,15 +135,15 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 		m_ScrollRect.EnsureVisibleVertical(m_FirstGlossaryFocus.transform as RectTransform);
 	}
 
-	public void Scroll(InputActionEventData data, float x)
+	public void Scroll(float x)
 	{
 		if (!(m_ScrollRect == null))
 		{
-			PointerEventData data2 = new PointerEventData(EventSystem.current)
+			PointerEventData data = new PointerEventData(EventSystem.current)
 			{
 				scrollDelta = new Vector2(0f, x * m_ScrollRect.scrollSensitivity)
 			};
-			m_ScrollRect.OnSmoothlyScroll(data2);
+			m_ScrollRect.OnSmoothlyScroll(data);
 		}
 	}
 
@@ -218,7 +151,7 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 	{
 		base.OnShow();
 		TooltipHelper.HideTooltip();
-		UISounds.Instance.Sounds.Tutorial.ShowBigTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.ShowBigTutorial.Play();
 		Game.Instance.RequestPauseUi(isPaused: true);
 	}
 
@@ -226,19 +159,11 @@ public class TutorialBigWindowConsoleView : TutorialWindowConsoleView<TutorialMo
 	{
 		base.OnHide();
 		CloseGlossary();
-		GamePad.Instance.BaseLayer?.Bind();
-		UISounds.Instance.Sounds.Tutorial.HideBigTutorial.Play();
+		ModalWindowsSounds.Instance.Tutorial.HideBigTutorial.Play();
 		Game.Instance.RequestPauseUi(isPaused: false);
 	}
 
 	private void OnCurrentInputLayerChanged()
 	{
-		GamePad instance = GamePad.Instance;
-		if (instance.CurrentInputLayer != InputLayer && instance.CurrentInputLayer != GlossaryInputLayer && !(instance.CurrentInputLayer.ContextName == InfoWindowConsoleView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == BugReportBaseView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == "SaveLoad") && !(instance.CurrentInputLayer.ContextName == "SaveFullScreenshotConsoleView") && !(instance.CurrentInputLayer.ContextName == MessageBoxConsoleView.InputLayerName) && !(instance.CurrentInputLayer.ContextName == ContextMenuConsoleView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == OwlcatDropdown.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == OwlcatInputField.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == CrossPlatformConsoleVirtualKeyboard.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == BugReportDrawingView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == EscMenuBaseView.InputLayerContextName) && !(instance.CurrentInputLayer.ContextName == SettingsConsoleView.SettingsInputLayerName) && !(instance.CurrentInputLayer.ContextName == SettingsConsoleView.GlossarySettingsInputLayerName) && !(instance.CurrentInputLayer.ContextName == NetLobbyConsoleView.InputLayerName))
-		{
-			CloseGlossary();
-			instance.PopLayer(InputLayer);
-			instance.PushLayer(InputLayer);
-		}
 	}
 }

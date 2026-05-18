@@ -5,7 +5,6 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Items;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Abilities;
-using Kingmaker.UnitLogic.Abilities.Blueprints;
 
 namespace Kingmaker.UnitLogic.Commands;
 
@@ -53,11 +52,12 @@ public sealed class UnitAttackOfOpportunity : UnitUseAbilityAbstract<UnitAttackO
 	protected override void OnInit(AbstractUnitEntity executor)
 	{
 		_weapon = base.Params.Weapon ?? base.Executor.GetThreatHand()?.Weapon ?? throw new Exception($"{base.Executor} can't make attack of opportunity: has no threat hand");
-		BlueprintAbility blueprint = _weapon.AttackOfOpportunityAbility ?? throw new Exception($"{base.Executor} can't make attack of opportunity: weapon in threat hand doesn't have any ability for AOO");
-		base.Params.AssignAbility(new AbilityData(blueprint, base.Executor)
+		Ability ability = (executor as BaseUnitEntity)?.Abilities.GetAbility(_weapon.AttackOfOpportunityAbility) ?? throw new Exception($"{base.Executor} can't make attack of opportunity: weapon in threat hand doesn't have any ability for AOO");
+		base.Params.AssignAbility(new AbilityData(ability, base.Executor, 0, ability.Modifiers)
 		{
 			OverrideWeapon = _weapon,
 			IsAttackOfOpportunity = true,
+			UnrestrictedRanged = true,
 			FXSettingsOverride = _weapon.AttackOfOpportunityAbilityFXSettings
 		});
 		base.OnInit(executor);

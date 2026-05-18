@@ -10,7 +10,7 @@ using Kingmaker.Utility.CodeTimer;
 
 namespace Kingmaker.Controllers;
 
-public class GridNodeToEntityCacheController : IControllerStart, IController, IControllerStop, IControllerReset, IEntityHoldingStateChangedHandler, ISubscriber<IEntity>, ISubscriber, IEntityPositionChangedHandler, IInGameHandler
+public class GridNodeToEntityCacheController : IControllerStart, IController, IControllerStop, IControllerReset, IEntityHoldingStateChangedHandler, ISubscriber<IEntity>, ISubscriber, IEntityPositionChangedHandler, IInGameHandler, IAreaEffectShapeUpdatedHandler, ISubscriber<IAreaEffectEntity>
 {
 	private GridNodeToEntityCache Cache => Game.Instance.GridNodeToEntityCache;
 
@@ -60,6 +60,15 @@ public class GridNodeToEntityCacheController : IControllerStart, IController, IC
 	}
 
 	void IInGameHandler.HandleObjectInGameChanged()
+	{
+		MechanicEntity mechanicEntity = EventInvokerExtensions.MechanicEntity;
+		if (mechanicEntity != null)
+		{
+			Cache.UpdateEntity(mechanicEntity);
+		}
+	}
+
+	void IAreaEffectShapeUpdatedHandler.HandleAreaEffectShapeUpdated()
 	{
 		MechanicEntity mechanicEntity = EventInvokerExtensions.MechanicEntity;
 		if (mechanicEntity != null)

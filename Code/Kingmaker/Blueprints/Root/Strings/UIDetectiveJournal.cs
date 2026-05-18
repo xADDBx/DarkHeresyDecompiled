@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Localization;
 using UnityEngine;
@@ -16,11 +15,7 @@ public class UIDetectiveJournal
 
 	public LocalizedString ToggleClosedCases;
 
-	public LocalizedString ClickToViewCTA;
-
 	public LocalizedString NoCasesLabel;
-
-	public LocalizedString UnknownCluesTitle;
 
 	public LocalizedString UnknownCluesDescription;
 
@@ -32,8 +27,6 @@ public class UIDetectiveJournal
 	public LocalizedString PrepareReportLabel;
 
 	public LocalizedString WatchReportLabel;
-
-	public LocalizedString MakeDeductionText;
 
 	public LocalizedString NoConclusionSelected;
 
@@ -67,8 +60,6 @@ public class UIDetectiveJournal
 	[Header("Studies")]
 	public LocalizedString ToStudiesLabel;
 
-	public LocalizedString MultipleStudiesLabel;
-
 	public LocalizedString NextStudy;
 
 	public LocalizedString FinishStudies;
@@ -79,17 +70,9 @@ public class UIDetectiveJournal
 	public LocalizedString RemoveConclusionLabel;
 
 	[Header("Report")]
-	public LocalizedString ReportTitleCTA;
-
-	public LocalizedString ReportTitle;
-
 	public LocalizedString SendReportLabel;
 
 	public LocalizedString ConfirmSendReportLabel;
-
-	public LocalizedString SelectConclusionCTA;
-
-	public LocalizedString CaseLabel;
 
 	public LocalizedString HypothesisLabel;
 
@@ -100,6 +83,8 @@ public class UIDetectiveJournal
 	public LocalizedString AccusationLabel;
 
 	public LocalizedString BasedOnConclusionLabel;
+
+	public LocalizedString BasedOnConclusionPlainLabel;
 
 	[Header("Hints")]
 	public LocalizedString CannotPrepareReport;
@@ -114,12 +99,6 @@ public class UIDetectiveJournal
 
 	public LocalizedString CannotCloseCaseHint;
 
-	public LocalizedString HasNewCluesHint;
-
-	public LocalizedString HasNewConclusionsHint;
-
-	public LocalizedString HasNewStudiesHint;
-
 	[Header("Annotations")]
 	public LocalizedString AnnotationsTitle;
 
@@ -128,9 +107,6 @@ public class UIDetectiveJournal
 	public LocalizedString ConfirmedConclusionAnnotationDescription;
 
 	public LocalizedString RefutedConclusionAnnotationDescription;
-
-	[Header("ExplorationBarks")]
-	public List<LocalizedString> CanExploreBarks;
 
 	[Header("Sources")]
 	public LocalizedString SourceHeader;
@@ -145,6 +121,8 @@ public class UIDetectiveJournal
 
 	public LocalizedString SourceReconstruction;
 
+	public LocalizedString SourceExploration;
+
 	public LocalizedString ReceivedFromCue;
 
 	public LocalizedString ReceivedFromStudy;
@@ -152,6 +130,14 @@ public class UIDetectiveJournal
 	public LocalizedString ReceivedFromCompanion;
 
 	public LocalizedString ReceivedFromReconstruction;
+
+	public LocalizedString ReceivedFromExploration;
+
+	public LocalizedString ReceivedFromUnit;
+
+	public LocalizedString ExplorationDescriptionFallback;
+
+	public LocalizedString UnitDescriptionFallback;
 
 	public LocalizedString GetSourceLabel(CaseItemIssueType issueType)
 	{
@@ -163,7 +149,8 @@ public class UIDetectiveJournal
 			CaseItemIssueType.Companion => SourceStudy, 
 			CaseItemIssueType.Study => SourceStudy, 
 			CaseItemIssueType.Reconstruction => SourceReconstruction, 
-			_ => throw new ArgumentOutOfRangeException("issueType", issueType, null), 
+			CaseItemIssueType.Exploration => SourceExploration, 
+			_ => null, 
 		};
 	}
 
@@ -177,7 +164,20 @@ public class UIDetectiveJournal
 			CaseItemIssueType.Companion => ReceivedFromCompanion.Text, 
 			CaseItemIssueType.Study => ReceivedFromStudy.Text, 
 			CaseItemIssueType.Reconstruction => ReceivedFromReconstruction.Text, 
-			_ => throw new ArgumentOutOfRangeException("issueType", issueType, null), 
+			CaseItemIssueType.Exploration => ReceivedFromExploration.Text, 
+			CaseItemIssueType.Unit => ReceivedFromUnit.Text, 
+			_ => null, 
+		};
+	}
+
+	public string GetFallbackDescription(CaseItemIssueType issueType)
+	{
+		return issueType switch
+		{
+			CaseItemIssueType.Reconstruction => ExplorationDescriptionFallback.Text, 
+			CaseItemIssueType.Exploration => ExplorationDescriptionFallback.Text, 
+			CaseItemIssueType.Unit => UnitDescriptionFallback.Text, 
+			_ => string.Empty, 
 		};
 	}
 }

@@ -28,31 +28,6 @@ public class HandSlotView : View<EquipSlotVM>, IConsoleNavigationEntity, IConsol
 
 	public OwlcatMultiButton Slot => m_Slot;
 
-	protected override void OnBind()
-	{
-		base.ViewModel.Item.Subscribe(delegate(ItemEntity item)
-		{
-			bool flag = item != null;
-			m_VacantBackground.SetActive(flag);
-			m_EmptyImage.SetActive(!flag);
-		}).AddTo(this);
-		base.ViewModel.Icon.Subscribe(delegate(Sprite sprite)
-		{
-			m_ItemImage.sprite = sprite;
-			m_ItemImage.gameObject.SetActive(sprite != null);
-		}).AddTo(this);
-		base.ViewModel.CanBeFakeItem.Subscribe(delegate(bool isFake)
-		{
-			m_Slot.SetInteractable(!isFake);
-			m_ItemImage.GetComponent<_2dxFX_GrayScale>().EffectAmount = (isFake ? 1f : 0f);
-		}).AddTo(this);
-		this.SetTooltip(base.ViewModel.Tooltip).AddTo(this);
-		ObservableSubscribeExtensions.Subscribe(Slot.OnLeftClickAsObservable(), delegate
-		{
-			m_ClickAction?.Invoke();
-		}).AddTo(this);
-	}
-
 	public void SetClickAction(Action clickAction)
 	{
 		m_ClickAction = clickAction;
@@ -95,5 +70,43 @@ public class HandSlotView : View<EquipSlotVM>, IConsoleNavigationEntity, IConsol
 	public string GetConfirmClickHint()
 	{
 		return string.Empty;
+	}
+
+	protected override void OnBind()
+	{
+		base.ViewModel.Item.Subscribe(delegate(ItemEntity item)
+		{
+			bool hasItem = item != null;
+			SetHasItem(hasItem);
+		}).AddTo(this);
+		base.ViewModel.Icon.Subscribe(delegate(Sprite sprite)
+		{
+			m_ItemImage.sprite = sprite;
+			m_ItemImage.gameObject.SetActive(sprite != null);
+			SetHasItem(base.ViewModel.HasItem);
+		}).AddTo(this);
+		base.ViewModel.CanBeFakeItem.Subscribe(delegate(bool isFake)
+		{
+			m_Slot.SetInteractable(!isFake);
+			m_ItemImage.GetComponent<_2dxFX_GrayScale>().EffectAmount = (isFake ? 1f : 0f);
+		}).AddTo(this);
+		this.SetTooltip(base.ViewModel.Tooltip).AddTo(this);
+		ObservableSubscribeExtensions.Subscribe(Slot.OnLeftClickAsObservable(), delegate
+		{
+			m_ClickAction?.Invoke();
+		}).AddTo(this);
+	}
+
+	protected override void OnUnbind()
+	{
+		SetHasItem(hasItem: false);
+		m_ItemImage.gameObject.SetActive(value: false);
+		m_ItemImage.sprite = null;
+	}
+
+	private void SetHasItem(bool hasItem)
+	{
+		m_VacantBackground.SetActive(hasItem);
+		m_EmptyImage.SetActive(!hasItem);
 	}
 }

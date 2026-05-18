@@ -1,6 +1,6 @@
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Parts;
-using Kingmaker.View.MapObjects;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.Controllers.Units;
@@ -20,7 +20,7 @@ public class UnitMimicController : BaseUnitController
 			unit.View.Fader.Or(null)?.FastForward();
 			return;
 		}
-		MapObjectView mapObjectView = optional.AmbushObject?.View;
+		IMapObjectView mapObjectView = optional.AmbushObject?.View;
 		if (mapObjectView != null)
 		{
 			mapObjectView.ViewTransform.position = unit.View.ViewTransform.localPosition;

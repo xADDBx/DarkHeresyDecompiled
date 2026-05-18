@@ -38,17 +38,17 @@ public class ContextActionAttackPriorityTarget : ContextAction
 
 	protected override void RunAction()
 	{
-		if (!(base.Context.ClickedTarget.Entity is BaseUnitEntity baseUnitEntity))
+		if (!(base.Context.ClickedTarget?.Entity is BaseUnitEntity baseUnitEntity))
 		{
 			return;
 		}
-		BaseUnitEntity baseUnitEntity2 = base.Context.MaybeCaster?.GetOptional<UnitPartPriorityTarget>()?.GetPriorityTarget(TargetBuff);
+		BaseUnitEntity baseUnitEntity2 = base.Context.Caster?.GetOptional<UnitPartPriorityTarget>()?.GetPriorityTarget(TargetBuff);
 		if (baseUnitEntity2 != null)
 		{
 			Ability ability = SelectAttackAbility(baseUnitEntity, baseUnitEntity2, AttackSelectType);
 			if (ability != null)
 			{
-				Game.Instance.Controllers.TurnController.InterruptCurrentTurnImmediate(baseUnitEntity, base.Context.MaybeCaster, new InterruptionData());
+				Game.Instance.Controllers.TurnController.ScheduleInterruptTurn(baseUnitEntity, base.Context.Caster, new InterruptionData());
 				baseUnitEntity.Commands.AddToQueue(new UnitUseAbilityParams(ability.Data, baseUnitEntity2)
 				{
 					IgnoreCooldown = true,

@@ -1,5 +1,6 @@
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.ElementsSystem;
+using Kingmaker.EntitySystem.Entities.Base;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -21,6 +22,15 @@ public class EntityIsNoneCondition : Condition
 
 	protected override bool CheckCondition()
 	{
-		return EntityEvaluator.GetValue() == null;
+		Entity entity;
+		try
+		{
+			entity = EntityEvaluator.GetValue();
+		}
+		catch (FailToEvaluateException)
+		{
+			entity = null;
+		}
+		return entity == null;
 	}
 }

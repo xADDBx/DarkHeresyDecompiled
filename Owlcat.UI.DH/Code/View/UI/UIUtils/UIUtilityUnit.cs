@@ -11,13 +11,14 @@ using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.EntitySystem.Stats;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.UI.Common.UIConfigComponents;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Alignments;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
+using Kingmaker.View.Mechadendrites;
 using UnityEngine;
 
 namespace Code.View.UI.UIUtils;
@@ -57,7 +58,7 @@ public static class UIUtilityUnit
 
 	public static string GetHpText(MechanicEntityUIWrapper unit, bool isDead, int hpLeftSize = 80)
 	{
-		int num = (isDead ? unit.Attributes.WarhammerToughness.ModifiedValue : unit.Health.MaxHitPoints);
+		int num = ((!isDead) ? unit.Health.MaxHitPoints : (((int?)unit.MechanicEntity?.Actor.GetStat(StatType.Toughness, null, default(StatContext), "GetHpText")) ?? 0));
 		int temporaryHitPoints = unit.Health.TemporaryHitPoints;
 		int hitPointsLeft = unit.Health.HitPointsLeft;
 		string arg = $"{num}";
@@ -72,7 +73,7 @@ public static class UIUtilityUnit
 		{
 			return "0/0";
 		}
-		return $"{armor.DurabilityLeft}/<size={armorLeftSize}%>{(int)armor.Durability}";
+		return $"{armor.DurabilityLeft}/<size={armorLeftSize}%>{armor.DurabilityValue}";
 	}
 
 	public static bool MoraleHasPrediction(IUIUnitMoraleData currentMorale, IUIUnitMoraleData predictedMorale)
@@ -82,6 +83,10 @@ public static class UIUtilityUnit
 
 	public static bool MoraleWillBecomeHeroic(IUIUnitMoraleData currentMorale, IUIUnitMoraleData predictedMorale)
 	{
+		if (predictedMorale == null || currentMorale == null)
+		{
+			return false;
+		}
 		if (predictedMorale.MoralePhase == MoralePhaseType.Heroic)
 		{
 			return currentMorale.MoralePhase != MoralePhaseType.Heroic;
@@ -91,6 +96,10 @@ public static class UIUtilityUnit
 
 	public static bool MoraleWillBecomeBroken(IUIUnitMoraleData currentMorale, IUIUnitMoraleData predictedMorale)
 	{
+		if (predictedMorale == null || currentMorale == null)
+		{
+			return false;
+		}
 		if (predictedMorale.MoralePhase == MoralePhaseType.Broken)
 		{
 			return currentMorale.MoralePhase != MoralePhaseType.Broken;
@@ -111,12 +120,21 @@ public static class UIUtilityUnit
 			{
 				AlignmentAxis axis = shift.Axis;
 				int value = shift.Value;
-				string arg = ColorUtility.ToHtmlStringRGB((shift.Value > 0) ? colors.SoulMarkShiftBePositive : colors.SoulMarkShiftBeNegative);
-				text += string.Format(UIStrings.Instance.Dialog.SoulMarkShiftFormat.Text, UIUtilityText.GetSoulMarkDirectionText(axis).Text, value, arg);
+				string arg = ColorUtility.ToHtmlStringRGB((Color)((shift.Value > 0) ? colors.SoulMarkShiftBePositive : colors.SoulMarkShiftBeNegative));
+				text += string.Format(UIStrings.Instance.Dialog.SoulMarkShiftFormat.Text, UIUtilityAlignment.GetAlignmentDirectionText(axis).Text, value, arg);
 				text += "\n\n";
 			}
 		}
 		return text;
+	}
+
+	public static int GetWeaponSetsCount(BaseUnitEntity unit)
+	{
+		if (!unit.HasMechadendrites())
+		{
+			return 2;
+		}
+		return 1;
 	}
 
 	public static IEnumerable<Ability> CollectAbilities(BaseUnitEntity unit)
@@ -129,9 +147,9 @@ public static class UIUtilityUnit
 		return UtilityUnit.GetBlueprintUnitFactFromFact<TBlueprint>(blueprintMechanicEntityFact);
 	}
 
-	public static StatType? GetSourceStatType(ModifiableValue stat)
+	public static StatType? GetSourceStatType(StatType statType)
 	{
-		return UtilityUnit.GetSourceStatType(stat);
+		return UtilityUnit.GetSourceStatType(statType);
 	}
 
 	public static int GetSurfaceEnemyDifficulty([CanBeNull] BaseUnitEntity unit)

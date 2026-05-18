@@ -1,13 +1,13 @@
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
-using Kingmaker.View.MapObjects.SriptZones;
 
 namespace Kingmaker.PubSubSystem;
 
 public interface IScriptZoneHandler : ISubscriber<IBaseUnitEntity>, ISubscriber
 {
-	void OnUnitEnteredScriptZone(ScriptZone zone);
+	void OnUnitEnteredScriptZone(ScriptZoneEntity zone);
 
-	void OnUnitExitedScriptZone(ScriptZone zone);
+	void OnUnitExitedScriptZone(ScriptZoneEntity zone);
 }

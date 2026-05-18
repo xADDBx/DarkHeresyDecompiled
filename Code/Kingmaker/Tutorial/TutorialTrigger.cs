@@ -7,8 +7,10 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.QA;
 using Kingmaker.RuleSystem;
+using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Core.Utility.EditorAttributes;
+using UnityEngine;
 
 namespace Kingmaker.Tutorial;
 
@@ -17,11 +19,22 @@ namespace Kingmaker.Tutorial;
 [TypeId("64ef042cd0d140a99b1d2de430e653e6")]
 public abstract class TutorialTrigger : EntityFactComponentDelegate<TutorialSystem>
 {
+	[SerializeField]
+	private bool _overrideDelay;
+
+	[ShowIf("_overrideDelay")]
+	[SerializeField]
+	private float _delaySecondsOverride;
+
 	public new Tutorial Fact => (Tutorial)base.Fact;
 
 	private bool IsConsole => Game.Instance.IsControllerGamepad;
 
 	public virtual bool RevealTargetUnitInfo => false;
+
+	public bool OverrideDelay => _overrideDelay;
+
+	public float DelaySecondsOverride => _delaySecondsOverride;
 
 	protected virtual void SetupContext(TutorialContext context, [NotNull] RulebookEvent rule)
 	{

@@ -10,7 +10,7 @@ namespace Kingmaker.View.MapObjects.InteractionRestrictions;
 [OwlPackable(OwlPackableMode.Generate)]
 public class ScriptRestrictionPart : InteractionRestrictionPart, IHashable, IOwlPackable<ScriptRestrictionPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "ScriptRestrictionPart",
 		OldNames = null,
@@ -39,7 +39,7 @@ public class ScriptRestrictionPart : InteractionRestrictionPart, IHashable, IOwl
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		ScriptRestrictionPart source = new ScriptRestrictionPart();
 		result = Unsafe.As<ScriptRestrictionPart, TPossiblyBase>(ref source);

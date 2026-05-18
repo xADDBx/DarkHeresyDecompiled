@@ -1,15 +1,18 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
+using Kingmaker.Code.View.Visual.CharacterSystem;
 using Kingmaker.Code.View.Visual.CharacterSystem.EquipmentComponents;
 using Kingmaker.ElementsSystem;
+using Owlcat.Runtime.Visual.XPBD.Layouts.MeshSkinning;
 using UnityEngine;
 
 namespace Kingmaker.Visual.CharacterSystem;
 
 [Serializable]
 [KnowledgeDatabaseID("2aa814ffec855a34db72ef11aa489935")]
-public class BodyPart : EquipmentFeatureProvider
+public class BodyPart : IEquipmentFeatureProvider
 {
 	[KDB("Тип боди парта")]
 	[SerializeField]
@@ -29,6 +32,10 @@ public class BodyPart : EquipmentFeatureProvider
 	private BlueprintEquipmentFeatureReference[] m_Features;
 
 	private SkinnedMeshRenderer[] m_SkinnedRenderer;
+
+	private IEquipmentFeatureProvider m_EquipmentFeatureProvider;
+
+	private IEquipmentFeatureProvider Features => m_EquipmentFeatureProvider ?? (m_EquipmentFeatureProvider = new EquipmentFeatureProvider(m_Features));
 
 	public GameObject Model => m_Model;
 
@@ -86,8 +93,34 @@ public class BodyPart : EquipmentFeatureProvider
 		return skinnedRenderers.Length != 0;
 	}
 
-	protected override BlueprintEquipmentFeatureReference[] GetFeatureList()
+	public bool HasFeature(EquipmentFeatureFlag feature)
 	{
-		return m_Features;
+		return Features.HasFeature(feature);
+	}
+
+	public bool TryGetPhysicsDeformerLayout(out TriangleSkinmap triangleSkinmap, out GameObject prefabMesh)
+	{
+		return Features.TryGetPhysicsDeformerLayout(out triangleSkinmap, out prefabMesh);
+	}
+
+	public bool IsHiddenByVisibilityFeatures(CharacterDisplayOptions displayOptions)
+	{
+		return Features.IsHiddenByVisibilityFeatures(displayOptions);
+	}
+
+	public IEnumerable<T> GetFeatureComponents<T>()
+	{
+		if (m_Features == null)
+		{
+			yield break;
+		}
+		BlueprintEquipmentFeatureReference[] features = m_Features;
+		foreach (BlueprintEquipmentFeatureReference blueprintEquipmentFeatureReference in features)
+		{
+			foreach (T component in blueprintEquipmentFeatureReference.Get().GetComponents<T>())
+			{
+				yield return component;
+			}
+		}
 	}
 }

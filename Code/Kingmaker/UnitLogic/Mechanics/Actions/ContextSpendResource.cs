@@ -1,7 +1,5 @@
 using System;
 using Kingmaker.Blueprints;
-using Kingmaker.ElementsSystem;
-using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -31,23 +29,5 @@ public class ContextSpendResource : ContextAction
 
 	protected override void RunAction()
 	{
-		MechanicEntity maybeCaster = base.Context.MaybeCaster;
-		if (maybeCaster == null)
-		{
-			Element.LogError(this, "Caster is missing");
-			return;
-		}
-		PartAbilityResourceCollection abilityResourcesOptional = maybeCaster.GetAbilityResourcesOptional();
-		if (abilityResourcesOptional != null)
-		{
-			if (!ContextValueSpendure)
-			{
-				abilityResourcesOptional.Spend(Resource, 1);
-			}
-			else
-			{
-				abilityResourcesOptional.Spend(Resource, Value.Calculate(base.Context));
-			}
-		}
 	}
 }

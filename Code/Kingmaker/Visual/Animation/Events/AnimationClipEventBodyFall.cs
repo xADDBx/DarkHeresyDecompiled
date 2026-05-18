@@ -1,4 +1,5 @@
 using System;
+using Kingmaker.View.Mechanics;
 
 namespace Kingmaker.Visual.Animation.Events;
 
@@ -18,9 +19,9 @@ public class AnimationClipEventBodyFall : AnimationClipEventSound
 	{
 	}
 
-	public override Action Start(IAnimationManager animationManager)
+	public override Action PostSoundEvent(MechanicEntityView view)
 	{
-		animationManager.CallbackReceiver.PlayBodyFall(base.Name);
+		view.PlayBodyFall(base.Name);
 		return null;
 	}
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.UI.UIUtilities;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.Settings;
 using Kingmaker.UI.Common.DebugInformation;
 using Owlcat.UI;

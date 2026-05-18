@@ -37,7 +37,7 @@ public class RoamingWaypointView : EntityViewBase, ICutsceneReference
 		{
 			return null;
 		}
-		return base.ViewTransform.rotation.eulerAngles.y;
+		return base.transform.rotation.eulerAngles.y;
 	}
 
 	public override Entity CreateEntityData(bool load)

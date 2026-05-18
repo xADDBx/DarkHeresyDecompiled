@@ -1,7 +1,6 @@
 using System;
 using Kingmaker.Code.UI.MVVM.SignalDevice;
 using Kingmaker.Code.UI.MVVM.UnitInfo;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities;
@@ -28,8 +27,6 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 
 	private readonly ReactiveProperty<bool> m_DeploymentPhase = new ReactiveProperty<bool>();
 
-	private readonly ReactiveProperty<bool> m_CanDeploy = new ReactiveProperty<bool>();
-
 	private readonly ReactiveProperty<bool> m_PlayerHaveRoles = new ReactiveProperty<bool>();
 
 	private readonly ReactiveProperty<bool> m_NetFirstLoadState = new ReactiveProperty<bool>();
@@ -38,7 +35,9 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 
 	private readonly ReactiveProperty<CombatMechanicEntityVM> m_CurrentUnit = new ReactiveProperty<CombatMechanicEntityVM>();
 
-	private readonly ReactiveProperty<CombatStartWindowVM> m_CombatStartWindowVM = new ReactiveProperty<CombatStartWindowVM>();
+	private readonly ReactiveProperty<CombatStartWindowVM> m_PreparationTurnWindowVM = new ReactiveProperty<CombatStartWindowVM>();
+
+	private IDisposable m_TrackerSubscription;
 
 	public readonly InspectVM InspectVM;
 
@@ -46,17 +45,11 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 
 	public readonly IngameMenuVM IngameMenuVM;
 
-	public readonly IngameMenuSettingsButtonVM IngameMenuSettingsButtonVM;
-
 	public readonly PartyVM PartyVM;
 
 	public readonly ActionBarVM ActionBarVM;
 
-	public readonly SignalsDeviceVM SignalsDeviceVM;
-
-	public readonly UnitInfoVM UnitInfoVM;
-
-	private IDisposable m_TrackerSubscription;
+	private BaseUnitEntity SingleSelectedUnit => Game.Instance.Controllers.SelectionCharacter.SingleSelectedUnit.Value;
 
 	public ReadOnlyReactiveProperty<bool> IsTurnBasedActive => m_IsTurnBasedActive;
 
@@ -66,8 +59,6 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 
 	public ReadOnlyReactiveProperty<bool> DeploymentPhase => m_DeploymentPhase;
 
-	public ReadOnlyReactiveProperty<bool> CanDeploy => m_CanDeploy;
-
 	public ReadOnlyReactiveProperty<bool> PlayerHaveRoles => m_PlayerHaveRoles;
 
 	public ReadOnlyReactiveProperty<bool> NetFirstLoadState => m_NetFirstLoadState;
@@ -76,14 +67,7 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 
 	public ReadOnlyReactiveProperty<CombatMechanicEntityVM> CurrentUnit => m_CurrentUnit;
 
-	public ReadOnlyReactiveProperty<CombatStartWindowVM> CombatStartWindowVM => m_CombatStartWindowVM;
-
-	private BaseUnitEntity SingleSelectedUnit => Game.Instance.Controllers.SelectionCharacter.SingleSelectedUnit.Value;
-
-	public void EndTurn()
-	{
-		Game.Instance.Controllers.TurnController.TryEndPlayerTurnManually();
-	}
+	public ReadOnlyReactiveProperty<CombatStartWindowVM> PreparationTurnWindowVM => m_PreparationTurnWindowVM;
 
 	public SurfaceHUDVM()
 	{
@@ -94,7 +78,7 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 		{
 			HandleBeginPreparationTurn(Game.Instance.Controllers.TurnController.IsDeploymentAllowed);
 		}
-		AddDisposable(ObservableSubscribeExtensions.Subscribe(MainThreadDispatcher.FrequentUpdateAsObservable(), delegate
+		AddDisposable(ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.Update), delegate
 		{
 			UpdateIsTurnBasedActive();
 		}));
@@ -102,14 +86,14 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 		{
 			TurnBasedModeChanged(s);
 		}));
-		AddDisposable(IngameMenuVM = new IngameMenuVM());
-		AddDisposable(IngameMenuSettingsButtonVM = new IngameMenuSettingsButtonVM());
+		AddDisposable(IngameMenuVM = new IngameMenuVM(null));
+		AddDisposable(new IngameMenuSettingsButtonVM(null));
 		AddDisposable(InspectVM = new InGameInspectVM());
 		AddDisposable(CombatLogVM = new CombatLogVM());
 		AddDisposable(PartyVM = new PartyVM());
-		AddDisposable(ActionBarVM = new ActionBarVM(m_CurrentUnit));
-		AddDisposable(SignalsDeviceVM = new SignalsDeviceVM());
-		AddDisposable(UnitInfoVM = new UnitInfoVM(Game.Instance.Controllers.PreciseAttackController));
+		AddDisposable(ActionBarVM = new ActionBarVM(m_CurrentUnit, null));
+		AddDisposable(new SignalsDeviceVM());
+		AddDisposable(new UnitInfoVM(Game.Instance.Controllers.PreciseAttackController));
 		AddDisposable(Game.Instance.Controllers.SelectionCharacter.SingleSelectedUnit.Subscribe(delegate
 		{
 			OnUnitChanged();
@@ -123,7 +107,7 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 		if (mechanicEntity != CurrentUnit.CurrentValue?.MechanicEntity)
 		{
 			CurrentUnit.CurrentValue?.Dispose();
-			m_CurrentUnit.Value = ((mechanicEntity != null) ? new CombatMechanicEntityVM(mechanicEntity, isCurrent: true) : null);
+			m_CurrentUnit.Value = ((mechanicEntity != null) ? new CombatMechanicEntityVM(mechanicEntity, null, isCurrent: true) : null);
 		}
 	}
 
@@ -135,7 +119,7 @@ public class SurfaceHUDVM : BaseDisposable, IViewModel, IBaseDisposable, IDispos
 		{
 			InitiativeTrackerVM disposable = (m_InitiativeTrackerVM.Value = new InitiativeTrackerVM());
 			AddDisposable(disposable);
-			m_TrackerSubscription = InitiativeTrackerVM.CurrentValue.CurrentUnit.Subscribe(delegate
+			m_TrackerSubscription = InitiativeTrackerVM.CurrentValue?.CurrentUnit.Subscribe(delegate
 			{
 				OnUnitChanged();
 			});

@@ -15,7 +15,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class HiddenPart : InteractionPart<HiddenSettings>, IHashable, IOwlPackable<HiddenPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "HiddenPart",
 		OldNames = null,
@@ -86,7 +86,7 @@ public class HiddenPart : InteractionPart<HiddenSettings>, IHashable, IOwlPackab
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		HiddenPart source = new HiddenPart();
 		result = Unsafe.As<HiddenPart, TPossiblyBase>(ref source);

@@ -1,6 +1,5 @@
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM.Common;
-using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.Gameplay.Features.Reputation;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.PubSubSystem.Core;
@@ -12,7 +11,7 @@ using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM.Vendor;
 
-public class VendorBaseScreenView : View<VendorBaseScreenVM>, IInitializable
+public class VendorBaseScreenView : View<VendorBaseScreenVM>
 {
 	[SerializeField]
 	private OwlcatMultiButton m_CloseButton;
@@ -38,17 +37,18 @@ public class VendorBaseScreenView : View<VendorBaseScreenVM>, IInitializable
 	[SerializeField]
 	protected GameObject m_ReputationButtonObject;
 
-	public virtual void Initialize()
-	{
-		base.gameObject.SetActive(value: false);
-		m_VendorTradePartView.Initialize();
-		m_ReputationView.Initialize();
-		m_VendorButtonTitle.text = UIStrings.Instance.Vendor.Vendor;
-		m_ReputationButtonTitle.text = UIStrings.Instance.Vendor.Reputation;
-	}
+	private bool m_Initialized;
 
 	protected override void OnBind()
 	{
+		if (!m_Initialized)
+		{
+			m_VendorTradePartView.Initialize();
+			m_ReputationView.Initialize();
+			m_Initialized = true;
+		}
+		m_VendorButtonTitle.text = UIStrings.Instance.Vendor.Vendor;
+		m_ReputationButtonTitle.text = UIStrings.Instance.Vendor.Reputation;
 		base.gameObject.SetActive(value: true);
 		EventBus.Subscribe(this).AddTo(this);
 		m_VendorTabNavigation.Bind(base.ViewModel.VendorTabNavigationVM);
@@ -60,6 +60,11 @@ public class VendorBaseScreenView : View<VendorBaseScreenVM>, IInitializable
 		}).AddTo(this);
 		base.ViewModel.ActiveTab.Subscribe(BindSelectedView).AddTo(this);
 		m_ReputationButtonObject.SetActive(VendorHelper.TradeLogic.VendorFactionType != FactionType.None);
+	}
+
+	protected override void OnUnbind()
+	{
+		base.gameObject.SetActive(value: false);
 	}
 
 	private void BindSelectedView(VendorWindowsTab tab)

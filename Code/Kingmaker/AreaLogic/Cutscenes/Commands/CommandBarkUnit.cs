@@ -34,13 +34,13 @@ public class CommandBarkUnit : CommandBase
 
 	[StringCreateWindow(StringCreateWindowAttribute.StringType.Bark)]
 	[ValidateNotNull]
-	public SharedStringAsset SharedText;
+	public LocalizedString SharedText;
 
 	[SerializeReference]
 	public AbstractUnitEvaluator Unit;
 
 	[Tooltip("Bark duration depends on text length")]
-	public bool BarkDurationByText;
+	public bool BarkDurationByText = true;
 
 	[Tooltip("Wait until bark disappears before starting next command")]
 	public bool AwaitFinish;
@@ -69,27 +69,34 @@ public class CommandBarkUnit : CommandBase
 	[CanBeNull]
 	private LocalizedString m_SpeakerName;
 
+	public override bool ShouldHaveControlledUnit => ControlsUnit;
+
 	protected override bool StopPlaySignalIsReady(CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		return SignalService.Instance.CheckReadyOrSend(ref commandData.StopPlaySignal);
 	}
 
-	public override void Interrupt(CutscenePlayerData player)
+	protected override CommandResult OnStop(CutscenePlayerData player)
 	{
-		base.Interrupt(player);
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
 		Data commandData = player.GetCommandData<Data>(this);
 		commandData.BarkHandle?.InterruptBark();
 		commandData.Delay = 0f;
+		return CommandResult.Success;
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		float duration = UtilityBark.DefaultBarkTime;
 		if (BarkDurationByText)
 		{
-			duration = UtilityBark.GetBarkDuration(SharedText.String);
+			duration = UtilityBark.GetBarkDuration(SharedText);
 		}
 		if (OverrideBarkDuration)
 		{
@@ -106,19 +113,21 @@ public class CommandBarkUnit : CommandBase
 		}
 		if (IsSubText)
 		{
-			commandData.BarkHandle = BarkPlayer.BarkSubtitle(value, SharedText.String, VoiceOverType.Bark, "", duration, m_SpeakerName);
+			commandData.BarkHandle = BarkPlayer.BarkSubtitle(value, SharedText, VoiceOverType.Bark, "", duration, m_SpeakerName);
 		}
 		else if (value != null && value.LifeState.IsConscious)
 		{
-			commandData.BarkHandle = BarkPlayer.Bark(value, SharedText.String, VoiceOverType.Bark, "", duration);
+			commandData.BarkHandle = BarkPlayer.Bark(value, SharedText, VoiceOverType.Bark, "", duration);
 		}
 		commandData.Delay = CommandDurationShift;
 		commandData.StopPlaySignal = SignalService.Instance.RegisterNext();
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		player.GetCommandData<Data>(this).Finished = true;
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -126,7 +135,7 @@ public class CommandBarkUnit : CommandBase
 		return player.GetCommandData<Data>(this).Finished;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
 		Data commandData = player.GetCommandData<Data>(this);
 		if (commandData.BarkHandle == null)
@@ -137,11 +146,12 @@ public class CommandBarkUnit : CommandBase
 		{
 			commandData.Finished = true;
 		}
+		return CommandResult.Success;
 	}
 
 	public override string GetCaption()
 	{
-		return Unit?.GetCaptionShort() + "<b> bark</b> " + SharedText.String;
+		return Unit?.GetCaptionShort() + "<b> bark</b> " + SharedText;
 	}
 
 	public override string GetWarning()

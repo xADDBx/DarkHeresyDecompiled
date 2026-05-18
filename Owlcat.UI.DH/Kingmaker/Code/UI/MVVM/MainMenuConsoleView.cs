@@ -1,7 +1,6 @@
 using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.UI;
 using Kingmaker.UI.Common.Animations;
-using Kingmaker.UI.Pointer;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
 using R3;
@@ -34,9 +33,6 @@ public class MainMenuConsoleView : View<MainMenuVM>, IInitializable
 	[SerializeField]
 	private FirstLaunchSettingsConsoleView m_FirstLaunchSettingsConsoleView;
 
-	[SerializeField]
-	private ConsoleCursor m_ConsoleCursor;
-
 	[Header("First Time Launch FX")]
 	[SerializeField]
 	private UIFirstLaunchFX m_FirstLaunchFX;
@@ -46,7 +42,6 @@ public class MainMenuConsoleView : View<MainMenuVM>, IInitializable
 		m_TermsOfUseConsoleView.Initialize();
 		m_NewGameConsoleView.Initialize();
 		m_FirstLaunchSettingsConsoleView.Initialize();
-		m_CreditsView.Initialize();
 		m_FadeAnimator.Initialize();
 	}
 
@@ -57,8 +52,6 @@ public class MainMenuConsoleView : View<MainMenuVM>, IInitializable
 			m_FadeAnimator.CanvasGroup.alpha = 1f;
 		}
 		menuButtonsConsoleView.Bind(base.ViewModel.MainMenuButtonsVm);
-		m_ConsoleCursor.Bind().AddTo(this);
-		m_ConsoleCursor.SetActive(active: false);
 		ObservableSubscribeExtensions.Subscribe(Observable.Timer(m_DelayBeforeShow.Seconds(), UnityTimeProvider.UpdateIgnoreTimeScale), delegate
 		{
 			m_FadeAnimator.DisappearAnimation();

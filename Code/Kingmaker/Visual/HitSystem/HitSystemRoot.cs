@@ -171,7 +171,7 @@ public class HitSystemRoot : BlueprintScriptableObject
 	}
 
 	[CanBeNull]
-	public DroppedLoot GetDismemberLoot(SurfaceType type)
+	public DroppedLootView GetDismemberLoot(SurfaceType type)
 	{
 		Initialize();
 		if (m_CachedHitEntryBySurfaceType.TryGetValue(type, out var value))
@@ -181,7 +181,7 @@ public class HitSystemRoot : BlueprintScriptableObject
 			{
 				return null;
 			}
-			return gameObject.GetComponent<DroppedLoot>();
+			return gameObject.GetComponent<DroppedLootView>();
 		}
 		return null;
 	}

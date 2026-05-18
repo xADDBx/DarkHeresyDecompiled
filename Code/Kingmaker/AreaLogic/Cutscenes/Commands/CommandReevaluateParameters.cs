@@ -14,18 +14,30 @@ public class CommandReevaluateParameters : CommandBase
 		return "[HACK] Reevaluate parameters";
 	}
 
-	protected override void OnRun(CutscenePlayerData player, bool skipping)
+	protected override CommandResult OnRun(CutscenePlayerData player, bool skipping)
 	{
 		ParametrizedContextSetter.ParameterEntry[] array = (player.ParameterSetter?.Parameters).EmptyIfNull();
 		foreach (ParametrizedContextSetter.ParameterEntry parameterEntry in array)
 		{
 			player.Parameters.Params[parameterEntry.Name] = parameterEntry.GetValue();
 		}
+		return CommandResult.Success;
 	}
 
-	protected override void OnSkip(CutscenePlayerData player)
+	protected override CommandResult OnSkip(CutscenePlayerData player)
 	{
 		OnRun(player, skipping: true);
+		return CommandResult.Success;
+	}
+
+	protected override CommandResult OnStop(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
+	}
+
+	public override CommandResult Interrupt(CutscenePlayerData player)
+	{
+		return CommandResult.Success;
 	}
 
 	public override bool IsFinished(CutscenePlayerData player)
@@ -33,7 +45,8 @@ public class CommandReevaluateParameters : CommandBase
 		return true;
 	}
 
-	protected override void OnSetTime(double time, CutscenePlayerData player)
+	protected override CommandResult OnSetTime(double time, CutscenePlayerData player)
 	{
+		return CommandResult.Success;
 	}
 }

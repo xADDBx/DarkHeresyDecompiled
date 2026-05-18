@@ -1,5 +1,5 @@
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.UnitLogic.Buffs.Components;
-using Kingmaker.Visual.Animation.Kingmaker;
 using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using Owlcat.Runtime.Core.Utility;
 
@@ -36,11 +36,10 @@ public class OverrideLocoMotion : UnitBuffComponentDelegate
 
 	private void TryOverride()
 	{
-		UnitAnimationManager unitAnimationManager = base.Owner?.View?.AnimationManager;
-		if (unitAnimationManager != null && unitAnimationManager.LocoMotionHandle?.Action != Locomotion)
+		IUnitEntityView view = base.Owner.View;
+		if (view != null)
 		{
-			unitAnimationManager.ResetLocoMotion();
-			unitAnimationManager.ChangeLocoMotion(Locomotion);
+			view.AnimationManager.Or(null)?.ChangeLocoMotion(Locomotion);
 		}
 	}
 }

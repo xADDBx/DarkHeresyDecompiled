@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.EntitySystem.Entities;
@@ -24,14 +25,17 @@ public sealed class ToggleAbilityRestrictionStatValue : BlueprintComponent, IAbi
 
 	public bool IsCasterRestrictionPassed(MechanicEntity caster)
 	{
-		int value = Value.GetValue(caster);
-		int num = caster.GetStatOptional(Stat);
-		return Comparision.Check(num, value);
+		return true;
 	}
 
 	public string GetAbilityCasterRestrictionUIText(MechanicEntity caster)
 	{
 		int value = Value.GetValue(caster);
 		return $"[HARDCODED] {Stat} must be {Comparision.GetDescription(value)}";
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		return Array.Empty<string>();
 	}
 }

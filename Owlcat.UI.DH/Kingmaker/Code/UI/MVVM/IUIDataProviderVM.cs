@@ -1,6 +1,5 @@
-using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.UIDataProvider;
-using Owlcat.Runtime.Core.Utility;
 using Owlcat.UI;
 using UnityEngine;
 
@@ -21,7 +20,7 @@ public class IUIDataProviderVM : ViewModel
 	public IUIDataProviderVM(IUIDataProvider mIuiDataProvider)
 	{
 		m_IUIDataProvider = mIuiDataProvider;
-		Icon = mIuiDataProvider.Icon.Or(UIConfig.Instance.UIIcons.DefaultAbilityIcon);
+		Icon = mIuiDataProvider.Icon.GetDefaultIfNull(DefaultImageType.Ability);
 	}
 
 	protected override void OnDispose()

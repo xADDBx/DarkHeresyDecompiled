@@ -51,6 +51,9 @@ public class OwlcatSelectable : UIBehaviour, IConsoleNavigationEntity, IConsoleE
 	public FocusEvent OnFocus { get; } = new FocusEvent();
 
 
+	public HoverEvent OnHover { get; } = new HoverEvent();
+
+
 	public int HoverSoundType
 	{
 		get
@@ -140,9 +143,6 @@ public class OwlcatSelectable : UIBehaviour, IConsoleNavigationEntity, IConsoleE
 		}
 	}
 
-	public HoverEvent OnHover { get; } = new HoverEvent();
-
-
 	public void SetFocus(bool value)
 	{
 		IsFocus = value;
@@ -161,6 +161,60 @@ public class OwlcatSelectable : UIBehaviour, IConsoleNavigationEntity, IConsoleE
 			return IsActive();
 		}
 		return false;
+	}
+
+	public void OnPointerEnter(PointerEventData eventData)
+	{
+		if ((Switch2Helper.IsRunningOnSwitch2 || Cursor.visible || UIKitRewiredCursorController.Enabled) && (!Switch2Helper.IsRunningOnSwitch2 || PlatformManager.Instance.Switch2MouseModeActive || UIKitRewiredCursorController.Enabled) && (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled))
+		{
+			OnPointerEnter();
+		}
+	}
+
+	public void OnPointerEnter()
+	{
+		IsHighlighted = true;
+		OnHover?.Invoke(arg0: true);
+	}
+
+	public void OnPointerExit(PointerEventData eventData)
+	{
+		if ((Switch2Helper.IsRunningOnSwitch2 || Cursor.visible || UIKitRewiredCursorController.Enabled) && (!Switch2Helper.IsRunningOnSwitch2 || PlatformManager.Instance.Switch2MouseModeActive || UIKitRewiredCursorController.Enabled) && (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled))
+		{
+			OnPointerExit();
+		}
+	}
+
+	public void OnPointerExit()
+	{
+		IsHighlighted = false;
+		OnHover?.Invoke(arg0: false);
+	}
+
+	public void OnPointerDown(PointerEventData eventData)
+	{
+		if ((Switch2Helper.IsRunningOnSwitch2 || Cursor.visible || UIKitRewiredCursorController.Enabled) && (!Switch2Helper.IsRunningOnSwitch2 || PlatformManager.Instance.Switch2MouseModeActive || UIKitRewiredCursorController.Enabled) && (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled))
+		{
+			OnPointerDown();
+		}
+	}
+
+	public void OnPointerDown()
+	{
+		IsPressed = true;
+	}
+
+	public void OnPointerUp(PointerEventData eventData)
+	{
+		if ((Switch2Helper.IsRunningOnSwitch2 || Cursor.visible || UIKitRewiredCursorController.Enabled) && (!Switch2Helper.IsRunningOnSwitch2 || PlatformManager.Instance.Switch2MouseModeActive || UIKitRewiredCursorController.Enabled) && (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled))
+		{
+			OnPointerUp();
+		}
+	}
+
+	public void OnPointerUp()
+	{
+		IsPressed = false;
 	}
 
 	public void DoRefresh()
@@ -274,10 +328,11 @@ public class OwlcatSelectable : UIBehaviour, IConsoleNavigationEntity, IConsoleE
 		{
 			return;
 		}
+		bool flag = CurrentState == OwlcatSelectionState.Pressed;
 		CurrentState = currentState;
 		if (IsActive())
 		{
-			if (CurrentState == OwlcatSelectionState.Highlighted || CurrentState == OwlcatSelectionState.Focused)
+			if (!flag && IsHover(CurrentState))
 			{
 				UIKitSoundManager.PlayHoverSound(HoverSoundType);
 			}
@@ -286,6 +341,14 @@ public class OwlcatSelectable : UIBehaviour, IConsoleNavigationEntity, IConsoleE
 				UIKitSoundManager.PlayButtonClickSound(ClickSoundType);
 			}
 			DoSetCommonParts(CurrentState, instant);
+		}
+		static bool IsHover(OwlcatSelectionState state)
+		{
+			if (state != OwlcatSelectionState.Highlighted)
+			{
+				return state == OwlcatSelectionState.Focused;
+			}
+			return true;
 		}
 	}
 
@@ -299,59 +362,5 @@ public class OwlcatSelectable : UIBehaviour, IConsoleNavigationEntity, IConsoleE
 		{
 			c.DoSetCommonParts(state, instant);
 		});
-	}
-
-	public void OnPointerEnter(PointerEventData eventData)
-	{
-		if (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled)
-		{
-			OnPointerEnter();
-		}
-	}
-
-	public void OnPointerEnter()
-	{
-		IsHighlighted = true;
-		OnHover?.Invoke(arg0: true);
-	}
-
-	public void OnPointerExit(PointerEventData eventData)
-	{
-		if (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled)
-		{
-			OnPointerExit();
-		}
-	}
-
-	public void OnPointerExit()
-	{
-		IsHighlighted = false;
-		OnHover?.Invoke(arg0: false);
-	}
-
-	public void OnPointerDown(PointerEventData eventData)
-	{
-		if (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled)
-		{
-			OnPointerDown();
-		}
-	}
-
-	public void OnPointerDown()
-	{
-		IsPressed = true;
-	}
-
-	public void OnPointerUp(PointerEventData eventData)
-	{
-		if (Cursor.visible || !UIKitRewiredCursorController.HasController || UIKitRewiredCursorController.Enabled)
-		{
-			OnPointerUp();
-		}
-	}
-
-	public void OnPointerUp()
-	{
-		IsPressed = false;
 	}
 }

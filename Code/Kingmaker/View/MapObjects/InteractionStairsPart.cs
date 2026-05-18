@@ -18,7 +18,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class InteractionStairsPart : InteractionPart<InteractionStairsSettings>, IHashable, IOwlPackable<InteractionStairsPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionStairsPart",
 		OldNames = null,
@@ -67,7 +67,7 @@ public class InteractionStairsPart : InteractionPart<InteractionStairsSettings>,
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionStairsPart source = new InteractionStairsPart();
 		result = Unsafe.As<InteractionStairsPart, TPossiblyBase>(ref source);

@@ -9,8 +9,8 @@ public class ContextActionActivateVigilBeyondTime : ContextAction
 {
 	protected override void RunAction()
 	{
-		UnitEntity unitEntity = base.Context.ClickedTarget.Entity as UnitEntity;
-		if (base.Context.MaybeCaster is UnitEntity unitEntity2 && unitEntity != null)
+		UnitEntity unitEntity = base.Context.ClickedTarget?.Entity as UnitEntity;
+		if (base.Context.Caster is UnitEntity unitEntity2 && unitEntity != null)
 		{
 			unitEntity2.GetOptional<UnitPartVigilBeyondTime>()?.ActivateVigil(unitEntity);
 		}

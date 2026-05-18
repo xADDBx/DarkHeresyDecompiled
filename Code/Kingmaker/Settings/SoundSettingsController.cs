@@ -1,5 +1,3 @@
-using Kingmaker.Code.Middleware.Metrics;
-
 namespace Kingmaker.Settings;
 
 public class SoundSettingsController
@@ -14,10 +12,6 @@ public class SoundSettingsController
 		m_Settings.VolumeMaster.OnTempValueChanged += delegate
 		{
 			SettingsToRealMasterVolume();
-		};
-		m_Settings.VolumeMaster.OnValueChanged += delegate(float value)
-		{
-			Metrics.Settings.Value(value.ToString("0.00")).SettingType(SettingsMetricsEvent.SettingTypes.Sound).Send();
 		};
 		m_Settings.VolumeMusic.OnTempValueChanged += delegate
 		{

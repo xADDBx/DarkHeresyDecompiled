@@ -14,30 +14,43 @@ public class UnitSelectionButtonView : View<CombatMechanicEntityVM>
 	[SerializeField]
 	private OwlcatMultiButton m_Button;
 
+	private bool m_SelectedExternal;
+
+	private readonly ReactiveProperty<bool> m_IsHovered = new ReactiveProperty<bool>();
+
+	public ReadOnlyReactiveProperty<bool> IsHovered => m_IsHovered;
+
+	public void SetSelectedExternal(bool isSelected)
+	{
+		m_SelectedExternal = isSelected;
+		m_Button.SetFocus(isSelected);
+	}
+
 	protected override void OnBind()
 	{
 		m_Button.OnPointerEnterAsObservable().Subscribe(delegate
 		{
 			SetSelected(value: true);
-			base.ViewModel.UnitAsBaseUnitEntity?.View.HandleHoverChange(isHover: true);
+			base.ViewModel.UnitAsBaseUnitEntity?.View.HandleHoverChange(value: true);
+			m_IsHovered.Value = true;
 		}).AddTo(this);
 		m_Button.OnPointerExitAsObservable().Subscribe(delegate
 		{
 			SetSelected(value: false);
-			base.ViewModel.UnitAsBaseUnitEntity?.View.HandleHoverChange(isHover: false);
+			base.ViewModel.UnitAsBaseUnitEntity?.View.HandleHoverChange(value: false);
+			m_IsHovered.Value = false;
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_Button.OnRightClickAsObservable(), delegate
 		{
 			InvokeUnitInspect();
 		}).AddTo(this);
-		ObservableSubscribeExtensions.Subscribe(m_Button.OnLeftDoubleClickAsObservable(), delegate
-		{
-			HandleLeftClick(isDoubleClick: true);
-		}).AddTo(this);
-		ObservableSubscribeExtensions.Subscribe(m_Button.OnSingleLeftClickAsObservable(), delegate
-		{
-			HandleLeftClick(isDoubleClick: false);
-		}).AddTo(this);
+		m_Button.OnLeftDoubleClickAsObservable().Subscribe(HandleLeftClick).AddTo(this);
+		m_Button.OnSingleLeftClickAsObservable().Subscribe(HandleLeftClick).AddTo(this);
+	}
+
+	protected override void OnUnbind()
+	{
+		m_Button.SetFocus(value: false);
 	}
 
 	private void SetSelected(bool value)
@@ -45,7 +58,10 @@ public class UnitSelectionButtonView : View<CombatMechanicEntityVM>
 		if (base.ViewModel?.MechanicEntity != null && base.ViewModel.UnitAsBaseUnitEntity != null && base.ViewModel.UnitAsBaseUnitEntity.View.MouseHoverHighlighting != value)
 		{
 			base.ViewModel.SetMouseHighlighted(value);
-			m_Button.SetFocus(value);
+			if (!m_SelectedExternal)
+			{
+				m_Button.SetFocus(value);
+			}
 		}
 	}
 
@@ -57,7 +73,7 @@ public class UnitSelectionButtonView : View<CombatMechanicEntityVM>
 		});
 	}
 
-	private void HandleLeftClick(bool isDoubleClick)
+	private void HandleLeftClick()
 	{
 		if (!base.ViewModel.HasUnit)
 		{
@@ -78,7 +94,7 @@ public class UnitSelectionButtonView : View<CombatMechanicEntityVM>
 		else
 		{
 			Game.Instance.Controllers.CameraController?.Follower?.ScrollTo(base.ViewModel.MechanicEntity);
-			base.ViewModel.HandleUnitClick(isDoubleClick);
+			base.ViewModel.HandleUnitClick();
 		}
 	}
 }

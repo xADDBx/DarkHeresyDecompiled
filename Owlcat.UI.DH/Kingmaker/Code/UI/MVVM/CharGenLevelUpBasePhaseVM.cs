@@ -1,7 +1,5 @@
 using System.Linq;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -16,13 +14,13 @@ public class CharGenLevelUpBasePhaseVM<TSelectorItem> : CharGenPhaseBaseVM where
 {
 	protected readonly BlueprintCareerPath CareerPath;
 
-	protected readonly TooltipBaseTemplate DefaultPhaseTooltip;
-
 	private readonly ReactiveProperty<TSelectorItem> m_HoveredItem = new ReactiveProperty<TSelectorItem>();
 
 	protected readonly InfoSectionVM InfoSectionVM;
 
 	protected readonly ObservableList<TSelectorItem> Items = new ObservableList<TSelectorItem>();
+
+	protected TooltipBaseTemplate DefaultPhaseTooltip;
 
 	private CharGenLevelUpSelectorBaseItemVM m_LastSelectedItem;
 
@@ -34,7 +32,7 @@ public class CharGenLevelUpBasePhaseVM<TSelectorItem> : CharGenPhaseBaseVM where
 
 	public ReadOnlyReactiveProperty<TSelectorItem> SelectedItem => m_SelectedItem;
 
-	protected BaseUnitEntity Unit => CharGenContext.LevelUpManager.CurrentValue.PreviewUnit;
+	protected BaseUnitEntity Unit => m_CharGenContext.LevelUpManager.CurrentValue.PreviewUnit;
 
 	public CharGenLevelUpBasePhaseVM(CharGenContext charGenContext, CharGenPhaseType phaseType, InfoSectionVM infoSectionVM, int rank = 0)
 		: base(charGenContext, phaseType)
@@ -43,10 +41,9 @@ public class CharGenLevelUpBasePhaseVM<TSelectorItem> : CharGenPhaseBaseVM where
 		CareerPath = Unit.Progression.AllCareerPaths?.FirstOrDefault().Blueprint;
 		SelectionGroup = new SelectionGroupRadioVM<TSelectorItem>(Items, m_SelectedItem);
 		InfoSectionVM = infoSectionVM;
-		DefaultPhaseTooltip = new TooltipTemplateLevelUpPhaseDescription(phaseType);
+		base.DisplayMode = ((charGenContext.CharGenConfig.Mode != CharGenMode.LevelUp) ? CharGenDisplayMode.DollOnly : CharGenDisplayMode.PortraitOnly);
 		AddDisposable(SelectionGroup);
 		AddDisposable(SelectedItem.Subscribe(HandleSelectedItem));
-		Metrics.Interface.InterfaceType(InterfaceMetricsEvent.InterfaceTypes.LevelUp).InterfaceState(InterfaceMetricsEvent.InterfaceStates.Open).Send();
 	}
 
 	protected override bool CheckIsCompleted()
@@ -56,12 +53,18 @@ public class CharGenLevelUpBasePhaseVM<TSelectorItem> : CharGenPhaseBaseVM where
 		{
 			flag = charGenLevelUpSelectorBaseItemVM.State.CurrentValue == LEVEL_UP_ITEM_STATE.Available;
 		}
-		return SelectedItem.CurrentValue != null && flag;
+		return m_IsAvailable.CurrentValue && SelectedItem.CurrentValue != null && flag;
 	}
 
 	protected override void OnBeginDetailedView()
 	{
 		UpdateTooltip();
+	}
+
+	protected override void OnEndDetailedView()
+	{
+		base.OnEndDetailedView();
+		InfoSectionVM.SetTemplate(null);
 	}
 
 	protected virtual void OnItemHovered(SelectionGroupEntityVM item)
@@ -94,13 +97,11 @@ public class CharGenLevelUpBasePhaseVM<TSelectorItem> : CharGenPhaseBaseVM where
 
 	protected virtual void HandleSelectedItem(TSelectorItem item)
 	{
-		UpdateIsCompleted();
 		m_LastSelectedItem?.UpdateSelectionInParent(value: false);
 		EventBus.RaiseEvent(delegate(ILevelUpManagerUIHandler h)
 		{
 			h.HandleUISelectionChanged();
 		});
-		UpdateTooltip();
 		if (!(item is CharGenLevelUpNestedListHeaderVM))
 		{
 			if (item is CharGenLevelUpSelectorBaseItemVM lastSelectedItem)
@@ -109,27 +110,47 @@ public class CharGenLevelUpBasePhaseVM<TSelectorItem> : CharGenPhaseBaseVM where
 				m_LastSelectedItem?.UpdateSelectionInParent(CheckIsCompleted());
 			}
 			SaveSelection();
+			UpdateTooltip();
+			UpdateIsCompleted();
 		}
 	}
 
 	protected void UpdateTooltip()
 	{
-		if (HoveredItem.CurrentValue is CharGenLevelUpSelectorBaseItemVM charGenLevelUpSelectorBaseItemVM)
+		if (!base.IsInDetailedView.CurrentValue)
+		{
+			return;
+		}
+		if (HoveredItem.CurrentValue != null && !HoveredItem.CurrentValue.Equals(SelectedItem.CurrentValue) && HoveredItem.CurrentValue is CharGenLevelUpSelectorBaseItemVM charGenLevelUpSelectorBaseItemVM)
 		{
 			InfoSectionVM.SetTemplate(charGenLevelUpSelectorBaseItemVM.Template);
+			return;
 		}
-		else if (SelectedItem.CurrentValue is CharGenLevelUpSelectorBaseItemVM charGenLevelUpSelectorBaseItemVM2)
+		if (SelectedItem.CurrentValue is CharGenLevelUpSelectorBaseItemVM charGenLevelUpSelectorBaseItemVM2)
 		{
 			InfoSectionVM.SetTemplate(charGenLevelUpSelectorBaseItemVM2.Template);
+			return;
 		}
-		else
+		if (DefaultPhaseTooltip == null)
 		{
-			InfoSectionVM.SetTemplate(DefaultPhaseTooltip);
+			DefaultPhaseTooltip = new TooltipTemplateLevelUpPhaseDescription(base.BlueprintSelectionWithUI);
 		}
+		InfoSectionVM.SetTemplate(DefaultPhaseTooltip);
+	}
+
+	protected virtual void Clear()
+	{
+		Items.ForEach(delegate(TSelectorItem vm)
+		{
+			vm.Dispose();
+		});
+		Items.Clear();
+		m_SelectedItem.Value = null;
 	}
 
 	protected override void DisposeImplementation()
 	{
 		base.DisposeImplementation();
+		Clear();
 	}
 }

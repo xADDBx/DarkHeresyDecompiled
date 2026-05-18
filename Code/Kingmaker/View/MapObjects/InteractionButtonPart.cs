@@ -11,7 +11,7 @@ namespace Kingmaker.View.MapObjects;
 [OwlPackable(OwlPackableMode.Generate)]
 public class InteractionButtonPart : InteractionPart<InteractionSettings>, IHashable, IOwlPackable<InteractionButtonPart>
 {
-	public new static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
+	public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 	{
 		Name = "InteractionButtonPart",
 		OldNames = null,
@@ -42,7 +42,7 @@ public class InteractionButtonPart : InteractionPart<InteractionSettings>, IHash
 		return result;
 	}
 
-	public new static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
+	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
 		InteractionButtonPart source = new InteractionButtonPart();
 		result = Unsafe.As<InteractionButtonPart, TPossiblyBase>(ref source);

@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 
 namespace Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 
-public class DeductionPointerHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerUpHandler
+public class DeductionPointerHandler : MonoBehaviour, IPointerDownHandler, IEventSystemHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerUpHandler, IPointerEnterHandler
 {
 	[Header("Values")]
 	[SerializeField]
@@ -81,7 +81,7 @@ public class DeductionPointerHandler : MonoBehaviour, IPointerDownHandler, IEven
 
 	public void OnBeginDrag(PointerEventData eventData)
 	{
-		UISounds.Instance.Sounds.DetectiveSystem.CaseItemDragStart.Play();
+		ServiceWindowsSounds.Instance.DetectiveJournal.CaseItemDragStart.Play();
 	}
 
 	public void OnDrag(PointerEventData eventData)
@@ -98,7 +98,7 @@ public class DeductionPointerHandler : MonoBehaviour, IPointerDownHandler, IEven
 
 	public void OnEndDrag(PointerEventData eventData)
 	{
-		UISounds.Instance.Sounds.DetectiveSystem.CaseItemDragStop.Play();
+		ServiceWindowsSounds.Instance.DetectiveJournal.CaseItemDragStop.Play();
 	}
 
 	public void OnPointerUp(PointerEventData eventData)
@@ -107,10 +107,18 @@ public class DeductionPointerHandler : MonoBehaviour, IPointerDownHandler, IEven
 		{
 			HandleOnPointerClick?.Invoke();
 		}
-		Game.Instance.Player.UISettings.DetectiveSystemData.ConclusionPositions.UpdatePositionFor(m_ParentView.ViewModel.Conclusion, m_ParentView.RectTransform.anchoredPosition);
+		m_ParentView.SaveSharedPosition(m_ParentView.RectTransform.anchoredPosition);
 		UpdatePivot();
 		UpdatePosition();
 		m_IsDragging = false;
+	}
+
+	public void OnPointerEnter(PointerEventData eventData)
+	{
+		if (!m_IsDragging)
+		{
+			m_ParentView.transform.SetAsLastSibling();
+		}
 	}
 
 	private void UpdatePivot()

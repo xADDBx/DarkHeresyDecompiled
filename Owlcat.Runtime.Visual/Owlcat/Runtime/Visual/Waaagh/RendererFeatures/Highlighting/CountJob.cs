@@ -8,7 +8,7 @@ namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.Highlighting;
 internal struct CountJob : IJob
 {
 	[ReadOnly]
-	public NativeSlice<BoundsVisibility> Bounds;
+	public NativeSlice<TestPlanesResults> BoundsVisibility;
 
 	[WriteOnly]
 	public NativeReference<int> Count;
@@ -16,9 +16,9 @@ internal struct CountJob : IJob
 	public void Execute()
 	{
 		int num = 0;
-		foreach (BoundsVisibility bound in Bounds)
+		foreach (TestPlanesResults item in BoundsVisibility)
 		{
-			if (bound.Visibility != TestPlanesResults.Outside)
+			if (item != TestPlanesResults.Outside)
 			{
 				num++;
 			}

@@ -8,26 +8,28 @@ namespace Kingmaker.Code.UI.MVVM.View;
 
 public class CharGenNamePCView : CharGenNameBaseView
 {
+	[Header("PC")]
 	[SerializeField]
-	private OwlcatButton m_SetNameButton;
+	private PCInputField m_InputField;
 
 	[SerializeField]
-	private TextMeshProUGUI m_SetNameLabel;
+	private TMP_Text m_InputButtonText;
 
 	[SerializeField]
-	private OwlcatButton m_SetRandomNameButton;
+	private OwlcatMultiButton m_SetRandomNameButton;
 
 	protected override void OnBind()
 	{
 		base.OnBind();
-		m_SetNameLabel.text = UIStrings.Instance.CharGen.EditName;
-		ObservableSubscribeExtensions.Subscribe(m_SetNameButton.OnLeftClickAsObservable(), delegate
+		m_InputField.Bind(base.ViewModel.CurrentDisplayName.CurrentValue, base.ViewModel.SetName).AddTo(this);
+		base.ViewModel.CurrentDisplayName.Subscribe(delegate(string text)
 		{
-			base.ViewModel.ShowChangeNameMessageBox();
+			m_InputButtonText.text = text;
+			m_InputField.SetText(text);
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_SetRandomNameButton.OnLeftClickAsObservable(), delegate
 		{
-			GenerateRandomName();
+			base.ViewModel.SetRandomName();
 		}).AddTo(this);
 		m_SetRandomNameButton.SetHint(UIStrings.Instance.CharGen.SetRandomName).AddTo(this);
 		CheckCoopButtons(base.ViewModel.IsMainCharacter.CurrentValue);
@@ -36,7 +38,6 @@ public class CharGenNamePCView : CharGenNameBaseView
 
 	private void CheckCoopButtons(bool isMainCharacter)
 	{
-		m_SetNameButton.gameObject.SetActive(isMainCharacter);
-		m_SetRandomNameButton.gameObject.SetActive(isMainCharacter);
+		m_SetRandomNameButton.Interactable = isMainCharacter;
 	}
 }

@@ -8,10 +8,6 @@ using Owlcat.Runtime.Core.Logging;
 
 namespace Kingmaker.Networking;
 
-public class CommandQueue
-{
-	public const int TickDelay = 1;
-}
 public class CommandQueue<T> : CommandQueue
 {
 	private class CommandsForStep
@@ -104,6 +100,11 @@ public class CommandQueue<T> : CommandQueue
 	private static NetPlayer LocalNetPlayer => NetworkingManager.LocalNetPlayer;
 
 	public bool HasScheduledCommands => m_CommandsForStep.Any((CommandsForStep x) => !x.IsEmpty && 0 < x.CommandsCount);
+
+	[Conditional("FALSE")]
+	private static void CheckDuplicates(CommandsForStep commandsForStep)
+	{
+	}
 
 	public CommandQueue()
 	{
@@ -317,9 +318,8 @@ public class CommandQueue<T> : CommandQueue
 		}
 		return flag;
 	}
-
-	[Conditional("FALSE")]
-	private static void CheckDuplicates(CommandsForStep commandsForStep)
-	{
-	}
+}
+public class CommandQueue
+{
+	public const int TickDelay = 1;
 }

@@ -15,11 +15,7 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class ActionBarPartWeaponSetVM : ViewModel
 {
-	public readonly AutoDisposingList<ActionBarSlotVM> MainHandSlots = new AutoDisposingList<ActionBarSlotVM>();
-
-	public readonly AutoDisposingList<ActionBarSlotVM> OffHandSlots = new AutoDisposingList<ActionBarSlotVM>();
-
-	public readonly AutoDisposingList<ActionBarSlotVM> ComboHandsSlots = new AutoDisposingList<ActionBarSlotVM>();
+	private Action m_SwitchSetAction;
 
 	private readonly ReactiveProperty<ItemSlotVM> m_MainHandWeapon = new ReactiveProperty<ItemSlotVM>();
 
@@ -29,15 +25,21 @@ public class ActionBarPartWeaponSetVM : ViewModel
 
 	private readonly ReactiveProperty<bool> m_IsCurrent = new ReactiveProperty<bool>();
 
+	private EntityRef<BaseUnitEntity> m_Unit;
+
+	public readonly AutoDisposingList<ActionBarSlotVM> MainHandSlots = new AutoDisposingList<ActionBarSlotVM>();
+
+	public readonly AutoDisposingList<ActionBarSlotVM> OffHandSlots = new AutoDisposingList<ActionBarSlotVM>();
+
+	public readonly AutoDisposingList<ActionBarSlotVM> ComboHandsSlots = new AutoDisposingList<ActionBarSlotVM>();
+
 	public int Index;
 
 	public bool IsTwoHanded;
 
+	public bool IsDoubleHanded;
+
 	public HandsEquipmentSet HandSet;
-
-	private Action m_SwitchSetAction;
-
-	public EntityRef<BaseUnitEntity> Unit;
 
 	public ReadOnlyReactiveProperty<ItemSlotVM> MainHandWeapon => m_MainHandWeapon;
 
@@ -47,22 +49,13 @@ public class ActionBarPartWeaponSetVM : ViewModel
 
 	public ReadOnlyReactiveProperty<bool> IsCurrent => m_IsCurrent;
 
-	public List<ActionBarSlotVM> AllSlots
-	{
-		get
-		{
-			List<ActionBarSlotVM> list = new List<ActionBarSlotVM>();
-			list.AddRange(MainHandSlots);
-			list.AddRange(OffHandSlots);
-			list.AddRange(ComboHandsSlots);
-			return list;
-		}
-	}
+	public List<ActionBarSlotVM> AllSlots { get; } = new List<ActionBarSlotVM>();
+
 
 	public void InitForUnit(int index, EntityRef<BaseUnitEntity> unit, HandsEquipmentSet handSet, Action switchWeapon)
 	{
 		Index = index;
-		Unit = unit;
+		m_Unit = unit;
 		HandSet = handSet;
 		m_SwitchSetAction = switchWeapon;
 		UpdateSlots();
@@ -78,6 +71,7 @@ public class ActionBarPartWeaponSetVM : ViewModel
 	{
 		ClearAll();
 		IsTwoHanded = (HandSet.PrimaryHand?.MaybeWeapon?.HoldInTwoHands).GetValueOrDefault();
+		IsDoubleHanded = (HandSet.PrimaryHand?.MaybeWeapon?.Blueprint.IsDoubleHanded).GetValueOrDefault();
 		m_MainHandWeapon.Value = new ItemSlotVM(HandSet.PrimaryHand?.MaybeWeapon, 0, null, compareTooltipEnabled: false).AddTo(this);
 		m_OffHandWeapon.Value = new ItemSlotVM(HandSet.SecondaryHand?.MaybeWeapon, 1, null, compareTooltipEnabled: false).AddTo(this);
 		if (IsCurrent.CurrentValue)
@@ -104,6 +98,9 @@ public class ActionBarPartWeaponSetVM : ViewModel
 				AddSlotsSceletons(HandSet.SecondaryHand, OffHandSlots);
 			}
 		}
+		AllSlots.AddRange(MainHandSlots);
+		AllSlots.AddRange(OffHandSlots);
+		AllSlots.AddRange(ComboHandsSlots);
 		m_SlotsUpdated.Execute();
 	}
 
@@ -147,7 +144,7 @@ public class ActionBarPartWeaponSetVM : ViewModel
 		MechanicActionBarSlotAbility mechanicActionBarSlotAbility = new MechanicActionBarSlotAbility
 		{
 			Ability = ability.Data,
-			Unit = Unit
+			Unit = m_Unit
 		};
 		if (mechanicActionBarSlotAbility.IsBad())
 		{
@@ -164,15 +161,16 @@ public class ActionBarPartWeaponSetVM : ViewModel
 		ClearAll();
 	}
 
-	public void ClearAll()
-	{
-		MainHandSlots.Clear();
-		OffHandSlots.Clear();
-		ComboHandsSlots.Clear();
-	}
-
 	public void SwitchWeapon()
 	{
 		m_SwitchSetAction();
+	}
+
+	private void ClearAll()
+	{
+		AllSlots.Clear();
+		MainHandSlots.Clear();
+		OffHandSlots.Clear();
+		ComboHandsSlots.Clear();
 	}
 }

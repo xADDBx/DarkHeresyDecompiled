@@ -21,6 +21,8 @@ public class BlueprintPsykerRoot : BlueprintScriptableObject
 		public BpRef<BlueprintAbility> Ability;
 
 		public PrefabLink OptionalMinorFX;
+
+		public float Weight = 1f;
 	}
 
 	public int MaxVeilDamage = 20;

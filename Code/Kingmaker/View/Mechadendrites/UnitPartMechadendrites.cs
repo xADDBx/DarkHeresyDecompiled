@@ -22,13 +22,14 @@ public class UnitPartMechadendrites : AbstractUnitPart, IHashable, IOwlPackable<
 
 	public void RegisterMechadendrite(MechadendriteSettings settings)
 	{
-		if (Mechadendrites.ContainsKey(settings.MechadendritesType))
+		if (Mechadendrites.ContainsKey(settings.MechadendritesType) && Mechadendrites[settings.MechadendritesType] == settings)
 		{
-			Mechadendrites[settings.MechadendritesType] = settings;
+			return;
 		}
-		else
+		Mechadendrites[settings.MechadendritesType] = settings;
+		if (settings.MechadendritesType == MechadendritesType.Ballistic)
 		{
-			Mechadendrites.Add(settings.MechadendritesType, settings);
+			base.Owner.AnimationManager.UpdateBallisticMechadendriteAvailability();
 		}
 		UnitViewHandsEquipment unitViewHandsEquipment = (base.Owner.View as UnitEntityView)?.HandsEquipment;
 		if (unitViewHandsEquipment?.Sets == null)
@@ -49,12 +50,32 @@ public class UnitPartMechadendrites : AbstractUnitPart, IHashable, IOwlPackable<
 		{
 			Mechadendrites.Remove(settings.MechadendritesType);
 		}
+		if (settings.MechadendritesType == MechadendritesType.Ballistic)
+		{
+			base.Owner.AnimationManager.UpdateBallisticMechadendriteAvailability();
+		}
 		UnitViewHandsEquipment unitViewHandsEquipment = (base.Owner.View as UnitEntityView)?.HandsEquipment;
 		if (unitViewHandsEquipment?.Sets == null)
 		{
 			return;
 		}
-		foreach (var (_, weaponSet2) in unitViewHandsEquipment?.Sets)
+		foreach (var (_, weaponSet2) in unitViewHandsEquipment.Sets)
+		{
+			weaponSet2.MainHand?.MatchVisuals();
+			weaponSet2.OffHand?.MatchVisuals();
+		}
+	}
+
+	public void UnregisterAllMechadendrites()
+	{
+		Mechadendrites.Clear();
+		base.Owner.AnimationManager.UpdateBallisticMechadendriteAvailability();
+		UnitViewHandsEquipment unitViewHandsEquipment = (base.Owner.View as UnitEntityView)?.HandsEquipment;
+		if (unitViewHandsEquipment?.Sets == null)
+		{
+			return;
+		}
+		foreach (var (_, weaponSet2) in unitViewHandsEquipment.Sets)
 		{
 			weaponSet2.MainHand?.MatchVisuals();
 			weaponSet2.OffHand?.MatchVisuals();

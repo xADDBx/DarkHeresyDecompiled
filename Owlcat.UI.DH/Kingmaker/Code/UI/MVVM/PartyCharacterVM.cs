@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Code.View.UI.UIUtils;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -106,8 +107,9 @@ public class PartyCharacterVM : ViewModel, IUnitGainExperienceHandler, ISubscrib
 
 	public BaseUnitEntity UnitEntityData => m_Unit.Value;
 
-	public PartyCharacterVM(Action<bool> nextPrevAction, int index)
+	public PartyCharacterVM(Action<bool> nextPrevAction, int index, ReadOnlyReactiveProperty<bool> suppressUnitSelection = null)
 	{
+		PartyCharacterVM partyCharacterVM = this;
 		m_NextPrevAction = nextPrevAction;
 		Index = index;
 		EventBus.Subscribe(this).AddTo(this);
@@ -117,25 +119,26 @@ public class PartyCharacterVM : ViewModel, IUnitGainExperienceHandler, ISubscrib
 		BarkPartVM = new UnitBarkPartVM().AddTo(this);
 		m_Unit.Subscribe(delegate(BaseUnitEntity value)
 		{
-			PortraitPartVM.SetUnitData(value);
-			BuffBlockVM.SetUnitData(value);
-			BarkPartVM.SetUnitData(value);
-			UpdateLevelUpField(value);
-			UpdateEncumbranceField(value);
-			m_IsEnable.Value = value != null;
-			m_IsLinked.Value = value?.IsLink ?? false;
-			m_CharacterName.Value = value?.CharacterName;
+			partyCharacterVM.PortraitPartVM.SetUnitData(value);
+			partyCharacterVM.BuffBlockVM.SetUnitData(value);
+			partyCharacterVM.BarkPartVM.SetUnitData(value);
+			partyCharacterVM.UpdateLevelUpField(value);
+			partyCharacterVM.UpdateEncumbranceField(value);
+			partyCharacterVM.m_IsEnable.Value = value != null;
+			partyCharacterVM.m_IsLinked.Value = value?.IsLink ?? false;
+			partyCharacterVM.m_CharacterName.Value = value?.CharacterName;
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.EveryUpdate(UnityFrameProvider.Update), delegate
 		{
-			if (IsEnable.CurrentValue)
+			if (partyCharacterVM.IsEnable.CurrentValue)
 			{
-				m_IsSelected.Value = SelectionCharacter.IsSelected(UnitEntityData);
-				m_IsSingleSelected.Value = ((SelectionCharacter.SelectedUnitInUI.Value != null) ? (SelectionCharacter.SelectedUnitInUI.Value == UnitEntityData) : (SelectionCharacter.SingleSelectedUnit.Value == UnitEntityData));
-				m_IsLinked.Value = UnitEntityData.IsLink;
+				bool flag = suppressUnitSelection != null && suppressUnitSelection.CurrentValue;
+				partyCharacterVM.m_IsSelected.Value = !flag && partyCharacterVM.SelectionCharacter.IsSelected(partyCharacterVM.UnitEntityData);
+				partyCharacterVM.m_IsSingleSelected.Value = !flag && ((partyCharacterVM.SelectionCharacter.SelectedUnitInUI.Value != null) ? (partyCharacterVM.SelectionCharacter.SelectedUnitInUI.Value == partyCharacterVM.UnitEntityData) : (partyCharacterVM.SelectionCharacter.SingleSelectedUnit.Value == partyCharacterVM.UnitEntityData));
+				partyCharacterVM.m_IsLinked.Value = partyCharacterVM.UnitEntityData.IsLink;
 			}
 		}).AddTo(this);
-		BlueprintUISound.UISoundCharacter charSounds = UISounds.Instance.Sounds.Character;
+		ServiceWindowsSounds.UISoundCharacter charSounds = ServiceWindowsSounds.Instance.Character;
 		ObservableSubscribeExtensions.Subscribe(m_UpgradeLevel, delegate
 		{
 			charSounds.LevelUpgradedNotification.Play();
@@ -206,16 +209,16 @@ public class PartyCharacterVM : ViewModel, IUnitGainExperienceHandler, ISubscrib
 		{
 			return;
 		}
-		m_IsLevelUp.Value = !GameUIState.Instance.IsInCombat.Value && UnitEntityData.Progression.CanLevelUp;
+		m_IsLevelUp.Value = !UIUtilityCombat.IsCombatLockActive() && UnitEntityData.Progression.CanLevelUp;
 		if (levelUpSound && IsLevelUp.CurrentValue)
 		{
-			m_IsNewLevel.Execute();
+			m_IsNewLevel.Execute(Unit.Default);
 		}
 		if (m_CharacterLevel.TryGetValue(unit, out var value))
 		{
 			if (unit.Progression.CharacterLevel > value)
 			{
-				m_UpgradeLevel.Execute();
+				m_UpgradeLevel.Execute(Unit.Default);
 			}
 			m_CharacterLevel[unit] = unit.Progression.CharacterLevel;
 		}
@@ -248,11 +251,6 @@ public class PartyCharacterVM : ViewModel, IUnitGainExperienceHandler, ISubscrib
 	public void HandleLevelUpComplete()
 	{
 		UpdateLevelUpField(m_Unit.Value);
-	}
-
-	public void HandleMythicSelectionComplete(BaseUnitEntity unit)
-	{
-		UpdateLevelUpField(unit);
 	}
 
 	public void HandlePartyCombatStateChanged(bool inCombat)

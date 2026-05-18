@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.ResourceLinks;
 using Kingmaker.UnitLogic.Alignments;

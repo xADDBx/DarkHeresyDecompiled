@@ -19,16 +19,16 @@ public class ContextConditionCasterBuffRank : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		if (base.Context.MaybeCaster == null)
+		if (base.Eval.Caster == null)
 		{
 			PFLog.Default.Error("Caster unit is missing");
 			return false;
 		}
-		EntityFact entityFact = base.Context.MaybeCaster.Facts.Get((BlueprintBuff)Buff);
+		EntityFact entityFact = base.Eval.Caster.Facts.Get((BlueprintBuff)Buff);
 		if (entityFact == null)
 		{
 			return false;
 		}
-		return entityFact.GetRank() >= RankValue.Calculate(base.Context);
+		return entityFact.GetRank() >= RankValue.Calculate(base.Eval);
 	}
 }

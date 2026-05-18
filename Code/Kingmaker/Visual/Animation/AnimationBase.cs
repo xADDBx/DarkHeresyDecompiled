@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.Controllers;
 using Kingmaker.Utility.CodeTimer;
@@ -20,6 +19,10 @@ public abstract class AnimationBase
 
 	protected float m_LastSetTime;
 
+	private AnimationClipEvent[] m_MechanicEvents;
+
+	private int m_NextMechanicEventIndex;
+
 	protected float Time
 	{
 		get
@@ -38,8 +41,6 @@ public abstract class AnimationBase
 	public TimeSpan CreationTime { get; protected set; }
 
 	public AnimationState State { get; protected set; }
-
-	public RuntimeAnimatorController AnimatorController { get; internal set; }
 
 	public bool DoNotZeroOtherAnimations { get; set; }
 
@@ -78,7 +79,7 @@ public abstract class AnimationBase
 		Handle = handle;
 	}
 
-	public virtual void InitOrIncrementTime(float deltaTime)
+	protected void InitOrIncrementTime(float deltaTime)
 	{
 		float num = deltaTime * GetSpeed();
 		if (!TryInitInterpolationTime(num) || Handle.SkipFirstTick)
@@ -88,21 +89,9 @@ public abstract class AnimationBase
 		}
 	}
 
-	public abstract void UpdateEvents();
-
-	public abstract void StopEvents();
-
-	public abstract void StopEvents(IEnumerable<AnimationClipEvent> events);
-
 	public abstract AnimationClip GetPlayableClip();
 
-	public abstract RuntimeAnimatorController GetPlayableController();
-
 	public abstract AnimationClip GetActiveClip();
-
-	public abstract void SetWeight(float weight);
-
-	public abstract void SetWeightMultiplier(float weight);
 
 	public abstract float GetWeight();
 
@@ -113,6 +102,8 @@ public abstract class AnimationBase
 	public abstract float GetTime();
 
 	public abstract void SetTime(float time);
+
+	protected abstract void FireMechanicEvent(AnimationClipEvent e);
 
 	public abstract void RemoveFromManager();
 
@@ -146,20 +137,21 @@ public abstract class AnimationBase
 	{
 		if (State != AnimationState.TransitioningOut && State != AnimationState.Finished)
 		{
-			TransitionOutStartTime = TransitionOutStartTime + TransitionOut - time;
+			TransitionOutStartTime = Mathf.Max(Time, TransitionOutStartTime + TransitionOut - time);
 			TransitionOut = time;
 		}
 	}
 
 	internal void Update(float deltaTime, float? weightFromManager = null)
 	{
+		if (IsJustCreated())
+		{
+			return;
+		}
 		using (ProfileScope.New("Animation.UpdateInternal"))
 		{
 			InitOrIncrementTime(deltaTime);
-			using (ProfileScope.New("UpdateEvents"))
-			{
-				UpdateEvents();
-			}
+			TryFireMechanicEvent();
 			switch (State)
 			{
 			case AnimationState.TransitioningIn:
@@ -176,8 +168,8 @@ public abstract class AnimationBase
 							State = AnimationState.Playing;
 						}
 					}
+					break;
 				}
-				break;
 			case AnimationState.Playing:
 				using (ProfileScope.New("Playing"))
 				{
@@ -185,71 +177,40 @@ public abstract class AnimationBase
 					{
 						StartTransitionOut();
 					}
+					break;
 				}
-				break;
 			case AnimationState.TransitioningOut:
 				using (ProfileScope.New("TransitionOut"))
 				{
 					if (TransitionOut <= 0f || Time >= TransitionOutStartTime + TransitionOut)
 					{
-						StopEvents();
 						State = AnimationState.Finished;
 					}
+					break;
 				}
-				break;
-			}
-			if (weightFromManager.HasValue)
-			{
-				UpdateWeight(Time, weightFromManager.Value);
 			}
 		}
 	}
 
-	internal void Interpolate(float progress, float weightFromManager, bool force = false)
+	private bool IsJustCreated()
 	{
-		using (ProfileScope.New("Interpolate"))
+		return CreationTime == Game.Instance.Controllers.TimeController.RealTime;
+	}
+
+	protected void SetupMechanicEvents(AnimationClipEvent[] mechanicEventsSorted)
+	{
+		m_MechanicEvents = mechanicEventsSorted;
+		m_NextMechanicEventIndex = 0;
+	}
+
+	private void TryFireMechanicEvent()
+	{
+		while (m_NextMechanicEventIndex < m_MechanicEvents.Length && !(m_MechanicEvents[m_NextMechanicEventIndex].Time > Time))
 		{
-			float num = InterpolateTime(progress);
-			if (Mathf.Abs(num - m_PreviousTime) > 0.0001f || force)
-			{
-				UpdateWeight(num, weightFromManager);
-			}
+			AnimationClipEvent e = m_MechanicEvents[m_NextMechanicEventIndex];
+			FireMechanicEvent(e);
+			m_NextMechanicEventIndex++;
 		}
-	}
-
-	internal void UpdateWeight(float time, float weightFromManager)
-	{
-		WeightFromManager = weightFromManager;
-		switch (State)
-		{
-		case AnimationState.TransitioningIn:
-			using (ProfileScope.New("TransitioningIn"))
-			{
-				float num3 = ((0f < TransitionIn) ? Mathf.Clamp01(time / TransitionIn) : 1f);
-				SetWeight(weightFromManager * num3);
-				break;
-			}
-		case AnimationState.Playing:
-			using (ProfileScope.New("Playing"))
-			{
-				SetWeight(weightFromManager);
-				break;
-			}
-		case AnimationState.TransitioningOut:
-			using (ProfileScope.New("TransitionOut"))
-			{
-				float num = time - TransitionOutStartTime;
-				float num2 = ((0f < TransitionOut) ? Mathf.Clamp01(num / TransitionOut) : 1f);
-				SetWeight(weightFromManager * (1f - num2));
-				break;
-			}
-		}
-	}
-
-	private float InterpolateTime(float progress)
-	{
-		TryInitInterpolationTime();
-		return Mathf.LerpUnclamped(m_PreviousTime, m_NextTime, progress);
 	}
 
 	private bool TryInitInterpolationTime(float? scaledDeltaTime = null)

@@ -1,7 +1,5 @@
 using System;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Settings;
-using Owlcat.UI;
 using R3;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,7 +23,6 @@ public class DialogAnswerConsoleView : DialogAnswerBaseView
 	protected override void OnBind()
 	{
 		base.OnBind();
-		m_ConsoleHint.sprite = ConsoleRoot.Instance.Icons.GetIcon(RewiredActionType.Confirm);
 		SetTextFontSize(SettingsRoot.Accessiability.FontSizeMultiplier);
 	}
 

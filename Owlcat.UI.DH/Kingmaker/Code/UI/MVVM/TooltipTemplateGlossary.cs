@@ -4,7 +4,6 @@ using Code.View.UI.UIUtils;
 using Kingmaker.Blueprints.Encyclopedia;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Owlcat.UI;
@@ -61,40 +60,24 @@ public class TooltipTemplateGlossary : TooltipBaseTemplate
 	{
 		if (type == TooltipTemplateType.Info && m_IsHistory)
 		{
-			yield return new TooltipBrickHistoryManagement(GlossaryEntry, EncyclopediaEntry);
+			yield return new BrickHistoryManagementVM(GlossaryEntry, EncyclopediaEntry);
 		}
 		else
 		{
-			yield return new TooltipBrickTitle(EncyclopediaEntry?.Title ?? GlossaryEntry?.Title);
+			yield return new BrickTitleVM(EncyclopediaEntry?.Title ?? GlossaryEntry?.Title);
 		}
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
-		if (EncyclopediaEntry != null)
+		TooltipTextType flags = TooltipTextType.Paragraph | TooltipTextType.BlackColor;
+		if ((type != TooltipTemplateType.Info || !m_IsHistory) && m_IsEncyclopedia)
 		{
-			TooltipTextType flags = TooltipTextType.Paragraph | TooltipTextType.BlackColor;
-			if ((type != TooltipTemplateType.Info || !m_IsHistory) && m_IsEncyclopedia)
-			{
-				flags |= TooltipTextType.GlossarySize;
-			}
-			string description = EncyclopediaEntry?.GetTooltipInfo().FirstOrDefault()?.GetDescription();
-			string updatedDescription = UIUtilityText.UpdateDescriptionWithUIProperties(description, null);
-			yield return new TooltipBrickSeparator();
-			yield return new TooltipBrickText(updatedDescription, flags);
+			flags |= TooltipTextType.GlossarySize;
 		}
-		else
-		{
-			TooltipTextType flags = TooltipTextType.Paragraph | TooltipTextType.BlackColor;
-			if ((type != TooltipTemplateType.Info || !m_IsHistory) && m_IsEncyclopedia)
-			{
-				flags |= TooltipTextType.GlossarySize;
-			}
-			string updatedDescription = UIUtilityText.UpdateDescriptionWithUIProperties(GlossaryEntry?.GetDescription(), null);
-			yield return new TooltipBrickSeparator();
-			yield return new TooltipBrickText(updatedDescription, flags);
-		}
-		yield return null;
+		string description = ((EncyclopediaEntry == null) ? GlossaryEntry?.GetDescription() : EncyclopediaEntry.GetTooltipInfo().FirstOrDefault()?.GetDescription());
+		yield return new BrickSeparatorVM();
+		yield return new BrickTextVM(description, flags);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetFooter(TooltipTemplateType type)
@@ -106,7 +89,7 @@ public class TooltipTemplateGlossary : TooltipBaseTemplate
 		BlueprintEncyclopediaGlossaryEntry glossaryEntry = GlossaryEntry;
 		if (glossaryEntry == null)
 		{
-			_ = EncyclopediaEntry.HideInEncyclopedia;
+			_ = EncyclopediaEntry?.HideInEncyclopedia;
 		}
 		else
 		{
@@ -115,7 +98,7 @@ public class TooltipTemplateGlossary : TooltipBaseTemplate
 		bool flag3 = true;
 		if (type == TooltipTemplateType.Info && m_IsHistory && !flag && !flag2 && !flag3)
 		{
-			yield return new TooltipBrickButton(EncyclopediaCallback, UIStrings.Instance.EncyclopediaTexts.EncyclopediaGlossaryButton);
+			yield return new BrickButtonVM(EncyclopediaCallback, UIStrings.Instance.EncyclopediaTexts.EncyclopediaGlossaryButton);
 		}
 	}
 
@@ -123,7 +106,7 @@ public class TooltipTemplateGlossary : TooltipBaseTemplate
 	{
 		if (m_IsEncyclopedia)
 		{
-			yield return new TooltipBrickHint(UIStrings.Instance.EncyclopediaTexts.TooltipOpenEncyclopedia);
+			yield return new BrickHintVM(UIStrings.Instance.EncyclopediaTexts.TooltipOpenEncyclopedia);
 		}
 	}
 

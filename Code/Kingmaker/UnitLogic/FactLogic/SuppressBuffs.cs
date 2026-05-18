@@ -1,3 +1,4 @@
+using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
@@ -40,13 +41,13 @@ public class SuppressBuffs : UnitFactComponentDelegate
 	protected override void OnActivateOrPostLoad()
 	{
 		UnitPartBuffSuppress orCreate = base.Owner.GetOrCreate<UnitPartBuffSuppress>();
-		foreach (BlueprintBuff buff in Buffs)
+		foreach (BlueprintBuff item in Buffs.ToList())
 		{
-			orCreate.Suppress(buff);
+			orCreate.Suppress(item);
 		}
-		foreach (BlueprintAbilityGroup group in Groups)
+		foreach (BlueprintAbilityGroup item2 in Groups.ToList())
 		{
-			orCreate.Suppress(group);
+			orCreate.Suppress(item2);
 		}
 	}
 
@@ -58,13 +59,13 @@ public class SuppressBuffs : UnitFactComponentDelegate
 			PFLog.Default.Error("UnitPartSuppressBuff is missing");
 			return;
 		}
-		foreach (BlueprintBuff buff in Buffs)
+		foreach (BlueprintBuff item in Buffs.ToList())
 		{
-			optional.Release(buff);
+			optional.Release(item);
 		}
-		foreach (BlueprintAbilityGroup group in Groups)
+		foreach (BlueprintAbilityGroup item2 in Groups.ToList())
 		{
-			optional.Release(group);
+			optional.Release(item2);
 		}
 	}
 }

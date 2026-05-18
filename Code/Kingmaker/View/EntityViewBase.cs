@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Animancer;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.JsonSystem.Helpers;
 using Kingmaker.Blueprints.Root;
@@ -15,12 +14,11 @@ using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
-using Kingmaker.View.Mechanics.Entities;
-using Kingmaker.Visual.MaterialEffects;
 using Kingmaker.Visual.Particles;
 using Kingmaker.Visual.Trails;
 using Owlcat.Runtime.Core.Utility;
 using Owlcat.Runtime.Visual.FogOfWar;
+using Owlcat.Runtime.Visual.XPBD.Collisions;
 using Pathfinding;
 using UnityEngine;
 
@@ -30,7 +28,7 @@ namespace Kingmaker.View;
 [DisallowMultipleComponent]
 [SelectionBase]
 [KnowledgeDatabaseID("b94ee1445bc82104988a20f7ab018d36")]
-public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutAndDestroyHandler<EntitySubscriber>, IFadeOutAndDestroyHandler, ISubscriber<IEntity>, ISubscriber, IEventTag<IFadeOutAndDestroyHandler, EntitySubscriber>
+public abstract class EntityViewBase : MonoBehaviour, IEntityView, IFadeOutAndDestroyHandler<EntitySubscriber>, IFadeOutAndDestroyHandler, ISubscriber<IEntity>, ISubscriber, IEventTag<IFadeOutAndDestroyHandler, EntitySubscriber>, IEntityConfig
 {
 	[SerializeField]
 	private bool m_IsInGame = true;
@@ -40,11 +38,17 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 	[HideInInspector]
 	public string UniqueId;
 
+	[SerializeField]
+	[HideInInspector]
+	public string[] PreviousUniqueIds = new string[0];
+
 	private bool m_IsListeningEvents;
 
 	private bool m_VisibilitySet;
 
 	private Action<bool> m_ChangeVisibleComplete;
+
+	private bool m_ViewActive;
 
 	private readonly List<Renderer> m_Renderers = new List<Renderer>();
 
@@ -56,6 +60,8 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 
 	protected readonly List<Collider> m_Colliders = new List<Collider>();
 
+	protected readonly List<XpbdCollider> m_CollidersCloth = new List<XpbdCollider>();
+
 	private bool m_IsFadeHide;
 
 	private EntityViewBase[] m_ChildrenViews = Array.Empty<EntityViewBase>();
@@ -66,31 +72,9 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 
 	private Transform m_CachedTransform;
 
-	private bool m_ViewActive;
-
-	private List<AnimancerComponent> m_DisabledAnimators = new List<AnimancerComponent>();
-
-	private List<Collider> m_DisabledColliders = new List<Collider>();
-
-	private List<Rigidbody> m_DisabledRigidbodies = new List<Rigidbody>();
-
-	private List<StandardMaterialController> m_DisabledSMCs = new List<StandardMaterialController>();
-
-	public string UniqueViewId
-	{
-		get
-		{
-			return UniqueId;
-		}
-		set
-		{
-			UniqueId = value;
-		}
-	}
-
 	public List<NavmeshCut> NavmeshCuts => m_NavmeshCuts;
 
-	public List<GridObstacle> GridObstacles => m_GridObstacles;
+	public ReadonlyList<GridObstacle> GridObstacles => m_GridObstacles;
 
 	public IEntity Data { get; private set; }
 
@@ -118,17 +102,9 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		}
 	}
 
-	public bool IsInState
-	{
-		get
-		{
-			if (Data != null)
-			{
-				return Data.IsInState;
-			}
-			return false;
-		}
-	}
+	public bool IsInState => Data?.IsInState ?? false;
+
+	public string EntityId => UniqueId;
 
 	public bool IsInGameBySettings
 	{
@@ -142,17 +118,7 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		}
 	}
 
-	public bool IsInGame
-	{
-		get
-		{
-			if (Data != null)
-			{
-				return Data.IsInGame;
-			}
-			return false;
-		}
-	}
+	public bool IsInGame => Data?.IsInGame ?? false;
 
 	public virtual List<Renderer> Renderers => m_Renderers;
 
@@ -166,11 +132,29 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 
 	public virtual bool CreatesDataOnLoad => false;
 
-	public virtual bool AllowChildrenEntityViews => false;
+	string IEntityConfig.EntityId => UniqueId;
 
-	public ReadonlyList<EntityRef> ChildrenEntityRefs => m_ChildrenEntityRefs;
+	string IEntityConfig.ViewName => base.name;
+
+	IEnumerable<IEntityPartConfig> IEntityConfig.Parts => GetComponents<AbstractEntityPartComponent>();
 
 	public Transform ViewTransform => base.gameObject.transform;
+
+	public Vector3 Position
+	{
+		get
+		{
+			return transform.position;
+		}
+		set
+		{
+			transform.position = value;
+		}
+	}
+
+	public Quaternion Rotation => transform.rotation;
+
+	public float Orientation => Rotation.eulerAngles.y;
 
 	public string GameObjectName
 	{
@@ -186,6 +170,10 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 
 	public GameObject GO => base.gameObject;
 
+	public virtual bool AllowChildrenEntityViews => false;
+
+	public ReadonlyList<EntityRef> ChildrenEntityRefs => m_ChildrenEntityRefs;
+
 	protected void UpdateCachedRenderersAndColliders(bool updateVisibility = true)
 	{
 		GetComponentsInChildren(includeInactive: true, m_Renderers);
@@ -195,6 +183,7 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		GetComponentsInChildren(includeInactive: true, m_NavmeshCuts);
 		GetComponentsInChildren(includeInactive: true, m_GridObstacles);
 		GetComponentsInChildren(includeInactive: true, m_Colliders);
+		GetComponentsInChildren(includeInactive: true, m_CollidersCloth);
 		if (updateVisibility && !IsVisible && Data != null)
 		{
 			SetVisible(IsVisible, force: true);
@@ -240,7 +229,7 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		}
 	}
 
-	protected void StartListenEvents()
+	private void StartListenEvents()
 	{
 		if (!m_IsListeningEvents)
 		{
@@ -249,7 +238,7 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		}
 	}
 
-	protected void StopListenEvents()
+	private void StopListenEvents()
 	{
 		if (m_IsListeningEvents)
 		{
@@ -321,71 +310,16 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		}
 		m_ViewActive = flag;
 		SetVisible(flag);
-		if (this is AbstractUnitEntityView)
+		OnViewActiveChanged(flag);
+		foreach (NavmeshCut navmeshCut in m_NavmeshCuts)
 		{
-			if (flag)
-			{
-				foreach (AnimancerComponent disabledAnimator in m_DisabledAnimators)
-				{
-					if (disabledAnimator != null)
-					{
-						disabledAnimator.enabled = true;
-					}
-				}
-				foreach (Collider disabledCollider in m_DisabledColliders)
-				{
-					if (disabledCollider != null)
-					{
-						disabledCollider.enabled = true;
-					}
-				}
-				foreach (Rigidbody disabledRigidbody in m_DisabledRigidbodies)
-				{
-					if (disabledRigidbody != null)
-					{
-						disabledRigidbody.detectCollisions = true;
-					}
-				}
-				foreach (StandardMaterialController disabledSMC in m_DisabledSMCs)
-				{
-					if (disabledSMC != null)
-					{
-						disabledSMC.enabled = true;
-					}
-				}
-			}
-			else
-			{
-				GetComponentsInChildren(m_DisabledAnimators);
-				AnimancerComponent[] componentsInChildren = GetComponentsInChildren<AnimancerComponent>();
-				for (int i = 0; i < componentsInChildren.Length; i++)
-				{
-					componentsInChildren[i].enabled = false;
-				}
-				GetComponentsInChildren(m_DisabledColliders);
-				foreach (Collider disabledCollider2 in m_DisabledColliders)
-				{
-					disabledCollider2.enabled = false;
-				}
-				GetComponentsInChildren(m_DisabledRigidbodies);
-				foreach (Rigidbody disabledRigidbody2 in m_DisabledRigidbodies)
-				{
-					disabledRigidbody2.detectCollisions = false;
-				}
-			}
-			if (flag && !base.gameObject.activeSelf)
-			{
-				base.gameObject.SetActive(value: true);
-			}
+			navmeshCut.enabled = flag;
 		}
-		else
-		{
-			base.gameObject.SetActive(flag);
-		}
-		for (int j = 0; j < m_NavmeshCuts.Count; j++)
-		{
-			m_NavmeshCuts[j].enabled = flag;
-		}
+	}
+
+	protected virtual void OnViewActiveChanged(bool active)
+	{
+		base.gameObject.SetActive(active);
 	}
 
 	public void SetVisible(bool visible, bool force = false, bool revealVisible = true)
@@ -443,6 +377,13 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 					collider.enabled = flag5;
 				}
 			}
+			foreach (XpbdCollider item in m_CollidersCloth)
+			{
+				if (item != null && item.gameObject.layer == 17)
+				{
+					item.enabled = flag5;
+				}
+			}
 		}
 		if (flag4)
 		{
@@ -468,14 +409,6 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 
 	private void ChangeVisibleComplete(bool value)
 	{
-		if (!value)
-		{
-			GetComponentsInChildren(m_DisabledSMCs);
-			foreach (StandardMaterialController disabledSMC in m_DisabledSMCs)
-			{
-				disabledSMC.enabled = false;
-			}
-		}
 		if (m_IsFadeHide)
 		{
 			m_IsFadeHide = false;
@@ -508,7 +441,7 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		if (!Application.isPlaying && !m_IsInGame)
 		{
 			Gizmos.color = Color.gray;
-			Gizmos.DrawLine(ViewTransform.position, ViewTransform.position + Vector3.up * 8f);
+			Gizmos.DrawLine(transform.position, transform.position + Vector3.up * 8f);
 		}
 	}
 
@@ -556,19 +489,13 @@ public abstract class EntityViewBase : MonoBehaviour, IEntityViewBase, IFadeOutA
 		}
 	}
 
-	public void EntityPartComponentEnsureEntityPart(EntityPartsManager parts)
-	{
-		AbstractEntityPartComponent[] components = GetComponents<AbstractEntityPartComponent>();
-		AbstractEntityPartComponent[] array = components;
-		for (int j = 0; j < array.Length; j++)
-		{
-			array[j].EnsureEntityPart();
-		}
-		parts.RemoveAll((ViewBasedPart i) => i.ShouldCheckSourceComponent && !components.HasItem((AbstractEntityPartComponent ii) => i.SourceType == ii.GetType().Name));
-	}
-
 	public void HandleFadeOutAndDestroy()
 	{
 		OnFadeOut();
+	}
+
+	string IEntityView.get_name()
+	{
+		return base.name;
 	}
 }

@@ -1,15 +1,12 @@
 using System;
 using Kingmaker.Localization;
+using UnityEngine.Serialization;
 
 namespace Kingmaker.Blueprints.Root.Strings;
 
 [Serializable]
 public class UIUnitInfo
 {
-	public LocalizedString ShowMore;
-
-	public LocalizedString ShowLess;
-
 	public LocalizedString DamageModifiers;
 
 	public LocalizedString VitalDamageLockedByArmor;
@@ -27,4 +24,7 @@ public class UIUnitInfo
 	public LocalizedString CriticalEffectsThroughArmor;
 
 	public LocalizedString CriticalEffectsThroughArmorHint;
+
+	[FormerlySerializedAs("Concentration")]
+	public LocalizedString ConcentrationTitle;
 }

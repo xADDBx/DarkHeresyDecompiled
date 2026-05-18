@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Commands.Base;
@@ -25,7 +26,7 @@ public sealed class UnitLootUnit : UnitCommand
 
 	protected override ResultType OnAction()
 	{
-		EntityViewBase[] objectsWithLoot = MassLootHelper.GetObjectsWithLoot(Target.View).ToArray();
+		EntityViewBase[] objectsWithLoot = MassLootHelper.GetObjectsWithLoot(Target.View.AsMechanicEntityView()).ToArray();
 		EventBus.RaiseEvent((IBaseUnitEntity)base.Executor, (Action<ILootInteractionHandler>)delegate(ILootInteractionHandler l)
 		{
 			l.HandleLootInteraction(objectsWithLoot, LootContainerType.Unit, null);

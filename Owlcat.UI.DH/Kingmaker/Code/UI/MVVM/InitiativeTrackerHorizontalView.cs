@@ -1,12 +1,9 @@
-using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Common.Animations;
 using Kingmaker.UI.Sound;
-using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Utility;
 using TMPro;
 using UnityEngine;
@@ -22,13 +19,13 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 	private Vector2 m_MaxViewportSize;
 
 	[SerializeField]
-	protected TextMeshProUGUI m_StateValue;
-
-	[SerializeField]
 	protected CombatUnitEntityView m_CurrentUnit;
 
 	[SerializeField]
 	private MoraleBalanceView m_MoraleBalance;
+
+	[SerializeField]
+	private CombatUnitCounterView m_CombatUnitCounter;
 
 	[Header("Animator")]
 	[SerializeField]
@@ -63,20 +60,22 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 	{
 		base.OnBind();
 		m_MoraleBalance.Bind(base.ViewModel.MoraleBalanceVM);
+		m_CombatUnitCounter.Bind(base.ViewModel.CombatUnitCounterVM);
 	}
 
 	protected override void OnUnbind()
 	{
 		m_MoraleBalance.Unbind();
+		m_CombatUnitCounter.Unbind();
 	}
 
-	protected override void OnUnitHovered()
+	protected override void OnUnitHovered(CombatMechanicEntityVM hoveredEntity)
 	{
 		if (!base.gameObject.activeInHierarchy)
 		{
 			return;
 		}
-		InitiativeTrackerMechanicEntityVM currentValue = base.ViewModel.HoveredEntity.CurrentValue;
+		CombatMechanicEntityVM currentValue = base.ViewModel.HoveredEntity.CurrentValue;
 		if (currentValue == null)
 		{
 			HideUnitName();
@@ -96,7 +95,7 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 		}
 		else
 		{
-			ScrollToHoveredUnit(UpdateName);
+			ScrollToHoveredUnit(hoveredEntity, UpdateName);
 		}
 	}
 
@@ -116,11 +115,13 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 			return;
 		}
 		Vector2 nextPosition = Vector2.zero;
+		bool flag = false;
 		for (int i = 0; i < base.ViewModel.TrackerEntities.Count; i++)
 		{
 			if (i == base.ViewModel.RoundIndex + 1)
 			{
 				nextPosition = AddRoundToVirtualDataView(nextPosition);
+				flag = true;
 			}
 			InitiativeTrackerMechanicEntityVM initiativeTrackerMechanicEntityVM = base.ViewModel.TrackerEntities[i];
 			if (initiativeTrackerMechanicEntityVM.IsCurrent.CurrentValue)
@@ -133,6 +134,10 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 			{
 				nextPosition = AddUnitToVirtualDataView(initiativeTrackerMechanicEntityVM, nextPosition, currentValue);
 			}
+		}
+		if (!flag && base.ViewModel.RoundCounter.CurrentValue > 1)
+		{
+			AddRoundToVirtualDataView(nextPosition);
 		}
 		m_FixedNormalizedPosition = VirtualList.ScrollRect.horizontalNormalizedPosition;
 		m_TargetContentSize = VirtualList.GetContentSize(base.VirtualEntries);
@@ -155,27 +160,18 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 			});
 		}
 		base.ViewModel.SkipScroll = false;
-		List<InitiativeTrackerMechanicEntityVM> list = new List<InitiativeTrackerMechanicEntityVM>();
-		foreach (InitiativeTrackerMechanicEntityVM unit in base.ViewModel.TrackerEntities)
-		{
-			if (unit.IsEnemy.CurrentValue && !list.Contains((InitiativeTrackerMechanicEntityVM uniqUnit) => uniqUnit.MechanicEntity == unit.MechanicEntity))
-			{
-				list.Add(unit);
-			}
-		}
-		m_StateValue.text = list.Count().ToString();
 	}
 
-	private Vector2 AddUnitToVirtualDataView(InitiativeTrackerMechanicEntityVM mechanicEntityVm, Vector2 nextPosition, bool isPartyUnit)
+	private Vector2 AddUnitToVirtualDataView(CombatMechanicEntityVM mechanicEntityVm, Vector2 nextPosition, bool isPartyUnit)
 	{
 		TurnVirtualUnitData turnVirtualUnitData = new TurnVirtualUnitData
 		{
 			ViewModel = mechanicEntityVm
 		};
-		Vector2 sizeWithPortrait = CombatUnitPrefab.GetSizeWithPortrait(isPartyUnit);
-		turnVirtualUnitData.SetViewParameters(nextPosition, sizeWithPortrait);
+		Vector2 size = ((mechanicEntityVm.Squad != null) ? CombatUnitPrefab.GetSizeSquad(mechanicEntityVm.Squad.AliveUnitsCount) : CombatUnitPrefab.GetSizeUnit(isPartyUnit));
+		turnVirtualUnitData.SetViewParameters(nextPosition, size);
 		AddTurnVirtualItem(turnVirtualUnitData);
-		nextPosition.x += sizeWithPortrait.x + VirtualList.Spacing.x;
+		nextPosition.x += size.x + VirtualList.Spacing.x;
 		return nextPosition;
 	}
 
@@ -198,7 +194,7 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 		{
 			base.gameObject.SetActive(value: true);
 			m_OwnAnimation.AppearAnimation();
-			UISounds.Instance.Sounds.InitiativeTracker.InitiativeTrackerShow.Play();
+			CombatSounds.Instance.InitiativeTracker.Show.Play();
 		}
 	}
 
@@ -206,7 +202,7 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 	{
 		VirtualList.Content.sizeDelta = new Vector2(m_MaxViewportSize.x, VirtualList.Content.sizeDelta.y);
 		VirtualList.Content.anchoredPosition = Vector2.zero;
-		UISounds.Instance.Sounds.InitiativeTracker.InitiativeTrackerHide.Play();
+		CombatSounds.Instance.InitiativeTracker.Hide.Play();
 		m_OwnAnimation.DisappearAnimation(delegate
 		{
 			base.gameObject.SetActive(value: false);
@@ -228,7 +224,7 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 
 	private void UpdateName()
 	{
-		InitiativeTrackerMechanicEntityVM currentValue = base.ViewModel.HoveredEntity.CurrentValue;
+		CombatMechanicEntityVM currentValue = base.ViewModel.HoveredEntity.CurrentValue;
 		Vector3 position;
 		if (currentValue == null || !IsUnitVisible(currentValue))
 		{
@@ -240,7 +236,7 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 		}
 	}
 
-	private void UpdateName(InitiativeTrackerMechanicEntityVM entity, Vector3 position)
+	private void UpdateName(CombatMechanicEntityVM entity, Vector3 position)
 	{
 		if (entity == null || !IsUnitVisible(entity))
 		{
@@ -264,7 +260,7 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 		m_NameZoneAnimator.Or(null)?.DisappearAnimation();
 	}
 
-	private bool TryGetNamePosition(InitiativeTrackerMechanicEntityVM entity, out Vector3 position)
+	private bool TryGetNamePosition(CombatMechanicEntityVM entity, out Vector3 position)
 	{
 		MechanicEntity mechanicEntity = m_CurrentUnit.ViewModel?.MechanicEntity;
 		if (mechanicEntity != null && entity.MechanicEntity == mechanicEntity)
@@ -272,13 +268,19 @@ public abstract class InitiativeTrackerHorizontalView : InitiativeTrackerView, I
 			position = m_CurrentUnit.UnitNameAnchor.position;
 			return true;
 		}
-		CombatUnitOrderView combatUnitOrderView = base.VirtualEntries.FirstOrDefault((ITurnVirtualItemData data) => data.ViewModel == entity)?.BoundView as CombatUnitOrderView;
-		if (!combatUnitOrderView || !combatUnitOrderView.UnitNameAnchor || !combatUnitOrderView.gameObject.activeSelf)
+		if (!TryGetTurnVirtualItem(entity, out var virtualItemData))
 		{
 			position = Vector3.zero;
 			return false;
 		}
-		position = combatUnitOrderView.UnitNameAnchor.position;
+		CombatUnitOrderView combatUnitOrderView = base.VirtualEntries.FirstOrDefault((ITurnVirtualItemData data) => data == virtualItemData)?.BoundView as CombatUnitOrderView;
+		RectTransform rectTransform = (((bool)combatUnitOrderView && combatUnitOrderView.gameObject.activeSelf) ? combatUnitOrderView.GetUnitNameAnchor(entity.MechanicEntity) : null);
+		if (!rectTransform)
+		{
+			position = Vector3.zero;
+			return false;
+		}
+		position = rectTransform.position;
 		return true;
 	}
 }

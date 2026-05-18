@@ -7,5 +7,6 @@ public enum CutscenePauseReason
 	MarkedUnitControlledByOtherCutscene,
 	UnitSpawnerDoesNotControlAnyUnit,
 	ManualPauseFromEditor,
-	AwaitingNextStage
+	AwaitingNextStage,
+	Freezed
 }

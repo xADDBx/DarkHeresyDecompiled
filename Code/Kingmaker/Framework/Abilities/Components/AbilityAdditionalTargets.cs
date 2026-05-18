@@ -43,7 +43,7 @@ public sealed class AbilityAdditionalTargets : BlueprintComponent
 
 	public RestrictionCalculator TargetRestriction = new RestrictionCalculator();
 
-	public IEnumerable<AbilityDeliveryTarget> GetTargets(AbilityExecutionContext context)
+	public IEnumerable<AbilityDeliveryTarget> GetTargets(IEvalContext context)
 	{
 		if (!Restriction.IsPassed(context))
 		{
@@ -60,14 +60,14 @@ public sealed class AbilityAdditionalTargets : BlueprintComponent
 		};
 	}
 
-	public IEnumerable<AbilityDeliveryTarget> SelectTargetsAround(AbilityExecutionContext context, TargetWrapper anchor, Cells range, int targetsCountLimit)
+	public IEnumerable<AbilityDeliveryTarget> SelectTargetsAround(IEvalContext context, TargetWrapper anchor, Cells range, int targetsCountLimit)
 	{
 		List<BaseUnitEntity> list = EntityBoundsHelper.FindUnitsInRange(anchor.Point, Range.Calculate(context));
 		list.Shuffle(PFStatefulRandom.Mechanics);
 		int selectedTargetsCount = 0;
 		foreach (BaseUnitEntity item in list)
 		{
-			if (item != context.ClickedTarget.Entity && IsValidTarget(context, item))
+			if (item != context.ClickedTarget?.Entity && IsValidTarget(context, item))
 			{
 				yield return new AbilityDeliveryTarget(item);
 				int num = selectedTargetsCount + 1;
@@ -80,7 +80,7 @@ public sealed class AbilityAdditionalTargets : BlueprintComponent
 		}
 	}
 
-	public IEnumerable<AbilityDeliveryTarget> SelectTargetsChain(AbilityExecutionContext context, TargetWrapper anchor, Cells range, int targetsCountLimit)
+	public IEnumerable<AbilityDeliveryTarget> SelectTargetsChain(IEvalContext context, TargetWrapper anchor, Cells range, int targetsCountLimit)
 	{
 		HashSet<MechanicEntity> selectedTargets;
 		using (CollectionPool<HashSet<MechanicEntity>, MechanicEntity>.Get(out selectedTargets))
@@ -103,13 +103,13 @@ public sealed class AbilityAdditionalTargets : BlueprintComponent
 	}
 
 	[CanBeNull]
-	public MechanicEntity GetNextChainTarget(AbilityExecutionContext context, TargetWrapper anchor, Cells range, HashSet<MechanicEntity> selectedTargets)
+	public MechanicEntity GetNextChainTarget(IEvalContext context, TargetWrapper anchor, Cells range, HashSet<MechanicEntity> selectedTargets)
 	{
 		List<BaseUnitEntity> list = EntityBoundsHelper.FindUnitsInRange(anchor.Point, range.Meters);
 		list.Shuffle(PFStatefulRandom.Mechanics);
 		foreach (BaseUnitEntity item in list)
 		{
-			if (item != context.ClickedTarget.Entity && !selectedTargets.Contains(item) && IsValidTarget(context, item))
+			if (item != context.ClickedTarget?.Entity && !selectedTargets.Contains(item) && IsValidTarget(context, item))
 			{
 				return item;
 			}
@@ -117,10 +117,10 @@ public sealed class AbilityAdditionalTargets : BlueprintComponent
 		return null;
 	}
 
-	private bool IsValidTarget(AbilityExecutionContext context, MechanicEntity target)
+	private bool IsValidTarget(IEvalContext context, MechanicEntity target)
 	{
 		AbilityData ability = context.Ability;
-		if (!ability.IsValidTargetForAttack(target))
+		if (ability == null || !ability.IsValidTargetForAttack(target))
 		{
 			return false;
 		}

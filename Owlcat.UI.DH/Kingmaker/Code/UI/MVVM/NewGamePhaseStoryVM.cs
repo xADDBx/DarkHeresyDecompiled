@@ -158,14 +158,14 @@ public class NewGamePhaseStoryVM : NewGamePhaseBaseVm, INewGameChangeDlcHandler,
 		m_DlcIsBoughtAndNotInstalled.Value = DlcIsBought.CurrentValue && blueprintDlc != null && blueprintDlc.GetDownloadState() == DownloadState.NotLoaded && IsRealConsole.CurrentValue;
 		if (CurrentCampaign == campaign)
 		{
-			m_ChangeStory.Execute();
+			m_ChangeStory.Execute(Unit.Default);
 			return;
 		}
 		MainMenuChargenUnits.Instance.DlcReward = campaign.DlcReward;
 		IsDlcRequired.Value = !flag;
 		SetNextButtonAvailable(flag);
 		CurrentCampaign = campaign;
-		m_ChangeStory.Execute();
+		m_ChangeStory.Execute(Unit.Default);
 	}
 
 	public void ShowInStore()

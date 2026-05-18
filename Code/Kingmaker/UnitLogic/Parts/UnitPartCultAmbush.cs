@@ -407,7 +407,7 @@ public class UnitPartCultAmbush : BaseUnitPart, IHashable, IOwlPackable<UnitPart
 		{
 			m_VisibilityData.Add(new VisibilityAbilityData(VisibilityStatuses.FirstShow, ability.OriginalBlueprint));
 			m_VisibilityDataHash.Add(ability.AssetGuid, m_VisibilityData.Count - 1);
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUICultAmbushVisibilityChangeHandler>)delegate(IUICultAmbushVisibilityChangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUICultAmbushVisibilityChangeHandler>)delegate(IUICultAmbushVisibilityChangeHandler h)
 			{
 				h.HandleCultAmbushVisibilityChange();
 			}, isCheckRuntime: true);
@@ -420,7 +420,7 @@ public class UnitPartCultAmbush : BaseUnitPart, IHashable, IOwlPackable<UnitPart
 		{
 			m_VisibilityData.Add(new VisibilityFeatureData(VisibilityStatuses.FirstShow, feature));
 			m_VisibilityDataHash.Add(feature.AssetGuid, m_VisibilityData.Count - 1);
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUICultAmbushVisibilityChangeHandler>)delegate(IUICultAmbushVisibilityChangeHandler h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUICultAmbushVisibilityChangeHandler>)delegate(IUICultAmbushVisibilityChangeHandler h)
 			{
 				h.HandleCultAmbushVisibilityChange();
 			}, isCheckRuntime: true);
@@ -444,7 +444,7 @@ public class UnitPartCultAmbush : BaseUnitPart, IHashable, IOwlPackable<UnitPart
 		m_IsAllVisibility = true;
 		m_VisibilityData.Clear();
 		m_VisibilityDataHash.Clear();
-		EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUICultAmbushVisibilityChangeHandler>)delegate(IUICultAmbushVisibilityChangeHandler h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IUICultAmbushVisibilityChangeHandler>)delegate(IUICultAmbushVisibilityChangeHandler h)
 		{
 			h.HandleCultAmbushVisibilityChange();
 		}, isCheckRuntime: true);

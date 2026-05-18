@@ -50,8 +50,7 @@ public class AbilityCustomBattleDance : AbilityCustomLogic, IAbilityCustomAnimat
 		{
 			PFLog.Default.Error("No animation handle found");
 		}
-		caster.View.StopMoving();
-		caster.View.MovementAgent.IsCharging = true;
+		caster.StopMoving();
 		List<(GraphNode node, int direction)> possibleNodsWithDirection = new List<(GraphNode, int)>();
 		foreach (GridNodeBase item in target.GetOccupiedNodes().ToList())
 		{
@@ -90,7 +89,7 @@ public class AbilityCustomBattleDance : AbilityCustomLogic, IAbilityCustomAnimat
 			{
 				yield return null;
 			}
-			while (caster.View.MovementAgent.IsReallyMoving)
+			while (caster.IsReallyMoving)
 			{
 				yield return null;
 			}
@@ -108,7 +107,6 @@ public class AbilityCustomBattleDance : AbilityCustomLogic, IAbilityCustomAnimat
 	{
 		if (context.Caster is UnitEntity unitEntity)
 		{
-			unitEntity.View.MovementAgent.IsCharging = false;
 			unitEntity.View.MovementAgent.MaxSpeedOverride = null;
 		}
 	}

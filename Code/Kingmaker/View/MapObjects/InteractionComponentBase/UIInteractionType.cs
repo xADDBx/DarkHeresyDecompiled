@@ -16,5 +16,6 @@ public enum UIInteractionType
 	Unlock,
 	MeltaCharge,
 	Ritual,
-	Projector
+	Projector,
+	AreaTransition
 }

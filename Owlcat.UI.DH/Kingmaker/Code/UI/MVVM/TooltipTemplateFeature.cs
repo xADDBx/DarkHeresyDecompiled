@@ -13,7 +13,6 @@ using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Progression.Features;
 using Owlcat.UI;
-using TMPro;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
@@ -39,12 +38,12 @@ public class TooltipTemplateFeature : TooltipBaseTemplate
 			using (GameLogContext.Scope)
 			{
 				GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)(m_Feature?.Owner ?? m_Caster);
 				if (BlueprintFeatureBase == null)
 				{
 					throw new ArgumentNullException("BlueprintFeature is NUll");
 				}
 				m_Description = TooltipTemplateUtils.GetFullDescription(BlueprintFeatureBase);
-				m_Description = UIUtilityText.UpdateDescriptionWithUIProperties(m_Description, m_Feature?.Owner ?? m_Caster);
 			}
 		}
 		catch (Exception arg)
@@ -54,7 +53,7 @@ public class TooltipTemplateFeature : TooltipBaseTemplate
 	}
 
 	public TooltipTemplateFeature([NotNull] Feature feature, bool withVariants = false)
-		: this(feature?.Blueprint, withVariants, feature?.Owner)
+		: this(feature.Blueprint, withVariants, feature.Owner)
 	{
 		m_Feature = feature;
 	}
@@ -72,15 +71,8 @@ public class TooltipTemplateFeature : TooltipBaseTemplate
 		{
 			string acronym = ((BlueprintFeatureBase.Icon != null) ? "" : UIUtilityAbilities.GetAbilityAcronym(BlueprintFeatureBase.Name));
 			Sprite icon = ((BlueprintFeatureBase.Icon != null) ? BlueprintFeatureBase.Icon : UIUtilityText.GetIconByText(BlueprintFeatureBase.NameForAcronym));
-			TooltipBrickIconPattern.TextFieldValues titleValues = new TooltipBrickIconPattern.TextFieldValues
-			{
-				Text = BlueprintFeatureBase.Name,
-				TextParams = new TextFieldParams
-				{
-					FontStyles = FontStyles.Bold
-				}
-			};
-			yield return new TooltipBrickIconPattern(icon, null, titleValues, null, null, null, IconPatternMode.SkillMode, acronym);
+			TextEntity title = new TextEntity(BlueprintFeatureBase.Name, TextFieldParams.Bold);
+			yield return new BrickIconPatternVM(icon, null, title, null, null, null, IconPatternMode.SkillMode, acronym);
 		}
 	}
 
@@ -90,39 +82,39 @@ public class TooltipTemplateFeature : TooltipBaseTemplate
 		{
 			if (m_Abilities.HeroicAct != null)
 			{
-				yield return new TooltipBrickText(UIStrings.Instance.Tooltips.HeroicActAbility, TooltipTextType.Bold);
-				yield return new TooltipBrickFeature(m_Abilities.HeroicAct);
+				yield return new BrickTextVM(UIStrings.Instance.Tooltips.HeroicActAbility, TooltipTextType.Bold, TooltipTextAlignment.Midl, m_Caster);
+				yield return new BrickFeatureVM(m_Abilities.HeroicAct);
 			}
 			if (m_Abilities.DesperateMeasure != null)
 			{
-				yield return new TooltipBrickText(UIStrings.Instance.Tooltips.DesperateMeasureAbility, TooltipTextType.Bold);
-				yield return new TooltipBrickFeature(m_Abilities.DesperateMeasure);
+				yield return new BrickTextVM(UIStrings.Instance.Tooltips.DesperateMeasureAbility, TooltipTextType.Bold, TooltipTextAlignment.Midl, m_Caster);
+				yield return new BrickFeatureVM(m_Abilities.DesperateMeasure);
 			}
 			yield break;
 		}
-		yield return new TooltipBrickText(m_Description, TooltipTextType.Paragraph);
+		yield return new BrickTextVM(m_Description, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Caster);
 		ITooltipBrick sourceBrick = null;
 		if ((bool)m_Feature?.SourceAbilityBlueprint)
 		{
-			sourceBrick = new TooltipBrickFeature(m_Feature.SourceAbilityBlueprint);
+			sourceBrick = new BrickFeatureVM(m_Feature?.SourceAbilityBlueprint);
 		}
 		if (m_Feature?.SourceFact != null && !string.IsNullOrEmpty(m_Feature?.SourceFact.Name))
 		{
-			sourceBrick = new TooltipBrickFeature(m_Feature.SourceFact);
+			sourceBrick = new BrickFeatureVM(m_Feature.SourceFact);
 		}
 		if (m_Feature?.SourceItem != null)
 		{
 			ItemEntity itemEntity = (ItemEntity)m_Feature.SourceItem;
-			sourceBrick = new TooltipBrickIconAndName(itemEntity.Icon, itemEntity.Name);
+			sourceBrick = new BrickIconAndNameVM(itemEntity.Name, itemEntity.Icon);
 		}
 		if ((bool)m_Feature?.SourceRace)
 		{
-			sourceBrick = new TooltipBrickFeature(m_Feature.SourceRace);
+			sourceBrick = new BrickFeatureVM(m_Feature?.SourceRace);
 		}
 		if (sourceBrick != null)
 		{
-			yield return new TooltipBrickSeparator();
-			yield return new TooltipBrickTitle(UIStrings.Instance.Tooltips.Source, TooltipTitleType.H2);
+			yield return new BrickSeparatorVM();
+			yield return new BrickTitleVM(UIStrings.Instance.Tooltips.Source, TooltipTitleType.H2);
 			yield return sourceBrick;
 		}
 	}

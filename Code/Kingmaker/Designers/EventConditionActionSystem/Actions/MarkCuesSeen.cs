@@ -43,7 +43,7 @@ public class MarkCuesSeen : GameAction
 			{
 				text += ", ";
 			}
-			text += Cues[i].ToString();
+			text += Cues[i];
 		}
 		return "Mark Cues Seen(" + text + ")";
 	}

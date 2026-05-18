@@ -6,17 +6,14 @@ using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Framework.GameLog;
 using Kingmaker.ElementsSystem.ContextData;
-using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
+using Kingmaker.Framework.Abilities;
 using Kingmaker.Framework.Abilities.Components;
-using Kingmaker.Gameplay.Parts;
-using Kingmaker.PubSubSystem;
-using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
 using Kingmaker.RuleSystem.Rules.Damage;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
-using Kingmaker.UnitLogic.Mechanics;
 using Kingmaker.Utility;
 using Kingmaker.Utility.CodeTimer;
 using Kingmaker.Utility.DotNetExtensions;
@@ -26,11 +23,11 @@ namespace Kingmaker.Controllers;
 
 public class AbilityExecutionProcess
 {
-	public class Scope : SimpleContextData<AbilityExecutionProcess, Scope>
-	{
-	}
+	private static readonly AbilityExecutionHandler _DefaultHandler = new AbilityExecutionHandler();
 
 	private readonly IEnumerator<object> m_Process;
+
+	private readonly IAbilityPipelineHandler m_Handler;
 
 	private bool m_InstantDeliver;
 
@@ -41,8 +38,14 @@ public class AbilityExecutionProcess
 	public bool IsEngageUnit => Context.AbilityBlueprint.GetComponent<AbilityDeliverEffect>()?.IsEngageUnit ?? false;
 
 	public AbilityExecutionProcess(AbilityExecutionContext context)
+		: this(context, _DefaultHandler)
+	{
+	}
+
+	public AbilityExecutionProcess(AbilityExecutionContext context, IAbilityPipelineHandler handler)
 	{
 		Context = context;
+		m_Handler = handler;
 		m_Process = ProcessRoutine();
 	}
 
@@ -59,10 +62,7 @@ public class AbilityExecutionProcess
 		{
 			using (ContextData<GameLogDisabled>.RequestIf(Context.DisableLog))
 			{
-				using (SimpleContextData<AbilityExecutionProcess, Scope>.Set(this))
-				{
-					IsEnded = !m_Process.MoveNext();
-				}
+				IsEnded = !m_Process.MoveNext();
 			}
 		}
 		catch (Exception ex)
@@ -76,30 +76,30 @@ public class AbilityExecutionProcess
 		}
 		if (IsEnded)
 		{
-			Context.AbilityBlueprint.CallComponents(delegate(AbilityCustomLogic c)
-			{
-				c.Cleanup(Context);
-			});
+			m_Handler.OnProcessCleanup(Context);
 		}
 	}
 
 	private IEnumerator<object> ProcessRoutine()
 	{
-		OnStartProcess();
 		AbilityDeliverEffect component = Context.Ability.Blueprint.GetComponent<AbilityDeliverEffect>();
 		AbilitySelectTarget component2 = Context.Ability.Blueprint.GetComponent<AbilitySelectTarget>();
 		AbilityApplyEffect[] applyEffectComponents = Context.Ability.Blueprint.GetComponents<AbilityApplyEffect>().ToArray();
 		IEnumerable<AbilityHaloEffect> components = Context.Ability.Blueprint.GetComponents<AbilityHaloEffect>();
 		IEnumerable<AbilityAdditionalTargets> components2 = Context.Ability.Blueprint.GetComponents<AbilityAdditionalTargets>();
-		PrepareCast(Context);
-		SpawnFxs(Context, AbilitySpawnFxTime.OnStart);
+		using (EvalContext.PushContext(Context))
+		{
+			m_Handler.OnProcessStart(Context);
+			m_Handler.PrepareCast(Context);
+			m_Handler.SpawnFxs(Context, AbilitySpawnFxTime.OnStart);
+		}
 		IEnumerator deliverAndApplyEffect = DeliverAndApplyEffect(component, component2, applyEffectComponents, components, components2).GetEnumerator();
 		try
 		{
 			bool hasNext;
 			do
 			{
-				using (Context.SetScope())
+				using (EvalContext.PushContext(Context))
 				{
 					hasNext = deliverAndApplyEffect.MoveNext();
 				}
@@ -118,42 +118,9 @@ public class AbilityExecutionProcess
 				disposable.Dispose();
 			}
 		}
-		OnEndProcess();
-	}
-
-	private static void PrepareCast(AbilityExecutionContext context)
-	{
-		using (context.SetScope())
+		using (EvalContext.PushContext(Context))
 		{
-			context.Recalculate();
-			context.AbilityBlueprint.CallComponents(delegate(IAbilityOnCastLogic c)
-			{
-				c.OnCast(context);
-			});
-		}
-	}
-
-	private void OnStartProcess()
-	{
-		using (Context.SetScope())
-		{
-			Game.Instance.GetController<PsychicPhenomenaController>()?.TryTriggerPsychicPhenomenaBeforeCast(Context);
-			EventBus.RaiseEvent((IMechanicEntity)Context.Caster, (Action<IAbilityExecutionProcessHandler>)delegate(IAbilityExecutionProcessHandler h)
-			{
-				h.HandleExecutionProcessStart(Context);
-			}, isCheckRuntime: true);
-		}
-	}
-
-	private void OnEndProcess()
-	{
-		using (Context.SetScope())
-		{
-			Game.Instance.GetController<PsychicPhenomenaController>()?.TryTriggerPsychicPhenomenaAfterCast(Context);
-			EventBus.RaiseEvent((IMechanicEntity)Context.Caster, (Action<IAbilityExecutionProcessHandler>)delegate(IAbilityExecutionProcessHandler h)
-			{
-				h.HandleExecutionProcessEnd(Context);
-			}, isCheckRuntime: true);
+			m_Handler.OnProcessEnd(Context);
 		}
 	}
 
@@ -161,8 +128,8 @@ public class AbilityExecutionProcess
 	{
 		if (deliverEffect != null && !m_InstantDeliver)
 		{
-			IEnumerator<AbilityDeliveryTarget> deliverProcess = deliverEffect.Deliver(Context, Context.ClickedTarget);
-			while (TickDeliveryProcess(deliverProcess, Context, selectTargets, applyEffectComponents))
+			IEnumerator<AbilityDeliveryTarget> deliverProcess = m_Handler.DeliverTargets(deliverEffect, Context, Context.ClickedTarget);
+			while (TickDeliveryProcess(deliverProcess, selectTargets, applyEffectComponents))
 			{
 				yield return null;
 			}
@@ -170,7 +137,7 @@ public class AbilityExecutionProcess
 		else
 		{
 			AbilityDeliveryTarget deliveryTarget = new AbilityDeliveryTarget(Context.ClickedTarget);
-			ApplyEffect(Context, deliveryTarget, applyEffectComponents, selectTargets, m_InstantDeliver);
+			ApplyEffect(deliveryTarget, applyEffectComponents, selectTargets, m_InstantDeliver);
 		}
 		ApplyHaloEffect(haloEffectComponents);
 		ApplyEffectToAdditionalTargets(additionalTargetsComponents, applyEffectComponents, selectTargets);
@@ -180,41 +147,44 @@ public class AbilityExecutionProcess
 	{
 		foreach (AbilityHaloEffect haloEffectComponent in haloEffectComponents)
 		{
-			haloEffectComponent.Apply(Context);
+			m_Handler.InvokeHaloEffect(haloEffectComponent, Context);
 		}
 		Context.Ability.GetPatternSettings()?.OverrideHaloSize(null);
 	}
 
 	private void ApplyEffectToAdditionalTargets(IEnumerable<AbilityAdditionalTargets> additionalTargetsComponents, AbilityApplyEffect[] applyEffectComponents, AbilitySelectTarget selectTargets)
 	{
-		foreach (AbilityDeliveryTarget item in additionalTargetsComponents.SelectMany((AbilityAdditionalTargets i) => i.GetTargets(Context)))
+		foreach (AbilityAdditionalTargets additionalTargetsComponent in additionalTargetsComponents)
 		{
-			ApplyEffect(Context, item, applyEffectComponents, selectTargets, m_InstantDeliver);
+			foreach (AbilityDeliveryTarget additionalTarget in m_Handler.GetAdditionalTargets(additionalTargetsComponent, Context))
+			{
+				ApplyEffect(additionalTarget, applyEffectComponents, selectTargets, m_InstantDeliver);
+			}
 		}
 	}
 
-	private static bool TickDeliveryProcess(IEnumerator<AbilityDeliveryTarget> deliveryProcess, AbilityExecutionContext context, [CanBeNull] AbilitySelectTarget selectTargets, [CanBeNull] IEnumerable<AbilityApplyEffect> effects)
+	private bool TickDeliveryProcess(IEnumerator<AbilityDeliveryTarget> deliveryProcess, [CanBeNull] AbilitySelectTarget selectTargets, [CanBeNull] IEnumerable<AbilityApplyEffect> effects)
 	{
 		try
 		{
-			using (ContextData<AttackHitPolicyContextData>.Request().Setup(context.HitPolicy))
+			using (ContextData<AttackHitPolicyContextData>.Request().Setup(Context.HitPolicy))
 			{
-				using (ContextData<DamagePolicyContextData>.Request().Setup(context.DamagePolicy))
+				using (ContextData<DamagePolicyContextData>.Request().Setup(Context.DamagePolicy))
 				{
 					bool flag;
 					while (true)
 					{
-						TimeSpan? delayBetweenActions = context.DelayBetweenActions;
+						TimeSpan? delayBetweenActions = Context.DelayBetweenActions;
 						if (delayBetweenActions.HasValue)
 						{
 							double totalSeconds = delayBetweenActions.GetValueOrDefault().TotalSeconds;
 							if (totalSeconds >= 0.001)
 							{
-								double totalSeconds2 = (Game.Instance.Controllers.TimeController.GameTime - context.CastTime).TotalSeconds;
-								int num = Math.Clamp(max: context.Ability.ActionsCount, value: (int)(totalSeconds2 / totalSeconds) + 1, min: 1);
-								while (context.ActionIndex < num)
+								double totalSeconds2 = (Game.Instance.Controllers.TimeController.GameTime - Context.CastTime).TotalSeconds;
+								int num = Math.Clamp(max: Context.Ability.ActionsCount, value: (int)(totalSeconds2 / totalSeconds) + 1, min: 1);
+								while (Context.ActionIndex < num)
 								{
-									context.NextAction();
+									Context.NextAction();
 								}
 							}
 						}
@@ -228,7 +198,7 @@ public class AbilityExecutionProcess
 						}
 						using (ProfileScope.New("ApplyEffect"))
 						{
-							ApplyEffect(context, deliveryProcess.Current, effects, selectTargets, instant: false);
+							ApplyEffect(deliveryProcess.Current, effects, selectTargets, instant: false);
 						}
 					}
 					return flag;
@@ -242,96 +212,71 @@ public class AbilityExecutionProcess
 		}
 	}
 
-	private static void SpawnFxs([NotNull] AbilityExecutionContext context, AbilitySpawnFxTime time, [CanBeNull] TargetWrapper selectedTarget = null)
+	private void ApplyEffect(AbilityDeliveryTarget deliveryTarget, [CanBeNull] IEnumerable<AbilityApplyEffect> applyEffect, [CanBeNull] AbilitySelectTarget selectTargets, bool instant)
 	{
-		foreach (AbilitySpawnFx fxSpawner in context.FxSpawners)
+		if (m_Handler.ShouldApplyToDeliveryTarget(Context, deliveryTarget))
 		{
-			if (fxSpawner.Time == time)
-			{
-				fxSpawner.Spawn(context, selectedTarget);
-			}
+			ApplyEffectHit(deliveryTarget, applyEffect, selectTargets, instant);
 		}
 	}
 
-	private static void ApplyEffect(AbilityExecutionContext context, AbilityDeliveryTarget deliveryTarget, [CanBeNull] IEnumerable<AbilityApplyEffect> applyEffect, [CanBeNull] AbilitySelectTarget selectTargets, bool instant)
-	{
-		if (context.Ability.Blueprint.GetComponent<AbilityEffectMissIsHit>() != null || deliveryTarget.AttackRule == null || deliveryTarget.AttackRule.ResultIsHit)
-		{
-			ApplyEffectHit(context, deliveryTarget, applyEffect, selectTargets, instant);
-		}
-	}
-
-	private static void ApplyEffectHit(AbilityExecutionContext context, AbilityDeliveryTarget deliveryTarget, [CanBeNull] IEnumerable<AbilityApplyEffect> applyEffects, [CanBeNull] AbilitySelectTarget selectTargets, bool instant)
+	private void ApplyEffectHit(AbilityDeliveryTarget deliveryTarget, [CanBeNull] IEnumerable<AbilityApplyEffect> applyEffects, [CanBeNull] AbilitySelectTarget selectTargets, bool instant)
 	{
 		if (selectTargets != null)
 		{
 			List<TargetWrapper> list;
-			using (selectTargets.Select(context, deliveryTarget.Target).ToPooledList(out list))
+			using (selectTargets.Select(Context, deliveryTarget.Target).ToPooledList(out list))
 			{
-				context.TargetsInPatternCount = list.Count;
+				Context.TargetsInPatternCount = list.Count;
 				foreach (TargetWrapper item in list)
 				{
 					AbilityDeliveryTarget target = new AbilityDeliveryTarget(item, deliveryTarget);
-					DoApplyEffects(context, target, applyEffects);
+					DoApplyEffects(target, applyEffects);
 				}
 			}
 		}
 		else
 		{
-			DoApplyEffects(context, deliveryTarget, applyEffects);
+			DoApplyEffects(deliveryTarget, applyEffects);
 		}
-		SpawnFxs(context, AbilitySpawnFxTime.OnApplyEffect);
-		EventBus.RaiseEvent(delegate(IApplyAbilityEffectHandler h)
-		{
-			h.OnAbilityEffectApplied(context);
-		});
+		m_Handler.OnEffectApplied(Context);
 	}
 
-	private static void DoApplyEffects(AbilityExecutionContext context, AbilityDeliveryTarget target, [CanBeNull] IEnumerable<AbilityApplyEffect> applyEffects)
+	private void DoApplyEffects(AbilityDeliveryTarget target, [CanBeNull] IEnumerable<AbilityApplyEffect> applyEffects)
 	{
 		if (applyEffects.Empty())
 		{
-			DoApplyEffect(context, target, null);
+			DoApplyEffect(target, null);
 			return;
 		}
 		foreach (AbilityApplyEffect applyEffect in applyEffects)
 		{
-			DoApplyEffect(context, target, applyEffect);
+			DoApplyEffect(target, applyEffect);
 		}
 	}
 
-	private static void DoApplyEffect(AbilityExecutionContext context, AbilityDeliveryTarget target, [CanBeNull] AbilityApplyEffect applyEffect)
+	private void DoApplyEffect(AbilityDeliveryTarget target, [CanBeNull] AbilityApplyEffect applyEffect)
 	{
-		if (context.MaybeCaster == null)
+		if (Context.MaybeCaster == null)
 		{
-			PFLog.Default.Error(context.AbilityBlueprint, "Caster is missing");
-			return;
+			PFLog.Default.Error(Context.AbilityBlueprint, "Caster is missing");
 		}
-		MechanicEntity entity = target.Target.Entity;
-		if (entity != null)
+		else
 		{
-			PartAbilityActionsImmunity optional = entity.GetOptional<PartAbilityActionsImmunity>();
-			if (optional != null && optional.IsImmune(context))
+			if (m_Handler.IsImmune(Context, target))
 			{
 				return;
 			}
-		}
-		using (ContextData<DamagePolicyContextData>.Request().Setup(context.DamagePolicy))
-		{
-			using (AbilityExecutionContext.GetAbilityDataScope(target.AttackRule, target.Projectile))
+			using (ContextData<DamagePolicyContextData>.Request().Setup(Context.DamagePolicy))
 			{
-				using (SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Set(target.Target))
+				using (AbilityExecutionContext.GetAbilityDataScope(target.AttackRule, target.Projectile))
 				{
-					EventBus.RaiseEvent(delegate(IApplyAbilityEffectHandler h)
+					using (EvalContext.Current.PushTarget(target.Target))
 					{
-						h.OnTryToApplyAbilityEffect(context, target);
-					});
-					applyEffect?.Apply(context, target.Target);
-					SpawnFxs(context, AbilitySpawnFxTime.OnApplyEffect, target.Target);
-					EventBus.RaiseEvent(delegate(IApplyAbilityEffectHandler h)
-					{
-						h.OnAbilityEffectAppliedToTarget(context, target);
-					});
+						m_Handler.OnTryToApplyToTarget(Context, target);
+						m_Handler.InvokeApplyEffect(applyEffect, Context, target.Target);
+						m_Handler.OnEffectAppliedToTarget(Context, target);
+					}
 				}
 			}
 		}

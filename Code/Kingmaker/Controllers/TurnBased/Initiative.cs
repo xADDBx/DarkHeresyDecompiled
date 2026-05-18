@@ -7,9 +7,11 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.QA;
 using Kingmaker.UnitLogic.Squads;
+using Kingmaker.Utility.DotNetExtensions;
 using Newtonsoft.Json;
 using OwlPack.Runtime;
 using StateHasher.Core;
+using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Controllers.TurnBased;
@@ -19,10 +21,11 @@ public class Initiative : IHashable, IOwlPackable, IOwlPackable<Initiative>
 {
 	public enum Event
 	{
-		RoundStart,
-		RoundEnd,
-		TurnStart,
-		TurnEnd
+		RoundStart = 0,
+		RoundEnd = 1,
+		TurnStart = 2,
+		TurnEnd = 3,
+		TurnPreStart = 5
 	}
 
 	public readonly struct BulkSwapFluent
@@ -95,11 +98,29 @@ public class Initiative : IHashable, IOwlPackable, IOwlPackable<Initiative>
 	[OwlPackInclude]
 	public int LastTurn { get; set; }
 
+	[JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+	[OwlPackIgnore]
+	public List<InitiativeOverride> Overrides { get; set; } = new List<InitiativeOverride>();
+
+
 	public double TurnOrderPriority => (double)Value + 0.001 - (double)Order * 0.0001;
 
 	public bool ActedThisRound => LastTurn == Game.Instance.Controllers.TurnController.GameRound;
 
 	public bool Empty => Value == 0f;
+
+	public InitiativeOverride Override
+	{
+		get
+		{
+			if (!Overrides.Empty())
+			{
+				List<InitiativeOverride> overrides = Overrides;
+				return overrides[overrides.Count - 1];
+			}
+			return null;
+		}
+	}
 
 	public void Clear()
 	{
@@ -112,7 +133,7 @@ public class Initiative : IHashable, IOwlPackable, IOwlPackable<Initiative>
 
 	public bool ShouldActNow(bool isTurnBased, Event @event, out int actRound)
 	{
-		if (Game.Instance.Controllers.TurnController.IsPreparationTurn)
+		if (Game.Instance.Controllers.TurnController.IsPreparationTurn || @event == Event.TurnPreStart)
 		{
 			actRound = 0;
 			return false;
@@ -236,6 +257,15 @@ public class Initiative : IHashable, IOwlPackable, IOwlPackable<Initiative>
 		result.Append(ref val6);
 		int val7 = LastTurn;
 		result.Append(ref val7);
+		List<InitiativeOverride> overrides = Overrides;
+		if (overrides != null)
+		{
+			for (int i = 0; i < overrides.Count; i++)
+			{
+				Hash128 val8 = ClassHasher<InitiativeOverride>.GetHash128(overrides[i]);
+				result.Append(ref val8);
+			}
+		}
 		return result;
 	}
 

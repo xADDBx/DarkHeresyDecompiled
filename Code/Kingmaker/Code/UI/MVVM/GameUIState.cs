@@ -66,6 +66,7 @@ public class GameUIState : BaseDisposable, IGameModeHandler, ISubscriber, IAreaH
 	public void OnAreaBeginUnloading()
 	{
 		IsLoadingProcess.Value = true;
+		ActiveDialogController.Value = null;
 	}
 
 	public void OnAreaDidLoad()

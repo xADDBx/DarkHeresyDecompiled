@@ -4,8 +4,8 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
 using Kingmaker.EntitySystem;
+using Kingmaker.Framework;
 using Kingmaker.Framework.Abilities.Components;
-using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Mechanics;
 using OwlPack.Runtime;
 using StateHasher.Core;
@@ -79,7 +79,7 @@ public sealed class PartAbilityActionsImmunity : MechanicEntityPart, IHashable, 
 		_entries.Remove(new Entry(fact, component));
 	}
 
-	public bool IsImmune(AbilityExecutionContext context)
+	public bool IsImmune(IEvalContext context)
 	{
 		foreach (Entry entry in _entries)
 		{

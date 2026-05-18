@@ -12,23 +12,23 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CreditsVM : ViewModel
 {
-	public readonly List<BlueprintCreditsGroup> Groups;
-
-	private readonly ReactiveProperty<bool> m_Pause = new ReactiveProperty<bool>(value: false);
-
-	public readonly SelectionGroupRadioVM<CreditsMenuEntityVM> SelectionGroup;
-
-	public readonly LensSelectorVM Selector;
-
-	private readonly ReactiveCommand<BlueprintCreditsGroup> m_OnSelectGroup = new ReactiveCommand<BlueprintCreditsGroup>();
-
 	private readonly List<CreditsMenuEntityVM> m_MenuEntitiesList;
-
-	private readonly ReactiveProperty<CreditsMenuEntityVM> m_SelectedMenuEntity = new ReactiveProperty<CreditsMenuEntityVM>();
 
 	private readonly Action m_CloseAction;
 
 	private readonly ReactiveProperty<bool> m_InputFieldHasAnySymbol = new ReactiveProperty<bool>();
+
+	private readonly ReactiveProperty<CreditsMenuEntityVM> m_SelectedMenuEntity = new ReactiveProperty<CreditsMenuEntityVM>();
+
+	private readonly ReactiveProperty<bool> m_Pause = new ReactiveProperty<bool>(value: false);
+
+	private readonly ReactiveCommand<BlueprintCreditsGroup> m_OnSelectGroup = new ReactiveCommand<BlueprintCreditsGroup>();
+
+	public readonly List<BlueprintCreditsGroup> Groups;
+
+	public readonly SelectionGroupRadioVM<CreditsMenuEntityVM> SelectionGroup;
+
+	public readonly LensSelectorVM Selector;
 
 	public ReadOnlyReactiveProperty<bool> Pause => m_Pause;
 

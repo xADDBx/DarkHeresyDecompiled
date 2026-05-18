@@ -67,6 +67,6 @@ public class CharInfoSkillsBlockCommonView : CharInfoComponentWithLevelUpView<Ch
 
 	private List<CharInfoStatVM> GetSortedSkills()
 	{
-		return (base.ViewModel?.Stats.OrderBy((CharInfoStatVM s) => (!s.SourceStatType.HasValue) ? int.MaxValue : StatTypeHelper.DisplayOrder.IndexOf(s.SourceStatType.Value)))?.ToList() ?? new List<CharInfoStatVM>();
+		return (base.ViewModel?.Stats.OrderBy((CharInfoStatVM s) => StatTypeHelper.DisplayOrder.IndexOf(s.StatType)))?.ToList() ?? new List<CharInfoStatVM>();
 	}
 }

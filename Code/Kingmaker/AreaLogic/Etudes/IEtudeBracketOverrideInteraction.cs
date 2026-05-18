@@ -1,9 +1,11 @@
+using System;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic.Commands.Base;
 
 namespace Kingmaker.AreaLogic.Etudes;
 
+[Obsolete]
 public interface IEtudeBracketOverrideInteraction
 {
 	int Distance { get; }

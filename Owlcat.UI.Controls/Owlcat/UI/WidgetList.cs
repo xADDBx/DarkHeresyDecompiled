@@ -93,7 +93,14 @@ public class WidgetList : MonoBehaviour
 				if (bindable3 != null)
 				{
 					bindable2 = (IBindable)WidgetPool.Retain(bindable3 as MonoBehaviour, Container);
-					bindable2.BindDynamic(val);
+					try
+					{
+						bindable2.BindDynamic(val);
+					}
+					catch (Exception exception)
+					{
+						UIKitLogger.Exception("WidgetList: Exception on Bind() element", exception);
+					}
 				}
 				else
 				{
@@ -112,7 +119,7 @@ public class WidgetList : MonoBehaviour
 			}
 			if (bindable2 is MonoBehaviour monoBehaviour)
 			{
-				monoBehaviour.transform.SetAsLastSibling();
+				monoBehaviour.transform.SetSiblingIndex(i);
 			}
 		}
 		return Disposable.Create(Clear);

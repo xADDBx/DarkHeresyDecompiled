@@ -2,10 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.ElementsSystem;
-using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities.Base;
-using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.Utility;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 using OwlPack.Runtime;
 
@@ -30,7 +28,7 @@ public class ContextTargetEntityEvaluator : MechanicEntityEvaluator, IOwlPackabl
 
 	protected override Entity GetValueInternal()
 	{
-		return SimpleContextData<TargetWrapper, MechanicsContext.Scope.Target>.Current?.Entity;
+		return EvalContext.Current.Target?.Entity;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

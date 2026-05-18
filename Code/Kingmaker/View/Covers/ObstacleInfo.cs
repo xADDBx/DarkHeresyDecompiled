@@ -24,7 +24,7 @@ public readonly struct ObstacleInfo
 			{
 				return null;
 			}
-			return AdditionalGraphDataManager.Instance.GetGridData().Obstacles.GetObstacle(Node, (GridNodeDirection)ObstacleDirection)?.Source;
+			return AdditionalGraphDataManager.Instance.GetGridData().Obstacles.GetObstacle(Node, (GridNodeDirection)ObstacleDirection).Source;
 		}
 	}
 

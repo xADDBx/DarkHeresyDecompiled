@@ -47,7 +47,6 @@ public class CutsceneControlledUnit
 
 	private bool Mark(CutscenePlayerData cutscene)
 	{
-		PFLog.Cutscene.Log($"{Unit} marked by {cutscene.Cutscene}. q={cutscene.IsQueued} qf={cutscene.IsFirstInQueue}");
 		bool flag = true;
 		foreach (CutsceneEntry entry in m_Entries)
 		{
@@ -82,7 +81,6 @@ public class CutsceneControlledUnit
 
 	public void Release(CutscenePlayerData cutscene)
 	{
-		PFLog.Cutscene.Log($"{Unit} Release by {cutscene.Cutscene}.");
 		if (m_Entries.Count <= 0)
 		{
 			return;

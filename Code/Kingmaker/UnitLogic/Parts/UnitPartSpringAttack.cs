@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Kingmaker.Controllers;
 using Kingmaker.Controllers.TurnBased;
+using Kingmaker.ElementsSystem.ContextData;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
@@ -22,7 +23,7 @@ using UnityEngine;
 namespace Kingmaker.UnitLogic.Parts;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class UnitPartSpringAttack : BaseUnitPart, ITurnBasedModeHandler, ISubscriber, IUnitJumpHandler, ITurnStartHandler, ISubscriber<IMechanicEntity>, ITurnEndHandler, IInterruptTurnStartHandler, IInterruptTurnEndHandler, IHashable, IOwlPackable<UnitPartSpringAttack>
+public class UnitPartSpringAttack : BaseUnitPart, ITurnBasedModeHandler, ISubscriber, IUnitJumpHandler, ITurnStartHandler<EntitySubscriber>, ITurnStartHandler, ISubscriber<IMechanicEntity>, IEntitySubscriber, IEventTag<ITurnStartHandler, EntitySubscriber>, ITurnEndHandler<EntitySubscriber>, ITurnEndHandler, IEventTag<ITurnEndHandler, EntitySubscriber>, IInterruptTurnStartHandler<EntitySubscriber>, IInterruptTurnStartHandler, IEventTag<IInterruptTurnStartHandler, EntitySubscriber>, IInterruptTurnEndHandler<EntitySubscriber>, IInterruptTurnEndHandler, IEventTag<IInterruptTurnEndHandler, EntitySubscriber>, IHashable, IOwlPackable<UnitPartSpringAttack>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -128,7 +129,7 @@ public class UnitPartSpringAttack : BaseUnitPart, ITurnBasedModeHandler, ISubscr
 
 	public void HandleUnitStartTurn(bool isTurnBased)
 	{
-		if (isTurnBased && EventInvokerExtensions.MechanicEntity == base.Owner && base.Owner != null)
+		if (isTurnBased && !ContextData<TurnController.InterruptTurnEndMark>.Current)
 		{
 			RemoveEntries();
 			TurnStartPosition = base.Owner.Position;
@@ -138,35 +139,26 @@ public class UnitPartSpringAttack : BaseUnitPart, ITurnBasedModeHandler, ISubscr
 
 	public void HandleUnitStartInterruptTurn(InterruptionData interruptionData)
 	{
-		if (EventInvokerExtensions.MechanicEntity == base.Owner && base.Owner != null)
-		{
-			RemoveEntries();
-			TurnStartPosition = base.Owner.Position;
-			TurnStartMark = AreaEffectsController.CreateSpawner(AreaMark, SpringAttackFeature.MaybeContext, TurnStartPosition).Duration(1.Rounds().Seconds).Spawn();
-		}
+		RemoveEntries();
+		TurnStartPosition = base.Owner.Position;
+		TurnStartMark = AreaEffectsController.CreateSpawner(AreaMark, SpringAttackFeature.MaybeContext, TurnStartPosition).Duration(1.Rounds().Seconds).Spawn();
 	}
 
 	public void HandleUnitEndTurn(bool isTurnBased)
 	{
-		if (EventInvokerExtensions.MechanicEntity == base.Owner && base.Owner != null)
+		RemoveEntries();
+		if (TurnStartMark.Entity != null)
 		{
-			RemoveEntries();
-			if (TurnStartMark.Entity != null)
-			{
-				TurnStartMark.Entity.ForceEnded = true;
-			}
+			TurnStartMark.Entity.ForceEnded = true;
 		}
 	}
 
 	public void HandleUnitEndInterruptTurn()
 	{
-		if (EventInvokerExtensions.MechanicEntity == base.Owner && base.Owner != null)
+		RemoveEntries();
+		if (TurnStartMark.Entity != null)
 		{
-			RemoveEntries();
-			if (TurnStartMark.Entity != null)
-			{
-				TurnStartMark.Entity.ForceEnded = true;
-			}
+			TurnStartMark.Entity.ForceEnded = true;
 		}
 	}
 

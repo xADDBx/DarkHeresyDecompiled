@@ -21,14 +21,14 @@ public class TooltipTemplateSimple : TooltipBaseTemplate, ISimpleTooltip
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new TooltipBrickTitle(Header);
+		yield return new BrickTitleVM(Header);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
 	{
 		if (Description != null)
 		{
-			yield return new TooltipBrickText(Description);
+			yield return new BrickTextVM(Description);
 		}
 	}
 }

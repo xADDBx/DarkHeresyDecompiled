@@ -12,8 +12,6 @@ public class CreditsPCView : CreditsBaseView
 	[SerializeField]
 	protected OwlcatMultiButton m_CloseButton;
 
-	private InputLayer m_InputLayer;
-
 	protected override void OnBind()
 	{
 		m_CloseButton.OnLeftClickAsObservable().Subscribe(base.ViewModel.CloseCredits).AddTo(this);
@@ -32,7 +30,6 @@ public class CreditsPCView : CreditsBaseView
 			OnNextPage();
 		}).AddTo(this);
 		m_SearchButton.OnLeftClickAsObservable().Subscribe(base.OnFind).AddTo(this);
-		CreateInput();
 		UIKeybindGeneralSettings uIKeybindGeneralSettings = UISettingsRoot.Instance.UIKeybindGeneralSettings;
 		Game.Instance.Keyboard.Bind(uIKeybindGeneralSettings.PrevTab.name, delegate
 		{
@@ -42,18 +39,5 @@ public class CreditsPCView : CreditsBaseView
 		{
 			ChangeTab(direction: true);
 		}).AddTo(this);
-	}
-
-	private void CreateInput()
-	{
-		m_InputLayer = new InputLayer
-		{
-			ContextName = "CreditsView"
-		};
-		m_InputLayer.AddButton(delegate
-		{
-			OnFind();
-		}, 8);
-		GamePad.Instance.PushLayer(m_InputLayer).AddTo(this);
 	}
 }

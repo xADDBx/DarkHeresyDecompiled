@@ -10,10 +10,12 @@ using Core.Cheats;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.BundlesLoading;
+using Kingmaker.Code.View.Bridge.Interfaces;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.GameModes;
+using Kingmaker.UI.Pointer;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.View;
 using Kingmaker.View.Mechanics;
@@ -304,7 +306,7 @@ public class Utilities
 		{
 			return false;
 		}
-		Vector2 cursorPosition = Game.Instance.CursorController.CursorPosition;
+		Vector2 cursorPosition = CursorController.CursorPosition;
 		RaycastHit[] array = (Game.Instance.IsModeActive(GameModeType.SpaceCombat) ? Physics.RaycastAll(camera.ScreenPointToRay(cursorPosition)) : Physics.RaycastAll(camera.ScreenPointToRay(cursorPosition), camera.farClipPlane, 70014209));
 		foreach (RaycastHit raycastHit in array)
 		{
@@ -442,7 +444,7 @@ public class Utilities
 	public static void CreateGameHistoryLog()
 	{
 		using AreaDataStashFileAccessor areaDataStashFileAccessor = AreaDataStash.AccessFile("history");
-		File.Copy(areaDataStashFileAccessor.Path, Path.Combine(ApplicationPaths.persistentDataPath, "game-history.txt"), overwrite: true);
+		File.Copy(areaDataStashFileAccessor.Path, Path.Combine(ApplicationPaths.temporaryCachePath, "game-history.txt"), overwrite: true);
 	}
 
 	public static string BetaStatus()
@@ -458,5 +460,24 @@ public class Utilities
 	public static Quaternion V4ToQuat(Vector4 v4)
 	{
 		return new Quaternion(v4.x, v4.y, v4.z, v4.w);
+	}
+
+	public static IEnumerator<object> NewGameCoroutine(BlueprintAreaPreset preset)
+	{
+		if (Game.Instance.CurrentlyLoadedArea != null)
+		{
+			IRootUIContext context = Game.Instance.RootUIContext;
+			Game.Instance.ResetToMainMenu();
+			while (LoadingProcess.Instance.IsLoadingInProcess)
+			{
+				yield return null;
+			}
+			yield return null;
+			context.Clear();
+		}
+		Game.Instance.RootUIContext.EnterGame(delegate
+		{
+			Game.Instance.LoadNewGame(preset);
+		});
 	}
 }

@@ -11,13 +11,13 @@ public abstract class InfoBaseVM : ViewModel
 {
 	private TooltipBaseTemplate m_MainTemplate;
 
-	public readonly List<TooltipBaseBrickVM> HeaderBricks = new List<TooltipBaseBrickVM>();
+	public readonly List<TooltipBrickVM> HeaderBricks = new List<TooltipBrickVM>();
 
-	public readonly List<TooltipBaseBrickVM> BodyBricks = new List<TooltipBaseBrickVM>();
+	public readonly List<TooltipBrickVM> BodyBricks = new List<TooltipBrickVM>();
 
-	public readonly List<TooltipBaseBrickVM> FooterBricks = new List<TooltipBaseBrickVM>();
+	public readonly List<TooltipBrickVM> FooterBricks = new List<TooltipBrickVM>();
 
-	public readonly List<TooltipBaseBrickVM> HintBricks = new List<TooltipBaseBrickVM>();
+	public readonly List<TooltipBrickVM> HintBricks = new List<TooltipBrickVM>();
 
 	public TooltipBaseTemplate MainTemplate => m_MainTemplate;
 
@@ -87,16 +87,9 @@ public abstract class InfoBaseVM : ViewModel
 		}
 	}
 
-	private static void CollectBricks(IEnumerable<ITooltipBrick> bricks, List<TooltipBaseBrickVM> bricksList)
+	private static void CollectBricks(IEnumerable<ITooltipBrick> bricks, List<TooltipBrickVM> bricksList)
 	{
-		foreach (ITooltipBrick brick in bricks)
-		{
-			if (brick != null)
-			{
-				TooltipBaseBrickVM vM = brick.GetVM();
-				bricksList.Add(vM);
-			}
-		}
+		bricksList.AddRange(bricks.OfType<TooltipBrickVM>());
 	}
 
 	private void InitWithTemplates(IEnumerable<TooltipBaseTemplate> templates)
@@ -110,17 +103,17 @@ public abstract class InfoBaseVM : ViewModel
 		bool flag = true;
 		foreach (TooltipBaseTemplate template2 in templates)
 		{
-			foreach (ITooltipBrick item in template2.GetHeader(TemplateType))
+			foreach (ITooltipBrick item2 in template2.GetHeader(TemplateType))
 			{
-				if (item != null)
+				if (item2 is TooltipBrickVM item)
 				{
 					if (flag)
 					{
-						HeaderBricks.Add(item.GetVM());
+						HeaderBricks.Add(item);
 					}
 					else
 					{
-						BodyBricks.Add(item.GetVM());
+						BodyBricks.Add(item);
 					}
 				}
 			}
@@ -140,9 +133,9 @@ public abstract class InfoBaseVM : ViewModel
 		DisposeBricks(HintBricks);
 	}
 
-	private static void DisposeBricks(List<TooltipBaseBrickVM> bricksList)
+	private static void DisposeBricks(List<TooltipBrickVM> bricksList)
 	{
-		bricksList.ForEach(delegate(TooltipBaseBrickVM b)
+		bricksList.ForEach(delegate(TooltipBrickVM b)
 		{
 			b.Dispose();
 		});

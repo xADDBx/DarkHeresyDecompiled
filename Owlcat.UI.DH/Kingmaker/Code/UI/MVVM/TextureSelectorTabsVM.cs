@@ -74,7 +74,7 @@ public class TextureSelectorTabsVM : BaseCharGenAppearancePageComponentVM
 		}
 		m_TotalItems.Value = m_TabsSelectorVms.Count;
 		SetIndex((CurrentIndex.CurrentValue < TotalItems.CurrentValue) ? CurrentIndex.CurrentValue : 0);
-		m_OnSetValues.Execute();
+		m_OnSetValues.Execute(Unit.Default);
 	}
 
 	public void SetIndex(int index)

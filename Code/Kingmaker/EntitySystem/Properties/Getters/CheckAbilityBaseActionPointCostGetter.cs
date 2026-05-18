@@ -1,5 +1,6 @@
 using System;
 using Kingmaker.EntitySystem.Properties.BaseGetter;
+using Kingmaker.Framework;
 using Owlcat.Runtime.Core.Utility;
 
 namespace Kingmaker.EntitySystem.Properties.Getters;
@@ -12,7 +13,7 @@ public class CheckAbilityBaseActionPointCostGetter : BoolPropertyGetter, Propert
 
 	protected override bool GetBaseValue()
 	{
-		return this.GetAbility()?.Blueprint.ActionPointCost == Cost;
+		return EvalContext.Current.Ability?.Blueprint.ActionPointCost == Cost;
 	}
 
 	protected override string GetInnerCaption(bool useLineBreaks)

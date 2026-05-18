@@ -90,10 +90,6 @@ public abstract class WarhammerPath<TIntermediateMetric, TFinalMetric> : Path, I
 
 	private readonly Dictionary<(uint graphIndex, uint nodeIndex), PathNode> m_ClosedNodes = new Dictionary<(uint, uint), PathNode>();
 
-	private bool m_IsGatheringDeviationNodes;
-
-	private HashSet<GridNodeBase> m_NodesInDeviationRange = new HashSet<GridNodeBase>();
-
 	private PathNode m_PlacedNodeClosestToTarget;
 
 	public ILinkTraversalProvider LinkTraversalProvider { get; set; }
@@ -132,7 +128,7 @@ public abstract class WarhammerPath<TIntermediateMetric, TFinalMetric> : Path, I
 		PFLog.Default.Error("WarhammerPath: " + msg);
 	}
 
-	protected void Setup(AbstractUnitEntity unit, Vector3 start, float maxLength, [CanBeNull] GridNodeBase targetNode, [CanBeNull] MechanicEntity targetEntity, BlockMode blockMode, bool passThroughSmallUnits, TIntermediateMetric initialLength, ITraversalCostProvider<TIntermediateMetric> traversalCostProvider, bool oneWayLinksAreForbidden, OnPathDelegate pathComplete, bool isGatheringDeviationNodes = false)
+	protected void Setup(AbstractUnitEntity unit, Vector3 start, float maxLength, [CanBeNull] GridNodeBase targetNode, [CanBeNull] MechanicEntity targetEntity, BlockMode blockMode, bool passThroughSmallUnits, TIntermediateMetric initialLength, ITraversalCostProvider<TIntermediateMetric> traversalCostProvider, bool oneWayLinksAreForbidden, OnPathDelegate pathComplete)
 	{
 		callback = pathComplete;
 		m_Unit = unit;
@@ -147,7 +143,6 @@ public abstract class WarhammerPath<TIntermediateMetric, TFinalMetric> : Path, I
 		m_OneWayLinksAreForbidden = oneWayLinksAreForbidden;
 		Comparer<PathNode> comparer = Comparer<PathNode>.Create((PathNode a, PathNode b) => Compare(in a.Length, in a.Node, in b.Length, in b.Node));
 		m_OpenNodes = new PriorityQueue<PathNode>(comparer, EqualityComparer<PathNode>.Default);
-		m_IsGatheringDeviationNodes = isGatheringDeviationNodes;
 	}
 
 	protected override void Reset()
@@ -193,9 +188,7 @@ public abstract class WarhammerPath<TIntermediateMetric, TFinalMetric> : Path, I
 
 	protected override void Cleanup()
 	{
-		m_AllNodes = (from v in m_ClosedNodes.Values
-			where !m_IsGatheringDeviationNodes || m_NodesInDeviationRange.Contains(v.Node)
-			select (Node: v.Node, Metric: Convert(v))).ToDictionary(((GraphNode Node, TFinalMetric Metric) v) => v.Node, ((GraphNode Node, TFinalMetric Metric) v) => v.Metric);
+		m_AllNodes = m_ClosedNodes.Values.Select((PathNode v) => (Node: v.Node, Metric: Convert(v))).ToDictionary(((GraphNode Node, TFinalMetric Metric) v) => v.Node, ((GraphNode Node, TFinalMetric Metric) v) => v.Metric);
 		m_OpenNodes.Clear();
 		m_ClosedNodes.Clear();
 	}
@@ -219,13 +212,9 @@ public abstract class WarhammerPath<TIntermediateMetric, TFinalMetric> : Path, I
 				{
 					if (m_Current.Node is GridNodeBase && IsTargetNode(in m_Current.Length, in m_Current.Node))
 					{
-						if (!m_IsGatheringDeviationNodes)
-						{
-							TraceBack(in m_Current);
-							base.CompleteState = PathCompleteState.Complete;
-							return;
-						}
-						GatherDeviationNodes(m_Current);
+						TraceBack(in m_Current);
+						base.CompleteState = PathCompleteState.Complete;
+						return;
 					}
 					Open(in m_Current);
 				}
@@ -263,19 +252,6 @@ public abstract class WarhammerPath<TIntermediateMetric, TFinalMetric> : Path, I
 			IWarhammerTraversalProvider warhammerTraversalProvider = (IWarhammerTraversalProvider)traversalProvider;
 			return Convert(in length, in node2, in parent, in warhammerTraversalProvider);
 		}).ToArray();
-	}
-
-	private void GatherDeviationNodes(PathNode node)
-	{
-		PathNode pathNode = node;
-		while (pathNode.Node != null)
-		{
-			if (pathNode.Node is GridNodeBase item)
-			{
-				m_NodesInDeviationRange.Add(item);
-			}
-			pathNode = ((pathNode.Parent != null) ? m_ClosedNodes[(pathNode.Parent.GraphIndex, pathNode.Parent.NodeIndex)] : default(PathNode));
-		}
 	}
 
 	private bool PlaceNode(PathNode newNode)

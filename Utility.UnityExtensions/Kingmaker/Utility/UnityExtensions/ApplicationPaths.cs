@@ -54,6 +54,8 @@ public class ApplicationPaths
 		}
 	}
 
+	public static string ReplayLogsDir => temporaryCachePath;
+
 	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 	public static void Init()
 	{

@@ -69,7 +69,7 @@ public class Recruit : GameAction
 			SwitchToCompanion(data);
 		}
 		Game.Instance.Controllers.EntitySpawner.Tick();
-		if (Game.Instance.Player.Party.Count > 6)
+		if (Game.Instance.Player.Party.Count > Game.Instance.Player.MaxPartySize)
 		{
 			recruited = Recruited;
 			foreach (RecruitData recruitData2 in recruited)
@@ -97,12 +97,12 @@ public class Recruit : GameAction
 	private void ShowPartyInterface()
 	{
 		List<RecruitData> required = Recruited.Where((RecruitData recruitData) => recruitData.MustBeInParty).ToList();
-		if (required.Count > 5)
+		if (required.Count > Game.Instance.Player.MaxPartySize - 1)
 		{
 			Element.LogError(this, "Cannot recruit {0} characters in {1}: too many!!", required.Count, this);
 			return;
 		}
-		while (Game.Instance.Player.Party.Count > 6 - required.Count)
+		while (Game.Instance.Player.Party.Count > Game.Instance.Player.MaxPartySize - required.Count)
 		{
 			BaseUnitEntity value = Game.Instance.Player.Party.Last((BaseUnitEntity c) => c != GameHelper.GetPlayerCharacter());
 			Game.Instance.Player.RemoveCompanion(value, stayInGame: true);
@@ -121,8 +121,11 @@ public class Recruit : GameAction
 			{
 				foreach (BaseUnitEntity item2 in Game.Instance.Player.RemoteCompanions.ToTempList())
 				{
-					item2.IsInGame = false;
-					item2.View.SetVisible(visible: false);
+					if (item2.GetOptional<UnitPartCompanion>()?.GetCurrentSpawner() == null)
+					{
+						item2.IsInGame = false;
+						item2.View.SetVisible(visible: false);
+					}
 				}
 				Game.Instance.Player.FixPartyAfterChange();
 				SelectionManagerFacade.UpdateSelectedUnits();
@@ -139,7 +142,10 @@ public class Recruit : GameAction
 			{
 				foreach (BaseUnitEntity item3 in Game.Instance.Player.RemoteCompanions.ToTempList())
 				{
-					item3.IsInGame = false;
+					if (item3.GetOptional<UnitPartCompanion>()?.GetCurrentSpawner() == null)
+					{
+						item3.IsInGame = false;
+					}
 				}
 				RecruitData[] recruited = Recruited;
 				foreach (RecruitData recruitData2 in recruited)
@@ -157,8 +163,13 @@ public class Recruit : GameAction
 	{
 		Player player = Game.Instance.Player;
 		BaseUnitEntity baseUnitEntity = player.AllCharacters.FirstOrDefault((BaseUnitEntity u) => u.Blueprint == data.CompanionBlueprint);
-		bool flag = baseUnitEntity != null && baseUnitEntity.GetOptional<UnitPartCompanion>()?.State == CompanionState.ExCompanion;
-		bool flag2 = baseUnitEntity != null && baseUnitEntity.GetOptional<UnitPartCompanion>()?.State == CompanionState.Remote;
+		UnitPartCompanion unitPartCompanion = baseUnitEntity?.GetOptional<UnitPartCompanion>();
+		bool flag = unitPartCompanion != null && unitPartCompanion.State == CompanionState.ExCompanion;
+		bool flag2 = unitPartCompanion != null && unitPartCompanion.State == CompanionState.Remote;
+		if (unitPartCompanion != null && unitPartCompanion.IsExForever)
+		{
+			throw new Exception($"Trying to recruit companion {baseUnitEntity.Name} that is {unitPartCompanion.ExState}");
+		}
 		BaseUnitEntity baseUnitEntity2 = null;
 		if (data.NPCUnit != null)
 		{

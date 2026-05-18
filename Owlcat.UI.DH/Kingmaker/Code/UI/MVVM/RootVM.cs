@@ -1,18 +1,24 @@
+using System;
+using System.Collections.Generic;
 using Code.View.UI.MVVM.Dialog;
 using Code.View.UI.MVVM.Titles;
 using JetBrains.Annotations;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.Framework.Settings.UISettings;
+using Kingmaker.Code.UI.MVVM.CombatNotifications;
 using Kingmaker.Code.UI.MVVM.DetectiveJournal;
 using Kingmaker.Code.UI.MVVM.EntityInfo;
 using Kingmaker.Code.UI.MVVM.SignalDevice;
 using Kingmaker.Code.UI.MVVM.SkipCutscene;
 using Kingmaker.Code.UI.MVVM.UnitInfo;
+using Kingmaker.Code.UI.MVVM.Vendor;
 using Kingmaker.Code.View.UI.MVVM.HUD.PreciseAttack;
 using Kingmaker.Code.View.UI.MVVM.HUDNotification.New;
 using Kingmaker.Code.View.UI.MVVM.SaveLoad;
 using Kingmaker.Code.View.UI.MVVM.ServiceWindows;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Pointer;
 using Owlcat.UI;
 using R3;
 using UnityEngine;
@@ -69,11 +75,26 @@ public class RootVM : ViewModel
 	[UsedImplicitly]
 	public readonly ServiceWindowsContext ServiceWindowsContext;
 
+	[UsedImplicitly]
+	public readonly LootContext LootContext;
+
+	[UsedImplicitly]
+	public readonly CharGenContextVM CharGenContext;
+
+	[UsedImplicitly]
+	private readonly BarksContext m_BarksContext;
+
+	public readonly ReactiveProperty<CursorVM> CursorVM = new ReactiveProperty<CursorVM>();
+
 	public readonly ReactiveProperty<MainMenuVM> MainMenuVM = new ReactiveProperty<MainMenuVM>();
 
 	public readonly ReactiveProperty<TermsOfUseVM> TermsOfUseVM = new ReactiveProperty<TermsOfUseVM>();
 
-	public readonly ReactiveProperty<CombatStartWindowVM> CombatStartWindowVM = new ReactiveProperty<CombatStartWindowVM>();
+	public readonly ReactiveProperty<CombatStartWindowVM> PreparationTurnWindowVM = new ReactiveProperty<CombatStartWindowVM>();
+
+	public readonly ReactiveProperty<CombatStartNotificationVM> CombatStartNotificationVM = new ReactiveProperty<CombatStartNotificationVM>();
+
+	public readonly ReactiveProperty<CombatHUDNotificationsVM> CombatHUDNotificationsVM = new ReactiveProperty<CombatHUDNotificationsVM>();
 
 	public readonly ReactiveProperty<InitiativeTrackerVM> InitiativeTrackerVM = new ReactiveProperty<InitiativeTrackerVM>();
 
@@ -153,17 +174,19 @@ public class RootVM : ViewModel
 
 	public readonly ReactiveProperty<LootVM> LootVM = new ReactiveProperty<LootVM>();
 
-	public readonly LootContext LootContext;
+	public readonly ReactiveProperty<VendorBaseScreenVM> VendorVM = new ReactiveProperty<VendorBaseScreenVM>();
+
+	public readonly ReactiveProperty<ContextMenuVM> ContextMenuVM = new ReactiveProperty<ContextMenuVM>();
+
+	public readonly ReactiveProperty<CounterWindowVM> CounterVM = new ReactiveProperty<CounterWindowVM>();
 
 	public readonly ReactiveProperty<InterchapterVM> InterchapterVM = new ReactiveProperty<InterchapterVM>();
 
 	public readonly ReactiveProperty<AlignmentMarkRewardVM> SoulMarkRewardVM = new ReactiveProperty<AlignmentMarkRewardVM>();
 
-	public readonly ReactiveProperty<TransitionVM> TransitionVM = new ReactiveProperty<TransitionVM>();
+	public readonly ReactiveProperty<TransitionMapVM> TransitionMapVM = new ReactiveProperty<TransitionMapVM>();
 
 	public readonly ReactiveProperty<NewGameVM> NewGameVM = new ReactiveProperty<NewGameVM>();
-
-	public readonly CharGenContextVM CharGenContextVM;
 
 	public readonly ReactiveProperty<CharGenVM> CharGenVM = new ReactiveProperty<CharGenVM>();
 
@@ -183,17 +206,19 @@ public class RootVM : ViewModel
 
 	public readonly ReactiveProperty<TitlesVM> TitlesVM = new ReactiveProperty<TitlesVM>();
 
-	private readonly ReactiveProperty<CombatMechanicEntityVM> m_CurrentUnit = new ReactiveProperty<CombatMechanicEntityVM>();
+	public readonly ReactiveProperty<CreditsVM> CreditsVM = new ReactiveProperty<CreditsVM>();
+
+	public readonly ReactiveProperty<FadeVM> FadeVM = new ReactiveProperty<FadeVM>();
+
+	public readonly UIVisibilityVM VisibilityVM;
 
 	public static RootVM Instance { get; private set; }
 
-	public bool IsCursorActive => Game.Instance.CursorController?.IsCursorActive ?? false;
-
-	public RootVM()
+	public RootVM(Action loadingHandler)
 	{
 		Instance = this;
-		MainMenuContext = new MainMenuContext(MainMenuVM, NewGameVM, TermsOfUseVM).AddTo(this);
-		HUDContext = new HUDContext(CombatStartWindowVM, InitiativeTrackerVM, m_CurrentUnit, ActionBarVM, InspectVM, CombatLogVM, IngameMenuVM, IngameMenuSettingsButtonVM, PartyVM, PreciseAttackVM, UnitInfoVM, RadarTempVM, SkipCutsceneVM, CombatEndWindowVM).AddTo(this);
+		MainMenuContext = new MainMenuContext(MainMenuVM, NewGameVM, TermsOfUseVM, loadingHandler).AddTo(this);
+		HUDContext = new HUDContext(PreparationTurnWindowVM, CombatStartNotificationVM, CombatHUDNotificationsVM, InitiativeTrackerVM, ActionBarVM, InspectVM, CombatLogVM, IngameMenuVM, IngameMenuSettingsButtonVM, PartyVM, PreciseAttackVM, UnitInfoVM, RadarTempVM, SkipCutsceneVM, CombatEndWindowVM).AddTo(this);
 		OvertipsContext = new OvertipsContext(VariativeInteractionVM, SurfaceOvertipsVM, PointMarkersVM).AddTo(this);
 		CommonContext = new CommonContext(MessageBoxVM, BugReportVM, SubtitleVM, TutorialVM).AddTo(this);
 		TooltipContext = new TooltipContext(TooltipVM, HintVM, InfoWindowVM, GlossaryInfoWindowVM, ComparativeTooltipVM).AddTo(this);
@@ -205,35 +230,51 @@ public class RootVM : ViewModel
 		EscMenuContext = new EscMenuContext(EscMenuVM).AddTo(this);
 		GameOverContext = new GameOverContext(GameOverVM).AddTo(this);
 		FormationContext = new FormationContext(FormationVM).AddTo(this);
-		TransitionContext = new TransitionContext(TransitionVM).AddTo(this);
+		TransitionContext = new TransitionContext(TransitionMapVM).AddTo(this);
 		SettingsContext = new SettingsContext(SettingsVM).AddTo(this);
 		SaveLoadContext = new SaveLoadContext(SaveLoadVM).AddTo(this);
 		m_SignalFxContext = new SignalFxContext().AddTo(this);
-		CharGenContextVM = new CharGenContextVM(CharGenVM, RespecVM).AddTo(this);
+		CharGenContext = new CharGenContextVM(CharGenVM, RespecVM).AddTo(this);
+		VisibilityVM = new UIVisibilityVM().AddTo(this);
+		UISettingsEntityKeyBinding switchUIVisibility = UISettingsRoot.Instance.UIKeybindGeneralSettings.SwitchUIVisibility;
+		Game.Instance.Keyboard.Bind(switchUIVisibility.name, UIVisibilityState.SwitchVisibility).AddTo(this);
+		new VendorContext(VendorVM).AddTo(this);
+		new InventoryContext(CounterVM, ContextMenuVM).AddTo(this);
 		new ChooseControllerModeContext(GamepadConnectDisconnectVM, RootUIContext.CanChangeInput).AddTo(this);
-		new TitlesContext(TitlesVM, delegate
+		new TitlesContext(TitlesVM, CreditsVM, delegate
 		{
 			Game.Instance.ResetToMainMenu();
 		}).AddTo(this);
 		new GroupChangerContext(GroupChangerVM).AddTo(this);
+		CursorVM.Value = new CursorVM(Game.Instance.CursorController);
 		NotificatorVM.Value = new NotificatorVM().AddTo(this);
 		PauseNotificationVM.Value = new PauseNotificationVM().AddTo(this);
 		SystemNotificatorVM.Value = new SystemNotificatorVM().AddTo(this);
-		CursorNotificationVM.Value = new CursorNotificationVM(() => Input.mousePosition, () => Game.Instance.CursorController.CursorHasText).AddTo(this);
+		CursorNotificationVM.Value = new CursorNotificationVM(() => Game.Instance.CursorController.Position, () => Game.Instance.CursorController.CursorHasText).AddTo(this);
 		EtudeCounterVM.Value = new EtudeCounterVM().AddTo(this);
 		LineOfSightControllerVM.Value = new LineOfSightControllerVM().AddTo(this);
 		ChannelingLinesControllerVM.Value = new ChannelingLinesControllerVM().AddTo(this);
-		EntityInfoVM.Value = new EntityInfoVM(IsTurnBasedMode, GetPointerPosition, UIStrings.Instance, UIConfig.Instance.UIIcons).AddTo(this);
+		FadeVM.Value = new FadeVM().AddTo(this);
+		EntityInfoVM.Value = new EntityInfoVM(() => (Game.Instance?.Controllers?.TurnController?.TurnBasedModeActive).GetValueOrDefault(), () => Game.Instance?.Controllers?.ClickEventsController?.WorldPosition ?? Vector3.zero, UIStrings.Instance).AddTo(this);
+		m_BarksContext = new BarksContext(new Dictionary<BarkType, List<IBarkHandler>>
+		{
+			{
+				BarkType.Default,
+				new List<IBarkHandler>
+				{
+					BarksContext.WrapReactive(SurfaceOvertipsVM),
+					BarksContext.WrapReactive(PartyVM)
+				}
+			},
+			{
+				BarkType.ServoSkull,
+				new List<IBarkHandler> { BarksContext.WrapReactive(CombatHUDNotificationsVM) }
+			}
+		}).AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 	}
 
-	private bool IsTurnBasedMode()
+	public void Test()
 	{
-		return (Game.Instance?.Controllers?.TurnController?.TurnBasedModeActive).GetValueOrDefault();
-	}
-
-	private Vector3 GetPointerPosition()
-	{
-		return Game.Instance?.Controllers?.ClickEventsController?.WorldPosition ?? Vector3.zero;
 	}
 }

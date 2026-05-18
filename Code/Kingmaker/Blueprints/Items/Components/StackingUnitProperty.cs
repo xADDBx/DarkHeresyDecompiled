@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Items.Equipment;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics;
 using Owlcat.Runtime.Core.Utility;
@@ -25,7 +26,7 @@ public class StackingUnitProperty : BlueprintComponent
 
 	public BlueprintStackingUnitProperty Property => m_Property?.Get();
 
-	public int GetValue(MechanicsContext context)
+	public int GetValue(IEvalContext context)
 	{
 		return m_Value.Calculate(context);
 	}

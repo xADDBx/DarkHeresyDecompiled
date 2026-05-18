@@ -41,7 +41,7 @@ public class EquipmentSlot<TBlueprintItem> : ItemSlot, IHashable, IOwlPackable<E
 	public override bool IsItemSupported(ItemEntity item)
 	{
 		MechanicEntity owner = base.Owner;
-		if (owner != null && owner.IsInCombat)
+		if (owner != null && owner.IsInCombat && !Game.Instance.Controllers.TurnController.IsPreparationTurn)
 		{
 			return false;
 		}
@@ -51,7 +51,7 @@ public class EquipmentSlot<TBlueprintItem> : ItemSlot, IHashable, IOwlPackable<E
 	public override bool CanRemoveItem()
 	{
 		MechanicEntity owner = base.Owner;
-		if (owner != null && owner.IsInCombat)
+		if (owner != null && owner.IsInCombat && !Game.Instance.Controllers.TurnController.IsPreparationTurn)
 		{
 			return false;
 		}

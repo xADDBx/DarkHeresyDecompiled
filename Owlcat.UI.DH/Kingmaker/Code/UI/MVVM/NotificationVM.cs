@@ -11,6 +11,6 @@ public class NotificationVM : ViewModel
 
 	protected void ShowNotification()
 	{
-		m_ShowNotificationCommand.Execute();
+		m_ShowNotificationCommand.Execute(Unit.Default);
 	}
 }

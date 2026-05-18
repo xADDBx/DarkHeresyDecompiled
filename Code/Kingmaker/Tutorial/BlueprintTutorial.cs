@@ -2,6 +2,7 @@ using System;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Code.Framework.Settings.UISettings;
+using Kingmaker.ElementsSystem;
 using Kingmaker.Localization;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.Attributes;
@@ -62,6 +63,8 @@ public class BlueprintTutorial : BlueprintFact, ITutorialPage
 	public UISettingsEntityBase.UISettingsPlatform VisibilitySetting;
 
 	public BlueprintEncyclopediaPageReference EncyclopediaReference;
+
+	public ActionList ActionsOnClose = new ActionList();
 
 	private bool HasTrigger => this.GetComponent<TutorialTrigger>();
 

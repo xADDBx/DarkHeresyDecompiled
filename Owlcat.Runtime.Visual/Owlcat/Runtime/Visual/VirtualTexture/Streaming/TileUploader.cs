@@ -23,7 +23,7 @@ public class TileUploader : IDisposable
 
 	private int2 m_BatchedCopyKernelSize;
 
-	private RTHandle m_BatchedTilesRt;
+	private RenderTexture m_BatchedTilesRt;
 
 	private GraphicsBuffer m_UploadBuffer;
 
@@ -41,7 +41,7 @@ public class TileUploader : IDisposable
 
 	public int TilesLoadingLag => m_TilesLoadingLag;
 
-	public RTHandle BatchedCopyRt => m_BatchedTilesRt;
+	public RenderTexture BatchedCopyRt => m_BatchedTilesRt;
 
 	public TilesInBatchLimit Limit => m_Limit;
 
@@ -73,29 +73,16 @@ public class TileUploader : IDisposable
 			m_LimitSize = new int2(8, 8);
 			break;
 		}
-		int2 @int = m_LimitSize * 144 / 4;
-		RenderTextureDescriptor descriptor = new RenderTextureDescriptor
-		{
-			width = @int.x,
-			height = @int.y,
-			volumeDepth = 1,
-			graphicsFormat = GraphicsFormat.R32G32B32A32_SInt,
-			autoGenerateMips = false,
-			mipCount = 2,
-			useMipMap = true,
-			dimension = TextureDimension.Tex2D,
-			msaaSamples = 1,
-			enableRandomWrite = true
-		};
-		m_BatchedTilesRt = RTHandles.Alloc(in descriptor);
+		ValidateBatchCopyRT();
 		int num = UnsafeUtility.SizeOf<int>();
 		int count = (int)m_Limit * 25920 / num;
 		m_UploadBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, num);
+		m_UploadBuffer.name = "VTUploadBuffer";
 	}
 
 	public void Dispose()
 	{
-		RTHandles.Release(m_BatchedTilesRt);
+		CoreUtils.Destroy(m_BatchedTilesRt);
 		m_UploadBuffer?.Dispose();
 	}
 
@@ -108,6 +95,7 @@ public class TileUploader : IDisposable
 	{
 		m_TilesLoadedPerFrame = 0;
 		m_TilesLoadingLag = 0;
+		ValidateBatchCopyRT();
 		if (context.PendingBatches.Count <= 0)
 		{
 			return;
@@ -120,10 +108,10 @@ public class TileUploader : IDisposable
 			cmd.SetComputeBufferParam(m_CopyTilesCS, m_BatchedCopyKernerIndex, ShaderPropertyId._RawData, m_UploadBuffer);
 			cmd.SetComputeIntParam(m_CopyTilesCS, ShaderPropertyId._MipWidth, 36);
 			cmd.SetComputeTextureParam(m_CopyTilesCS, m_BatchedCopyKernerIndex, ShaderPropertyId._Result, m_BatchedTilesRt, 0);
-			cmd.DispatchCompute(m_CopyTilesCS, m_BatchedCopyKernerIndex, RenderingUtils.DivRoundUp(m_BatchedTilesRt.rt.width, m_BatchedCopyKernelSize.x), RenderingUtils.DivRoundUp(m_BatchedTilesRt.rt.height, m_BatchedCopyKernelSize.y), 1);
+			cmd.DispatchCompute(m_CopyTilesCS, m_BatchedCopyKernerIndex, RenderingUtils.DivRoundUp(m_BatchedTilesRt.width, m_BatchedCopyKernelSize.x), RenderingUtils.DivRoundUp(m_BatchedTilesRt.height, m_BatchedCopyKernelSize.y), 1);
 			cmd.SetComputeIntParam(m_CopyTilesCS, ShaderPropertyId._MipWidth, 18);
 			cmd.SetComputeTextureParam(m_CopyTilesCS, m_BatchedCopyKernerIndex, ShaderPropertyId._Result, m_BatchedTilesRt, 1);
-			cmd.DispatchCompute(m_CopyTilesCS, m_BatchedCopyKernerIndex, RenderingUtils.DivRoundUp(m_BatchedTilesRt.rt.width / 2, m_BatchedCopyKernelSize.x), RenderingUtils.DivRoundUp(m_BatchedTilesRt.rt.height / 2, m_BatchedCopyKernelSize.y), 1);
+			cmd.DispatchCompute(m_CopyTilesCS, m_BatchedCopyKernerIndex, RenderingUtils.DivRoundUp(m_BatchedTilesRt.width / 2, m_BatchedCopyKernelSize.x), RenderingUtils.DivRoundUp(m_BatchedTilesRt.height / 2, m_BatchedCopyKernelSize.y), 1);
 			int num = -1;
 			Span<TileReadTask> span = UnsafeCollectionExtensions.AsSpan(in pendingBatch.Tasks);
 			for (int i = 0; i < pendingBatch.Tasks.Length; i++)
@@ -162,11 +150,39 @@ public class TileUploader : IDisposable
 		}
 	}
 
+	private void ValidateBatchCopyRT()
+	{
+		if (m_BatchedTilesRt == null)
+		{
+			int2 @int = m_LimitSize * 144 / 4;
+			RenderTextureDescriptor renderTextureDescriptor = default(RenderTextureDescriptor);
+			renderTextureDescriptor.width = @int.x;
+			renderTextureDescriptor.height = @int.y;
+			renderTextureDescriptor.volumeDepth = 1;
+			renderTextureDescriptor.graphicsFormat = GraphicsFormat.R32G32B32A32_SInt;
+			renderTextureDescriptor.depthStencilFormat = GraphicsFormat.None;
+			renderTextureDescriptor.autoGenerateMips = false;
+			renderTextureDescriptor.mipCount = 2;
+			renderTextureDescriptor.useMipMap = true;
+			renderTextureDescriptor.dimension = TextureDimension.Tex2D;
+			renderTextureDescriptor.msaaSamples = 1;
+			renderTextureDescriptor.enableRandomWrite = true;
+			renderTextureDescriptor.shadowSamplingMode = ShadowSamplingMode.None;
+			RenderTextureDescriptor desc = renderTextureDescriptor;
+			m_BatchedTilesRt = new RenderTexture(desc);
+			m_BatchedTilesRt.name = "VTBatchedCopyRT";
+		}
+		if (!m_BatchedTilesRt.IsCreated())
+		{
+			m_BatchedTilesRt.Create();
+		}
+	}
+
 	private void RefreshBatchedCopyDebugTex()
 	{
 		if (m_BatchedCopyDebugTex == null)
 		{
-			m_BatchedCopyDebugTex = new Texture2D(mipmapLimitDescriptor: new MipmapLimitDescriptor(useMipmapLimit: false, string.Empty), width: m_BatchedTilesRt.rt.width * 4, height: m_BatchedTilesRt.rt.height * 4, textureFormat: TextureFormat.DXT5, mipCount: 1, linear: true, createUninitialized: true);
+			m_BatchedCopyDebugTex = new Texture2D(mipmapLimitDescriptor: new MipmapLimitDescriptor(useMipmapLimit: false, string.Empty), width: m_BatchedTilesRt.width * 4, height: m_BatchedTilesRt.height * 4, textureFormat: TextureFormat.DXT5, mipCount: 1, linear: true, createUninitialized: true);
 			m_BatchedCopyDebugTex.Apply(updateMipmaps: false, makeNoLongerReadable: true);
 		}
 	}

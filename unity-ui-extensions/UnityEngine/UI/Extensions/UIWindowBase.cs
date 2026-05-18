@@ -80,7 +80,7 @@ public class UIWindowBase : MonoBehaviour, IBeginDragHandler, IEventSystemHandle
 		else
 		{
 			Ray ray = m_canvas.worldCamera.ScreenPointToRay(screenPosition);
-			if (!new Plane(m_canvasRectTransform.forward, m_canvasRectTransform.position).Raycast(ray, out var enter))
+			if (!new Plane(m_canvasRectTransform.forward, m_canvasRectTransform.position).Raycast(ray, out float enter))
 			{
 				throw new Exception("Is it practically possible?");
 			}

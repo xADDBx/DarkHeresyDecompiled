@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Code.Framework;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Services;
+using Kingmaker.Controllers.Units;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
@@ -13,14 +13,12 @@ using Kingmaker.UnitLogic.Mechanics.Facts;
 using Newtonsoft.Json;
 using Owlcat.UI;
 using OwlPack.Runtime;
-using StateHasher.Core;
-using StateHasher.Core.Hashers;
 using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
 [OwlPackable(OwlPackableMode.Generate)]
-public class MechanicActionBarSlotToggleAbility : MechanicActionBarSlot, IHashable, IOwlPackable<MechanicActionBarSlotToggleAbility>
+public class MechanicActionBarSlotToggleAbility : MechanicActionBarSlot, IOwlPackable<MechanicActionBarSlotToggleAbility>
 {
 	[JsonProperty]
 	[OwlPackInclude]
@@ -74,8 +72,7 @@ public class MechanicActionBarSlotToggleAbility : MechanicActionBarSlot, IHashab
 		if (IsPossibleActive)
 		{
 			TrySetAbilityToPrediction(state: true);
-			Ability.Enabled = !Ability.Enabled;
-			Metrics.ToggleAbility.Id(Ability.Blueprint.AssetGuid).State(Ability.Enabled).Send();
+			UnitCommandsRunner.TryUnitToggleAbility(base.Unit, Ability);
 		}
 	}
 
@@ -141,17 +138,6 @@ public class MechanicActionBarSlotToggleAbility : MechanicActionBarSlot, IHashab
 			return failedRestriction.GetAbilityCasterRestrictionUIText(Ability.Owner);
 		}
 		return string.Empty;
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		EntityFactRef<ToggleAbility> obj = m_AbilityRef;
-		Hash128 val2 = StructHasher<EntityFactRef<ToggleAbility>>.GetHash128(ref obj);
-		result.Append(ref val2);
-		return result;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

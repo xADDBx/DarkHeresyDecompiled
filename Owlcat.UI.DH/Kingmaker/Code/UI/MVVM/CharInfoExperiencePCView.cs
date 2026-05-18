@@ -40,11 +40,15 @@ public class CharInfoExperiencePCView : CharInfoComponentView<CharInfoExperience
 	{
 		base.Initialize();
 		m_LevelLabel.text = UIStrings.Instance.CharacterSheet.LvlShort;
-		m_PsyRatingLabel.text = UIStrings.Instance.CharacterSheet.PsyRatingShort;
-		ObservableSubscribeExtensions.Subscribe(m_LevelUpButton.OnLeftClickAsObservable(), delegate
+		if (m_PsyRatingLabel != null)
+		{
+			m_PsyRatingLabel.text = UIStrings.Instance.CharacterSheet.PsyRatingShort;
+		}
+		ObservableSubscribeExtensions.Subscribe(m_LevelUpButton?.OnLeftClickAsObservable(), delegate
 		{
 			base.ViewModel.LevelUp();
 		}).AddTo(this);
+		base.gameObject.SetActive(value: false);
 	}
 
 	protected override void OnBind()
@@ -54,15 +58,24 @@ public class CharInfoExperiencePCView : CharInfoComponentView<CharInfoExperience
 		{
 			m_Level.text = $"{level}";
 		}).AddTo(this);
-		base.ViewModel.HasPsyRating.Subscribe(m_PsyRatingGroup.SetActive).AddTo(this);
-		base.ViewModel.PsyRating.Subscribe(delegate(int psyRating)
+		if (m_PsyRatingGroup != null)
 		{
-			m_PsyRating.text = $"{psyRating}";
-		}).AddTo(this);
-		base.ViewModel.CanLevelup.Subscribe(delegate
+			base.ViewModel.HasPsyRating.Subscribe(m_PsyRatingGroup.SetActive).AddTo(this);
+		}
+		if (m_PsyRating != null)
 		{
-			m_LevelUpButton.gameObject.SetActive(base.ViewModel.CanLevelup.CurrentValue);
-		}).AddTo(this);
+			base.ViewModel.PsyRating.Subscribe(delegate(int psyRating)
+			{
+				m_PsyRating.text = $"{psyRating}";
+			}).AddTo(this);
+		}
+		if (m_LevelUpButton != null)
+		{
+			base.ViewModel.CanLevelup.Subscribe(delegate
+			{
+				m_LevelUpButton.gameObject.SetActive(base.ViewModel.CanLevelup.CurrentValue);
+			}).AddTo(this);
+		}
 		if (m_ExpRoundImage != null)
 		{
 			base.ViewModel.CurrentLevelExpRatio.Subscribe(delegate(float value)
@@ -70,6 +83,13 @@ public class CharInfoExperiencePCView : CharInfoComponentView<CharInfoExperience
 				m_ExpRoundImage.fillAmount = value;
 			}).AddTo(this);
 		}
+		base.gameObject.SetActive(value: true);
+	}
+
+	protected override void OnUnbind()
+	{
+		base.OnUnbind();
+		base.gameObject.SetActive(value: false);
 	}
 
 	protected override void RefreshView()

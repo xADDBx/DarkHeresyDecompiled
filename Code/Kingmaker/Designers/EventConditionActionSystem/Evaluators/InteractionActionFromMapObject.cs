@@ -32,7 +32,7 @@ public class InteractionActionFromMapObject : InteractionActionEvaluator, IOwlPa
 		return $"InteractionAction from {MapObject}";
 	}
 
-	protected override InteractionAction GetValueInternal()
+	protected override InteractionActionPart GetValueInternal()
 	{
 		MapObjectEntity value = MapObject.GetValue();
 		InteractionActionPart optional = value.Parts.GetOptional<InteractionActionPart>();
@@ -41,7 +41,7 @@ public class InteractionActionFromMapObject : InteractionActionEvaluator, IOwlPa
 			PFLog.EventConditionActionSystem.Warning($"Entity {value} doesn't have InteractionActionPart");
 			return null;
 		}
-		return (InteractionAction)optional.Source;
+		return optional;
 	}
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)

@@ -4,10 +4,8 @@ using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
 using Kingmaker.Networking.Serialization;
 using Kingmaker.UnitLogic.Parts;
-using Kingmaker.View.Mechanics.Entities;
 using OwlPack.Runtime;
 using StateHasher.Core;
 using UnityEngine;
@@ -41,26 +39,17 @@ public class PlatformObjectEntity : Entity, IUpdatable, IHashable, IOwlPackable<
 	[GameStateInclude]
 	private Vector3 PlatformPosition => base.View?.ViewTransform.position ?? Vector3.zero;
 
-	public PlatformObjectEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame)
+	public PlatformObjectEntity(IEntityConfig config)
+		: base(config)
 	{
 	}
 
-	public PlatformObjectEntity(JsonConstructorMark _)
+	public PlatformObjectEntity(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	public PlatformObjectEntity(PlatformObjectView view)
-		: this(view.UniqueId, view.IsInGameBySettings)
-	{
-	}
-
-	protected PlatformObjectEntity()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -109,7 +98,7 @@ public class PlatformObjectEntity : Entity, IUpdatable, IHashable, IOwlPackable<
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		PlatformObjectEntity source = new PlatformObjectEntity();
+		PlatformObjectEntity source = new PlatformObjectEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<PlatformObjectEntity, TPossiblyBase>(ref source);
 	}
 

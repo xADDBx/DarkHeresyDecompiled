@@ -1,9 +1,7 @@
-using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.QA.Arbiter.Profiling;
-using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.MaterialEffects.AdditionalAlbedo;
 using Kingmaker.Visual.MaterialEffects.BloodMask;
 using Kingmaker.Visual.MaterialEffects.ColorTint;
@@ -21,13 +19,10 @@ namespace Kingmaker.Visual.MaterialEffects;
 
 public class StandardMaterialController : UpdateableBehaviour
 {
-	[Flags]
-	private enum DirtyFlags
-	{
-		None = 0,
-		RenderersAndMaterials = 1,
-		MaterialProperties = 2
-	}
+	private bool m_IsDirty;
+
+	[SerializeField]
+	private HashSet<int> m_ActiveRendererIds = new HashSet<int>();
 
 	[SerializeField]
 	private ColorTintAnimationController m_ColorTintController = new ColorTintAnimationController();
@@ -52,8 +47,6 @@ public class StandardMaterialController : UpdateableBehaviour
 
 	private LayeredMaterialController m_OverlayMaterialController;
 
-	private DirtyFlags m_DirtyFlags;
-
 	private bool m_IsDisabled;
 
 	internal ColorTintAnimationController ColorTintController => m_ColorTintController;
@@ -73,6 +66,11 @@ public class StandardMaterialController : UpdateableBehaviour
 	[UsedImplicitly]
 	private void Awake()
 	{
+		if (m_OverlayMaterialController == null)
+		{
+			m_OverlayMaterialController = new LayeredMaterialController(base.gameObject, new MaterialPropertyBlock());
+		}
+		m_OverlayMaterialController.SetMaxActiveLayersCount(ConfigRoot.Instance.FxRoot.MaxMaterialLayersCount);
 		Setup();
 	}
 
@@ -80,98 +78,115 @@ public class StandardMaterialController : UpdateableBehaviour
 	private void OnDestroy()
 	{
 		m_CustomMaterialPropertyAnimationController.Dispose();
+		CleanupRenderers();
 	}
 
 	private void Setup()
 	{
-		SetupMaterials();
-		SetupControllers();
-		SetupOverlayController();
-	}
-
-	private void CleanupMaterials()
-	{
-		m_ColorTintController.ClearMaterials();
-		m_RimController.ClearMaterials();
-		m_DissolveController.ClearMaterials();
-		m_AdditionalAlbedoController.ClearMaterials();
-		m_MaterialParametersOverrideController.ClearMaterials();
-		m_BloodMaskController.ClearMaterials();
-	}
-
-	private void SetupMaterials()
-	{
+		m_OverlayMaterialController.RefreshScriptPropertiesSnapshot();
 		List<Renderer> value;
 		using (CollectionPool<List<Renderer>, Renderer>.Get(out value))
 		{
 			GetComponentsInChildren(value);
+			HashSet<int> hashSet = new HashSet<int>();
 			foreach (Renderer item in value)
 			{
-				if ((!(item is MeshRenderer) && !(item is SkinnedMeshRenderer) && !(item is ParticleSystemRenderer) && !(item is LineRenderer) && !(item is TrailRenderer)) || item.renderingLayerMask == 0)
+				if ((item is MeshRenderer || item is SkinnedMeshRenderer || item is ParticleSystemRenderer || item is LineRenderer || item is TrailRenderer) && item.renderingLayerMask != 0)
 				{
-					continue;
-				}
-				List<Material> value2;
-				using (CollectionPool<List<Material>, Material>.Get(out value2))
-				{
-					bool flag = false;
-					item.GetSharedMaterials(value2);
-					int i = 0;
-					for (int count = value2.Count; i < count; i++)
+					int instanceID = item.GetInstanceID();
+					hashSet.Add(instanceID);
+					if (!m_ActiveRendererIds.Contains(instanceID))
 					{
-						Material material = value2[i];
-						if (material == null || material.shader == null)
-						{
-							continue;
-						}
-						bool flag2 = ColorTintMaterial.IsMaterialCompatible(material);
-						bool flag3 = RimLightingMaterial.IsMaterialCompatible(material);
-						bool flag4 = DissolveMaterial.IsMaterialCompatible(material);
-						bool flag5 = AdditionalAlbedoMaterial.IsMaterialCompatible(material);
-						bool flag6 = ParametersOverrideMaterial.IsMaterialCompatible(material);
-						bool flag7 = BloodMaskMaterial.IsMaterialCompatible(material);
-						if (flag2 || flag3 || flag4 || flag5 || flag7 || flag6)
-						{
-							Material material3 = (value2[i] = new Material(material));
-							if (flag2)
-							{
-								ColorTintAnimationController colorTintController = m_ColorTintController;
-								ColorTintMaterial material4 = new ColorTintMaterial(material3);
-								colorTintController.AddMaterial(in material4);
-							}
-							if (flag3)
-							{
-								m_RimController.AddMaterial(new RimLightingMaterial(material3));
-							}
-							if (flag4)
-							{
-								m_DissolveController.AddMaterial(new DissolveMaterial(material3));
-							}
-							if (flag5)
-							{
-								AdditionalAlbedoAnimationController additionalAlbedoController = m_AdditionalAlbedoController;
-								AdditionalAlbedoMaterial material5 = new AdditionalAlbedoMaterial(material3);
-								additionalAlbedoController.AddMaterial(in material5);
-							}
-							if (flag6)
-							{
-								m_MaterialParametersOverrideController.AddMaterial(new ParametersOverrideMaterial(material3));
-							}
-							if (flag7)
-							{
-								m_BloodMaskController.AddMaterial(new BloodMaskMaterial(material3));
-							}
-							m_CustomMaterialPropertyAnimationController.AddMaterial(material3);
-							flag = true;
-						}
-					}
-					if (flag)
-					{
-						item.SetSharedMaterialsExt(value2);
+						SetupRendererMaterials(item);
+						m_OverlayMaterialController.SetupRenderer(item);
 					}
 				}
 			}
+			foreach (int activeRendererId in m_ActiveRendererIds)
+			{
+				if (!hashSet.Contains(activeRendererId))
+				{
+					ClearMaterialsByRenderer(activeRendererId);
+					m_OverlayMaterialController.RemoveRenderer(activeRendererId);
+				}
+			}
+			m_ActiveRendererIds = hashSet;
 		}
+		m_OverlayMaterialController.UpdateMaterials();
+	}
+
+	private void SetupRendererMaterials(Renderer targetRenderer)
+	{
+		List<Material> value;
+		using (CollectionPool<List<Material>, Material>.Get(out value))
+		{
+			bool flag = false;
+			targetRenderer.GetSharedMaterials(value);
+			int instanceID = targetRenderer.GetInstanceID();
+			int i = 0;
+			for (int count = value.Count; i < count; i++)
+			{
+				Material material = value[i];
+				if (material == null || material.shader == null)
+				{
+					continue;
+				}
+				bool flag2 = ColorTintMaterial.IsMaterialCompatible(material);
+				bool flag3 = RimLightingMaterial.IsMaterialCompatible(material);
+				bool flag4 = DissolveMaterial.IsMaterialCompatible(material);
+				bool flag5 = AdditionalAlbedoMaterial.IsMaterialCompatible(material);
+				bool flag6 = ParametersOverrideMaterial.IsMaterialCompatible(material);
+				bool flag7 = BloodMaskMaterial.IsMaterialCompatible(material);
+				if (flag2 || flag3 || flag4 || flag5 || flag7 || flag6)
+				{
+					Material material3 = (value[i] = new Material(material));
+					if (flag2)
+					{
+						ColorTintAnimationController colorTintController = m_ColorTintController;
+						ColorTintMaterial material4 = new ColorTintMaterial(material3);
+						colorTintController.AddMaterial(in material4, instanceID);
+					}
+					if (flag3)
+					{
+						m_RimController.AddMaterial(new RimLightingMaterial(material3), instanceID);
+					}
+					if (flag4)
+					{
+						m_DissolveController.AddMaterial(new DissolveMaterial(material3), instanceID);
+					}
+					if (flag5)
+					{
+						AdditionalAlbedoAnimationController additionalAlbedoController = m_AdditionalAlbedoController;
+						AdditionalAlbedoMaterial material5 = new AdditionalAlbedoMaterial(material3);
+						additionalAlbedoController.AddMaterial(in material5, instanceID);
+					}
+					if (flag6)
+					{
+						m_MaterialParametersOverrideController.AddMaterial(new ParametersOverrideMaterial(material3), instanceID);
+					}
+					if (flag7)
+					{
+						m_BloodMaskController.AddMaterial(new BloodMaskMaterial(material3), instanceID);
+					}
+					m_CustomMaterialPropertyAnimationController.AddMaterial(material3, instanceID);
+					flag = true;
+				}
+			}
+			if (flag)
+			{
+				targetRenderer.SetSharedMaterialsExt(value);
+			}
+		}
+	}
+
+	private void ClearMaterialsByRenderer(int rendererId)
+	{
+		m_ColorTintController.ClearMaterial(rendererId);
+		m_RimController.ClearMaterial(rendererId);
+		m_DissolveController.ClearMaterial(rendererId);
+		m_AdditionalAlbedoController.ClearMaterial(rendererId);
+		m_MaterialParametersOverrideController.ClearMaterial(rendererId);
+		m_BloodMaskController.ClearMaterial(rendererId);
 	}
 
 	protected override void OnEnabled()
@@ -179,42 +194,43 @@ public class StandardMaterialController : UpdateableBehaviour
 		DoUpdate();
 	}
 
-	public void InvalidateRenderersAndMaterials()
+	public void InvalidateRenderer(Renderer invalidRenderer)
 	{
-		m_DirtyFlags |= DirtyFlags.RenderersAndMaterials;
+		int instanceID = invalidRenderer.GetInstanceID();
+		if (m_ActiveRendererIds.Contains(instanceID))
+		{
+			m_ActiveRendererIds.Remove(instanceID);
+			ClearMaterialsByRenderer(instanceID);
+		}
+		UpdateRenderers();
 	}
 
-	public void InvalidateMaterialsTextures()
+	public void CleanupRenderers()
 	{
-		m_DirtyFlags |= DirtyFlags.MaterialProperties;
-	}
-
-	public void DisableUpdate()
-	{
-		m_IsDisabled = true;
-	}
-
-	private void ReinitRenderersAndMaterials()
-	{
+		m_ActiveRendererIds.Clear();
 		m_ColorTintController.RevertToDefaults();
 		m_RimController.RevertToDefaults();
 		m_DissolveController.RevertToDefaults();
 		m_AdditionalAlbedoController.RevertToDefaults();
 		m_BloodMaskController.RevertToDefaults();
 		m_MaterialParametersOverrideController.RevertToDefaults();
-		m_CustomMaterialPropertyAnimationController.ClearMaterials();
-		m_OverlayMaterialController?.CleanupRenderers();
-		CleanupMaterials();
-		Setup();
+		m_ColorTintController.ClearMaterials();
+		m_RimController.ClearMaterials();
+		m_DissolveController.ClearMaterials();
+		m_AdditionalAlbedoController.ClearMaterials();
+		m_MaterialParametersOverrideController.ClearMaterials();
+		m_BloodMaskController.ClearMaterials();
+		m_IsDirty = true;
 	}
 
-	private void UpdateMaterialProperties()
+	public void UpdateRenderers()
 	{
-		m_DissolveController.InvalidateCache();
-		m_DissolveController.UpdateMaterialProperties();
-		m_AdditionalAlbedoController.UpdateMaterialProperties();
-		m_BloodMaskController.UpdateMaterialProperties();
-		m_MaterialParametersOverrideController.UpdateMaterialProperties();
+		m_IsDirty = true;
+	}
+
+	public void DisableUpdate()
+	{
+		m_IsDisabled = true;
 	}
 
 	public override void DoUpdate()
@@ -223,17 +239,10 @@ public class StandardMaterialController : UpdateableBehaviour
 		{
 			return;
 		}
-		if (m_DirtyFlags != 0)
+		if (m_IsDirty)
 		{
-			if ((m_DirtyFlags & DirtyFlags.MaterialProperties) != 0)
-			{
-				UpdateMaterialProperties();
-			}
-			if ((m_DirtyFlags & DirtyFlags.RenderersAndMaterials) != 0)
-			{
-				ReinitRenderersAndMaterials();
-			}
-			m_DirtyFlags = DirtyFlags.None;
+			m_IsDirty = false;
+			Setup();
 		}
 		using (Counters.StandardMaterialController?.Measure())
 		{
@@ -243,44 +252,9 @@ public class StandardMaterialController : UpdateableBehaviour
 			m_AdditionalAlbedoController.Update();
 			m_BloodMaskController.Update();
 			m_MaterialParametersOverrideController.Update();
-			m_OverlayMaterialController?.Update();
+			m_OverlayMaterialController.Update();
 			m_CustomMaterialPropertyAnimationController.Update();
 		}
-	}
-
-	private void SetupOverlayController()
-	{
-		if (m_OverlayMaterialController == null)
-		{
-			m_OverlayMaterialController = new LayeredMaterialController(base.gameObject, new MaterialPropertyBlock());
-		}
-		Character componentInChildren = GetComponentInChildren<Character>();
-		StarshipView componentInChildren2 = GetComponentInChildren<StarshipView>();
-		GameObject gameObject = ((componentInChildren != null) ? componentInChildren.gameObject : ((!(componentInChildren2 != null)) ? base.gameObject : componentInChildren2.gameObject));
-		m_OverlayMaterialController.SetMaxActiveLayersCount(ConfigRoot.Instance.FxRoot.MaxMaterialLayersCount);
-		List<Renderer> value;
-		using (CollectionPool<List<Renderer>, Renderer>.Get(out value))
-		{
-			gameObject.GetComponentsInChildren(value);
-			if (componentInChildren != null)
-			{
-				for (int num = value.Count - 1; num >= 0; num--)
-				{
-					if (((ulong)value[num].renderingLayerMask & (ulong)Character.DefaultCharacterRenderingLayer) == 0L)
-					{
-						value.RemoveAt(num);
-					}
-				}
-			}
-			m_OverlayMaterialController.SetMaxActiveLayersCount(ConfigRoot.Instance.FxRoot.MaxMaterialLayersCount);
-			m_OverlayMaterialController.RefreshScriptPropertiesSnapshot();
-			m_OverlayMaterialController.SetupRenderers(value);
-		}
-	}
-
-	private void SetupControllers()
-	{
-		m_DissolveController.InvalidateCache();
 	}
 
 	internal bool TryAddOverlayAnimation(LayeredMaterialAnimationSetup setup, out int token)

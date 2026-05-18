@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Attributes;
@@ -44,5 +45,10 @@ public sealed class ToggleAbilityRestrictionHasFact : BlueprintComponent, IAbili
 			return "[HARDCODED] Must have at least one of: " + text;
 		}
 		return "[HARDCODED] Must not have any of: " + text;
+	}
+
+	public IEnumerable<string> GetAbilityCasterRestrictionShortUITexts(MechanicEntity caster)
+	{
+		return Array.Empty<string>();
 	}
 }

@@ -5,6 +5,7 @@ using Core.Cheats;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Camera;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Framework.PubSubSystem;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Controllers.Interfaces;
@@ -38,10 +39,11 @@ using Kingmaker.UnitLogic.Squads;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
+using UnityEngine;
 
 namespace Kingmaker.Controllers.TurnBased;
 
-public class TurnController : IControllerEnable, IController, IControllerDisable, IControllerStart, IControllerStop, IControllerTick, IAreaHandler, ISubscriber, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, IAbilityExecutionProcessHandler, ISubscriber<IMechanicEntity>
+public class TurnController : IControllerEnable, IController, IControllerDisable, IControllerStart, IControllerStop, IControllerTick, IAreaHandler, ISubscriber, IUnitCombatHandler, ISubscriber<IBaseUnitEntity>, IAbilityExecutionProcessHandler, ISubscriber<IMechanicEntity>, ICameraFocusEventHandler
 {
 	private static class InterruptTurnNotifier
 	{
@@ -50,6 +52,16 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		public static void Execute(IInterruptTurnStartHandler h)
 		{
 			h.HandleUnitStartInterruptTurn(interruptionData);
+		}
+	}
+
+	private static class TurnPreStartNotifier
+	{
+		public static bool isTurnBased;
+
+		public static void Execute(ITurnPreStartHandler h)
+		{
+			h.HandleUnitPreStartTurn(isTurnBased);
 		}
 	}
 
@@ -81,6 +93,26 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 	}
 
+	private static class RoundEndNotifier
+	{
+		public static bool isTurnBased;
+
+		public static void Execute(IRoundEndHandler h)
+		{
+			h.HandleRoundEnd(isTurnBased);
+		}
+	}
+
+	private static class RoundStartNotifier
+	{
+		public static bool isTurnBased;
+
+		public static void Execute(IRoundStartHandler h)
+		{
+			h.HandleRoundStart(isTurnBased);
+		}
+	}
+
 	public sealed class InterruptTurnEndMark : ContextFlag<InterruptTurnEndMark>
 	{
 	}
@@ -103,6 +135,12 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	private bool m_IsControllerActive;
 
+	private List<UnitInterruptTurnParams> m_DelayedInterrupts = new List<UnitInterruptTurnParams>();
+
+	private UnitInterruptTurnParams m_ScheduledInterrupt;
+
+	private TimeSpan? m_CustomEventEndTime;
+
 	private TimeSpan? m_UnableToActUnitForceTurnEndTime;
 
 	private TimeSpan? m_ChannelingLogicInterruptTurnEndTime;
@@ -117,11 +155,17 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	private Action<IInterruptTurnStartHandler> m_InterruptTurnNotifierAction = InterruptTurnNotifier.Execute;
 
+	private Action<ITurnPreStartHandler> m_TurnPreStartNotifierAction = TurnPreStartNotifier.Execute;
+
 	private Action<ITurnStartHandler> m_TurnStartNotifierAction = TurnStartNotifier.Execute;
 
 	private Action<IInterruptTurnEndHandler> m_InterruptTurnEndNotifierAction = InterruptTurnEndNotifier.Execute;
 
 	private Action<ITurnEndHandler> m_TurnEndNotifierAction = TurnEndNotifier.Execute;
+
+	private Action<IRoundEndHandler> m_RoundEndNotifierAction = RoundEndNotifier.Execute;
+
+	private Action<IRoundStartHandler> m_RoundStartNotifierAction = RoundStartNotifier.Execute;
 
 	public bool TurnBasedModeActive
 	{
@@ -256,6 +300,18 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 	}
 
+	public bool IsCombatLockActive
+	{
+		get
+		{
+			if (TurnBasedModeActive)
+			{
+				return !IsPreparationTurn;
+			}
+			return false;
+		}
+	}
+
 	public bool NeedDeploymentPhase => Game.Instance.CurrentModeType != GameModeType.SpaceCombat;
 
 	public bool IsDeploymentAllowed
@@ -285,7 +341,9 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 	}
 
-	public IEnumerable<MechanicEntity> UnitsInCombat => AllUnits.Where((MechanicEntity i) => i.IsInCombat);
+	public IEnumerable<MechanicEntity> EntitiesInCombat => AllUnits.Where((MechanicEntity i) => i.IsInCombat);
+
+	public IEnumerable<MechanicEntity> UnitsInCombat => AllUnits.Where((MechanicEntity i) => i.IsInCombat && i is BaseUnitEntity);
 
 	[CanBeNull]
 	public MechanicEntity CurrentUnit => MaybeTurnOrder?.CurrentUnit;
@@ -334,7 +392,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 		if (Data.InCombat && Game.Instance.Controllers.TurnController.IsPreparationTurn && NeedDeploymentPhase)
 		{
-			BeginPreparationTurn(IsDeploymentAllowed);
+			BeginPreparationTurn(IsDeploymentAllowed, raiseEvent: false);
 		}
 		EventBus.RaiseEvent(delegate(ITurnBasedModeStartHandler h)
 		{
@@ -453,6 +511,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		TurnOrder.Clear();
 		Data.EndTurnRequested = false;
 		m_UnableToActUnitForceTurnEndTime = null;
+		m_CustomEventEndTime = null;
 		Game.Instance.Player.UISettings.StopSpeedUp();
 		InitiativeHelper.Update();
 	}
@@ -477,7 +536,8 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	public void Tick()
 	{
-		if (!TurnBasedModeActive && IsInTurnBasedCombat())
+		bool flag = IsInTurnBasedCombat();
+		if (!TurnBasedModeActive && flag)
 		{
 			EnterTb();
 		}
@@ -492,13 +552,16 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 			TickRoundRT();
 			return;
 		}
+		TryInterruptTurn();
 		TryRollInitiative();
 		TrySelectCurrentUnitInUI();
 		HandleCurrentUnitUnableToAct();
 		HandleCurrentUnitChannelingLogicInterruptTurn();
-		if (CurrentUnit == null || Data.EndTurnRequested)
+		bool flag2 = m_CustomEventEndTime.HasValue && m_CustomEventEndTime > Game.Instance.Controllers.TimeController.GameTime;
+		if (CurrentUnit == null || (Data.EndTurnRequested && !flag2))
 		{
 			EndUnitTurn(CurrentUnit, isTurnBased: true, Data.EndTurnRequested);
+			m_CustomEventEndTime = null;
 		}
 		HandleJoinedThisTickEntities();
 		if (!m_StartBattleSignal.IsEmpty && SignalService.Instance.CheckReady(ref m_StartBattleSignal))
@@ -518,14 +581,14 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	private void TryRollInitiative()
 	{
-		m_WaitingForInitiativeEntities.AddRange(UnitsInCombat.Where((MechanicEntity unit) => unit.Initiative.Empty));
+		m_WaitingForInitiativeEntities.AddRange(EntitiesInCombat.Where((MechanicEntity unit) => unit.Initiative.Empty));
 		if (m_WaitingForInitiativeEntities.Empty())
 		{
 			return;
 		}
 		try
 		{
-			bool relax = !IsSpaceCombat && UnitsInCombat.All((MechanicEntity i) => i.Initiative.Empty);
+			bool relax = !IsSpaceCombat && EntitiesInCombat.All((MechanicEntity i) => i.Initiative.Empty);
 			InitiativeHelper.Roll(m_WaitingForInitiativeEntities, relax);
 		}
 		finally
@@ -570,7 +633,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		{
 			if (CurrentUnit.IsMyNetRole())
 			{
-				UISounds.Instance.Sounds.Combat.EndTurn.Play();
+				CombatSounds.Instance.Combat.EndTurn.Play();
 				Game.Instance.GameCommandQueue.EndTurnManually(CurrentUnit);
 			}
 		}
@@ -643,50 +706,67 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	private void NextRound(bool isFirst)
 	{
-		EventBus.RaiseEvent(delegate(IRoundEndHandler h)
-		{
-			h.HandleRoundEnd(TurnBasedModeActive);
-		});
+		RoundEndNotifier.isTurnBased = TurnBasedModeActive;
+		EventBus.RaiseEvent(m_RoundEndNotifierAction);
 		if (TurnBasedModeActive)
 		{
 			Data.CombatRound = (isFirst ? 1 : (Data.CombatRound + 1));
 			IsUltimateAbilityUsedThisRound = false;
 		}
 		Data.GameRound++;
-		EventBus.RaiseEvent(delegate(IRoundStartHandler h)
-		{
-			h.HandleRoundStart(TurnBasedModeActive);
-		});
+		RoundStartNotifier.isTurnBased = TurnBasedModeActive;
+		EventBus.RaiseEvent(m_RoundStartNotifierAction);
 	}
 
 	private void NextRoundRT()
 	{
-		foreach (MechanicEntity allUnit in AllUnits)
+		List<MechanicEntity> list = ListPool<MechanicEntity>.Claim();
+		try
 		{
-			if (!(allUnit is UnitEntity { IsExtra: not false }))
+			foreach (MechanicEntity combatParticipant2 in Game.Instance.EntityPools.CombatParticipants)
 			{
-				EndUnitTurn(allUnit, isTurnBased: false);
+				if (combatParticipant2 is ICombatParticipant { Active: not false })
+				{
+					list.Add(combatParticipant2);
+				}
+			}
+			foreach (MechanicEntity item in list)
+			{
+				if (!(item is UnitEntity { IsExtra: not false }))
+				{
+					EndUnitTurn(item, isTurnBased: false);
+				}
+			}
+			NextRound(isFirst: false);
+			foreach (MechanicEntity item2 in list)
+			{
+				if (!(item2 is UnitEntity { IsExtra: not false }))
+				{
+					StartUnitTurn(item2, isTurnBased: false);
+				}
 			}
 		}
-		NextRound(isFirst: false);
-		foreach (MechanicEntity allUnit2 in AllUnits)
+		finally
 		{
-			if (!(allUnit2 is UnitEntity { IsExtra: not false }))
-			{
-				StartUnitTurn(allUnit2, isTurnBased: false);
-			}
+			ListPool<MechanicEntity>.Release(list);
 		}
 	}
 
 	private void StartUnitTurn([NotNull] MechanicEntity entity, bool isTurnBased, InterruptionData interruptionData = null)
 	{
 		IsChannelingLogicInterruptTurn = ContextData<InterruptTurnData>.Current?.Source is ChannelingLogic.InitiativeHolder;
+		TurnPreStartNotifier.isTurnBased = isTurnBased;
+		EventBus.RaiseEvent((IMechanicEntity)entity, m_TurnPreStartNotifierAction, isCheckRuntime: true);
 		if (entity is UnitSquad { Units: var units })
 		{
 			for (int i = 0; i < units.Count; i++)
 			{
 				StartUnitTurnInternal(units[i].ToBaseUnitEntity(), isTurnBased);
 			}
+		}
+		else if (entity is ChannelingLogic.InitiativeHolder initiativeHolder)
+		{
+			HandleChannelingInterruptTurn(initiativeHolder, isTurnBased);
 		}
 		else if (!entity.IsInSquad)
 		{
@@ -701,6 +781,33 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		{
 			TurnStartNotifier.isTurnBased = isTurnBased;
 			EventBus.RaiseEvent((IMechanicEntity)entity, m_TurnStartNotifierAction, isCheckRuntime: true);
+		}
+		if (m_DelayedInterrupts.Empty())
+		{
+			return;
+		}
+		PartUnitCommands commandsOptional = CurrentUnit.GetCommandsOptional();
+		if (commandsOptional == null)
+		{
+			return;
+		}
+		foreach (UnitInterruptTurnParams delayedInterrupt in m_DelayedInterrupts)
+		{
+			commandsOptional.AddToQueue(delayedInterrupt);
+		}
+		m_DelayedInterrupts.Clear();
+	}
+
+	private void HandleChannelingInterruptTurn(ChannelingLogic.InitiativeHolder initiativeHolder, bool isTurnBased)
+	{
+		if (isTurnBased)
+		{
+			MechanicEntity maybeUnit = initiativeHolder.MaybeUnit;
+			if (maybeUnit != null)
+			{
+				InterruptCurrentTurnImmediate(new UnitInterruptTurnParams(maybeUnit, initiativeHolder, new InterruptionData()));
+				Game.Instance.Controllers.EntityDestroyer.Destroy(initiativeHolder);
+			}
 		}
 	}
 
@@ -735,22 +842,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 			{
 				unit2.SnapToGrid();
 			}
-			if (unit is UnitSquad { IsInCombat: not false, Units: var units })
-			{
-				for (int i = 0; i < units.Count; i++)
-				{
-					BaseUnitEntity baseUnitEntity = units[i].Entity.ToBaseUnitEntity();
-					if (baseUnitEntity != null && !baseUnitEntity.AnimationManager.InCover)
-					{
-						baseUnitEntity.AnimationManager.CreateMainHandAttackHandlerForPrepare();
-					}
-				}
-			}
-			if (unit != null && unit.IsInSquad)
-			{
-				unit.MaybeAnimationManager?.CurrentMainHandAttackForPrepare?.Release();
-			}
-			foreach (MechanicEntity item in UnitsInCombat)
+			foreach (MechanicEntity item in EntitiesInCombat)
 			{
 				if (!HandleEntityCommands(item, isEndOfTurnRequested))
 				{
@@ -786,7 +878,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 		if (isTurnBased)
 		{
-			using (ContextData<InterruptTurnEndMark>.RequestIf(flag))
+			using (ContextData<InterruptTurnEndMark>.RequestIf(flag && !IsChannelingLogicInterruptTurn))
 			{
 				NextTurnTB();
 			}
@@ -869,7 +961,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 	private void AddUnitsToCombat()
 	{
 		List<BaseUnitEntity> list = TempList.Get<BaseUnitEntity>();
-		foreach (BaseUnitEntity item in UnitsInCombat.OfType<BaseUnitEntity>())
+		foreach (BaseUnitEntity item in EntitiesInCombat.OfType<BaseUnitEntity>())
 		{
 			if (item.Initiative.Empty)
 			{
@@ -905,6 +997,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 	private void HandleUnitLeaveCombat(BaseUnitEntity unit)
 	{
 		unit.Initiative.Clear();
+		unit.Initiative.Overrides.RemoveAll((InitiativeOverride o) => o.EtudeEnforcement);
 		RemoveUnit(unit);
 	}
 
@@ -988,39 +1081,77 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 	}
 
-	public void InterruptCurrentTurn(MechanicEntity unit, MechanicEntity source, InterruptionData interruptionData)
+	public void ScheduleInterruptTurn(MechanicEntity entityToGetTurn, MechanicEntity interruptionSource, InterruptionData interruptionData)
+	{
+		ScheduleInterruptTurn(new UnitInterruptTurnParams(entityToGetTurn, interruptionSource, interruptionData));
+	}
+
+	public void ScheduleInterruptTurn(UnitInterruptTurnParams @params)
+	{
+		if (m_ScheduledInterrupt == null)
+		{
+			m_ScheduledInterrupt = @params;
+		}
+		else
+		{
+			m_DelayedInterrupts.Add(@params);
+		}
+	}
+
+	private void TryInterruptTurn()
+	{
+		if (m_ScheduledInterrupt != null)
+		{
+			InterruptCurrentTurn(m_ScheduledInterrupt);
+			m_ScheduledInterrupt = null;
+		}
+	}
+
+	private void InterruptCurrentTurn(UnitInterruptTurnParams @params)
 	{
 		if (!IsInTurnBasedCombat())
 		{
 			return;
 		}
-		if (interruptionData.WaitForCommandsToFinish)
+		if (CurrentUnit is UnitSquad)
+		{
+			m_DelayedInterrupts.Add(@params);
+			return;
+		}
+		if (@params.InterruptionData.WaitForCommandsToFinish)
 		{
 			PartUnitCommands commandsOptional = CurrentUnit.GetCommandsOptional();
 			if (commandsOptional != null)
 			{
-				commandsOptional.AddToQueue(new UnitInterruptTurnParams(unit, source, interruptionData));
+				@params.InterruptionData.WaitForCommandsToFinish = false;
+				commandsOptional.AddToQueue(@params);
 				return;
 			}
 		}
-		InterruptCurrentTurnImmediate(unit, source, interruptionData);
+		InterruptCurrentTurnImmediate(@params);
 	}
 
-	public void InterruptCurrentTurnImmediate(MechanicEntity unit, MechanicEntity source, InterruptionData interruptionData)
+	private void InterruptCurrentTurnImmediate(UnitInterruptTurnParams @params)
 	{
 		if (!IsInTurnBasedCombat())
 		{
 			return;
 		}
-		using (ContextData<InterruptTurnData>.Request().Setup(unit, source))
+		if (IsChannelingLogicInterruptTurn)
 		{
-			EventBus.RaiseEvent((IMechanicEntity)unit, (Action<IInterruptCurrentTurnHandler>)delegate(IInterruptCurrentTurnHandler h)
+			m_DelayedInterrupts.Add(@params);
+			return;
+		}
+		MechanicEntity mechanicEntity = @params.EntityToGetTheTurn;
+		using (ContextData<InterruptTurnData>.Request().Setup(mechanicEntity, @params.InterruptionSource))
+		{
+			EventBus.RaiseEvent((IMechanicEntity)mechanicEntity, (Action<IInterruptCurrentTurnHandler>)delegate(IInterruptCurrentTurnHandler h)
 			{
 				h.HandleOnInterruptCurrentTurn();
 			}, isCheckRuntime: true);
-			TurnOrder.InterruptCurrentUnit(unit);
-			StartUnitTurn(unit, isTurnBased: true, interruptionData);
-			unit.Initiative.PreparationInterrupted = true;
+			TurnOrder.InterruptCurrentUnit(mechanicEntity);
+			StartUnitTurn(mechanicEntity, isTurnBased: true, @params.InterruptionData);
+			mechanicEntity.Initiative.PreparationInterrupted = true;
 			Data.EndTurnRequested = false;
 		}
 	}
@@ -1059,7 +1190,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		NextRoundRT();
 	}
 
-	public void BeginPreparationTurn(bool canDeploy)
+	public void BeginPreparationTurn(bool canDeploy, bool raiseEvent = true)
 	{
 		if (!TurnBasedModeActive || CombatRound > 1)
 		{
@@ -1084,10 +1215,13 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 			}
 		}
 		AddPreparationTurnVisualEffect();
-		EventBus.RaiseEvent(delegate(IPreparationTurnBeginHandler h)
+		if (raiseEvent)
 		{
-			h.HandleBeginPreparationTurn(canDeploy);
-		});
+			EventBus.RaiseEvent(delegate(IPreparationTurnBeginHandler h)
+			{
+				h.HandleBeginPreparationTurn(canDeploy);
+			});
+		}
 	}
 
 	public void RequestEndPreparationTurn()
@@ -1115,7 +1249,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 	{
 		if (!TurnBasedModeActive || !IsPreparationTurn)
 		{
-			PFLog.Default.Error(string.Format("{0} invalid operation: TurnBasedModeActive={1} IsPreparationTurn={2}", "ForceEndPreparationTurn", TurnBasedModeActive, IsPreparationTurn));
+			Logger.Error(string.Format("{0} invalid operation: TurnBasedModeActive={1} IsPreparationTurn={2}", "ForceEndPreparationTurn", TurnBasedModeActive, IsPreparationTurn));
 			return;
 		}
 		RemovePreparationTurnVisualEffect();
@@ -1190,7 +1324,17 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 		catch (Exception exception)
 		{
-			PFLog.Default.ExceptionWithReport(exception, null);
+			Logger.ExceptionWithReport(exception, null);
+		}
+	}
+
+	public void HandleCameraFocusEvent(Transform target, CameraFollowTaskParams taskParams, bool pauseCombatTurnOrder)
+	{
+		if (pauseCombatTurnOrder)
+		{
+			TimeSpan gameTime = Game.Instance.Controllers.TimeController.GameTime;
+			TimeSpan timeSpan = (taskParams.BlendSettings.BlendTime + taskParams.CameraObserveTime).Seconds();
+			m_CustomEventEndTime = gameTime + timeSpan;
 		}
 	}
 }

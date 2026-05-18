@@ -16,7 +16,6 @@ using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Components.Patterns;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
-using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
 using Pathfinding;
 using UnityEngine;
@@ -48,7 +47,7 @@ public class ConcentratedFireInitiator : MechanicEntityFactComponentDelegate, II
 
 	private static int GetBallisticSkillBonus(Entity entity)
 	{
-		return (entity.GetOptional<PartStatsContainer>()?.GetAttributeOptional(StatType.BallisticSkill)?.Bonus).GetValueOrDefault();
+		return (entity as MechanicEntity)?.Actor.GetStatBonus(StatType.BallisticSkill) ?? 0;
 	}
 
 	public void OnEventDidTrigger(RuleCalculateDamage evt)

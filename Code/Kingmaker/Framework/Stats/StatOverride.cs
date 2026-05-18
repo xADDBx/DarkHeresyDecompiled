@@ -9,29 +9,29 @@ public readonly struct StatOverride
 {
 	public readonly StatType Type;
 
-	public readonly EntityFactRef Fact;
+	public readonly EntityFactRef SourceFact;
 
-	public readonly BlueprintComponent? Component;
+	public readonly BlueprintComponent? SourceComponent;
 
-	public readonly EntityPart? Part;
+	public readonly EntityPart? SourcePart;
 
 	public readonly bool OnlyIfHigher;
 
 	public StatOverride(StatType type, EntityFactComponent source, bool onlyIfHigher)
 	{
 		Type = type;
-		Fact = source.Fact;
-		Component = source.SourceBlueprintComponent;
-		Part = null;
+		SourceFact = source.Fact;
+		SourceComponent = source.SourceBlueprintComponent;
+		SourcePart = null;
 		OnlyIfHigher = onlyIfHigher;
 	}
 
 	public StatOverride(StatType type, EntityPart source, bool onlyIfHigher)
 	{
 		Type = type;
-		Fact = null;
-		Component = null;
-		Part = source;
+		SourceFact = null;
+		SourceComponent = null;
+		SourcePart = source;
 		OnlyIfHigher = onlyIfHigher;
 	}
 }

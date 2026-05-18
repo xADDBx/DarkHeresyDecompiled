@@ -10,7 +10,7 @@ public class ContextActionClearPropheticIntervention : ContextAction
 {
 	protected override void RunAction()
 	{
-		((base.Context.MaybeCaster as UnitEntity)?.Parts.GetOptional<UnitPartPropheticIntervention>())?.Entries.Clear();
+		((base.Context.Caster as UnitEntity)?.Parts.GetOptional<UnitPartPropheticIntervention>())?.Entries.Clear();
 	}
 
 	public override string GetCaption()

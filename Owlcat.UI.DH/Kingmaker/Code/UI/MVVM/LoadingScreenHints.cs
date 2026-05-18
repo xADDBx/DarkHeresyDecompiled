@@ -5,6 +5,7 @@ using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.DLC;
 using Kingmaker.Localization;
 using Kingmaker.Networking;
+using Kingmaker.Settings;
 using Kingmaker.Stores;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.StatefulRandom;
@@ -166,18 +167,18 @@ public class LoadingScreenHints : StringsContainer
 	{
 		LoadPurchasedDLCs();
 		List<string> currentPurchasedDLCs = GetCurrentPurchasedDLCs();
-		bool result = false;
+		bool flag = false;
 		foreach (string dlcName in currentPurchasedDLCs)
 		{
 			DLCLoadingScreenInfo dLCLoadingScreenInfo = m_PlayerPurchasedDLCs.Find((DLCLoadingScreenInfo d) => d.DlcName == dlcName);
 			if (dLCLoadingScreenInfo != null && dLCLoadingScreenInfo.DisplayCount < MaxShowDLCHintCount)
 			{
-				result = true;
+				flag = true;
 				dLCLoadingScreenInfo.DisplayCount++;
 			}
 			else if (dLCLoadingScreenInfo == null)
 			{
-				result = true;
+				flag = true;
 				m_PlayerPurchasedDLCs.Add(new DLCLoadingScreenInfo
 				{
 					DlcName = dlcName,
@@ -185,8 +186,11 @@ public class LoadingScreenHints : StringsContainer
 				});
 			}
 		}
-		SavePurchasedDLCs();
-		return result;
+		if (flag)
+		{
+			SavePurchasedDLCs();
+		}
+		return flag;
 	}
 
 	private List<string> GetCurrentPurchasedDLCs()
@@ -198,7 +202,12 @@ public class LoadingScreenHints : StringsContainer
 
 	private void LoadPurchasedDLCs()
 	{
-		DLCLoadingScreenInfoList dLCLoadingScreenInfoList = JsonUtility.FromJson<DLCLoadingScreenInfoList>(PlayerPrefs.GetString("LoadingScreenPurchasedDLCs", "{}"));
+		string json = "{}";
+		if (SettingsController.Instance.GeneralSettingsProvider.HasKey("LoadingScreenPurchasedDLCs"))
+		{
+			json = SettingsController.Instance.GeneralSettingsProvider.GetValue<string>("LoadingScreenPurchasedDLCs");
+		}
+		DLCLoadingScreenInfoList dLCLoadingScreenInfoList = JsonUtility.FromJson<DLCLoadingScreenInfoList>(json);
 		m_PlayerPurchasedDLCs = ((dLCLoadingScreenInfoList != null && dLCLoadingScreenInfoList.DlcList != null) ? dLCLoadingScreenInfoList.DlcList : new List<DLCLoadingScreenInfo>());
 	}
 
@@ -208,7 +217,7 @@ public class LoadingScreenHints : StringsContainer
 		{
 			DlcList = m_PlayerPurchasedDLCs
 		});
-		PlayerPrefs.SetString("LoadingScreenPurchasedDLCs", value);
-		PlayerPrefs.Save();
+		SettingsController.Instance.GeneralSettingsProvider.SetValue("LoadingScreenPurchasedDLCs", value);
+		SettingsController.Instance.GeneralSettingsProvider.SaveAll();
 	}
 }

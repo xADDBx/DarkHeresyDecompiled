@@ -1,16 +1,13 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kingmaker.Blueprints;
-using Kingmaker.Blueprints.Facts;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Framework.Abilities.Blueprints;
-using Kingmaker.Framework.Abilities.Components;
+using Kingmaker.UI;
+using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Levelup.Selections.Feature;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.DotNetExtensions;
-using Owlcat.Fmw.Blueprints;
 using R3;
 using UnityEngine;
 
@@ -31,7 +28,10 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 
 	public void ToggleGrouping()
 	{
+		SaveDropdownsState();
+		SaveFavorites();
 		m_IsGroupedBySource.Value = !m_IsGroupedBySource.Value;
+		UnitSaveData.PreferredModifierSortingType = (m_IsGroupedBySource.CurrentValue ? CharGenUnitSaveData.ChargenDropdownType.ModifierSource : CharGenUnitSaveData.ChargenDropdownType.ModifierType);
 		CreateItemList();
 	}
 
@@ -51,7 +51,7 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 				orderby g.Feature.Name
 				select g).ForEach(delegate(FeatureSelectionItem f)
 			{
-				m_Items.Add(new CharGenLevelUpSelectorModificationItemVM(f, OnItemHovered, null, CharGenContext.LevelUpManager.CurrentValue).AddTo(this));
+				m_Items.Add(new CharGenLevelUpSelectorModificationItemVM(f, OnItemHovered, null, m_CharGenContext.LevelUpManager.CurrentValue).AddTo(this));
 			});
 		}
 		m_Items.ForEach(delegate(CharGenLevelUpSelectorModificationItemVM i)
@@ -70,6 +70,7 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 		{
 			SelectionGroup.TrySelectEntity(Items.FirstOrDefault((CharGenLevelUpSelectorBaseItemVM i) => i.Blueprint == base.SelectedItem.CurrentValue?.Blueprint));
 		}
+		CheckIsAllCollapsedHeaders();
 	}
 
 	protected override void SaveSelection()
@@ -94,6 +95,7 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 			ClearItemList();
 			m_Items.Clear();
 		}
+		m_IsGroupedBySource.Value = UnitSaveData.PreferredModifierSortingType == CharGenUnitSaveData.ChargenDropdownType.ModifierSource;
 		CreateItemList();
 	}
 
@@ -102,6 +104,7 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 		itemVM.RefreshView.Execute(default(Unit));
 		if (itemVM is CharGenLevelUpSelectorModificationItemVM charGenLevelUpSelectorModificationItemVM)
 		{
+			charGenLevelUpSelectorModificationItemVM.SetFavorite(m_CharGenContext.CharGenConfig.Mode == CharGenMode.LevelUp, UnitSaveData.FavoriteFeatures.Contains(charGenLevelUpSelectorModificationItemVM.Blueprint.AssetGuidThreadSafe));
 			if (SelectionFeature.CanSelect(charGenLevelUpSelectorModificationItemVM.FeatureSelectionItem))
 			{
 				charGenLevelUpSelectorModificationItemVM.UpdateAccessibility(LEVEL_UP_ITEM_STATE.Available);
@@ -112,21 +115,39 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 		}
 	}
 
+	protected override void DisposeImplementation()
+	{
+		SaveDropdownsState();
+		SaveFavorites();
+		base.DisposeImplementation();
+	}
+
+	protected override void OnEndDetailedView()
+	{
+		base.OnEndDetailedView();
+		SaveDropdownsState();
+	}
+
 	private void CreateListBySource()
 	{
-		foreach (BlueprintUnitFact source in (from g in SelectionFeature.Items.Select((FeatureSelectionItem i) => i.GetSourceBlueprint()).Distinct()
-			orderby g?.Name
+		foreach (string source in (from g in SelectionFeature.Items.Select((FeatureSelectionItem i) => i.GetSourceBlueprint().Name).Distinct()
+			orderby g
 			select g).ToList())
 		{
 			CharGenLevelUpNestedListHeaderVM header = null;
 			if (source != null)
 			{
-				header = new CharGenLevelUpNestedListHeaderVM(source).AddTo(this);
+				header = new CharGenLevelUpNestedListHeaderVM(null, source).AddTo(this);
+				header.IsExpanded.Subscribe(delegate
+				{
+					CheckIsAllCollapsedHeaders();
+				}).AddTo(header);
+				header.SetExpand(UnitSaveData.IsDropdownOpen(CharGenUnitSaveData.ChargenDropdownType.ModifierSource, header.Label.CurrentValue) ?? true);
 				AddItem(header);
 			}
 			(from i in m_Items
-				where i.FeatureSelectionItem.GetSourceBlueprint() == source
-				orderby i.State.CurrentValue, i.FeatureSelectionItem.Feature.Name
+				where i.FeatureSelectionItem.GetSourceBlueprint().Name == source
+				orderby i.State.CurrentValue, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.FeatureSelectionItem.Feature.Name
 				select i).ForEach(delegate(CharGenLevelUpSelectorModificationItemVM f)
 			{
 				f.SetParentNode(header);
@@ -137,19 +158,22 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 
 	private void CreateListByType()
 	{
-		BpRef<BlueprintAbilityTag>[] allTags = ConfigRoot.Instance.AbilityRoot.AllTags;
-		foreach (BpRef<BlueprintAbilityTag> tag in allTags)
+		List<TalentGroup> list = Enum.GetValues(typeof(TalentGroup)).Cast<TalentGroup>().ToList();
+		TalentGroup recommendedTalentGroup = base.Unit.Progression.RecommendedTalentGroup;
+		foreach (TalentGroup type in list)
 		{
-			CharGenLevelUpNestedListHeaderVM header = new CharGenLevelUpNestedListHeaderVM(null, tag.Blueprint.Name).AddTo(this);
-			if (!(from i in SelectionFeature.Items
-				where IsSameTags(i.Feature, tag)
-				orderby i.Feature.Name
-				select i).ToList().Empty())
+			CharGenLevelUpNestedListHeaderVM header = new CharGenLevelUpNestedListHeaderVM(null, type.ToString(), null, 0, (recommendedTalentGroup & type) != 0).AddTo(this);
+			if (m_Items.Any((CharGenLevelUpSelectorModificationItemVM i) => i.FeatureSelectionItem.Feature.TalentIconInfo.MainGroup == type))
 			{
+				header.IsExpanded.Subscribe(delegate
+				{
+					CheckIsAllCollapsedHeaders();
+				}).AddTo(header);
+				header.SetExpand(UnitSaveData.IsDropdownOpen(CharGenUnitSaveData.ChargenDropdownType.ModifierType, header.Label.CurrentValue) ?? header.IsRecommended.CurrentValue);
 				AddItem(header);
 				(from i in m_Items
-					where IsSameTags(i.FeatureSelectionItem.Feature, tag)
-					orderby i.State.CurrentValue, i.FeatureSelectionItem.Feature.Name
+					where i.FeatureSelectionItem.Feature.TalentIconInfo.MainGroup == type
+					orderby i.State.CurrentValue, i.Tags.First().Name.Text, i.CanShowFavorite.CurrentValue && i.IsFavorite.CurrentValue descending, i.FeatureSelectionItem.Feature.Name
 					select i).ForEach(delegate(CharGenLevelUpSelectorModificationItemVM f)
 				{
 					f.SetParentNode(header);
@@ -157,14 +181,22 @@ public class CharGenLevelUpModificationPhaseVM : CharGenLevelUpBaseSelectionPhas
 				});
 			}
 		}
+		List<CharGenLevelUpSelectorModificationItemVM> list2 = m_Items.Where((CharGenLevelUpSelectorModificationItemVM i) => !i.FeatureSelectionItem.Feature.TalentIconInfo.HasGroups).ToList();
+		if (list2.Any())
+		{
+			CharGenLevelUpNestedListHeaderVM header = new CharGenLevelUpNestedListHeaderVM(null, "No Talent Group").AddTo(this);
+			AddItem(header);
+			list2.ForEach(delegate(CharGenLevelUpSelectorModificationItemVM f)
+			{
+				f.SetParentNode(header);
+				AddItem(f);
+			});
+		}
 	}
 
-	private bool IsSameTags(BlueprintFeature feature, BlueprintAbilityTag tag)
+	private void SaveDropdownsState()
 	{
-		if (feature.ComponentsArray.FirstOrDefault((BlueprintComponent c) => c is AddAvailableAbilityModifier) is AddAvailableAbilityModifier addAvailableAbilityModifier && addAvailableAbilityModifier.Modifier != null && addAvailableAbilityModifier.Modifier.Blueprint.Tags.Count() > 0)
-		{
-			return addAvailableAbilityModifier.Modifier.Blueprint.Tags.First() == tag;
-		}
-		return false;
+		List<CharGenLevelUpNestedListHeaderVM> source = Items.OfType<CharGenLevelUpNestedListHeaderVM>().ToList();
+		UnitSaveData.SetDropDownList(UnitSaveData.PreferredModifierSortingType, source.ToDictionary((CharGenLevelUpNestedListHeaderVM h) => h.Label.CurrentValue, (CharGenLevelUpNestedListHeaderVM h) => h.IsExpanded.CurrentValue));
 	}
 }

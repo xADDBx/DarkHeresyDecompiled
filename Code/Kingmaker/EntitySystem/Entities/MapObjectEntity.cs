@@ -4,13 +4,12 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints.Area;
-using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Parts.ViewBased;
 using Kingmaker.Controllers.Optimization;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.Gameplay.Parts;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
@@ -86,7 +85,10 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 	[CanBeNull]
 	public PartDetectiveObject DetectiveObject => GetOptional<PartDetectiveObject>();
 
-	public bool IsAwarenessCheckPassed => AwarenessCheck.IsPassed();
+	[CanBeNull]
+	public PartAlwaysVisibleInDarkness AlwaysVisibleInDarkness => GetOptional<PartAlwaysVisibleInDarkness>();
+
+	public bool IsAwarenessCheckPassed => AwarenessCheck.GetPassed();
 
 	public override bool IsSuppressible => true;
 
@@ -94,12 +96,16 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 
 	public override bool AddToGrid => true;
 
-	public new MapObjectView View => (MapObjectView)base.View;
+	public new IMapObjectView View => (IMapObjectView)base.View;
 
 	public bool VisibilitySuppressedByFlashlight()
 	{
 		UnitPartFlashlight flashlight = Game.Instance.Player.Flashlight;
 		if (flashlight != null && !flashlight.FlashlightInUse)
+		{
+			return false;
+		}
+		if (AlwaysVisibleInDarkness != null)
 		{
 			return false;
 		}
@@ -114,27 +120,13 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 		return false;
 	}
 
-	public MapObjectEntity(string uniqueId, bool isInGame, BlueprintMechanicEntityFact blueprint)
-		: base(uniqueId, isInGame, blueprint)
+	public MapObjectEntity(IMapObjectEntityConfig config)
+		: base((IMechanicEntityConfig)config)
 	{
 	}
 
-	public MapObjectEntity(string uniqueId, bool isInGame)
-		: base(uniqueId, isInGame, ConfigRoot.Instance.SystemMechanics.DefaultMapObjectBlueprint)
-	{
-	}
-
-	public MapObjectEntity(MapObjectView view)
-		: this(view.UniqueId, view.IsInGameBySettings, ConfigRoot.Instance.SystemMechanics.DefaultMapObjectBlueprint)
-	{
-	}
-
-	protected MapObjectEntity(JsonConstructorMark _)
+	protected MapObjectEntity(OwlPackConstructorParameter _)
 		: base(_)
-	{
-	}
-
-	protected MapObjectEntity()
 	{
 	}
 
@@ -143,7 +135,7 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 		return new MechanicEntityFactBlueprinted(blueprint, null);
 	}
 
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		if (ViewSettings?.Blueprint != null)
 		{
@@ -192,7 +184,7 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 	protected override void OnSpawn()
 	{
 		base.OnSpawn();
-		EventBus.RaiseEvent((IMapObjectEntity)this, (Action<IMapObjectHandler>)delegate(IMapObjectHandler h)
+		base.EventBus.RaiseEvent((IMapObjectEntity)this, (Action<IMapObjectHandler>)delegate(IMapObjectHandler h)
 		{
 			h.HandleMapObjectSpawned();
 		}, isCheckRuntime: true);
@@ -201,7 +193,7 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 	protected override void OnDestroy()
 	{
 		base.OnDestroy();
-		EventBus.RaiseEvent((IMapObjectEntity)this, (Action<IMapObjectHandler>)delegate(IMapObjectHandler h)
+		base.EventBus.RaiseEvent((IMapObjectEntity)this, (Action<IMapObjectHandler>)delegate(IMapObjectHandler h)
 		{
 			h.HandleMapObjectDestroyed();
 		}, isCheckRuntime: true);
@@ -216,6 +208,11 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 	{
 		base.OnCreateParts();
 		GetOrCreate<EntityBoundsPart>();
+	}
+
+	public void OnEntityNoticed(BaseUnitEntity unit)
+	{
+		View?.OnEntityNoticed(unit);
 	}
 
 	public override Hash128 GetHash128()
@@ -234,7 +231,7 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		MapObjectEntity source = new MapObjectEntity();
+		MapObjectEntity source = new MapObjectEntity(default(OwlPackConstructorParameter));
 		result = Unsafe.As<MapObjectEntity, TPossiblyBase>(ref source);
 	}
 
@@ -343,39 +340,4 @@ public class MapObjectEntity : MechanicEntity<BlueprintMechanicEntityFact>, IMap
 		}
 		formatter.LeaveObject();
 	}
-}
-[OwlPackable(OwlPackableMode.Generate)]
-public abstract class MapObjectEntity<TBlueprint> : MapObjectEntity, IHashable, IOwlPackable<MapObjectEntity<TBlueprint>> where TBlueprint : BlueprintMechanicEntityFact
-{
-	public new TBlueprint OriginalBlueprint => (TBlueprint)base.OriginalBlueprint;
-
-	public new TBlueprint Blueprint => (TBlueprint)base.Blueprint;
-
-	public override Type RequiredBlueprintType => typeof(TBlueprint);
-
-	protected MapObjectEntity(JsonConstructorMark _)
-		: base(_)
-	{
-	}
-
-	protected MapObjectEntity(string uniqueId, bool isInGame, TBlueprint blueprint)
-		: base(uniqueId, isInGame, blueprint)
-	{
-	}
-
-	protected MapObjectEntity()
-	{
-	}
-
-	public override Hash128 GetHash128()
-	{
-		Hash128 result = default(Hash128);
-		Hash128 val = base.GetHash128();
-		result.Append(ref val);
-		return result;
-	}
-
-	public abstract override void Serialize<TFormatter>(TFormatter formatter, SerializerState state);
-
-	public abstract override void Deserialize<TFormatter>(TFormatter formatter, uint objectId, DeserializerState state);
 }

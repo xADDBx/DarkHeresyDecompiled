@@ -6,6 +6,7 @@ using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.Framework;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
@@ -15,8 +16,9 @@ using Kingmaker.UI.AR;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
-using Kingmaker.UnitLogic.Mechanics;
+using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.View.MapObjects.SriptZones;
 using Pathfinding;
 using R3;
 using UnityEngine;
@@ -108,7 +110,7 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 		UpdateMovableAreaIfNeeded(EventInvokerExtensions.BaseUnitEntity);
 	}
 
-	public void HandleUnitGainMovementPoints(float movementPoints, MechanicsContext context)
+	public void HandleUnitGainMovementPoints(float movementPoints, IEvalContext context)
 	{
 		UpdateMovableAreaIfNeeded(EventInvokerExtensions.BaseUnitEntity);
 	}
@@ -235,17 +237,24 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 	{
 		HashSet<GraphNode> hashSet = TempHashSet.Get<GraphNode>();
 		hashSet.AddRange(threateningArea);
+		IEnumerable<ScriptZoneEntity> source = Game.Instance.EntityPools.ScriptZones.Where((ScriptZoneEntity area) => area.IsActive && area.Facts.HasComponent<ScriptZoneNoDeployment>());
 		if ((bool)unit.Features.CanDeployNearEnemies)
 		{
-			return Enumerable.Empty<GraphNode>();
+			return source.SelectMany((ScriptZoneEntity area) => area.Config.Shapes.SelectMany(EditorGridHelper.GetNodesInsideScriptZone));
 		}
+		hashSet.AddRange(source.SelectMany((ScriptZoneEntity area) => area.Config.Shapes.SelectMany(EditorGridHelper.GetNodesInsideScriptZone)));
 		foreach (BaseUnitEntity item in Game.Instance.EntityPools.AllBaseAwakeUnits.Where((BaseUnitEntity i) => i.IsInCombat && i.IsPlayerEnemy))
 		{
-			foreach (GridNodeBase item2 in GridAreaHelper.GetNodesSpiralAround(item.Position.GetNearestNodeXZUnwalkable(), item.SizeRect, 1))
+			GridNode currentUnwalkableNode = item.CurrentUnwalkableNode;
+			foreach (GridNodeBase item2 in GridAreaHelper.GetNodesSpiralAround(currentUnwalkableNode, item.SizeRect, 1))
 			{
 				if (item.DistanceToInCells(item2.Vector3Position()) <= 1)
 				{
-					hashSet.Add(item2);
+					Linecast.HasConnectionTransition condition = Linecast.HasConnectionTransition.Instance;
+					if (!Linecast.LinecastGrid(currentUnwalkableNode.Graph, item.Position, item2.Vector3Position(), currentUnwalkableNode, out var _, ref condition))
+					{
+						hashSet.Add(item2);
+					}
 				}
 			}
 		}
@@ -283,6 +292,7 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 		DeploymentPhase = canDeploy;
 		if (canDeploy)
 		{
+			ClearInitialPositions();
 			m_CurrentUnitSubscription?.Dispose();
 			m_CurrentUnitSubscription = Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Subscribe(HandleNewUnitStartTurn);
 		}
@@ -347,6 +357,14 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 	void IUnitCombatHandler.HandleUnitJoinCombat()
 	{
 		m_Dirty = true;
+		if (DeploymentPhase)
+		{
+			BaseUnitEntity baseUnitEntity = EventInvokerExtensions.BaseUnitEntity;
+			if (baseUnitEntity != null && baseUnitEntity.IsInPlayerParty)
+			{
+				m_InitialPositions[baseUnitEntity.UniqueId] = baseUnitEntity.Position;
+			}
+		}
 	}
 
 	void IUnitCombatHandler.HandleUnitLeaveCombat()

@@ -78,7 +78,7 @@ public class PartWeakpoints : BaseUnitPart, IHashable, IOwlPackable<PartWeakpoin
 		entry.Sources.Add(new Entry.Source(sourceFact, sourceComponent));
 		if (num)
 		{
-			EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IWeakpointAdded>)delegate(IWeakpointAdded h)
+			base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IWeakpointAdded>)delegate(IWeakpointAdded h)
 			{
 				h.HandleWeakpointAdded(side);
 			}, isCheckRuntime: true);
@@ -101,7 +101,7 @@ public class PartWeakpoints : BaseUnitPart, IHashable, IOwlPackable<PartWeakpoin
 			foreach (WeakpointSide side in value)
 			{
 				_entries.Remove(side);
-				EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IWeakpointRemoved>)delegate(IWeakpointRemoved h)
+				base.EventBus.RaiseEvent((IBaseUnitEntity)base.Owner, (Action<IWeakpointRemoved>)delegate(IWeakpointRemoved h)
 				{
 					h.HandleWeakpointRemoved(side);
 				}, isCheckRuntime: true);
@@ -127,7 +127,7 @@ public class PartWeakpoints : BaseUnitPart, IHashable, IOwlPackable<PartWeakpoin
 			EntityFact fact = source.FactRef.Fact;
 			fact?.Manager.Remove(fact);
 		}
-		EventBus.RaiseEvent((IBaseUnitEntity)owner, (Action<IWeakpointRemoved>)delegate(IWeakpointRemoved h)
+		base.EventBus.RaiseEvent((IBaseUnitEntity)owner, (Action<IWeakpointRemoved>)delegate(IWeakpointRemoved h)
 		{
 			h.HandleWeakpointRemoved(side);
 		}, isCheckRuntime: true);

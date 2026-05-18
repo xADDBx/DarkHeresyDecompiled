@@ -24,12 +24,9 @@ public class SaveSlotCollectionVirtualBaseView : View<SaveSlotCollectionVM>
 
 	public ObservableList<VirtualListElementVMBase> Saves => base.ViewModel.AllTitlesAndSlots;
 
-	public GridConsoleNavigationBehaviour NavigationBehaviour { get; private set; }
-
 	protected override void OnBind()
 	{
 		m_VirtualList.Initialize(new VirtualListElementTemplate<SaveSlotsExpandableTitleVM>(m_ExpandableTitleView), new VirtualListElementTemplate<SaveSlotVM>(m_SaveSlotPrefab));
-		NavigationBehaviour = m_VirtualList.GetNavigationBehaviour().AddTo(this);
 		CreateSlotGroups();
 	}
 

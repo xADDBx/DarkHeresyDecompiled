@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Blueprints;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.ResourceLinks;
-using Kingmaker.View;
 using Kingmaker.Visual.CharacterSystem;
 using Owlcat.Runtime.Core.Utility;
 using UnityEngine;
@@ -37,7 +37,7 @@ public class AddKingmakerEquipmentEntity : UnitFactComponentDelegate
 	private bool TryGetCharacter(out Character resultCharacter)
 	{
 		resultCharacter = null;
-		UnitEntityView view = base.Owner.View;
+		IUnitEntityView view = base.Owner.View;
 		if (view == null)
 		{
 			return false;

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Interfaces;
-using Kingmaker.EntitySystem.Persistence.JsonUtility;
+using Kingmaker.Framework.EntitySystem.Interfaces.Config;
 using Kingmaker.UnitLogic.Mechanics.Blueprints;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using OwlPack.Runtime;
@@ -40,21 +40,17 @@ public class MechanicLightRoot : MechanicEntity, IHashable, IOwlPackable<Mechani
 
 	public override bool IsAffectedByFogOfWar => false;
 
-	public MechanicLightRoot(JsonConstructorMark _)
+	public MechanicLightRoot(IMechanicEntityConfig config)
+		: base(config)
+	{
+	}
+
+	public MechanicLightRoot(OwlPackConstructorParameter _)
 		: base(_)
 	{
 	}
 
-	public MechanicLightRoot(string uniqueId, bool isInGame, BlueprintMechanicEntityFact blueprint)
-		: base(uniqueId, isInGame, blueprint)
-	{
-	}
-
-	protected MechanicLightRoot()
-	{
-	}
-
-	protected override IEntityViewBase CreateViewForData()
+	protected override IEntityView CreateViewForData()
 	{
 		return null;
 	}
@@ -69,7 +65,7 @@ public class MechanicLightRoot : MechanicEntity, IHashable, IOwlPackable<Mechani
 
 	public static void CreateForDeserialization<TPossiblyBase>(ref TPossiblyBase result)
 	{
-		MechanicLightRoot source = new MechanicLightRoot();
+		MechanicLightRoot source = new MechanicLightRoot(default(OwlPackConstructorParameter));
 		result = Unsafe.As<MechanicLightRoot, TPossiblyBase>(ref source);
 	}
 

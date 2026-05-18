@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Kingmaker.Blueprints.Root.Strings;
-using Kingmaker.Blueprints.Root.Strings.GameLog;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem;
 using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.GameCommands;
@@ -15,9 +13,9 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UI.Events;
+using Kingmaker.UI.Sound;
 using Kingmaker.Utility;
 using Kingmaker.Utility.DotNetExtensions;
-using Kingmaker.Utility.GameConst;
 using Kingmaker.View;
 using Kingmaker.View.MapObjects;
 using ObservableCollections;
@@ -45,6 +43,8 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 	private readonly ReactiveProperty<bool> m_NoLoot = new ReactiveProperty<bool>();
 
 	private readonly List<ItemsCollection> m_ItemsCollections;
+
+	private readonly ItemEntity m_CatchInteractionSlotItemEntity;
 
 	private readonly Action m_AreaTransitionCallback;
 
@@ -127,7 +127,8 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 		switch (mode)
 		{
 		case LootWindowMode.OneSlot:
-			InteractionSlot = new InteractionSlotPartVM(ContextLoot.FirstItem(), canInsertItem, Close).AddTo(this);
+			InteractionSlot = new InteractionSlotPartVM(ContextLoot.FirstItem(), canInsertItem, Close, CloseOneSlot).AddTo(this);
+			m_CatchInteractionSlotItemEntity = InteractionSlot.Group.Items?.FirstOrDefault();
 			break;
 		case LootWindowMode.PlayerChest:
 			PlayerStash = new PlayerStashVM(this).AddTo(this);
@@ -168,7 +169,7 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 			lootObject.AddTo(lootVM);
 			OwlcatR3UnitExtensions.Subscribe(lootObject.SlotsGroup.CollectionChangedCommand, delegate
 			{
-				lootVM.m_LootUpdated.Execute();
+				lootVM.m_LootUpdated.Execute(Unit.Default);
 			}).AddTo(lootVM);
 		}
 	}
@@ -331,18 +332,20 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 				{
 					UIInventoryHelper.TryCollectLootSlot(slot);
 					MarkContextLootAsDirty();
-					return;
 				}
-				Game.Instance.GameCommandQueue.TransferItem(slot.ItemEntity, Game.Instance.Player.SharedStash.ToCollectionRef(), 1);
-				ShowNotification("<b>" + slot.ItemEntity.Name + "</b>");
-				m_AllCollected = true;
-				MarkContextLootAsDirty();
+				else
+				{
+					Game.Instance.GameCommandQueue.TransferItem(slot.ItemEntity, Game.Instance.Player.SharedStash.ToCollectionRef(), 1);
+					m_AllCollected = true;
+					MarkContextLootAsDirty();
+				}
 				return;
 			}
 		}
 		if (!slot.ItemEntity.Blueprint.IsNotable)
 		{
 			slot.MarkAsTrashLoot(!slot.MarkedAsTrash.CurrentValue);
+			ModalWindowsSounds.Instance.Loot.MarkAsTrash.Play();
 			MarkContextLootAsDirty();
 		}
 	}
@@ -364,52 +367,19 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 
 	public void TryCollectLoot()
 	{
-		StringBuilder stringBuilder = new StringBuilder();
-		int itemsToShowLootNotificationWindow = UIConsts.ItemsToShowLootNotificationWindow;
-		int num = 0;
-		int num2 = 0;
 		foreach (LootObjectVM item in ContextLoot)
 		{
-			if (item.Type != 0 || !item.HasLootableItems)
+			if (item.Type == LootObjectType.Normal && item.HasLootableItems)
 			{
-				continue;
+				Game.Instance.GameCommandQueue.CollectLoot(item.LootableItems.Select((ItemEntity x) => new EntityRef<ItemEntity>(x)).ToList());
 			}
-			Game.Instance.GameCommandQueue.CollectLoot(item.LootableItems.Select((ItemEntity x) => new EntityRef<ItemEntity>(x)).ToList());
-			foreach (ItemEntity lootableItem in item.LootableItems)
-			{
-				if (num < itemsToShowLootNotificationWindow)
-				{
-					stringBuilder.AppendLine("<b>" + lootableItem.Name + "</b>");
-				}
-				num++;
-			}
-			num2 += item.LootableItems.Count();
 		}
-		if (num2 > itemsToShowLootNotificationWindow)
-		{
-			stringBuilder.AppendLine(string.Format(UIStrings.Instance.LootWindow.NotificationMessageForGainLootItem, num2 - itemsToShowLootNotificationWindow));
-		}
-		ShowNotification(stringBuilder.ToString());
 		m_AllCollected = true;
 		MarkContextLootAsDirty();
 		if (!ExtendedView.CurrentValue)
 		{
 			LeaveZone();
 		}
-	}
-
-	private void ShowNotification(string message)
-	{
-		EventBus.RaiseEvent(delegate(IWarningNotificationUIHandler h)
-		{
-			h.HandleWarning(GameLogStrings.Instance.ItemGained.Message.Text + "\n" + message, addToLog: false);
-		});
-	}
-
-	public void CloseExitWindow()
-	{
-		ExitLocationWindowVM.CurrentValue?.Dispose();
-		m_ExitLocationWindowVM.Value = null;
 	}
 
 	public void LeaveZone()
@@ -428,6 +398,26 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 	{
 		m_CloseCallback?.Invoke();
 		m_CloseCallback = null;
+	}
+
+	private void CloseOneSlot()
+	{
+		if (Mode == LootWindowMode.OneSlot && m_CatchInteractionSlotItemEntity != InteractionSlot.ItemSlot?.CurrentValue?.ItemEntity)
+		{
+			if (m_CatchInteractionSlotItemEntity == null)
+			{
+				UIInventoryHelper.TryMoveSlot(InteractionSlot?.ItemSlot?.CurrentValue, InventoryStash.FirstEmptySlot, InteractionSlot);
+			}
+			else
+			{
+				InsertableLootSlotVM visibleElementOrDefault = InteractionSlot.SlotsGroup.CurrentValue.GetVisibleElementOrDefault((InsertableLootSlotVM slot) => slot.ItemEntity == m_CatchInteractionSlotItemEntity);
+				if (visibleElementOrDefault != null)
+				{
+					UIInventoryHelper.InsertToInteractionSlot(visibleElementOrDefault, InteractionSlot);
+				}
+			}
+		}
+		Close();
 	}
 
 	void IInventoryHandler.Refresh()
@@ -459,7 +449,6 @@ public class LootVM : ViewModel, INewSlotsHandler, ISubscriber, ICollectLootHand
 			if (immediately)
 			{
 				UIInventoryHelper.TryMoveSlot(slot, InventoryStash.FirstEmptySlot, InteractionSlot);
-				ShowNotification("<b>" + slot.ItemEntity.Name + "</b>");
 				m_AllCollected = true;
 				MarkContextLootAsDirty();
 			}

@@ -11,6 +11,8 @@ using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Squads;
+using Kingmaker.Utility.CodeTimer;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.Mechanics.Entities;
 using Owlcat.UI;
 using R3;
@@ -23,11 +25,9 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 
 	private readonly ReactiveProperty<bool> m_HasUnits = new ReactiveProperty<bool>(value: false);
 
-	private readonly ReactiveProperty<InitiativeTrackerMechanicEntityVM> m_HoveredEntity = new ReactiveProperty<InitiativeTrackerMechanicEntityVM>();
+	private readonly ReactiveProperty<CombatMechanicEntityVM> m_HoveredEntity = new ReactiveProperty<CombatMechanicEntityVM>();
 
-	private readonly ReactiveProperty<InitiativeTrackerMechanicEntityVM> m_SquadLeaderUnit = new ReactiveProperty<InitiativeTrackerMechanicEntityVM>();
-
-	private readonly ReactiveProperty<InitiativeTrackerMechanicEntityVM> m_CurrentUnit = new ReactiveProperty<InitiativeTrackerMechanicEntityVM>();
+	private readonly ReactiveProperty<CombatMechanicEntityVM> m_CurrentUnit = new ReactiveProperty<CombatMechanicEntityVM>();
 
 	private readonly ReactiveProperty<int> m_RoundCounter = new ReactiveProperty<int>();
 
@@ -35,23 +35,19 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 
 	private readonly ReactiveProperty<bool> m_ConsoleActive = new ReactiveProperty<bool>();
 
+	private List<InitiativeTrackerMechanicEntityVM> m_TrackerEntities = new List<InitiativeTrackerMechanicEntityVM>();
+
 	private bool m_NeedUpdate;
-
-	private readonly Dictionary<int, InitiativeTrackerSquadLeaderVM> m_SquadIndexToSquadLeaderDict = new Dictionary<int, InitiativeTrackerSquadLeaderVM>();
-
-	private readonly List<InitiativeTrackerMechanicEntityVM> m_TrackerEntitiesCached = new List<InitiativeTrackerMechanicEntityVM>();
-
-	public List<InitiativeTrackerMechanicEntityVM> TrackerEntities = new List<InitiativeTrackerMechanicEntityVM>();
 
 	public ReadOnlyReactiveProperty<bool> CanBeVisible => m_CanBeVisible;
 
 	public ReadOnlyReactiveProperty<bool> HasUnits => m_HasUnits;
 
-	public ReadOnlyReactiveProperty<InitiativeTrackerMechanicEntityVM> HoveredEntity => m_HoveredEntity;
+	public IReadOnlyList<InitiativeTrackerMechanicEntityVM> TrackerEntities => m_TrackerEntities;
 
-	public ReadOnlyReactiveProperty<InitiativeTrackerMechanicEntityVM> SquadLeaderUnit => m_SquadLeaderUnit;
+	public ReadOnlyReactiveProperty<CombatMechanicEntityVM> HoveredEntity => m_HoveredEntity;
 
-	public ReadOnlyReactiveProperty<InitiativeTrackerMechanicEntityVM> CurrentUnit => m_CurrentUnit;
+	public ReadOnlyReactiveProperty<CombatMechanicEntityVM> CurrentUnit => m_CurrentUnit;
 
 	public ReadOnlyReactiveProperty<int> RoundCounter => m_RoundCounter;
 
@@ -67,9 +63,12 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 
 	public MoraleBalanceVM MoraleBalanceVM { get; }
 
+	public CombatUnitCounterVM CombatUnitCounterVM { get; }
+
 	public InitiativeTrackerVM()
 	{
 		MoraleBalanceVM = new MoraleBalanceVM().AddTo(this);
+		CombatUnitCounterVM = new CombatUnitCounterVM().AddTo(this);
 		EventBus.Subscribe(this).AddTo(this);
 		UpdateEntities();
 		m_RoundCounter.Value = Game.Instance.Controllers.TurnController.CombatRound;
@@ -97,16 +96,11 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 	{
 		m_NeedUpdate = false;
 		m_HasUnits.Value = false;
-		TrackerEntities.ForEach(delegate(InitiativeTrackerMechanicEntityVM u)
+		m_TrackerEntities.ForEach(delegate(InitiativeTrackerMechanicEntityVM u)
 		{
 			u.Dispose();
 		});
-		TrackerEntities.Clear();
-		foreach (InitiativeTrackerSquadLeaderVM value in m_SquadIndexToSquadLeaderDict.Values)
-		{
-			value.Dispose();
-		}
-		m_SquadIndexToSquadLeaderDict.Clear();
+		m_TrackerEntities.Clear();
 	}
 
 	private void UpdateVisibility()
@@ -149,70 +143,50 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 		{
 			return;
 		}
-		bool isDirty = false;
-		int count = TrackerEntities.Count;
-		int num = 0;
-		List<InitiativeTrackerMechanicEntityVM> list = new List<InitiativeTrackerMechanicEntityVM>();
-		InitiativeTrackerMechanicEntityVM initiativeTrackerMechanicEntityVM = EnsureTrackerEntity(mechanicEntity, num, isCurrent: true, ref isDirty);
-		list.Add(initiativeTrackerMechanicEntityVM);
-		m_CurrentUnit.Value = initiativeTrackerMechanicEntityVM;
-		UnitSquad unitSquad = mechanicEntity as UnitSquad;
-		foreach (MechanicEntity item in turnController.CurrentRoundUnitsOrder)
+		using (ProfileScope.New("InitiativeTrackerVM.UpdateEntities"))
 		{
-			if (item != mechanicEntity && (unitSquad == null || (item != unitSquad.Leader && item != unitSquad.Units.FirstItem().ToBaseUnitEntity())) && CheckVisibiltyInTracker(item))
+			bool isDirty = false;
+			int count = m_TrackerEntities.Count;
+			int num = 0;
+			List<InitiativeTrackerMechanicEntityVM> list = new List<InitiativeTrackerMechanicEntityVM>();
+			InitiativeTrackerMechanicEntityVM initiativeTrackerMechanicEntityVM = EnsureTrackerEntity(mechanicEntity, num, isCurrent: true, ref isDirty);
+			list.Add(initiativeTrackerMechanicEntityVM);
+			m_CurrentUnit.Value = initiativeTrackerMechanicEntityVM;
+			IReadOnlyList<UnitReference> readOnlyList = (mechanicEntity as UnitSquad)?.Units;
+			foreach (MechanicEntity entity in turnController.CurrentRoundUnitsOrder)
 			{
-				initiativeTrackerMechanicEntityVM = EnsureTrackerEntity(item, ++num, isCurrent: false, ref isDirty);
-				list.Add(initiativeTrackerMechanicEntityVM);
-			}
-		}
-		RoundIndex = num;
-		foreach (MechanicEntity item2 in turnController.NextRoundUnitsOrder.Except(turnController.CurrentRoundUnitsOrder))
-		{
-			if (CheckVisibiltyInTracker(item2))
-			{
-				initiativeTrackerMechanicEntityVM = EnsureTrackerEntity(item2, ++num, isCurrent: false, ref isDirty);
-				list.Add(initiativeTrackerMechanicEntityVM);
-			}
-		}
-		if (num != count)
-		{
-			isDirty = true;
-		}
-		if (isDirty)
-		{
-			foreach (InitiativeTrackerMechanicEntityVM item3 in TrackerEntities.Except(list).ToList())
-			{
-				TrackerEntities.Remove(item3);
-				item3.Dispose();
-			}
-			TrackerEntities = TrackerEntities.OrderBy((InitiativeTrackerMechanicEntityVM u) => u.OrderIndex.CurrentValue).ToList();
-			foreach (InitiativeTrackerMechanicEntityVM trackerEntity in TrackerEntities)
-			{
-				if (!trackerEntity.IsInSquad.CurrentValue)
+				if (entity != mechanicEntity && (readOnlyList == null || !readOnlyList.Contains((UnitReference e) => e.ToBaseUnitEntity() == entity)) && CheckVisibiltyInTracker(entity))
 				{
-					continue;
-				}
-				if (m_SquadIndexToSquadLeaderDict.ContainsKey(trackerEntity.SquadGroupIndex.CurrentValue))
-				{
-					m_SquadIndexToSquadLeaderDict[trackerEntity.SquadGroupIndex.CurrentValue].AddToSquad(trackerEntity);
-					if (trackerEntity.IsSquadLeader.CurrentValue)
-					{
-						m_SquadIndexToSquadLeaderDict[trackerEntity.SquadGroupIndex.CurrentValue].SetSquadLeader(trackerEntity);
-					}
-				}
-				else
-				{
-					m_SquadIndexToSquadLeaderDict[trackerEntity.SquadGroupIndex.CurrentValue] = new InitiativeTrackerSquadLeaderVM(trackerEntity.MechanicEntity, ++num, isCurrent: false);
-					if (trackerEntity.IsSquadLeader.CurrentValue)
-					{
-						m_SquadIndexToSquadLeaderDict[trackerEntity.SquadGroupIndex.CurrentValue].SetSquadLeader(trackerEntity);
-					}
+					initiativeTrackerMechanicEntityVM = EnsureTrackerEntity(entity, ++num, isCurrent: false, ref isDirty);
+					list.Add(initiativeTrackerMechanicEntityVM);
 				}
 			}
-			m_HasUnits.Value = TrackerEntities.Any();
-			m_EntitiesUpdated.Execute();
+			RoundIndex = num;
+			foreach (MechanicEntity item in turnController.NextRoundUnitsOrder.Except(turnController.CurrentRoundUnitsOrder))
+			{
+				if (CheckVisibiltyInTracker(item))
+				{
+					initiativeTrackerMechanicEntityVM = EnsureTrackerEntity(item, ++num, isCurrent: false, ref isDirty);
+					list.Add(initiativeTrackerMechanicEntityVM);
+				}
+			}
+			if (num != count)
+			{
+				isDirty = true;
+			}
+			if (isDirty)
+			{
+				foreach (InitiativeTrackerMechanicEntityVM item2 in m_TrackerEntities.Except(list).ToList())
+				{
+					m_TrackerEntities.Remove(item2);
+					item2.Dispose();
+				}
+				m_TrackerEntities = m_TrackerEntities.OrderBy((InitiativeTrackerMechanicEntityVM u) => u.OrderIndex.CurrentValue).ToList();
+				m_HasUnits.Value = Enumerable.Any(m_TrackerEntities);
+				m_EntitiesUpdated.Execute(Unit.Default);
+			}
+			m_NeedUpdate = false;
 		}
-		m_NeedUpdate = false;
 	}
 
 	private bool CheckVisibiltyInTracker(MechanicEntity entity)
@@ -238,12 +212,12 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 
 	private InitiativeTrackerMechanicEntityVM EnsureTrackerEntity(MechanicEntity mechanicEntity, int index, bool isCurrent, ref bool isDirty)
 	{
-		int num = TrackerEntities.FindIndex((InitiativeTrackerMechanicEntityVM v) => v.IsCreatedFrom(mechanicEntity));
-		InitiativeTrackerMechanicEntityVM initiativeTrackerMechanicEntityVM = ((num >= 0) ? TrackerEntities[num] : null);
+		int num = m_TrackerEntities.FindIndex((InitiativeTrackerMechanicEntityVM v) => v.IsCreatedFrom(mechanicEntity));
+		InitiativeTrackerMechanicEntityVM initiativeTrackerMechanicEntityVM = ((num >= 0) ? m_TrackerEntities[num] : null);
 		if (initiativeTrackerMechanicEntityVM == null)
 		{
 			InitiativeTrackerMechanicEntityVM initiativeTrackerMechanicEntityVM2 = new InitiativeTrackerMechanicEntityVM(mechanicEntity, index, isCurrent);
-			TrackerEntities.Add(initiativeTrackerMechanicEntityVM2);
+			m_TrackerEntities.Add(initiativeTrackerMechanicEntityVM2);
 			isDirty = true;
 			return initiativeTrackerMechanicEntityVM2;
 		}
@@ -261,32 +235,21 @@ public class InitiativeTrackerVM : ViewModel, ITurnBasedModeHandler, ISubscriber
 
 	void IUnitDirectHoverUIHandler.HandleHoverChange(AbstractUnitEntityView unitEntityView, bool isHover, bool isDirect)
 	{
-		if (isHover)
+		if (!isHover)
 		{
-			BaseUnitEntity baseUnitEntity = unitEntityView.EntityData.ToBaseUnitEntity();
-			if (baseUnitEntity.IsInSquad)
+			m_HoveredEntity.Value = null;
+			return;
+		}
+		InitiativeTrackerMechanicEntityVM value = null;
+		foreach (InitiativeTrackerMechanicEntityVM trackerEntity in m_TrackerEntities)
+		{
+			if (trackerEntity.MechanicEntity?.View == unitEntityView)
 			{
-				PartSquad squadOptional = baseUnitEntity.GetSquadOptional();
-				BaseUnitEntity leader = squadOptional?.Leader ?? ((squadOptional != null) ? squadOptional.Units.FirstOrDefault().ToBaseUnitEntity() : null);
-				if (leader != null)
-				{
-					m_SquadLeaderUnit.Value = TrackerEntities.LastOrDefault((InitiativeTrackerMechanicEntityVM unit) => unit.MechanicEntity == leader);
-				}
-			}
-			m_HoveredEntity.Value = TrackerEntities.LastOrDefault((InitiativeTrackerMechanicEntityVM unit) => unit.MechanicEntity?.View == unitEntityView);
-			{
-				foreach (InitiativeTrackerMechanicEntityVM trackerEntity in TrackerEntities)
-				{
-					trackerEntity.MechanicEntityUIState?.HandleHoverChange(unitEntityView, trackerEntity.MechanicEntity?.View == unitEntityView, isDirect: false);
-				}
-				return;
+				value = trackerEntity;
+				break;
 			}
 		}
-		m_HoveredEntity.Value = null;
-		foreach (InitiativeTrackerMechanicEntityVM trackerEntity2 in TrackerEntities)
-		{
-			trackerEntity2.MechanicEntityUIState?.HandleHoverChange(unitEntityView, isHover: false, isDirect: false);
-		}
+		m_HoveredEntity.Value = value;
 	}
 
 	void IUnitSpawnHandler.HandleUnitSpawned()

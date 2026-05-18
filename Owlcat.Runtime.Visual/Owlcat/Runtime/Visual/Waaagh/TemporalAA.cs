@@ -311,7 +311,7 @@ public static class TemporalAA
 		{
 			text = "Disabling TAA because camera has dynamic resolution enabled. You can use a constant render scale instead.";
 		}
-		if (text == null && !cameraData.renderer.SupportsMotionVectors())
+		if (text == null && !cameraData.renderer.SupportsPipelineFeature(PipelineFeature.MotionVectors))
 		{
 			text = "Disabling TAA because the renderer does not implement motion vectors. Motion vectors are required for TAA.";
 		}
@@ -322,7 +322,7 @@ public static class TemporalAA
 		return text;
 	}
 
-	internal static void Render(RenderGraph renderGraph, Material taaMaterial, WaaaghCameraData cameraData, ref TextureHandle srcColor, ref TextureHandle srcDepth, ref TextureHandle srcMotionVectors, ref TextureHandle dstColor)
+	internal static void Render(RenderGraph renderGraph, Material taaMaterial, WaaaghCameraData cameraData, in TextureHandle srcColor, in TextureHandle srcDepth, in TextureHandle srcMotionVectors, ref TextureHandle dstColor)
 	{
 		int eyeIndex = 0;
 		ref Settings taaSettings = ref cameraData.taaSettings;
@@ -332,7 +332,7 @@ public static class TemporalAA
 		TextureHandle input = renderGraph.ImportTexture(accumulationTexture);
 		TextureHandle input2 = (flag ? srcMotionVectors : renderGraph.defaultResources.blackTexture);
 		TaaPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing", out passData, ProfilingSampler.Get(WaaaghProfileId.TAA), ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\TemporalAA.cs", 413))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing", out passData, WaaaghProfileId.TAA.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\TemporalAA.cs", 413))
 		{
 			passData.dstTex = dstColor;
 			rasterRenderGraphBuilder.SetRenderAttachment(dstColor, 0);
@@ -388,7 +388,7 @@ public static class TemporalAA
 		}
 		int passIndex = taaMaterial.shader.passCount - 1;
 		TaaPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing Copy History", out passData2, ProfilingSampler.Get(WaaaghProfileId.TAACopyHistory), ".\\Library\\PackageCache\\com.owlcat.visual@141c9a01de77\\Runtime\\Waaagh\\TemporalAA.cs", 472))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing Copy History", out passData2, WaaaghProfileId.TAACopyHistory.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\TemporalAA.cs", 472))
 		{
 			passData2.dstTex = input;
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);

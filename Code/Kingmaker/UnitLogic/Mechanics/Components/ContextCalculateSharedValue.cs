@@ -23,9 +23,4 @@ public class ContextCalculateSharedValue : BlueprintComponent
 	public ContextDiceValue Value;
 
 	public double Modifier = 1.0;
-
-	public int Calculate(MechanicsContext context)
-	{
-		return (int)((double)Value.Calculate(context) * Modifier);
-	}
 }

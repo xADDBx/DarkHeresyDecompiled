@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Enums;
-using Kingmaker.Code.View.Bridge.OBSOLETE;
 using Kingmaker.Localization;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -131,6 +130,12 @@ public class GraphicsSettingsController
 	public AntialiasingMode AntialiasingMode => m_Settings.AntialiasingMode.GetValue();
 
 	public QualityOption AntialiasingQuality => m_Settings.AntialiasingQuality.GetValue();
+
+	public FsrMode FsrMode => m_Settings.FsrMode.GetValue();
+
+	public VSyncModeOptions VSyncMode => m_Settings.VSyncMode.GetValue();
+
+	public QualityOptionDisactivatable ShadowsQuality => m_Settings.ShadowsQuality.GetValue();
 
 	public GraphicsSettingsController()
 	{
@@ -439,7 +444,7 @@ public class GraphicsSettingsController
 			{
 				FsrMode.Off => 1f, 
 				FsrMode.UltraQuality => 0.77f, 
-				FsrMode.Quality => 0.67f, 
+				FsrMode.Quality => 2f / 3f, 
 				FsrMode.Balanced => 0.59f, 
 				FsrMode.Performance => 0.5f, 
 				_ => 1f, 
@@ -447,23 +452,23 @@ public class GraphicsSettingsController
 			ScriptableRendererData[] rendererDataList = result.RendererDataList;
 			for (int i = 0; i < rendererDataList.Length; i++)
 			{
-				foreach (ScriptableRendererFeature rendererFeature in rendererDataList[i].RendererFeatures)
+				foreach (RendererFeatureAsset rendererFeature in rendererDataList[i].RendererFeatures)
 				{
-					if (!(rendererFeature == null) && rendererFeature is VolumetricLightingFeature volumetricLightingFeature)
+					if (!(rendererFeature == null) && rendererFeature is VolumetricLightingRendererFeatureAsset volumetricLightingRendererFeatureAsset)
 					{
 						switch (m_Settings.VolumetricLightingQuality.GetValue())
 						{
 						case QualityOption.High:
-							volumetricLightingFeature.Settings.Slices = VolumetricLightingSlices.x128;
-							volumetricLightingFeature.Settings.TricubicFilteringDeferred = true;
+							volumetricLightingRendererFeatureAsset.Settings.Slices = VolumetricLightingSlices.x128;
+							volumetricLightingRendererFeatureAsset.Settings.TricubicFilteringDeferred = true;
 							break;
 						case QualityOption.Medium:
-							volumetricLightingFeature.Settings.Slices = VolumetricLightingSlices.x96;
-							volumetricLightingFeature.Settings.TricubicFilteringDeferred = true;
+							volumetricLightingRendererFeatureAsset.Settings.Slices = VolumetricLightingSlices.x96;
+							volumetricLightingRendererFeatureAsset.Settings.TricubicFilteringDeferred = true;
 							break;
 						default:
-							volumetricLightingFeature.Settings.Slices = VolumetricLightingSlices.x64;
-							volumetricLightingFeature.Settings.TricubicFilteringDeferred = false;
+							volumetricLightingRendererFeatureAsset.Settings.Slices = VolumetricLightingSlices.x64;
+							volumetricLightingRendererFeatureAsset.Settings.TricubicFilteringDeferred = false;
 							break;
 						}
 					}
@@ -471,22 +476,11 @@ public class GraphicsSettingsController
 			}
 		}
 		ApplyAntiAliasingSettings();
-		if (MainThreadDispatcher.IsInitialized)
-		{
-			MainThreadDispatcher.FrequentUpdateInterval = m_Settings.UIFrequentTimerInterval.GetValue();
-			MainThreadDispatcher.InfrequentUpdateInterval = m_Settings.UIInfrequentTimerInterval.GetValue();
-		}
 	}
 
 	private void ApplyAntiAliasingSettings()
 	{
-		Owlcat.Runtime.Visual.Waaagh.AntialiasingMode antialiasing = m_Settings.AntialiasingMode.GetValue() switch
-		{
-			AntialiasingMode.Off => Owlcat.Runtime.Visual.Waaagh.AntialiasingMode.None, 
-			AntialiasingMode.SMAA => Owlcat.Runtime.Visual.Waaagh.AntialiasingMode.SubpixelMorphologicalAntiAliasing, 
-			AntialiasingMode.TAA => Owlcat.Runtime.Visual.Waaagh.AntialiasingMode.TemporalAntialiasing, 
-			_ => Owlcat.Runtime.Visual.Waaagh.AntialiasingMode.None, 
-		};
+		Owlcat.Runtime.Visual.Waaagh.AntialiasingMode antialiasing = Owlcat.Runtime.Visual.Waaagh.AntialiasingMode.TemporalAntialiasing;
 		AntialiasingQuality antialiasingQuality = m_Settings.AntialiasingQuality.GetValue() switch
 		{
 			QualityOption.Low => Owlcat.Runtime.Visual.Waaagh.AntialiasingQuality.Low, 

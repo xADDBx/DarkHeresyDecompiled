@@ -25,8 +25,8 @@ public class ContextConditionCompare : ContextCondition
 
 	protected override bool CheckCondition()
 	{
-		int num = CheckValue.Calculate(base.Context);
-		int num2 = TargetValue.Calculate(base.Context);
+		int num = CheckValue.Calculate(base.Eval);
+		int num2 = TargetValue.Calculate(base.Eval);
 		return m_Type.Check(num, num2);
 	}
 }

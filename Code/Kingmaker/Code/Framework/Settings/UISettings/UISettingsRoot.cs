@@ -28,6 +28,8 @@ public class UISettingsRoot : ScriptableObject
 		[Header("Game")]
 		public UIGameMainSettings UIGameMainSettings;
 
+		public UISwitchJoyConAsMouse UISwitchJoyConAsMouse;
+
 		public UIGameSaveSettings UIGameSaveSettings;
 
 		public UIGameTooltipsSettings UIGameTooltipsSettings;
@@ -81,6 +83,7 @@ public class UISettingsRoot : ScriptableObject
 			UIKeybindPreciseAttackSettings.LinkToSettings();
 			UIKeybindSelectCharacterSettings.LinkToSettings();
 			UIDevelopmentSettings.LinkToSettings();
+			UISwitchJoyConAsMouse.LinkToSettings();
 		}
 
 		public void InitializeSettings()
