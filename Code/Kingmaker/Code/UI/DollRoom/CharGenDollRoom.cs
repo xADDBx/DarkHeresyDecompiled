@@ -31,7 +31,7 @@ public class CharGenDollRoom : DollRoomBase, ILevelUpDollHandler, ISubscriber
 	public override void Show()
 	{
 		base.Show();
-		SetupDollPostProcessAndAnimation(isCharGen: true);
+		SetupDollPostProcessAndAnimation();
 	}
 
 	protected override void Cleanup()

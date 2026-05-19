@@ -94,7 +94,7 @@ public class TooltipTemplateChargenCareerPath : TooltipBaseTemplate
 		if (blueprintFeature != null)
 		{
 			UIUtilityFeaturesTooltip.ParseByBlockAndAddFeatures(bricks, blueprintFeature);
-			UIUtilityFeaturesTooltip.AddAllLevelUpStatsAndFeatures(bricks, blueprintFeature);
+			UIUtilityFeaturesTooltip.AddChargenProgressionLockedFoldable(bricks, blueprintFeature);
 		}
 	}
 

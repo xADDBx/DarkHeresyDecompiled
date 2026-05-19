@@ -507,7 +507,7 @@ public static class UIUtilityItem
 		data.Texts[TooltipElement.HitChance] = ((resultAdditionalHitChance > 0) ? UIUtilityText.AddPercentTo(resultAdditionalHitChance) : string.Empty);
 		int overpenetrationChance = weapon.OverpenetrationChance;
 		data.Texts[TooltipElement.OverpenetrationChance] = ((overpenetrationChance != 0) ? UIUtilityText.AddPercentTo(overpenetrationChance) : string.Empty);
-		int recoil = weapon.Blueprint.Recoil;
+		int recoil = weapon.Recoil;
 		data.Texts[TooltipElement.Recoil] = ((recoil != 0) ? UIUtilityText.AddPercentTo(recoil) : string.Empty);
 	}
 

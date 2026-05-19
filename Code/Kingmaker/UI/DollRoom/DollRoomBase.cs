@@ -29,12 +29,6 @@ public class DollRoomBase : MonoBehaviour, ISaveManagerHandler, ISubscriber
 	private Volume m_DollRoomPostProcessVolume;
 
 	[SerializeField]
-	private Volume m_DollRoomBackgroundPostProcessVolume;
-
-	[SerializeField]
-	private Volume m_DollRoomCharGenPostProcessVolume;
-
-	[SerializeField]
 	private float m_DollAppearStep = 0.05f;
 
 	[SerializeField]
@@ -52,7 +46,6 @@ public class DollRoomBase : MonoBehaviour, ISaveManagerHandler, ISubscriber
 	[SerializeField]
 	protected DollCamera m_Camera;
 
-	[SerializeField]
 	protected Light[] m_DisabledLights;
 
 	[SerializeField]
@@ -118,15 +111,17 @@ public class DollRoomBase : MonoBehaviour, ISaveManagerHandler, ISubscriber
 		return null;
 	}
 
-	private void SetupInventoryDollPostProcessAndAnimation(Volume targetVolume)
+	public void SetupDollPostProcessAndAnimation()
 	{
-		if (targetVolume == null)
+		if (m_DollRoomPostProcessVolume == null)
 		{
+			UberDebug.LogError("m_DollRoomPostProcessVolume is null. Can't initialize postprocess volume for dollroom");
 			return;
 		}
+		SetVolumeActive(m_DollRoomPostProcessVolume, active: true);
 		if (m_DollPostProcess == null)
 		{
-			m_DollPostProcess = GetCustomPostProcess(targetVolume);
+			m_DollPostProcess = GetCustomPostProcess(m_DollRoomPostProcessVolume);
 		}
 		if (m_DollPostProcess == null)
 		{
@@ -144,24 +139,12 @@ public class DollRoomBase : MonoBehaviour, ISaveManagerHandler, ISubscriber
 		}
 	}
 
-	public void SetupDollPostProcessAndAnimation(bool isCharGen)
+	private static void SetVolumeActive(Volume volume, bool active)
 	{
-		if (m_DollRoomBackgroundPostProcessVolume == null || m_DollRoomCharGenPostProcessVolume == null || m_DollRoomPostProcessVolume == null)
+		volume.enabled = active;
+		if (volume.gameObject.activeSelf != active)
 		{
-			UberDebug.LogError("m_DollRoomBackgroundPostProcessVolume or m_DollRoomCharGenPostProcessVolume or m_DollRoomPostProcessVolume is null. Can't initialize postprocess volumes for dollroom");
-		}
-		else if (isCharGen)
-		{
-			m_DollRoomPostProcessVolume.enabled = false;
-			m_DollRoomBackgroundPostProcessVolume.enabled = false;
-			m_DollRoomCharGenPostProcessVolume.enabled = true;
-		}
-		else
-		{
-			m_DollRoomPostProcessVolume.enabled = true;
-			m_DollRoomBackgroundPostProcessVolume.enabled = true;
-			m_DollRoomCharGenPostProcessVolume.enabled = false;
-			SetupInventoryDollPostProcessAndAnimation(m_DollRoomBackgroundPostProcessVolume);
+			volume.gameObject.SetActive(active);
 		}
 	}
 
@@ -254,6 +237,10 @@ public class DollRoomBase : MonoBehaviour, ISaveManagerHandler, ISubscriber
 			m_DisabledLights = null;
 			VisualSettingsOff();
 			Cleanup();
+			if (m_DollRoomPostProcessVolume != null)
+			{
+				SetVolumeActive(m_DollRoomPostProcessVolume, active: false);
+			}
 			base.gameObject.SetActive(value: false);
 			SetFogOfWarEnabled(enabled: true);
 			EventBus.Unsubscribe(this);
@@ -269,7 +256,7 @@ public class DollRoomBase : MonoBehaviour, ISaveManagerHandler, ISubscriber
 		}
 		if (m_DollPostProcess == null && m_DollRoomPostProcessVolume != null)
 		{
-			m_DollPostProcess = GetCustomPostProcess(m_DollRoomBackgroundPostProcessVolume);
+			m_DollPostProcess = GetCustomPostProcess(m_DollRoomPostProcessVolume);
 		}
 		if (m_DollPostProcess == null)
 		{

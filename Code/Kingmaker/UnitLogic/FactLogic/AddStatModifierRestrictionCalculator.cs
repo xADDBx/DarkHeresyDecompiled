@@ -7,7 +7,6 @@ using Kingmaker.EntitySystem.Stats.Components;
 using Kingmaker.Framework;
 using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.RuleSystem;
-using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Progression.Features.Advancements;
 using Kingmaker.Utility;
@@ -45,9 +44,6 @@ public sealed class AddStatModifierRestrictionCalculator : RestrictionCalculator
 	[ShowIf("AdvancedSkillOnly")]
 	public bool CheckTargetAdvancedSkill;
 
-	[NonSerialized]
-	private StatType _stat;
-
 	private bool IsSingleStat => StatSelector == StatSelectorType.Single;
 
 	private bool IsAttributeBasedSkills => StatSelector == StatSelectorType.AttributeBasedSkills;
@@ -66,13 +62,24 @@ public sealed class AddStatModifierRestrictionCalculator : RestrictionCalculator
 
 	public bool IsPassed(IEvalContext evalContext, in StatContext statContext, StatType stat)
 	{
-		_stat = stat;
+		if (!MatchesStat(stat))
+		{
+			return false;
+		}
 		MechanicEntity mechanicEntity = evalContext.ClickedTarget?.Entity ?? evalContext.Owner;
 		if (mechanicEntity == null)
 		{
-			throw new InvalidOperationException("AddStatModifierRestrictionCalculator.IsPassed: cannot resolve entity (context has no ClickedTarget.Entity and no Owner). Context type=" + evalContext.GetType().Name);
+			return false;
 		}
-		return IsPassedInternal(mechanicEntity, evalContext, null, statContext.Rule, statContext.Ability);
+		if (AdvancedSkillOnly)
+		{
+			MechanicEntity mechanicEntity2 = ((!CheckTargetAdvancedSkill) ? mechanicEntity : evalContext.Target?.Entity);
+			if (mechanicEntity2 == null || !IsAdvancedSkill(mechanicEntity2, stat))
+			{
+				return false;
+			}
+		}
+		return base.IsPassedInternal(mechanicEntity, evalContext, null, statContext.Rule, statContext.Ability);
 	}
 
 	public new bool IsPassed(IEvalContext evalContext, in StatContext statContext)
@@ -168,28 +175,19 @@ public sealed class AddStatModifierRestrictionCalculator : RestrictionCalculator
 
 	protected override bool IsPassedInternal(MechanicEntity entity, IEvalContext context = null, TargetWrapper target = null, RulebookEvent rule = null, AbilityData ability = null)
 	{
-		if (!MatchesStat(_stat))
-		{
-			return false;
-		}
-		if (AdvancedSkillOnly)
-		{
-			MechanicEntity mechanicEntity = ((!CheckTargetAdvancedSkill) ? entity : context?.Target?.Entity);
-			if (mechanicEntity == null || !IsAdvancedSkill(mechanicEntity, _stat))
-			{
-				return false;
-			}
-		}
 		return base.IsPassedInternal(entity, context, target, rule, ability);
 	}
 
 	private static bool IsAdvancedSkill(MechanicEntity entity, StatType skillType)
 	{
-		StatQueryOutput statQueryOutput = new StatQueryOutput();
-		entity.Actor.GetStat(skillType, statQueryOutput, default(StatContext), "IsAdvancedSkill");
-		foreach (Modifier modifier in statQueryOutput.Modifiers)
+		IReadOnlyList<MechanicActor.RegisteredModifier> registeredModifiers = entity.Actor.GetRegisteredModifiers(skillType);
+		if (registeredModifiers == null)
 		{
-			if (modifier.Fact?.Blueprint is BlueprintStatAdvancement)
+			return false;
+		}
+		foreach (MechanicActor.RegisteredModifier item in registeredModifiers)
+		{
+			if (item.Component.Fact?.Blueprint is BlueprintStatAdvancement)
 			{
 				return true;
 			}

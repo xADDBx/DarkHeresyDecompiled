@@ -154,7 +154,7 @@ public class CharacterDollRoom : DollRoomBase
 	public override void Show()
 	{
 		base.Show();
-		SetupDollPostProcessAndAnimation(isCharGen: false);
+		SetupDollPostProcessAndAnimation();
 		ServiceWindowsSounds.Instance.Character.DollAnimationShow.Play();
 		if ((bool)m_PlatformPrefab && m_PlatformInstance == null)
 		{

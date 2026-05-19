@@ -96,11 +96,11 @@ public class BrickLevelUpFeatureVM : TooltipBrickVM
 		{
 			if (addFacts.Facts[0] is BlueprintAbility blueprintAbility)
 			{
-				tooltip = new TooltipTemplateLevelUpAbility(blueprintAbility, null, null, _: false, levelUpManager);
+				tooltip = new TooltipTemplateAbility(blueprintAbility, () => levelUpManager.PreviewUnit);
 			}
 			else if (addFacts.Facts[0] is BlueprintToggleAbility ability)
 			{
-				tooltip = new TooltipTemplateLevelUpToggleAbility(ability, null, levelUpManager);
+				tooltip = new TooltipTemplateToggleAbility(ability, () => levelUpManager.PreviewUnit);
 			}
 		}
 		if (tooltip != null)

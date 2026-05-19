@@ -9,7 +9,6 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.Interaction;
-using Kingmaker.PubSubSystem;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
@@ -81,23 +80,6 @@ public class SkillUseWithoutToolRestrictionPart : InteractionRestrictionPart<Ski
 	bool IInteractionRestriction.CheckRestriction(BaseUnitEntity user)
 	{
 		return CheckRestriction(user);
-	}
-
-	public override void OnDidInteract(BaseUnitEntity user)
-	{
-		base.OnDidInteract(user);
-		if (!InteractionPart.IsFailed)
-		{
-			return;
-		}
-		SkillUseWithoutToolRestrictionSettings settings = base.Settings;
-		if (settings != null && settings.Type == InteractionActorType.TechUse)
-		{
-			base.EventBus.RaiseEvent(delegate(IVariativeInteractionUIHandler h)
-			{
-				h.HandleInteractionRequest(InteractionPart.Owner);
-			});
-		}
 	}
 
 	public override int GetUserPriority(BaseUnitEntity user)

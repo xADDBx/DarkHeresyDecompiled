@@ -22,6 +22,7 @@ using Kingmaker.Gameplay.Features.Encounter;
 using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.Networking;
+using Kingmaker.Pathfinding;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
@@ -39,6 +40,7 @@ using Kingmaker.UnitLogic.Squads;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
+using Pathfinding;
 using UnityEngine;
 
 namespace Kingmaker.Controllers.TurnBased;
@@ -448,15 +450,41 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 				continue;
 			}
 			BaseUnitEntity[] array2 = array;
-			foreach (BaseUnitEntity other in array2)
+			foreach (BaseUnitEntity enemy in array2)
 			{
-				if (!item.IsDeadOrUnconscious && item.DistanceToInCells(other) <= 1)
+				if (!item.IsDeadOrUnconscious && IsInDeploymentRestrictionZone(item, enemy))
 				{
 					return false;
 				}
 			}
 		}
 		return true;
+	}
+
+	public static bool IsInDeploymentRestrictionZone(BaseUnitEntity unit, BaseUnitEntity enemy)
+	{
+		if (unit.DistanceToInCells(enemy) > 1)
+		{
+			return false;
+		}
+		return !IsSeparatedByDeploymentObstacle(enemy, unit.Position);
+	}
+
+	public static bool IsInDeploymentRestrictionZone(Vector3 unitPosition, BaseUnitEntity enemy)
+	{
+		if (enemy.DistanceToInCells(unitPosition) > 1)
+		{
+			return false;
+		}
+		return !IsSeparatedByDeploymentObstacle(enemy, unitPosition);
+	}
+
+	private static bool IsSeparatedByDeploymentObstacle(BaseUnitEntity enemy, Vector3 position)
+	{
+		GridNode currentUnwalkableNode = enemy.CurrentUnwalkableNode;
+		Linecast.HasConnectionTransition condition = Linecast.HasConnectionTransition.Instance;
+		Linecast.GraphHitInfo hit;
+		return Linecast.LinecastGrid(currentUnwalkableNode.Graph, enemy.Position, position, currentUnwalkableNode, out hit, ref condition);
 	}
 
 	private void EnterTb()
@@ -987,7 +1015,7 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		}
 		foreach (BaseUnitEntity item in Game.Instance.Player.Party)
 		{
-			if (!item.CombatState.StartedCombatNearEnemy && unit.DistanceToInCells(item) <= 1)
+			if (!item.CombatState.StartedCombatNearEnemy && IsInDeploymentRestrictionZone(item, unit))
 			{
 				item.CombatState.StartedCombatNearEnemy = true;
 			}
@@ -1206,9 +1234,9 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		foreach (BaseUnitEntity item2 in Game.Instance.Player.Party)
 		{
 			BaseUnitEntity[] array2 = array;
-			foreach (BaseUnitEntity other in array2)
+			foreach (BaseUnitEntity enemy in array2)
 			{
-				if (item2.CombatState.StartedCombatNearEnemy = item2.DistanceToInCells(other) <= 1)
+				if (item2.CombatState.StartedCombatNearEnemy = IsInDeploymentRestrictionZone(item2, enemy))
 				{
 					break;
 				}

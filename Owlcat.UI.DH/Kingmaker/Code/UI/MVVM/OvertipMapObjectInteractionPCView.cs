@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Interfaces;
+using Kingmaker.GameCommands;
 using Kingmaker.GameModes;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
@@ -77,6 +78,7 @@ public class OvertipMapObjectInteractionPCView : OvertipMapObjectInteractionView
 			{
 				h.HandleObjectInteract(isOn: true);
 			}, isCheckRuntime: true);
+			Game.Instance.GameCommandQueue.MarkHighlightedAndNoticed(base.ViewModel.MapObjectEntity);
 		}
 	}
 

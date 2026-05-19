@@ -62,7 +62,7 @@ public class TooltipTemplateChargenOccupation : TooltipBaseTemplate
 		UIUtilityFeaturesTooltip.AddStatBonuses(list, m_Feature, StatTypeHelper.Attributes, FeatureGroup.Attribute);
 		UIUtilityFeaturesTooltip.AddStatBonuses(list, m_Feature, StatTypeHelper.Skills, FeatureGroup.Skill);
 		UIUtilityFeaturesTooltip.ParseByBlockAndAddFeatures(list, m_Feature);
-		UIUtilityFeaturesTooltip.AddAllLevelUpStatsAndFeatures(list, m_Feature);
+		UIUtilityFeaturesTooltip.AddChargenProgressionLockedFoldable(list, m_Feature);
 		return list;
 	}
 

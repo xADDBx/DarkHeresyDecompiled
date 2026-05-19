@@ -116,25 +116,27 @@ public class UnitFlashlight : MonoBehaviour
 	private void Awake()
 	{
 		Character componentInParent = GetComponentInParent<Character>();
-		if ((object)componentInParent == null || !componentInParent.DisplayOptions.IsInDollRoom)
+		if ((object)componentInParent != null && componentInParent.DisplayOptions.IsInDollRoom)
 		{
-			m_FlashlightController = Game.Instance.Controllers.ServoskullFlashlightController;
-			m_Owner = base.transform.GetComponentInParent<UnitEntityView>()?.EntityData;
-			UnitPartFlashlight unitPartFlashlight = m_Owner?.GetOptional<UnitPartFlashlight>();
-			if (unitPartFlashlight != null)
-			{
-				m_Part = unitPartFlashlight;
-				bool isFlashlightEnabled = m_Part.IsFlashlightEnabled;
-				m_OnState.SetActive(isFlashlightEnabled);
-				m_OffState.SetActive(!isFlashlightEnabled);
-				m_FlashlightController.Setup(m_Owner, m_Part, GetForwardPoint);
-			}
-			else
-			{
-				m_OnState.SetActive(value: false);
-				m_OffState.SetActive(value: true);
-				m_IsOn = false;
-			}
+			base.enabled = false;
+			return;
+		}
+		m_FlashlightController = Game.Instance.Controllers.ServoskullFlashlightController;
+		m_Owner = base.transform.GetComponentInParent<UnitEntityView>()?.EntityData;
+		UnitPartFlashlight unitPartFlashlight = m_Owner?.GetOptional<UnitPartFlashlight>();
+		if (unitPartFlashlight != null)
+		{
+			m_Part = unitPartFlashlight;
+			bool isFlashlightEnabled = m_Part.IsFlashlightEnabled;
+			m_OnState.SetActive(isFlashlightEnabled);
+			m_OffState.SetActive(!isFlashlightEnabled);
+			m_FlashlightController.Setup(m_Owner, m_Part, GetForwardPoint);
+		}
+		else
+		{
+			m_OnState.SetActive(value: false);
+			m_OffState.SetActive(value: true);
+			m_IsOn = false;
 		}
 	}
 

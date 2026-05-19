@@ -23,7 +23,7 @@ public class BrickAbilityHeaderVM : TooltipBrickVM
 
 	public readonly string APText;
 
-	public readonly int APCount;
+	public readonly int ActionPointCost;
 
 	public readonly TalentIconInfo TalentIconInfo;
 
@@ -31,13 +31,13 @@ public class BrickAbilityHeaderVM : TooltipBrickVM
 
 	public AbilityToggleState ToggleState { get; private set; }
 
-	public BrickAbilityHeaderVM(string abilityName, string abilityType, Sprite abilityIcon, int apCount = 0, string acronym = null, TalentIconInfo talentIconInfo = null)
+	public BrickAbilityHeaderVM(string abilityName, string abilityType, Sprite abilityIcon, int actionPointCost = 0, string acronym = null, TalentIconInfo talentIconInfo = null)
 	{
 		AbilityName = abilityName;
 		AbilityType = abilityType;
 		AbilityIcon = abilityIcon;
 		Acronym = acronym;
-		APCount = apCount;
+		ActionPointCost = actionPointCost;
 		APText = UIStrings.Instance.Tooltips.AP;
 		TalentIconInfo = talentIconInfo;
 	}

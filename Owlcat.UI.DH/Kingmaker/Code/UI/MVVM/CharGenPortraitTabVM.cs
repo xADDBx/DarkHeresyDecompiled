@@ -1,3 +1,4 @@
+using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.PubSubSystem.Core;
@@ -12,12 +13,17 @@ public class CharGenPortraitTabVM : SelectionGroupEntityVM
 
 	public readonly CharGenPortraitTab Tab;
 
+	public readonly string Hint;
+
+	public bool IsInteractable => Tab != CharGenPortraitTab.Custom;
+
 	public ReadOnlyReactiveProperty<bool> IsMainCharacter => m_IsMainCharacter;
 
 	public CharGenPortraitTabVM(CharGenPortraitTab tab)
 		: base(allowSwitchOff: false)
 	{
 		Tab = tab;
+		Hint = (IsInteractable ? string.Empty : ((string)LocalizedTexts.Instance.Reasons.UnavailableGeneric));
 		m_IsMainCharacter.Value = UtilityNet.IsControlMainCharacter();
 		AddDisposable(EventBus.Subscribe(this));
 	}

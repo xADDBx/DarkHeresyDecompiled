@@ -28,6 +28,14 @@ public class RuleCalculateGroupCooldown : RulebookEvent
 
 	public override void OnTrigger(RulebookEventContext context)
 	{
-		Result = AbilityGroup?.CooldownInRounds ?? 0;
+		BlueprintAbilityGroup abilityGroup = AbilityGroup;
+		if (abilityGroup != null && abilityGroup.CooldownForCurrentTurnOnly)
+		{
+			Result = 1;
+		}
+		else
+		{
+			Result = AbilityGroup?.CooldownInRounds ?? 0;
+		}
 	}
 }

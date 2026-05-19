@@ -124,7 +124,7 @@ public class TooltipTemplateLevelUpModifier : TooltipBaseTemplate
 			{
 				text = validAbilityEntry.Ability.LocalizedName.Text;
 				sprite = validAbilityEntry.Ability.Icon;
-				tooltipBaseTemplate = new TooltipTemplateLevelUpAbility(validAbilityEntry.Ability, null, Caster);
+				tooltipBaseTemplate = new TooltipTemplateAbility(validAbilityEntry.Ability, null, Caster);
 			}
 			else if (validAbilityEntry.AbilityTag != null)
 			{
@@ -138,7 +138,7 @@ public class TooltipTemplateLevelUpModifier : TooltipBaseTemplate
 		{
 			text = toggleAbilityEntry.Target.Name;
 			sprite = toggleAbilityEntry.Target.Icon;
-			tooltipBaseTemplate = new TooltipTemplateLevelUpToggleAbility(toggleAbilityEntry.Target, Caster);
+			tooltipBaseTemplate = new TooltipTemplateToggleAbility(toggleAbilityEntry.Target, Caster);
 		}
 		if (!text.IsNullOrEmpty() || !(sprite == null))
 		{

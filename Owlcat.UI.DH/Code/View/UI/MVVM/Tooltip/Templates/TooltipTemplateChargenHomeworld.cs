@@ -101,7 +101,7 @@ public class TooltipTemplateChargenHomeworld : TooltipBaseTemplate
 		UIUtilityFeaturesTooltip.AddStatBonuses(list, m_Homeworld, StatTypeHelper.Attributes, FeatureGroup.Attribute);
 		UIUtilityFeaturesTooltip.AddStatBonuses(list, m_Homeworld, StatTypeHelper.Skills, FeatureGroup.Skill);
 		UIUtilityFeaturesTooltip.ParseByBlockAndAddFeatures(list, m_Homeworld);
-		UIUtilityFeaturesTooltip.AddAllLevelUpStatsAndFeatures(list, m_Homeworld);
+		UIUtilityFeaturesTooltip.AddChargenProgressionLockedFoldable(list, m_Homeworld);
 		return list;
 	}
 

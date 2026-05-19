@@ -213,6 +213,10 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 			{
 				RunTrapActions();
 			}
+			catch (Exception ex)
+			{
+				PFLog.Default.Exception(ex, "Trap " + base.Blueprint?.AssetGuid + ": failed to run actions");
+			}
 			finally
 			{
 				Deactivate();

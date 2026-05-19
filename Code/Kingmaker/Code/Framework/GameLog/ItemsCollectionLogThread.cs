@@ -70,6 +70,10 @@ public class ItemsCollectionLogThread : LogThreadBase, IGameLogEventHandler<Game
 		{
 			return null;
 		}
+		if (evt.Count <= 0)
+		{
+			return null;
+		}
 		ItemEntity item = evt.Item;
 		int count = evt.Count;
 		ItemEntity itemEntity;

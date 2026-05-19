@@ -70,15 +70,15 @@ public class BrickAbilityHeaderView : BrickBaseView<BrickAbilityHeaderVM>
 
 	private void SetupAP()
 	{
-		bool flag = base.ViewModel.APCount > 0;
+		bool flag = base.ViewModel.ActionPointCost > 0;
 		m_APContainer.SetActive(flag);
 		if (flag)
 		{
-			m_APSlider.value = base.ViewModel.APCount;
+			m_APSlider.value = base.ViewModel.ActionPointCost;
 			m_APText.SetText(base.ViewModel.APText);
 			TMP_Text aPValueText = m_APValueText;
-			int aPCount = base.ViewModel.APCount;
-			aPValueText.SetText(aPCount.ToString());
+			int actionPointCost = base.ViewModel.ActionPointCost;
+			aPValueText.SetText(actionPointCost.ToString());
 		}
 	}
 

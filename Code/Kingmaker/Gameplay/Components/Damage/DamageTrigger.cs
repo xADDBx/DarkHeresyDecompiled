@@ -14,7 +14,6 @@ using Kingmaker.UnitLogic.Mechanics.Damage;
 using Kingmaker.UnitLogic.Mechanics.Facts;
 using Kingmaker.Utility.Attributes;
 using Owlcat.Runtime.Core.Utility;
-using UnityEngine;
 
 namespace Kingmaker.Gameplay.Components.Damage;
 
@@ -35,6 +34,13 @@ public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 		Direct = 4
 	}
 
+	public enum TargetDeathType
+	{
+		OnlyUnit,
+		OnlyDestructible,
+		Anything
+	}
+
 	public RestrictionCalculator Restrictions = new RestrictionCalculator();
 
 	[EnumFlagsAsButtons(ColumnCount = 3)]
@@ -46,9 +52,11 @@ public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 	[ShowIf("ShowArmorCrack")]
 	public BoolPropertyChecker.Mode ArmorCrack;
 
-	[Tooltip("It works only if target was a Unit!")]
 	[HideIf("TriggerBefore")]
 	public BoolPropertyChecker.Mode TargetDies;
+
+	[ShowIf("IsTargetDiesTrue")]
+	public TargetDeathType TargetDeathTypeRestriction;
 
 	[HideIf("TriggerBefore")]
 	public BoolPropertyChecker.Mode IsCritical;
@@ -74,6 +82,18 @@ public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 		}
 	}
 
+	private bool IsTargetDiesTrue
+	{
+		get
+		{
+			if (TargetDies == BoolPropertyChecker.Mode.True)
+			{
+				return !TriggerBefore;
+			}
+			return false;
+		}
+	}
+
 	protected void TryTrigger(RuleDealDamage rule, bool before)
 	{
 		if (TriggerBefore == before && IsSuitable(rule) && Restrictions.IsPassed(base.Context, null, null, rule))
@@ -86,6 +106,10 @@ public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 	private bool IsSuitable(RuleDealDamage rule)
 	{
 		if (rule.IsFake)
+		{
+			return false;
+		}
+		if (rule.IsDispersedDamage)
 		{
 			return false;
 		}
@@ -107,10 +131,21 @@ public abstract class DamageTrigger : MechanicEntityFactComponentDelegate
 		{
 			if (ArmorDamage.Check(rule.ResultDamage.ResultDamageToArmorValue > 0) && IsVital.Check(rule.ResultDamage.IsVitalDamage) && ArmorCrack.Check(rule.ResultArmorCrack) && IsCritical.Check(rule.ResultIsCritical))
 			{
-				return TargetDies.Check(rule.ResultUnitDied);
+				return TargetDies.Check(TargetDied(rule));
 			}
 			return false;
 		}
 		return true;
+	}
+
+	private bool TargetDied(RuleDealDamage rule)
+	{
+		return TargetDeathTypeRestriction switch
+		{
+			TargetDeathType.OnlyUnit => rule.ResultUnitDied, 
+			TargetDeathType.OnlyDestructible => rule.ResultDestructibleDestroyed, 
+			TargetDeathType.Anything => rule.ResultUnitDied || rule.ResultDestructibleDestroyed, 
+			_ => false, 
+		};
 	}
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.Root;
@@ -12,6 +13,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Framework.Mechanics.Actor;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.FactLogic;
@@ -25,6 +27,8 @@ namespace Code.View.UI.UIUtils;
 
 public static class UIUtilityFeaturesTooltip
 {
+	public const string ChargenProgressionLockedSectionKey = "ChargenProgressionLocked";
+
 	private static readonly FeatureGroup[] DefaultIncludedGroups = new FeatureGroup[4]
 	{
 		FeatureGroup.ActiveAbility,
@@ -164,6 +168,42 @@ public static class UIUtilityFeaturesTooltip
 		AddLevelUpFeatures(bricks, allFeatures, FeatureGroup.ChargenPsyker);
 		AddLevelUpFeatures(bricks, allFeatures, FeatureGroup.Talent);
 		AddLevelUpFeatures(bricks, allFeatures, FeatureGroup.Modifier);
+	}
+
+	public static List<TooltipBrickVM> BuildLevelUpStatsAndFeaturesContent(IEnumerable<AddFeaturesToLevelUp> allFeatures)
+	{
+		List<ITooltipBrick> list = new List<ITooltipBrick>();
+		AddLevelUpStats(list, allFeatures, FeatureGroup.Attribute);
+		AddLevelUpStats(list, allFeatures, FeatureGroup.Skill);
+		AddLevelUpFeatures(list, allFeatures, FeatureGroup.ActiveAbility);
+		AddLevelUpFeatures(list, allFeatures, FeatureGroup.Specialization);
+		AddLevelUpFeatures(list, allFeatures, FeatureGroup.ChargenPsyker);
+		AddLevelUpFeatures(list, allFeatures, FeatureGroup.Talent);
+		AddLevelUpFeatures(list, allFeatures, FeatureGroup.Modifier);
+		return list.Cast<TooltipBrickVM>().ToList();
+	}
+
+	public static void AddChargenProgressionLockedFoldable(List<ITooltipBrick> bricks, BlueprintFeature feature)
+	{
+		if (feature == null)
+		{
+			return;
+		}
+		List<AddFeaturesToLevelUp> list = feature.GetComponents<AddFeaturesToLevelUp>().ToList();
+		if (list.Empty())
+		{
+			return;
+		}
+		List<TooltipBrickVM> list2 = BuildLevelUpStatsAndFeaturesContent(list);
+		if (list2.Count != 0)
+		{
+			PlayerUISettings uiSettings = Game.Instance.Player.UISettings;
+			bricks.Add(new BrickSpaceVM(8f));
+			bricks.Add(new BrickFoldableSectionVM(list2, "ChargenProgressionLocked", UIStrings.Instance.CharGen.LevelupNeededLabel.Text, uiSettings.ChargenProgressionLockedExpanded, delegate(bool v)
+			{
+				uiSettings.ChargenProgressionLockedExpanded = v;
+			}));
+		}
 	}
 
 	public static void AddLevelUpFeatures(List<ITooltipBrick> bricks, IEnumerable<AddFeaturesToLevelUp> allFeatures, FeatureGroup featureGroup)

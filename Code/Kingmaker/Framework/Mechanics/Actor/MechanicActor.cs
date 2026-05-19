@@ -918,7 +918,7 @@ public sealed class MechanicActor
 		return _isCacheable[(int)stat];
 	}
 
-	internal IReadOnlyList<RegisteredModifier>? GetRegisteredModifiersForDiagnostics(StatType stat)
+	internal IReadOnlyList<RegisteredModifier>? GetRegisteredModifiers(StatType stat)
 	{
 		return _modifiersByStat[(int)stat];
 	}

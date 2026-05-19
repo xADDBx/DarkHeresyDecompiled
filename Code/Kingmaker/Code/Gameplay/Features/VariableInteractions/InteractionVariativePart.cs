@@ -14,6 +14,7 @@ using Kingmaker.StateHasher.Hashers;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View.MapObjects;
 using Kingmaker.View.MapObjects.InteractionComponentBase;
+using Kingmaker.View.MapObjects.InteractionRestrictions;
 using Kingmaker.Visual.Animation.Kingmaker;
 using Newtonsoft.Json;
 using Owlcat.Fmw.Blueprints;
@@ -95,6 +96,30 @@ public class InteractionVariativePart : NewInteractionPart<InteractionVariativeS
 			select v.GetVariantActor() into a
 			where a != null
 			select a;
+	}
+
+	public IEnumerable<InteractionActorWithConditions> GetInteractionActorsWithConditions()
+	{
+		foreach (InteractionWithConditions iwc in base.Settings.Interactions)
+		{
+			yield return iwc.ToActorWithConditions();
+			if (!(iwc.GetVariantActor() is InteractionSkillCheckPart interactionSkillCheckPart))
+			{
+				continue;
+			}
+			MapObjectEntity mapObjectEntity = interactionSkillCheckPart.View?.Data;
+			if (mapObjectEntity == null)
+			{
+				continue;
+			}
+			foreach (IInteractionVariantActor item in mapObjectEntity.Parts.GetAll<IInteractionVariantActor>())
+			{
+				if (item is MeltaChargeRestrictionPart || item is RitualSetRestrictionPart || item is MultikeyRestrictionPart)
+				{
+					yield return new InteractionActorWithConditions(item);
+				}
+			}
+		}
 	}
 
 	public void SetSelectedVariant(IInteractionVariantActor variant)

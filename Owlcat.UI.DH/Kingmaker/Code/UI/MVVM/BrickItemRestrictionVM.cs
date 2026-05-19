@@ -12,12 +12,17 @@ public class BrickItemRestrictionVM : TooltipBrickVM
 
 	public readonly bool CanEquipItem;
 
+	public readonly string OwnerName;
+
+	public bool HasOwnerName => !string.IsNullOrEmpty(OwnerName);
+
 	public bool HasFalseRestriction => PrerequisiteList.Any((RestrictionData p) => !p.CanEquip);
 
-	public BrickItemRestrictionVM(List<RestrictionData> prerequisiteList, bool canEquip)
+	public BrickItemRestrictionVM(List<RestrictionData> prerequisiteList, bool canEquip, string ownerName = null)
 	{
 		PrerequisiteList = prerequisiteList;
 		CanEquipItem = canEquip;
+		OwnerName = ownerName;
 	}
 
 	public List<string> GetFalseRestrictionStrings()

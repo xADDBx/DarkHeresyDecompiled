@@ -14,4 +14,6 @@ public class BlueprintAbilityGroup : BlueprintScriptableObject
 	public int CooldownInRounds;
 
 	public bool IsWeaponAttackGroup;
+
+	public bool CooldownForCurrentTurnOnly;
 }

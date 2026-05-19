@@ -78,7 +78,11 @@ public class ContextActionSpawnMonster : ContextAction
 		IntRect rectForSize = SizePathfindingHelper.GetRectForSize(Blueprint.Size);
 		WarhammerSingleNodeBlocker exceptBlocker = ((caster is BaseUnitEntity baseUnitEntity) ? baseUnitEntity.View.MovementAgent.Blocker : null);
 		GridNode nearestNodeXZUnwalkable = ObstacleAnalyzer.GetNearestNodeXZUnwalkable(vector);
-		if (nearestNodeXZUnwalkable != null && WarhammerBlockManager.Instance.CanUnitStandOnNode(rectForSize, nearestNodeXZUnwalkable, exceptBlocker))
+		if (nearestNodeXZUnwalkable == null)
+		{
+			return;
+		}
+		if (nearestNodeXZUnwalkable.Walkable && WarhammerBlockManager.Instance.CanUnitStandOnNode(rectForSize, nearestNodeXZUnwalkable, exceptBlocker))
 		{
 			vector = nearestNodeXZUnwalkable.Vector3Position();
 			flag = true;
@@ -87,7 +91,7 @@ public class ContextActionSpawnMonster : ContextAction
 		{
 			foreach (GridNodeBase item in GridAreaHelper.GetNodesSpiralAround(nearestNodeXZUnwalkable, rectForSize, 2))
 			{
-				if (WarhammerBlockManager.Instance.CanUnitStandOnNode(rectForSize, item, exceptBlocker))
+				if (item.Walkable && WarhammerBlockManager.Instance.CanUnitStandOnNode(rectForSize, item, exceptBlocker))
 				{
 					vector = item.Vector3Position();
 					flag = true;

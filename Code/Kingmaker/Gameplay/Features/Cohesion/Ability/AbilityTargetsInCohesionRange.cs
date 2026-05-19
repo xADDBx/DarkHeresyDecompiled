@@ -53,7 +53,14 @@ public sealed class AbilityTargetsInCohesionRange : AbilitySelectTarget, IAbilit
 
 	OrientedPatternData IAbilityAoEPatternProvider.GetOrientedPattern(IAbilityDataProviderForPattern ability, GridNodeBase casterNode, GridNodeBase targetNode, Size targetSize, bool coveredTargetsOnly)
 	{
-		return AreaEffectSettings.GetOrientedPattern(ability, casterNode, targetNode, targetSize, coveredTargetsOnly);
+		MechanicEntity caster = ability.Caster;
+		PartCohesion partCohesion = caster?.GetOptional<PartCohesion>();
+		if (partCohesion == null)
+		{
+			return AreaEffectSettings.GetOrientedPattern(ability, casterNode, targetNode, targetSize, coveredTargetsOnly);
+		}
+		GridNodeBase actualCastNode;
+		return AoEPatternHelper.GetOrientedPattern(ability, caster, partCohesion.Pattern, this, casterNode, targetNode, castOnSameLevel: false, directional: false, coveredTargetsOnly, targetSize, out actualCastNode);
 	}
 
 	OrientedPatternData IAbilityAoEPatternProvider.GetOrientedHaloPattern(IAbilityDataProviderForPattern ability, int haloSize, GridNodeBase casterNode, GridNodeBase targetNode, Size targetSize, bool coveredTargetsOnly)

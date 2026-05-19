@@ -41,6 +41,8 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private readonly string m_AutoCastHint = string.Empty;
 
+	private readonly bool m_ShowPrerequisites;
+
 	private string m_Name = string.Empty;
 
 	private string m_Type = string.Empty;
@@ -89,9 +91,11 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private readonly bool m_ShowModifiedAPCost;
 
-	protected readonly MechanicEntity m_Caster;
+	private readonly Func<MechanicEntity> m_GetCaster;
 
 	public readonly BlueprintAbility BlueprintAbility;
+
+	protected MechanicEntity Caster => m_GetCaster();
 
 	public override void Prepare(TooltipTemplateType type)
 	{
@@ -106,10 +110,16 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 	}
 
 	public TooltipTemplateAbility(BlueprintAbility blueprintAbility, BlueprintItem sourceItem = null, MechanicEntity caster = null)
+		: this(blueprintAbility, () => caster, sourceItem)
+	{
+	}
+
+	public TooltipTemplateAbility(BlueprintAbility blueprintAbility, Func<MechanicEntity> getCaster, BlueprintItem sourceItem = null)
 	{
 		BlueprintAbility = blueprintAbility;
 		m_SourceItem = sourceItem;
-		m_Caster = caster;
+		m_ShowPrerequisites = false;
+		m_GetCaster = getCaster ?? ((Func<MechanicEntity>)(() => (MechanicEntity)null));
 	}
 
 	public TooltipTemplateAbility(AbilityData abilityData, bool showModifiedAPCost = false)
@@ -117,15 +127,16 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		ContentSpacing = 0f;
 		m_AbilityData = abilityData;
 		BlueprintAbility = abilityData.Blueprint.OriginalBlueprint;
-		m_Caster = abilityData.Caster;
+		m_GetCaster = () => abilityData.Caster;
 		m_SourceItem = abilityData.SourceItem?.Blueprint;
 		m_Weapon = abilityData.SourceItem as ItemEntityWeapon;
 		m_ShowModifiedAPCost = showModifiedAPCost;
+		m_ShowPrerequisites = true;
 	}
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		if (!m_CasterRestrictionsPassed)
+		if (!m_CasterRestrictionsPassed && m_ShowPrerequisites)
 		{
 			ITooltipBrick casterRestrictionsBrick = GetCasterRestrictionsBrick();
 			if (casterRestrictionsBrick != null)
@@ -138,11 +149,11 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private ITooltipBrick GetCasterRestrictionsBrick()
 	{
-		if (BlueprintAbility == null || m_Caster == null || !m_HasCasterRestrictions)
+		if (BlueprintAbility == null || Caster == null || !m_HasCasterRestrictions)
 		{
 			return null;
 		}
-		return new BrickAbilityRestrictionsVM(BlueprintAbility, m_Caster);
+		return new BrickAbilityRestrictionsVM(BlueprintAbility, Caster);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -165,7 +176,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		AddAttackAbilityGroupCooldown(list);
 		AddVeilDegradation(list);
 		AddAbilitiesWillBeLost(list);
-		if (m_HasCasterRestrictions && m_CasterRestrictionsPassed)
+		if (m_HasCasterRestrictions && m_CasterRestrictionsPassed && m_ShowPrerequisites)
 		{
 			ITooltipBrick casterRestrictionsBrick = GetCasterRestrictionsBrick();
 			if (casterRestrictionsBrick != null)
@@ -189,22 +200,22 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 				where !t.Blueprint.Name.IsEmpty()
 				select t.Blueprint.Name.Text).ToList();
 			m_Target = UIUtilityAbilities.GetAbilityTarget(blueprintAbility, m_BlueprintItemWeapon);
-			m_EndTurn = GetEndTurn(blueprintAbility);
+			m_EndTurn = GetEndTurn(blueprintAbility)?.Text ?? string.Empty;
 			m_AttackAbilityGroupCooldown = GetAttackAbilityGroupCooldown(blueprintAbility);
 			using (GameLogContext.Scope)
 			{
-				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
 				m_ShortDescriptionText = blueprintAbility.GetShortenedDescription();
 				m_LongDescriptionText = blueprintAbility.Description;
 			}
-			m_UIAbilityData = UIUtilityItem.GetUIAbilityData(blueprintAbility, m_BlueprintItemWeapon, m_Caster);
+			m_UIAbilityData = UIUtilityItem.GetUIAbilityData(blueprintAbility, m_BlueprintItemWeapon, Caster);
 			m_ScalingStats = blueprintAbility.GetScalingStats();
-			m_HasCasterRestrictions = blueprintAbility.HasCasterRestrictions(m_Caster, out m_CasterRestrictionsPassed);
+			m_HasCasterRestrictions = HasCasterRestrictions(blueprintAbility, Caster, out m_CasterRestrictionsPassed);
 			if (m_BlueprintItemWeapon != null)
 			{
 				m_AttackRangeCells = m_BlueprintItemWeapon.AttackRange;
 			}
-			m_AppliedModifiers = blueprintAbility.GetAppliedModifiers(m_Caster, out m_ManualModifier);
+			m_AppliedModifiers = blueprintAbility.GetAppliedModifiers(Caster, out m_ManualModifier);
 		}
 		catch (Exception arg)
 		{
@@ -220,8 +231,8 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 			{
 				using (EvalContext.Build().Ability(abilityData).Push())
 				{
-					GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
-					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+					GameLogContext.UnitEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
+					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
 					m_Name = abilityData.Name;
 					m_Icon = abilityData.Icon;
 					m_Type = GetAbilityType(abilityData.Blueprint.OriginalBlueprint);
@@ -230,7 +241,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 						select t.Blueprint.Name.Text).ToList();
 					m_ActionPointsCost = (m_ShowModifiedAPCost ? abilityData.CalculateActionPointCost() : abilityData.GetBaseActionPointCost());
 					m_Veil = GetVeil(abilityData);
-					m_EndTurn = GetEndTurn(abilityData.Blueprint.OriginalBlueprint);
+					m_EndTurn = GetEndTurn(abilityData.Blueprint.OriginalBlueprint)?.Text ?? string.Empty;
 					m_AttackAbilityGroupCooldown = GetAttackAbilityGroupCooldown(abilityData.Blueprint.OriginalBlueprint);
 					m_Target = UIUtilityAbilities.GetAbilityTarget(abilityData);
 					m_TargetIcon = UIUtilityAbilities.GetTargetImage(abilityData.Blueprint.OriginalBlueprint);
@@ -240,13 +251,13 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 					m_AbilitiesWillBeLost = UIUtilityAbilities.TryGetAbilitiesWillBeLost(abilityData);
 					m_AttackCount = abilityData.BurstAttacksCount;
 					m_ScalingStats = abilityData.Blueprint.OriginalBlueprint.GetScalingStats();
-					m_HasCasterRestrictions = abilityData.Blueprint.OriginalBlueprint.HasCasterRestrictions(m_Caster, out m_CasterRestrictionsPassed);
+					m_HasCasterRestrictions = HasCasterRestrictions(abilityData.Blueprint.OriginalBlueprint, Caster, out m_CasterRestrictionsPassed);
 					if (abilityData.Weapon != null)
 					{
 						m_BlueprintItemWeapon = abilityData.Weapon.Blueprint;
 						m_AttackRangeCells = m_BlueprintItemWeapon.AttackRange;
 					}
-					m_AppliedModifiers = abilityData.Blueprint.OriginalBlueprint.GetAppliedModifiers(m_Caster, out m_ManualModifier);
+					m_AppliedModifiers = abilityData.Blueprint.OriginalBlueprint.GetAppliedModifiers(Caster, out m_ManualModifier);
 				}
 			}
 		}
@@ -261,7 +272,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		if (m_AppliedModifiers != null && m_AppliedModifiers.Count >= 1)
 		{
 			bricks.Add(new BrickSpaceVM(25f));
-			bricks.Add(new BrickAbilityModifiersVM(m_AppliedModifiers, m_ManualModifier, m_Caster));
+			bricks.Add(new BrickAbilityModifiersVM(m_AppliedModifiers, m_ManualModifier, Caster));
 		}
 	}
 
@@ -279,7 +290,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		bricks.Add(new BrickSpaceVM(10f));
 		foreach (Ability item in m_AbilitiesWillBeLost)
 		{
-			bricks.Add(new BrickAbilityFeatureVM(item, m_Caster));
+			bricks.Add(new BrickAbilityFeatureVM(item, Caster));
 		}
 	}
 
@@ -294,24 +305,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private ITooltipBrick GetAbilityHeaderBrick()
 	{
-		if (m_AbilityData != null)
-		{
-			return new BrickAbilityHeaderVM((!string.IsNullOrEmpty(m_Name)) ? m_Name : (m_UIAbilityData?.Weapon?.Name ?? string.Empty), m_Type, m_Icon, m_ActionPointsCost).SetModifierIcon(m_ManualModifier?.Tags?.FirstOrDefault()?.AbilityIcon);
-		}
-		return GetAbilityBlueprintHeader();
-	}
-
-	private ITooltipBrick GetAbilityBlueprintHeader()
-	{
-		TextEntity title = new TextEntity(BlueprintAbility.Name, TextFieldParams.Bold);
-		List<string> values = BlueprintAbility.Tags.Select((BpRef<BlueprintAbilityTag> tag) => tag.Blueprint.Reference().Blueprint.Name.Text).ToList();
-		TextValueElement secondaryValuesElement = new TextValueElement(string.Join(", ", values));
-		TextValueElement tertiaryValuesElement = null;
-		if (m_UIAbilityData.BurstAttacksCount > 1)
-		{
-			tertiaryValuesElement = new TextValueElement(string.Format(UIStrings.Instance.Tooltips.ShotsCount, m_UIAbilityData.BurstAttacksCount.ToString()));
-		}
-		return new BrickIconPatternVM(BlueprintAbility.Icon, null, title, secondaryValuesElement, tertiaryValuesElement);
+		return new BrickAbilityHeaderVM((!string.IsNullOrEmpty(m_Name)) ? m_Name : (m_UIAbilityData?.Weapon?.Name ?? string.Empty), m_Type, m_Icon, m_ActionPointsCost).SetModifierIcon(m_ManualModifier?.Tags?.FirstOrDefault()?.AbilityIcon);
 	}
 
 	private int GetVeilDamage(AbilityData abilityData)
@@ -339,14 +333,18 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		return UIStrings.Instance.Tooltips.PsykerPower;
 	}
 
-	private string GetEndTurn(BlueprintAbility blueprintAbility)
+	private LocalizedString GetEndTurn(BlueprintAbility blueprintAbility)
 	{
 		EndTurn component = blueprintAbility.GetComponent<EndTurn>();
-		if (component != null)
+		if (component == null)
 		{
-			return component.clearMPInsteadOfEndingTurn ? UIStrings.Instance.Tooltips.SpendAllMovementPoints : UIStrings.Instance.Tooltips.EndsTurn;
+			return null;
 		}
-		return string.Empty;
+		if (!component.clearMPInsteadOfEndingTurn)
+		{
+			return UIStrings.Instance.Tooltips.EndsTurn;
+		}
+		return UIStrings.Instance.Tooltips.SpendAllMovementPoints;
 	}
 
 	private string GetAttackAbilityGroupCooldown(BlueprintAbility blueprintAbility)
@@ -376,9 +374,9 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private void AddScalingCharacteristics(List<ITooltipBrick> bricks)
 	{
-		if (m_Caster != null && m_ScalingStats != null && m_ScalingStats.Any())
+		if (Caster != null && m_ScalingStats != null && m_ScalingStats.Any())
 		{
-			bricks.Add(new BrickAbilityScalingStatsVM(m_ScalingStats, m_Caster));
+			bricks.Add(new BrickAbilityScalingStatsVM(m_ScalingStats, Caster));
 		}
 	}
 
@@ -404,7 +402,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 
 	private void AddAbilityRange(List<ITooltipBrick> bricks)
 	{
-		if (!(m_AbilityData == null) && m_AttackRangeCells >= 1)
+		if (m_AttackRangeCells >= 1)
 		{
 			Sprite attackDistanceIcon = ConfigRoot.Instance.UIConfig.AbilityTooltipConfig.AttackDistanceIcon;
 			LocalizedString abilityDistance = UIStrings.Instance.Tooltips.AbilityDistance;
@@ -428,7 +426,7 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 		if (!string.IsNullOrEmpty(description))
 		{
 			bricks.Add(new BrickSpaceVM(25f));
-			bricks.Add(new BrickFormattedDescriptionVM(description, m_Caster));
+			bricks.Add(new BrickFormattedDescriptionVM(description, Caster));
 		}
 	}
 
@@ -479,13 +477,27 @@ public class TooltipTemplateAbility : TooltipBaseTemplate
 				Color weaponMountColor = UIConfig.Instance.FeatureTagsConfig.GetWeaponMountColor(weaponTag);
 				using (GameLogContext.Scope)
 				{
-					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)(m_Weapon?.Owner ?? m_Caster);
+					GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)(m_Weapon?.Owner ?? Caster);
 					string tagName = UIUtilityItem.GetTagName(weaponTag);
 					string tagDescription = UIUtilityItem.GetTagDescription(weaponTag);
 					bricks.Add(new BrickSpaceVM(25f));
 					bricks.Add(new BrickTagDescriptionVM(weaponTagIcon, weaponMountColor, tagName, tagDescription));
 				}
 			}
+		}
+	}
+
+	private bool HasCasterRestrictions(BlueprintAbility blueprintAbility, MechanicEntity caster, out bool restrictionsPassed)
+	{
+		try
+		{
+			return blueprintAbility.HasCasterRestrictions(caster, out restrictionsPassed);
+		}
+		catch (NullReferenceException ex)
+		{
+			PFLog.UI.Exception(ex, "Skipping restrictions block. Reason: {0}");
+			restrictionsPassed = false;
+			return false;
 		}
 	}
 }

@@ -6,6 +6,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework.VO;
 using Kingmaker.Code.Gameplay.Components;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.MVVM.DetectiveJournal;
 using Kingmaker.DialogSystem;
@@ -281,6 +282,7 @@ public class DetectiveEpilogVM : ViewModel, IBookPageHandler, ISubscriber, IBook
 		else
 		{
 			m_TrueAnswerVM.Value = new EpilogTrueAnswerVM(m_CurrentCasePage.Value);
+			Metrics.Epilogue.Id(m_CurrentCasePage.Value.BlueprintCase.Blueprint.AssetGuid).Send();
 		}
 	}
 }

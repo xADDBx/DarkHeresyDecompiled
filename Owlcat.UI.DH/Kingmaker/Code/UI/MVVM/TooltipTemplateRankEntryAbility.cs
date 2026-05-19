@@ -19,7 +19,7 @@ public class TooltipTemplateRankEntryAbility : TooltipTemplateAbility
 
 	private readonly RankEntrySelectionVM m_Owner;
 
-	private CalculatedPrerequisite Prerequisite => m_SelectionState.CurrentValue?.GetCalculatedPrerequisite(m_SelectionItem) ?? CalculatedPrerequisite.Calculate(null, m_SelectionItem, (BaseUnitEntity)m_Caster);
+	private CalculatedPrerequisite Prerequisite => m_SelectionState.CurrentValue?.GetCalculatedPrerequisite(m_SelectionItem) ?? CalculatedPrerequisite.Calculate(null, m_SelectionItem, (BaseUnitEntity)base.Caster);
 
 	public TooltipTemplateRankEntryAbility(BlueprintAbility blueprintAbility, FeatureSelectionItem featureSelectionItem, ReadOnlyReactiveProperty<SelectionStateFeature> selectionState, RankEntrySelectionVM owner, MechanicEntity caster)
 		: base(blueprintAbility, null, caster)

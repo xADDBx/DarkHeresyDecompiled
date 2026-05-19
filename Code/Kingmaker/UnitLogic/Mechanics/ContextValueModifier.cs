@@ -16,6 +16,18 @@ public class ContextValueModifier : ContextValue
 
 	protected virtual ModifierType Type => ModifierType.ValAdd;
 
+	protected bool IsAdditiveModifier
+	{
+		get
+		{
+			if (Type != 0 && Type != ModifierType.ValAdd_Extra)
+			{
+				return Type == ModifierType.PctAdd;
+			}
+			return true;
+		}
+	}
+
 	public ContextValueModifier()
 	{
 	}
@@ -30,7 +42,7 @@ public class ContextValueModifier : ContextValue
 		if (Enabled)
 		{
 			int num = Calculate(EvalContext.Current);
-			if (num != 0)
+			if (num != 0 || !IsAdditiveModifier)
 			{
 				manager.Add(num, sourceFact, descriptor);
 			}
@@ -42,7 +54,7 @@ public class ContextValueModifier : ContextValue
 		if (Enabled)
 		{
 			int num = Calculate(EvalContext.Current);
-			if (num != 0)
+			if (num != 0 || !IsAdditiveModifier)
 			{
 				target.Add(Type, num, sourceFact, descriptor);
 			}

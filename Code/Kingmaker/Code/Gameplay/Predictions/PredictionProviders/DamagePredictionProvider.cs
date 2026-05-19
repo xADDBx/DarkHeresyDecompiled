@@ -34,6 +34,11 @@ public class DamagePredictionProvider : IPredictionProvider<UIDamagePredictionDa
 			{
 				return default(UIDamagePredictionData);
 			}
+			if (ctx.Target == null)
+			{
+				PFLog.Default.Warning("DamagePredictionProvider: null target for ability '" + ctx.Ability?.Blueprint?.name + "' — returning empty prediction");
+				return default(UIDamagePredictionData);
+			}
 			return GetDamage(ctx.Ability, ctx.Target, ctx.CasterPosition);
 		}
 	}

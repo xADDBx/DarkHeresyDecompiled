@@ -12,6 +12,7 @@ using Kingmaker.Blueprints.Root;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Gameplay.Features.Vendor;
 using Kingmaker.Items;
@@ -260,7 +261,8 @@ public class BaseItemPart : TooltipBaseTemplate
 		if (UIUtilityItem.CanInsertItem(m_Item) || m_Item is ItemEntityArmor)
 		{
 			bool canEquip = !UIUtilityCombat.IsCombatLockActive();
-			bricks.Add(new BrickItemRestrictionVM(m_ItemTooltipData.Restrictions, canEquip));
+			string ownerName = ((HasCompareItem && m_Item?.Owner is BaseUnitEntity baseUnitEntity) ? baseUnitEntity.CharacterName : null);
+			bricks.Add(new BrickItemRestrictionVM(m_ItemTooltipData.Restrictions, canEquip, ownerName));
 		}
 	}
 

@@ -25,12 +25,12 @@ public class CharGenLevelUpSelectorAbilityItemVM : CharGenLevelUpSelectorBaseIte
 		{
 			if (addFacts.Facts[0] is BlueprintAbility blueprintAbility)
 			{
-				base.Template = new TooltipTemplateLevelUpAbility(blueprintAbility, null, null, _: false, levelUpManager);
+				base.Template = new TooltipTemplateAbility(blueprintAbility, () => levelUpManager.PreviewUnit);
 				return;
 			}
 			if (addFacts.Facts[0] is BlueprintToggleAbility ability)
 			{
-				base.Template = new TooltipTemplateLevelUpToggleAbility(ability, null, levelUpManager);
+				base.Template = new TooltipTemplateToggleAbility(ability, () => levelUpManager.PreviewUnit);
 				return;
 			}
 		}

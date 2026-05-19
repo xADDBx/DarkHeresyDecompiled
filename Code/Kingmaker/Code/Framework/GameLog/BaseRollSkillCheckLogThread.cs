@@ -35,13 +35,18 @@ public abstract class BaseRollSkillCheckLogThread : LogThreadBase, IGameLogRuleH
 	{
 		GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)null;
 		GameLogContext.SourceFact = (GameLogContext.Property<IMechanicEntityFact>)(IMechanicEntityFact)null;
+		GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)null;
 		if (rule.Reason.Name.IsNullOrEmpty())
 		{
-			GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.ConcreteInitiator;
+			GameLogContext.SourceEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.Target;
 		}
 		else
 		{
 			GameLogContext.SourceFact = (GameLogContext.Property<IMechanicEntityFact>)(IMechanicEntityFact)rule.Reason.Fact;
+		}
+		if (!rule.ConcreteInitiator.Name.IsNullOrEmpty())
+		{
+			GameLogContext.TargetEntity = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)rule.ConcreteInitiator;
 		}
 		GameLogContext.Text = LocalizedTexts.Instance.Stats.GetText(rule.ChanceRule.EffectiveStatType);
 		CombatLogMessage combatLogMessage = (rule.ResultIsSuccess ? LogThreadBase.Strings.SkillCheckSuccess.CreateCombatLogMessage(null, null, isPerformAttackMessage: false, rule.ConcreteInitiator) : LogThreadBase.Strings.SkillCheckFail.CreateCombatLogMessage(null, null, isPerformAttackMessage: false, rule.ConcreteInitiator));

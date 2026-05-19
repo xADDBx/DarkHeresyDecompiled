@@ -49,15 +49,19 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 		[OwlPackInclude]
 		public bool Interrupt;
 
+		[OwlPackInclude]
+		public bool UntilEndOfTurn;
+
 		public static readonly TypeInfo OwlPackTypeInfo = new TypeInfo
 		{
 			Name = "CooldownData",
 			OldNames = null,
-			Fields = new FieldInfo[3]
+			Fields = new FieldInfo[4]
 			{
 				new FieldInfo("Cooldown", typeof(int)),
 				new FieldInfo("UntilEndOfCombat", typeof(bool)),
-				new FieldInfo("Interrupt", typeof(bool))
+				new FieldInfo("Interrupt", typeof(bool)),
+				new FieldInfo("UntilEndOfTurn", typeof(bool))
 			}
 		};
 
@@ -101,6 +105,7 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 			formatter.UnmanagedField(0, "Cooldown", ref Cooldown, state);
 			formatter.UnmanagedField(1, "UntilEndOfCombat", ref UntilEndOfCombat, state);
 			formatter.UnmanagedField(2, "Interrupt", ref Interrupt, state);
+			formatter.UnmanagedField(3, "UntilEndOfTurn", ref UntilEndOfTurn, state);
 			formatter.EndObject();
 		}
 
@@ -126,6 +131,9 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 					break;
 				case 2:
 					Interrupt = formatter.ReadUnmanaged<bool>(state);
+					break;
+				case 3:
+					UntilEndOfTurn = formatter.ReadUnmanaged<bool>(state);
 					break;
 				}
 			}
@@ -350,7 +358,8 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 		{
 			CooldownData value = new CooldownData(num)
 			{
-				Interrupt = (base.Owner.Initiative.InterruptingOrder > 0)
+				Interrupt = (base.Owner.Initiative.InterruptingOrder > 0),
+				UntilEndOfTurn = abilityGroup.CooldownForCurrentTurnOnly
 			};
 			m_GroupCooldowns.Add(abilityGroup, value);
 		}
@@ -472,6 +481,11 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 				continue;
 			}
 			keyValuePair2.Value.Interrupt = false;
+			if (keyValuePair2.Value.UntilEndOfTurn)
+			{
+				m_GroupCooldowns.Remove(keyValuePair2.Key);
+				continue;
+			}
 			if (keyValuePair2.Value.UntilEndOfCombat)
 			{
 				if (!base.Owner.IsInCombat)
@@ -593,7 +607,7 @@ public class PartAbilityCooldowns : MechanicEntityPart, IHashable, IOwlPackable<
 	{
 		CooldownsStateSave cooldownsStateSave = default(CooldownsStateSave);
 		cooldownsStateSave.AbilityCooldowns = m_AbilityCooldowns.ToDictionary((KeyValuePair<BlueprintAbility, CooldownData> entry) => entry.Key, (KeyValuePair<BlueprintAbility, CooldownData> entry) => entry.Value);
-		cooldownsStateSave.GroupCooldowns = m_GroupCooldowns.ToDictionary((KeyValuePair<BlueprintAbilityGroup, CooldownData> entry) => entry.Key, (KeyValuePair<BlueprintAbilityGroup, CooldownData> entry) => entry.Value);
+		cooldownsStateSave.GroupCooldowns = m_GroupCooldowns.Where((KeyValuePair<BlueprintAbilityGroup, CooldownData> entry) => !entry.Value.UntilEndOfTurn).ToDictionary((KeyValuePair<BlueprintAbilityGroup, CooldownData> entry) => entry.Key, (KeyValuePair<BlueprintAbilityGroup, CooldownData> entry) => entry.Value);
 		CooldownsStateSave item = cooldownsStateSave;
 		m_SavedCooldowns.Add(item);
 	}

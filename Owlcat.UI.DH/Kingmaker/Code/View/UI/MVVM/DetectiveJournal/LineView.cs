@@ -73,7 +73,10 @@ public class LineView : MonoBehaviour
 
 	private void UpdateLines()
 	{
-		UpdateLineFromTo(m_LineData.DotFrom.position, m_LineData.DotTo.position, 0);
+		if (!(m_LineData.DotFrom == null) && !(m_LineData.DotTo == null))
+		{
+			UpdateLineFromTo(m_LineData.DotFrom.position, m_LineData.DotTo.position, 0);
+		}
 	}
 
 	private void UpdateLineFromTo(Vector3 posFrom, Vector3 posTo, int lineId)

@@ -13,8 +13,8 @@ public static class DifficultyUtils
 		return tier switch
 		{
 			EnemyDifficultyOption.Story => Lerp(num, 0.5f) - 0.3f, 
-			EnemyDifficultyOption.Normal => num, 
-			EnemyDifficultyOption.Daring => Lerp(num, 0.75f) * Lerp(num, 0.25f), 
+			EnemyDifficultyOption.Normal => Lerp(num, 0.75f) - 0.15f, 
+			EnemyDifficultyOption.Daring => num, 
 			EnemyDifficultyOption.Hard => Lerp(num, 0.5f) * Lerp(num, 0.3f) * Lerp(num, 0.2f), 
 			EnemyDifficultyOption.Unfair => Lerp(num, 0.25f) * Lerp(num, 0.25f) * Lerp(num, 0.25f) * Lerp(num, 0.25f), 
 			_ => throw new ArgumentOutOfRangeException("tier", tier, null), 

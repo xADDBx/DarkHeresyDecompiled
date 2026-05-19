@@ -1,6 +1,6 @@
-using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
+using R3;
 using TMPro;
 using UnityEngine;
 
@@ -15,7 +15,11 @@ public class CharGenPortraitTabView : SelectionGroupEntityView<CharGenPortraitTa
 	{
 		base.OnBind();
 		m_Label.text = UtilityChargen.GetCharGenPortraitTabLabel(base.ViewModel.Tab);
-		m_Button.Interactable = base.ViewModel.Tab != CharGenPortraitTab.Custom;
+		m_Button.Interactable = base.ViewModel.IsInteractable;
+		if (!string.IsNullOrEmpty(base.ViewModel.Hint))
+		{
+			m_Button.SetHint(base.ViewModel.Hint).AddTo(this);
+		}
 	}
 
 	public override void OnChangeSelectedState(bool value)

@@ -53,6 +53,8 @@ public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 
 	public bool ResultUnitDied { get; private set; }
 
+	public bool ResultDestructibleDestroyed { get; private set; }
+
 	[CanBeNull]
 	public Projectile Projectile { get; set; }
 
@@ -147,9 +149,16 @@ public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 		{
 			int hitPointsLeft = TargetHealth.HitPointsLeft;
 			DealDamageToHealth(resultDamageToHealthValue);
-			if (TargetHealth.HitPointsLeft == 0 && hitPointsLeft > 0 && TargetHealth.Owner is AbstractUnitEntity)
+			if (TargetHealth.HitPointsLeft == 0 && hitPointsLeft > 0)
 			{
-				ResultUnitDied = true;
+				if (TargetHealth.Owner is AbstractUnitEntity)
+				{
+					ResultUnitDied = true;
+				}
+				else if (TargetHealth.Owner is DestructibleEntity)
+				{
+					ResultDestructibleDestroyed = true;
+				}
 			}
 		}
 		ActiveEncounter.Current?.GetOptional<PartEncounterMetrics>()?.HandleIncomingDamage(base.TargetUnit, ResultValue);

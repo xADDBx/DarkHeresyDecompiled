@@ -51,6 +51,10 @@ public class LocomotionOut : LocomotionState
 
 	private bool IsUsingCustomStoppingAnimation(UnitAnimationActionLocomotion.WalkingTypeData walkingTypeData)
 	{
+		if (!m_Handle.Manager.View)
+		{
+			return false;
+		}
 		if (!m_Handle.Manager.View.AgentASP.DecelerateBeforeStop && walkingTypeData.Out != null)
 		{
 			return walkingTypeData.Out.AnimationClip != null;

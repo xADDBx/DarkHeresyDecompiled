@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Root.Strings;
@@ -21,7 +22,9 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 
 	private readonly ToggleAbility m_Ability;
 
-	private readonly MechanicEntity m_Caster;
+	private readonly Func<MechanicEntity> m_GetCaster;
+
+	private readonly bool m_ShowPrerequisites;
 
 	private readonly string m_Name;
 
@@ -39,53 +42,58 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 
 	public readonly BlueprintToggleAbility BlueprintAbility;
 
+	private MechanicEntity Caster => m_GetCaster();
+
 	public TooltipTemplateToggleAbility(ToggleAbility ability, MechanicEntity caster = null)
 	{
 		if (ability != null)
 		{
 			ContentSpacing = 0f;
-			m_Caster = caster ?? ability.Caster;
+			m_GetCaster = () => caster ?? ability.Caster;
 			m_Icon = ability.Icon;
 			using (GameLogContext.Scope)
 			{
-				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
 				m_Name = ability.Name;
 				m_Description = ability.Description;
 			}
 			BlueprintAbility = ability.Blueprint;
 			m_Ability = ability;
+			m_ShowPrerequisites = true;
 		}
 	}
 
 	public TooltipTemplateToggleAbility(BlueprintToggleAbility ability, MechanicEntity caster = null)
+		: this(ability, () => caster)
+	{
+	}
+
+	public TooltipTemplateToggleAbility(BlueprintToggleAbility ability, Func<MechanicEntity> getCaster)
 	{
 		if (ability != null)
 		{
 			ContentSpacing = 0f;
-			m_Caster = caster;
+			m_GetCaster = getCaster ?? ((Func<MechanicEntity>)(() => (MechanicEntity)null));
 			m_Icon = ability.Icon;
 			using (GameLogContext.Scope)
 			{
-				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)m_Caster;
+				GameLogContext.DescriptionOwner = (GameLogContext.Property<IMechanicEntity>)(IMechanicEntity)Caster;
 				m_Name = ability.Name;
 				m_Description = ability.Description;
 			}
 			BlueprintAbility = ability;
+			m_ShowPrerequisites = false;
 		}
 	}
 
 	public override void Prepare(TooltipTemplateType type)
 	{
-		m_HasCasterRestrictions = BlueprintAbility.HasCasterRestrictions(m_Caster, out m_CasterRestrictionsPassed);
+		m_HasCasterRestrictions = BlueprintAbility.HasCasterRestrictions(Caster, out m_CasterRestrictionsPassed);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		if (m_Ability != null)
-		{
-			return GetAbilityHeader();
-		}
-		return GetBlueprintAbilityHeader();
+		return GetAbilityHeader();
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)
@@ -94,7 +102,7 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 		AddScalingCharacteristics(list);
 		AddDescription(list);
 		AddAppliedModifiers(list);
-		if (m_HasCasterRestrictions && m_CasterRestrictionsPassed)
+		if (m_HasCasterRestrictions && m_CasterRestrictionsPassed && m_ShowPrerequisites)
 		{
 			ITooltipBrick casterRestrictionsBrick = GetCasterRestrictionsBrick();
 			if (casterRestrictionsBrick != null)
@@ -109,7 +117,7 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 
 	private IEnumerable<ITooltipBrick> GetAbilityHeader()
 	{
-		if (m_CasterRestrictionsPassed)
+		if (m_CasterRestrictionsPassed && m_ShowPrerequisites)
 		{
 			ITooltipBrick casterRestrictionsBrick = GetCasterRestrictionsBrick();
 			if (casterRestrictionsBrick != null)
@@ -117,20 +125,19 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 				yield return casterRestrictionsBrick;
 			}
 		}
-		yield return new BrickAbilityHeaderVM(m_Name, UIStrings.Instance.Tooltips.ToggleAbilityType, m_Icon).SetToggleState(m_Ability.Enabled);
-	}
-
-	private IEnumerable<ITooltipBrick> GetBlueprintAbilityHeader()
-	{
-		yield return new BrickEntityHeaderVM(m_Name, m_Icon, hasUpgrade: false);
-		yield return new BrickSeparatorVM();
+		BrickAbilityHeaderVM brickAbilityHeaderVM = new BrickAbilityHeaderVM(m_Name, UIStrings.Instance.Tooltips.ToggleAbilityType, m_Icon);
+		if (m_Ability != null)
+		{
+			brickAbilityHeaderVM.SetToggleState(m_Ability.Enabled);
+		}
+		yield return brickAbilityHeaderVM;
 	}
 
 	private void AddDescription(List<ITooltipBrick> bricks)
 	{
 		string description = m_Description;
 		bricks.Add(new BrickSpaceVM(25f));
-		bricks.Add(new BrickFormattedDescriptionVM(description, m_Caster));
+		bricks.Add(new BrickFormattedDescriptionVM(description, Caster));
 	}
 
 	private void AddScalingCharacteristics(List<ITooltipBrick> bricks)
@@ -139,9 +146,9 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 		{
 			m_ScalingStats = BlueprintAbility.GetScalingStats();
 		}
-		if (m_Caster != null && m_ScalingStats != null && m_ScalingStats.Any())
+		if (Caster != null && m_ScalingStats != null && m_ScalingStats.Any())
 		{
-			bricks.Add(new BrickAbilityScalingStatsVM(m_ScalingStats, m_Caster));
+			bricks.Add(new BrickAbilityScalingStatsVM(m_ScalingStats, Caster));
 		}
 	}
 
@@ -149,11 +156,11 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 	{
 		if (m_AppliedModifiers == null)
 		{
-			m_AppliedModifiers = BlueprintAbility.GetAppliedModifiers(m_Caster);
+			m_AppliedModifiers = BlueprintAbility.GetAppliedModifiers(Caster);
 		}
 		if (m_AppliedModifiers != null && m_AppliedModifiers.Count >= 1)
 		{
-			bricks.Add(new BrickAbilityModifiersVM(m_AppliedModifiers, null, m_Caster));
+			bricks.Add(new BrickAbilityModifiersVM(m_AppliedModifiers, null, Caster));
 		}
 	}
 
@@ -187,10 +194,10 @@ public class TooltipTemplateToggleAbility : TooltipBaseTemplate
 
 	private ITooltipBrick GetCasterRestrictionsBrick()
 	{
-		if (BlueprintAbility == null || m_Caster == null || !m_HasCasterRestrictions)
+		if (BlueprintAbility == null || Caster == null || !m_HasCasterRestrictions)
 		{
 			return null;
 		}
-		return new BrickAbilityRestrictionsVM(BlueprintAbility, m_Caster);
+		return new BrickAbilityRestrictionsVM(BlueprintAbility, Caster);
 	}
 }

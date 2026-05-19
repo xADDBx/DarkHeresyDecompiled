@@ -21,6 +21,8 @@ public class PerformanceMetricsController : IControllerTick, IController, IContr
 		public string Id;
 
 		public int[] FpsDistribution;
+
+		public DateTime StartTime;
 	}
 
 	private static readonly int[] m_FpsRanges = new int[15]
@@ -86,7 +88,8 @@ public class PerformanceMetricsController : IControllerTick, IController, IContr
 			m_ActiveSession = new MetricsPerformanceSession
 			{
 				Id = sessionId,
-				FpsDistribution = new int[m_FpsRanges.Length]
+				FpsDistribution = new int[m_FpsRanges.Length],
+				StartTime = DateTime.UtcNow
 			};
 		}
 	}
@@ -95,12 +98,14 @@ public class PerformanceMetricsController : IControllerTick, IController, IContr
 	{
 		if (Metrics.Enabled && m_ActiveSession != null && m_ActiveSession.FpsDistribution.Length != 0 && !m_ActiveSession.FpsDistribution.All((int val) => val == 0))
 		{
-			PerformanceMetricsEvent performanceMetricsEvent = Metrics.Performance.PerformanceSession(m_ActiveSession.Id).Location(Game.Instance.SceneLoader.CurrentlyLoadedArea.name).FsrMode(SettingsController.Instance.GraphicsSettingsController.FsrMode)
+			PerformanceMetricsEvent performanceMetricsEvent = Metrics.Performance.PerformanceSession(m_ActiveSession.Id).Duration((int)(DateTime.UtcNow - m_ActiveSession.StartTime).TotalSeconds).Location(Game.Instance.SceneLoader.CurrentlyLoadedArea.name)
+				.FsrMode(SettingsController.Instance.GraphicsSettingsController.FsrMode)
 				.VSync(SettingsController.Instance.GraphicsSettingsController.VSyncMode)
 				.ShadowQuality(SettingsController.Instance.GraphicsSettingsController.ShadowsQuality)
 				.ScreenResolution($"{Screen.currentResolution.width} x {Screen.currentResolution.height}")
 				.CPU(SystemInfo.processorType)
-				.GPU(SystemInfo.graphicsDeviceName);
+				.GPU(SystemInfo.graphicsDeviceName)
+				.Ram(SystemInfo.systemMemorySize);
 			for (int i = 0; i < m_FpsRanges.Length - 1; i++)
 			{
 				performanceMetricsEvent.AddFpsStats(m_FpsRanges[i], m_FpsRanges[i + 1], m_ActiveSession.FpsDistribution[i]);

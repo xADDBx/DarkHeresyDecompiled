@@ -211,8 +211,8 @@ public static class StatProfiler
 			{
 				if (!allBaseUnit.Actor.IsStatCacheable(statType))
 				{
-					IReadOnlyList<MechanicActor.RegisteredModifier> registeredModifiersForDiagnostics = allBaseUnit.Actor.GetRegisteredModifiersForDiagnostics(statType);
-					if (registeredModifiersForDiagnostics != null && registeredModifiersForDiagnostics.Count != 0)
+					IReadOnlyList<MechanicActor.RegisteredModifier> registeredModifiers = allBaseUnit.Actor.GetRegisteredModifiers(statType);
+					if (registeredModifiers != null && registeredModifiers.Count != 0)
 					{
 						list2.Add(statType);
 					}
@@ -228,9 +228,9 @@ public static class StatProfiler
 			list.Add($"  Non-cacheable stats ({list2.Count}):");
 			foreach (StatType item in list2)
 			{
-				IReadOnlyList<MechanicActor.RegisteredModifier>? registeredModifiersForDiagnostics2 = allBaseUnit.Actor.GetRegisteredModifiersForDiagnostics(item);
+				IReadOnlyList<MechanicActor.RegisteredModifier>? registeredModifiers2 = allBaseUnit.Actor.GetRegisteredModifiers(item);
 				list.Add($"    {item}");
-				foreach (MechanicActor.RegisteredModifier item2 in registeredModifiersForDiagnostics2)
+				foreach (MechanicActor.RegisteredModifier item2 in registeredModifiers2)
 				{
 					bool flag = item2.IsConditional && item2.DependsOnStats == null;
 					string text2 = (flag ? "[BREAKS]" : "        ");

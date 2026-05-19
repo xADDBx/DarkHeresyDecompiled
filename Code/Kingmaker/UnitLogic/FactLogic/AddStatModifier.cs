@@ -89,6 +89,10 @@ public sealed class AddStatModifier : UnitFactComponentDelegate, IStatModifier, 
 
 	void ISerializationCallbackReceiver.OnAfterDeserialize()
 	{
+		if (Restrictions == null)
+		{
+			Restrictions = new AddStatModifierRestrictionCalculator();
+		}
 		if (Restrictions.StatSelector == AddStatModifierRestrictionCalculator.StatSelectorType.Single && Restrictions.Stat == StatType.Unknown)
 		{
 			Restrictions.StatSelector = StatSelector;

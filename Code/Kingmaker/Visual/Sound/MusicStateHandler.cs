@@ -139,7 +139,25 @@ public class MusicStateHandler
 			{
 				SetState("MusicSettingType", currentlyLoadedArea.MusicSetting.Value);
 			}
-			SetState("MusicState", (m_ActiveBossFight ? MusicState.BossFight : MusicState.Setting).ToString());
+			if (Game.Instance.Player.IsInCombat)
+			{
+				m_ActiveBossFight.ReleaseAll();
+				foreach (MechanicEntity combatParticipant in Game.Instance.EntityPools.CombatParticipants)
+				{
+					if (combatParticipant.IsPlayerEnemy)
+					{
+						OnEnemyJoinCombat(combatParticipant);
+					}
+				}
+				if (!m_ActiveBossFight.Value)
+				{
+					SetState("MusicState", MusicState.Setting.ToString());
+				}
+			}
+			else
+			{
+				SetState("MusicState", MusicState.Setting.ToString());
+			}
 			SetState("MusicSettingState", ((!Game.Instance.Player.IsInCombat) ? MusicSettingState.Exploration : MusicSettingState.Combat).ToString());
 			SetState("MusicStoryType", "None");
 			m_StoryModeActive = false;
@@ -344,6 +362,7 @@ public class MusicStateHandler
 		m_AreaTransitionInProgress = true;
 		m_OverrideSettingState = false;
 		m_OverrideMusicSetting = null;
+		m_ActiveBossFight.ReleaseAll();
 	}
 
 	public void EndAreaTransition()

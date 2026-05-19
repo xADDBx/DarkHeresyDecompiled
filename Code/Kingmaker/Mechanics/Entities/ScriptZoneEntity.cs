@@ -162,7 +162,7 @@ public class ScriptZoneEntity : MapObjectEntity, IUnitHandler, IUnitSpawnHandler
 		{
 			foreach (UnitInfo insideUnit2 in InsideUnits)
 			{
-				if (!insideUnit2.InsideThisTick)
+				if (!insideUnit2.InsideThisTick && insideUnit2.IsValid)
 				{
 					value.Add(insideUnit2.Reference.ToBaseUnitEntity());
 				}

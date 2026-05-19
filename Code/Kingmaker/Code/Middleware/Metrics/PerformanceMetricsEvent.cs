@@ -54,6 +54,18 @@ public class PerformanceMetricsEvent : MetricsEvent
 		return this;
 	}
 
+	public PerformanceMetricsEvent Duration(int duration)
+	{
+		AddParam("duration", duration.ToString());
+		return this;
+	}
+
+	public PerformanceMetricsEvent Ram(int ram)
+	{
+		AddParam("ram", ram.ToString());
+		return this;
+	}
+
 	public PerformanceMetricsEvent AddFpsStats(int from, int to, int stat)
 	{
 		AddParam($"fps_{from}_{to}", stat.ToString());

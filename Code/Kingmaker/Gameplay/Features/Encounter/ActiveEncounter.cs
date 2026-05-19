@@ -321,6 +321,7 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 		Metrics.EncounterFinish.PartyHealth(list.Select((BaseUnitEntity p) => p.Health.HitPointsLeft).Sum()).PartyArmour(list.Select((BaseUnitEntity p) => p.Armor.DurabilityLeft).Sum()).Reason(completionType)
 			.PowerBalance(Game.Instance.Controllers.MoraleController.GetPlayerPowerBalanceRatio())
 			.Difficulty(MetricsUtils.GameDifficultyToString(SettingsRoot.Difficulty.GameDifficulty.GetValue()))
+			.CombatLog(Game.Instance.Player.UISettings.LogIsPinned)
 			.Send();
 		PartEncounterMetrics optional = GetOptional<PartEncounterMetrics>();
 		if (optional == null)

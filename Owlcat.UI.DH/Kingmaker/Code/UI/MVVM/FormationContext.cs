@@ -15,6 +15,19 @@ public class FormationContext : ViewModel, IFormationWindowUIHandler, ISubscribe
 	{
 		m_FormationVM = formationVM;
 		EventBus.Subscribe(this).AddTo(this);
+		Game.Instance.Keyboard.Bind("OpenFormation", HandleToggleFormation).AddTo(this);
+	}
+
+	private void HandleToggleFormation()
+	{
+		if (m_FormationVM.CurrentValue == null)
+		{
+			HandleOpenFormation();
+		}
+		else
+		{
+			HandleCloseFormation();
+		}
 	}
 
 	public void HandleOpenFormation()

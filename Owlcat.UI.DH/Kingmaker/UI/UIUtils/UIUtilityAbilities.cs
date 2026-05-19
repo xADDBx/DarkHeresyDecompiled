@@ -27,6 +27,7 @@ using Kingmaker.UnitLogic.Abilities;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Components;
 using Kingmaker.UnitLogic.Abilities.Components.Base;
+using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Levelup.Selections.Prerequisites;
 using Kingmaker.UnitLogic.Progression;
 using Kingmaker.UnitLogic.Progression.Features;
@@ -262,6 +263,13 @@ public static class UIUtilityAbilities
 				}
 			}
 		}
+	}
+
+	public static bool TryGetAttachableBlueprintFact(this BlueprintScriptableObject feature, out BlueprintUnitFact fact)
+	{
+		AddFacts addFacts = feature?.GetComponent<AddFacts>();
+		fact = ((addFacts != null) ? addFacts.Facts.FirstOrDefault() : null);
+		return fact != null;
 	}
 
 	public static bool HasCasterRestrictions(this BlueprintAbility blueprintAbility, MechanicEntity caster, out bool restrictionsPassed)

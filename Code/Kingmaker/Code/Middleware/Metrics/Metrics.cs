@@ -22,6 +22,10 @@ public static class Metrics
 
 	public static readonly DetectiveCaseMetricsEvent DetectiveCase = new DetectiveCaseMetricsEvent();
 
+	public static readonly DialogMetricsEvent Dialog = new DialogMetricsEvent();
+
+	public static readonly EpilogueMetricsEvent Epilogue = new EpilogueMetricsEvent();
+
 	public static readonly DetectivePieceMetricsEvent DetectivePiece = new DetectivePieceMetricsEvent();
 
 	public static readonly EncounterStartMetricsEvent EncounterStart = new EncounterStartMetricsEvent();
@@ -121,14 +125,18 @@ public static class Metrics
 				try
 				{
 					CSteamID steamID = SteamUser.GetSteamID();
-					int value = new System.Random((int)steamID.GetAccountID().m_AccountID).Next();
-					byte[] array = new byte[12];
-					Span<byte> span;
-					Span<byte> span2 = (span = array);
-					BinaryPrimitives.WriteUInt64LittleEndian(span.Slice(0, 8), steamID.m_SteamID);
-					span = span2;
-					BinaryPrimitives.WriteInt32LittleEndian(span.Slice(8, 4), value);
-					abolethConfig.UserId = new Guid(MD5.Create().ComputeHash(array)).ToString("N");
+					EAccountType eAccountType = steamID.GetEAccountType();
+					if (eAccountType != EAccountType.k_EAccountTypePending && eAccountType != 0)
+					{
+						int value = new System.Random((int)steamID.GetAccountID().m_AccountID).Next();
+						byte[] array = new byte[12];
+						Span<byte> span;
+						Span<byte> span2 = (span = array);
+						BinaryPrimitives.WriteUInt64LittleEndian(span.Slice(0, 8), steamID.m_SteamID);
+						span = span2;
+						BinaryPrimitives.WriteInt32LittleEndian(span.Slice(8, 4), value);
+						abolethConfig.UserId = new Guid(MD5.Create().ComputeHash(array)).ToString("N");
+					}
 				}
 				catch (Exception ex)
 				{

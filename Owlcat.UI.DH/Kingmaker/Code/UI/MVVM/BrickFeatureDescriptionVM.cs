@@ -1,8 +1,10 @@
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Framework;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.Models.Log.GameLogCntxt;
 using Kingmaker.UI.UIUtils;
+using Kingmaker.UnitLogic.Abilities.Blueprints;
 using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Progression.Features;
 using Owlcat.UI;
@@ -59,6 +61,23 @@ public class BrickFeatureDescriptionVM : TooltipBrickVM
 			IconColor = UIUtilityText.GetColorByText(name);
 			Acronym = UIUtilityAbilities.GetAbilityAcronym(feature);
 		}
-		Tooltip = new TooltipTemplateFeature(feature, withVariants: false, caster);
+		Tooltip = GetTooltipTemplate(feature, caster);
+	}
+
+	private TooltipBaseTemplate GetTooltipTemplate(BlueprintFeatureBase feature, MechanicEntity caster)
+	{
+		if (!feature.TryGetAttachableBlueprintFact(out var fact))
+		{
+			return new TooltipTemplateFeature(feature, withVariants: false, caster);
+		}
+		if (!(fact is BlueprintAbility blueprintAbility))
+		{
+			if (fact is BlueprintToggleAbility ability)
+			{
+				return new TooltipTemplateToggleAbility(ability, caster);
+			}
+			return new TooltipTemplateFeature(feature, withVariants: false, caster);
+		}
+		return new TooltipTemplateAbility(blueprintAbility, null, caster);
 	}
 }

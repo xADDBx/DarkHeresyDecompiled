@@ -1,11 +1,13 @@
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Controllers.Dialog;
+using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 
 namespace Kingmaker.Code.Middleware.Metrics;
 
-public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber
+public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber, IDialogInteractionHandler
 {
 	public static void Init()
 	{
@@ -16,5 +18,15 @@ public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber
 	{
 		InterfaceMetricsEvent.InterfaceStates state2 = ((!state) ? InterfaceMetricsEvent.InterfaceStates.Close : InterfaceMetricsEvent.InterfaceStates.Open);
 		Metrics.Interface.FullScreenType(fullScreenUIType).State(state2).Send();
+	}
+
+	public void StartDialogInteraction(BlueprintDialog dialog)
+	{
+		Metrics.Dialog.Id(dialog.AssetGuid).State(DialogMetricsEvent.DialogState.Open).Send();
+	}
+
+	public void StopDialogInteraction(BlueprintDialog dialog)
+	{
+		Metrics.Dialog.Id(dialog.AssetGuid).State(DialogMetricsEvent.DialogState.Close).Send();
 	}
 }

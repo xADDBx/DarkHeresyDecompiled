@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Controllers.TurnBased;
-using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Framework;
@@ -245,16 +244,11 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 		hashSet.AddRange(source.SelectMany((ScriptZoneEntity area) => area.Config.Shapes.SelectMany(EditorGridHelper.GetNodesInsideScriptZone)));
 		foreach (BaseUnitEntity item in Game.Instance.EntityPools.AllBaseAwakeUnits.Where((BaseUnitEntity i) => i.IsInCombat && i.IsPlayerEnemy))
 		{
-			GridNode currentUnwalkableNode = item.CurrentUnwalkableNode;
-			foreach (GridNodeBase item2 in GridAreaHelper.GetNodesSpiralAround(currentUnwalkableNode, item.SizeRect, 1))
+			foreach (GridNodeBase item2 in GridAreaHelper.GetNodesSpiralAround(item.CurrentUnwalkableNode, item.SizeRect, 1))
 			{
-				if (item.DistanceToInCells(item2.Vector3Position()) <= 1)
+				if (TurnController.IsInDeploymentRestrictionZone(item2.Vector3Position(), item))
 				{
-					Linecast.HasConnectionTransition condition = Linecast.HasConnectionTransition.Instance;
-					if (!Linecast.LinecastGrid(currentUnwalkableNode.Graph, item.Position, item2.Vector3Position(), currentUnwalkableNode, out var _, ref condition))
-					{
-						hashSet.Add(item2);
-					}
+					hashSet.Add(item2);
 				}
 			}
 		}

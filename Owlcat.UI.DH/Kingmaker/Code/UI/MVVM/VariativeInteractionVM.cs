@@ -103,7 +103,7 @@ public class VariativeInteractionVM : ViewModel, ITurnEndHandler, ISubscriber<IM
 		InteractionPart?.SetVisited();
 		if (actorData == null)
 		{
-			actorData = InteractionPart?.InteractionSettings.Interactions?.Select((InteractionWithConditions v) => v.ToActorWithConditions()) ?? (from a in UtilityInteracts.GetIHasInteractionVariants(MechanicEntity).GetInteractionVariantActors()
+			actorData = InteractionPart?.GetInteractionActorsWithConditions() ?? (from a in UtilityInteracts.GetIHasInteractionVariants(MechanicEntity).GetInteractionVariantActors()
 				select new InteractionActorWithConditions(a));
 		}
 		actorData = actorData.OrderBy((InteractionActorWithConditions c) => InteractionPriority.GetPriority(c.VariantActor));

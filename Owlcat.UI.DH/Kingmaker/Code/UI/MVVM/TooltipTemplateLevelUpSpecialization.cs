@@ -64,7 +64,7 @@ public class TooltipTemplateLevelUpSpecialization : TooltipBaseTemplate
 		UIUtilityFeaturesTooltip.AddStatBonuses(list, Feature, StatTypeHelper.Attributes, FeatureGroup.Attribute);
 		UIUtilityFeaturesTooltip.AddStatBonuses(list, Feature, StatTypeHelper.Skills, FeatureGroup.Skill);
 		UIUtilityFeaturesTooltip.ParseByBlockAndAddFeatures(list, Feature, null, new FeatureGroup[1] { FeatureGroup.ActiveAbility });
-		UIUtilityFeaturesTooltip.AddAllLevelUpStatsAndFeatures(list, Feature);
+		UIUtilityFeaturesTooltip.AddChargenProgressionLockedFoldable(list, Feature);
 		return list;
 	}
 

@@ -107,6 +107,23 @@ public sealed class UnitSpawnerEntity : AbstractUnitSpawnerEntity, IHashable, IO
 	{
 	}
 
+	protected override void OnSetConfig(IEntityConfig config)
+	{
+		base.OnSetConfig(config);
+		AbstractUnitEntity spawnedUnit = base.SpawnedUnit;
+		if (spawnedUnit != null && spawnedUnit is BaseUnitEntity baseUnitEntity)
+		{
+			if (Config.BossMusicEnable)
+			{
+				baseUnitEntity.MusicBossFightType = Config.MusicBossFightType;
+			}
+			else
+			{
+				baseUnitEntity.MusicBossFightType = null;
+			}
+		}
+	}
+
 	public override Hash128 GetHash128()
 	{
 		Hash128 result = default(Hash128);

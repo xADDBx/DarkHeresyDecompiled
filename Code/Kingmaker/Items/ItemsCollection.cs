@@ -353,18 +353,21 @@ public class ItemsCollection : IItemsCollection, IEnumerable<ItemEntity>, IEnume
 			if (itemEntity2.Blueprint == bpItem)
 			{
 				ItemSlot holdingSlot = itemEntity2.HoldingSlot;
-				if (holdingSlot != null && !holdingSlot.RemoveItem())
+				if (holdingSlot != null && !holdingSlot.RemoveItem(autoMerge: false))
 				{
 					PFLog.Default.Error("Can't remove {0} of {1}: item equipped and non-removable", num, bpItem);
 				}
 				else
 				{
 					int num3 = Math.Min(count, itemEntity2.Count);
-					Remove(itemEntity2, num3);
-					count -= num3;
-					if (count < 1)
+					if (num3 > 0)
 					{
-						break;
+						Remove(itemEntity2, num3);
+						count -= num3;
+						if (count < 1)
+						{
+							break;
+						}
 					}
 				}
 			}

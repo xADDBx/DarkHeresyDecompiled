@@ -23,6 +23,7 @@ using Kingmaker.Gameplay.Features.Experience;
 using Kingmaker.Interaction;
 using Kingmaker.Localization;
 using Kingmaker.Mechanics.Entities;
+using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.RuleSystem;
 using Kingmaker.RuleSystem.Rules;
@@ -264,16 +265,22 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 		{
 			SetUnlocked();
 		}
-		if (!base.Settings.OnlyCheckOnce || !AlreadyUsed)
+		if (base.Settings.OnlyCheckOnce && AlreadyUsed)
 		{
-			return;
-		}
-		foreach (InteractionRestrictionPart needItemRestriction in GetNeedItemRestrictions())
-		{
-			if (needItemRestriction != null)
+			foreach (InteractionRestrictionPart needItemRestriction in GetNeedItemRestrictions())
 			{
-				needItemRestriction.IsDisabled = true;
+				if (needItemRestriction != null)
+				{
+					needItemRestriction.IsDisabled = true;
+				}
 			}
+		}
+		if (IsFailed && InteractThroughVariants && GetSkill() == StatType.SkillTechUse)
+		{
+			base.EventBus.RaiseEvent(delegate(IVariativeInteractionUIHandler h)
+			{
+				h.HandleInteractionRequest(base.Owner);
+			});
 		}
 		IEnumerable<InteractionRestrictionPart> GetNeedItemRestrictions()
 		{
