@@ -7,6 +7,7 @@ using Kingmaker.UI.Sound;
 using ObservableCollections;
 using Owlcat.UI;
 using R3;
+using R3.Triggers;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -36,6 +37,9 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 
 	[SerializeField]
 	private RectTransform m_Selector;
+
+	[SerializeField]
+	private RectTransform m_Glow;
 
 	[SerializeField]
 	private float m_AnimationDuration = 0.55f;
@@ -87,6 +91,10 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 		{
 			SmoothScrollBy(0f - m_ScrollDelta);
 		}).AddTo(this);
+		m_ScrollRectExtended.OnDragAsObservable().Subscribe(delegate
+		{
+			m_DelayedSelectorMoveDisposable?.Dispose();
+		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.TimerFrame(2), delegate
 		{
 			UpdateBackgroundFrameSize();
@@ -120,8 +128,8 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 		m_DelayedSelectorMoveDisposable = ObservableSubscribeExtensions.Subscribe(Observable.TimerFrame(2), delegate
 		{
 			m_ScrollRectExtended.EnsureVisibleHorizontal(m_SelectedView.ViewRectTransform, 160f);
-			float endValue = m_SelectedView.ViewRectTransform.position.x + ((selectedEntity.Rank > 0) ? 12f : 0f);
-			m_Selector.DOMoveX(endValue, m_AnimationDuration).OnStart(delegate
+			float x = m_SelectedView.ViewRectTransform.position.x;
+			m_Selector.DOMoveX(x, m_AnimationDuration).OnStart(delegate
 			{
 				if (m_PrevEntity != selectedEntity)
 				{
@@ -134,6 +142,17 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 				.OnKill(ShutUpSelector)
 				.SetUpdate(isIndependentUpdate: true);
 		}).AddTo(this);
+	}
+
+	private void MoveSelectorImmediately()
+	{
+		m_SelectedView = GetRoadmapPhaseView(base.ViewModel.SelectedEntity.CurrentValue);
+		if (m_SelectedView != null)
+		{
+			float x = m_SelectedView.ViewRectTransform.position.x;
+			m_Selector.position = new Vector3(x, m_Selector.position.y, m_Selector.position.z);
+			m_Glow.position = new Vector3(x, m_Glow.position.y, m_Glow.position.z);
+		}
 	}
 
 	public void SetBackgroundFrameState(bool isCustom)
@@ -200,6 +219,10 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 		bool flag3 = m_ScrollRectExtended.horizontalNormalizedPosition < 0.999f;
 		m_LeftScrollButton.Interactable = flag && flag2;
 		m_RightScrollButton.Interactable = flag && flag3;
+		if (m_DelayedSelectorMoveDisposable == null)
+		{
+			MoveSelectorImmediately();
+		}
 	}
 
 	private void SmoothScrollBy(float delta)
@@ -209,6 +232,7 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 			scrollDelta = new Vector2(delta, 0f)
 		};
 		m_ScrollRectExtended.OnSmoothlyScroll(data);
+		m_DelayedSelectorMoveDisposable?.Dispose();
 	}
 
 	public void SelectPrevPhase()

@@ -37,6 +37,8 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 
 	private bool m_IsHovered;
 
+	private readonly string[] hexColors = new string[9] { "#d8dad7", "#cddfcc", "#bae5b8", "#a7eca2", "#97f091", "#84f57e", "#67f963", "#47fd44", "#00ff12" };
+
 	protected override void BindViewImplementation()
 	{
 		base.BindViewImplementation();
@@ -49,7 +51,7 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 		{
 			base.ViewModel.Points.Subscribe(delegate(int p)
 			{
-				m_Value.text = p.ToString();
+				PaintValue(p);
 			}).AddTo(this);
 		}
 		if (m_AddedValue != null)
@@ -82,6 +84,7 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 				ChangePoints(isAdding: false);
 			}).AddTo(this);
 		}
+		m_AddPointButton.transform.parent.parent.gameObject.SetActive(base.ViewModel.HasSeveralPoints);
 		m_AddPointButton.gameObject.SetActive(value: false);
 		m_RemovePointButton.gameObject.SetActive(value: false);
 		base.ViewModel.HasPointsToSpend.Subscribe(delegate
@@ -133,6 +136,14 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 			m_RemovePointButton.SetActiveLayer((!isHovered && base.ViewModel.HasJustSpentPoints) ? "Faded" : "Normal");
 			m_AddPointButton.gameObject.SetActive(base.ViewModel.HasPointsToSpend.CurrentValue);
 			m_RemovePointButton.gameObject.SetActive(base.ViewModel.HasJustSpentPoints);
+		}
+	}
+
+	public void PaintValue(int number)
+	{
+		if (!(m_Value == null))
+		{
+			m_Value.text = number.ToString();
 		}
 	}
 }

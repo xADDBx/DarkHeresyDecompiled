@@ -31,9 +31,12 @@ public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TVie
 	[SerializeField]
 	protected TextMeshProUGUI m_LevelLabel;
 
+	[SerializeField]
+	private RectTransform m_SelectorTarget;
+
 	private AccessibilityTextHelper m_AccessibilityTextHelper;
 
-	public RectTransform ViewRectTransform => base.transform as RectTransform;
+	public RectTransform ViewRectTransform => m_SelectorTarget;
 
 	public void SetParentTransform(Transform parent, int siblingIndex = 0)
 	{

@@ -104,13 +104,6 @@ public class CharGenLevelUpCharacteristicsItemVM : CharGenLevelUpSelectorBaseIte
 			m_Unit.Actor.GetStat(Stat, statQueryOutput, default(StatContext), "Init");
 			BonusPenaltyState = (statQueryOutput.HasNonPermanentBonuses ? AttributeBonusState.Bonus : (statQueryOutput.HasNonPermanentPenalties ? AttributeBonusState.Penalty : AttributeBonusState.Normal));
 		}
-		else
-		{
-			StatType valueOrDefault = MechanicActor.GetStatBaseStat(Stat).GetValueOrDefault();
-			m_Acronym.Value = LocalizedTexts.Instance.Stats.GetShortText(valueOrDefault);
-			HasAttributeMark = valueOrDefault != GetPrevSkillBaseStatType();
-			HasBackground = (int)valueOrDefault % 2 != 0;
-		}
 	}
 
 	private void UpdateTooltip()

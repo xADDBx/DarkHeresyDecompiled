@@ -20,15 +20,6 @@ public class CharGenLevelUpPhaseStatsDetailedView<TViewModel> : CharGenPhaseDeta
 	[SerializeField]
 	private TextMeshProUGUI m_RemainingPointsText;
 
-	[SerializeField]
-	private RectTransform m_ListViewRectTransform;
-
-	[SerializeField]
-	private RectTransform m_DefaultPosition;
-
-	[SerializeField]
-	private RectTransform m_ChargenPosition;
-
 	protected override void OnBind()
 	{
 		base.OnBind();
@@ -39,7 +30,6 @@ public class CharGenLevelUpPhaseStatsDetailedView<TViewModel> : CharGenPhaseDeta
 		{
 			m_RemainingPointsText.text = p.ToString();
 		}).AddTo(this);
-		UpdatePosition();
 	}
 
 	private void OnComplete(bool state)
@@ -47,22 +37,5 @@ public class CharGenLevelUpPhaseStatsDetailedView<TViewModel> : CharGenPhaseDeta
 		LocalizedString localizedString = (state ? base.ViewModel.BlueprintSelectionWithUI.Title : base.ViewModel.BlueprintSelectionWithUI.CallToAction);
 		m_ListHeaderText.text = localizedString;
 		m_ListSelectable?.SetActiveLayer((!state) ? 1 : 0);
-	}
-
-	protected void UpdatePosition()
-	{
-		if (!(m_ListViewRectTransform == null) && !(m_DefaultPosition == null) && !(m_ChargenPosition == null))
-		{
-			if (base.ViewModel.IsInChargen)
-			{
-				m_ListViewRectTransform.position = m_ChargenPosition.position;
-				m_ListViewRectTransform.sizeDelta = m_ChargenPosition.sizeDelta;
-			}
-			else
-			{
-				m_ListViewRectTransform.position = m_DefaultPosition.position;
-				m_ListViewRectTransform.sizeDelta = m_DefaultPosition.sizeDelta;
-			}
-		}
 	}
 }

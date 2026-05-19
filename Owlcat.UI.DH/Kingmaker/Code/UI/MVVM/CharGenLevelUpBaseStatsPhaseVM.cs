@@ -6,6 +6,8 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UnitLogic.Levelup.Selections.Stats;
 using Kingmaker.UnitLogic.Progression.Features.Advancements;
 using Kingmaker.Utility.DotNetExtensions;
+using ObservableCollections;
+using Owlcat.UI;
 using R3;
 using UnityEngine;
 
@@ -18,6 +20,8 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 	protected ReactiveProperty<int> m_RemainingPoints = new ReactiveProperty<int>();
 
 	private CharGenLevelUpCharacteristicsItemVM m_PrevSelectedItem;
+
+	public readonly ObservableList<LevelUpSkillLinkedAttributeVM> BaseAttributeList = new ObservableList<LevelUpSkillLinkedAttributeVM>();
 
 	public ReadOnlyReactiveProperty<int> RemainingPoints => m_RemainingPoints;
 
@@ -116,6 +120,15 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 		SelectionStats.Blueprint.Advancements.OrderBy((BlueprintStatAdvancement a) => StatTypeHelper.DisplayOrder.IndexOf(a.Stat)).ForEach(delegate(BlueprintStatAdvancement f)
 		{
 			AddItem(new CharGenLevelUpCharacteristicsItemVM(f, SelectionStats, m_CharGenContext.LevelUpManager.CurrentValue, OnPointsChanged, OnItemHovered) as TSelectorItem);
+		});
+	}
+
+	protected override void OnItemHovered(SelectionGroupEntityVM item)
+	{
+		base.OnItemHovered(item);
+		Items.ForEach(delegate(TSelectorItem i)
+		{
+			i.UpdatePointsState();
 		});
 	}
 }
