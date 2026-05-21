@@ -58,6 +58,8 @@ public static class UIUtilityItem
 
 		public int Durability;
 
+		public int Defence;
+
 		public int RangedHitChanceBonus;
 
 		public int MovePointAdjustment;
@@ -230,6 +232,7 @@ public static class UIUtilityItem
 			ArmorData armorData = default(ArmorData);
 			armorData.DamageReduction = ApplyFractionModifier(armor.GetStatBaseValue(StatType.ItemArmorDamageReduction).Value, StatType.ItemArmorDamageReduction, fractionModifiers);
 			armorData.Durability = ApplyFractionModifier(armor.GetStatBaseValue(StatType.ItemArmorAmount).Value, StatType.ItemArmorAmount, fractionModifiers);
+			armorData.Defence = ApplyFractionModifier(armor.GetStatBaseValue(StatType.ItemArmorDefence).Value, StatType.ItemArmorDefence, fractionModifiers);
 			armorData.MovePointAdjustment = 0;
 			armorData.RangedHitChanceBonus = 0;
 			armorData.ArmorDodgePenalty = ((num > 0f) ? $"{num}" : string.Empty);
@@ -1180,6 +1183,12 @@ public static class UIUtilityItem
 					Value = armorData.Durability
 				};
 				itemTooltipData.HasValues[TooltipElement.Durability] = armorData.Durability > 0;
+				itemTooltipData.Texts[TooltipElement.Defense] = armorData.Defence.ToString();
+				itemTooltipData.CompareData[TooltipElement.Defense] = new CompareData
+				{
+					Value = armorData.Defence
+				};
+				itemTooltipData.HasValues[TooltipElement.Defense] = armorData.Defence > 0;
 				itemTooltipData.Texts[TooltipElement.FullArmorClass] = LocalizedTexts.Instance.Stats.GetText(itemEntityArmor.Blueprint.Category);
 				if (!string.IsNullOrEmpty(armorData.ArmorDamageReduceDescription))
 				{

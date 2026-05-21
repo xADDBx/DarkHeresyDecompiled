@@ -96,7 +96,7 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 			}
 			else
 			{
-				m_PartyStatsOverviewVM.ShowForStat(focus.Stat, base.Unit);
+				m_PartyStatsOverviewVM.ShowForStat(focus.Stat, m_CharGenContext.LevelUpManager.CurrentValue.TargetUnit);
 			}
 		}
 	}

@@ -31,6 +31,10 @@ public class ArmorItemPart : BaseItemPart
 		{
 			TooltipElement.DamageReduction,
 			UIConfig.Instance.UIIcons.TooltipInspectIcons.DamageReduction
+		},
+		{
+			TooltipElement.Defense,
+			UIConfig.Instance.UIIcons.TooltipInspectIcons.Defence
 		}
 	};
 
@@ -59,7 +63,8 @@ public class ArmorItemPart : BaseItemPart
 		bool hasUpgrade = m_BlueprintItem.PrototypeLink is BlueprintItemArmor;
 		List<ArmourTagUISettings> tagSettings = blueprintItemArmor?.ArmourTags.ToList() ?? new List<ArmourTagUISettings>();
 		string itemLabel = ((blueprintItemArmor != null && blueprintItemArmor.Category != 0) ? UIUtilityText.WrapWithWeight(LocalizedTexts.Instance.Stats.GetText(blueprintItemArmor.Category), TextFontWeight.SemiBold) : null);
-		list.Add(new BrickArmourHeaderVM(itemName, image, GetStatDataFor(TooltipElement.Durability), GetStatDataFor(TooltipElement.DamageReduction), hasUpgrade, tagSettings, m_BlueprintItem, text, itemLabel));
+		StatData armourDefence = (m_ItemTooltipData.GetHasValue(TooltipElement.Defense) ? GetStatDataFor(TooltipElement.Defense) : null);
+		list.Add(new BrickArmourHeaderVM(itemName, image, GetStatDataFor(TooltipElement.Durability), GetStatDataFor(TooltipElement.DamageReduction), hasUpgrade, tagSettings, m_BlueprintItem, text, itemLabel, armourDefence));
 		return list;
 	}
 

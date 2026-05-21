@@ -365,6 +365,7 @@ public class ServiceWindowsPanelVM : ViewModel
 
 	public void Close()
 	{
+		Metrics.Interface.FullScreenType(m_CurrentUIType.Value).State(InterfaceMetricsEvent.InterfaceStates.Close).Send();
 		PlayCloseSound(CurrentWindowType);
 		m_CurrentUIType.Value = FullScreenUIType.Unknown;
 		m_LockedWindowType.Value = ServiceWindowsType.None;

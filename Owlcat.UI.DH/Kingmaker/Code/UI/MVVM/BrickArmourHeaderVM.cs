@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Code.Gameplay.Components.Features;
 using UnityEngine;
@@ -21,11 +22,13 @@ public class BrickArmourHeaderVM : TooltipBrickVM
 
 	public readonly StatData DamageReduction;
 
+	public readonly StatData ArmourDefence;
+
 	public readonly List<ArmourTagUISettings> TagSettings;
 
 	public readonly BlueprintItem BlueprintItem;
 
-	public BrickArmourHeaderVM(string mainTitle, Sprite image, StatData armourDurability, StatData damageReduction, bool hasUpgrade, List<ArmourTagUISettings> tagSettings, BlueprintItem blueprintItem = null, string itemType = null, string itemLabel = null)
+	public BrickArmourHeaderVM(string mainTitle, Sprite image, StatData armourDurability, StatData damageReduction, bool hasUpgrade, List<ArmourTagUISettings> tagSettings, BlueprintItem blueprintItem = null, string itemType = null, string itemLabel = null, [CanBeNull] StatData armourDefence = null)
 	{
 		MainTitle = mainTitle;
 		Image = image;
@@ -35,6 +38,7 @@ public class BrickArmourHeaderVM : TooltipBrickVM
 		ItemLabel = itemLabel;
 		ArmourDurability = armourDurability;
 		DamageReduction = damageReduction;
+		ArmourDefence = armourDefence;
 		BlueprintItem = blueprintItem;
 	}
 }

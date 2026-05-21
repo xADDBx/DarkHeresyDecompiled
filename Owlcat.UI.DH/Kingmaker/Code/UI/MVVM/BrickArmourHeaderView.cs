@@ -28,6 +28,9 @@ public class BrickArmourHeaderView : BrickBaseView<BrickArmourHeaderVM>
 	[SerializeField]
 	private StatDataWidget m_DamageReductionWidget;
 
+	[SerializeField]
+	private StatDataWidget m_DefenceWidget;
+
 	[Header("Right Side")]
 	[SerializeField]
 	private GameObject m_IconContainer;
@@ -54,6 +57,17 @@ public class BrickArmourHeaderView : BrickBaseView<BrickArmourHeaderVM>
 		m_Icon.sprite = base.ViewModel.Image;
 		m_ArmourDurabilityWidget.Bind(base.ViewModel.ArmourDurability);
 		m_DamageReductionWidget.Bind(base.ViewModel.DamageReduction);
+		if (m_DefenceWidget != null)
+		{
+			if (base.ViewModel.ArmourDefence != null)
+			{
+				m_DefenceWidget.Bind(base.ViewModel.ArmourDefence);
+			}
+			else
+			{
+				m_DefenceWidget.gameObject.SetActive(value: false);
+			}
+		}
 		SetText(m_ItemType, base.ViewModel.ItemType);
 		SetText(m_ItemLabel, base.ViewModel.ItemLabel);
 		m_TagsWidgetList.DrawEntries(base.ViewModel.TagSettings.Select((ArmourTagUISettings t) => new ArmourTagData(t, base.ViewModel.BlueprintItem)), m_TagPrefab).AddTo(this);
@@ -70,6 +84,10 @@ public class BrickArmourHeaderView : BrickBaseView<BrickArmourHeaderVM>
 		base.OnUnbind();
 		m_ArmourDurabilityWidget.Unbind();
 		m_DamageReductionWidget.Unbind();
+		if (m_DefenceWidget != null && base.ViewModel.ArmourDefence != null)
+		{
+			m_DefenceWidget.Unbind();
+		}
 		m_TextHelper = null;
 		m_TagsWidgetList.Clear();
 	}

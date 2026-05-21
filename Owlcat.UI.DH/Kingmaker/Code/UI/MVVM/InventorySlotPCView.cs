@@ -53,7 +53,10 @@ public class InventorySlotPCView : InventorySlotView
 			{
 				base.ViewModel.MarkAsTrashLoot(isMarkedAsTrash: false);
 			}, !base.ViewModel.IsNotable.CurrentValue && base.ViewModel.MarkedAsTrash.CurrentValue && !base.ViewModel.IsTrash.CurrentValue && base.ViewModel.HasItem),
-			new ContextMenuCollectionEntity(contextMenu.Information, base.ViewModel.ShowInfo, base.ViewModel.HasItem)
+			new ContextMenuCollectionEntity(contextMenu.Information, delegate
+			{
+				base.ViewModel.ShowInfo();
+			}, base.ViewModel.HasItem)
 		};
 		base.ViewModel.SetContextMenu(contextMenu2);
 	}

@@ -1,4 +1,5 @@
 using System.Linq;
+using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Utility.DotNetExtensions;
@@ -19,11 +20,15 @@ public class PartyStatsOverviewVM : ViewModel
 	public void ShowForStat(StatType stat, BaseUnitEntity excludedUnit)
 	{
 		ClearItems();
-		(from u in Game.Instance.Player?.AllCharacters
-			where u != null && u.Blueprint != excludedUnit.Blueprint && !u.IsPet
-			select new PartyStatsOverviewCharacterVM(u, stat) into vm
-			orderby vm.StatValue descending
-			select vm).ForEach(Items.Add);
+		if (Game.Instance.Player != null)
+		{
+			(from ch in UtilityParty.GetGroup(withRemote: true)
+				where ch != excludedUnit
+				select ch into u
+				select new PartyStatsOverviewCharacterVM(u, stat) into vm
+				orderby vm.StatValue descending
+				select vm).ForEach(Items.Add);
+		}
 		m_IsActive.Value = true;
 	}
 
