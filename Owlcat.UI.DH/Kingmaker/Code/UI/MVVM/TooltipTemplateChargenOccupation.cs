@@ -5,6 +5,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Progression;
@@ -12,6 +13,7 @@ using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.UnitLogic.Progression.Prerequisites;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.UI;
+using UnityEngine;
 
 namespace Kingmaker.Code.UI.MVVM;
 
@@ -22,6 +24,8 @@ public class TooltipTemplateChargenOccupation : TooltipBaseTemplate
 	private readonly MechanicEntity m_Unit;
 
 	private readonly LevelUpManager m_LevelUpManager;
+
+	private readonly BlueprintSelectionWithUI m_BlueprintSelectionWithUI;
 
 	private MechanicEntity FallbackCaster
 	{
@@ -41,16 +45,20 @@ public class TooltipTemplateChargenOccupation : TooltipBaseTemplate
 		}
 	}
 
-	public TooltipTemplateChargenOccupation(BlueprintFeature feature, MechanicEntity unit = null, LevelUpManager levelUpManager = null)
+	public TooltipTemplateChargenOccupation(BlueprintFeature feature, MechanicEntity unit = null, LevelUpManager levelUpManager = null, BlueprintSelectionWithUI blueprintSelectionWithUI = null)
 	{
 		m_Feature = feature;
 		m_Unit = unit;
 		m_LevelUpManager = levelUpManager;
+		m_BlueprintSelectionWithUI = blueprintSelectionWithUI;
 	}
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
-		yield return new BrickOriginTitleVM(m_Feature.Icon, m_Feature.Name, UIStrings.Instance.CharGen.Origin.Text);
+		Sprite icon = m_Feature.Icon;
+		string name = m_Feature.Name;
+		LocalizedString localizedString = m_BlueprintSelectionWithUI?.Title;
+		yield return new BrickOriginTitleVM(icon, name, (localizedString != null) ? ((string)localizedString) : UIStrings.Instance.CharGen.Origin.Text);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)

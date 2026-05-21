@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Owlcat.Runtime.Core.Allocators.Guillotiere;
 using Owlcat.Runtime.Visual.VirtualTexture.Atlas;
 using Unity.Burst;
 using Unity.Collections;
@@ -22,7 +23,7 @@ public struct CollectResidentTilesJob : IJobParallelFor
 	public void Execute(int index)
 	{
 		VirtualAtlasEntry entry = Entries[index];
-		if (LoadSmallestMips)
+		if (entry.NodeKind == NodeKind.Alloc && LoadSmallestMips)
 		{
 			int mipLevel = entry.MipCount - 1;
 			CollectTilesForMipLevel(in entry, mipLevel);

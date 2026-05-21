@@ -18,6 +18,8 @@ public static class Metrics
 
 	public static readonly ChapterMetricsEvent Chapter = new ChapterMetricsEvent();
 
+	public static readonly ChargenMetricsEvent Chargen = new ChargenMetricsEvent();
+
 	public static readonly CutsceneMetricsEvent Cutscene = new CutsceneMetricsEvent();
 
 	public static readonly DetectiveCaseMetricsEvent DetectiveCase = new DetectiveCaseMetricsEvent();

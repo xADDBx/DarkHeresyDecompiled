@@ -10,6 +10,6 @@ internal struct PageDrawDataComparer : IComparer<PageDrawData>
 {
 	public int Compare(PageDrawData x, PageDrawData y)
 	{
-		return -x.MipLevel.CompareTo(y.MipLevel);
+		return x.CompareTo(y);
 	}
 }

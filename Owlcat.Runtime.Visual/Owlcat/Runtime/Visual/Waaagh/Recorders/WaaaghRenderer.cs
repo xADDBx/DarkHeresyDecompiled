@@ -156,7 +156,7 @@ internal sealed class WaaaghRenderer : IPipelineRenderer, IDisposable
 			IRS.CullingPass(in context);
 		}
 		m_Extensions.Record(in context, RecordExtensionPoint.BeforeRendering);
-		CameraRecorder.SetupCamera(in context, noJitter: false);
+		CameraRecorder.SetupCamera(in context, jitter: true);
 		CameraRecorder.VFXPrepareCameraPass(in context);
 		ClearPasses.ClearCameraTargets(in context);
 		Dithering.SetupDitheringPass(in context, allowJitter: true);
@@ -187,14 +187,14 @@ internal sealed class WaaaghRenderer : IPipelineRenderer, IDisposable
 		context.VirtualTextureManager?.ResolveFeedback(in context);
 		CopyPasses.CopyDepthToDepthCopy(in context);
 		MotionVectors.MotionVectorsPass(in context);
-		context.RenderGraph.BeginProfilingSampler(Decals.DeferredDecalsProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\WaaaghRenderer.cs", 262);
+		context.RenderGraph.BeginProfilingSampler(Decals.DeferredDecalsProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\WaaaghRenderer.cs", 262);
 		Decals.InitializeDBuffer(in context);
 		m_Extensions.Record(in context, RecordExtensionPoint.BeforeDrawDeferredDecals);
 		Decals.DrawDeferredDecals(in context);
 		context.VirtualTextureManager?.ResolveFeedback(in context);
 		m_Extensions.Record(in context, RecordExtensionPoint.AfterDrawDeferredDecals);
 		Decals.ResolveDBuffer(in context);
-		context.RenderGraph.EndProfilingSampler(Decals.DeferredDecalsProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\WaaaghRenderer.cs", 270);
+		context.RenderGraph.EndProfilingSampler(Decals.DeferredDecalsProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\WaaaghRenderer.cs", 270);
 		if (DeferredLighting.ShouldApplyLighting(in context))
 		{
 			LightCookieManager.UpdateLightCookiePass(in context);
@@ -251,8 +251,9 @@ internal sealed class WaaaghRenderer : IPipelineRenderer, IDisposable
 		Decals.DrawForwardDecals(in context);
 		m_Extensions.Record(in context, RecordExtensionPoint.BeforeDrawPostProcess);
 		m_PostProcessor.Record(in context);
-		m_Extensions.Record(in context, RecordExtensionPoint.AfterDrawPostProcess);
 		m_PostProcessor.FinalizeToTarget(in context);
+		CameraRecorder.ResetJitter(in context);
+		m_Extensions.Record(in context, RecordExtensionPoint.AfterDrawPostProcess);
 		if (UIOverlay.ShouldDrawUGUI(GetOverlayUISubset(), context.CameraData))
 		{
 			UIOverlay.DrawUGUI(in context);

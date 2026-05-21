@@ -46,7 +46,7 @@ public static class CopyPasses
 	public static void CopyDepthToDepthCopy(in RecordContext ctx)
 	{
 		CopyDepthPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = ctx.RenderGraph.AddRasterRenderPass<CopyDepthPassData>("CopyDepthToDepthCopy", out passData, WaaaghProfileId.CopyDepthToDepthCopy.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\CopyPasses.cs", 38);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = ctx.RenderGraph.AddRasterRenderPass<CopyDepthPassData>("CopyDepthToDepthCopy", out passData, WaaaghProfileId.CopyDepthToDepthCopy.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\CopyPasses.cs", 38);
 		TextureHandle input = ctx.FrameResources.CameraStackTargets.Depth;
 		TextureHandle depthCopy = ctx.FrameResources.CameraAdditionalTargets.DepthCopy;
 		passData.Material = ctx.MaterialLibrary.CopyDepth;
@@ -74,7 +74,7 @@ public static class CopyPasses
 	public static void CopyDepthToFinalTarget(in RecordContext ctx)
 	{
 		CopyDepthPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = ctx.RenderGraph.AddRasterRenderPass<CopyDepthPassData>("CopyDepthToFinalTarget", out passData, WaaaghProfileId.CopyDepthToFinalTarget.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\CopyPasses.cs", 78);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = ctx.RenderGraph.AddRasterRenderPass<CopyDepthPassData>("CopyDepthToFinalTarget", out passData, WaaaghProfileId.CopyDepthToFinalTarget.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\CopyPasses.cs", 78);
 		TextureHandle input = ctx.FrameResources.CameraStackTargets.Depth;
 		TextureHandle color = ctx.FrameResources.FinalTarget.Color;
 		TextureHandle depth = ctx.FrameResources.FinalTarget.Depth;
@@ -103,7 +103,7 @@ public static class CopyPasses
 	public static void CopyColorToFinalTarget(in RecordContext context)
 	{
 		BlitColorPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<BlitColorPassData>("CopyColorToFinalTarget", out passData, WaaaghProfileId.CopyColorToFinalTarget.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\CopyPasses.cs", 110);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<BlitColorPassData>("CopyColorToFinalTarget", out passData, WaaaghProfileId.CopyColorToFinalTarget.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\CopyPasses.cs", 110);
 		passData.BlitMaterial = (context.CameraData.isHDROutputActive ? context.MaterialLibrary.FinalBlitHdrMaterial : context.MaterialLibrary.FinalBlitMaterial);
 		passData.BlitMaterialPass = (context.CameraData.isHDROutputActive ? context.MaterialLibrary.FinalBlitHdrMaterialLinearPass : context.MaterialLibrary.FinalBlitMaterialLinearPass);
 		passData.RequireSrgbConversion = context.CameraData.requireSrgbConversion;

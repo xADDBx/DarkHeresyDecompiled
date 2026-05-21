@@ -23,7 +23,8 @@ public sealed class UnitToggleAbility : UnitCommand<UnitToggleAbilityParams>
 			return ResultType.Fail;
 		}
 		toggleAbility.Enabled = !toggleAbility.Enabled;
-		Metrics.ToggleAbility.Id(toggleAbility.Blueprint.AssetGuid).State(toggleAbility.Enabled).Send();
+		Metrics.ToggleAbility.Id(toggleAbility.Blueprint.AssetGuid).Caster(toggleAbility.Caster?.Blueprint.AssetGuid).State(toggleAbility.Enabled)
+			.Send();
 		return ResultType.Success;
 	}
 }

@@ -23,7 +23,7 @@ public class CheckAbilityWeaponFactionGetter : BoolPropertyGetter, PropertyConte
 		ItemEntityWeapon abilityWeapon = EvalContext.Current.AbilityWeapon;
 		if (abilityWeapon != null)
 		{
-			return abilityWeapon.Blueprint.Faction == Faction;
+			return abilityWeapon.EffectiveFaction == Faction;
 		}
 		return false;
 	}

@@ -87,7 +87,7 @@ public class AddendumsReceivedListener : NotificationListenerBase, IClueAddendum
 		string label = NotificationFormatter.FormatText(string.Format(prefix, stringBuilder), NotificationType.Positive, m_DialogUIType);
 		bool num = Game.Instance.DetectiveSystem.GetCaseStatus(blueprintClue.ParentCase) == CaseStatus.None;
 		TooltipTemplateDetective iconTooltip = (num ? new TooltipTemplateDetective(null) : new TooltipTemplateDetective(blueprintClue.ParentCase.Blueprint));
-		Sprite icon = (num ? UIConfig.Instance.DetectiveConfig.UnknownCluesIcon : blueprintClue.ParentCase.Blueprint.Icon);
+		Sprite icon = (num ? UIConfig.Instance.DetectiveConfig.UnknownCluesIcon : Game.Instance.DetectiveSystem.GetCaseDisplay(blueprintClue.ParentCase).Icon);
 		return new DialogNotificationVM(label, icon, iconTooltip);
 	}
 

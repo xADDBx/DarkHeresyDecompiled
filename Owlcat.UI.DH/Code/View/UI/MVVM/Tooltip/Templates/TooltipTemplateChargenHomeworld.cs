@@ -8,10 +8,12 @@ using Kingmaker.Code.Gameplay.Components.Features;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Localization;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Progression.Features;
 using Kingmaker.Utility.DotNetExtensions;
+using Owlcat.Plugins.DotNetExtensions;
 using Owlcat.UI;
 using UnityEngine;
 
@@ -26,6 +28,8 @@ public class TooltipTemplateChargenHomeworld : TooltipBaseTemplate
 	private readonly MechanicEntity m_Unit;
 
 	private readonly LevelUpManager m_LevelUpManager;
+
+	private readonly BlueprintSelectionWithUI m_BlueprintSelectionWithUI;
 
 	private Sprite m_Icon;
 
@@ -53,12 +57,13 @@ public class TooltipTemplateChargenHomeworld : TooltipBaseTemplate
 		}
 	}
 
-	public TooltipTemplateChargenHomeworld(BlueprintFeature homeworld, MechanicEntity unit = null, LevelUpManager levelUpManager = null)
+	public TooltipTemplateChargenHomeworld(BlueprintFeature homeworld, BlueprintSelectionWithUI blueprintSelectionWithUI = null, MechanicEntity unit = null, LevelUpManager levelUpManager = null)
 	{
 		m_Homeworld = homeworld;
 		m_Unit = unit;
 		m_LevelUpManager = levelUpManager;
 		m_HomeworldUISettings = m_Homeworld.GetComponent<HomeworldUISettings>();
+		m_BlueprintSelectionWithUI = blueprintSelectionWithUI;
 	}
 
 	public override void Prepare(TooltipTemplateType type)
@@ -70,15 +75,17 @@ public class TooltipTemplateChargenHomeworld : TooltipBaseTemplate
 				if (m_HomeworldUISettings != null)
 				{
 					m_Icon = m_HomeworldUISettings.Icon.Load();
-					m_DisplayName = m_HomeworldUISettings.PlanetName.Text;
-					m_Subname = UIStrings.Instance.CharGen.Homeworld.Text;
+					m_DisplayName = (m_HomeworldUISettings.PlanetName.Text.IsNullOrEmpty() ? m_Homeworld.Name : m_HomeworldUISettings.PlanetName.Text);
+					LocalizedString localizedString = m_BlueprintSelectionWithUI?.Title;
+					m_Subname = ((localizedString != null) ? ((string)localizedString) : UIStrings.Instance.CharGen.Homeworld.Text);
 					m_LoreDescription = m_HomeworldUISettings.PlanetDescription;
 				}
 				else
 				{
 					m_Icon = m_Homeworld.Icon;
 					m_DisplayName = m_Homeworld.Name;
-					m_Subname = UIStrings.Instance.CharGen.Homeworld.Text;
+					LocalizedString localizedString = m_BlueprintSelectionWithUI?.Title;
+					m_Subname = ((localizedString != null) ? ((string)localizedString) : UIStrings.Instance.CharGen.Homeworld.Text);
 				}
 			}
 		}

@@ -19,7 +19,7 @@ internal sealed class Transparent
 	public static void DrawObjects(in RecordContext context)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Transparent", out passData2, WaaaghProfileId.DrawObjects_Transparent.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Transparent.cs", 24);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Transparent", out passData2, WaaaghProfileId.DrawObjects_Transparent.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Transparent.cs", 24);
 		passData2.TransparentObjectsRendererList = CreateTransparentObjectsRendererList(in context);
 		if (context.GPUDrivenBatchRendererGroup.IsEnabledAndInitialized)
 		{

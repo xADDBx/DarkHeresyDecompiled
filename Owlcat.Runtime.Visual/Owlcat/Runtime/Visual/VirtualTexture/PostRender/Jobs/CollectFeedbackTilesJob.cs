@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Owlcat.Runtime.Core.Allocators.Guillotiere;
 using Owlcat.Runtime.Visual.VirtualTexture.Atlas;
 using Unity.Burst;
 using Unity.Collections;
@@ -26,6 +27,10 @@ public struct CollectFeedbackTilesJob : IJobParallelFor
 	public void Execute(int index)
 	{
 		VirtualAtlasEntry virtualAtlasEntry = Entries[index];
+		if (virtualAtlasEntry.NodeKind != NodeKind.Alloc)
+		{
+			return;
+		}
 		for (int i = 0; i < virtualAtlasEntry.MipCount; i++)
 		{
 			if (PreloadSmallestMips && i == virtualAtlasEntry.MipCount - 1)

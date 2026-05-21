@@ -94,7 +94,7 @@ public static class BloomRecorder
 			reference2 = RenderGraphUtility.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, postProcessor.StaticState.BloomMipUpName[i], clear: false, FilterMode.Bilinear);
 		}
 		BloomEnhancedPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<BloomEnhancedPassData>("Bloom Enhanced", out passData2, WaaaghProfileId.BloomEnhanced.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\BloomRecorder.cs", 93);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<BloomEnhancedPassData>("Bloom Enhanced", out passData2, WaaaghProfileId.BloomEnhanced.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\BloomRecorder.cs", 93);
 		TextureHandle input = (passData2.Source = postProcessor.CameraStackTargets.CurrentPostProcessSource);
 		unsafeRenderGraphBuilder.UseTexture(in input);
 		passData2.Material = postProcessor.MatLib.BloomEnhanced;
@@ -195,7 +195,7 @@ public static class BloomRecorder
 			}
 		}
 		BloomPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<BloomPassData>("Bloom", out passData, WaaaghProfileId.Bloom.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\BloomRecorder.cs", 255);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<BloomPassData>("Bloom", out passData, WaaaghProfileId.Bloom.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\BloomRecorder.cs", 255);
 		TextureHandle input = postProcessor.CameraStackTargets.CurrentPostProcessSource;
 		passData.mipCount = num4;
 		passData.material = postProcessor.MatLib.Bloom;

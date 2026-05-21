@@ -171,7 +171,7 @@ internal static class GpuDrivenCulling
 	public static void Record(RenderGraph renderGraph, WaaaghRenderingData renderingData, WaaaghCameraData cameraData, TextureHandle cameraDepthTexture, string passName, OcclusionCullingPassType passType, CullingViewFilter cullingViewFilter)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<PassData>(passName, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenCulling.cs", 31);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<PassData>(passName, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenCulling.cs", 31);
 		GPUDrivenBatchRendererGroup gPUDrivenBatchRendererGroup = renderingData.GPUDrivenBatchRendererGroup;
 		GPUDrivenCullingPassSharedData sharedPassData = gPUDrivenBatchRendererGroup.SharedPassData;
 		passData.BRG = gPUDrivenBatchRendererGroup;

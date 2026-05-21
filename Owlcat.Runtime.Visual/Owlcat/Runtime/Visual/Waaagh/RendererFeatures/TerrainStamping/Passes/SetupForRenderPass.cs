@@ -34,7 +34,7 @@ internal static class SetupForRenderPass
 	public static void Record(in RecordContext context, TerrainStampingManager terrainStampingManager, TerrainStampingManagerParameters parameters)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Setup", out passData2, Profiling.TerrainStampingSetup, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\SetupForRenderPass.cs", 30);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Setup", out passData2, Profiling.TerrainStampingSetup, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\SetupForRenderPass.cs", 30);
 		passData2.Texture = terrainStampingManager.StampingTexturePool;
 		passData2.Normals = terrainStampingManager.BakedNormalsPool;
 		passData2.ConstantBuffer = default(TerrainStampingConstantBuffer);

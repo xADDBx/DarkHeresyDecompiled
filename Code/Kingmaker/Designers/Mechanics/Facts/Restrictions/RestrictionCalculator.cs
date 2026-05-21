@@ -39,7 +39,8 @@ public class RestrictionCalculator
 		}
 		if (currentEntity == null)
 		{
-			throw new InvalidOperationException("RestrictionCalculator.IsPassed: cannot resolve currentEntity (context has no ClickedTarget.Entity and no Owner — likely called outside an active EvalContext frame). " + $"Context type={context.GetType().Name}, Property.Empty={Property?.Empty}");
+			PFLog.Default.Error("RestrictionCalculator.IsPassed: cannot resolve currentEntity " + $"(Context type={context.GetType().Name}, Property.Empty={Property?.Empty}, " + "Blueprint=" + (context.Blueprint?.name ?? "<null>") + ", Owner=" + (context.Owner?.ToString() ?? "<null>") + ")");
+			return false;
 		}
 		return IsPassedInternal(currentEntity, context, currentTarget, rule, ability);
 	}

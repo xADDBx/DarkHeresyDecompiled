@@ -48,7 +48,7 @@ internal static class Decals
 	public static void InitializeDBuffer(in RecordContext context)
 	{
 		BuildDBufferPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<BuildDBufferPassData>("Initialize DBuffer", out passData, WaaaghProfileId.InitializeDBuffer.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Decals.cs", 49);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<BuildDBufferPassData>("Initialize DBuffer", out passData, WaaaghProfileId.InitializeDBuffer.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Decals.cs", 49);
 		passData.DBufferBlitMaterial = context.MaterialLibrary.DecalBufferBlitMaterial;
 		passData.DBufferBlitMaterialUnpackPass = context.MaterialLibrary.DecalBufferBlitMaterialUnpackPass;
 		rasterRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraNormalsRT);
@@ -67,7 +67,7 @@ internal static class Decals
 	public static void ResolveDBuffer(in RecordContext context)
 	{
 		ResolveDBufferPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ResolveDBufferPassData>("Resolve DBuffer", out passData, WaaaghProfileId.ResolveDBuffer.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Decals.cs", 71);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ResolveDBufferPassData>("Resolve DBuffer", out passData, WaaaghProfileId.ResolveDBuffer.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Decals.cs", 71);
 		passData.DBufferBlitMaterial = context.MaterialLibrary.DecalBufferBlitMaterial;
 		passData.DBufferBlitMaterialPackPass = context.MaterialLibrary.DecalBufferBlitMaterialPackPass;
 		rasterRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraAlbedoRT);
@@ -106,7 +106,7 @@ internal static class Decals
 	public static void DrawDeferredDecals(in RecordContext context)
 	{
 		DrawDeferredDecalsPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawDeferredDecalsPassData>("Draw Deferred Decals", out passData, WaaaghProfileId.DrawDeferredDecals.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Decals.cs", 116);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawDeferredDecalsPassData>("Draw Deferred Decals", out passData, WaaaghProfileId.DrawDeferredDecals.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Decals.cs", 116);
 		passData.DecalsRendererList = CreateDeferredDecalsRendererList(in context);
 		SetupDeferredDecalsDrawPass(in context, unsafeRenderGraphBuilder);
 		unsafeRenderGraphBuilder.UseRendererList(in passData.DecalsRendererList);
@@ -119,7 +119,7 @@ internal static class Decals
 	public static void DrawForwardDecals(in RecordContext context)
 	{
 		DrawForwardDecalsPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawForwardDecalsPassData>("Draw Forward Decals", out passData, WaaaghProfileId.DrawForwardDecals.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Decals.cs", 131);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawForwardDecalsPassData>("Draw Forward Decals", out passData, WaaaghProfileId.DrawForwardDecals.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Decals.cs", 131);
 		passData.DecalsRendererList = CreateForwardDecalsRendererList(in context);
 		unsafeRenderGraphBuilder.UseRendererList(in passData.DecalsRendererList);
 		unsafeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthTexture);

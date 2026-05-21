@@ -212,9 +212,9 @@ public static class SSR
 		if (component.IsActive() && context.CameraData.historyManager?.GetHistoryForRead<RawColorHistory>() != null)
 		{
 			ProfilingSampler sampler = WaaaghProfileId.SSR.Sampler();
-			renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 160);
+			renderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 160);
 			PopulatePasses(component, in context);
-			renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 164);
+			renderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 164);
 		}
 	}
 
@@ -278,7 +278,7 @@ public static class SSR
 		TextureHandle input3 = context.FrameResources.SsrTargets.SsrPrev;
 		TextureHandle input4 = context.FrameResources.CameraAdditionalTargets.RawColorHistory;
 		RayTracingPassData passData;
-		using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<RayTracingPassData>("SSR.RayTrace", out passData, WaaaghProfileId.SSR_RayTrace.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 243))
+		using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<RayTracingPassData>("SSR.RayTrace", out passData, WaaaghProfileId.SSR_RayTrace.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 243))
 		{
 			passData.SsrHitPointRT = input;
 			unsafeRenderGraphBuilder.UseTexture(in input, AccessFlags.Write);
@@ -306,7 +306,7 @@ public static class SSR
 			unsafeRenderGraphBuilder.SetRenderFunc<RayTracingPassData>(ExecuteRayTrace);
 		}
 		ReprojectionPassData passData2;
-		using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder2 = renderGraph.AddUnsafePass<ReprojectionPassData>("SSR.Reprojection", out passData2, WaaaghProfileId.SSR_Reprojection.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 282))
+		using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder2 = renderGraph.AddUnsafePass<ReprojectionPassData>("SSR.Reprojection", out passData2, WaaaghProfileId.SSR_Reprojection.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 282))
 		{
 			passData2.SsrRT = input2;
 			unsafeRenderGraphBuilder2.UseTexture(in input2, AccessFlags.Write);
@@ -328,7 +328,7 @@ public static class SSR
 		if (value8)
 		{
 			AccumulationPassData passData3;
-			using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder3 = renderGraph.AddUnsafePass<AccumulationPassData>("SSR.Accumulation", out passData3, WaaaghProfileId.SSR_Accumulation.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 317))
+			using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder3 = renderGraph.AddUnsafePass<AccumulationPassData>("SSR.Accumulation", out passData3, WaaaghProfileId.SSR_Accumulation.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 317))
 			{
 				passData3.CameraMotionVectorsRT = context.FrameResources.CameraAdditionalTargets.MotionVectors;
 				unsafeRenderGraphBuilder3.UseTexture(in passData3.CameraMotionVectorsRT);
@@ -350,7 +350,7 @@ public static class SSR
 			BlurPassData passData4;
 			if (value6)
 			{
-				using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder4 = renderGraph.AddUnsafePass<BlurPassData>("SSR.Blur", out passData4, WaaaghProfileId.SSR_Blur.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 354))
+				using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder4 = renderGraph.AddUnsafePass<BlurPassData>("SSR.Blur", out passData4, WaaaghProfileId.SSR_Blur.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 354))
 				{
 					passData4.SsrRT = input2;
 					unsafeRenderGraphBuilder4.UseTexture(in input2, AccessFlags.ReadWrite);
@@ -367,7 +367,7 @@ public static class SSR
 			return;
 		}
 		SsrPyramidPassData passData5;
-		using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder5 = renderGraph.AddUnsafePass<SsrPyramidPassData>("SSR.Pyramid", out passData5, WaaaghProfileId.SSR_Pyramid.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 381))
+		using (IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder5 = renderGraph.AddUnsafePass<SsrPyramidPassData>("SSR.Pyramid", out passData5, WaaaghProfileId.SSR_Pyramid.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 381))
 		{
 			TextureDesc desc2 = RenderingUtils.CreateTextureDesc("SsrPyramidMipsRT", ssrHistory.Descriptor);
 			desc2.autoGenerateMips = false;
@@ -389,7 +389,7 @@ public static class SSR
 			unsafeRenderGraphBuilder5.SetRenderFunc<SsrPyramidPassData>(ExecuteSsrPyramid);
 		}
 		AccumulationPassData passData6;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder6 = renderGraph.AddUnsafePass<AccumulationPassData>("Accumulation", out passData6, WaaaghProfileId.SSR_Accumulation.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SSR.cs", 418);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder6 = renderGraph.AddUnsafePass<AccumulationPassData>("Accumulation", out passData6, WaaaghProfileId.SSR_Accumulation.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SSR.cs", 418);
 		passData6.CameraMotionVectorsRT = context.FrameResources.CameraAdditionalTargets.MotionVectors;
 		unsafeRenderGraphBuilder6.UseTexture(in passData6.CameraMotionVectorsRT);
 		passData6.SsrHitPointRT = input;

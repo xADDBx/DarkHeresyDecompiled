@@ -5,8 +5,8 @@ namespace Kingmaker.Code.UI.MVVM;
 
 public class CharGenLevelUpCharacteristicsPhaseVM : CharGenLevelUpBaseStatsPhaseVM<CharGenLevelUpCharacteristicsItemVM>
 {
-	public CharGenLevelUpCharacteristicsPhaseVM(CharGenContext charGenContext, SelectionStateStats selectionStats, InfoSectionVM infoSectionVM, int rank = 0)
-		: base(charGenContext, selectionStats, CharGenPhaseType.Characteristics, infoSectionVM, rank)
+	public CharGenLevelUpCharacteristicsPhaseVM(CharGenContext charGenContext, SelectionStateStats selectionStats, InfoSectionVM infoSectionVM, PartyStatsOverviewVM partyStatsOverviewVM, int rank = 0)
+		: base(charGenContext, selectionStats, CharGenPhaseType.Characteristics, infoSectionVM, partyStatsOverviewVM, rank)
 	{
 	}
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -259,6 +260,9 @@ public class InspectUnitsManager : IHashable, IOwlPackable, IOwlPackable<Inspect
 			if (item.Actor.GetStatBase(statType) > 0)
 			{
 				RulePerformSkillCheck rulePerformSkillCheck = GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(item, statType, dC, null, SkillCheckType.Inspect));
+				Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Inspect).Initiator(item.Blueprint.AssetGuid).Target(unit.Blueprint.AssetGuid)
+					.Result(rulePerformSkillCheck.ResultIsSuccess)
+					.Send();
 				if (rulePerformSkillCheck.ResultIsSuccess)
 				{
 					result = true;
@@ -301,6 +305,9 @@ public class InspectUnitsManager : IHashable, IOwlPackable, IOwlPackable<Inspect
 		if (inspector.Actor.GetStatBase(statType) > 0)
 		{
 			RulePerformSkillCheck rulePerformSkillCheck = GameHelper.TriggerSkillCheck(new RulePerformSkillCheck(inspector, statType, dC, null, SkillCheckType.Inspect));
+			Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Inspect).Initiator(inspector.Blueprint.AssetGuid).Target(unit.Blueprint.AssetGuid)
+				.Result(rulePerformSkillCheck.ResultIsSuccess)
+				.Send();
 			if (rulePerformSkillCheck.ResultIsSuccess)
 			{
 				result = true;

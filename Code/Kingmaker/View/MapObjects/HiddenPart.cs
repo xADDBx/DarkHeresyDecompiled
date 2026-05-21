@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -59,6 +60,9 @@ public class HiddenPart : InteractionPart<HiddenSettings>, IHashable, IOwlPackab
 			});
 			Checked = true;
 			Opened = rulePerformSkillCheck.ResultIsSuccess;
+			Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Hidden).Initiator(user.Blueprint.AssetGuid).Target(base.Owner.Blueprint.AssetGuid)
+				.Result(rulePerformSkillCheck.ResultIsSuccess)
+				.Send();
 			SetHidden(!Opened);
 		}
 	}

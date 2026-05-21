@@ -49,7 +49,7 @@ public static class StencilDebug
 	private static void RecordPass(in RecordContext context)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("DEBUG - Stencil", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\StencilDebug.cs", 46);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("DEBUG - Stencil", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\StencilDebug.cs", 46);
 		passData.CameraColor = context.FrameResources.CameraStackTargets.Color;
 		unsafeRenderGraphBuilder.UseTexture(in passData.CameraColor, AccessFlags.Write);
 		passData.CameraDepth = context.FrameResources.CameraStackTargets.Depth;

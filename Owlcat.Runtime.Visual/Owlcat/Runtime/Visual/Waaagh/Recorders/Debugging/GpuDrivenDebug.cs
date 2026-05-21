@@ -74,7 +74,7 @@ public static class GpuDrivenDebug
 	private static void PreparePass(in RecordContext context)
 	{
 		GpuDrivenPassDataBase passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GpuDrivenPassDataBase>("DEBUG - BRG Prepare", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\GpuDrivenDebug.cs", 68);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GpuDrivenPassDataBase>("DEBUG - BRG Prepare", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\GpuDrivenDebug.cs", 68);
 		RenderGraph renderGraph = context.RenderGraph;
 		passData.BRG = context.GPUDrivenBatchRendererGroup;
 		GPUDrivenCullingPassSharedData sharedPassData = passData.BRG.SharedPassData;
@@ -142,7 +142,7 @@ public static class GpuDrivenDebug
 	private static void FinishPass(in RecordContext context)
 	{
 		GpuDrivenPassDataBase passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GpuDrivenPassDataBase>("DEBUG - BRG Finish Pass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\GpuDrivenDebug.cs", 141);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GpuDrivenPassDataBase>("DEBUG - BRG Finish Pass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\GpuDrivenDebug.cs", 141);
 		passData.BRG = context.GPUDrivenBatchRendererGroup;
 		GPUDrivenCullingPassSharedData sharedPassData = passData.BRG.SharedPassData;
 		if (sharedPassData.Buffers.CullingStats.IsValid())
@@ -167,7 +167,7 @@ public static class GpuDrivenDebug
 	private static void ShowOcclusionTestPass(in RecordContext context)
 	{
 		GPUDrivenDebugShowOcclusionTestPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GPUDrivenDebugShowOcclusionTestPassData>("DEBUG - BRG Show Occlusion Test", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\GpuDrivenDebug.cs", 175);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GPUDrivenDebugShowOcclusionTestPassData>("DEBUG - BRG Show Occlusion Test", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\GpuDrivenDebug.cs", 175);
 		passData.Material = context.DebugContext.MaterialLibrary.GpuDrivenDebug;
 		passData.Pass = context.DebugContext.MaterialLibrary.ShowOcclusionTestPass;
 		passData.CameraFinalTarget = context.FrameResources.CameraStackTargets.Color;

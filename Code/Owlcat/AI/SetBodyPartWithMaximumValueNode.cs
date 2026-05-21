@@ -59,7 +59,7 @@ public class SetBodyPartWithMaximumValueNode : BehaviourTreeNode
 		PropertyCalculatorBlueprint propertyCalculatorBlueprint = m_CalculatorBlueprint?.Value;
 		if (propertyCalculatorBlueprint != null)
 		{
-			return propertyCalculatorBlueprint.Value.GetValue(entity, null, target) + propertyCalculatorBlueprint.Add;
+			return propertyCalculatorBlueprint.Value.GetValue(entity, null, target, null, null, PropertyCalculator.ExceptionHandlingMode.ThrowImmediately) + propertyCalculatorBlueprint.Add;
 		}
 		return m_FunctionToMaximize.GetValue(entity, null, target);
 	}

@@ -43,6 +43,7 @@ public static class ItemsEntityFactory
 		{
 			itemEntity.Identify();
 		}
+		item.CopyRuntimeStateTo(itemEntity);
 		return itemEntity;
 	}
 

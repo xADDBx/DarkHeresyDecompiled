@@ -66,7 +66,7 @@ public static class APV
 		WaaaghPipelineAsset asset = WaaaghPipeline.Asset;
 		WaaaghCameraData cameraData = context.CameraData;
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("SetupProbeVolumesPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\APV.cs", 62);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("SetupProbeVolumesPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\APV.cs", 62);
 		passData.SupportsProbeVolumes = cameraData.SupportsProbeVolumes;
 		passData.EnablesProbeVolumes = cameraData.EnablesProbeVolumes;
 		passData.SupportsLightLayers = asset.SupportsLightLayers;

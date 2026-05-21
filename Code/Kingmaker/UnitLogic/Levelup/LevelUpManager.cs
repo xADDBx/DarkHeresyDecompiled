@@ -171,14 +171,19 @@ public class LevelUpManager : LevelUpManager.IOnSelectionChangedAccess, IDisposa
 		IsCommitted = true;
 		AdvancePathRankTo(TargetUnit, Path, TargetUnit.Progression.GetRank(Path) + 1, allowInvalidate: false);
 		ApplySelections(TargetUnit, invalidate: false);
-		foreach (SelectionState selection in m_Selections)
-		{
-			Metrics.LevelUp.SelectionId(selection.Blueprint.AssetGuid).CompanionId(TargetUnit.Blueprint.AssetGuid).Send();
-		}
 		if (Path is BlueprintOriginPath)
 		{
 			TargetUnit.Body.Initialize();
 			TargetUnit.Body.InitializeWeapons(TargetUnit.OriginalBlueprint.Body);
+		}
+		foreach (SelectionState item2 in m_Selections.OrderBy((SelectionState s) => s.PathRank))
+		{
+			string mechanicalSelection = MetricsUtils.GetMechanicalSelection(item2);
+			if (!string.IsNullOrEmpty(mechanicalSelection))
+			{
+				Metrics.LevelUp.CompanionId(TargetUnit.Blueprint.AssetGuid).Level(item2.PathRank).SelectionId(mechanicalSelection)
+					.Send();
+			}
 		}
 	}
 

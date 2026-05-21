@@ -1,4 +1,3 @@
-using System;
 using Owlcat.Runtime.Visual.Overrides;
 using Owlcat.Runtime.Visual.Utilities;
 using Owlcat.Runtime.Visual.VirtualTexture;
@@ -56,7 +55,7 @@ public static class GlobalStateRecorder
 	public static void InitializeRenderStatePass(in RecordContext context)
 	{
 		InitializeRenderStatePassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<InitializeRenderStatePassData>("InitializeRenderStatePass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\GlobalStateRecorder.cs", 31);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<InitializeRenderStatePassData>("InitializeRenderStatePass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\GlobalStateRecorder.cs", 31);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		RenderGraphDefaultResources defaultResources = context.RenderGraph.defaultResources;
 		WaaaghCameraData cameraData = context.CameraData;
@@ -65,8 +64,7 @@ public static class GlobalStateRecorder
 		passData.ScaleBiasRt = RenderingUtils.CalculateScaleBiasRt(cameraData);
 		passData.VTManager = context.VirtualTextureManager;
 		passData.Lights = context.Lights;
-		float num = ((cameraData.StackInfo.RequiredTargets == CameraRequiredTargets.Unscaled) ? 0f : Math.Min((float)(0.0 - Math.Log(1f / cameraData.renderScale, 2.0)), 0f));
-		passData.GlobalMipBias = new Vector2(num, Mathf.Pow(2f, num));
+		passData.GlobalMipBias = MipBiasUtils.CalculateGlobalMipBias(cameraData, TemporalAA.GetAutoMipBias(cameraData));
 		passData.ShaderTimeData = context.RenderingData.ShaderTimeData;
 		passData.ShadowData = context.ShadowData;
 		passData.CameraData = cameraData;
@@ -105,7 +103,7 @@ public static class GlobalStateRecorder
 	public static void SetupFogPass(in RecordContext context)
 	{
 		SetupFogPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupFogPassData>("SetupFogPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\GlobalStateRecorder.cs", 113);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupFogPassData>("SetupFogPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\GlobalStateRecorder.cs", 108);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		passData.IsFogEnabled = RenderSettings.fog;
 		passData.FogMode = RenderSettings.fogMode;

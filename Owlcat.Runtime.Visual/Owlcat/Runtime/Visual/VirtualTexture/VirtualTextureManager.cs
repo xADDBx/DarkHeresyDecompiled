@@ -88,6 +88,8 @@ public class VirtualTextureManager
 
 	public RTHandle IndirectTexture => m_IndirectTextureRenderer.IndirectTexture;
 
+	internal VirtualAtlas VirtualAtlas => m_VirtualAtlas;
+
 	public int2 VirtualAtlasResolutionInTiles => m_VirtualAtlas.ResolutionInTiles;
 
 	public bool IsVirtualAtlasEmpty => m_VirtualAtlas.IsEmpty;

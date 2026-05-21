@@ -51,7 +51,7 @@ public static class MotionBlurRecorder
 		int value2 = (int)motionBlur.quality.value;
 		value2 += ((value == MotionBlurMode.CameraAndObjects) ? 3 : 0);
 		MotionBlurPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur", out passData, WaaaghProfileId.MotionBlur.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\MotionBlurRecorder.cs", 53))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur", out passData, WaaaghProfileId.MotionBlur.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\MotionBlurRecorder.cs", 53))
 		{
 			rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 			passData.destinationTexture = textureHandle;

@@ -17,6 +17,12 @@ internal struct PageDrawData : IComparable<PageDrawData>
 
 	public int CompareTo(PageDrawData target)
 	{
-		return -MipLevel.CompareTo(target.MipLevel);
+		float value = Rect.z * Rect.w;
+		int num = (target.Rect.z * target.Rect.w).CompareTo(value);
+		if (num != 0)
+		{
+			return num;
+		}
+		return target.MipLevel.CompareTo(MipLevel);
 	}
 }

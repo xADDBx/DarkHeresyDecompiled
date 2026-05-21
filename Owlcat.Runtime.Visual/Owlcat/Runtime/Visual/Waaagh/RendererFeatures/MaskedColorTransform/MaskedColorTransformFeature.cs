@@ -63,7 +63,7 @@ public class MaskedColorTransformFeature : IRendererFeature, IDisposable
 			return;
 		}
 		MaskedColorTransformPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<MaskedColorTransformPassData>("Masked Color Transform", out passData, WaaaghProfileId.MaskedColorTransform.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\MaskedColorTransform\\MaskedColorTransformFeature.cs", 62);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<MaskedColorTransformPassData>("Masked Color Transform", out passData, WaaaghProfileId.MaskedColorTransform.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\MaskedColorTransform\\MaskedColorTransformFeature.cs", 62);
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);
 		rasterRenderGraphBuilder.SetRenderAttachmentDepth(context.FrameResources.CameraStackTargets.Depth);
 		passData.Material = m_Material;

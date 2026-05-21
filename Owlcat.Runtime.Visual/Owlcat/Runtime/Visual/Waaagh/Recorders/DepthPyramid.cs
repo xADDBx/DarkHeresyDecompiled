@@ -41,7 +41,7 @@ public static class DepthPyramid
 		bool flag = packedReprojectedDepth.IsValid();
 		string passName = (flag ? "DepthPyramid.Build" : "DepthPyramid.BuildReproject");
 		DepthPyramidPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DepthPyramidPassData>(passName, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DepthPyramid.cs", 52);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DepthPyramidPassData>(passName, out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DepthPyramid.cs", 52);
 		depthPyramidGenerationUtils.PopulateGenerationData(ref passData.PyramidParameters, new int2(context.CameraData.cameraTargetDescriptor.width, context.CameraData.cameraTargetDescriptor.height), useMax);
 		if (passData.PyramidParameters.GlobalAtomicCounterDesc.count > 0)
 		{

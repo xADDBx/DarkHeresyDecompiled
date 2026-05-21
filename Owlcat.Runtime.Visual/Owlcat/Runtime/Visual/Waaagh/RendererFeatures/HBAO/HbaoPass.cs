@@ -417,7 +417,7 @@ internal static class HbaoPass
 		UpdateShaderKeywordsRG(settings, context.CameraData, material);
 		historyBuffers?.historyRTSystem.SwapAndSetReferenceSize(descriptors.aoDesc.width, descriptors.aoDesc.height);
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("HBAO", out passData, WaaaghProfileId.HBAO.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\HBAO\\HbaoPass.cs", 33);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("HBAO", out passData, WaaaghProfileId.HBAO.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\HBAO\\HbaoPass.cs", 33);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		TextureHandle input = context.FrameResources.CameraStackTargets.Depth;

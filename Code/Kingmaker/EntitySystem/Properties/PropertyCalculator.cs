@@ -45,6 +45,12 @@ public class PropertyCalculator : ElementsList, IHashable
 		NEq
 	}
 
+	public enum ExceptionHandlingMode
+	{
+		DoNotThrow,
+		ThrowImmediately
+	}
+
 	[SerializeField]
 	public OperationType Operation;
 
@@ -103,7 +109,7 @@ public class PropertyCalculator : ElementsList, IHashable
 		}
 	}
 
-	public int GetValue([NotNull] MechanicEntity currentEntity, IEvalContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null)
+	public int GetValue([NotNull] MechanicEntity currentEntity, IEvalContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null, ExceptionHandlingMode mode = ExceptionHandlingMode.DoNotThrow)
 	{
 		using (ProfileScope.New("Calculator"))
 		{
@@ -142,14 +148,18 @@ public class PropertyCalculator : ElementsList, IHashable
 			{
 				PFLog.Mechanics.Exception(ex, "Exception in PropertyCalculator");
 				elementsDebugger?.SetException(ex);
+				if (mode == ExceptionHandlingMode.ThrowImmediately)
+				{
+					throw;
+				}
 				return 0;
 			}
 		}
 	}
 
-	public bool GetBoolValue([NotNull] MechanicEntity currentEntity, IEvalContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null)
+	public bool GetBoolValue([NotNull] MechanicEntity currentEntity, IEvalContext context = null, TargetWrapper currentTarget = null, RulebookEvent rule = null, AbilityData ability = null, ExceptionHandlingMode mode = ExceptionHandlingMode.DoNotThrow)
 	{
-		return GetValue(currentEntity, context, currentTarget, rule, ability) != 0;
+		return GetValue(currentEntity, context, currentTarget, rule, ability, mode) != 0;
 	}
 
 	private void SetupDebugContext(IEvalContext context, ElementsDebugger debugger)

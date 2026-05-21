@@ -64,11 +64,11 @@ public class WeaponItemPart : BaseItemPart
 		AddItemStatBonuses(list);
 		AddWeaponTags(list, type);
 		AddDescription(list, type);
+		AddArtisticDescription(list);
 		if (type == TooltipTemplateType.Info)
 		{
 			AddRestrictions(list, type);
 		}
-		AddArtisticDescription(list);
 		return list;
 	}
 
@@ -101,20 +101,16 @@ public class WeaponItemPart : BaseItemPart
 			return;
 		}
 		bricks.Add(new BrickTextVM(string.Empty));
-		foreach (WeaponTagUISettings tag in source.OrderBy((WeaponTagUISettings t) => t.Type))
+		foreach (WeaponTagUISettings tag in source.OrderByDescending((WeaponTagUISettings t) => t.Type))
 		{
-			bool flag = type == TooltipTemplateType.Tooltip && tag.Type == PropertyType.Common;
 			if (!tag.IsBodyIgnoreTag())
 			{
 				Sprite weaponTagIcon = UIConfig.Instance.FeatureTagsConfig.GetWeaponTagIcon(tag);
 				Color weaponMountColor = UIConfig.Instance.FeatureTagsConfig.GetWeaponMountColor(tag);
 				string descriptionWithItemEquipped = UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagName(tag));
-				string tagDescription = (flag ? string.Empty : UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagDescription(tag)));
-				if (!flag)
-				{
-					bricks.Add(new BrickSpaceVM(25f));
-				}
-				bricks.Add(new BrickTagDescriptionVM(weaponTagIcon, weaponMountColor, descriptionWithItemEquipped, tagDescription));
+				string descriptionWithItemEquipped2 = UIUtilityItem.GetDescriptionWithItemEquipped(m_Item, () => UIUtilityItem.GetTagDescription(tag));
+				bricks.Add(new BrickSpaceVM(25f));
+				bricks.Add(new BrickTagDescriptionVM(weaponTagIcon, weaponMountColor, descriptionWithItemEquipped, descriptionWithItemEquipped2));
 			}
 		}
 	}

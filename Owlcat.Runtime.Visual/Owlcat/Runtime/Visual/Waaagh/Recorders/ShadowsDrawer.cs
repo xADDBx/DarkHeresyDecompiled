@@ -86,7 +86,7 @@ public static class ShadowsDrawer
 	public static void ShadowCasterPass(in RecordContext context)
 	{
 		ShadowCasterPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ShadowCasterPassData>("ShadowCasterPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ShadowsDrawer.cs", 79);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ShadowCasterPassData>("ShadowCasterPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ShadowsDrawer.cs", 79);
 		passData.ShadowManager = context.ShadowData.ShadowManager;
 		passData.CopyShadowsMaterial = context.MaterialLibrary.CopyCachedShadowsMaterial;
 		passData.ShadowMapAtlasTexture = context.FrameResources.Shadows.Shadowmap;

@@ -75,7 +75,7 @@ public class AbilitySlotBaseView : View<AbilitySlotVM>
 		m_ModifierButton.OnHoverAsObservable().Subscribe(OnModifierHover).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(m_ModifierRemoveButton.OnLeftClickAsObservable(), delegate
 		{
-			base.ViewModel.SetModifier(null);
+			base.ViewModel.RemoveModifier();
 		}).AddTo(this);
 		m_ModifierRemoveButton.SetHint(UIStrings.Instance.ContextMenu.Remove).AddTo(this);
 		base.ViewModel.IsSelected.Subscribe(UpdateSlotVisual).AddTo(this);

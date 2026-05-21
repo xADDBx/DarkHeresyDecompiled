@@ -138,10 +138,6 @@ public class VendorTradeViewVM : ViewModel, INewSlotsHandler, ISubscriber, IUnit
 	{
 		VendorEntity = vendor;
 		m_CloseAction = closeAction;
-		EventBus.RaiseEvent(delegate(IFullScreenUIHandler h)
-		{
-			h.HandleFullScreenUiChanged(state: true, FullScreenUIType.Vendor);
-		});
 		m_VendorFaction.Value = Game.Instance.TradeLogic.VendorFaction?.FactionType;
 		m_VendorName.Value = (Game.Instance.TradeLogic.VendorName ?? string.Empty) ?? "";
 		m_VendorSprite.Value = Game.Instance.TradeLogic.VendorIcon;

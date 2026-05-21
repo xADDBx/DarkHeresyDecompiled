@@ -119,14 +119,14 @@ public class CommandBarkEntity : CommandBase, IBarkSource
 		{
 			return CommandResult.Fail("Cant bark on dead unit");
 		}
-		string voGuidBySourceAndTarget = VoiceOverController.GetVoGuidBySourceAndTarget(this, value);
+		string voGuid = ((!IsSubText || value != null || !IsVoIdForced || ForcedVoGuids.Count <= 0) ? VoiceOverController.GetVoGuidBySourceAndTarget(this, value) : ForcedVoGuids[0]);
 		if (IsSubText)
 		{
-			commandData.BarkHandle = BarkPlayer.BarkSubtitle(value, SharedText, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration, m_SpeakerName);
+			commandData.BarkHandle = BarkPlayer.BarkSubtitle(value, SharedText, (VoiceOverType)ActAs, voGuid, duration, m_SpeakerName);
 		}
 		else
 		{
-			commandData.BarkHandle = BarkPlayer.Bark(value, SharedText, (VoiceOverType)ActAs, voGuidBySourceAndTarget, duration);
+			commandData.BarkHandle = BarkPlayer.Bark(value, SharedText, (VoiceOverType)ActAs, voGuid, duration);
 		}
 		commandData.StopPlaySignal = SignalService.Instance.RegisterNext();
 		return CommandResult.Success;

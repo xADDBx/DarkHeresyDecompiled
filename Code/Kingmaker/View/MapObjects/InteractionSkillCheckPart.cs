@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Blueprints;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.Bridge.Canvas;
 using Kingmaker.Controllers.TurnBased;
@@ -307,7 +308,15 @@ public class InteractionSkillCheckPart : InteractionPart<InteractionSkillCheckSe
 			{
 				foreach (BaseUnitEntity rollUnit in GetRollUnits(user, skill))
 				{
-					CheckPassed = skill != 0 && GameHelper.CheckSkillResult(rollUnit, skill, num, out isCriticalFail, RulePerformSkillCheck.VoicingType.All, GetEnsureSuccess());
+					CheckPassed = skill != StatType.Unknown;
+					if (!CheckPassed)
+					{
+						continue;
+					}
+					CheckPassed = GameHelper.CheckSkillResult(rollUnit, skill, num, out isCriticalFail, RulePerformSkillCheck.VoicingType.All, GetEnsureSuccess());
+					Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Interact).Initiator(rollUnit.Blueprint.AssetGuid).Target(base.Owner.Blueprint.AssetGuid)
+						.Result(CheckPassed)
+						.Send();
 					if (CheckPassed)
 					{
 						if (!ExperienceObtained && skill != 0)

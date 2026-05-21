@@ -191,7 +191,7 @@ public class CustomPostProcessRendererFeature : IRendererFeature, IDisposable
 		desc.filterMode = settings.FilterMode;
 		TextureHandle input = context.RenderGraph.CreateTexture(in desc);
 		StencilMaskPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<StencilMaskPassData>("CustomPP - Stencil Mask", out passData, WaaaghProfileId.CustomPPStencilMask.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 287);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<StencilMaskPassData>("CustomPP - Stencil Mask", out passData, WaaaghProfileId.CustomPPStencilMask.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 287);
 		rasterRenderGraphBuilder.SetRenderAttachment(input, 0);
 		rasterRenderGraphBuilder.SetRenderAttachmentDepth(context.FrameResources.CameraStackTargets.Depth, AccessFlags.Read);
 		rasterRenderGraphBuilder.SetGlobalTextureAfterPass(in input, ShaderIDs._CameraStencilMask);
@@ -211,7 +211,7 @@ public class CustomPostProcessRendererFeature : IRendererFeature, IDisposable
 
 	private static void RecordEffects(in RecordContext context, List<EffectDescriptor> effects, Owlcat.Runtime.Visual.Overrides.CustomPostProcess.CustomPostProcess settings, ProfilingSampler profilingSampler)
 	{
-		context.RenderGraph.BeginProfilingSampler(profilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 319);
+		context.RenderGraph.BeginProfilingSampler(profilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 319);
 		TextureHandle source = context.FrameResources.CameraStackTargets.CurrentPostProcessSource;
 		TextureDesc desc = RenderingUtils.CreateTextureDesc("CameraAfterPostProcessRT", context.CameraData.cameraTargetDescriptor);
 		desc.filterMode = FilterMode.Bilinear;
@@ -226,7 +226,7 @@ public class CustomPostProcessRendererFeature : IRendererFeature, IDisposable
 			{
 				continue;
 			}
-			context.RenderGraph.BeginProfilingSampler(effectDescriptor.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 342);
+			context.RenderGraph.BeginProfilingSampler(effectDescriptor.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 342);
 			for (int j = 0; j < effectDescriptor.Passes.Count; j++)
 			{
 				PassDescriptor passDescriptor = effectDescriptor.Passes[j];
@@ -235,7 +235,7 @@ public class CustomPostProcessRendererFeature : IRendererFeature, IDisposable
 					continue;
 				}
 				CustomPostProcessPassData passData;
-				using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<CustomPostProcessPassData>(passDescriptor.Name, out passData, passDescriptor.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 352))
+				using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<CustomPostProcessPassData>(passDescriptor.Name, out passData, passDescriptor.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 352))
 				{
 					passData.Source = GetSource();
 					rasterRenderGraphBuilder.UseTexture(in passData.Source);
@@ -256,10 +256,10 @@ public class CustomPostProcessRendererFeature : IRendererFeature, IDisposable
 				}
 				Swap();
 			}
-			context.RenderGraph.EndProfilingSampler(effectDescriptor.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 379);
+			context.RenderGraph.EndProfilingSampler(effectDescriptor.ProfilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 379);
 		}
 		context.FrameResources.CameraStackTargets.SetCurrentPostProcessSource(GetSource());
-		context.RenderGraph.EndProfilingSampler(profilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 386);
+		context.RenderGraph.EndProfilingSampler(profilingSampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CustomPostProcess\\CustomPostProcessRendererFeature.cs", 386);
 		TextureHandle GetDestination()
 		{
 			return destination;

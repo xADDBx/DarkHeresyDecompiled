@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Localization;
 using Kingmaker.UnitLogic.FactLogic;
 using Kingmaker.UnitLogic.Levelup;
 using Kingmaker.UnitLogic.Levelup.Selections;
@@ -46,6 +47,8 @@ public class TooltipTemplateChargenCareerPath : TooltipBaseTemplate
 
 	private readonly LevelUpManager m_LevelUpManager;
 
+	private readonly BlueprintSelectionWithUI m_BlueprintSelectionWithUI;
+
 	private MechanicEntity FallbackCaster
 	{
 		get
@@ -64,17 +67,20 @@ public class TooltipTemplateChargenCareerPath : TooltipBaseTemplate
 		}
 	}
 
-	public TooltipTemplateChargenCareerPath(BlueprintCareerPath careerPath, MechanicEntity unit = null, LevelUpManager levelUpManager = null)
+	public TooltipTemplateChargenCareerPath(BlueprintCareerPath careerPath, MechanicEntity unit = null, LevelUpManager levelUpManager = null, BlueprintSelectionWithUI blueprintSelectionWithUI = null)
 	{
 		m_CareerPath = careerPath;
 		m_Unit = unit;
 		m_LevelUpManager = levelUpManager;
+		m_BlueprintSelectionWithUI = blueprintSelectionWithUI;
 	}
 
 	public override IEnumerable<ITooltipBrick> GetHeader(TooltipTemplateType type)
 	{
 		Sprite defaultIfNull = m_CareerPath.Icon.GetDefaultIfNull(DefaultImageType.Ability);
-		yield return new BrickCareerTitleVM(defaultIfNull, m_CareerPath.Name, UIStrings.Instance.CharGen.Career.Text);
+		string name = m_CareerPath.Name;
+		LocalizedString localizedString = m_BlueprintSelectionWithUI?.Title;
+		yield return new BrickCareerTitleVM(defaultIfNull, name, (localizedString != null) ? ((string)localizedString) : UIStrings.Instance.CharGen.Career.Text);
 	}
 
 	public override IEnumerable<ITooltipBrick> GetBody(TooltipTemplateType type)

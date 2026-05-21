@@ -7,7 +7,7 @@ namespace Owlcat.Runtime.Visual.VirtualTerrain;
 [StructLayout(LayoutKind.Sequential, Size = 1)]
 internal struct VirtualTerrainShader
 {
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\VirtualTerrain\\VirtualTerrainShader.cs")]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\VirtualTerrain\\VirtualTerrainShader.cs")]
 	public static class Constants
 	{
 		public const int kVirtualTerrainLayerCountMax = 64;
@@ -27,7 +27,7 @@ internal struct VirtualTerrainShader
 		public const int kVirtualTerrainStampingWeightsLength = 32;
 	}
 
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\VirtualTerrain\\VirtualTerrainShader.cs", generateCBuffer = true, needAccessors = false)]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\VirtualTerrain\\VirtualTerrainShader.cs", generateCBuffer = true, needAccessors = false)]
 	public struct UnityPerMaterial
 	{
 		public Vector4 _BaseMap_ST;
@@ -63,7 +63,7 @@ internal struct VirtualTerrainShader
 		public unsafe fixed float _VirtualTerrainStampingWeights[128];
 	}
 
-	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\VirtualTerrain\\VirtualTerrainShader.cs", generateCBuffer = true, needAccessors = false)]
+	[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\VirtualTerrain\\VirtualTerrainShader.cs", generateCBuffer = true, needAccessors = false)]
 	public struct VirtualTerrainGlobals
 	{
 		public Vector4 _VirtualTerrainAtlasParams;

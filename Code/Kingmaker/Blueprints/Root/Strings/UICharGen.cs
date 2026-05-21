@@ -62,6 +62,8 @@ public class UICharGen
 
 	public LocalizedString NobleHomeworldDescription;
 
+	public LocalizedString CompanionsValues;
+
 	public LocalizedString DeathWorld;
 
 	public LocalizedString ChooseDeathWorld;

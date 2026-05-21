@@ -335,6 +335,13 @@ public static class InitiativeHelper
 		float value = (entity.Initiative.Roll = entity.GetInitiativeRollProvider().Initiative.Roll);
 		initiative.Value = value;
 		entity.Initiative.Order = CalculateOrder(entity);
+		if (entity.Initiative.Value == 0f)
+		{
+			PFLog.Mechanics.Error($"Entity {entity} has Initiative.Value == 0. This is not valid, setting Initiative to a random small number to avoid spam");
+			Initiative initiative2 = entity.Initiative;
+			value = (entity.Initiative.Roll = PFStatefulRandom.Mechanics.Range(1f, 2f));
+			initiative2.Value = value;
+		}
 	}
 
 	private static void PostProcessInitiative(List<MechanicEntity> entities)

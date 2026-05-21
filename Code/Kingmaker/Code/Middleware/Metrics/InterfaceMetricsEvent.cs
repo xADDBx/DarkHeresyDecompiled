@@ -12,12 +12,12 @@ public class InterfaceMetricsEvent : MetricsEvent
 
 	public enum InterfaceTypes
 	{
-		Dialogue,
 		Respec,
 		BugReport,
 		LoadingScreen,
 		Tutorial,
-		CombatLog
+		CombatLog,
+		Formation
 	}
 
 	protected override string Name => "interface";
@@ -73,12 +73,12 @@ public class InterfaceMetricsEvent : MetricsEvent
 	{
 		AddParam("type", type switch
 		{
-			InterfaceTypes.Dialogue => "dialogue", 
 			InterfaceTypes.Respec => "respec", 
 			InterfaceTypes.BugReport => "bug_report", 
 			InterfaceTypes.LoadingScreen => "loading_screen", 
 			InterfaceTypes.Tutorial => "tutorial", 
 			InterfaceTypes.CombatLog => "combat_log", 
+			InterfaceTypes.Formation => "formation", 
 			_ => MetricsUtils.EnumToSnakeCase(type), 
 		});
 		return this;

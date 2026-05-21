@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.Waaagh.RendererFeatures.TerrainStamping;
 
-[GenerateHLSL(PackingRules.Exact, false, false, false, 1, false, false, true, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\TerrainStampingConstantBuffer.cs")]
+[GenerateHLSL(PackingRules.Exact, false, false, false, 1, false, false, true, -1, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\TerrainStampingConstantBuffer.cs")]
 public struct TerrainStampingConstantBuffer
 {
 	public const int kChunkAllocationsCapacity = 256;

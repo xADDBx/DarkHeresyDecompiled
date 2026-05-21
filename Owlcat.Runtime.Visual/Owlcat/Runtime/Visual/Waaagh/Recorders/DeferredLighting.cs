@@ -160,7 +160,7 @@ public static class DeferredLighting
 		WaaaghLights lights = context.Lights;
 		ComputeShader computeTilesMinMaxZCS = context.Shaders.ComputeTilesMinMaxZCS;
 		TilesMinMaxZPassData passData;
-		using IComputeRenderGraphBuilder computeRenderGraphBuilder = renderGraph.AddComputePass<TilesMinMaxZPassData>("ComputeTilesMinMaxZPass", out passData, WaaaghProfileId.TilesMinMaxZPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 42);
+		using IComputeRenderGraphBuilder computeRenderGraphBuilder = renderGraph.AddComputePass<TilesMinMaxZPassData>("ComputeTilesMinMaxZPass", out passData, WaaaghProfileId.TilesMinMaxZPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 42);
 		passData.Shader = computeTilesMinMaxZCS;
 		computeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthTexture);
 		passData.MaxDepthOnly = true;
@@ -209,7 +209,7 @@ public static class DeferredLighting
 	public static void SetupLightDataPass(in RecordContext context)
 	{
 		SetupLightDataPassData passData;
-		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<SetupLightDataPassData>("SetupLightDataPass", out passData, WaaaghProfileId.SetupLightDataPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 112);
+		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<SetupLightDataPassData>("SetupLightDataPass", out passData, WaaaghProfileId.SetupLightDataPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 112);
 		passData.LightDataConstantBufferHandle = context.FrameResources.DeferredLightingResources.LightDataConstantBuffer;
 		computeRenderGraphBuilder.UseBuffer(in context.FrameResources.DeferredLightingResources.LightDataConstantBuffer, AccessFlags.Write);
 		passData.LightVolumeDataConstantBufferHandle = context.FrameResources.DeferredLightingResources.LightVolumeDataConstantBuffer;
@@ -235,7 +235,7 @@ public static class DeferredLighting
 	public static void LightCullingPass(in RecordContext context)
 	{
 		LightCullingPassData passData;
-		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<LightCullingPassData>("LightCullingPass", out passData, WaaaghProfileId.LightCullingPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 157);
+		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<LightCullingPassData>("LightCullingPass", out passData, WaaaghProfileId.LightCullingPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 157);
 		Vector4 clusteringParams = context.Lights.ClusteringParams;
 		Vector4 lightDataParams = context.Lights.LightDataParams;
 		int x = (int)(clusteringParams.x * clusteringParams.y);
@@ -278,7 +278,7 @@ public static class DeferredLighting
 	public static void LightingPassRaster(in RecordContext context)
 	{
 		LightingPassRasterData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<LightingPassRasterData>("LightingPassRaster", out passData, WaaaghProfileId.DeferredLightingPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 227);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<LightingPassRasterData>("LightingPassRaster", out passData, WaaaghProfileId.DeferredLightingPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 227);
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);
 		rasterRenderGraphBuilder.SetRenderAttachmentDepth(context.FrameResources.CameraStackTargets.Depth, AccessFlags.Read);
 		passData.Material = context.MaterialLibrary.DeferredLightingMaterial;
@@ -311,7 +311,7 @@ public static class DeferredLighting
 		WaaaghCameraData cameraData = context.CameraData;
 		DeferredLightingResources deferredLightingResources = context.FrameResources.DeferredLightingResources;
 		BuildVariantsPassData passData;
-		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<BuildVariantsPassData>("BuildVariantsPass", out passData, WaaaghProfileId.DeferredLightingBuildVariantsPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 302);
+		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<BuildVariantsPassData>("BuildVariantsPass", out passData, WaaaghProfileId.DeferredLightingBuildVariantsPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 302);
 		passData.BuildFeatureTilesShader = context.Shaders.DeferredLightingBuildFeatureTilesCS;
 		passData.ClearIndirectArgsShader = context.Shaders.DeferredLightingBuildFeatureTilesListsCS;
 		passData.BuildFeatureVariantsShader = context.Shaders.DeferredLightingBuildFeatureTilesListsCS;
@@ -372,7 +372,7 @@ public static class DeferredLighting
 		EnsureStaticData(shader);
 		WaaaghCameraData cameraData = context.CameraData;
 		LightingPassComputeData passData;
-		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<LightingPassComputeData>("LightingPassCompute", out passData, WaaaghProfileId.LightingPassCompute.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 413);
+		using IComputeRenderGraphBuilder computeRenderGraphBuilder = context.RenderGraph.AddComputePass<LightingPassComputeData>("LightingPassCompute", out passData, WaaaghProfileId.LightingPassCompute.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 413);
 		passData.Shader = shader;
 		passData.CameraColorRT = context.FrameResources.CameraStackTargets.Color;
 		TextureHandle input = context.FrameResources.CameraStackTargets.Color;
@@ -439,7 +439,7 @@ public static class DeferredLighting
 	public static void DeferredFogPass(in RecordContext context)
 	{
 		DeferredFogPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<DeferredFogPassData>("DeferredFogPass", out passData, WaaaghProfileId.DeferredFogPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 514);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<DeferredFogPassData>("DeferredFogPass", out passData, WaaaghProfileId.DeferredFogPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredLighting.cs", 514);
 		passData.Material = context.MaterialLibrary.DeferredFogMaterial;
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);
 		rasterRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthRT);

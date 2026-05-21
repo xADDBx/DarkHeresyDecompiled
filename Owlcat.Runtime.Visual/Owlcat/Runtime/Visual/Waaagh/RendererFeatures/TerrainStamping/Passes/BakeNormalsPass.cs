@@ -64,7 +64,7 @@ internal static class BakeNormalsPass
 	public static void Record(in RecordContext context, TerrainStampingManager terrainStampingManager, TerrainStampingManagerParameters parameters)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Bake Normals", out passData2, Profiling.TerrainStampingBakeNormals, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\BakeNormalsPass.cs", 41);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Bake Normals", out passData2, Profiling.TerrainStampingBakeNormals, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\BakeNormalsPass.cs", 41);
 		passData2.Material = terrainStampingManager.BakeNormalsMaterial;
 		passData2.NormalsStrength = parameters.NormalsStrength;
 		passData2.NormalsStrengthDepthInfluence = parameters.NormalsStrengthDepthInfluence;

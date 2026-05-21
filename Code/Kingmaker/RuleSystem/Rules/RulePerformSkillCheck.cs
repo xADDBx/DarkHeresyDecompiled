@@ -1,6 +1,5 @@
 using System;
 using JetBrains.Annotations;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Framework.Mechanics.Actor;
@@ -113,9 +112,6 @@ public class RulePerformSkillCheck : RulebookTargetEvent<MechanicEntity, Mechani
 	public override void OnTrigger(RulebookEventContext context)
 	{
 		Roll();
-		Metrics.SkillCheck.Initiator(ChanceRule.Initiator.Blueprint.AssetGuid).Target(ChanceRule.Target.Blueprint.AssetGuid).Type(ChanceRule.Type)
-			.Result(ResultIsSuccess)
-			.Send();
 	}
 
 	public void Roll()

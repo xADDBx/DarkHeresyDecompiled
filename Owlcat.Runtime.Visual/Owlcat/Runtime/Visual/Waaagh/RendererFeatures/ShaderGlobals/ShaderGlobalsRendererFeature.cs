@@ -32,7 +32,7 @@ internal sealed class ShaderGlobalsRendererFeature : IRendererFeature, IDisposab
 	{
 		ShaderGlobalsCommon.EnsureConfig();
 		SetupPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("Setup Shader Globals", out passData2, WaaaghProfileId.SetupShaderGlobals.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\ShaderGlobals\\ShaderGlobalsRendererFeature.cs", 44);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("Setup Shader Globals", out passData2, WaaaghProfileId.SetupShaderGlobals.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\ShaderGlobals\\ShaderGlobalsRendererFeature.cs", 44);
 		passData2.State = ShaderGlobalsState.Instance;
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);

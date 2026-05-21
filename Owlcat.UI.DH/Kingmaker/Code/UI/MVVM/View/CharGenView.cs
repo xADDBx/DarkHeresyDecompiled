@@ -1,5 +1,6 @@
 using System.Linq;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.DollRoom;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -81,6 +82,10 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 	[SerializeField]
 	private OwlcatMultiSelectable m_LevelupSelectable;
 
+	[Header("Custom Phase Info Views")]
+	[SerializeField]
+	private PartyStatsOverviewView m_PartyStatsOverviewView;
+
 	protected ICharGenPhaseDetailedView m_SelectedDetailView;
 
 	protected readonly ReactiveProperty<bool> m_CanGoBack = new ReactiveProperty<bool>();
@@ -124,7 +129,10 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 			m_PortraitHalfView.Bind(vm);
 		}).AddTo(this);
 		m_PortraitFullView.SetVisibility(base.ViewModel.CurrentPhaseVM.CurrentValue.ShowPortrait);
-		m_LevelUpPortraitFullView.SetVisibility(visible: true);
+		base.ViewModel.PartyStatsOverviewVM.IsActive.Subscribe(delegate(bool active)
+		{
+			m_LevelUpPortraitFullView.SetVisibility(!active);
+		}).AddTo(this);
 		if (num)
 		{
 			m_ExperiencePCView.Bind(base.ViewModel.Experience);
@@ -133,6 +141,10 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 		m_LevelUpInfoView.SetActive(state: true);
 		m_ChargenInfoView.Bind(base.ViewModel.ChargenInfoSectionVM);
 		m_ChargenInfoView.SetActive(state: true);
+		if (m_PartyStatsOverviewView != null)
+		{
+			m_PartyStatsOverviewView.Bind(base.ViewModel.PartyStatsOverviewVM);
+		}
 		m_ProgressionView.Bind(base.ViewModel.ProgressionVM);
 		base.ViewModel.CharGenContext.CurrentUnit.Subscribe(delegate
 		{
@@ -177,6 +189,10 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 		m_RoadmapMenuView.ShutUpSelector();
 		m_LevelUpInfoView.Unbind();
 		m_ChargenInfoView.Unbind();
+		if (m_PartyStatsOverviewView != null)
+		{
+			m_PartyStatsOverviewView.Unbind();
+		}
 		UISounds.Instance.Play(SystemSounds.Instance.Selector.LoopStop, isButton: false, playAnyway: true);
 		HideRooms();
 		base.gameObject.SetActive(value: false);
@@ -282,6 +298,7 @@ public class CharGenView : View<CharGenVM>, ICharGenChangePhaseHandler, ISubscri
 		{
 			if (base.ViewModel != null && button == DialogMessageBoxButton.Yes)
 			{
+				Metrics.Chargen.Close(base.ViewModel.CurrentPhaseVM.CurrentValue.PhaseType.ToString()).Send();
 				base.ViewModel.Close();
 			}
 		});

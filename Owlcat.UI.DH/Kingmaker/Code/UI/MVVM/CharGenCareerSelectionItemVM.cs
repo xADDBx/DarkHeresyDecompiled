@@ -1,6 +1,7 @@
 using System;
 using Code.View.UI.MVVM.Tooltip.Templates;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.UnitLogic.Levelup.Selections;
 using Kingmaker.UnitLogic.Progression.Paths;
 using Owlcat.UI;
 using R3;
@@ -18,6 +19,8 @@ public class CharGenCareerSelectionItemVM : SelectionGroupEntityVM
 
 	private readonly ReactiveProperty<Sprite> m_Sprite = new ReactiveProperty<Sprite>(null);
 
+	private readonly BlueprintSelectionWithUI m_BlueprintSelectionWithUI;
+
 	public ReadOnlyReactiveProperty<string> Label => m_Label;
 
 	public ReadOnlyReactiveProperty<Sprite> Sprite => m_Sprite;
@@ -26,14 +29,15 @@ public class CharGenCareerSelectionItemVM : SelectionGroupEntityVM
 
 	public TooltipBaseTemplate Template { get; private set; }
 
-	public CharGenCareerSelectionItemVM(BlueprintCareerPath careerPath, Action<CharGenCareerSelectionItemVM> onHover)
+	public CharGenCareerSelectionItemVM(BlueprintCareerPath careerPath, Action<CharGenCareerSelectionItemVM> onHover, BlueprintSelectionWithUI blueprintSelectionWithUI)
 		: base(allowSwitchOff: true)
 	{
 		m_CareerPath = careerPath;
 		m_OnHover = onHover;
 		m_Label.Value = careerPath.Name;
 		m_Sprite.Value = careerPath.Icon.GetDefaultIfNull(DefaultImageType.Ability);
-		Template = new TooltipTemplateChargenCareerPath(careerPath);
+		Template = new TooltipTemplateChargenCareerPath(careerPath, null, null, blueprintSelectionWithUI);
+		m_BlueprintSelectionWithUI = blueprintSelectionWithUI;
 	}
 
 	public void OnHover(bool isHovered)

@@ -37,7 +37,7 @@ public static class FinalPost
 	{
 		TextureHandle input = processor.CameraStackTargets.CurrentPostProcessSource;
 		PostProcessingFinalSetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalSetupPassData>("Postprocessing Final Setup Pass", out passData, WaaaghProfileId.FinalSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\FinalPost.cs", 25))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalSetupPassData>("Postprocessing Final Setup Pass", out passData, WaaaghProfileId.FinalSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\FinalPost.cs", 25))
 		{
 			Material scalingSetup = processor.MatLib.ScalingSetup;
 			if (settings.isFxaaEnabled)
@@ -74,7 +74,7 @@ public static class FinalPost
 	{
 		TextureHandle input = processor.CameraStackTargets.CurrentPostProcessSource;
 		PostProcessingFinalBlitPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Pass", out passData, WaaaghProfileId.FinalPostBlit.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\FinalPost.cs", 76);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Pass", out passData, WaaaghProfileId.FinalPostBlit.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\FinalPost.cs", 76);
 		rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		passData.destinationTexture = postProcessingTarget;
 		rasterRenderGraphBuilder.SetRenderAttachment(postProcessingTarget, 0);

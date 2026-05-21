@@ -10,6 +10,12 @@ public class ToggleAbilityMetricsEvent : MetricsEvent
 		return this;
 	}
 
+	public ToggleAbilityMetricsEvent Caster(string caster)
+	{
+		AddParam("caster", caster);
+		return this;
+	}
+
 	public ToggleAbilityMetricsEvent State(bool state)
 	{
 		AddParam("state", state ? "enabled" : "disabled");

@@ -48,7 +48,7 @@ internal static class GpuDrivenCullingPrepare
 	public static void Record(RenderGraph renderGraph, GPUDrivenBatchRendererGroup brg)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<PassData>("GpuDriven.PrepareCulling", out passData2, WaaaghProfileId.GPUDrivenCullingPass_Prepare.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenCullingPrepare.cs", 27);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<PassData>("GpuDriven.PrepareCulling", out passData2, WaaaghProfileId.GPUDrivenCullingPass_Prepare.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenCullingPrepare.cs", 27);
 		GPUDrivenCullingPassSharedData sharedPassData = brg.SharedPassData;
 		sharedPassData.MaxRendererGroupSlicesPerView = ComputeMaxRendererGroupSlicesPerView(brg);
 		sharedPassData.CullingContexts = brg.GetCullingContextsAndClear(Allocator.Temp);

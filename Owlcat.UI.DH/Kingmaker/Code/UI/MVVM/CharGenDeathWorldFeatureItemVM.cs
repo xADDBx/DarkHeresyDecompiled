@@ -11,6 +11,6 @@ public class CharGenDeathWorldFeatureItemVM : CharGenBackgroundBaseItemVM
 	public CharGenDeathWorldFeatureItemVM(FeatureSelectionItem selectionItem, SelectionStateFeature selectionStateFeature, CharGenPhaseType phaseType, Action<CharGenBackgroundBaseItemVM> onHover, LevelUpManager levelUpManager)
 		: base(selectionItem, selectionStateFeature, phaseType, onHover)
 	{
-		base.Template = new TooltipTemplateChargenHomeworld(selectionItem.Feature, null, levelUpManager);
+		base.Template = new TooltipTemplateChargenHomeworld(selectionItem.Feature, selectionStateFeature.Blueprint, null, levelUpManager);
 	}
 }

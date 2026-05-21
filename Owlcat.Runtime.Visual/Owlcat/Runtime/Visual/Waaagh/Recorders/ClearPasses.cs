@@ -18,7 +18,7 @@ public static class ClearPasses
 	public static void ClearCameraTargets(in RecordContext context)
 	{
 		ClearPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ClearPassData>("ClearCameraTargets", out passData2, WaaaghProfileId.ClearCameraTargets.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ClearPasses.cs", 20);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ClearPassData>("ClearCameraTargets", out passData2, WaaaghProfileId.ClearCameraTargets.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ClearPasses.cs", 20);
 		passData2.ClearColorValue = context.CameraData.backgroundColor;
 		passData2.ClearColorValue.a = 0f;
 		passData2.ClearStencilValue = 128u;

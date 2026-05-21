@@ -140,6 +140,11 @@ public class AbilitySlotVM : ViewModel
 		m_AppliedModifier.Value = modifier;
 	}
 
+	public void RemoveModifier()
+	{
+		m_AbilitiesTabVM.DetachModifier(this);
+	}
+
 	public void OnDrag(PointerEventData eventData, bool isDragEnd = false)
 	{
 		if (m_AppliedModifier.Value != null)

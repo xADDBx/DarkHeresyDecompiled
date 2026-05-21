@@ -16,9 +16,6 @@ public class PostProcessSettings
 	[SerializeField]
 	private ColorGradingMode m_ColorGradingMode;
 
-	[SerializeField]
-	private TemporalAntialiasingSettings m_TemporalAntialiasingSettings;
-
 	[HideInInspector]
 	[SerializeField]
 	private bool m_AllowPostProcessAlphaOutput;
@@ -55,8 +52,6 @@ public class PostProcessSettings
 			m_ColorGradingMode = value;
 		}
 	}
-
-	public TemporalAntialiasingSettings TemporalAntialiasingSettings => m_TemporalAntialiasingSettings;
 
 	public bool AllowPostProcessAlphaOutput => m_AllowPostProcessAlphaOutput;
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Kingmaker.Blueprints.Items;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Blueprints;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem.Entities;
@@ -154,6 +155,9 @@ public abstract class SkillUseRestrictionPart<T> : InteractionRestrictionPart<T>
 		{
 			Voice = RulePerformSkillCheck.VoicingType.All
 		});
+		Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.PickLock).Initiator(user.Blueprint.AssetGuid).Target(Owner.Blueprint.AssetGuid)
+			.Result(rulePerformSkillCheck.ResultIsSuccess)
+			.Send();
 		if (rulePerformSkillCheck.ResultIsSuccess)
 		{
 			base.EventBus.RaiseEvent((IBaseUnitEntity)user, (Action<IPickLockHandler>)delegate(IPickLockHandler h)

@@ -497,13 +497,17 @@ public static class UIUtilityItem
 		}
 	}
 
-	private static void FillWeaponStats(ItemTooltipData data, ItemEntityWeapon weapon)
+	private static void FillWeaponStats(ItemTooltipData data, ItemEntityWeapon weapon, RuleCalculateStatsWeapon weaponStats = null)
 	{
 		if (weapon.Blueprint.IsRanged)
 		{
 			data.Texts[TooltipElement.MaxDistance] = weapon.AttackRange.ToString();
 		}
-		int resultAdditionalHitChance = weapon.GetWeaponStats().ResultAdditionalHitChance;
+		if (weaponStats == null)
+		{
+			weaponStats = weapon.GetWeaponStats();
+		}
+		int resultAdditionalHitChance = weaponStats.ResultAdditionalHitChance;
 		data.Texts[TooltipElement.HitChance] = ((resultAdditionalHitChance > 0) ? UIUtilityText.AddPercentTo(resultAdditionalHitChance) : string.Empty);
 		int overpenetrationChance = weapon.OverpenetrationChance;
 		data.Texts[TooltipElement.OverpenetrationChance] = ((overpenetrationChance != 0) ? UIUtilityText.AddPercentTo(overpenetrationChance) : string.Empty);
@@ -511,13 +515,13 @@ public static class UIUtilityItem
 		data.Texts[TooltipElement.Recoil] = ((recoil != 0) ? UIUtilityText.AddPercentTo(recoil) : string.Empty);
 	}
 
-	private static void FillWeaponAbilities(ItemTooltipData data, ItemEntityWeapon weapon)
+	private static void FillWeaponAbilities(ItemTooltipData data, ItemEntityWeapon weapon, MechanicEntity casterOverride = null)
 	{
 		foreach (WeaponAbility weaponAbility in weapon.Blueprint.WeaponAbilities)
 		{
 			try
 			{
-				data.Abilities.Add(GetUIAbilityData(weaponAbility.Ability, weapon));
+				data.Abilities.Add(GetUIAbilityData(weaponAbility.Ability, weapon, casterOverride));
 			}
 			catch (Exception ex)
 			{
@@ -590,21 +594,13 @@ public static class UIUtilityItem
 			}
 			if (item.Owner == null)
 			{
-				ReactiveProperty<BaseUnitEntity> selectedUnitInUI = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI;
-				if (s_CalculatorUnitPair == null)
-				{
-					s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
-				}
-				if (s_CalculatorUnitPair.CurrentSelectedUnit == null)
-				{
-					s_CalculatorUnitPair.Dispose();
-					s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
-				}
+				EnsureCalculatorUnitPair();
 				ItemEntity itemEntity = item.Blueprint.CreateEntity();
 				if (itemEntity == null)
 				{
 					return item.Description;
 				}
+				item.CopyRuntimeStateTo(itemEntity);
 				using (ContextData<ItemSlot.IgnoreLock>.Request())
 				{
 					using (ContextData<GameCommandHelper.PreviewItem>.Request())
@@ -640,16 +636,7 @@ public static class UIUtilityItem
 		}
 		using (GameLogContext.Scope)
 		{
-			ReactiveProperty<BaseUnitEntity> selectedUnitInUI = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI;
-			if (s_CalculatorUnitPair == null)
-			{
-				s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
-			}
-			if (s_CalculatorUnitPair.CurrentSelectedUnit == null)
-			{
-				s_CalculatorUnitPair.Dispose();
-				s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
-			}
+			EnsureCalculatorUnitPair();
 			ItemEntity itemEntity = blueprintItem.CreateEntity();
 			if (itemEntity == null)
 			{
@@ -1160,6 +1147,20 @@ public static class UIUtilityItem
 		}
 	}
 
+	private static void EnsureCalculatorUnitPair()
+	{
+		ReactiveProperty<BaseUnitEntity> selectedUnitInUI = Game.Instance.Controllers.SelectionCharacter.SelectedUnitInUI;
+		if (s_CalculatorUnitPair == null)
+		{
+			s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
+		}
+		if (s_CalculatorUnitPair.CurrentSelectedUnit == null)
+		{
+			s_CalculatorUnitPair.Dispose();
+			s_CalculatorUnitPair = new CalculatorUnitPair(selectedUnitInUI);
+		}
+	}
+
 	private static void FillItemStats(ItemEntity item, ItemTooltipData itemTooltipData, MechanicEntity wielderOverride = null)
 	{
 		if (!(item is ItemEntityWeapon itemEntityWeapon))
@@ -1185,21 +1186,40 @@ public static class UIUtilityItem
 					itemTooltipData.Texts[TooltipElement.ArmorDamageReduceDescription] = armorData.ArmorDamageReduceDescription;
 				}
 			}
+			return;
 		}
-		else
+		RuleCalculateStatsWeapon weaponStats = itemEntityWeapon.GetWeaponStats();
+		MechanicEntity mechanicEntity = wielderOverride ?? item.Owner ?? UtilityParty.GetCurrentSelectedUnit();
+		itemTooltipData.Texts[TooltipElement.AttackType] = GetRangeType(itemEntityWeapon);
+		itemTooltipData.Texts[TooltipElement.ProficiencyGroup] = GetProficiencyGroup(itemEntityWeapon);
+		FillPenetration(itemTooltipData, itemEntityWeapon);
+		if (itemEntityWeapon.Owner == null && wielderOverride == null)
 		{
-			RuleCalculateStatsWeapon weaponStats = itemEntityWeapon.GetWeaponStats();
-			MechanicEntity mechanicEntity = wielderOverride ?? item.Owner ?? UtilityParty.GetCurrentSelectedUnit();
-			RuleCalculateStatsWeapon ruleCalculateStatsWeapon = ((mechanicEntity != null) ? itemEntityWeapon.GetWeaponStats(mechanicEntity) : null);
-			RuleCalculateStatsWeapon weaponStats2 = ruleCalculateStatsWeapon ?? weaponStats;
-			itemTooltipData.Texts[TooltipElement.AttackType] = GetRangeType(itemEntityWeapon);
-			itemTooltipData.Texts[TooltipElement.ProficiencyGroup] = GetProficiencyGroup(itemEntityWeapon);
-			FillPenetration(itemTooltipData, itemEntityWeapon);
-			FillRateOfFire(itemTooltipData, itemEntityWeapon, weaponStats2);
-			FillWeaponDamage(itemTooltipData, weaponStats, ruleCalculateStatsWeapon, itemEntityWeapon);
-			FillWeaponStats(itemTooltipData, itemEntityWeapon);
-			FillWeaponAbilities(itemTooltipData, itemEntityWeapon);
+			EnsureCalculatorUnitPair();
+			if (itemEntityWeapon.Blueprint.CreateEntity() is ItemEntityWeapon itemEntityWeapon2)
+			{
+				itemEntityWeapon.CopyRuntimeStateTo(itemEntityWeapon2);
+				using (ContextData<ItemSlot.IgnoreLock>.Request())
+				{
+					using (ContextData<GameCommandHelper.PreviewItem>.Request())
+					{
+						GameCommandHelper.EquipItemAutomatically(itemEntityWeapon2, s_CalculatorUnitPair.CalculatorUnit);
+						RuleCalculateStatsWeapon weaponStats2 = itemEntityWeapon2.GetWeaponStats(s_CalculatorUnitPair.CalculatorUnit);
+						FillRateOfFire(itemTooltipData, itemEntityWeapon, weaponStats2);
+						FillWeaponDamage(itemTooltipData, weaponStats, weaponStats2, itemEntityWeapon);
+						FillWeaponStats(itemTooltipData, itemEntityWeapon, weaponStats2);
+						FillWeaponAbilities(itemTooltipData, itemEntityWeapon2, s_CalculatorUnitPair.CalculatorUnit);
+						return;
+					}
+				}
+			}
 		}
+		RuleCalculateStatsWeapon ruleCalculateStatsWeapon = ((mechanicEntity != null) ? itemEntityWeapon.GetWeaponStats(mechanicEntity) : null);
+		RuleCalculateStatsWeapon weaponStats3 = ruleCalculateStatsWeapon ?? weaponStats;
+		FillRateOfFire(itemTooltipData, itemEntityWeapon, weaponStats3);
+		FillWeaponDamage(itemTooltipData, weaponStats, ruleCalculateStatsWeapon, itemEntityWeapon);
+		FillWeaponStats(itemTooltipData, itemEntityWeapon, weaponStats3);
+		FillWeaponAbilities(itemTooltipData, itemEntityWeapon, mechanicEntity);
 	}
 
 	[Obsolete("WH2-7361")]

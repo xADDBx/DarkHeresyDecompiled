@@ -66,7 +66,7 @@ public static class DeferredOpaque
 	public static void DrawDepthPrePass(in RecordContext context)
 	{
 		DepthPrePassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DepthPrePassData>("Draw Depth Only", out passData2, WaaaghProfileId.DepthPrePass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredOpaque.cs", 43);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DepthPrePassData>("Draw Depth Only", out passData2, WaaaghProfileId.DepthPrePass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredOpaque.cs", 43);
 		passData2.BaseRendererList = CreateDepthOnlyRendererList(in context, OpaqueBaseQueueRange);
 		passData2.AlphaRendererList = CreateDepthOnlyRendererList(in context, OpaqueAlphaQueueRange);
 		passData2.CameraType = context.CameraData.cameraType;
@@ -94,7 +94,7 @@ public static class DeferredOpaque
 	public static void DrawGBufferPass(in RecordContext context)
 	{
 		GBufferPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GBufferPassData>("Draw GBuffer", out passData2, WaaaghProfileId.GBufferPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\DeferredOpaque.cs", 89);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<GBufferPassData>("Draw GBuffer", out passData2, WaaaghProfileId.GBufferPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\DeferredOpaque.cs", 89);
 		passData2.BaseRendererList = CreateGBufferRendererList(in context, OpaqueBaseQueueRange);
 		passData2.AlphaRendererList = CreateGBufferRendererList(in context, OpaqueAlphaQueueRange);
 		passData2.CameraType = context.CameraData.cameraType;

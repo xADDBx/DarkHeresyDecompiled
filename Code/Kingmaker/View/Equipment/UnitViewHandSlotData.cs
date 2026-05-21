@@ -345,7 +345,7 @@ public class UnitViewHandSlotData
 			}
 			else
 			{
-				if (((VisualSlot == UnitEquipmentVisualSlotType.RightBack01 || VisualSlot == UnitEquipmentVisualSlotType.LeftBack01) && Character.EquipmentEntities.Any((EquipmentEntity ee) => ee.HasFeature(EquipmentFeatureFlag.IsBackpack))) || Owner.GetOptional<UnitPartMechadendrites>() != null)
+				if (((VisualSlot == UnitEquipmentVisualSlotType.RightBack01 || VisualSlot == UnitEquipmentVisualSlotType.LeftBack01) && Character.EquipmentEntities.Any((EquipmentEntity ee) => ee.HasFeature(EquipmentFeatureFlag.IsBackpack))) || (IsOff && Owner.GetOptional<UnitPartMechadendrites>() != null))
 				{
 					VisualModel.SetActive(value: false);
 				}
@@ -378,7 +378,7 @@ public class UnitViewHandSlotData
 					UnitPartMechadendrites optional = Owner.GetOptional<UnitPartMechadendrites>();
 					if (optional != null && optional.Mechadendrites.ContainsKey(MechadendritesType.Ballistic))
 					{
-						goto IL_0214;
+						goto IL_021c;
 					}
 				}
 				component.Apply((!IsInHand) ? VisualSlot : UnitEquipmentVisualSlotType.None, IsOff, Character);
@@ -389,8 +389,8 @@ public class UnitViewHandSlotData
 					MirrorRigidbodyWeaponForMirroredCharacter(component);
 				}
 			}
-			goto IL_0214;
-			IL_0214:
+			goto IL_021c;
+			IL_021c:
 			ShowItem(Owner.View.IsVisible);
 			m_Equipment.RaiseModelSpawned();
 			EventBus.RaiseEvent(delegate(IVisualWeaponStateChangeHandle h)

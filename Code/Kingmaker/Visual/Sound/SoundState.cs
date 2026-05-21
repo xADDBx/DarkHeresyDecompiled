@@ -440,7 +440,7 @@ public class SoundState : IService, IUnitCombatHandler, ISubscriber<IBaseUnitEnt
 	{
 		GameObject gameObject = null;
 		CameraRig instance = CameraRig.Instance;
-		if (instance != null)
+		if (instance != null && instance.gameObject.activeInHierarchy)
 		{
 			gameObject = instance.gameObject;
 		}

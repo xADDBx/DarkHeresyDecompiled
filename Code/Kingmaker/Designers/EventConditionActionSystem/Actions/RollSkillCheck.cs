@@ -1,6 +1,8 @@
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.ElementsSystem;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules;
@@ -39,12 +41,16 @@ public class RollSkillCheck : GameAction
 
 	protected override void RunAction()
 	{
-		RulePerformSkillCheck rulePerformSkillCheck = new RulePerformSkillCheck(Unit.GetValue(), Stat, DC);
+		AbstractUnitEntity value = Unit.GetValue();
+		RulePerformSkillCheck rulePerformSkillCheck = new RulePerformSkillCheck(value, Stat, DC);
 		if (Voice)
 		{
 			rulePerformSkillCheck.Voice = (LogFailure ? RulePerformSkillCheck.VoicingType.Failure : RulePerformSkillCheck.VoicingType.None) | (LogSuccess ? RulePerformSkillCheck.VoicingType.Success : RulePerformSkillCheck.VoicingType.None);
 		}
 		RulePerformSkillCheck result = GameHelper.TriggerSkillCheck(rulePerformSkillCheck, null, !ForbidPartyHelpInCamp);
+		Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.RollAction).Initiator(value.Blueprint.AssetGuid).Target(base.Owner.AssetGuid)
+			.Result(result.ResultIsSuccess)
+			.Send();
 		if ((LogFailure && !result.ResultIsSuccess) || (LogSuccess && result.ResultIsSuccess))
 		{
 			EventBus.RaiseEvent(delegate(IRollSkillCheckHandler h)

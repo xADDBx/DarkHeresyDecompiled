@@ -67,7 +67,7 @@ internal sealed class ColoredShadowsRendererFeature : IRendererFeature, IDisposa
 	private static void RecordSetup(in RecordContext context, ColoredShadowsSettings settings)
 	{
 		SetupPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("Colored Shadows Setup", out passData2, WaaaghProfileId.ColoredShadowsSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\ColoredShadows\\ColoredShadowsRendererFeature.cs", 64);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("Colored Shadows Setup", out passData2, WaaaghProfileId.ColoredShadowsSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\ColoredShadows\\ColoredShadowsRendererFeature.cs", 64);
 		passData2.Color = settings.Color;
 		passData2.Ramps.x = settings.ShadowThreshold;
 		passData2.Ramps.y = settings.ShadowSmoothness;
@@ -89,7 +89,7 @@ internal sealed class ColoredShadowsRendererFeature : IRendererFeature, IDisposa
 	private static void RecordCleanup(in RecordContext context)
 	{
 		object passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<object>("Colored Shadows Cleanup", out passData2, WaaaghProfileId.ColoredShadowsCleanup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\ColoredShadows\\ColoredShadowsRendererFeature.cs", 89);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<object>("Colored Shadows Cleanup", out passData2, WaaaghProfileId.ColoredShadowsCleanup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\ColoredShadows\\ColoredShadowsRendererFeature.cs", 89);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.SetRenderFunc(delegate(object passData, UnsafeGraphContext context)

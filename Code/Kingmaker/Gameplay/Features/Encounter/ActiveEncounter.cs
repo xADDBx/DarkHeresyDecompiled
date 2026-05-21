@@ -240,9 +240,9 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 		SetupBlackboard();
 	}
 
-	protected override void OnPostLoad()
+	protected override void OnAreaLoadingComplete()
 	{
-		base.OnPostLoad();
+		base.OnAreaLoadingComplete();
 		SendStartMetrics(isLoaded: true);
 	}
 
@@ -318,12 +318,14 @@ public sealed class ActiveEncounter : MechanicEntity<BlueprintEncounter>, IAreaA
 	private void SendFinishMetrics(EncounterCompletionType completionType)
 	{
 		List<BaseUnitEntity> list = Participants.Where((BaseUnitEntity p) => p.IsPlayerFaction).ToList();
-		Metrics.EncounterFinish.PartyHealth(list.Select((BaseUnitEntity p) => p.Health.HitPointsLeft).Sum()).PartyArmour(list.Select((BaseUnitEntity p) => p.Armor.DurabilityLeft).Sum()).Reason(completionType)
+		PartEncounterMetrics optional = GetOptional<PartEncounterMetrics>();
+		Metrics.EncounterFinish.PartyHealth(list.Select((BaseUnitEntity p) => p.Health.HitPointsLeft).Sum()).PartyArmour(list.Select((BaseUnitEntity p) => p.Armor.DurabilityLeft).Sum()).DamageToParty(optional?.DamageToParty ?? 0)
+			.DamageToEnemies(optional?.DamageToEnemies ?? 0)
+			.Reason(completionType)
 			.PowerBalance(Game.Instance.Controllers.MoraleController.GetPlayerPowerBalanceRatio())
 			.Difficulty(MetricsUtils.GameDifficultyToString(SettingsRoot.Difficulty.GameDifficulty.GetValue()))
 			.CombatLog(Game.Instance.Player.UISettings.LogIsPinned)
 			.Send();
-		PartEncounterMetrics optional = GetOptional<PartEncounterMetrics>();
 		if (optional == null)
 		{
 			return;

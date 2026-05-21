@@ -36,7 +36,7 @@ internal sealed class Validation
 	public static void DrawObjectWithInvalidMaterials(in RecordContext context)
 	{
 		PassData passData2;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("Draw ErrorObjects", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Validation.cs", 36);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("Draw ErrorObjects", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Validation.cs", 36);
 		PassData passData3 = passData2;
 		RenderGraph renderGraph = context.RenderGraph;
 		CullingResults cullResults = context.RenderingData.CullResults;

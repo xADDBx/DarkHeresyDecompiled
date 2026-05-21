@@ -68,7 +68,7 @@ public static class Reflections
 	public static void SetupReflectionProbesPass(in RecordContext context)
 	{
 		SetupReflectionProbesPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupReflectionProbesPassData>("SetupReflectionProbesPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Reflections.cs", 22);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupReflectionProbesPassData>("SetupReflectionProbesPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Reflections.cs", 22);
 		passData.ReflectionProbes = context.ReflectionProbes;
 		TextureHandle input = context.RenderGraph.ImportTexture(context.ReflectionProbes.AtlasRTHandle);
 		unsafeRenderGraphBuilder.UseTexture(in input, AccessFlags.Write);
@@ -84,7 +84,7 @@ public static class Reflections
 	{
 		WaaaghCameraData cameraData = context.CameraData;
 		DeferredReflectionsPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DeferredReflectionsPassData>("DeferredReflectionsPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Reflections.cs", 74);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DeferredReflectionsPassData>("DeferredReflectionsPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Reflections.cs", 74);
 		passData.Material = context.MaterialLibrary.DeferredReflectionsMaterial;
 		passData.CameraColorRT = context.FrameResources.CameraStackTargets.Color;
 		unsafeRenderGraphBuilder.UseTexture(in passData.CameraColorRT, AccessFlags.Write);

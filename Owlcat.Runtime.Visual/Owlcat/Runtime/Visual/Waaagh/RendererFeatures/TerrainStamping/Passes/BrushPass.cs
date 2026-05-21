@@ -289,7 +289,7 @@ internal static class BrushPass
 	public static void Record(in RecordContext context, TerrainStampingManager terrainStampingManager, TerrainStampingManagerParameters parameters, BrushCullingJobData brushCullingJobData)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Brush", out passData, Profiling.TerrainStampingBrush, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\BrushPass.cs", 190);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Brush", out passData, Profiling.TerrainStampingBrush, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\BrushPass.cs", 190);
 		passData.Manager = terrainStampingManager;
 		passData.BrushCullingJobData = brushCullingJobData;
 		passData.BrushMaterial = terrainStampingManager.BrushMaterial;

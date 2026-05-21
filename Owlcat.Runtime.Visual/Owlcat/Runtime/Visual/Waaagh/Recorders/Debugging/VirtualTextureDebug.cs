@@ -193,7 +193,7 @@ public static class VirtualTextureDebug
 	private static void DrawFeedback(in RecordContext context)
 	{
 		VirtualTextureFeedbackDebugPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureFeedbackDebugPassData>("DEBUG - VT Feedback", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 86);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureFeedbackDebugPassData>("DEBUG - VT Feedback", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 86);
 		passData.Material = context.DebugContext.MaterialLibrary.VirtualTextureDebug;
 		passData.ShowFeedbackPass = context.DebugContext.MaterialLibrary.ShowFeedbackTexturePass;
 		passData.DecodeFeedbackPass = context.DebugContext.MaterialLibrary.DecodeFeedbackPass;
@@ -238,7 +238,7 @@ public static class VirtualTextureDebug
 	private static void DrawPhysicalAtlas(in RecordContext context)
 	{
 		VirtualTextureShowPhysicalAtlasPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowPhysicalAtlasPassData>("DEBUG - VT Physical Atlas", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 155);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowPhysicalAtlasPassData>("DEBUG - VT Physical Atlas", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 155);
 		passData.Material = context.DebugContext.MaterialLibrary.VirtualTextureDebug;
 		passData.Pass = context.DebugContext.MaterialLibrary.PhysicalAtlasDebugPass;
 		passData.VirtualTextureManager = context.VirtualTextureManager;
@@ -271,7 +271,7 @@ public static class VirtualTextureDebug
 	private static void DrawBatchedCopyRt(RecordContext context)
 	{
 		VirtualTextureShowBatchedCopyRtPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowBatchedCopyRtPassData>("DEBUG - VT Batched Copy Rt", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 207);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowBatchedCopyRtPassData>("DEBUG - VT Batched Copy Rt", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 207);
 		passData.Material = context.DebugContext.MaterialLibrary.VirtualTextureDebug;
 		passData.Pass = context.DebugContext.MaterialLibrary.ShowBatchedCopyRtPass;
 		passData.VirtualTextureManager = context.VirtualTextureManager;
@@ -307,7 +307,7 @@ public static class VirtualTextureDebug
 	private static void DrawIndirectionTexture(in RecordContext context)
 	{
 		VirtualTextureShowIndirectTexturePassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowIndirectTexturePassData>("DEBUG - VT Indirection Texture", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 276);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowIndirectTexturePassData>("DEBUG - VT Indirection Texture", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 276);
 		passData.Material = context.DebugContext.MaterialLibrary.VirtualTextureDebug;
 		passData.Pass = context.DebugContext.MaterialLibrary.IndirectTextureDebugPass;
 		passData.VirtualTextureManager = context.VirtualTextureManager;
@@ -336,7 +336,7 @@ public static class VirtualTextureDebug
 	private static void DrawVirtualAtlas(in RecordContext context)
 	{
 		VirtualTextureShowVirtualAtlasPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowVirtualAtlasPassData>("DEBUG - VT Virtual Atlas", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 325);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VirtualTextureShowVirtualAtlasPassData>("DEBUG - VT Virtual Atlas", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\VirtualTextureDebug.cs", 325);
 		passData.Material = context.DebugContext.MaterialLibrary.VirtualTextureDebug;
 		passData.Pass = context.DebugContext.MaterialLibrary.VirtualAtlasDebugPass;
 		passData.VirtualTextureManager = context.VirtualTextureManager;

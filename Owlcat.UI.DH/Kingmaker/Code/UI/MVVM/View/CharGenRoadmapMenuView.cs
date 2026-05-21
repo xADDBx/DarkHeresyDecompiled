@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.UI.Common;
 using Kingmaker.UI.Sound;
 using ObservableCollections;
@@ -58,6 +59,8 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 
 	private ICharGenPhaseRoadmapView m_SelectedView;
 
+	private bool m_SelectorAnimating;
+
 	private bool m_SelectorSoundPlaying;
 
 	private CharGenPhaseBaseVM m_PrevEntity;
@@ -93,7 +96,7 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 		}).AddTo(this);
 		m_ScrollRectExtended.OnDragAsObservable().Subscribe(delegate
 		{
-			m_DelayedSelectorMoveDisposable?.Dispose();
+			OnScrollInteraction();
 		}).AddTo(this);
 		ObservableSubscribeExtensions.Subscribe(Observable.TimerFrame(2), delegate
 		{
@@ -125,10 +128,14 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 			return;
 		}
 		m_DelayedSelectorMoveDisposable?.Dispose();
+		m_SelectorAnimating = true;
 		m_DelayedSelectorMoveDisposable = ObservableSubscribeExtensions.Subscribe(Observable.TimerFrame(2), delegate
 		{
 			m_ScrollRectExtended.EnsureVisibleHorizontal(m_SelectedView.ViewRectTransform, 160f);
+			KillSelectorTween();
+			m_SelectorAnimating = true;
 			float x = m_SelectedView.ViewRectTransform.position.x;
+			m_Glow.DOMoveX(x, m_AnimationDuration).SetUpdate(isIndependentUpdate: true);
 			m_Selector.DOMoveX(x, m_AnimationDuration).OnStart(delegate
 			{
 				if (m_PrevEntity != selectedEntity)
@@ -138,13 +145,19 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 					m_SelectorSoundPlaying = true;
 					m_PrevEntity = selectedEntity;
 				}
-			}).OnComplete(ShutUpSelector)
-				.OnKill(ShutUpSelector)
+			}).OnComplete(OnSelectorTweenFinished)
+				.OnKill(OnSelectorTweenFinished)
 				.SetUpdate(isIndependentUpdate: true);
 		}).AddTo(this);
 	}
 
-	private void MoveSelectorImmediately()
+	private void OnSelectorTweenFinished()
+	{
+		m_SelectorAnimating = false;
+		ShutUpSelector();
+	}
+
+	private void SnapSelectorToSelectedView()
 	{
 		m_SelectedView = GetRoadmapPhaseView(base.ViewModel.SelectedEntity.CurrentValue);
 		if (m_SelectedView != null)
@@ -153,6 +166,13 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 			m_Selector.position = new Vector3(x, m_Selector.position.y, m_Selector.position.z);
 			m_Glow.position = new Vector3(x, m_Glow.position.y, m_Glow.position.z);
 		}
+	}
+
+	private void OnScrollInteraction()
+	{
+		m_DelayedSelectorMoveDisposable?.Dispose();
+		KillSelectorTween();
+		m_SelectorAnimating = false;
 	}
 
 	public void SetBackgroundFrameState(bool isCustom)
@@ -183,6 +203,8 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 	{
 		m_Selector.DOKill();
 		DOTween.Kill(m_Selector);
+		m_Glow.DOKill();
+		DOTween.Kill(m_Glow);
 	}
 
 	private void CreateRoadmapPhaseView(CollectionAddEvent<CharGenPhaseBaseVM> addEvent)
@@ -219,9 +241,9 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 		bool flag3 = m_ScrollRectExtended.horizontalNormalizedPosition < 0.999f;
 		m_LeftScrollButton.Interactable = flag && flag2;
 		m_RightScrollButton.Interactable = flag && flag3;
-		if (m_DelayedSelectorMoveDisposable == null)
+		if (!m_SelectorAnimating)
 		{
-			MoveSelectorImmediately();
+			SnapSelectorToSelectedView();
 		}
 	}
 
@@ -232,26 +254,38 @@ public class CharGenRoadmapMenuView : View<SelectionGroupRadioVM<CharGenPhaseBas
 			scrollDelta = new Vector2(delta, 0f)
 		};
 		m_ScrollRectExtended.OnSmoothlyScroll(data);
-		m_DelayedSelectorMoveDisposable?.Dispose();
+		OnScrollInteraction();
 	}
 
 	public void SelectPrevPhase()
 	{
-		base.ViewModel.SelectPrevValidEntity();
+		if (base.ViewModel.SelectPrevValidEntity())
+		{
+			Metrics.Chargen.Back(base.ViewModel.SelectedEntity.CurrentValue.PhaseType.ToString()).Send();
+		}
 	}
 
 	public void SelectNextPhase()
 	{
-		base.ViewModel.SelectNextValidEntity();
+		if (base.ViewModel.SelectNextValidEntity())
+		{
+			Metrics.Chargen.Next(base.ViewModel.SelectedEntity.CurrentValue.PhaseType.ToString()).Send();
+		}
 	}
 
 	public void SelectLastValidPhase()
 	{
-		base.ViewModel.TrySelectLastValidEntity();
+		if (base.ViewModel.TrySelectLastValidEntity())
+		{
+			Metrics.Chargen.Last(base.ViewModel.SelectedEntity.CurrentValue.PhaseType.ToString()).Send();
+		}
 	}
 
 	public void SelectFirstValidPhase()
 	{
-		base.ViewModel.TrySelectFirstValidEntity();
+		if (base.ViewModel.TrySelectFirstValidEntity())
+		{
+			Metrics.Chargen.First(base.ViewModel.SelectedEntity.CurrentValue.PhaseType.ToString()).Send();
+		}
 	}
 }

@@ -7,6 +7,7 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.UnitLogic.Parts;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 
 namespace Kingmaker.UnitLogic.Mechanics.Components;
 
@@ -14,8 +15,10 @@ namespace Kingmaker.UnitLogic.Mechanics.Components;
 [TypeId("25d172d2be8f52f468b2050d14d59806")]
 public class AddFactContextActions : EntityFactComponentDelegate, ITickEachRound, ITurnEndHandler<EntitySubscriber>, ITurnEndHandler, ISubscriber<IMechanicEntity>, ISubscriber, IEntitySubscriber, IEventTag<ITurnEndHandler, EntitySubscriber>
 {
+	[InfoBox("Не вызывать экшены при копировании юнита для левелапа или инспекта.")]
 	public bool DisableForLevelUpPreviewUnit;
 
+	[InfoBox("Не вызывать экшены при увеличении или уменьшении ранга.")]
 	public bool DisableWhenReapplying;
 
 	public ActionList Activated;

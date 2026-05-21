@@ -22,7 +22,7 @@ public static class StopNaN
 		TextureHandle input = postProcessor.CameraStackTargets.CurrentPostProcessSource;
 		TextureHandle textureHandle = RenderGraphUtility.CreateRenderGraphTexture(renderGraph, compatibleDescriptor, "_StopNaNsTarget", clear: true, FilterMode.Bilinear);
 		StopNaNsPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<StopNaNsPassData>("Stop NaNs", out passData, WaaaghProfileId.StopNaNs.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\StopNaN.cs", 28))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<StopNaNsPassData>("Stop NaNs", out passData, WaaaghProfileId.StopNaNs.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\StopNaN.cs", 28))
 		{
 			passData.stopNaNTarget = textureHandle;
 			rasterRenderGraphBuilder.SetRenderAttachment(textureHandle, 0, AccessFlags.ReadWrite);

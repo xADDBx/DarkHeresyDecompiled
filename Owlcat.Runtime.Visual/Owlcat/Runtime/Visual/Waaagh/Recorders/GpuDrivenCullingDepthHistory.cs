@@ -28,7 +28,7 @@ internal static class GpuDrivenCullingDepthHistory
 	public static void Record(in RecordContext context, DepthPyramidGenerationUtils pyramidGenerationUtils)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("GpuDriven.DepthHistory", out passData, WaaaghProfileId.GpuDrivenDepthHistory.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenCullingDepthHistory.cs", 14);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("GpuDriven.DepthHistory", out passData, WaaaghProfileId.GpuDrivenDepthHistory.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenCullingDepthHistory.cs", 14);
 		ref readonly WaaaghCameraData cameraData = ref context.CameraData;
 		ref readonly WaaaghRenderingData renderingData = ref context.RenderingData;
 		ref readonly FrameResources frameResources = ref context.FrameResources;

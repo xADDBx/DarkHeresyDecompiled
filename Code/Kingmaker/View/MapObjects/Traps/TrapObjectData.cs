@@ -5,6 +5,7 @@ using Kingmaker.Blueprints.Area;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Blueprints.Items.Weapons;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Designers;
 using Kingmaker.ElementsSystem.ContextData;
@@ -160,6 +161,9 @@ public abstract class TrapObjectData : MapObjectEntity, IHashable, IOwlPackable<
 			{
 				Voice = RulePerformSkillCheck.VoicingType.All
 			}, null, allowPartyCheckInCamp: false);
+			Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Trap).Initiator(user.Blueprint.AssetGuid).Target(base.Blueprint.AssetGuid)
+				.Result(rulePerformSkillCheck.ResultIsSuccess)
+				.Send();
 			if (rulePerformSkillCheck.ResultIsSuccess)
 			{
 				RunDisableActions(user);

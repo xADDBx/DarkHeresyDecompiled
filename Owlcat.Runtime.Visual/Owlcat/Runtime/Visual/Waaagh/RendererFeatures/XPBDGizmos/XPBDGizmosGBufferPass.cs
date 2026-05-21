@@ -30,7 +30,7 @@ internal static class XPBDGizmosGBufferPass
 			return;
 		}
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("XPBD Gizmos Particles", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosParticles), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\XPBDGizmosGBufferPass.cs", 28);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("XPBD Gizmos Particles", out passData, ProfilingSampler.Get(XPBDGizmosProfileId.XPBDGizmosParticles), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\XPBDGizmos\\XPBDGizmosGBufferPass.cs", 28);
 		passData.Solver = Owlcat.Runtime.Visual.XPBD.XPBD.Solver;
 		passData.Gizmos = Owlcat.Runtime.Visual.XPBD.XPBD.Solver.SolverImpl.GizmosImpl;
 		passData.GizmosMaterial = gizmosContext.GizmosMaterial;

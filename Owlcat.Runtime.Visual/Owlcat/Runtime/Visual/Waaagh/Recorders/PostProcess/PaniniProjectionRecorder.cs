@@ -39,7 +39,7 @@ public static class PaniniProjectionRecorder
 		float num = value;
 		float w = Mathf.Lerp(1f, Mathf.Clamp01(value2), paniniProjection.cropToFit.value);
 		PaniniProjectionPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PaniniProjectionPassData>("Panini Projection", out passData, WaaaghProfileId.PaniniProjection.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PaniniProjectionRecorder.cs", 44))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<PaniniProjectionPassData>("Panini Projection", out passData, WaaaghProfileId.PaniniProjection.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PaniniProjectionRecorder.cs", 44))
 		{
 			rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 			passData.destinationTexture = textureHandle;

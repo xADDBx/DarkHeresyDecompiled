@@ -30,7 +30,7 @@ public static class SkyBoxDrawer
 	public static void DrawSkybox(in RecordContext context)
 	{
 		PassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("DrawSkyBox", out passData, WaaaghProfileId.DrawSkyboxPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\SkyBoxDrawer.cs", 22);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("DrawSkyBox", out passData, WaaaghProfileId.DrawSkyboxPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\SkyBoxDrawer.cs", 22);
 		passData.RendererList = context.RenderGraph.CreateSkyboxRendererList(in context.CameraData.camera);
 		rasterRenderGraphBuilder.UseRendererList(in passData.RendererList);
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);

@@ -200,7 +200,7 @@ internal sealed class FogOfWarRendererFeature : IRendererFeature, IDisposable
 	private void DrawShadowMap(in RecordContext context)
 	{
 		ShadowmapPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ShadowmapPassData>("FogOfWar DrawShadowMap", out passData2, WaaaghProfileId.FogOfWarDrawShadowMap.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 180);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ShadowmapPassData>("FogOfWar DrawShadowMap", out passData2, WaaaghProfileId.FogOfWarDrawShadowMap.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 180);
 		if (!m_ActiveFogOfWarArea.RevealOnStart)
 		{
 			TextureDesc desc = new TextureDesc(m_ActiveFogOfWarArea.FogOfWarMapRT.rt.width, m_ActiveFogOfWarArea.FogOfWarMapRT.rt.height);
@@ -324,7 +324,7 @@ internal sealed class FogOfWarRendererFeature : IRendererFeature, IDisposable
 	private void SetupFogOfWar(in RecordContext context)
 	{
 		SetupPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("FogOfWar Setup", out passData2, WaaaghProfileId.FogOfWarSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 355);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("FogOfWar Setup", out passData2, WaaaghProfileId.FogOfWarSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 355);
 		if (m_ActiveFogOfWarArea != null)
 		{
 			passData2.Area = m_ActiveFogOfWarArea;
@@ -363,7 +363,7 @@ internal sealed class FogOfWarRendererFeature : IRendererFeature, IDisposable
 	private static void CleanupFogOfWar(in RecordContext context)
 	{
 		object passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<object>("FogOfWar Cleanup", out passData, WaaaghProfileId.FogOfWarCleanup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 396);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<object>("FogOfWar Cleanup", out passData, WaaaghProfileId.FogOfWarCleanup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 396);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.SetRenderFunc(delegate(object _, UnsafeGraphContext context)
@@ -375,7 +375,7 @@ internal sealed class FogOfWarRendererFeature : IRendererFeature, IDisposable
 	private void ApplyPostProcess(in RecordContext context)
 	{
 		PostProcessPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PostProcessPassData>("FogOfWar PostProcess", out passData2, WaaaghProfileId.FogOfWarPostProcess.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 409);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PostProcessPassData>("FogOfWar PostProcess", out passData2, WaaaghProfileId.FogOfWarPostProcess.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\FogOfWar\\FogOfWarRendererFeature.cs", 409);
 		passData2.Material = m_ScreenSpaceMat;
 		passData2.ShaderPass = m_ScreenSpaceMatShaderPass;
 		passData2.CameraColor = context.FrameResources.CameraStackTargets.Color;

@@ -331,13 +331,18 @@ public class VirtualAtlas : IDisposable
 	private TextureStackId CreateTextureStackId(Material material, int stackIndex)
 	{
 		TextureStackId result = default(TextureStackId);
+		ShaderMetadataRepository.ShaderMetadata shaderMetadata = ShaderMetadataRepository.Instance.Get(material.shader);
+		int num = ((shaderMetadata.LayerMasksPerStack != null && stackIndex < shaderMetadata.LayerMasksPerStack.Length) ? shaderMetadata.LayerMasksPerStack[stackIndex] : 0);
 		for (int i = 0; i < 4; i++)
 		{
-			if (!Guid.TryParse(material.GetTag(string.Format(VirtualTextureUtils.StackIdLayerIdFormat, stackIndex, i), searchFallbacks: false), out var result2))
+			if ((num & (1 << i)) != 0)
 			{
-				result2 = default(Guid);
+				if (!Guid.TryParse(material.GetTag(string.Format(VirtualTextureUtils.StackIdLayerIdFormat, stackIndex, i), searchFallbacks: false), out var result2))
+				{
+					result2 = default(Guid);
+				}
+				result[i] = result2;
 			}
-			result[i] = result2;
 		}
 		if (result.IsEmpty())
 		{

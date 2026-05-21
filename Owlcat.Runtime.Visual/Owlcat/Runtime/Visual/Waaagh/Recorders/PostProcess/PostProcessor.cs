@@ -431,7 +431,7 @@ public sealed class PostProcessor : IDisposable
 		}
 		bool flag8 = flag7 && cameraData.IsSTPEnabled();
 		ProfilingSampler sampler = WaaaghProfileId.RenderPostProcess.Sampler();
-		context.RenderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 408);
+		context.RenderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 408);
 		if (num)
 		{
 			StopNaN.Render(this, context.RenderGraph);
@@ -508,7 +508,7 @@ public sealed class PostProcessor : IDisposable
 		RenderTextureDescriptor compatibleDescriptor = GetCompatibleDescriptor();
 		TextureHandle dest = RenderGraphUtility.CreateRenderGraphTexture(context.RenderGraph, compatibleDescriptor, "_UberPostResult", clear: false, FilterMode.Bilinear);
 		UberPost.Render(this, context.RenderGraph, cameraData, in dest);
-		context.RenderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 562);
+		context.RenderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 562);
 	}
 
 	private void FinalPass(in RecordContext context)
@@ -518,7 +518,7 @@ public sealed class PostProcessor : IDisposable
 		WaaaghCameraData cameraData = context.CameraData;
 		FinalBlitSettings settings = FinalBlitSettings.Create();
 		ProfilingSampler sampler = WaaaghProfileId.RenderPostProcessFinal.Sampler();
-		context.RenderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 574);
+		context.RenderGraph.BeginProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 574);
 		if (Overrides.FilmGrain.IsActive())
 		{
 			finalPass.EnableKeyword(ShaderKeywordStrings.FilmGrain);
@@ -584,7 +584,7 @@ public sealed class PostProcessor : IDisposable
 		TextureHandle postProcessingTarget = context.FrameResources.CameraStackTargets.Color;
 		FinalPost.RenderFinalBlit(this, context.RenderGraph, cameraData, in postProcessingTarget, ref settings);
 		CameraStackTargets.SetCurrentPostProcessSource(postProcessingTarget);
-		context.RenderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 730);
+		context.RenderGraph.EndProfilingSampler(sampler, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 730);
 	}
 
 	internal RenderTextureDescriptor GetCompatibleDescriptor()
@@ -625,7 +625,7 @@ public sealed class PostProcessor : IDisposable
 		cameraData.cameraTargetDescriptor.width = newCameraTargetSize.x;
 		cameraData.cameraTargetDescriptor.height = newCameraTargetSize.y;
 		UpdateCameraResolutionPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateCameraResolutionPassData>("Update Camera Resolution", out passData, WaaaghProfileId.UpdateCameraResolution.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 778);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateCameraResolutionPassData>("Update Camera Resolution", out passData, WaaaghProfileId.UpdateCameraResolution.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 778);
 		passData.newCameraTargetSize = newCameraTargetSize;
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
@@ -643,7 +643,7 @@ public sealed class PostProcessor : IDisposable
 			return;
 		}
 		FinalizePassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<FinalizePassData>("PostProcess Finalize To Target", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 820))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<FinalizePassData>("PostProcess Finalize To Target", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\PostProcessor.cs", 820))
 		{
 			TextureHandle input = cameraStackTargets.CurrentPostProcessSource;
 			rasterRenderGraphBuilder.UseTexture(in input);

@@ -318,6 +318,7 @@ public class ChannelingLogic : UnitBuffComponentDelegate, IInterruptTurnStartHan
 		}
 		InitiativeHolder initiativeHolder = Entity.Initialize(new InitiativeHolder(base.Buff));
 		initiativeHolder.Initiative.Value = GetActionInitiative(out var inNextTurn);
+		initiativeHolder.Initiative.Roll = initiativeHolder.Initiative.Value;
 		initiativeHolder.Initiative.LastTurn = ((turnController.CurrentUnit?.Initiative.Value < initiativeHolder.Initiative.Value || inNextTurn) ? Game.Instance.Controllers.TurnController.GameRound : 0);
 		Game.Instance.State.LoadedAreaState.MainState.AddEntityData(initiativeHolder);
 		RequestSavableData<ComponentData>().InitiativeHolder = initiativeHolder;

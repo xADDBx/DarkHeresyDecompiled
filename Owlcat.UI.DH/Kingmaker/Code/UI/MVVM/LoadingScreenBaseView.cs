@@ -68,6 +68,18 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 	[UsedImplicitly]
 	private LoadingScreenGlitchAnimator m_GlitchAnimator;
 
+	[Header("OverlayFX")]
+	[SerializeField]
+	private Image m_OverlayFX;
+
+	[SerializeField]
+	[Range(0f, 100f)]
+	private float m_OverlayFXActivationThreshold = 100f;
+
+	private static readonly int OverlayFXPowerIndex = Shader.PropertyToID("_Power");
+
+	private bool m_OverlayFXActivated;
+
 	[Header("LoadingSprites")]
 	[SerializeField]
 	[UsedImplicitly]
@@ -242,6 +254,10 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 			m_IsInit = true;
 			base.gameObject.SetActive(value: false);
 			m_FadeAnimator.Initialize();
+			if (m_OverlayFX != null && m_OverlayFX.material != null)
+			{
+				m_OverlayFX.material = UnityEngine.Object.Instantiate(m_OverlayFX.material);
+			}
 		}
 	}
 
@@ -327,6 +343,11 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 		m_ProgressBarContainer.alpha = 1f;
 		m_ProgressPercentContainer.alpha = 1f;
 		KillWaitUserInputAnimation();
+		m_OverlayFXActivated = false;
+		if (m_OverlayFX != null && m_OverlayFX.material != null)
+		{
+			m_OverlayFX.material.SetFloat(OverlayFXPowerIndex, 0f);
+		}
 		Game.Instance.ResetLoadingProgress();
 		base.ViewModel.State = LoadingScreenState.ShowAnimation;
 		m_FadeAnimator.AppearAnimation(delegate
@@ -562,6 +583,11 @@ public class LoadingScreenBaseView : View<LoadingScreenVM>
 		}
 		float num = Mathf.Clamp(m_VirtualProgress * 100f, 0f, 100f);
 		ProgressPercent.text = UIUtilityText.AddPercentTo($"{num:0}");
+		if (!m_OverlayFXActivated && m_OverlayFX != null && m_OverlayFX.material != null && num >= m_OverlayFXActivationThreshold)
+		{
+			m_OverlayFX.material.SetFloat(OverlayFXPowerIndex, 1f);
+			m_OverlayFXActivated = true;
+		}
 	}
 
 	protected virtual void ShowUserInputWaiting(bool state)

@@ -62,6 +62,17 @@ public static class CameraRecorder
 		public ShaderTimeData ShaderTimeData;
 	}
 
+	private class ResetJitterPassData
+	{
+		public Matrix4x4 ViewMatrix;
+
+		public Matrix4x4 ProjectionMatrix;
+
+		public Matrix4x4 InverseProjectionMatrix;
+
+		public Matrix4x4 InverseViewProjectionMatrix;
+	}
+
 	private class VFXPrepareCameraPassData
 	{
 		public Camera Camera;
@@ -69,32 +80,32 @@ public static class CameraRecorder
 		public CullingResults CullingResults;
 	}
 
-	public static void SetupCamera(in RecordContext context, bool noJitter)
+	public static void SetupCamera(in RecordContext context, bool jitter)
 	{
 		PassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("Setup Camera", out passData, WaaaghProfileId.SetupCamera.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\CameraRecorder.cs", 56);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("Setup Camera", out passData, WaaaghProfileId.SetupCamera.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\CameraRecorder.cs", 56);
 		rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		rasterRenderGraphBuilder.AllowPassCulling(value: false);
 		passData.CameraData = context.CameraData;
 		passData.ShaderTimeData = context.RenderingData.ShaderTimeData;
-		SetupMatrices(passData, noJitter);
+		SetupMatrices(passData, jitter);
 		SetupParameters(passData);
 		rasterRenderGraphBuilder.SetRenderFunc<PassData>(Execute);
 	}
 
-	private static void SetupMatrices(PassData passData, bool noJitter)
+	private static void SetupMatrices(PassData passData, bool jitter)
 	{
 		if (passData.CameraData.renderType == CameraRenderType.Base)
 		{
-			PrepareCameraMatrices(passData, passData.CameraData, setInverseMatrices: true, noJitter);
+			PrepareCameraMatrices(passData, passData.CameraData, setInverseMatrices: true, jitter);
 			return;
 		}
-		PrepareCameraMatrices(passData, passData.CameraData, setInverseMatrices: true, noJitter);
-		PrepareClippingPlanes(passData, passData.CameraData, noJitter);
+		PrepareCameraMatrices(passData, passData.CameraData, setInverseMatrices: true, jitter);
+		PrepareClippingPlanes(passData, passData.CameraData, jitter);
 		PrepareBillboard(passData, passData.CameraData);
 	}
 
-	private static void PrepareCameraMatrices(PassData data, WaaaghCameraData cameraData, bool setInverseMatrices, bool noJitter)
+	private static void PrepareCameraMatrices(PassData data, WaaaghCameraData cameraData, bool setInverseMatrices, bool jitter)
 	{
 		data.ViewMatrix = cameraData.GetViewMatrix();
 		data.ProjectionMatrix = cameraData.GetProjectionMatrix();
@@ -102,7 +113,7 @@ public static class CameraRecorder
 		Matrix4x4 m = cameraData.GetGPUProjectionMatrix();
 		data.NonJitteredGpuProjectionMatrix = cameraData.GetGPUProjectionMatrixNoJitter();
 		data.NonJitteredViewProjectionMatrix = CoreMatrixUtils.MultiplyProjectionMatrix(data.NonJitteredGpuProjectionMatrix, data.ViewMatrix, cameraData.camera.orthographic);
-		if (noJitter)
+		if (!jitter)
 		{
 			m = data.NonJitteredGpuProjectionMatrix;
 			data.ProjectionMatrix = data.NonJitteredProjectionMatrix;
@@ -117,9 +128,9 @@ public static class CameraRecorder
 		}
 	}
 
-	private static void PrepareClippingPlanes(PassData data, WaaaghCameraData cameraData, bool noJitter)
+	private static void PrepareClippingPlanes(PassData data, WaaaghCameraData cameraData, bool jitter)
 	{
-		Matrix4x4 projMatrix = ((!noJitter) ? cameraData.GetGPUProjectionMatrix() : cameraData.GetGPUProjectionMatrixNoJitter());
+		Matrix4x4 projMatrix = ((!jitter) ? cameraData.GetGPUProjectionMatrixNoJitter() : cameraData.GetGPUProjectionMatrix());
 		Matrix4x4 viewMatrix = cameraData.GetViewMatrix();
 		GeometryUtility.CalculateFrustumPlanes(CoreMatrixUtils.MultiplyProjectionMatrix(projMatrix, viewMatrix, cameraData.camera.orthographic), data.CameraPlanes);
 		for (int i = 0; i < data.CameraPlanes.Length; i++)
@@ -200,8 +211,7 @@ public static class CameraRecorder
 		data.ScaledScreenParams = new Vector4(num, num2, 1f + 1f / num, 1f + 1f / num2);
 		data.ZBufferParams = zBufferParams;
 		data.ScreenSize = new Vector4(num, num2, 1f / num, 1f / num2);
-		float num9 = ((cameraData.StackInfo.RequiredTargets == CameraRequiredTargets.Unscaled) ? 0f : Math.Min((float)(0.0 - Math.Log(1f / cameraData.renderScale, 2.0)), 0f));
-		data.GlobalMipBias = new Vector2(num9, Mathf.Pow(2f, num9));
+		data.GlobalMipBias = MipBiasUtils.CalculateGlobalMipBias(cameraData, TemporalAA.GetAutoMipBias(cameraData));
 	}
 
 	private static void Execute(PassData data, RasterGraphContext context)
@@ -271,10 +281,37 @@ public static class CameraRecorder
 		cmd.SetGlobalVector(ShaderPropertyId._GlobalMipBias, data.GlobalMipBias);
 	}
 
+	public static void ResetJitter(in RecordContext context)
+	{
+		ResetJitterPassData passData;
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ResetJitterPassData>("Reset Camera Jitter", out passData, WaaaghProfileId.ResetCameraJitter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\CameraRecorder.cs", 355);
+		rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
+		rasterRenderGraphBuilder.AllowPassCulling(value: false);
+		WaaaghCameraData cameraData = context.CameraData;
+		Matrix4x4 viewMatrix = cameraData.GetViewMatrix();
+		Matrix4x4 projectionMatrixNoJitter = cameraData.GetProjectionMatrixNoJitter();
+		Matrix4x4 gPUProjectionMatrixNoJitter = cameraData.GetGPUProjectionMatrixNoJitter();
+		passData.ViewMatrix = viewMatrix;
+		passData.ProjectionMatrix = projectionMatrixNoJitter;
+		passData.InverseProjectionMatrix = Matrix4x4.Inverse(gPUProjectionMatrixNoJitter);
+		passData.InverseViewProjectionMatrix = Matrix4x4.Inverse(viewMatrix) * passData.InverseProjectionMatrix;
+		rasterRenderGraphBuilder.SetRenderFunc<ResetJitterPassData>(ExecuteResetJitter);
+	}
+
+	private static void ExecuteResetJitter(ResetJitterPassData data, RasterGraphContext context)
+	{
+		RasterCommandBuffer cmd = context.cmd;
+		cmd.SetViewProjectionMatrices(data.ViewMatrix, data.ProjectionMatrix);
+		cmd.SetGlobalMatrix(ShaderPropertyId.unity_MatrixInvP, data.InverseProjectionMatrix);
+		cmd.SetGlobalMatrix(ShaderPropertyId._InvProjMatrix, data.InverseProjectionMatrix);
+		cmd.SetGlobalMatrix(ShaderPropertyId.unity_MatrixInvVP, data.InverseViewProjectionMatrix);
+		cmd.SetGlobalMatrix(ShaderPropertyId._InvCameraViewProj, data.InverseViewProjectionMatrix);
+	}
+
 	public static void VFXPrepareCameraPass(in RecordContext context)
 	{
 		VFXPrepareCameraPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VFXPrepareCameraPassData>("VFXPrepareCameraPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\CameraRecorder.cs", 350);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<VFXPrepareCameraPassData>("VFXPrepareCameraPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\CameraRecorder.cs", 390);
 		passData.Camera = context.CameraData.camera;
 		passData.CullingResults = context.RenderingData.CullResults;
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);

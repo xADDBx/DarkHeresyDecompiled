@@ -656,8 +656,14 @@ public abstract class ItemEntity : MechanicEntity<BlueprintItem>, IUIDataProvide
 		itemEntity.SellTime = SellTime;
 		itemEntity.m_IdentifyRolls.AddRange(m_IdentifyRolls);
 		itemEntity.CopyVendorDataFrom(this);
+		CopyRuntimeStateTo(itemEntity);
 		Collection?.Insert(itemEntity);
 		return itemEntity;
+	}
+
+	public virtual void CopyRuntimeStateTo(ItemEntity other)
+	{
+		other.SourceContainer = SourceContainer;
 	}
 
 	public virtual void OnDidEquipped([NotNull] MechanicEntity wielder)

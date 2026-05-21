@@ -36,6 +36,18 @@ public class EncounterFinishMetricsEvent : MetricsEvent
 		return this;
 	}
 
+	public EncounterFinishMetricsEvent DamageToParty(int damage_to_party)
+	{
+		AddParam("damage_to_party", damage_to_party.ToString());
+		return this;
+	}
+
+	public EncounterFinishMetricsEvent DamageToEnemies(int damage_to_enemies)
+	{
+		AddParam("damage_to_enemies", damage_to_enemies.ToString());
+		return this;
+	}
+
 	public EncounterFinishMetricsEvent AdditionalGoal(string additional_goal)
 	{
 		AddParam("additional_goal", additional_goal);

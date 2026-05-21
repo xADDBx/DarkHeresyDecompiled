@@ -333,6 +333,12 @@ public class UnitMovementAgent : MonoBehaviour, IEntitySubscriber, IUnitLifeStat
 			GraphNode node = nearestNode.node;
 			currentPos = nearestNode.position;
 			Vector3 vector = currentPos + shift;
+			NNInfo nearestNode2 = ObstacleAnalyzer.GetNearestNode(vector);
+			if (nearestNode.node.Area != nearestNode2.node.Area)
+			{
+				targetNode = node as GridNodeBase;
+				return currentPos;
+			}
 			if (Game.Instance.CurrentModeType == GameModeType.Default && !Game.Instance.Controllers.TurnController.TurnBasedModeActive)
 			{
 				Linecast.LinecastGrid(node.Graph, currentPos, vector, node, out var hit, ObstacleAnalyzer.DefaultXZConstraint, ref Linecast.HasConnectionTransition.Instance);

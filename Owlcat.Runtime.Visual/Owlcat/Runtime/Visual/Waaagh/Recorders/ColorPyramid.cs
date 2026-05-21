@@ -31,7 +31,7 @@ internal sealed class ColorPyramid
 	public static void BuildColorPyramid(in RecordContext context, RendererListHandle rendererListDependency = default(RendererListHandle))
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Build Color Pyramid", out passData, WaaaghProfileId.BuildColorPyramid.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\ColorPyramid.cs", 28);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Build Color Pyramid", out passData, WaaaghProfileId.BuildColorPyramid.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\ColorPyramid.cs", 28);
 		passData.Input = context.FrameResources.CameraStackTargets.Color;
 		passData.Output = context.FrameResources.CameraAdditionalTargets.ColorPyramid;
 		passData.TextureSize = new int2(context.CameraData.cameraTargetDescriptor.width, context.CameraData.cameraTargetDescriptor.height);

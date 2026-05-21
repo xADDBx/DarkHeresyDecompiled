@@ -6,6 +6,8 @@ namespace Kingmaker.AreaLogic.Cutscenes;
 
 public static class CutsceneLock
 {
+	public static CutscenePlayerData ActiveLockCutscene;
+
 	public static bool Active
 	{
 		get
@@ -20,9 +22,14 @@ public static class CutsceneLock
 
 	public static void CheckRequest()
 	{
-		if (!Active && Game.Instance.EntityPools.Cutscenes.Any((CutscenePlayerData v) => v.RequireLockControl))
+		if (!Active)
 		{
-			Game.Instance.GameCommandQueue.ScheduleSwitchCutsceneLock(@lock: true);
+			CutscenePlayerData cutscenePlayerData = Game.Instance.EntityPools.Cutscenes.FirstOrDefault((CutscenePlayerData v) => v.RequireLockControl);
+			if (cutscenePlayerData != null)
+			{
+				Game.Instance.GameCommandQueue.ScheduleSwitchCutsceneLock(@lock: true);
+				ActiveLockCutscene = cutscenePlayerData;
+			}
 		}
 	}
 
@@ -31,6 +38,7 @@ public static class CutsceneLock
 		if (Active && Game.Instance.EntityPools.Cutscenes.All((CutscenePlayerData v) => !v.HasActiveLockControl))
 		{
 			Game.Instance.GameCommandQueue.ScheduleSwitchCutsceneLock(@lock: false);
+			ActiveLockCutscene = null;
 		}
 	}
 }

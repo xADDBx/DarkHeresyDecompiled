@@ -73,7 +73,7 @@ public class CharGenCareerPhaseVM : CharGenPhaseBaseVM
 		{
 			if (!m_Items.Any((CharGenCareerSelectionItemVM i) => i.CareerPath == path))
 			{
-				CharGenCareerSelectionItemVM charGenCareerSelectionItemVM = new CharGenCareerSelectionItemVM(path, OnHoverItem);
+				CharGenCareerSelectionItemVM charGenCareerSelectionItemVM = new CharGenCareerSelectionItemVM(path, OnHoverItem, base.BlueprintSelectionWithUI);
 				AddDisposable(charGenCareerSelectionItemVM);
 				m_Items.Add(charGenCareerSelectionItemVM);
 			}

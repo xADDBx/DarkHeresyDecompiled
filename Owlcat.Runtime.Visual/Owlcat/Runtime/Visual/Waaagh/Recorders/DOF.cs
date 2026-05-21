@@ -110,7 +110,7 @@ public static class DOF
 		int num2 = descriptor.width / num;
 		int height = descriptor.height / num;
 		DoFGaussianSetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFGaussianSetupPassData>("Setup DoF passes", out passData, WaaaghProfileId.SetupDoF.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 73))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFGaussianSetupPassData>("Setup DoF passes", out passData, WaaaghProfileId.SetupDoF.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 73))
 		{
 			float value = depthOfField.gaussianStart.value;
 			float y = Mathf.Max(value, depthOfField.gaussianEnd.value);
@@ -146,7 +146,7 @@ public static class DOF
 		RenderTextureDescriptor compatibleDescriptor4 = PostProcessor.GetCompatibleDescriptor(descriptor, num2, height, processor.StaticState.DefaultColorFormat);
 		TextureHandle input4 = RenderGraphUtility.CreateRenderGraphTexture(renderGraph, compatibleDescriptor4, "_PongTexture", clear: true, FilterMode.Bilinear);
 		DoFGaussianPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Compute CoC", out passData2, WaaaghProfileId.DOFComputeCOC.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 122))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Compute CoC", out passData2, WaaaghProfileId.DOFComputeCOC.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 122))
 		{
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);
 			passData2.sourceTexture = source;
@@ -166,7 +166,7 @@ public static class DOF
 			});
 		}
 		DoFGaussianPassData passData3;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, WaaaghProfileId.DOFDownscalePrefilter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 147))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, WaaaghProfileId.DOFDownscalePrefilter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 147))
 		{
 			rasterRenderGraphBuilder3.SetRenderAttachment(input2, 0);
 			rasterRenderGraphBuilder3.SetRenderAttachment(input3, 1);
@@ -191,7 +191,7 @@ public static class DOF
 			});
 		}
 		DoFGaussianPassData passData4;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur H", out passData4, WaaaghProfileId.DOFBlurH.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 175))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur H", out passData4, WaaaghProfileId.DOFBlurH.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 175))
 		{
 			rasterRenderGraphBuilder4.SetRenderAttachment(input4, 0);
 			rasterRenderGraphBuilder4.AllowGlobalStateModification(value: true);
@@ -211,7 +211,7 @@ public static class DOF
 			});
 		}
 		DoFGaussianPassData passData5;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur V", out passData5, WaaaghProfileId.DOFBlurV.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 198))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Blur V", out passData5, WaaaghProfileId.DOFBlurV.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 198))
 		{
 			rasterRenderGraphBuilder5.SetRenderAttachment(input3, 0);
 			rasterRenderGraphBuilder5.AllowGlobalStateModification(value: true);
@@ -231,7 +231,7 @@ public static class DOF
 			});
 		}
 		DoFGaussianPassData passData6;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Composite", out passData6, WaaaghProfileId.DOFComposite.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 221);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFGaussianPassData>("Depth of Field - Composite", out passData6, WaaaghProfileId.DOFComposite.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 221);
 		rasterRenderGraphBuilder6.SetRenderAttachment(dest, 0);
 		rasterRenderGraphBuilder6.AllowGlobalStateModification(value: true);
 		passData6.sourceTexture = source;
@@ -262,7 +262,7 @@ public static class DOF
 		int num2 = descriptor.width / num;
 		int num3 = descriptor.height / num;
 		DoFBokehSetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFBokehSetupPassData>("Setup DoF passes", out passData, WaaaghProfileId.SetupDoF.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 285))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<DoFBokehSetupPassData>("Setup DoF passes", out passData, WaaaghProfileId.SetupDoF.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 285))
 		{
 			float num4 = depthOfField.focalLength.value / 1000f;
 			float num5 = depthOfField.focalLength.value / depthOfField.aperture.value;
@@ -308,7 +308,7 @@ public static class DOF
 		RenderTextureDescriptor compatibleDescriptor3 = PostProcessor.GetCompatibleDescriptor(descriptor, num2, num3, GraphicsFormat.R16G16B16A16_SFloat);
 		TextureHandle input3 = RenderGraphUtility.CreateRenderGraphTexture(renderGraph, compatibleDescriptor3, "_PongTexture", clear: true, FilterMode.Bilinear);
 		DoFBokehPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Compute CoC", out passData2, WaaaghProfileId.DOFComputeCOC.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 346))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Compute CoC", out passData2, WaaaghProfileId.DOFComputeCOC.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 346))
 		{
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);
 			passData2.sourceTexture = source;
@@ -328,7 +328,7 @@ public static class DOF
 			});
 		}
 		DoFBokehPassData passData3;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, WaaaghProfileId.DOFDownscalePrefilter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 371))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Downscale & Prefilter Color + CoC", out passData3, WaaaghProfileId.DOFDownscalePrefilter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 371))
 		{
 			rasterRenderGraphBuilder3.SetRenderAttachment(input2, 0);
 			rasterRenderGraphBuilder3.AllowGlobalStateModification(value: true);
@@ -348,7 +348,7 @@ public static class DOF
 			});
 		}
 		DoFBokehPassData passData4;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Bokeh Blur", out passData4, WaaaghProfileId.DOFBlurBokeh.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 394))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Bokeh Blur", out passData4, WaaaghProfileId.DOFBlurBokeh.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 394))
 		{
 			rasterRenderGraphBuilder4.SetRenderAttachment(input3, 0);
 			passData4.sourceTexture = input2;
@@ -364,7 +364,7 @@ public static class DOF
 			});
 		}
 		DoFBokehPassData passData5;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Post-filtering", out passData5, WaaaghProfileId.DOFPostFilter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 413))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder5 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Post-filtering", out passData5, WaaaghProfileId.DOFPostFilter.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 413))
 		{
 			rasterRenderGraphBuilder5.SetRenderAttachment(input2, 0);
 			passData5.sourceTexture = input3;
@@ -380,7 +380,7 @@ public static class DOF
 			});
 		}
 		DoFBokehPassData passData6;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Composite", out passData6, WaaaghProfileId.DOFComposite.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 433);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder6 = renderGraph.AddRasterRenderPass<DoFBokehPassData>("Depth of Field - Composite", out passData6, WaaaghProfileId.DOFComposite.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\DOF.cs", 433);
 		rasterRenderGraphBuilder6.SetRenderAttachment(dest, 0);
 		rasterRenderGraphBuilder6.AllowGlobalStateModification(value: true);
 		passData6.sourceTexture = source;

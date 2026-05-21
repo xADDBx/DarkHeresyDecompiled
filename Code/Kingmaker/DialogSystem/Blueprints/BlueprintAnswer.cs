@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Code.Gameplay.Blueprints.Root;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Controllers.Dialog;
 using Kingmaker.Designers.EventConditionActionSystem.Actions;
 using Kingmaker.Designers.EventConditionActionSystem.Conditions;
@@ -242,7 +243,21 @@ public class BlueprintAnswer : BlueprintAnswerBase, ILocalizedStringHolder, IAli
 			}
 			else
 			{
-				bool flag = (OverrideShowCheckResult?.Invoke(null, this))?.Passed ?? Rulebook.Trigger(new RulePerformPartySkillCheck(ShowCheck.Type, ShowCheck.GetDC(), CapitalPartyChecksEnabled)).Success;
+				SkillCheckResult skillCheckResult = OverrideShowCheckResult?.Invoke(null, this);
+				bool flag;
+				if (skillCheckResult != null)
+				{
+					_ = skillCheckResult.Passed;
+					flag = skillCheckResult.Passed;
+				}
+				else
+				{
+					RulePerformPartySkillCheck rulePerformPartySkillCheck = new RulePerformPartySkillCheck(ShowCheck.Type, ShowCheck.GetDC(), CapitalPartyChecksEnabled);
+					flag = Rulebook.Trigger(rulePerformPartySkillCheck).Success;
+					Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.ShowAnswer).Initiator(rulePerformPartySkillCheck.Roller.Blueprint.AssetGuid).Target(AssetGuid)
+						.Result(flag)
+						.Send();
+				}
 				dialogState.AnswerChecksAdd(this, (!flag) ? CheckResult.Failed : CheckResult.Passed);
 				if (flag)
 				{

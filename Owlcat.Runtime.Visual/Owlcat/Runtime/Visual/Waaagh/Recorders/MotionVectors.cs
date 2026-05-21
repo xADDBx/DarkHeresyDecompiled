@@ -30,7 +30,7 @@ public static class MotionVectors
 	public static void MotionVectorsPass(in RecordContext context)
 	{
 		PassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("MotionVectorsPass", out passData, WaaaghProfileId.MotionVectorsPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\MotionVectors.cs", 26);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<PassData>("MotionVectorsPass", out passData, WaaaghProfileId.MotionVectorsPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\MotionVectors.cs", 26);
 		passData.motionVectorColor = context.FrameResources.CameraAdditionalTargets.MotionVectors;
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraAdditionalTargets.MotionVectors, 0);
 		passData.motionVectorDepth = context.FrameResources.CameraAdditionalTargets.MotionVectorsDepth;

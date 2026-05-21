@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.Designers;
@@ -143,6 +144,9 @@ public class PartyAwarenessController : IControllerTick, IController, IEntityPos
 			{
 				Reason = data
 			});
+			Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Awareness).Initiator(character.Blueprint.AssetGuid).Target(data.Blueprint.AssetGuid)
+				.Result(rulePerformSkillCheck.ResultIsSuccess)
+				.Send();
 			awarenessCheck.LastAwarenessValue[character.FromBaseUnitEntity()] = character.Actor.GetStat(StatType.SkillAwareness, null, default(StatContext), "RollAwareness");
 			flag = rulePerformSkillCheck.ResultIsSuccess;
 		}

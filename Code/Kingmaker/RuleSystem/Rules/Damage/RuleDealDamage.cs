@@ -161,7 +161,10 @@ public class RuleDealDamage : RulebookTargetEvent, IDamageHolderRule
 				}
 			}
 		}
-		ActiveEncounter.Current?.GetOptional<PartEncounterMetrics>()?.HandleIncomingDamage(base.TargetUnit, ResultValue);
+		if (base.TargetUnit != null)
+		{
+			ActiveEncounter.Current?.GetOptional<PartEncounterMetrics>()?.HandleIncomingDamage(base.TargetUnit, ResultValue);
+		}
 		if (ResultDamage.ResultCritsCountValue > 0)
 		{
 			BlueprintBodyPart bodyPart = ResultDamage.BodyPart;

@@ -4,6 +4,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Designers;
 using Kingmaker.DialogSystem.Blueprints;
 using Kingmaker.DialogSystem.State;
@@ -417,6 +418,9 @@ public class DialogEngine
 	private void PlayCheck(BlueprintCheck check)
 	{
 		SkillCheckResult skillCheckResult = ExecuteCheck(check);
+		Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.DialogCue).Initiator(skillCheckResult.ActingUnit.Blueprint.AssetGuid).Target(check.AssetGuid)
+			.Result(skillCheckResult.Passed)
+			.Send();
 		if (skillCheckResult.Passed)
 		{
 			LocalPassedChecks.Add(check);

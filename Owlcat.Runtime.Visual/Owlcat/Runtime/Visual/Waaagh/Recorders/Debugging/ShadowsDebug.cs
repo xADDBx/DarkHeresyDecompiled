@@ -47,7 +47,7 @@ public static class ShadowsDebug
 			return;
 		}
 		ShadowsDebugPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ShadowsDebugPassData>("DEBUG - Shadows", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\ShadowsDebug.cs", 49);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<ShadowsDebugPassData>("DEBUG - Shadows", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\ShadowsDebug.cs", 49);
 		passData.QuadTreeDebugger = debugContext.QuadTreeDebugger;
 		passData.ShadowManager = context.ShadowData.ShadowManager;
 		passData.DebugData = debugContext.DebugData;

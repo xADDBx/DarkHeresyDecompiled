@@ -71,4 +71,16 @@ public class PerformanceMetricsEvent : MetricsEvent
 		AddParam($"fps_{from}_{to}", stat.ToString());
 		return this;
 	}
+
+	public PerformanceMetricsEvent Id(string id)
+	{
+		AddParam("id", id);
+		return this;
+	}
+
+	public PerformanceMetricsEvent DeviceSystem(string device_os)
+	{
+		AddParam("device_os", device_os);
+		return this;
+	}
 }

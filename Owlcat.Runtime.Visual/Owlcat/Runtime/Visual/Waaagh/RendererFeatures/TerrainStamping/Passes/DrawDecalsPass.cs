@@ -33,7 +33,7 @@ internal static class DrawDecalsPass
 	public static void Record(in RecordContext context, TerrainStampingManagerParameters parameters, Material stencilMaskMaterial)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Draw Decals", out passData2, Profiling.TerrainStampingDrawDecals, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\DrawDecalsPass.cs", 35);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Terrain Stamping Draw Decals", out passData2, Profiling.TerrainStampingDrawDecals, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\TerrainStamping\\Passes\\DrawDecalsPass.cs", 35);
 		passData2.StencilMaskMaterial = stencilMaskMaterial;
 		passData2.TransitionBlendDitheringEnabled = OwlcatTerrainTransition.Active && parameters.TransitionBlendDithering;
 		passData2.DecalRendererList = CreateDecalRendererList(in context);

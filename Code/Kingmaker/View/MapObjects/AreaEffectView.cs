@@ -118,7 +118,7 @@ public class AreaEffectView : MechanicEntityView, IAreaEffectView, IEntityConfig
 		{
 			m_Target = new TargetWrapper(base.transform.position);
 		}
-		return Entity.Initialize(new AreaEffectEntity(UniqueId, base.IsInGameBySettings, m_Context, m_Blueprint, m_Target, m_CreationTime, m_Duration, OnUnit, m_UsePatternFromAbility));
+		return Entity.Initialize(new AreaEffectEntity(this, m_Context, m_Blueprint, m_Target, m_CreationTime, m_Duration, OnUnit, m_UsePatternFromAbility));
 	}
 
 	public void SpawnFxs()

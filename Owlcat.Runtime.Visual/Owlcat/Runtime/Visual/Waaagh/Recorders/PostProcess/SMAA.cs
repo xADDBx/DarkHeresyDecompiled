@@ -52,7 +52,7 @@ public static class SMAA
 		TextureHandle input3 = RenderGraphUtility.CreateRenderGraphTexture(renderGraph, compatibleDescriptor4, "_BlendTexture", clear: true);
 		Material sMAA = postProcessor.MatLib.SMAA;
 		SMAASetupPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<SMAASetupPassData>("SMAA Material Setup", out passData, WaaaghProfileId.SMAAMaterialSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 67))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<SMAASetupPassData>("SMAA Material Setup", out passData, WaaaghProfileId.SMAAMaterialSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 67))
 		{
 			passData.metrics = new Vector4(1f / (float)descriptor.width, 1f / (float)descriptor.height, descriptor.width, descriptor.height);
 			passData.areaTexture = postProcessor.Resources.Textures.SmaaAreaTex;
@@ -85,7 +85,7 @@ public static class SMAA
 			});
 		}
 		SMAAPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Edge Detection", out passData2, WaaaghProfileId.SMAAEdgeDetection.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 108))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Edge Detection", out passData2, WaaaghProfileId.SMAAEdgeDetection.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 108))
 		{
 			passData2.destinationTexture = input2;
 			rasterRenderGraphBuilder2.SetRenderAttachment(input2, 0);
@@ -105,7 +105,7 @@ public static class SMAA
 			});
 		}
 		SMAAPassData passData3;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Blend weights", out passData3, WaaaghProfileId.SMAABlendWeight.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 131))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder3 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Blend weights", out passData3, WaaaghProfileId.SMAABlendWeight.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 131))
 		{
 			passData3.destinationTexture = input3;
 			rasterRenderGraphBuilder3.SetRenderAttachment(input3, 0);
@@ -124,7 +124,7 @@ public static class SMAA
 			});
 		}
 		SMAAPassData passData4;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Neighborhood blending", out passData4, WaaaghProfileId.SMAANeighborhoodBlend.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 153))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder4 = renderGraph.AddRasterRenderPass<SMAAPassData>("SMAA Neighborhood blending", out passData4, WaaaghProfileId.SMAANeighborhoodBlend.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\SMAA.cs", 153))
 		{
 			rasterRenderGraphBuilder4.AllowGlobalStateModification(value: true);
 			passData4.destinationTexture = textureHandle;

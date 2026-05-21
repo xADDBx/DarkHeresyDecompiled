@@ -1,6 +1,10 @@
 using System;
 using System.Text;
+using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Settings;
+using Kingmaker.UnitLogic.Levelup.Selections;
+using Kingmaker.UnitLogic.Levelup.Selections.Feature;
+using Kingmaker.UnitLogic.Levelup.Selections.Stats;
 
 namespace Kingmaker.Code.Middleware.Metrics;
 
@@ -41,5 +45,24 @@ public static class MetricsUtils
 			GameDifficultyOption.Unfair => "unfair", 
 			_ => EnumToSnakeCase(difficulty), 
 		};
+	}
+
+	public static string GetMechanicalSelection(SelectionState selection)
+	{
+		if (selection is SelectionStateFeature { SelectionItem: var selectionItem })
+		{
+			return selectionItem?.Feature.AssetGuid;
+		}
+		if (selection is SelectionStateStats selectionStateStats)
+		{
+			foreach (StatType stat in selectionStateStats.Stats)
+			{
+				if (selectionStateStats.GetPointsSpent(stat) > 0)
+				{
+					return selectionStateStats.GetAdvancementBlueprint(stat)?.AssetGuid ?? stat.ToString();
+				}
+			}
+		}
+		return null;
 	}
 }

@@ -30,6 +30,9 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 	private TextMeshProUGUI m_MaxText;
 
 	[SerializeField]
+	private GameObject m_ChangeButtonsContainer;
+
+	[SerializeField]
 	private OwlcatMultiButton m_AddPointButton;
 
 	[SerializeField]
@@ -84,9 +87,7 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 				ChangePoints(isAdding: false);
 			}).AddTo(this);
 		}
-		m_AddPointButton.transform.parent.parent.gameObject.SetActive(base.ViewModel.HasSeveralPoints);
-		m_AddPointButton.gameObject.SetActive(value: false);
-		m_RemovePointButton.gameObject.SetActive(value: false);
+		m_ChangeButtonsContainer.SetActive(base.ViewModel.HasSeveralPoints);
 		base.ViewModel.HasPointsToSpend.Subscribe(delegate
 		{
 			UpdateChangePointButtons(m_IsHovered);
@@ -111,14 +112,8 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 		base.OnHover(value);
 		UpdateChangePointButtons(value);
 		m_IsHovered = value;
-		if (value && base.ViewModel.HasSeveralPoints)
-		{
-			m_Button.SetActiveLayer("Normal");
-		}
-		else
-		{
-			UpdateAccessibility();
-		}
+		m_Button.SetFocused(value);
+		UpdateAccessibility();
 	}
 
 	private void ChangePoints(bool isAdding)
@@ -132,8 +127,7 @@ public class CharGenLevelUpCharacteristicsItemView : CharGenLevelUpSelectorBaseI
 	{
 		if (base.ViewModel.HasSeveralPoints)
 		{
-			m_AddPointButton.SetActiveLayer((!isHovered && base.ViewModel.HasPointsToSpend.CurrentValue) ? "Faded" : "Normal");
-			m_RemovePointButton.SetActiveLayer((!isHovered && base.ViewModel.HasJustSpentPoints) ? "Faded" : "Normal");
+			m_ChangeButtonsContainer.SetActive(isHovered);
 			m_AddPointButton.gameObject.SetActive(base.ViewModel.HasPointsToSpend.CurrentValue);
 			m_RemovePointButton.gameObject.SetActive(base.ViewModel.HasJustSpentPoints);
 		}

@@ -14,6 +14,8 @@ public class ShaderMetadataRepository
 		public int[] PropertyNameIdWithVTAttribute;
 
 		public int[] PropertyIdWidthVTAttribute;
+
+		public int[] LayerMasksPerStack;
 	}
 
 	private Dictionary<Shader, ShaderMetadata> m_MetadataCache = new Dictionary<Shader, ShaderMetadata>();

@@ -62,7 +62,7 @@ public class SetGraphNodeToUseAbilityFromNode : BehaviourTreeNode
 		PropertyCalculatorBlueprint propertyCalculatorBlueprint = m_CalculatorBlueprint?.Value;
 		if (propertyCalculatorBlueprint != null)
 		{
-			return propertyCalculatorBlueprint.Value.GetValue(entity, null, target, null, ability) + propertyCalculatorBlueprint.Add;
+			return propertyCalculatorBlueprint.Value.GetValue(entity, null, target, null, ability, PropertyCalculator.ExceptionHandlingMode.ThrowImmediately) + propertyCalculatorBlueprint.Add;
 		}
 		return m_FunctionToMaximize.GetValue(entity, null, target, null, ability);
 	}

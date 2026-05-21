@@ -7,7 +7,7 @@ using Kingmaker.PubSubSystem.Core.Interfaces;
 
 namespace Kingmaker.Code.Middleware.Metrics;
 
-public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber, IDialogInteractionHandler
+public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber, IDialogInteractionHandler, IUIEventHandler
 {
 	public static void Init()
 	{
@@ -16,8 +16,11 @@ public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber, IDialo
 
 	public void HandleFullScreenUiChanged(bool state, FullScreenUIType fullScreenUIType)
 	{
-		InterfaceMetricsEvent.InterfaceStates state2 = ((!state) ? InterfaceMetricsEvent.InterfaceStates.Close : InterfaceMetricsEvent.InterfaceStates.Open);
-		Metrics.Interface.FullScreenType(fullScreenUIType).State(state2).Send();
+		if (fullScreenUIType != 0)
+		{
+			InterfaceMetricsEvent.InterfaceStates state2 = ((!state) ? InterfaceMetricsEvent.InterfaceStates.Close : InterfaceMetricsEvent.InterfaceStates.Open);
+			Metrics.Interface.FullScreenType(fullScreenUIType).State(state2).Send();
+		}
 	}
 
 	public void StartDialogInteraction(BlueprintDialog dialog)
@@ -28,5 +31,17 @@ public class MetricsEventBusListener : IFullScreenUIHandler, ISubscriber, IDialo
 	public void StopDialogInteraction(BlueprintDialog dialog)
 	{
 		Metrics.Dialog.Id(dialog.AssetGuid).State(DialogMetricsEvent.DialogState.Close).Send();
+	}
+
+	public void HandleUIEvent(UIEventType type)
+	{
+		if (type == UIEventType.FormationWindowOpen)
+		{
+			Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Formation).State(InterfaceMetricsEvent.InterfaceStates.Open).Send();
+		}
+		if (type == UIEventType.FormationWindowClose)
+		{
+			Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Formation).State(InterfaceMetricsEvent.InterfaceStates.Close).Send();
+		}
 	}
 }

@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace Owlcat.Runtime.Visual.VirtualTexture;
 
-[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\VirtualTexture\\VirtualTextureConstantBuffer.cs", needAccessors = false, generateCBuffer = false)]
+[GenerateHLSL(PackingRules.Exact, true, false, false, 1, false, false, false, -1, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\VirtualTexture\\VirtualTextureConstantBuffer.cs", needAccessors = false, generateCBuffer = false)]
 [BurstCompile]
 public struct VirtualTextureConstantBuffer
 {

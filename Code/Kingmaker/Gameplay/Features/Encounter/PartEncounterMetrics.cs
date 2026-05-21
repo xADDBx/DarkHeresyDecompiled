@@ -32,13 +32,16 @@ public sealed class PartEncounterMetrics : EntityPart<ActiveEncounter>, IHashabl
 
 	public void HandleIncomingDamage(BaseUnitEntity target, int amount)
 	{
-		if (target.IsPlayerFaction)
+		if (target != null)
 		{
-			DamageToParty += amount;
-		}
-		else
-		{
-			DamageToEnemies += amount;
+			if (target.IsPlayerFaction)
+			{
+				DamageToParty += amount;
+			}
+			else
+			{
+				DamageToEnemies += amount;
+			}
 		}
 	}
 

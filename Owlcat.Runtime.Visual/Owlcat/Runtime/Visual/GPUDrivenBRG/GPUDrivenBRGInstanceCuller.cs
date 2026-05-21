@@ -43,9 +43,9 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 	private struct PrepareCullingDataJob : IJob
 	{
 		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-		internal delegate bool _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate(in CullingSplit cullingSplit);
+		internal delegate bool _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_000018DF_0024PostfixBurstDelegate(in CullingSplit cullingSplit);
 
-		internal static class _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024BurstDirectCall
+		internal static class _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_000018DF_0024BurstDirectCall
 		{
 			private static IntPtr Pointer;
 
@@ -54,12 +54,12 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 			{
 				if (Pointer == (IntPtr)0)
 				{
-					Pointer = BurstCompiler.CompileFunctionPointer<_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate>(HasValidCullingSphere).Value;
+					Pointer = BurstCompiler.CompileFunctionPointer<_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_000018DF_0024PostfixBurstDelegate>(HasValidCullingSphere).Value;
 				}
 				P_0 = Pointer;
 				[MethodImpl(MethodImplOptions.AggressiveInlining)]
 				[BurstCompile]
-				[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate))]
+				[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_000018DF_0024PostfixBurstDelegate))]
 				static bool HasValidCullingSphere(in CullingSplit cullingSplit)
 				{
 					return Invoke(in cullingSplit);
@@ -116,10 +116,10 @@ public class GPUDrivenBRGInstanceCuller : IDisposable, IGPUDrivenMemoryProfiling
 			return true;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			[BurstCompile]
-			[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024PostfixBurstDelegate))]
+			[MonoPInvokeCallback(typeof(_003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_000018DF_0024PostfixBurstDelegate))]
 			static bool HasValidCullingSphere(in CullingSplit cullingSplit)
 			{
-				return _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_0000189D_0024BurstDirectCall.Invoke(in cullingSplit);
+				return _003CAreAllCullingSpheresValid_003Eg__HasValidCullingSphere_007C5_0_000018DF_0024BurstDirectCall.Invoke(in cullingSplit);
 			}
 		}
 

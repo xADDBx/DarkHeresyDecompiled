@@ -21,7 +21,7 @@ internal static class Wireframe
 	{
 		bool usingSceneViewWireframeMode = context.CameraData.cameraType == CameraType.SceneView && GL.wireframe;
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Wireframe", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\Wireframe.cs", 28);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Wireframe", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\Wireframe.cs", 28);
 		passData2.UsingSceneViewWireframeMode = usingSceneViewWireframeMode;
 		passData2.Camera = context.CameraData.camera;
 		passData2.WireRendererList = CreateWireRendererList(in context, usingSceneViewWireframeMode);

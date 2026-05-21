@@ -65,7 +65,7 @@ public static class LightingDebug
 	public static void Heatmap(DebugContext handler, in RecordContext context)
 	{
 		ClustersPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Clusters Heatmap", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 57);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Clusters Heatmap", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 57);
 		passData.Material = handler.MaterialLibrary.FullscreenDebug;
 		passData.Pass = handler.MaterialLibrary.ClustersHeatmapPass;
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);
@@ -78,7 +78,7 @@ public static class LightingDebug
 	private static void ShadowedHeatmap(DebugContext handler, RecordContext context)
 	{
 		ClustersPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Clusters Shadowed Heatmap", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 72);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Clusters Shadowed Heatmap", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 72);
 		passData.Material = handler.MaterialLibrary.FullscreenDebug;
 		passData.Pass = handler.MaterialLibrary.ClustersShadowedHeatmapPass;
 		rasterRenderGraphBuilder.SetRenderAttachment(context.FrameResources.CameraStackTargets.Color, 0);
@@ -91,7 +91,7 @@ public static class LightingDebug
 	private static void DeferredLightingComplexity(DebugContext handler, RecordContext context)
 	{
 		ClustersPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Deferred Lighting Complexity Heatmap", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 87);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Deferred Lighting Complexity Heatmap", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 87);
 		passData.Material = handler.MaterialLibrary.FullscreenDebug;
 		passData.Pass = handler.MaterialLibrary.ClustersDeferredLightingComplexityPass;
 		passData.DepthTexture = context.FrameResources.CameraStackTargets.Depth;
@@ -108,7 +108,7 @@ public static class LightingDebug
 	private static void FeatureTilesVariants(DebugContext handler, RecordContext context)
 	{
 		ClustersPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Tile Feature Variants", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 106);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Tile Feature Variants", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 106);
 		passData.Material = handler.MaterialLibrary.FullscreenDebug;
 		passData.Pass = handler.MaterialLibrary.ClustersFeatureVariantsPass;
 		passData.FeatureTilesBuffer = context.FrameResources.DeferredLightingResources.FeatureTilesBuffer;
@@ -125,7 +125,7 @@ public static class LightingDebug
 	private static void TileCoherency(DebugContext handler, RecordContext context)
 	{
 		ClustersPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Tile Coherency", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 125);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<ClustersPassData>("DEBUG - Tile Coherency", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 125);
 		passData.Material = handler.MaterialLibrary.FullscreenDebug;
 		passData.Pass = handler.MaterialLibrary.ClustersTileCoherencyPass;
 		passData.FeatureTilesBuffer = context.FrameResources.DeferredLightingResources.FeatureTilesBuffer;
@@ -147,7 +147,7 @@ public static class LightingDebug
 			return;
 		}
 		LightSortingCurvePassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<LightSortingCurvePassData>("DEBUG - Light Sorting Curve", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 160);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<LightSortingCurvePassData>("DEBUG - Light Sorting Curve", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\LightingDebug.cs", 160);
 		passData.Material = debugContext.MaterialLibrary.LightSortingCurveMaterial;
 		passData.TotalLightsCount = (int)context.Lights.LightDataParams.z;
 		passData.ColorStart = debugContext.DebugData.LightingDebug.LightSortingCurveColorStart;

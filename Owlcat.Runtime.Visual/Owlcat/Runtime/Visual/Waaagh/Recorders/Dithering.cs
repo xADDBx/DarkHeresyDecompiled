@@ -18,7 +18,7 @@ public static class Dithering
 	public static void SetupDitheringPass(in RecordContext context, bool allowJitter)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("SetupDitheringPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Dithering.cs", 22);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("SetupDitheringPass", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Dithering.cs", 22);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		WaaaghCameraData cameraData = context.CameraData;
 		DitheringSettings ditheringSettings = WaaaghPipeline.Asset.DitheringSettings;

@@ -181,7 +181,7 @@ public sealed class FollowPathMovementStrategy : IUnitMovementStrategy
 			if (num2 && !flag3 && (double)(path.vectorPath[0] - abstractUnitEntity.Position).magnitude > 0.5)
 			{
 				path.Release(this);
-				path = PathfindingService.Instance.FindPathRT_Blocking(m_movementAgent, m_Destination.Value, 0.3f);
+				path = PathfindingService.Instance.FindPathRT_Blocking(m_movementAgent, m_Destination.Value, approachRadiusMeters);
 				path.Claim(this);
 			}
 			PathCursor.SetPath(abstractUnitEntity, path);

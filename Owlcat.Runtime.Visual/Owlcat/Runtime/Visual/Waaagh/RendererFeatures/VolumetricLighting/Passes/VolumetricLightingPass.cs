@@ -155,7 +155,7 @@ internal static class VolumetricLightingPass
 	public static void Record(in RecordContext context, VolumetricLightingRendererFeature feature, Material shadowDownsampleMaterial, VolumetricLightingData volumetricLightingData)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("VolumetricLighting", out passData, WaaaghProfileId.VolumetricLighting.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\VolumetricLightingPass.cs", 105);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("VolumetricLighting", out passData, WaaaghProfileId.VolumetricLighting.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\VolumetricLightingPass.cs", 105);
 		passData.ShadowmapDownsampleMaterial = shadowDownsampleMaterial;
 		passData.VoxelizationShader = feature.Resources.VoxelizationShader;
 		passData.LightingShader = feature.Resources.LightingShader;

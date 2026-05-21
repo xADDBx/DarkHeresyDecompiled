@@ -6,6 +6,7 @@ using Kingmaker.QA;
 using Owlcat.QA.Validation;
 using Owlcat.Runtime.Core.Logging;
 using Owlcat.Runtime.Core.Utility;
+using Owlcat.Runtime.Core.Utility.EditorAttributes;
 using UnityEngine;
 
 namespace Kingmaker.Designers.EventConditionActionSystem.Conditions;
@@ -17,6 +18,7 @@ public class UnitHasRangedWeaponEquipped : Condition
 	[SerializeReference]
 	public AbstractUnitEvaluator Unit;
 
+	[InfoBox("Actually, checking current weapon set")]
 	public bool CheckMainSlotOnly;
 
 	public override string GetDescription()

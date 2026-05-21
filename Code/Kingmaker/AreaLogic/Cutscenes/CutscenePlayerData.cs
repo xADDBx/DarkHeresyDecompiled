@@ -212,7 +212,18 @@ public class CutscenePlayerData : Entity, ICutscenePlayerData, IReloadMechanicsH
 			{
 				if (!m_Cutscene.LockControl)
 				{
-					return m_BlockPlayerData.Any((CutscenePlayerBlockData b) => b.IsActivated && !b.IsComplete && b.Block.LockControl);
+					return m_BlockPlayerData.Any(delegate(CutscenePlayerBlockData b)
+					{
+						if (b != null && b.IsActivated && !b.IsComplete)
+						{
+							CutsceneBlock block = b.Block;
+							if (block != null)
+							{
+								return block.LockControl;
+							}
+						}
+						return false;
+					});
 				}
 				return true;
 			}

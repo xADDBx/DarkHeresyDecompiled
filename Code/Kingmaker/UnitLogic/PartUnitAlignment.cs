@@ -219,14 +219,16 @@ public class PartUnitAlignment : BaseUnitPart, IAlignmentRankShiftHandler, ISubs
 			Source = source
 		};
 		PFLog.Alignment.Log($"{base.Owner} had alignment shift: {shift.Axis} {shift.Value}");
-		Metrics.Alignment.Id(base.Owner.Blueprint.AssetGuid).Axis(shift.Axis).Value(shift.Value)
-			.CharacterLevel(base.Owner.Progression.CharacterLevel)
-			.Send();
 		int num = GetAlignmentRank(shift.Axis) + shift.Value;
 		int alignmentRank = GetAlignmentRank(shift.Axis);
 		m_AxisToRankMap[shift.Axis] = num;
 		int currentMark = ConfigRoot.Instance.AlignmentMarksRoot.GetMarkForRank(shift.Axis, num);
 		int previousMark = ConfigRoot.Instance.AlignmentMarksRoot.GetMarkForRank(shift.Axis, alignmentRank);
+		Metrics.Alignment.Id(base.Owner.Blueprint.AssetGuid).Axis(shift.Axis).Shift(shift.Value)
+			.Value(num)
+			.Mark(currentMark)
+			.CharacterLevel(base.Owner.Progression.CharacterLevel)
+			.Send();
 		if (currentMark != previousMark && CanHaveMarkInAxis(shift.Axis, currentMark, out var _))
 		{
 			alignmentShiftHistoryEntry.AchievedNewMark = true;

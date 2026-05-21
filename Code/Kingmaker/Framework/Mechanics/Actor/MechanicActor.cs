@@ -9,6 +9,7 @@ using Kingmaker.EntitySystem;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Stats.Base;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.RuleSystem.Rules.Modifiers;
 using Kingmaker.Utility.CodeTimer;
@@ -203,6 +204,15 @@ public sealed class MechanicActor
 		}
 	}
 
+	private StatModifierScope ResolveScope(StatModifierScope declaredScope)
+	{
+		if (declaredScope == StatModifierScope.Global && _entity is AbstractUnitEntity { IsPreviewUnit: not false })
+		{
+			return StatModifierScope.Owner;
+		}
+		return declaredScope;
+	}
+
 	internal void HandleFactActivated(EntityFact fact)
 	{
 		List<AffectedStatEntry> value;
@@ -220,10 +230,10 @@ public sealed class MechanicActor
 				using (component.SetScope())
 				{
 					statModifier.CollectAffectedStats(value);
-					StatModifierScope scope = statModifier.Scope;
+					StatModifierScope statModifierScope = ResolveScope(statModifier.Scope);
 					foreach (AffectedStatEntry item in value)
 					{
-						if (scope == StatModifierScope.Global)
+						if (statModifierScope == StatModifierScope.Global)
 						{
 							GlobalStatModifierRegistry.Instance.Register(component, statModifier, item.Stat, item.IsConditional, item.DependsOnStats);
 							num2 |= (ulong)(1L << (int)item.Stat);
@@ -231,7 +241,7 @@ public sealed class MechanicActor
 						}
 						List<RegisteredModifier>[] modifiersByStat = _modifiersByStat;
 						int stat = (int)item.Stat;
-						(modifiersByStat[stat] ?? (modifiersByStat[stat] = new List<RegisteredModifier>())).Add(new RegisteredModifier(component, statModifier, item.IsConditional, item.DependsOnStats, scope));
+						(modifiersByStat[stat] ?? (modifiersByStat[stat] = new List<RegisteredModifier>())).Add(new RegisteredModifier(component, statModifier, item.IsConditional, item.DependsOnStats, statModifierScope));
 						if (item.IsConditional && item.DependsOnStats == null)
 						{
 							_isCacheable[(int)item.Stat] = false;
@@ -285,10 +295,10 @@ public sealed class MechanicActor
 				using (component.SetScope())
 				{
 					statModifier.CollectAffectedStats(value);
-					StatModifierScope scope = statModifier.Scope;
+					StatModifierScope statModifierScope = ResolveScope(statModifier.Scope);
 					foreach (AffectedStatEntry item in value)
 					{
-						if (scope == StatModifierScope.Global)
+						if (statModifierScope == StatModifierScope.Global)
 						{
 							GlobalStatModifierRegistry.Instance.Unregister(component, item.Stat);
 							num2 |= (ulong)(1L << (int)item.Stat);
@@ -351,17 +361,17 @@ public sealed class MechanicActor
 				using (component.SetScope())
 				{
 					statModifier.CollectAffectedStats(value);
-					StatModifierScope scope = statModifier.Scope;
+					StatModifierScope statModifierScope = ResolveScope(statModifier.Scope);
 					foreach (AffectedStatEntry item in value)
 					{
-						if (scope == StatModifierScope.Global)
+						if (statModifierScope == StatModifierScope.Global)
 						{
 							GlobalStatModifierRegistry.Instance.Register(component, statModifier, item.Stat, item.IsConditional, item.DependsOnStats);
 							continue;
 						}
 						List<RegisteredModifier>[] modifiersByStat = _modifiersByStat;
 						int stat = (int)item.Stat;
-						(modifiersByStat[stat] ?? (modifiersByStat[stat] = new List<RegisteredModifier>())).Add(new RegisteredModifier(component, statModifier, item.IsConditional, item.DependsOnStats, scope));
+						(modifiersByStat[stat] ?? (modifiersByStat[stat] = new List<RegisteredModifier>())).Add(new RegisteredModifier(component, statModifier, item.IsConditional, item.DependsOnStats, statModifierScope));
 						if (item.IsConditional && item.DependsOnStats != null)
 						{
 							StatType[] dependsOnStats = item.DependsOnStats;

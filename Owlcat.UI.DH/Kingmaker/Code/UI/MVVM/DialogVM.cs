@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Root;
-using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Controllers.Dialog;
 using Kingmaker.DialogSystem;
@@ -151,7 +150,6 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 		}).AddTo(this);
 		UpdateCue();
 		FillHistory();
-		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Dialogue).State(InterfaceMetricsEvent.InterfaceStates.Open).Send();
 	}
 
 	protected override void OnDispose()
@@ -163,7 +161,6 @@ public class DialogVM : ViewModel, IDialogCueHandler, ISubscriber, IDialogHistor
 		ClearPortrait();
 		DisposeCue();
 		DisposeAnswers();
-		Metrics.Interface.Type(InterfaceMetricsEvent.InterfaceTypes.Dialogue).State(InterfaceMetricsEvent.InterfaceStates.Close).Send();
 	}
 
 	private void FillHistory()

@@ -64,7 +64,7 @@ public static class UberPost
 	public static void SetupBloomEnhancedPass(PostProcessor postProcessor, RenderGraph rendergraph, in TextureHandle bloomTexture)
 	{
 		UberSetupBloomPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, WaaaghProfileId.UberPostSetupBloomPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\UberPost.cs", 29);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, WaaaghProfileId.UberPostSetupBloomPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\UberPost.cs", 29);
 		RenderTextureDescriptor descriptor = postProcessor.FrameState.Descriptor;
 		BloomEnhanced bloomEnhanced = postProcessor.Overrides.BloomEnhanced;
 		Color color = bloomEnhanced.tint.value.linear;
@@ -119,7 +119,7 @@ public static class UberPost
 	internal static void SetupBloomPass(PostProcessor postProcessor, RenderGraph rendergraph, in TextureHandle bloomTexture)
 	{
 		UberSetupBloomPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, WaaaghProfileId.UberPostSetupBloomPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\UberPost.cs", 96);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = rendergraph.AddRasterRenderPass<UberSetupBloomPassData>("UberPost - UberPostSetupBloomPass", out passData, WaaaghProfileId.UberPostSetupBloomPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\UberPost.cs", 96);
 		Bloom bloom = postProcessor.Overrides.Bloom;
 		RenderTextureDescriptor descriptor = postProcessor.FrameState.Descriptor;
 		Color color = bloom.tint.value.linear;
@@ -249,7 +249,7 @@ public static class UberPost
 		TextureHandle input2 = ((rTHandle != null) ? renderGraph.ImportTexture(rTHandle) : TextureHandle.nullHandle);
 		Vector4 userLutParams = ((!colorLookup.IsActive()) ? Vector4.zero : new Vector4(1f / (float)colorLookup.texture.value.width, 1f / (float)colorLookup.texture.value.height, (float)colorLookup.texture.value.height - 1f, colorLookup.contribution.value));
 		UberPostPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<UberPostPassData>("Postprocessing Uber Post Pass", out passData, WaaaghProfileId.UberPost.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\PostProcess\\UberPost.cs", 296))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<UberPostPassData>("Postprocessing Uber Post Pass", out passData, WaaaghProfileId.UberPost.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\PostProcess\\UberPost.cs", 296))
 		{
 			rasterRenderGraphBuilder.AllowGlobalStateModification(value: true);
 			passData.destinationTexture = dest;

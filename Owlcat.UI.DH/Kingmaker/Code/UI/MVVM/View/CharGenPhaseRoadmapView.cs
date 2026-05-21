@@ -1,4 +1,5 @@
 using Code.View.UI.Helpers;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Root;
 using Kingmaker.Code.View.UI.UIUtilities;
 using Owlcat.UI;
@@ -82,6 +83,7 @@ public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TVie
 		if (UtilityNet.IsControlMainCharacter())
 		{
 			base.OnClick();
+			Metrics.Chargen.Tab(base.ViewModel.PhaseType.ToString()).Send();
 		}
 	}
 

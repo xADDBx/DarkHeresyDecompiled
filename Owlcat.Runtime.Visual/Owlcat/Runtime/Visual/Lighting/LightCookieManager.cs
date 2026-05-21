@@ -598,7 +598,7 @@ public class LightCookieManager : IDisposable
 	public void UpdateLightCookies(RenderGraph renderGraph)
 	{
 		UpdateLightCookiePassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateLightCookiePassData>("UpdateLightCookiePass", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Lighting\\LightCookieManager.cs", 378);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<UpdateLightCookiePassData>("UpdateLightCookiePass", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Lighting\\LightCookieManager.cs", 378);
 		passData2.hasAnyLightWithCookie = m_LightCookieDataList.Length > 0;
 		passData2.atlasTexture = m_AtlasTextureHandle;
 		passData2.blitCookieTextures = m_CookieTextures;

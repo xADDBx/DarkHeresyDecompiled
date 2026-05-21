@@ -86,7 +86,7 @@ public class SetGraphNodeToUseAoeAbilityToNode : BehaviourTreeNode
 			{
 				if (!item2.IsDeadOrUnconscious || includeDeadUnitsInCalculations)
 				{
-					num += ((calculatorBlueprint != null) ? (calculatorBlueprint.Value.GetValue(caster, null, item2, null, ability) + calculatorBlueprint.Add) : utilityFunction.GetValue(caster, null, item2, null, ability));
+					num += ((calculatorBlueprint != null) ? (calculatorBlueprint.Value.GetValue(caster, null, item2, null, ability, PropertyCalculator.ExceptionHandlingMode.ThrowImmediately) + calculatorBlueprint.Add) : utilityFunction.GetValue(caster, null, item2, null, ability, PropertyCalculator.ExceptionHandlingMode.ThrowImmediately));
 				}
 			}
 			if (num > maxScore)

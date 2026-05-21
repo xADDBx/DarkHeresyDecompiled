@@ -54,7 +54,7 @@ public sealed class SelectionStateStats : SelectionState
 	}
 
 	[CanBeNull]
-	private BlueprintStatAdvancement GetAdvancementBlueprint(StatType statType)
+	public BlueprintStatAdvancement GetAdvancementBlueprint(StatType statType)
 	{
 		return Blueprint.Advancements.FirstOrDefault((BlueprintStatAdvancement i) => i.Stat == statType);
 	}

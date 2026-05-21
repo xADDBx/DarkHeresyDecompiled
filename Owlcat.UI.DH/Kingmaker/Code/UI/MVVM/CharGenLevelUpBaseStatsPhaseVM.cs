@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.EntitySystem.Stats.Base;
@@ -21,6 +22,10 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 
 	private CharGenLevelUpCharacteristicsItemVM m_PrevSelectedItem;
 
+	private readonly PartyStatsOverviewVM m_PartyStatsOverviewVM;
+
+	private IDisposable m_OverviewSubscription;
+
 	public readonly ObservableList<LevelUpSkillLinkedAttributeVM> BaseAttributeList = new ObservableList<LevelUpSkillLinkedAttributeVM>();
 
 	public ReadOnlyReactiveProperty<int> RemainingPoints => m_RemainingPoints;
@@ -29,12 +34,13 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 
 	public bool IsInChargen => m_CharGenContext.CharGenConfig.Mode != CharGenMode.LevelUp;
 
-	public CharGenLevelUpBaseStatsPhaseVM(CharGenContext charGenContext, SelectionStateStats selectionStats, CharGenPhaseType phaseType, InfoSectionVM infoSectionVM, int rank = 0)
+	public CharGenLevelUpBaseStatsPhaseVM(CharGenContext charGenContext, SelectionStateStats selectionStats, CharGenPhaseType phaseType, InfoSectionVM infoSectionVM, PartyStatsOverviewVM partyStatsOverviewVM, int rank = 0)
 		: base(charGenContext, phaseType, infoSectionVM, rank)
 	{
 		SelectionStats = selectionStats;
 		base.BlueprintSelectionWithUI = selectionStats.Blueprint;
 		SetPhaseHint(base.BlueprintSelectionWithUI?.CallToAction?.Text ?? string.Empty);
+		m_PartyStatsOverviewVM = partyStatsOverviewVM;
 		CreateItemList();
 		m_PhaseName.Value = selectionStats.Blueprint.Title;
 		base.DisplayMode = ((charGenContext.CharGenConfig.Mode != CharGenMode.LevelUp) ? CharGenDisplayMode.DollOnly : CharGenDisplayMode.PortraitOnly);
@@ -68,6 +74,31 @@ public class CharGenLevelUpBaseStatsPhaseVM<TSelectorItem> : CharGenLevelUpBaseP
 		{
 			i.UpdatePointsState();
 		});
+		m_OverviewSubscription?.Dispose();
+		m_OverviewSubscription = base.HoveredItem.CombineLatest(base.SelectedItem, (TSelectorItem hovered, TSelectorItem selected) => hovered ?? selected).Subscribe(RefreshOverview);
+	}
+
+	protected override void OnEndDetailedView()
+	{
+		base.OnEndDetailedView();
+		m_OverviewSubscription?.Dispose();
+		m_OverviewSubscription = null;
+		m_PartyStatsOverviewVM?.Hide();
+	}
+
+	private void RefreshOverview(CharGenLevelUpCharacteristicsItemVM focus)
+	{
+		if (m_PartyStatsOverviewVM != null)
+		{
+			if (focus == null)
+			{
+				m_PartyStatsOverviewVM.Hide();
+			}
+			else
+			{
+				m_PartyStatsOverviewVM.ShowForStat(focus.Stat, base.Unit);
+			}
+		}
 	}
 
 	protected override bool CheckIsCompleted()

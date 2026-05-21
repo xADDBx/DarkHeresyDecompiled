@@ -46,10 +46,6 @@ public static class TemporalAA
 		internal float m_JitterScale;
 
 		[SerializeField]
-		[FormerlySerializedAs("mipBias")]
-		internal float m_MipBias;
-
-		[SerializeField]
 		[FormerlySerializedAs("varianceClampScale")]
 		internal float m_VarianceClampScale;
 
@@ -91,23 +87,11 @@ public static class TemporalAA
 		{
 			get
 			{
-				return m_JitterScale;
+				return Mathf.Clamp(m_JitterScale, 0.5f, 1f);
 			}
 			set
 			{
-				m_JitterScale = Mathf.Clamp01(value);
-			}
-		}
-
-		public float mipBias
-		{
-			get
-			{
-				return m_MipBias;
-			}
-			set
-			{
-				m_MipBias = Mathf.Clamp(value, -1f, 0f);
+				m_JitterScale = Mathf.Clamp(value, 0.5f, 1f);
 			}
 		}
 
@@ -141,7 +125,6 @@ public static class TemporalAA
 			result.m_Quality = TemporalAAQuality.High;
 			result.m_FrameInfluence = 0.1f;
 			result.m_JitterScale = 1f;
-			result.m_MipBias = 0f;
 			result.m_VarianceClampScale = 0.9f;
 			result.m_ContrastAdaptiveSharpening = 0f;
 			result.resetHistoryFrames = 0;
@@ -224,6 +207,19 @@ public static class TemporalAA
 			result = Matrix4x4.Translate(new Vector3(x, y, 0f));
 		}
 		return result;
+	}
+
+	internal static float GetAutoMipBias(WaaaghCameraData cameraData)
+	{
+		if (!cameraData.IsTemporalAAEnabled())
+		{
+			return 0f;
+		}
+		if (!cameraData.IsSTPEnabled())
+		{
+			return 0f - cameraData.taaSettings.jitterScale;
+		}
+		return -1f;
 	}
 
 	internal static void CalculateJitter(int frameIndex, out Vector2 jitter, out bool allowScaling)
@@ -332,7 +328,7 @@ public static class TemporalAA
 		TextureHandle input = renderGraph.ImportTexture(accumulationTexture);
 		TextureHandle input2 = (flag ? srcMotionVectors : renderGraph.defaultResources.blackTexture);
 		TaaPassData passData;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing", out passData, WaaaghProfileId.TAA.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\TemporalAA.cs", 413))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing", out passData, WaaaghProfileId.TAA.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\TemporalAA.cs", 413))
 		{
 			passData.dstTex = dstColor;
 			rasterRenderGraphBuilder.SetRenderAttachment(dstColor, 0);
@@ -388,7 +384,7 @@ public static class TemporalAA
 		}
 		int passIndex = taaMaterial.shader.passCount - 1;
 		TaaPassData passData2;
-		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing Copy History", out passData2, WaaaghProfileId.TAACopyHistory.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\TemporalAA.cs", 472))
+		using (IRasterRenderGraphBuilder rasterRenderGraphBuilder2 = renderGraph.AddRasterRenderPass<TaaPassData>("Temporal Anti-aliasing Copy History", out passData2, WaaaghProfileId.TAACopyHistory.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\TemporalAA.cs", 472))
 		{
 			passData2.dstTex = input;
 			rasterRenderGraphBuilder2.SetRenderAttachment(input, 0);

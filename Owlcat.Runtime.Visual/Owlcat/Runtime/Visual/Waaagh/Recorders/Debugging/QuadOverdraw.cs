@@ -54,7 +54,7 @@ internal static class QuadOverdraw
 	public static void Record(in RendererRecordContext context, TextureHandle targetColor, TextureHandle targetDepth)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Quad Overdraw Debug", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\QuadOverdraw.cs", 45);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Quad Overdraw Debug", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\QuadOverdraw.cs", 45);
 		TextureDesc desc = new TextureDesc(Mathf.CeilToInt((float)context.CameraData.cameraTargetDescriptor.width / 2f), Mathf.CeilToInt((float)context.CameraData.cameraTargetDescriptor.height / 2f));
 		desc.format = GraphicsFormat.R32_UInt;
 		desc.clearBuffer = true;

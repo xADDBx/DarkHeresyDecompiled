@@ -1,5 +1,6 @@
 using System;
 using JetBrains.Annotations;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
@@ -57,6 +58,9 @@ public class RulePerformIdentifyItem : RulebookEvent<UnitEntity>
 		};
 		rulePerformSkillCheck.ChanceRule.DifficultyModifiers.Add(ModifierType.ValAdd, Bonus + SpellBonus, this, ModifierDescriptor.None);
 		context.Trigger(rulePerformSkillCheck);
+		Metrics.SkillCheck.Type(SkillCheckMetricsEvent.Types.Identify).Initiator(base.Initiator.Blueprint.AssetGuid).Target(Item.Blueprint.AssetGuid)
+			.Result(rulePerformSkillCheck.ResultIsSuccess)
+			.Send();
 		if (rulePerformSkillCheck.ResultIsSuccess)
 		{
 			Item.Identify();

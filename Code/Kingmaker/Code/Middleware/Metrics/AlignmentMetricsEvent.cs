@@ -26,6 +26,12 @@ public class AlignmentMetricsEvent : MetricsEvent
 		return this;
 	}
 
+	public AlignmentMetricsEvent Shift(int shift)
+	{
+		AddParam("shift", shift.ToString());
+		return this;
+	}
+
 	public AlignmentMetricsEvent Value(int value)
 	{
 		AddParam("value", value.ToString());
@@ -35,6 +41,12 @@ public class AlignmentMetricsEvent : MetricsEvent
 	public AlignmentMetricsEvent CharacterLevel(int level)
 	{
 		AddParam("level", level.ToString());
+		return this;
+	}
+
+	public AlignmentMetricsEvent Mark(int mark)
+	{
+		AddParam("mark", mark.ToString());
 		return this;
 	}
 }

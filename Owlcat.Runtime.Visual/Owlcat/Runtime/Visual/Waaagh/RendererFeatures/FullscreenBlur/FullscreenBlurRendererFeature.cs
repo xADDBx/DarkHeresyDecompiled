@@ -49,7 +49,7 @@ internal sealed class FullscreenBlurRendererFeature : IRendererFeature, IDisposa
 			return;
 		}
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Fullscreen Blur", out passData2, WaaaghProfileId.FullscreenBlur.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\FullscreenBlur\\FullscreenBlurRendererFeature.cs", 62);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Fullscreen Blur", out passData2, WaaaghProfileId.FullscreenBlur.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\FullscreenBlur\\FullscreenBlurRendererFeature.cs", 62);
 		passData2.Feature = m_Asset;
 		passData2.BlurMaterial = m_BlurMaterial;
 		passData2.CameraColorRT = context.FrameResources.CameraStackTargets.Color;

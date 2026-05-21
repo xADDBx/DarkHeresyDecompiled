@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json.Serialization;
 using Kingmaker;
-using Kingmaker.Utility.BuildModeUtils;
 using Kingmaker.Utility.UnityExtensions;
 using Newtonsoft.Json;
+using UnityEngine;
 
 namespace Code.Framework.Sound.Base.Validation;
 
@@ -74,7 +74,7 @@ public class SoundEventValidation
 		{
 			return false;
 		}
-		if (value2.ForRerecording && BuildModeUtility.IsRelease)
+		if (value2.ForRerecording && !Application.isEditor)
 		{
 			return false;
 		}

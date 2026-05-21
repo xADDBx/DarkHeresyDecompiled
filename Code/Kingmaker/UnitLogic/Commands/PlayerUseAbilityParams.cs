@@ -124,7 +124,7 @@ public sealed class PlayerUseAbilityParams : UnitUseAbilityParams, IMemoryPackab
 			}
 		}
 		base.Ability = abilityData;
-		Metrics.Ability.Id(abilityData.Blueprint.AssetGuid).Caster(abilityData.Caster.Blueprint.AssetGuid).Modifier(abilityData.Fact?.PlayerAssignedModifier?.AssetGuid)
+		Metrics.Ability.Id(abilityData.Blueprint.AssetGuid).Caster(abilityData.Caster?.Blueprint.AssetGuid).Modifier(abilityData.Fact?.PlayerAssignedModifier?.AssetGuid)
 			.Toggles((from t in (abilityData.Caster as BaseUnitEntity)?.ToggleAbilities.Visible
 				where t.Enabled
 				select t.Blueprint.AssetGuid))

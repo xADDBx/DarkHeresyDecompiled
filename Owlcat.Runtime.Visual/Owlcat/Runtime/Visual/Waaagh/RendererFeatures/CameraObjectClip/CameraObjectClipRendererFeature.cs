@@ -118,7 +118,7 @@ public sealed class CameraObjectClipRendererFeature : IRendererFeature, IDisposa
 	private void SetupGlobalState(in RecordContext context)
 	{
 		SetupPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("Setup Camera Object Clip", out passData2, WaaaghProfileId.CameraObjectClipSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CameraObjectClip\\CameraObjectClipRendererFeature.cs", 115);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<SetupPassData>("Setup Camera Object Clip", out passData2, WaaaghProfileId.CameraObjectClipSetup.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CameraObjectClip\\CameraObjectClipRendererFeature.cs", 115);
 		passData2.Asset = m_Asset;
 		passData2.ClippingSettings = m_ClippingSettings;
 		passData2.NoiseTexture = m_NoiseTexture;
@@ -145,7 +145,7 @@ public sealed class CameraObjectClipRendererFeature : IRendererFeature, IDisposa
 		}
 		TextureHandle input = CreateDepthClippingTexture(in context);
 		DrawDepthClipMaskPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawDepthClipMaskPassData>("Draw Depth Clip Mask", out passData2, WaaaghProfileId.CameraObjectClipDrawMask.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\CameraObjectClip\\CameraObjectClipRendererFeature.cs", 143);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawDepthClipMaskPassData>("Draw Depth Clip Mask", out passData2, WaaaghProfileId.CameraObjectClipDrawMask.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\CameraObjectClip\\CameraObjectClipRendererFeature.cs", 143);
 		passData2.Material = m_DepthClippingMaterial;
 		passData2.Count = OccludedObjectDepthClipper.All.Count;
 		SetupDepthClippingMatrices(in context.CameraData, ref passData2.Matrices);

@@ -31,7 +31,7 @@ public static class UIOverlay
 	public static void DrawUGUI(in RecordContext context)
 	{
 		UGUIPassData passData;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<UGUIPassData>("UIOverlay.UGUI", out passData, WaaaghProfileId.UIOverlayUGUI.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\UIOverlay.cs", 25);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<UGUIPassData>("UIOverlay.UGUI", out passData, WaaaghProfileId.UIOverlayUGUI.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\UIOverlay.cs", 25);
 		UGUIPassData uGUIPassData = passData;
 		RenderGraph renderGraph = context.RenderGraph;
 		ref Camera camera = ref context.CameraData.camera;
@@ -58,7 +58,7 @@ public static class UIOverlay
 	public static void DrawIMGUI(in RecordContext context)
 	{
 		IMGUIPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<IMGUIPassData>("UIOverlay.IMGUI", out passData, WaaaghProfileId.UIOverlayIMGUI.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\UIOverlay.cs", 57);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<IMGUIPassData>("UIOverlay.IMGUI", out passData, WaaaghProfileId.UIOverlayIMGUI.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\UIOverlay.cs", 57);
 		passData.ColorTarget = context.FrameResources.FinalTarget.Color;
 		unsafeRenderGraphBuilder.UseTexture(in passData.ColorTarget, AccessFlags.Write);
 		IMGUIPassData iMGUIPassData = passData;

@@ -13,7 +13,7 @@ internal static class VolumetricLightingApplyOpaquePass
 	public static void Record(in RecordContext context, Material applyOpaqueMaterial, VolumetricLightingData volumetricLightingData)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("VolumetricLightingApplyOpaque", out passData, WaaaghProfileId.VolumetricLightingApplyOpaque.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\VolumetricLightingApplyOpaquePass.cs", 17);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("VolumetricLightingApplyOpaque", out passData, WaaaghProfileId.VolumetricLightingApplyOpaque.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\VolumetricLightingApplyOpaquePass.cs", 17);
 		passData.ApplyOpaqueMaterial = applyOpaqueMaterial;
 		unsafeRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthTexture);
 		unsafeRenderGraphBuilder.UseTexture(in volumetricLightingData.ScatterTexture);

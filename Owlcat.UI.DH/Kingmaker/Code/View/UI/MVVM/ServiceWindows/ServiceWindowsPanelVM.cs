@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints.Encyclopedia;
 using Kingmaker.Blueprints.Root.Strings;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.UI.MVVM;
 using Kingmaker.Code.UI.MVVM.Common;
 using Kingmaker.Code.View.Bridge.Enums;
@@ -336,6 +337,7 @@ public class ServiceWindowsPanelVM : ViewModel
 	{
 		if (m_CurrentWindow != null)
 		{
+			Metrics.Interface.FullScreenType(m_CurrentUIType.Value).State(InterfaceMetricsEvent.InterfaceStates.Close).Send();
 			HasPrevWindow = true;
 			if (m_CurrentWindow is IServiceWindow serviceWindow)
 			{

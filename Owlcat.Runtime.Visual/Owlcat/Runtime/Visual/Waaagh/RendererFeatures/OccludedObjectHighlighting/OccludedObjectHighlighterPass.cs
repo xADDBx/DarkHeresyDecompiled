@@ -72,7 +72,7 @@ internal static class OccludedObjectHighlighterPass
 			return;
 		}
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Occluded Highlight", out passData2, WaaaghProfileId.OccludedObjectHighlight.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\OccludedObjectHighlighting\\OccludedObjectHighlighterPass.cs", 71);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Occluded Highlight", out passData2, WaaaghProfileId.OccludedObjectHighlight.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\OccludedObjectHighlighting\\OccludedObjectHighlighterPass.cs", 71);
 		passData2.Settings = settings;
 		passData2.Materials = materials;
 		passData2.RendererInfos.Clear();

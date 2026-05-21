@@ -311,6 +311,7 @@ public enum WaaaghProfileId
 	[DisplayInfo(name = "CustomPP.StencilMask")]
 	CustomPPStencilMask,
 	SetupCamera,
+	ResetCameraJitter,
 	UpdateCameraResolution,
 	ClearCameraTargets,
 	CopyDepthToDepthCopy,

@@ -423,8 +423,8 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		return m_EntitiesNotInside.Contains(entity);
 	}
 
-	public AreaEffectEntity([NotNull] IAreaEffectConfig config, [CanBeNull] IEvalContext parentContext, [NotNull] BlueprintAreaEffect blueprint, [NotNull] TargetWrapper target, TimeSpan creationTime, TimeSpan? duration, bool onUnit)
-		: this(config.EntityId, config.IsInGameBySettings, parentContext, blueprint, target, creationTime, duration, onUnit)
+	public AreaEffectEntity([NotNull] IAreaEffectConfig config, [CanBeNull] IEvalContext parentContext, [NotNull] BlueprintAreaEffect blueprint, [NotNull] TargetWrapper target, TimeSpan creationTime, TimeSpan? duration, bool onUnit, bool usePatternFromAbility = false, float? forceInitiative = null)
+		: this(config.EntityId, config.IsInGameBySettings, parentContext, blueprint, target, creationTime, duration, onUnit, usePatternFromAbility, forceInitiative)
 	{
 		m_CreatedFromSceneObject = !config.CreatedAtRuntime;
 		if (m_CreatedFromSceneObject)
@@ -603,28 +603,21 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		Bounds bounds2 = Shape.GetBounds();
 		bool isInCombat = Game.Instance.Player.IsInCombat;
 		bool flag = bounds2 != bounds;
-		if (!(!isInCombat || flag) && !m_ForceUpdate)
+		if (!m_InitialEntityScanDone)
 		{
-			return;
+			DoInitialEntityScan();
 		}
-		m_ForceUpdate = false;
-		bool flag2 = !m_InitialEntityScanDone;
-		if (flag2)
+		if (!isInCombat || flag || m_ForceUpdate)
 		{
-			IsInInitialEntityScan = true;
-		}
-		try
-		{
-			UpdateEntities();
-		}
-		finally
-		{
-			m_EntitiesEnteredDuringUpdate.Clear();
-			m_EntitiesExitedDuringUpdate.Clear();
-			if (flag2)
+			m_ForceUpdate = false;
+			try
 			{
-				IsInInitialEntityScan = false;
-				m_InitialEntityScanDone = true;
+				UpdateEntities();
+			}
+			finally
+			{
+				m_EntitiesEnteredDuringUpdate.Clear();
+				m_EntitiesExitedDuringUpdate.Clear();
 			}
 		}
 	}
@@ -872,6 +865,50 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			return entity.IsCurrentlyInAnotherClusterArea(clusterComponent.ClusterLogicBlueprint, this);
 		}
 		return false;
+	}
+
+	private void DoInitialEntityScan()
+	{
+		IsInInitialEntityScan = true;
+		try
+		{
+			using (EvalContext.PushContext(Context))
+			{
+				foreach (BaseUnitEntity allBaseUnit in Game.Instance.EntityPools.AllBaseUnits)
+				{
+					if (ShouldEntityBeInside(allBaseUnit))
+					{
+						m_EntitiesInside.Add(new EntityInfo(allBaseUnit)
+						{
+							PreviousNodePosition = allBaseUnit.CurrentUnwalkableNode.Vector3Position()
+						});
+						HandleEntityEnter(allBaseUnit);
+					}
+				}
+				if (!base.Blueprint.AffectDestructibleObjects)
+				{
+					return;
+				}
+				foreach (DestructibleEntity destructibleEntity in Game.Instance.EntityPools.DestructibleEntities)
+				{
+					if (ShouldEntityBeInside(destructibleEntity))
+					{
+						m_EntitiesInside.Add(new EntityInfo(destructibleEntity)
+						{
+							PreviousNodePosition = destructibleEntity.CurrentUnwalkableNode.Vector3Position()
+						});
+						HandleEntityEnter(destructibleEntity);
+					}
+				}
+			}
+		}
+		finally
+		{
+			IsInInitialEntityScan = false;
+			m_EntitiesEnteredDuringUpdate.Clear();
+			m_EntitiesExitedDuringUpdate.Clear();
+			m_InitialEntityScanDone = true;
+		}
 	}
 
 	private void UpdateEntities()

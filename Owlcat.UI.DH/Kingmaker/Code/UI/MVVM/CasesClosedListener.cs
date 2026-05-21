@@ -44,8 +44,9 @@ public class CasesClosedListener : NotificationListenerBase, ICaseStatusChanged,
 		}
 		return source.Select(delegate(BlueprintCase c)
 		{
-			string arg = NotificationFormatter.GenerateLink(c.Name.Text, $"{EntityLink.Type.Detective}:{c.AssetGuid}");
-			return new DialogNotificationVM(NotificationFormatter.FormatText(string.Format(UINotificationTexts.Instance.CasesClosedFormat, arg), NotificationType.Positive), c.Icon, new TooltipTemplateDetective(c));
+			DetectiveSystem.CaseDisplayData caseDisplay = Game.Instance.DetectiveSystem.GetCaseDisplay(c);
+			string arg = NotificationFormatter.GenerateLink(caseDisplay.Name, $"{EntityLink.Type.Detective}:{c.AssetGuid}");
+			return new DialogNotificationVM(NotificationFormatter.FormatText(string.Format(UINotificationTexts.Instance.CasesClosedFormat, arg), NotificationType.Positive), caseDisplay.Icon, new TooltipTemplateDetective(c));
 		}).ToList();
 	}
 

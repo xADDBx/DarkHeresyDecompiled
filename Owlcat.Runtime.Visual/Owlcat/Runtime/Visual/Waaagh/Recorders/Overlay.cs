@@ -19,7 +19,7 @@ internal sealed class Overlay
 	public static void DrawObjects(in RecordContext context)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Overlay", out passData2, WaaaghProfileId.DrawObjects_Overlay.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Overlay.cs", 22);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Overlay", out passData2, WaaaghProfileId.DrawObjects_Overlay.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Overlay.cs", 22);
 		passData2.OverlayObjectsRendererList = CreateOverlayObjectsRendererList(in context);
 		if (context.GPUDrivenBatchRendererGroup.IsEnabledAndInitialized)
 		{

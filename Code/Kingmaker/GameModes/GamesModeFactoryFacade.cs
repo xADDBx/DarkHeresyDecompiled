@@ -226,7 +226,7 @@ public class GamesModeFactoryFacade
 			Register(new VoiceOverController(), All);
 			Register(new ProximityAsksController(), Default);
 			Register(new GPUSoundController(), All);
-			Register(new PerformanceMetricsController(), All);
+			Register(new PerformanceMetricsController(), Default, Cutscene, Dialog);
 		}
 	}
 

@@ -31,7 +31,7 @@ public static class MapOverlays
 	private static void DrawMotionVectors(in RecordContext context)
 	{
 		MapOverlayPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<MapOverlayPassData>("DEBUG - MotionVectors Overlay", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\MapOverlays.cs", 39);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<MapOverlayPassData>("DEBUG - MotionVectors Overlay", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\MapOverlays.cs", 39);
 		passData.OverlayHandle = context.FrameResources.CameraAdditionalTargets.MotionVectors;
 		unsafeRenderGraphBuilder.UseTexture(in passData.OverlayHandle);
 		passData.Size = context.DebugContext.DebugData.RenderingDebug.MapSize;
@@ -42,7 +42,7 @@ public static class MapOverlays
 	private static void DrawDepth(RecordContext context)
 	{
 		MapOverlayPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<MapOverlayPassData>("DEBUG - Depth Overlay", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\MapOverlays.cs", 52);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<MapOverlayPassData>("DEBUG - Depth Overlay", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\MapOverlays.cs", 52);
 		passData.OverlayHandle = context.FrameResources.CameraStackTargets.Depth;
 		unsafeRenderGraphBuilder.UseTexture(in passData.OverlayHandle);
 		passData.Size = context.DebugContext.DebugData.RenderingDebug.MapSize;

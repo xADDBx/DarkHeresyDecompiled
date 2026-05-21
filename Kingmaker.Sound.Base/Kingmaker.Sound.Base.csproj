@@ -39,8 +39,5 @@
     <Reference Include="Owlcat.Logging.Runtime">
       <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\Owlcat.Logging.Runtime.dll</HintPath>
     </Reference>
-    <Reference Include="BuildMode">
-      <HintPath>..\..\..\..\..\..\..\Games\Steam\steamapps\common\Warhammer 40,000 Dark Heresy Playtest\WH40KDH_Data\Managed\BuildMode.dll</HintPath>
-    </Reference>
   </ItemGroup>
 </Project>

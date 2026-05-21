@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Code.View.UI.MVVM;
 using Kingmaker.Blueprints;
+using Kingmaker.Code.Middleware.Metrics;
 using Kingmaker.Code.View.Bridge.Data;
 using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Code.View.UI.UIUtilities;
@@ -94,6 +95,8 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 
 	public InfoSectionVM LevelUpInfoSectionVM { get; }
 
+	public PartyStatsOverviewVM PartyStatsOverviewVM { get; }
+
 	public ChargenProgressionVM ProgressionVM { get; }
 
 	public CharInfoExperienceVM Experience { get; }
@@ -131,6 +134,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		m_IsMainCharacter.Value = UtilityNet.IsControlMainCharacter();
 		LevelUpInfoSectionVM = new InfoSectionVM().AddTo(this);
 		ChargenInfoSectionVM = new InfoSectionVM().AddTo(this);
+		PartyStatsOverviewVM = new PartyStatsOverviewVM().AddTo(this);
 		CharGenContext = new CharGenContext(config).AddTo(this);
 		CharGenContext.SetPregenUnit(null);
 		CharGenContext.LevelUpManager.Subscribe(HandleLevelUpManager).AddTo(this);
@@ -192,6 +196,8 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 			phases.Item2.Dispose();
 		}
 		m_PhasesList.Clear();
+		m_PlaningLevelUpManager?.Dispose();
+		m_PlaningLevelUpManager = null;
 		SoundState.Instance.OnMusicChargenStateChange(MusicStateHandler.MusicChargenState.None);
 		base.OnDispose();
 	}
@@ -209,6 +215,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 		UISounds.Instance.Play(ButtonsSounds.Instance.FinishChargenButton.Click, isButton: false, playAnyway: true);
 		bool syncPortrait = PhotonManager.Lobby.IsActive && PhotonManager.Initialized && PhotonManager.Instance.PortraitSyncer.IsNeedSyncPortrait();
 		Game.Instance.GameCommandQueue.CharGenClose(withComplete: true, syncPortrait);
+		Metrics.Chargen.Finish().Send();
 	}
 
 	public void Close()
@@ -429,8 +436,8 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 			SelectionUIPhaseType.Name => new CharGenSummaryPhaseVM(CharGenContext, (SelectionStateCharacterName)selectionState), 
 			SelectionUIPhaseType.Career => new CharGenCareerPhaseVM(CharGenContext, ChargenInfoSectionVM, (SelectionStateFeature)selectionState), 
 			SelectionUIPhaseType.Specialization => new CharGenLevelUpSpecializationPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
-			SelectionUIPhaseType.Attributes => new CharGenLevelUpCharacteristicsPhaseVM(CharGenContext, (SelectionStateStats)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
-			SelectionUIPhaseType.Skill => new CharGenLevelUpSkillPhaseVM(CharGenContext, (SelectionStateStats)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
+			SelectionUIPhaseType.Attributes => new CharGenLevelUpCharacteristicsPhaseVM(CharGenContext, (SelectionStateStats)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, PartyStatsOverviewVM, rank), 
+			SelectionUIPhaseType.Skill => new CharGenLevelUpSkillPhaseVM(CharGenContext, (SelectionStateStats)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, PartyStatsOverviewVM, rank), 
 			SelectionUIPhaseType.Upgrade => new CharGenLevelUpAbilityUpgradePhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
 			SelectionUIPhaseType.Ability => new CharGenLevelUpAbilityPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
 			SelectionUIPhaseType.Modification => new CharGenLevelUpModificationPhaseVM(CharGenContext, (SelectionStateFeature)selectionState, m_IsLevelUpMode ? LevelUpInfoSectionVM : ChargenInfoSectionVM, rank), 
@@ -554,6 +561,7 @@ public class CharGenVM : ViewModel, ILevelUpManagerUIHandler, ISubscriber, IChar
 			BlueprintCareerPath item = CharGenContext.LevelUpManager.CurrentValue.PreviewUnit.Progression.AllCareerPaths.FirstOrDefault().Blueprint;
 			if (item != null)
 			{
+				m_PlaningLevelUpManager?.Dispose();
 				m_PlaningLevelUpManager = new LevelUpManager(CharGenContext.LevelUpManager.CurrentValue.PreviewUnit, item, autoCommit: false, item.RankEntries.Count());
 				m_IsPhasesDirty = true;
 			}

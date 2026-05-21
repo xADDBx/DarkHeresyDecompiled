@@ -35,7 +35,7 @@ public class CurrentWeaponFactionGetter : BoolPropertyGetter
 		ItemEntityWeapon itemEntityWeapon = ((Hand == WeaponHand.OffHand) ? baseUnitEntity.Body.SecondaryHand.MaybeWeapon : baseUnitEntity.Body.PrimaryHand.MaybeWeapon);
 		if (itemEntityWeapon != null)
 		{
-			return itemEntityWeapon.Blueprint.Faction == Faction;
+			return itemEntityWeapon.EffectiveFaction == Faction;
 		}
 		return false;
 	}

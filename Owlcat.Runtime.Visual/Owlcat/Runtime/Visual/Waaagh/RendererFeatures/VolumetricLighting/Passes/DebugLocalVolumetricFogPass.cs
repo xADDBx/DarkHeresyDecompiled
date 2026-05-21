@@ -19,7 +19,7 @@ internal static class DebugLocalVolumetricFogPass
 	public static void Record(in RecordContext context, VolumetricLightingRendererFeature feature, Material debugMaterial, VolumetricLightingData volumetricLightingData)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Local Volumetric Fog Debug", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\DebugLocalVolumetricFogPass.cs", 22);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Local Volumetric Fog Debug", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\DebugLocalVolumetricFogPass.cs", 22);
 		passData.DebugMaterial = debugMaterial;
 		passData.LocalFogClusteringParams = feature.FogClusteringParams;
 		passData.FogTilesBuffer = volumetricLightingData.FogTilesBuffer;

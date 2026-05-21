@@ -76,6 +76,18 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IStatModifier, IH
 
 	public ItemPowerLevel PowerLevel => base.Blueprint.ResolvePowerLevel(PowerLevelOverride);
 
+	public ItemFaction EffectiveFaction
+	{
+		get
+		{
+			if (FactionOverride == ItemFaction.None)
+			{
+				return base.Blueprint.Faction;
+			}
+			return FactionOverride;
+		}
+	}
+
 	public ItemEntityShield Shield { get; private set; }
 
 	public override bool IsPartOfAnotherItem => Shield != null;
@@ -136,12 +148,20 @@ public class ItemEntityArmor : ItemEntity<BlueprintItemArmor>, IStatModifier, IH
 		return false;
 	}
 
+	public override void CopyRuntimeStateTo(ItemEntity other)
+	{
+		base.CopyRuntimeStateTo(other);
+		ItemEntityArmor obj = (ItemEntityArmor)other;
+		obj.PowerLevelOverride = PowerLevelOverride;
+		obj.FactionOverride = FactionOverride;
+	}
+
 	public StatFactionModifierConfig[] GetFractionModifiers()
 	{
-		ItemFaction itemFaction = ((FactionOverride != 0) ? FactionOverride : base.Blueprint.Faction);
-		if (itemFaction != 0)
+		ItemFaction effectiveFaction = EffectiveFaction;
+		if (effectiveFaction != 0)
 		{
-			return ConfigRoot.Instance.ItemFactionRoot.GetArmorModifiers(itemFaction);
+			return ConfigRoot.Instance.ItemFactionRoot.GetArmorModifiers(effectiveFaction);
 		}
 		return Array.Empty<StatFactionModifierConfig>();
 	}

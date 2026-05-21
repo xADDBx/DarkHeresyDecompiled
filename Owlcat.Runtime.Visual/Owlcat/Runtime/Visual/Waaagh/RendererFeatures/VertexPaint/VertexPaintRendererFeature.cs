@@ -44,7 +44,7 @@ internal sealed class VertexPaintRendererFeature : IRendererFeature, IDisposable
 	private void OnBeforeRendering(in RecordContext context)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Vertex Paint", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VertexPaint\\VertexPaintRendererFeature.cs", 45);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Vertex Paint", out passData2, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\VertexPaint\\VertexPaintRendererFeature.cs", 45);
 		passData2.DirtyDataSources.Clear();
 		VertexPaintManager.GetDirtyDataAndClear(passData2.DirtyDataSources);
 		passData2.Buffer = (VertexPaintManager.TryGetBuffer(out var graphicsBuffer) ? context.RenderGraph.ImportBuffer(graphicsBuffer) : default(BufferHandle));

@@ -50,7 +50,7 @@ internal static class LocalVolumetricFogCullingPass
 	public static void Record(in RecordContext context, VolumetricLightingRendererFeature feature, ComputeShader localVolumetricFogCullingShader, ComputeShaderKernelDescriptor buildFogTilesKernel, VolumetricLightingData volumetricLightingData)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("LocalVolumetricFogCulling", out passData, WaaaghProfileId.LocalVolumetricFogCulling.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\LocalVolumetricFogCullingPass.cs", 42);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("LocalVolumetricFogCulling", out passData, WaaaghProfileId.LocalVolumetricFogCulling.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\VolumetricLighting\\Passes\\LocalVolumetricFogCullingPass.cs", 42);
 		Vector4 fogClusteringParams = feature.FogClusteringParams;
 		int x = (int)(fogClusteringParams.x * fogClusteringParams.y);
 		passData.ZBins = feature.ZBins;

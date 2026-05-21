@@ -326,36 +326,31 @@ public class BaseItemPart : TooltipBaseTemplate
 	protected virtual void AddDescription(List<ITooltipBrick> bricks, TooltipTemplateType type)
 	{
 		string text = m_ItemTooltipData.GetText(TooltipElement.ShortDescription);
-		string text2 = m_ItemTooltipData.GetText(TooltipElement.ArtisticDescription);
-		string text3 = m_ItemTooltipData.GetText(TooltipElement.Description) + m_ItemTooltipData.GetText(TooltipElement.LongDescription);
+		string text2 = m_ItemTooltipData.GetText(TooltipElement.Description) + m_ItemTooltipData.GetText(TooltipElement.LongDescription);
 		List<string> additionalDescription = TooltipTemplateUtils.GetAdditionalDescription(m_BlueprintItem);
 		switch (type)
 		{
 		case TooltipTemplateType.Tooltip:
 		{
-			string text5 = text;
-			if (string.IsNullOrEmpty(text5))
+			string text4 = text;
+			if (string.IsNullOrEmpty(text4))
 			{
-				text5 = text3;
-				if (string.IsNullOrEmpty(text5))
+				text4 = text2;
+				if (string.IsNullOrEmpty(text4) && additionalDescription.Count == 0)
 				{
-					text5 = text2;
-					if (string.IsNullOrEmpty(text5) && additionalDescription.Count == 0)
-					{
-						bricks.Add(new BrickTitleVM(string.Empty, TooltipTitleType.H6));
-						return;
-					}
+					bricks.Add(new BrickTitleVM(string.Empty, TooltipTitleType.H6));
+					return;
 				}
 			}
-			text5 = TooltipTemplateUtils.AggregateDescription(text5, additionalDescription);
-			bricks.Add(new BrickTextVM(text5, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Item?.Owner));
+			text4 = TooltipTemplateUtils.AggregateDescription(text4, additionalDescription);
+			bricks.Add(new BrickTextVM(text4, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Item?.Owner));
 			break;
 		}
 		case TooltipTemplateType.Info:
-			if (!string.IsNullOrEmpty(text3))
+			if (!string.IsNullOrEmpty(text2))
 			{
-				text3 = TooltipTemplateUtils.AggregateDescription(text3, additionalDescription);
-				bricks.Add(new BrickTextVM(text3, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Item?.Owner));
+				text2 = TooltipTemplateUtils.AggregateDescription(text2, additionalDescription);
+				bricks.Add(new BrickTextVM(text2, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Item?.Owner));
 			}
 			else if (!string.IsNullOrEmpty(text))
 			{
@@ -364,8 +359,8 @@ public class BaseItemPart : TooltipBaseTemplate
 			}
 			else if (additionalDescription.Count > 0)
 			{
-				string text4 = TooltipTemplateUtils.AggregateDescription("", additionalDescription);
-				bricks.Add(new BrickTextVM(text4, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Item?.Owner));
+				string text3 = TooltipTemplateUtils.AggregateDescription("", additionalDescription);
+				bricks.Add(new BrickTextVM(text3, TooltipTextType.Paragraph, TooltipTextAlignment.Midl, m_Item?.Owner));
 			}
 			break;
 		}

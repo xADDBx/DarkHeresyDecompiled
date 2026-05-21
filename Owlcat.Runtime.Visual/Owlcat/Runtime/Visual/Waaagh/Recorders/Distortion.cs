@@ -52,7 +52,7 @@ internal sealed class Distortion
 	public static void DrawOpaqueGBuffer(in RecordContext context)
 	{
 		DrawOpaqueGBufferPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawOpaqueGBufferPassData>("Draw Opaque Distortion GBuffer", out passData, WaaaghProfileId.OpaqueDistortionGBuffer.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 50);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawOpaqueGBufferPassData>("Draw Opaque Distortion GBuffer", out passData, WaaaghProfileId.OpaqueDistortionGBuffer.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 50);
 		passData.RendererList = CreateOpaqueGBufferRendererList(in context);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		unsafeRenderGraphBuilder.UseRendererList(in passData.RendererList);
@@ -66,7 +66,7 @@ internal sealed class Distortion
 	public static void DrawOpaqueDepth(in RecordContext context)
 	{
 		DrawOpaqueDepthPassData passData2;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<DrawOpaqueDepthPassData>("Draw Opaque Distortion Depth", out passData2, WaaaghProfileId.OpaqueDistortionDepth.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 67);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<DrawOpaqueDepthPassData>("Draw Opaque Distortion Depth", out passData2, WaaaghProfileId.OpaqueDistortionDepth.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 67);
 		passData2.DepthRendererList = CreateOpaqueDepthRendererList(in context);
 		rasterRenderGraphBuilder.UseRendererList(in passData2.DepthRendererList);
 		rasterRenderGraphBuilder.SetRenderAttachmentDepth(context.FrameResources.CameraStackTargets.Depth);
@@ -79,7 +79,7 @@ internal sealed class Distortion
 	public static void DrawOpaqueColor(in RecordContext context)
 	{
 		DrawOpaqueColorPassData passData2;
-		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<DrawOpaqueColorPassData>("Draw Opaque Distortion Color", out passData2, WaaaghProfileId.OpaqueDistortionColor.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 82);
+		using IRasterRenderGraphBuilder rasterRenderGraphBuilder = context.RenderGraph.AddRasterRenderPass<DrawOpaqueColorPassData>("Draw Opaque Distortion Color", out passData2, WaaaghProfileId.OpaqueDistortionColor.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 82);
 		passData2.ColorRendererList = CreateOpaqueColorRendererList(in context);
 		rasterRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraColorPyramidRT);
 		rasterRenderGraphBuilder.UseGlobalTexture(GlobalTextureShaderPropertyId._CameraDepthTexture);
@@ -100,7 +100,7 @@ internal sealed class Distortion
 	public static void DrawTransparentObjects(in RecordContext context)
 	{
 		DrawDistortionVectorsPassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawDistortionVectorsPassData>("Draw Transparent Distortion", out passData2, WaaaghProfileId.TransparentDistortion.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 107);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<DrawDistortionVectorsPassData>("Draw Transparent Distortion", out passData2, WaaaghProfileId.TransparentDistortion.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\ForwardPath\\Distortion.cs", 107);
 		TextureDesc desc = RenderingUtils.CreateTextureDesc("DistortionRT", context.CameraData.cameraTargetDescriptor);
 		desc.colorFormat = GraphicsFormat.R16G16B16A16_SFloat;
 		passData2.DistortionVectorsRendererList = CreateDistortionVectorsRendererList(in context);

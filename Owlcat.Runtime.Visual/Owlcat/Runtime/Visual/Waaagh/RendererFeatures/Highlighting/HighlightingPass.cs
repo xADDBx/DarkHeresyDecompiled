@@ -36,7 +36,7 @@ internal static class HighlightingPass
 	public static void Record(in RecordContext context, in Settings settings, in Materials materials, List<RendererInfo> rendererInfos, ReadOnlySpan<TestPlanesResults> rendererVisibility)
 	{
 		PassData passData2;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Highlight", out passData2, WaaaghProfileId.DrawHighlight.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\RendererFeatures\\Highlighting\\HighlightingPass.cs", 38);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("Draw Highlight", out passData2, WaaaghProfileId.DrawHighlight.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\RendererFeatures\\Highlighting\\HighlightingPass.cs", 38);
 		int downsampleFactor = Mathf.Max(1, (int)settings.DownsampleFactor);
 		passData2.Materials = materials;
 		passData2.CameraColorRT = context.FrameResources.CameraStackTargets.Color;

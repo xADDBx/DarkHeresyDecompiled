@@ -66,7 +66,7 @@ internal static class GpuDrivenForwardReflectionProbes
 	public static void Record(in RecordContext context)
 	{
 		PassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("GpuDriven.ForwardReflectionProbes", out passData, WaaaghProfileId.GPUDrivenForwardReflectionProbesPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenForwardReflectionProbes.cs", 18);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = context.RenderGraph.AddUnsafePass<PassData>("GpuDriven.ForwardReflectionProbes", out passData, WaaaghProfileId.GPUDrivenForwardReflectionProbesPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\GpuDriven\\GpuDrivenForwardReflectionProbes.cs", 18);
 		GPUDrivenBatchRendererGroup gPUDrivenBatchRendererGroup = context.GPUDrivenBatchRendererGroup;
 		RenderGraph renderGraph = context.RenderGraph;
 		GPUDrivenCullingPassSharedData sharedPassData = gPUDrivenBatchRendererGroup.SharedPassData;

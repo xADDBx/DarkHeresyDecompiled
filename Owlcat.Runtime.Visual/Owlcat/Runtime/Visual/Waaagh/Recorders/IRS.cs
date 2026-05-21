@@ -26,7 +26,7 @@ public static class IRS
 	public static void CullingPass(RenderGraph renderGraph, WaaaghCameraData cameraData)
 	{
 		CullingPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<CullingPassData>("IRS.CullingPass", out passData, WaaaghProfileId.IRSCullingPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\IRS.cs", 23);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<CullingPassData>("IRS.CullingPass", out passData, WaaaghProfileId.IRSCullingPass.Sampler(), ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\IRS.cs", 23);
 		passData.Camera = cameraData.camera;
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		unsafeRenderGraphBuilder.SetRenderFunc(delegate(CullingPassData data, UnsafeGraphContext context)

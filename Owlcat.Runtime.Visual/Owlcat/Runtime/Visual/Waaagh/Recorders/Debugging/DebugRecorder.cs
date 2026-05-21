@@ -24,7 +24,7 @@ public static class DebugRecorder
 			return;
 		}
 		ApplyDebugSettingsPassData passData;
-		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<ApplyDebugSettingsPassData>("DEBUG - Apply Settings", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@4f4b3d807b8a\\Runtime\\Waaagh\\Recorders\\Debugging\\DebugRecorder.cs", 30);
+		using IUnsafeRenderGraphBuilder unsafeRenderGraphBuilder = renderGraph.AddUnsafePass<ApplyDebugSettingsPassData>("DEBUG - Apply Settings", out passData, ".\\Library\\PackageCache\\com.owlcat.visual@7d4d1c447cd1\\Runtime\\Waaagh\\Recorders\\Debugging\\DebugRecorder.cs", 30);
 		unsafeRenderGraphBuilder.AllowPassCulling(value: false);
 		unsafeRenderGraphBuilder.AllowGlobalStateModification(value: true);
 		passData.DebugData = handler.DebugData;

@@ -94,6 +94,18 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IStatModifier, 
 
 	public ItemPowerLevel PowerLevel => base.Blueprint.ResolvePowerLevel(PowerLevelOverride);
 
+	public ItemFaction EffectiveFaction
+	{
+		get
+		{
+			if (FactionOverride == ItemFaction.None)
+			{
+				return base.Blueprint.Faction;
+			}
+			return FactionOverride;
+		}
+	}
+
 	[JsonProperty]
 	[OwlPackInclude]
 	public bool ForceSecondary { get; set; }
@@ -365,12 +377,20 @@ public class ItemEntityWeapon : ItemEntity<BlueprintItemWeapon>, IStatModifier, 
 		return false;
 	}
 
+	public override void CopyRuntimeStateTo(ItemEntity other)
+	{
+		base.CopyRuntimeStateTo(other);
+		ItemEntityWeapon obj = (ItemEntityWeapon)other;
+		obj.PowerLevelOverride = PowerLevelOverride;
+		obj.FactionOverride = FactionOverride;
+	}
+
 	public StatFactionModifierConfig[] GetFractionModifiers()
 	{
-		ItemFaction itemFaction = ((FactionOverride != 0) ? FactionOverride : base.Blueprint.Faction);
-		if (itemFaction != 0)
+		ItemFaction effectiveFaction = EffectiveFaction;
+		if (effectiveFaction != 0)
 		{
-			return ConfigRoot.Instance.ItemFactionRoot.GetWeaponModifiers(itemFaction);
+			return ConfigRoot.Instance.ItemFactionRoot.GetWeaponModifiers(effectiveFaction);
 		}
 		return Array.Empty<StatFactionModifierConfig>();
 	}
