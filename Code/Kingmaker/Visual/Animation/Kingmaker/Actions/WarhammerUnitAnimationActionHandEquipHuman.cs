@@ -59,7 +59,9 @@ public class WarhammerUnitAnimationActionHandEquipHuman : UnitAnimationAction, I
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateEquipClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateEquipClips()
+				where c != null
+				select c);
 		}
 		foreach (WeaponStyleEquipData item in WeaponStyleSettings.WeaponStyles.Select((BlueprintWeaponStyleList.WeaponStyleEntry x) => x.AnimationSet.Equip))
 		{

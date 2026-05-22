@@ -113,9 +113,12 @@ public class ActionBarPartWeaponsVM : ActionBarBasePartVM, IUnitEquipmentHandler
 
 	void IUnitActiveEquipmentSetHandler.HandleUnitChangeActiveEquipmentSet()
 	{
-		PartUnitBody body = Unit.Entity.Body;
-		m_CurrentSet.Value = Sets.FirstOrDefault((ActionBarPartWeaponSetVM s) => s.HandSet == body.CurrentHandsEquipmentSet);
-		m_CurrentSetIndex.Value = body.CurrentHandEquipmentSetIndex;
+		if (Unit.Entity != null)
+		{
+			PartUnitBody body = Unit.Entity.Body;
+			m_CurrentSet.Value = Sets.FirstOrDefault((ActionBarPartWeaponSetVM s) => s.HandSet == body.CurrentHandsEquipmentSet);
+			m_CurrentSetIndex.Value = body.CurrentHandEquipmentSetIndex;
+		}
 	}
 
 	void INetRoleSetHandler.HandleRoleSet(string entityId)

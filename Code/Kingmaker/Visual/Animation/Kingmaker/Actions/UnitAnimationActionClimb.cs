@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Pathfinding;
@@ -103,7 +104,9 @@ public class UnitAnimationActionClimb : UnitAnimationAction
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateClimbClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateClimbClips()
+				where c != null
+				select c);
 		}
 		return m_ClipWrappersHashSet;
 	}

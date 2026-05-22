@@ -68,7 +68,9 @@ public class UnitAnimationActionProne : UnitAnimationAction
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateProneClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateProneClips()
+				where c != null
+				select c);
 		}
 		return m_ClipWrappersHashSet;
 	}

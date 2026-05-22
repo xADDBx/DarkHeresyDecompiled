@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Kingmaker.Utility.Attributes;
 using Kingmaker.Utility.DotNetExtensions;
 using Owlcat.QA.Validation;
@@ -118,7 +119,7 @@ public class UnitAnimationActionJump : UnitAnimationAction
 			m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper> { m_JumpIn, m_JumpOut, m_JumpFly, m_JumpOutLeftHand };
 			foreach (JumpVariantSettings weaponStyleSetting in WeaponStyleSettings)
 			{
-				m_ClipWrappersHashSet.AddRange(weaponStyleSetting.ClipWrappers);
+				m_ClipWrappersHashSet.AddRange(weaponStyleSetting.ClipWrappers.Where((AnimationClipWrapper c) => c != null));
 			}
 			return m_ClipWrappersHashSet;
 		}

@@ -83,6 +83,7 @@ public abstract class CombatUnitView<TCombatUnitVM> : View<TCombatUnitVM> where 
 
 	private void HandleLeftClick()
 	{
+		Game.Instance.Controllers.CameraController?.Follower?.ScrollTo(base.ViewModel.MechanicEntity);
 		base.ViewModel.HandleUnitClick();
 	}
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Visual.Animation.WeaponStyles;
@@ -50,7 +51,9 @@ public class UnitAnimationActionDisabled : UnitAnimationAction
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateDisabledClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateDisabledClips()
+				where c != null
+				select c);
 		}
 		return m_ClipWrappersHashSet;
 	}

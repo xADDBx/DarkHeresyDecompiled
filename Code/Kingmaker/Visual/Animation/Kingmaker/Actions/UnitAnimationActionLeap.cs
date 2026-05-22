@@ -31,7 +31,9 @@ public class UnitAnimationActionLeap : UnitAnimationAction
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateLeapClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateLeapClips()
+				where c != null
+				select c);
 		}
 		foreach (WeaponStyleLeapData item in WeaponStyleSettings.WeaponStyles.Select((BlueprintWeaponStyleList.WeaponStyleEntry x) => x.AnimationSet.Leap))
 		{

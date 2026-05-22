@@ -108,7 +108,7 @@ public class PartConcentration : MechanicEntityPart, ITargetRulebookHandler<Rule
 
 	void IEntityGainFactHandler.HandleEntityGainFact(EntityFact fact)
 	{
-		if (fact.Blueprint is BlueprintBuff { IsHardCrowdControl: not false })
+		if (fact.Blueprint is BlueprintBuff { IsHardCrowdControl: not false } && !base.Owner.Features.SteadyConcentration)
 		{
 			Break(fact.MaybeContext?.SourceCaster);
 		}

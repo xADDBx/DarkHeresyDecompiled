@@ -186,6 +186,10 @@ public class CommandUnitTurnHead : CommandBase
 		{
 			return CommandResult.Fail("Failed to find unit");
 		}
+		if (m_TurningMode == TurningMode.TurnToTarget && !m_Position.TryGetValue(out var _))
+		{
+			return CommandResult.Fail("Failed to resolve target position evaluator");
+		}
 		Data commandData = player.GetCommandData<Data>(this);
 		if (!commandData.IsStarted)
 		{

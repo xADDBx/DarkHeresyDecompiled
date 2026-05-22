@@ -125,7 +125,7 @@ public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 	private void Show(Transform source, List<Vector2> forcedPivots = null)
 	{
 		UIUtilityRect.SetPopupWindowPosition(m_TooltipContainer, source, Vector2.zero, forcedPivots ?? base.ViewModel.FirstMainTooltip.PriorityPivots);
-		UpdateContainersOrder(source);
+		UpdateContainersOrder();
 		m_ShowTween = CanvasGroup.DOFade(1f, 0.2f).OnComplete(delegate
 		{
 			ModalWindowsSounds.Instance.Tooltip.Show.Play();
@@ -133,10 +133,9 @@ public abstract class ComparativeTooltipView : View<ComparativeTooltipVM>
 		}).SetUpdate(isIndependentUpdate: true);
 	}
 
-	private void UpdateContainersOrder(Transform source)
+	private void UpdateContainersOrder()
 	{
-		bool reverseArrangement = m_TooltipContainer.InverseTransformPoint(source.position).x > 0f;
-		m_Layout.reverseArrangement = reverseArrangement;
+		m_Layout.reverseArrangement = m_TooltipContainer.pivot.x > 0.5f;
 	}
 
 	private RectTransform GetTooltipsContainer(bool isMain)

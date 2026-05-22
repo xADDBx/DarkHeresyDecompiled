@@ -234,7 +234,9 @@ public class WarhammerUnitAnimationActionHandAttack : UnitAnimationAction
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateAttackClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateAttackClips()
+				where c != null
+				select c);
 		}
 		return m_ClipWrappersHashSet;
 	}

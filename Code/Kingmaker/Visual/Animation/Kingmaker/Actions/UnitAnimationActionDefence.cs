@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Utility.StatefulRandom;
@@ -35,7 +36,9 @@ public class UnitAnimationActionDefence : UnitAnimationAction
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateDefenceClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateDefenceClips()
+				where c != null
+				select c);
 		}
 		return m_ClipWrappersHashSet;
 	}

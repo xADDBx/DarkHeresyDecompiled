@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Animancer.FSM;
 using Code.Visual.Animation;
 using Kingmaker.Utility.Attributes;
@@ -217,7 +218,11 @@ public class UnitAnimationActionLocomotion : UnitAnimationAction
 		}
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(IsForDollRoom ? WeaponStyleSettings.EnumerateDollRoomClips() : WeaponStyleSettings.EnumerateLocomotionClips());
+			m_ClipWrappersHashSet.AddRange(IsForDollRoom ? (from c in WeaponStyleSettings.EnumerateDollRoomClips()
+				where c != null
+				select c) : (from c in WeaponStyleSettings.EnumerateLocomotionClips()
+				where c != null
+				select c));
 		}
 		return m_ClipWrappersHashSet;
 	}

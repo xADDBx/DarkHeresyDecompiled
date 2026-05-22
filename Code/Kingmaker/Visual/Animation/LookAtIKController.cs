@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Kingmaker.ElementsSystem;
+using Kingmaker.QA;
 using Kingmaker.Utility.DotNetExtensions;
 using RootMotion.FinalIK;
 using UnityEngine;
@@ -246,10 +248,10 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 
 	void IIKComponent.DoLateUpdate()
 	{
-		if (!Mathf.Approximately(m_LookAtIK.solver.IKPositionWeight, m_TargetWeight) || !((m_LookAtIK.solver.IKPosition - m_TargetPositionProvider.Position).sqrMagnitude < 0.0001f))
+		if (TryGetTargetPosition(out var position) && (!Mathf.Approximately(m_LookAtIK.solver.IKPositionWeight, m_TargetWeight) || !((m_LookAtIK.solver.IKPosition - position).sqrMagnitude < 0.0001f)))
 		{
 			float t = ((m_TimeSinceTurnStart < m_TurningSeconds) ? (m_TimeSinceTurnStart / m_TurningSeconds) : 1f);
-			InterpolateTargetPosition(t);
+			InterpolateTargetPosition(t, position);
 			InterpolateWeight(t);
 			if (m_LookAtIK.solver.IKPositionWeight == 0f && m_TargetWeight == 0f)
 			{
@@ -258,17 +260,43 @@ public class LookAtIKController : MonoBehaviour, IIKComponent
 		}
 	}
 
-	private void InterpolateTargetPosition(float t)
+	private bool TryGetTargetPosition(out Vector3 position)
 	{
-		if (!((m_LookAtIK.solver.IKPosition - m_TargetPositionProvider.Position).sqrMagnitude < 0.0001f))
+		try
+		{
+			position = m_TargetPositionProvider.Position;
+			return true;
+		}
+		catch (FailToEvaluateException exception)
+		{
+			PFLog.TechArt.ExceptionWithReport(exception, "LookAtIKController on " + base.gameObject.name + ": target position provider failed, drop.");
+			DropCurrentTarget();
+			position = default(Vector3);
+			return false;
+		}
+	}
+
+	private void DropCurrentTarget()
+	{
+		m_CommandsQueue.Clear();
+		m_CurrentCommand = null;
+		m_ResetAfterCommandFinished = false;
+		m_LookAtIK.solver.IKPositionWeight = 0f;
+		m_TargetWeight = 0f;
+		IKComponentsManager.Instance.UnregisterComponent(this);
+	}
+
+	private void InterpolateTargetPosition(float t, Vector3 targetPosition)
+	{
+		if (!((m_LookAtIK.solver.IKPosition - targetPosition).sqrMagnitude < 0.0001f))
 		{
 			if (m_TargetWeight < 0.5f)
 			{
-				m_LookAtIK.solver.IKPosition = m_TargetPositionProvider.Position;
+				m_LookAtIK.solver.IKPosition = targetPosition;
 			}
 			else
 			{
-				m_LookAtIK.solver.IKPosition = Vector3.SmoothDamp(m_LookAtIK.solver.IKPosition, m_TargetPositionProvider.Position, ref m_PositionVelocityRef, m_TurningSeconds * 0.5f);
+				m_LookAtIK.solver.IKPosition = Vector3.SmoothDamp(m_LookAtIK.solver.IKPosition, targetPosition, ref m_PositionVelocityRef, m_TurningSeconds * 0.5f);
 			}
 		}
 	}

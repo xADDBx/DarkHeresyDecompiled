@@ -238,9 +238,12 @@ public class UnitViewHandsEquipment
 	{
 		if (Owner != null && Active)
 		{
+			Owner.UISettings.UnsubscribeFromHelmetVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.UnsubscribeFromArmorVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.UnsubscribeFromBackpackVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.UnsubscribeFromCapeVisibilityChange(UpdateCharacterDisplayOptions);
-			Owner.UISettings.UnsubscribeFromHelmetVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.UnsubscribeFromGlovesVisibilityChange(UpdateCharacterDisplayOptions);
+			Owner.UISettings.UnsubscribeFromBootsVisibilityChange(UpdateCharacterDisplayOptions);
 			Owner.UISettings.UnsubscribeFromHelmetVisibilityAboveAllChange(UpdateCharacterDisplayOptions);
 		}
 	}

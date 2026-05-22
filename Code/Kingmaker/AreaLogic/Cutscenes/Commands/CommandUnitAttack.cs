@@ -335,7 +335,11 @@ public class CommandUnitAttack : CommandBase
 		{
 			return CommandResult.Fail("Target not found");
 		}
-		GetAttackData(out var _, out var _, out var weapon, out var _, out var needApproach);
+		GetAttackData(out var _, out var _, out var weapon, out var cutsceneWeaponSet, out var needApproach);
+		if (cutsceneWeaponSet)
+		{
+			unit.GetBodyOptional()?.SetCutsceneHandsEquipment(null);
+		}
 		if (needApproach)
 		{
 			float approachRadiusMeters = weapon.AttackRange;
@@ -413,6 +417,11 @@ public class CommandUnitAttack : CommandBase
 		if (attackCmdHandle != null && !attackCmdHandle.IsFinished)
 		{
 			attackCmdHandle.Interrupt();
+		}
+		if (commandData.CutsceneWeaponSet)
+		{
+			commandData.Unit?.GetBodyOptional()?.SetCutsceneHandsEquipment(null);
+			commandData.CutsceneWeaponSet = false;
 		}
 		commandData.IsInterrupted = true;
 		return CommandResult.Success;

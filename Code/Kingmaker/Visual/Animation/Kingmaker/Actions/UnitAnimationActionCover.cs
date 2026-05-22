@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Visual.Animation.WeaponStyles;
@@ -62,7 +63,9 @@ public class UnitAnimationActionCover : UnitAnimationAction
 		}
 		if (WeaponStyleSettings != null)
 		{
-			m_ClipWrappersHashSet.AddRange(WeaponStyleSettings.EnumerateCoverClips());
+			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateCoverClips()
+				where c != null
+				select c);
 		}
 		return m_ClipWrappersHashSet;
 	}
