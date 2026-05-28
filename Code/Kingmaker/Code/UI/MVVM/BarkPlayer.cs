@@ -42,7 +42,7 @@ public static class BarkPlayer
 	{
 		if (entity == null)
 		{
-			return new BarkHandle(entity, text, duration);
+			return null;
 		}
 		if (!entity.IsInGame || (!forceShow && !entity.IsVisibleForPlayer))
 		{

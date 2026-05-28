@@ -350,9 +350,41 @@ public sealed class EvalContext : IEvalContext
 
 	public BlueprintAbility? AbilityBlueprint => Ability?.Blueprint.OriginalBlueprint;
 
-	public MechanicEntity? RuleInitiator => Rule?.Initiator;
+	public MechanicEntity? RuleInitiator
+	{
+		get
+		{
+			object obj = Rule?.Initiator;
+			if (obj == null)
+			{
+				AbilityData? ability = Ability;
+				if ((object)ability == null)
+				{
+					return null;
+				}
+				obj = ability.Caster;
+			}
+			return (MechanicEntity?)obj;
+		}
+	}
 
-	public MechanicEntity? RuleTarget => Rule?.Target;
+	public MechanicEntity? RuleTarget
+	{
+		get
+		{
+			object obj = Rule?.Target;
+			if (obj == null)
+			{
+				TargetWrapper? target = Target;
+				if ((object)target == null)
+				{
+					return null;
+				}
+				obj = target.Entity;
+			}
+			return (MechanicEntity?)obj;
+		}
+	}
 
 	public MechanicEntity? CurrentTargetEntity => Target?.Entity;
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Blueprints.Attributes;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Framework.ContextContract;
@@ -72,10 +73,14 @@ public sealed class AddStatModifier : UnitFactComponentDelegate, IStatModifier, 
 
 	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		if (Value.Enabled && Restrictions.IsPassed(base.Context, in context, stat))
+		if (Value.Enabled && (context.Rule != null || !(context.Ability == null) || DependencyType == StatRestrictionDependency.OwnerStat || Restrictions.Empty))
 		{
-			int value = Value.Calculate(base.Context);
-			collector.Modifiers.Add(Value.ModifierType, value, base.Fact, null, BonusType.None, StatType.Unknown, Descriptor);
+			MechanicEntity entity = ((Scope == StatModifierScope.Against) ? context.Against : context.Owner)?.Entity;
+			if (Restrictions.IsPassed(base.Context, in context, stat, entity))
+			{
+				int value = Value.Calculate(base.Context);
+				collector.Modifiers.Add(Value.ModifierType, value, base.Fact, null, BonusType.None, StatType.Unknown, Descriptor);
+			}
 		}
 	}
 

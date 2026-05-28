@@ -52,7 +52,10 @@ public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TVie
 
 	protected override void BindViewImplementation()
 	{
-		m_AccessibilityTextHelper = new AccessibilityTextHelper(m_Label);
+		if (m_AccessibilityTextHelper == null)
+		{
+			m_AccessibilityTextHelper = new AccessibilityTextHelper(m_Label);
+		}
 		ClearState();
 		base.BindViewImplementation();
 		AddDisposable(base.ViewModel.PhaseName.Subscribe(delegate(string value)
@@ -120,6 +123,7 @@ public class CharGenPhaseRoadmapView<TViewModel> : SelectionGroupEntityView<TVie
 		m_Button.Interactable = false;
 		m_Button.SetActiveLayer("Available");
 		m_LevelSeparator.SetActive(value: false);
+		m_AccessibilityTextHelper.Dispose();
 	}
 
 	void IInitializable.Initialize()

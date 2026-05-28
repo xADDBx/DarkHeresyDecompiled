@@ -105,10 +105,15 @@ public class BlueprintPlayerUpgrader : BlueprintScriptableObject
 					flag = true;
 				}
 			}
-			if (!flag && !AreaDataStash.HasData(m_SpecificArea.Guid.ToString(), m_SpecificMechanic.Get()?.Scene.SceneName ?? "", useJson: true))
+			if (!flag)
 			{
-				PFLog.History.System.Log("Skipping player upgrader from blueprint: " + name + " because the area is not in the save");
-				flag = true;
+				string areaId = m_SpecificArea.Guid.ToString();
+				string sceneName = m_SpecificMechanic.Get()?.Scene.SceneName ?? "";
+				if (!AreaDataStash.HasData(areaId, sceneName, useJson: false) && !AreaDataStash.HasData(areaId, sceneName, useJson: true))
+				{
+					PFLog.History.System.Log("Skipping player upgrader from blueprint: " + name + " because the area is not in the save");
+					flag = true;
+				}
 			}
 		}
 		else

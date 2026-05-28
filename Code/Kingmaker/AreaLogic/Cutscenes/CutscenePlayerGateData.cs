@@ -103,6 +103,10 @@ public class CutscenePlayerGateData : IOwlPackable, IOwlPackable<CutscenePlayerG
 	public void AddIncomingTrack(CutscenePlayerTrackData track, bool canReactivate = false)
 	{
 		m_CanReactivate |= canReactivate;
+		if (m_IncomingTracks.Contains(track))
+		{
+			return;
+		}
 		m_IncomingTracks.Add(track);
 		if (Gate.TriggerType == CutsceneGate.GateTriggerType.AllTracks)
 		{

@@ -67,7 +67,9 @@ public class UnitAnimationActionHit : UnitAnimationAction
 			return m_ClipWrappersHashSet;
 		}
 		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
-		m_ClipWrappersHashSet.AddRange(EnumerateClips());
+		m_ClipWrappersHashSet.AddRange(from c in EnumerateClips()
+			where c != null
+			select c);
 		return m_ClipWrappersHashSet;
 	}
 

@@ -269,7 +269,11 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 		TurnController turnController = Game.Instance.Controllers.TurnController;
 		if (turnController.IsPreparationTurn)
 		{
-			HandleBeginPreparationTurn(turnController.IsDeploymentAllowed);
+			DeploymentPhase = turnController.IsDeploymentAllowed;
+			if (DeploymentPhase)
+			{
+				SubscribeToSelectedUnit();
+			}
 			return;
 		}
 		Clear();
@@ -281,14 +285,19 @@ public class UnitMovableAreaController : IControllerDisable, IController, IContr
 		}
 	}
 
+	private void SubscribeToSelectedUnit()
+	{
+		m_CurrentUnitSubscription?.Dispose();
+		m_CurrentUnitSubscription = Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Subscribe(HandleNewUnitStartTurn);
+	}
+
 	public void HandleBeginPreparationTurn(bool canDeploy)
 	{
 		DeploymentPhase = canDeploy;
 		if (canDeploy)
 		{
 			ClearInitialPositions();
-			m_CurrentUnitSubscription?.Dispose();
-			m_CurrentUnitSubscription = Game.Instance.Controllers.SelectionCharacter.SelectedUnit.Subscribe(HandleNewUnitStartTurn);
+			SubscribeToSelectedUnit();
 		}
 	}
 

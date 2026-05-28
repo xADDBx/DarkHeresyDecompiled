@@ -60,26 +60,25 @@ public sealed class AddStatModifierRestrictionCalculator : RestrictionCalculator
 		}
 	}
 
-	public bool IsPassed(IEvalContext evalContext, in StatContext statContext, StatType stat)
+	public bool IsPassed(IEvalContext evalContext, in StatContext statContext, StatType stat, MechanicEntity entity)
 	{
 		if (!MatchesStat(stat))
 		{
 			return false;
 		}
-		MechanicEntity mechanicEntity = evalContext.ClickedTarget?.Entity ?? evalContext.Owner;
-		if (mechanicEntity == null)
+		if (entity == null)
 		{
 			return false;
 		}
 		if (AdvancedSkillOnly)
 		{
-			MechanicEntity mechanicEntity2 = ((!CheckTargetAdvancedSkill) ? mechanicEntity : evalContext.Target?.Entity);
-			if (mechanicEntity2 == null || !IsAdvancedSkill(mechanicEntity2, stat))
+			MechanicEntity mechanicEntity = ((!CheckTargetAdvancedSkill) ? entity : evalContext.Target?.Entity);
+			if (mechanicEntity == null || !IsAdvancedSkill(mechanicEntity, stat))
 			{
 				return false;
 			}
 		}
-		return base.IsPassedInternal(mechanicEntity, evalContext, null, statContext.Rule, statContext.Ability);
+		return base.IsPassedInternal(entity, evalContext, null, statContext.Rule, statContext.Ability);
 	}
 
 	public new bool IsPassed(IEvalContext evalContext, in StatContext statContext)

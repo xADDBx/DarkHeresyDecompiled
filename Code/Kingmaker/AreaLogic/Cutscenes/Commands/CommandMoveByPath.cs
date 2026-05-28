@@ -89,6 +89,23 @@ public class CommandMoveByPath : CommandBase
 			commandData.Unit.Translocate(commandData.EndPosition, null);
 			return CommandResult.Success;
 		}
+		int num2 = 0;
+		Vector3 position = commandData.Unit.Position;
+		float num3 = float.MaxValue;
+		for (int j = 0; j < list.Count; j++)
+		{
+			float sqrMagnitude = (list[j] - position).sqrMagnitude;
+			if (sqrMagnitude < num3)
+			{
+				num3 = sqrMagnitude;
+				num2 = j;
+			}
+		}
+		if (num2 > 0)
+		{
+			list.RemoveRange(0, num2);
+			list.Insert(0, position);
+		}
 		UnitMoveToParams unitMoveToParams = new UnitMoveToParams(ForcedPath.Construct(list), commandData.EndPosition)
 		{
 			MovementType = ((Animation == WalkSpeedType.Sprint) ? WalkSpeedType.Walk : Animation)
@@ -98,10 +115,10 @@ public class CommandMoveByPath : CommandBase
 		movementAgent.AvoidanceDisabled = true;
 		if (OverrideSpeed && !Mathf.Approximately(SpeedMultiplier, 1f))
 		{
-			float? num2 = ReadAnimsetSpeed(commandData.Unit, unitMoveToParams.MovementType);
-			if (num2.HasValue)
+			float? num4 = ReadAnimsetSpeed(commandData.Unit, unitMoveToParams.MovementType);
+			if (num4.HasValue)
 			{
-				movementAgent.MaxSpeedOverride = num2.Value * SpeedMultiplier;
+				movementAgent.MaxSpeedOverride = num4.Value * SpeedMultiplier;
 			}
 		}
 		movementAgent.OverridenAngularSpeed = 720f;

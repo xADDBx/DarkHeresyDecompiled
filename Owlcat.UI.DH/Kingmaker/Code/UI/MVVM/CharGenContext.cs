@@ -177,6 +177,7 @@ public class CharGenContext : IDisposable, ICharGenDollStateHandler, ISubscriber
 
 	public void RequestSetHair([NotNull] EquipmentEntityLink equipmentEntityLink, int index)
 	{
+		Doll.SetHair(equipmentEntityLink);
 		Game.Instance.GameCommandQueue.CharGenSetHair(equipmentEntityLink, index);
 	}
 
@@ -217,6 +218,7 @@ public class CharGenContext : IDisposable, ICharGenDollStateHandler, ISubscriber
 
 	public void RequestSetBeard([NotNull] EquipmentEntityLink equipmentEntityLink, int index)
 	{
+		Doll.SetBeard(equipmentEntityLink);
 		Game.Instance.GameCommandQueue.CharGenSetBeard(equipmentEntityLink, index);
 	}
 

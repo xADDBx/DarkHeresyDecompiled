@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.ElementsSystem;
 using Kingmaker.ResourceLinks;
@@ -8,7 +9,7 @@ using UnityEngine;
 namespace Kingmaker.Designers.EventConditionActionSystem.Actions;
 
 [TypeId("52ded17ca9754ae995489b64825c6378")]
-public class SetAnimationSet : GameAction
+public class SetAnimationSet : GameAction, IResourcesHolder
 {
 	[SerializeField]
 	[SerializeReference]
@@ -20,6 +21,11 @@ public class SetAnimationSet : GameAction
 	public override string GetCaption()
 	{
 		return $"Set {m_Unit} AnimationSet to '{m_AnimationSet.Load().NameSafe()}'";
+	}
+
+	public IEnumerable<WeakResourceLink> GetResources()
+	{
+		return new AnimationSetLink[1] { m_AnimationSet };
 	}
 
 	protected override void RunAction()

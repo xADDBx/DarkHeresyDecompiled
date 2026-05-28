@@ -34,12 +34,16 @@ public class LocalizationManager : ILocalizationProvider
 	public static readonly LocalizationManager Instance = new LocalizationManager();
 
 	[NotNull]
-	public static readonly Locale[] BackupLocales = new Locale[3]
+	public static readonly Locale[] BackupLocales = ((!BuildModeUtility.IsRelease) ? new Locale[3]
 	{
 		Locale.enGB,
 		Locale.ruRU,
 		Locale.dev
-	};
+	} : new Locale[2]
+	{
+		Locale.enGB,
+		Locale.ruRU
+	});
 
 	[CanBeNull]
 	private LocalizationPack[] m_BackupPacks;

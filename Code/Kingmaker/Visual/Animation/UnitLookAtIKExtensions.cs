@@ -1,3 +1,4 @@
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.PubSubSystem.Core;
 using UnityEngine;
 
@@ -67,10 +68,14 @@ public static class UnitLookAtIKExtensions
 
 	public static void StopLookAt(this IAbstractUnitEntity unit, float turningTime = 0.3f)
 	{
-		LookAtIKController componentInChildren = unit.View.GO.GetComponentInChildren<LookAtIKController>();
-		if (componentInChildren != null)
+		GameObject gameObject = unit?.View.Or(null)?.GO;
+		if (!(gameObject == null))
 		{
-			componentInChildren.ResetImmediately(turningTime);
+			LookAtIKController componentInChildren = gameObject.GetComponentInChildren<LookAtIKController>();
+			if (componentInChildren != null)
+			{
+				componentInChildren.ResetImmediately(turningTime);
+			}
 		}
 	}
 

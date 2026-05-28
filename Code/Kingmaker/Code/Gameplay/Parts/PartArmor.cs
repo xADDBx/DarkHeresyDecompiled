@@ -31,7 +31,14 @@ public class PartArmor : MechanicEntityPart, IDamageablePart, IStatModifier, IHa
 
 	public int DurabilityValue => base.Owner.Actor.GetStat(StatType.MaxArmorDurability, null, default(StatContext), "DurabilityValue");
 
-	public int DurabilityLeft => Mathf.FloorToInt((float)DurabilityValue * (1f - _missingDurabilityFraction));
+	public int DurabilityLeft
+	{
+		get
+		{
+			int durabilityValue = DurabilityValue;
+			return durabilityValue - Mathf.FloorToInt(_missingDurabilityFraction * (float)durabilityValue);
+		}
+	}
 
 	public float DurabilityLeftFraction => Math.Max(0f, 1f - _missingDurabilityFraction);
 

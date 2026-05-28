@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Attributes;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Framework.Abilities.Blueprints;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Framework.ContextContract;
@@ -190,9 +191,13 @@ public abstract class DamageModifier : MechanicEntityFactComponentDelegate, ISta
 
 	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		if (stat == StatType.ArmorDamageReduction && Restrictions.IsPassed(base.Context, in context))
+		if (stat == StatType.ArmorDamageReduction && (context.Rule != null || !(context.Ability == null) || DependencyType == StatRestrictionDependency.OwnerStat || Restrictions.Empty))
 		{
-			DamageReduction.TryApply(collector.Modifiers, base.Fact, ModifierDescriptor);
+			MechanicEntity currentEntity = ((Scope == StatModifierScope.Against) ? context.Against : context.Owner)?.Entity;
+			if (Restrictions.IsPassed(base.Context, currentEntity, null, context.Rule, context.Ability))
+			{
+				DamageReduction.TryApply(collector.Modifiers, base.Fact, ModifierDescriptor);
+			}
 		}
 	}
 

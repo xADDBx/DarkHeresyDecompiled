@@ -43,7 +43,7 @@ public class CoverEntity : DestructibleEntity, PartCover.IOwner, IEntityPartOwne
 
 	public PartCover Cover => GetRequired<PartCover>();
 
-	public override bool CanBeAttackedDirectly => true;
+	public override bool CanBeAttackedDirectly => !base.Health.IsFullyDamaged;
 
 	public CoverEntity(IDestructibleEntityConfig config)
 		: base(config)

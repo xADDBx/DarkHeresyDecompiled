@@ -283,6 +283,14 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 		{
 			return CommandResult.Success;
 		}
+		if (m_FiniteLoop || !commandData.Finished || (!m_ExitBeforeDone && commandData.Handle != null && !commandData.Handle.IsFinished))
+		{
+			commandData.Handle?.Release();
+			if (commandData.Handle?.Action != null)
+			{
+				UnityEngine.Object.Destroy(commandData.Handle.Action);
+			}
+		}
 		if (!m_Unit.TryGetValue(out var value))
 		{
 			return CommandResult.Fail("Unit not found");
@@ -292,18 +300,9 @@ public sealed class CommandUnitPlayCutsceneAnimation : CommandBase
 			commandData.Finished = true;
 			return CommandResult.Success;
 		}
-		IAbstractUnitEntityView view = value.View;
-		if (view == null)
+		if (value.View == null)
 		{
 			return CommandResult.Fail("Unit view is null");
-		}
-		if ((bool)view.AnimationManager && (m_FiniteLoop || !commandData.Finished || (!m_ExitBeforeDone && commandData.Handle != null && !commandData.Handle.IsFinished)))
-		{
-			commandData.Handle?.Release();
-			if (commandData.Handle?.Action != null)
-			{
-				UnityEngine.Object.Destroy(commandData.Handle.Action);
-			}
 		}
 		return CommandResult.Success;
 	}

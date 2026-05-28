@@ -158,7 +158,7 @@ public sealed class CompanionSpawnerEntity : AbstractUnitSpawnerEntity, IPartyHa
 	public override void HandleAreaSpawnerInit()
 	{
 		spawnLogContext = LogContext.SceneInit;
-		if (!Config.SpawnOnSceneInit && Config.SpawnNpcCopy)
+		if (!Config.SpawnOnSceneInit || Config.SpawnNpcCopy)
 		{
 			base.HandleAreaSpawnerInit();
 			return;

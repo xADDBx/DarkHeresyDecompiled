@@ -17,6 +17,11 @@ public class BarkHandle : BarkHandleBase
 
 	private BarkHandle(Entity entity, float duration = -1f, VoiceOverStatus voiceOverStatus = null, bool synced = true)
 	{
+		if (entity == null)
+		{
+			m_IsActive = false;
+			return;
+		}
 		if (Game.Instance.Controllers.CustomUpdateController.TryFind((IUpdatable x) => x is BarkHandle barkHandle && barkHandle.m_Entity == entity, out var result))
 		{
 			((IBarkHandle)result).InterruptBark();

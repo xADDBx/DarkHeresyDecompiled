@@ -419,12 +419,19 @@ public static class AbilityProjectileAttackLineHelper
 		{
 			return firstUnit;
 		}
-		FilteredList<DestructibleEntity> destructibleEntities = node.GetDestructibleEntities();
-		if (destructibleEntities.Any())
+		DestructibleEntity destructibleEntity = null;
+		foreach (DestructibleEntity destructibleEntity2 in node.GetDestructibleEntities())
 		{
-			return destructibleEntities.First();
+			if (!destructibleEntity2.Health.IsFullyDamaged)
+			{
+				return destructibleEntity2;
+			}
+			if (destructibleEntity == null)
+			{
+				destructibleEntity = destructibleEntity2;
+			}
 		}
-		return null;
+		return destructibleEntity;
 	}
 
 	public static IEnumerable<(MechanicEntity Entity, LosDescription Los, GridNodeBase Node)> EnumerateTargets([NotNull] AbilityExecutionContext context, [CanBeNull] MechanicEntity priorityTarget, [NotNull] IEnumerable<GridNodeBase> nodes, [NotNull] GridNodeBase fromNode, [NotNull] GridNodeBase toNode, bool ignoreLos = false, bool ignoreLevelDifference = false)

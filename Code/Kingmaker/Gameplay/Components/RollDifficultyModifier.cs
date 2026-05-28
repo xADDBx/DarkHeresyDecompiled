@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Kingmaker.Designers.Mechanics.Facts.Restrictions;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Stats.Base;
 using Kingmaker.Enums;
 using Kingmaker.Framework.ContextContract;
@@ -80,9 +81,13 @@ public abstract class RollDifficultyModifier : MechanicEntityFactComponentDelega
 
 	void IStatModifier.TryApplyStatModifier(StatModifierCollector collector, StatType stat, StatContext context)
 	{
-		if (stat == StatType.Defence && Restrictions.IsPassed(base.Context, in context))
+		if (stat == StatType.Defence && (context.Rule != null || !(context.Ability == null) || DependencyType == StatRestrictionDependency.OwnerStat || Restrictions.Empty))
 		{
-			Modifier.TryApply(collector.Modifiers, base.Fact, Descriptor);
+			MechanicEntity currentEntity = ((Scope == StatModifierScope.Against) ? context.Against : context.Owner)?.Entity;
+			if (Restrictions.IsPassed(base.Context, currentEntity, null, context.Rule, context.Ability))
+			{
+				Modifier.TryApply(collector.Modifiers, base.Fact, Descriptor);
+			}
 		}
 	}
 

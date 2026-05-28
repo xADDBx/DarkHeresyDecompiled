@@ -169,6 +169,10 @@ public static class TypeLibraryInitializer
 			{
 				"Kingmaker.Code.View.UI.UIUtilities.UIUtilityUnit+PortraitCombatSize, Code",
 				typeof(PortraitCombatSize)
+			},
+			{
+				"Kingmaker.Code.UI.MVVM.FeedbackPopupItem, Code",
+				typeof(FeedbackPopupItem)
 			}
 		};
 		if (dictionary == null)

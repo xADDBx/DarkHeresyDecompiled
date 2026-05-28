@@ -61,7 +61,17 @@ public class DestructibleEntity : MapObjectEntity, PartHealth.IOwner, IEntityPar
 
 	public override ViewHandlingOnDisposePolicyType DefaultViewHandlingOnDisposePolicy => ViewHandlingOnDisposePolicyType.Deactivate;
 
-	public override bool CanBeAttackedDirectly => Config.CanBeAttackedDirectly;
+	public override bool CanBeAttackedDirectly
+	{
+		get
+		{
+			if (Config.CanBeAttackedDirectly)
+			{
+				return !Health.IsFullyDamaged;
+			}
+			return false;
+		}
+	}
 
 	public PartHealth Health => GetRequired<PartHealth>();
 

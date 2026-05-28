@@ -7,27 +7,27 @@ namespace Owlcat.Runtime.Visual.XPBD.Bodies;
 
 public class BodyVertexSoA : StructureOfArrays<BodyVertex>
 {
-	public NativeArray<float3> RestNormal;
+	public NativeArray<float3> Normal;
 
 	public NativeArray<float3> Position;
 
-	public NativeArray<float3> Normal;
+	public NativeArray<float3> RestNormal;
 
 	public override BodyVertex this[int index]
 	{
 		get
 		{
 			BodyVertex result = default(BodyVertex);
-			result.RestNormal = RestNormal[index];
-			result.Position = Position[index];
 			result.Normal = Normal[index];
+			result.Position = Position[index];
+			result.RestNormal = RestNormal[index];
 			return result;
 		}
 		set
 		{
-			RestNormal[index] = value.RestNormal;
-			Position[index] = value.Position;
 			Normal[index] = value.Normal;
+			Position[index] = value.Position;
+			RestNormal[index] = value.RestNormal;
 		}
 	}
 
@@ -44,33 +44,33 @@ public class BodyVertexSoA : StructureOfArrays<BodyVertex>
 	public override void Resize(int newSize)
 	{
 		base.Resize(newSize);
-		RestNormal = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-		Position = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 		Normal = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+		Position = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+		RestNormal = new NativeArray<float3>(newSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 	}
 
 	public override void CopyTo(StructureOfArraysBase dst, int offset, int dstOffset, int length)
 	{
 		BodyVertexSoA bodyVertexSoA = (BodyVertexSoA)dst;
-		NativeArray<float3>.Copy(RestNormal, offset, bodyVertexSoA.RestNormal, dstOffset, length);
-		NativeArray<float3>.Copy(Position, offset, bodyVertexSoA.Position, dstOffset, length);
 		NativeArray<float3>.Copy(Normal, offset, bodyVertexSoA.Normal, dstOffset, length);
+		NativeArray<float3>.Copy(Position, offset, bodyVertexSoA.Position, dstOffset, length);
+		NativeArray<float3>.Copy(RestNormal, offset, bodyVertexSoA.RestNormal, dstOffset, length);
 	}
 
 	public override void Dispose()
 	{
 		base.Dispose();
-		RestNormal.Dispose();
-		Position.Dispose();
 		Normal.Dispose();
+		Position.Dispose();
+		RestNormal.Dispose();
 	}
 
 	public BodyVertexSoASlice GetSlice(int offset, int count)
 	{
 		BodyVertexSoASlice result = default(BodyVertexSoASlice);
-		result.RestNormal = new NativeSlice<float3>(RestNormal, offset, count);
-		result.Position = new NativeSlice<float3>(Position, offset, count);
 		result.Normal = new NativeSlice<float3>(Normal, offset, count);
+		result.Position = new NativeSlice<float3>(Position, offset, count);
+		result.RestNormal = new NativeSlice<float3>(RestNormal, offset, count);
 		return result;
 	}
 }

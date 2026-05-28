@@ -52,7 +52,7 @@ public class StashItemFromUnitInventorySlot : GameAction
 		}
 		using (ContextData<GameLogDisabled>.RequestIf(Silent))
 		{
-			ItemSlot equipSlot = baseUnitEntity.Body.GetEquipSlot(TargetSlot, 0);
+			ItemSlot equipSlot = baseUnitEntity.Body.GetEquipSlot(TargetSlot, baseUnitEntity.Body.CurrentHandEquipmentSetIndex);
 			if (equipSlot.HasItem && equipSlot.CanRemoveItem())
 			{
 				ItemEntity item = equipSlot.Item;

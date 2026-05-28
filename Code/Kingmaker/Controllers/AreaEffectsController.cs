@@ -145,7 +145,7 @@ public class AreaEffectsController : IControllerTick, IController, ITeleportHand
 		SceneEntitiesState state = ((!onUnit) ? Game.Instance.LoadedAreaState.MainState : (target.Entity?.HoldingState ?? ContextData<EntitySpawnController.EntitySpawnData>.Current?.TargetState));
 		AreaEffectEntity areaEffectEntity = Entity.Initialize(new AreaEffectEntity(Uuid.Instance.CreateGuid().ToString(), isInGame: true, parentContext, blueprint, target, Game.Instance.Controllers.TimeController.GameTime, duration, onUnit, usePatternFromAbility, initiative));
 		areaEffectEntity.AttachToViewOnLoad(null);
-		Game.Instance.Controllers.EntitySpawner.SpawnEntity(areaEffectEntity, state);
+		Game.Instance.Controllers.EntitySpawner.SpawnEntity(areaEffectEntity, state, moveView: true);
 		EventBus.RaiseEvent((IAreaEffectEntity)areaEffectEntity, (Action<IAreaEffectHandler>)delegate(IAreaEffectHandler h)
 		{
 			h.HandleAreaEffectSpawned();

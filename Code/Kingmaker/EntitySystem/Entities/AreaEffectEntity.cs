@@ -231,7 +231,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	{
 		Name = "AreaEffectEntity",
 		OldNames = null,
-		Fields = new FieldInfo[30]
+		Fields = new FieldInfo[31]
 		{
 			new FieldInfo("UniqueId", typeof(string)),
 			new FieldInfo("m_IsInGame", typeof(bool)),
@@ -262,7 +262,8 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			new FieldInfo("Duration", typeof(Rounds?)),
 			new FieldInfo("Lifetime", typeof(Rounds)),
 			new FieldInfo("SourceFact", typeof(EntityFactRef)),
-			new FieldInfo("RetainCameraOnEnd", typeof(bool))
+			new FieldInfo("RetainCameraOnEnd", typeof(bool)),
+			new FieldInfo("m_SavedCasterPosition", typeof(Vector3?))
 		}
 	};
 
@@ -294,6 +295,10 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 	[JsonProperty]
 	[OwlPackInclude]
 	public bool RetainCameraOnEnd { get; set; }
+
+	[JsonProperty]
+	[OwlPackInclude]
+	private Vector3? m_SavedCasterPosition { get; set; }
 
 	public EntityEventDelegate OnEntityEnter { get; set; }
 
@@ -457,6 +462,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		m_IsMovedFromOutsideToInsideDelegate = IsMovedFromOutsideToInside;
 		m_ForceInitiative = forceInitiative;
 		m_ForceUpdate = true;
+		m_SavedCasterPosition = m_Context.MaybeCaster?.Position;
 	}
 
 	[UsedImplicitly]
@@ -1145,7 +1151,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 			{
 				return;
 			}
-			GridNodeBase nearestNodeXZUnwalkable = (m_Context.MaybeCaster?.Position ?? m_Target.Point).GetNearestNodeXZUnwalkable();
+			GridNodeBase nearestNodeXZUnwalkable = (m_SavedCasterPosition ?? m_Target.Point).GetNearestNodeXZUnwalkable();
 			OrientedPatternData pattern;
 			GridNodeBase gridNodeBase;
 			if (m_UsePatternFromAbility && m_OverridePattern == null)
@@ -1161,7 +1167,7 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 						{
 							pattern = sourceAbility.GetPattern(m_Target, valueOrDefault);
 							gridNodeBase = pattern.ApplicationNode ?? m_TargetNode;
-							goto IL_01e4;
+							goto IL_01e8;
 						}
 					}
 				}
@@ -1180,16 +1186,16 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 				if (entity != null)
 				{
 					caster = entity;
-					goto IL_01a3;
+					goto IL_01a7;
 				}
 			}
 			caster = this;
-			goto IL_01a3;
-			IL_01a3:
+			goto IL_01a7;
+			IL_01a7:
 			pattern = AoEPatternHelper.GetOrientedPattern(null, (MechanicEntity)caster, aoEPattern, blueprint, nearestNodeXZUnwalkable, m_TargetNode, castOnSameLevel: false, aoEPattern.CanBeDirectional, coveredTargetsOnly: false, targetSize, out gridNodeBase);
 			gridNodeBase = pattern.ApplicationNode ?? gridNodeBase;
-			goto IL_01e4;
-			IL_01e4:
+			goto IL_01e8;
+			IL_01e8:
 			areaEffectShapePattern.SetPattern(gridNodeBase, gridNodeBase.Vector3Position().y, in pattern);
 			base.Position = gridNodeBase.Vector3Position();
 			base.EventBus.RaiseEvent((IAreaEffectEntity)this, (Action<IAreaEffectShapeUpdatedHandler>)delegate(IAreaEffectShapeUpdatedHandler h)
@@ -1260,6 +1266,11 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		result.Append(ref val10);
 		bool val11 = RetainCameraOnEnd;
 		result.Append(ref val11);
+		if (m_SavedCasterPosition.HasValue)
+		{
+			Vector3 val12 = m_SavedCasterPosition.Value;
+			result.Append(ref val12);
+		}
 		return result;
 	}
 
@@ -1319,6 +1330,8 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 		formatter.Field(28, "SourceFact", ref value8, state);
 		bool value9 = RetainCameraOnEnd;
 		formatter.UnmanagedField(29, "RetainCameraOnEnd", ref value9, state);
+		Vector3? value10 = m_SavedCasterPosition;
+		formatter.NullableField(30, "m_SavedCasterPosition", ref value10, state);
 		formatter.EndObject();
 	}
 
@@ -1425,6 +1438,9 @@ public class AreaEffectEntity : MechanicEntity<BlueprintAreaEffect>, IAreaHandle
 				break;
 			case 29:
 				RetainCameraOnEnd = formatter.ReadUnmanaged<bool>(state);
+				break;
+			case 30:
+				m_SavedCasterPosition = formatter.ReadNullablePackable<Vector3>(state);
 				break;
 			}
 		}

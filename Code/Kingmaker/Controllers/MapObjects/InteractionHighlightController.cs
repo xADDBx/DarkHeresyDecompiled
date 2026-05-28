@@ -1,20 +1,26 @@
 using Core.Cheats;
 using Kingmaker.Code.Framework.Settings.UISettings;
 using Kingmaker.Code.Middleware.Metrics;
+using Kingmaker.Code.View.Bridge.Enums;
 using Kingmaker.Controllers.Interfaces;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem.Core.Interfaces;
 using Kingmaker.Settings;
 using Kingmaker.Utility.GameConst;
 using UnityEngine;
 
 namespace Kingmaker.Controllers.MapObjects;
 
-public class InteractionHighlightController : IControllerEnable, IController, IControllerDisable
+public class InteractionHighlightController : IControllerEnable, IController, IControllerDisable, IFullScreenUIHandler, ISubscriber
 {
 	private bool m_IsGlobalHighlighting;
+
+	private bool m_IsHighlightToggleOn;
+
+	private bool m_FullScreenUIOpen;
 
 	private bool m_Inactive;
 
@@ -32,6 +38,11 @@ public class InteractionHighlightController : IControllerEnable, IController, IC
 		Game.Instance.Keyboard.Bind(UISettingsRoot.Instance.UIKeybindGeneralSettings.HighlightObjects.name + UIConsts.SuffixOff, OnHighlightKeyUp);
 		Instance = this;
 		m_Inactive = false;
+		EventBus.Subscribe(this);
+		if (m_IsHighlightToggleOn && !m_FullScreenUIOpen)
+		{
+			HighlightOn();
+		}
 	}
 
 	private void OnHighlightKeyDown()
@@ -39,7 +50,7 @@ public class InteractionHighlightController : IControllerEnable, IController, IC
 		if (SettingsRoot.Controls.HighlightObjectsMode.GetValue() == HighlightObjectsMode.Toggle)
 		{
 			SwitchHighlight();
-			Metrics.Tab.Mode(HighlightObjectsMode.Toggle).ToggleState(IsGlobalHighlighting).Send();
+			Metrics.Tab.Mode(HighlightObjectsMode.Toggle).ToggleState(m_IsHighlightToggleOn).Send();
 		}
 		else if (HighlightOn())
 		{
@@ -77,18 +88,32 @@ public class InteractionHighlightController : IControllerEnable, IController, IC
 
 	public void SwitchHighlight()
 	{
-		Highlight(!IsGlobalHighlighting);
+		Highlight(!m_IsHighlightToggleOn);
 	}
 
 	public void Highlight(bool on)
 	{
-		if (on)
+		m_IsHighlightToggleOn = on;
+		if (on && !m_FullScreenUIOpen)
 		{
 			HighlightOn();
 		}
 		else
 		{
 			HighlightOff();
+		}
+	}
+
+	void IFullScreenUIHandler.HandleFullScreenUiChanged(bool state, FullScreenUIType fullScreenUIType)
+	{
+		m_FullScreenUIOpen = state;
+		if (state)
+		{
+			HighlightOff();
+		}
+		else if (m_IsHighlightToggleOn)
+		{
+			HighlightOn();
 		}
 	}
 
@@ -140,6 +165,7 @@ public class InteractionHighlightController : IControllerEnable, IController, IC
 	{
 		Game.Instance.Keyboard.Unbind(UISettingsRoot.Instance.UIKeybindGeneralSettings.HighlightObjects.name + UIConsts.SuffixOn, OnHighlightKeyDown);
 		Game.Instance.Keyboard.Unbind(UISettingsRoot.Instance.UIKeybindGeneralSettings.HighlightObjects.name + UIConsts.SuffixOff, OnHighlightKeyUp);
+		EventBus.Unsubscribe(this);
 		HighlightOff();
 		m_Inactive = true;
 		Instance = null;

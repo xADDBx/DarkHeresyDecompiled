@@ -61,6 +61,7 @@ public class UnitAnimationActionCover : UnitAnimationAction
 		{
 			return m_ClipWrappersHashSet;
 		}
+		m_ClipWrappersHashSet = new HashSet<AnimationClipWrapper>();
 		if (WeaponStyleSettings != null)
 		{
 			m_ClipWrappersHashSet.AddRange(from c in WeaponStyleSettings.EnumerateCoverClips()

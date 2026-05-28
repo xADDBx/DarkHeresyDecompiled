@@ -389,7 +389,7 @@ public class UnitInfoVM : ViewModel, IUnitDirectHoverUIHandler, ISubscriber, IUn
 		{
 			return m_EntityPosition;
 		}
-		Vector3 vector = m_MechanicEntityUIState.MechanicEntity.MechanicEntity.Blueprint.GetComponent<UnitUISettings>()?.InspectSettings.UnitInfoOffset ?? Vector3.zero;
+		Vector3 vector = ((m_MechanicEntityUIState.MechanicEntity.MechanicEntity?.Blueprint)?.GetComponent<UnitUISettings>())?.InspectSettings.UnitInfoOffset ?? Vector3.zero;
 		Transform bone = m_MechanicEntityUIState.GetBone();
 		if (bone != null && !m_MechanicEntityUIState.MechanicEntity.IsDeadOrUnconscious)
 		{

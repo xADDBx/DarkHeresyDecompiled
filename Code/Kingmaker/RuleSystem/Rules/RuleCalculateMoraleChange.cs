@@ -136,7 +136,7 @@ public class RuleCalculateMoraleChange : RulebookTargetEvent
 			{
 				return 0;
 			}
-			return SettingsRoot.Difficulty.EnemyPositiveMoraleChangeModifier;
+			return Math.Min(0, SettingsRoot.Difficulty.EnemyPositiveMoraleChangeModifier);
 		}
 		return SettingsRoot.Difficulty.PartyPositiveMoraleChangeModifier;
 	}

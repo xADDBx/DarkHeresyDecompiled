@@ -10,6 +10,7 @@ using Kingmaker.Blueprints.JsonSystem.EditorDatabase;
 using Kingmaker.Blueprints.Root;
 using Kingmaker.Code.Gameplay.Blueprints;
 using Kingmaker.Code.View.UI.UIUtilities;
+using Kingmaker.Controllers.Clicks;
 using Kingmaker.Controllers.Combat;
 using Kingmaker.Designers;
 using Kingmaker.Designers.WarhammerSurfaceCombatPrototype;
@@ -40,6 +41,7 @@ using Kingmaker.View;
 using Kingmaker.View.Roaming;
 using ObservableCollections;
 using Owlcat.Runtime.Core.Utility;
+using Pathfinding;
 using UnityEngine;
 using UnityEngine.Profiling;
 
@@ -168,13 +170,54 @@ public class CheatsCombat
 	private static void Info(string parameters)
 	{
 		BaseUnitEntity unitUnderMouse = Utilities.GetUnitUnderMouse();
-		if (unitUnderMouse == null)
+		if (unitUnderMouse != null)
 		{
-			PFLog.SmartConsole.Log("No unit under mouse");
+			PFLog.SmartConsole.Log("AssetPath: " + Utilities.GetBlueprintPath(unitUnderMouse.Blueprint));
 		}
 		else
 		{
-			PFLog.SmartConsole.Log("AssetPath: " + Utilities.GetBlueprintPath(unitUnderMouse.Blueprint));
+			PFLog.SmartConsole.Log("No unit under mouse");
+		}
+		LogCellContentsUnderCursor();
+	}
+
+	private static void LogCellContentsUnderCursor()
+	{
+		GridNodeBase gridNodeBase = null;
+		MechanicEntity mechanicEntityUnderMouse = Utilities.GetMechanicEntityUnderMouse();
+		if (mechanicEntityUnderMouse != null)
+		{
+			gridNodeBase = mechanicEntityUnderMouse.CurrentNode.node as GridNodeBase;
+		}
+		if (gridNodeBase == null && AstarPath.active != null)
+		{
+			PointerController pointerController = Game.Instance.Controllers.PointerController;
+			if (pointerController != null)
+			{
+				gridNodeBase = AstarPath.active.GetNearest(pointerController.WorldPosition).node as GridNodeBase;
+			}
+		}
+		if (gridNodeBase == null)
+		{
+			PFLog.SmartConsole.Log("Cell under cursor: <no grid node>");
+			return;
+		}
+		PFLog.SmartConsole.Log($"Cell under cursor at {gridNodeBase.Vector3Position()} (coords {gridNodeBase.CoordinatesInGrid}):");
+		int num = 0;
+		foreach (BaseUnitEntity unit in gridNodeBase.GetUnits())
+		{
+			PartHealth healthOptional = unit.GetHealthOptional();
+			PFLog.SmartConsole.Log("  Unit: " + (unit.View?.name ?? unit.GetType().Name) + " type=" + unit.GetType().Name + " blueprint=" + Utilities.GetBlueprintPath(unit.Blueprint) + " " + $"HP={healthOptional?.HitPointsLeft}/{healthOptional?.MaxHitPoints} " + $"LifeState={unit.LifeState?.State} " + $"IsUntargetable={unit.Features?.IsUntargetable}");
+			num++;
+		}
+		foreach (DestructibleEntity destructibleEntity in gridNodeBase.GetDestructibleEntities())
+		{
+			PFLog.SmartConsole.Log("  Destructible: " + (destructibleEntity.View?.name ?? destructibleEntity.GetType().Name) + " type=" + destructibleEntity.GetType().Name + " " + $"HP={destructibleEntity.Health.HitPointsLeft}/{destructibleEntity.Health.MaxHitPoints} " + $"IsFullyDamaged={destructibleEntity.Health.IsFullyDamaged} " + $"CanBeAttackedDirectly={destructibleEntity.CanBeAttackedDirectly} " + "blueprint=" + Utilities.GetBlueprintPath(destructibleEntity.Blueprint));
+			num++;
+		}
+		if (num == 0)
+		{
+			PFLog.SmartConsole.Log("  (no entities in this cell)");
 		}
 	}
 
