@@ -149,6 +149,8 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	private SignalWrapper m_StartBattleSignal;
 
+	private int m_DeploymentDiagnosticsSessionId;
+
 	private TurnDataPart m_Data;
 
 	private bool m_OnAreaBeginUnloading;
@@ -301,6 +303,8 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 			return false;
 		}
 	}
+
+	public int DeploymentDiagnosticsSessionId => m_DeploymentDiagnosticsSessionId;
 
 	public bool IsCombatLockActive
 	{
@@ -1224,13 +1228,17 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 		{
 			throw new InvalidOperationException("BeginPreparationTurn");
 		}
+		m_DeploymentDiagnosticsSessionId++;
+		LogDeployment("BeginPreparationTurn.enter", $"canDeploy={canDeploy}, raiseEvent={raiseEvent}, combatRound={CombatRound}, " + $"turnType={MaybeTurnOrder?.CurrentTurnType}, alreadyPreparation={IsPreparationTurn}, " + $"currentUnit={CurrentUnit}, party={FormatDeploymentPartyState()}");
 		m_StartBattleSignal = SignalService.Instance.RegisterNext();
 		TurnOrder.BeginPreparationTurn();
+		LogDeployment("BeginPreparationTurn.afterTurnOrder", $"turnType={MaybeTurnOrder?.CurrentTurnType}, currentUnit={CurrentUnit}");
 		foreach (BaseUnitEntity item in Game.Instance.Player.Party)
 		{
 			item.GetCombatStateOptional()?.SetMovementPoints(ConfigRoot.Instance.CombatRoot.DistanceInPreparationTurn, null);
 		}
 		BaseUnitEntity[] array = Game.Instance.EntityPools.AllBaseAwakeUnits.Where((BaseUnitEntity i) => i.IsInCombat && i.IsPlayerEnemy).ToArray();
+		LogDeployment("BeginPreparationTurn.restrictionScan", $"enemies={array.Length}, party={FormatDeploymentPartyState()}");
 		foreach (BaseUnitEntity item2 in Game.Instance.Player.Party)
 		{
 			BaseUnitEntity[] array2 = array;
@@ -1250,10 +1258,13 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 				h.HandleBeginPreparationTurn(canDeploy);
 			});
 		}
+		LogDeployment("BeginPreparationTurn.exit", "party=" + FormatDeploymentPartyState());
 	}
 
 	public void RequestEndPreparationTurn()
 	{
+		bool flag = CanFinishDeploymentPhase();
+		LogDeployment("RequestEndPreparationTurn", $"isPreparation={IsPreparationTurn}, canFinish={flag}, " + $"signalEmpty={m_StartBattleSignal.IsEmpty}, party={FormatDeploymentPartyState()}");
 		SignalService.Instance.CheckReadyOrSend(ref m_StartBattleSignal);
 	}
 
@@ -1275,17 +1286,38 @@ public class TurnController : IControllerEnable, IController, IControllerDisable
 
 	public void ForceEndPreparationTurn()
 	{
+		LogDeployment("ForceEndPreparationTurn.enter", $"turnBased={TurnBasedModeActive}, isPreparation={IsPreparationTurn}, combatRound={CombatRound}, " + $"turnType={MaybeTurnOrder?.CurrentTurnType}, currentUnit={CurrentUnit}, " + "party=" + FormatDeploymentPartyState());
 		if (!TurnBasedModeActive || !IsPreparationTurn)
 		{
-			Logger.Error(string.Format("{0} invalid operation: TurnBasedModeActive={1} IsPreparationTurn={2}", "ForceEndPreparationTurn", TurnBasedModeActive, IsPreparationTurn));
+			Logger.Error("ForceEndPreparationTurn invalid operation: " + $"TurnBasedModeActive={TurnBasedModeActive} IsPreparationTurn={IsPreparationTurn}");
+			Logger.Warning(string.Format("[{0}] session={1} ", "WH2-51465", m_DeploymentDiagnosticsSessionId) + "event=ForceEndPreparationTurn.anomaly invalidState=true");
 			return;
 		}
 		RemovePreparationTurnVisualEffect();
 		TurnOrder.EndPreparationTurn();
+		LogDeployment("ForceEndPreparationTurn.afterTurnOrder", $"turnType={MaybeTurnOrder?.CurrentTurnType}, currentUnit={CurrentUnit}, " + "party=" + FormatDeploymentPartyState());
 		EventBus.RaiseEvent(delegate(IPreparationTurnEndHandler h)
 		{
 			h.HandleEndPreparationTurn();
 		});
+		LogDeployment("ForceEndPreparationTurn.exit", "party=" + FormatDeploymentPartyState());
+	}
+
+	private void LogDeployment(string eventName, string message)
+	{
+		Logger.Log(string.Format("[{0}] session={1} ", "WH2-51465", m_DeploymentDiagnosticsSessionId) + "event=" + eventName + " " + message);
+	}
+
+	private static string FormatDeploymentPartyState()
+	{
+		return string.Join(" | ", Game.Instance.Player.Party.Select(FormatDeploymentUnitState));
+	}
+
+	private static string FormatDeploymentUnitState(BaseUnitEntity unit)
+	{
+		PartUnitCombatState combatStateOptional = unit.GetCombatStateOptional();
+		string text = unit.Commands.Current?.GetType().Name ?? "<none>";
+		return $"unit={unit}, position={unit.Position}, inCombat={unit.IsInCombat}, " + $"deadOrUnconscious={unit.IsDeadOrUnconscious}, " + $"startedCombatNearEnemy={combatStateOptional?.StartedCombatNearEnemy}, " + $"canDeployNearEnemies={unit.Features.CanDeployNearEnemies}, " + "command=" + text;
 	}
 
 	public void BeginManualCombat()

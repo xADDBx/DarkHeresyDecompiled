@@ -20,6 +20,7 @@ using Kingmaker.Networking.NetGameFsm;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.QA;
 using Kingmaker.UnitLogic.Commands;
 using Kingmaker.UnitLogic.Commands.Base;
 using Owlcat.UI;
@@ -441,11 +442,21 @@ public class HUDContext : ViewModel, IAreaActivationHandler, ISubscriber, IAreaH
 
 	private void BeginPreparationTurn(bool canDeploy)
 	{
-		TryCreateVMs();
-		m_CombatStartWindowVM.Value = new CombatStartWindowVM(Game.Instance.Controllers.TurnController.RequestEndPreparationTurn, m_PartyVM, canDeploy).AddTo(this);
-		OnUnitChanged();
-		m_DeploymentPhase.Value = true;
-		m_CanDeploy.Value = canDeploy;
+		TurnController turnController = Game.Instance.Controllers.TurnController;
+		PFLog.UI.Log(string.Format("[{0}] session={1} ", "WH2-51465", turnController.DeploymentDiagnosticsSessionId) + "event=HUD.BeginPreparationTurn.enter " + $"canDeploy={canDeploy}, " + $"partyVM={m_PartyVM.CurrentValue != null}, vmsCreated={m_ComponentsVMsCreated}, " + $"deploymentBefore={m_DeploymentPhase.CurrentValue}, canDeployBefore={m_CanDeploy.CurrentValue}, " + $"combatStartWindow={m_CombatStartWindowVM.CurrentValue != null}");
+		try
+		{
+			m_DeploymentPhase.Value = true;
+			m_CanDeploy.Value = canDeploy;
+			TryCreateVMs();
+			m_CombatStartWindowVM.Value = new CombatStartWindowVM(Game.Instance.Controllers.TurnController.RequestEndPreparationTurn, m_PartyVM, canDeploy).AddTo(this);
+			OnUnitChanged();
+		}
+		catch (Exception exception)
+		{
+			PFLog.UI.ExceptionWithReport(exception, "[WH2-51465] exception occured in BeginPreparationTurn");
+		}
+		PFLog.UI.Log(string.Format("[{0}] session={1} ", "WH2-51465", turnController.DeploymentDiagnosticsSessionId) + "event=HUD.BeginPreparationTurn.exit " + $"partyVM={m_PartyVM.CurrentValue != null}, vmsCreated={m_ComponentsVMsCreated}, " + $"deployment={m_DeploymentPhase.CurrentValue}, canDeploy={m_CanDeploy.CurrentValue}, " + $"combatStartWindow={m_CombatStartWindowVM.CurrentValue != null}, " + $"currentUnit={m_CurrentUnit.CurrentValue?.MechanicEntity}");
 	}
 
 	private void EndPreparationTurn()

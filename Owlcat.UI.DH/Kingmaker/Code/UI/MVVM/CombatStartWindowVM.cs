@@ -1,11 +1,13 @@
 using System;
 using Kingmaker.Blueprints.Root.Strings;
 using Kingmaker.Code.View.Bridge.Enums;
+using Kingmaker.Controllers.TurnBased;
 using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.Networking;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem.Core.Interfaces;
+using Kingmaker.QA;
 using Owlcat.UI;
 using R3;
 
@@ -52,7 +54,14 @@ public class CombatStartWindowVM : ViewModel, IEntityPositionChangedHandler, ISu
 		m_StartBattle = startBattle;
 		CanDeploy = canDeploy;
 		UpdateCanStartCombat();
-		m_PartyVM.CurrentValue.SelectFirstCharacter();
+		if (m_PartyVM.CurrentValue != null)
+		{
+			m_PartyVM.CurrentValue.SelectFirstCharacter();
+		}
+		else
+		{
+			PFLog.UI.ErrorWithReport("[WH2-51465] CombatStartWindowVM: PartyVM is null");
+		}
 	}
 
 	public void StartBattle()
@@ -76,18 +85,21 @@ public class CombatStartWindowVM : ViewModel, IEntityPositionChangedHandler, ISu
 		StartCombatFailResult result;
 		int currentStartProgress;
 		int targetStartProgress;
-		bool value = CheckCanStartCombat(out result, out currentStartProgress, out targetStartProgress);
+		bool flag = CheckCanStartCombat(out result, out currentStartProgress, out targetStartProgress);
 		if (result != m_CombatStartFailResult)
 		{
+			StartCombatFailResult? combatStartFailResult = m_CombatStartFailResult;
+			TurnController turnController = Game.Instance.Controllers.TurnController;
+			PFLog.UI.Log("[WH2-51465] " + $"session={turnController.DeploymentDiagnosticsSessionId} " + "event=CombatStart.UpdateCanStartCombat " + $"previousResult={combatStartFailResult}, result={result}, " + $"canStartCombat={flag}, canDeploy={CanDeploy}, " + $"canFinishDeployment={result != StartCombatFailResult.DeploymentNotFinished}, " + $"isPreparation={turnController.IsPreparationTurn}, " + $"currentProgress={currentStartProgress}, targetProgress={targetStartProgress}, " + $"partyVM={m_PartyVM.CurrentValue != null}");
 			m_CombatStartFailResult = result;
-			string value2 = result switch
+			string value = result switch
 			{
 				StartCombatFailResult.None => string.Empty, 
 				StartCombatFailResult.WaitingNetworkPlayer => FormatNetworkMessage(currentStartProgress, targetStartProgress), 
 				_ => UIStrings.Instance.TurnBasedTexts.CannotStartbattle.Text, 
 			};
-			m_CannotStartCombatReason.Value = value2;
-			m_CanStartCombat.Value = value;
+			m_CannotStartCombatReason.Value = value;
+			m_CanStartCombat.Value = flag;
 		}
 		static string FormatNetworkMessage(int current, int target)
 		{

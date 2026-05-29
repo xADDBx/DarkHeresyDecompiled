@@ -184,6 +184,10 @@ public class CutscenePlayerCommandData
 	{
 		CommandBase.CommandResult result = CommandBase.CommandResult.Success;
 		MarkUnit();
+		if (m_Player.Paused)
+		{
+			return CommandBase.CommandResult.Fail("Cutscene was paused after MarkUnit, not running this command");
+		}
 		if (skipping && m_Command.TrySkip(m_Player))
 		{
 			result = m_Command.Skip(m_Player);

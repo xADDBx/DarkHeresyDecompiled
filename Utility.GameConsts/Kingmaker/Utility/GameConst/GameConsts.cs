@@ -67,4 +67,6 @@ public static class GameConsts
 	public const int DefaultInCombatInteractionActionPointsCost = 2;
 
 	public const int GroupMaxCount = 6;
+
+	public const string DeploymentFreezeBugID = "WH2-51465";
 }
